@@ -9,7 +9,7 @@ import threading
 import time
 from os import remove
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file
+from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files
 from wazuh.exception import WazuhException
 from wazuh import common
 
@@ -99,70 +99,6 @@ def process_files_from_master(data_received):
 from wazuh.cluster.communication import ClientHandler, Handler
 
 
-def send_client_files_to_master(config_cluster, reason=None):
-    sync_result = False
-
-    logging.info("[Client] [Sync process]: Start. Reason: '{0}'".format(reason))
-
-
-    logging.info("[Client] [Sync process] [Step 0]: Finding master.")
-
-    master_node = get_master_node()
-
-    if master_node == 'unknown':
-        logging.error("[Client] [Sync process] [Step 0]: Master not found.")
-    else:
-        logging.info("[Client] [Sync process] [Step 0]: Master: {0}.".format(master_node))
-
-        logging.info("[Client] [Sync process] [Step 1]: Gathering files.")
-        # Get master files (path, md5, mtime): client.keys, ossec.conf, groups, ...
-        master_files = get_files_status('master')
-        client_files = get_files_status('client', get_md5=False)
-        cluster_control_json = {'master_files': master_files, 'client_files': client_files}
-
-        # Getting client file paths: agent-info, agent-groups.
-        client_files_paths = client_files.keys()
-
-        # Compress data: client files + control json
-        compressed_data = compress_files('client', client_files_paths, cluster_control_json)
-
-
-        # Send compressed file to master
-        logging.info("[Client] [Sync process] [Step 2]: Sending files to master.")
-        error, response = send_request( host=master_node,
-                                        port=config_cluster["port"],
-                                        key=config_cluster['key'],
-                                        connection_timeout=100, #int(config_cluster['connection_timeout']),
-                                        socket_timeout=100, #int(config_cluster['socket_timeout']),
-                                        #data="zip {0}".format(str(len(compressed_data)).zfill(common.cluster_protocol_plain_size - len("zip "))),
-                                        data="m_c_sync {0}".format(str(len(compressed_data)).zfill(common.cluster_protocol_plain_size - len("m_c_sync "))),
-                                        file=compressed_data
-        )
-
-        # Update files
-        if error == 0:
-            if 'error' in response and 'data' in response:
-                if response['error'] != 0:
-                    logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (1): {}".format(response['data']))
-            else:
-                try:
-                    logging.info("[Client] [Sync process] [Step 3]: KO files received from master.")
-                    master_data  = decompress_files(response)
-                    sync_result = process_files_from_master(master_data)
-                except Exception as e:
-                    logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (2): {}".format(str(e)))
-        else:
-            logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master")
-
-    # Send ACK
-    # ToDo
-
-    # Log
-    logging.info("[Client] [Sync process]: Result - {}.".format(sync_result))
-
-    return sync_result
-
-
 class ClientManager(ClientHandler):
 
     def __init__(self, cluster_config):
@@ -183,6 +119,7 @@ class ClientManager(ClientHandler):
         else:
             return ClientHandler.process_request(self, command, data)
 
+
     @staticmethod
     def process_response(response):
         # FixMe: Move this line to communications
@@ -199,6 +136,71 @@ class ClientManager(ClientHandler):
 
         return response_data
 
+
+    def process_files_from_master():
+        # Update files
+        if error == 0:
+            if 'error' in response and 'data' in response:
+                if response['error'] != 0:
+                    logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (1): {}".format(response['data']))
+            else:
+                try:
+                    logging.info("[Client] [Sync process] [Step 3]: KO files received from master.")
+                    master_data  = decompress_files(response)
+                    sync_result = process_files_from_master(master_data)
+                except Exception as e:
+                    logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master (2): {}".format(str(e)))
+        else:
+            logging.error("[Client] [Sync process] [Step 3]: ERROR receiving files from master")
+
+        # Send ACK
+        # ToDo
+
+        # Log
+        logging.info("[Client] [Sync process]: Result - {}.".format(sync_result))
+
+
+
+    def send_client_files_to_master(self, reason=None):
+        sync_result = False
+
+        logging.info("[Client] [Sync process c->m]: Start. Reason: '{0}'".format(reason))
+
+        # Step 1
+        logging.info("[Client] [Sync process c->m] [Step 1]: Finding master.")
+
+        master_node = self.config['nodes'][0]  # Now, we only have 1 node: the master
+
+        logging.info("[Client] [Sync process c->m] [Step 1]: Master: {0}.".format(master_node))
+
+
+        # Step 2
+        logging.info("[Client] [Sync process c->m] [Step 2]: Gathering files.")
+        # Get master files (path, md5, mtime): client.keys, ossec.conf, groups, ...
+        master_files = get_files_status('master')
+        client_files = get_files_status('client', get_md5=False)
+        cluster_control_json = {'master_files': master_files, 'client_files': client_files}
+
+        # Getting client file paths: agent-info, agent-groups.
+        client_files_paths = client_files.keys()
+
+        # Compress data: client files + control json
+        compressed_data = compress_files('client', client_files_paths, cluster_control_json)
+
+
+        # Step 3
+        # Send compressed file to master
+        logging.info("[Client] [Sync process c->m] [Step 3]: Sending files to master.")
+
+
+        response = self.send_request('sync_c_m', compressed_data)
+        processed_response = self.process_response(response)
+        if processed_response:
+            sync_result = True
+        else:
+            logging.error("[Client] [Sync process c->m] [Step 3]: Error - No response.")
+
+        return sync_result
 #
 # Client threads
 #
@@ -214,13 +216,13 @@ class ClientIntervalThread(threading.Thread):
     def run(self):
         while self.running:
             if self.client and self.client.is_connected():
-                response = self.client.send_request('echo-c','Keep-alive from client!')
-                processed_response = self.client.process_response(response)
-                if processed_response:
-                    print(processed_response)
+                result = self.client.send_client_files_to_master(reason="Interval")
+                if result:
+                    logging.info("[Client] [Sync process c->m]: Successfully.")
                 else:
-                    print ("No response")
+                    logging.error("[Client] [Sync process c->m]: Error.")
 
+                logging.info("[Client] [Sync process c->m] Sleeping: {0}s.".format(self.client.config['interval']))
                 time.sleep(self.client.config['interval'])
             else:
                 time.sleep(5)

@@ -177,6 +177,10 @@ class MasterManagerHandler(ServerHandler):
 
         if command == 'echo-c':
             return 'ok-c ', data.decode()
+        elif command == 'req_sync_m_c':
+            return 'ack', 'Starting sync from master'
+        elif command == 'sync_c_m':
+            return 'ack', 'Sync: Thanks client, Im going to do it'  # ToDo
         else:
             return ServerHandler.process_request(self, command, data)
 
