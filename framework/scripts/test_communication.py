@@ -84,7 +84,6 @@ def test_send_file(thread, my_client, file_path):
 
 def test_cluster_client_requests(thread, my_client):
     requests_list = [
-        ("req_sync_m_c", None, "Confirmation received: Starting sync from master")
     ]
 
     for req, data, expected_res in requests_list:
@@ -100,6 +99,7 @@ def test_cluster_client_requests(thread, my_client):
 
 def test_cluster_master_requests(thread, my_master):
     requests_list = [
+        ("req_sync_m_c", None, "Confirmation received: Starting sync from master"),
         ("getintegrity", None, {'/etc/client.keys':'pending'})
     ]
 

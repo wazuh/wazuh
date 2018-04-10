@@ -176,6 +176,8 @@ class ClientManager(ClientHandler):
 
         if command == 'echo-m':
             return 'ok-m ', data.decode()
+        elif command == 'req_sync_m_c':
+            return 'ack', 'Starting sync from master'  # TO DO
         elif command == 'getintegrity':
             return 'json', json.dumps({'/etc/client.keys':'pending'})  # TO DO
         else:
