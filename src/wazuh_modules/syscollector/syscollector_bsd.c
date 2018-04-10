@@ -434,6 +434,16 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         cJSON_AddItemToObject(object, "iface", interface);
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
+        cJSON *ipv4 = cJSON_CreateObject();
+        cJSON *ipv4_addr = cJSON_CreateArray();
+        cJSON *ipv4_netmask = cJSON_CreateArray();
+        cJSON *ipv4_broadcast = cJSON_CreateArray();
+
+        cJSON *ipv6 = cJSON_CreateObject();
+        cJSON *ipv6_addr = cJSON_CreateArray();
+        cJSON *ipv6_netmask = cJSON_CreateArray();
+        cJSON *ipv6_broadcast = cJSON_CreateArray();
+
         for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
 
             if (strcmp(ifaces_list[i], ifa->ifa_name)){
@@ -446,9 +456,6 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
             family = ifa->ifa_addr->sa_family;
 
             if (family == AF_INET){
-
-                cJSON *ipv4 = cJSON_CreateObject();
-                cJSON_AddItemToObject(interface, "IPv4", ipv4);
 
                 if (ifa->ifa_addr){
 
@@ -463,7 +470,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                             host,
                             sizeof (host));
 
-                    cJSON_AddStringToObject(ipv4, "address", host);
+                    cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
 
                     /* Netmask Address */
                     addr_ptr = &((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr;
@@ -474,7 +481,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                             netmask,
                             sizeof (netmask));
 
-                    cJSON_AddStringToObject(ipv4, "netmask", netmask);
+                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
 
                     /* Broadcast Address */
                     addr_ptr = &((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr;
@@ -485,16 +492,10 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                             broadaddr,
                             sizeof (broadaddr));
 
-                    cJSON_AddStringToObject(ipv4, "broadcast", broadaddr);
-
-                    /* No DHCP state is collected in BSD */
-                    cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
+                    cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
                 }
 
             } else if (family == AF_INET6){
-
-                cJSON *ipv6 = cJSON_CreateObject();
-                cJSON_AddItemToObject(interface, "IPv6", ipv6);
 
                 if (ifa->ifa_addr){
 
@@ -509,7 +510,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                             host,
                             sizeof (host));
 
-                    cJSON_AddStringToObject(ipv6, "address", host);
+                    cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
 
                     /* Netmask address */
                     if (ifa->ifa_netmask){
@@ -521,7 +522,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                                 netmask6,
                                 sizeof (netmask6));
 
-                        cJSON_AddStringToObject(ipv6, "netmask", netmask6);
+                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
                     }
 
                     /* Broadcast address */
@@ -534,11 +535,8 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                                 broadaddr6,
                                 sizeof (broadaddr6));
 
-                        cJSON_AddStringToObject(ipv6, "broadcast", broadaddr6);
+                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
                     }
-
-                    /* No DHCP state is collected in BSD */
-                    cJSON_AddStringToObject(ipv6, "DHCP", "unknown");
                 }
 
             } else if (family == AF_LINK && ifa->ifa_data != NULL){
@@ -608,6 +606,50 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                 cJSON_AddNumberToObject(interface, "MTU", stats->ifi_mtu);
 
             }
+        }
+
+        /* Add address information to the structure */
+
+        if (cJSON_GetArraySize(ipv4_addr) > 0) {
+            cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
+            if (cJSON_GetArraySize(ipv4_netmask) > 0) {
+                cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
+            } else {
+                cJSON_Delete(ipv4_netmask);
+            }
+            if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
+                cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
+            } else {
+                cJSON_Delete(ipv4_broadcast);
+            }
+            cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
+            cJSON_AddItemToObject(interface, "IPv4", ipv4);
+        } else {
+            cJSON_Delete(ipv4_addr);
+            cJSON_Delete(ipv4_netmask);
+            cJSON_Delete(ipv4_broadcast);
+            cJSON_Delete(ipv4);
+        }
+
+        if (cJSON_GetArraySize(ipv6_addr) > 0) {
+            cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
+            if (cJSON_GetArraySize(ipv6_netmask) > 0) {
+                cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
+            } else {
+                cJSON_Delete(ipv6_netmask);
+            }
+            if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
+                cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
+            } else {
+                cJSON_Delete(ipv6_broadcast);
+            }
+            cJSON_AddStringToObject(ipv6, "DHCP", "unknown");
+            cJSON_AddItemToObject(interface, "IPv6", ipv6);
+        } else {
+            cJSON_Delete(ipv6_addr);
+            cJSON_Delete(ipv6_netmask);
+            cJSON_Delete(ipv6_broadcast);
+            cJSON_Delete(ipv6);
         }
 
         /* Send interface data in JSON format */
