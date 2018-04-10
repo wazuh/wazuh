@@ -9,6 +9,7 @@ import hashlib
 import os
 import time
 import logging
+import json
 
 max_msg_size = 1000000
 cmd_size = 12
@@ -313,6 +314,8 @@ class Handler(asyncore.dispatcher_with_send):
             final_response = 'answered: {}.'.format(payload)
         elif answer == 'ack':
             final_response = 'Confirmation received: {}'.format(payload)
+        elif answer == 'json':
+            final_response = json.loads(payload)
         elif answer == 'err':
             final_response = None
             logging.error("[Transport] Error received: {0}.".format(payload.decode()))

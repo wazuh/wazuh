@@ -176,6 +176,8 @@ class ClientManager(ClientHandler):
 
         if command == 'echo-m':
             return 'ok-m ', data.decode()
+        elif command == 'getintegrity':
+            return 'json', json.dumps({'/etc/client.keys':'pending'})  # TO DO
         else:
             return ClientHandler.process_request(self, command, data)
 

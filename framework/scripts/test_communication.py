@@ -97,12 +97,32 @@ def test_cluster_client_requests(thread, my_client):
 
     thread.stop()
 
+
+def test_cluster_master_requests(thread, my_master):
+    requests_list = [
+        ("getintegrity", None, {'/etc/client.keys':'pending'})
+    ]
+
+    time.sleep(2) # wait for clients to connect
+    for req, data, expected_res in requests_list:
+        print("Testing request {}".format(req))
+        for c_name, res in my_master.send_request_broadcast(command=req, data=data):
+            print("Client {}".format(c_name))
+            local_res = my_master.handler.process_response(res)
+            if expected_res != local_res:
+                print("Request {} failed. Expected response: '{}', response: '{}'".format(req, expected_res, local_res))
+            else:
+                print("Request {} successfully completed".format(req))
+
+    thread.stop()
+
+
 #
 # Master threads
 #
 class MasterTest(threading.Thread):
 
-    def __init__(self, t_name, server, test_name, test_size):
+    def __init__(self, t_name, server, test_name, test_size=0):
         threading.Thread.__init__(self)
         self.daemon = True
         self.running = True
@@ -121,6 +141,8 @@ class MasterTest(threading.Thread):
                 else:
                     print("Waiting for clients")
                     time.sleep(2)
+            elif self.test == 'testm':
+                test_cluster_master_requests(self, self.server)
             else:
                 print("T: No test selected")
 
@@ -197,6 +219,10 @@ def master_main(test_name, test_size):
         for i in range(10):
             thread_pool[i].start()
 
+        asyncore.loop(timeout=1, map=master.map)
+    elif test_name == 'testm':
+        m_test_thread = MasterTest('thread0', master, test_name)
+        m_test_thread.start()
         asyncore.loop(timeout=1, map=master.map)
     else:
         print("No test selected")
