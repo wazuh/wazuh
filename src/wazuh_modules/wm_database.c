@@ -65,6 +65,8 @@ wm_database *module;
 static void* wm_database_main(wm_database *data);
 // Destroy data
 static void* wm_database_destroy(wm_database *data);
+// Read config
+cJSON *wm_database_dump(const wm_database *data);
 // Update manager information
 static void wm_sync_manager();
 // Get agent's architecture
@@ -96,12 +98,13 @@ static int wm_fill_rootcheck(sqlite3 *db, const char *path);
  */
 static int wm_extract_agent(const char *fname, char *name, char *addr, int *registry);
 
+
 // Database module context definition
 const wm_context WM_DATABASE_CONTEXT = {
     "database",
     (wm_routine)wm_database_main,
     (wm_routine)wm_database_destroy,
-    NULL
+    (cJSON * (*)(const void *))wm_database_dump
 };
 
 // Module main function. It won't return
@@ -1116,6 +1119,28 @@ int wm_extract_agent(const char *fname, char *name, char *addr, int *registry) {
 
     return 0;
 }
+
+
+// Get readed data
+
+cJSON *wm_database_dump(const wm_database *data) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_db = cJSON_CreateObject();
+
+    if (data->sync_agents) cJSON_AddStringToObject(wm_db,"sync_agents","yes"); else cJSON_AddStringToObject(wm_db,"sync_agents","no");
+    if (data->sync_syscheck) cJSON_AddStringToObject(wm_db,"sync_syscheck","yes"); else cJSON_AddStringToObject(wm_db,"sync_syscheck","no");
+    if (data->sync_rootcheck) cJSON_AddStringToObject(wm_db,"sync_rootcheck","yes"); else cJSON_AddStringToObject(wm_db,"sync_rootcheck","no");
+    if (data->full_sync) cJSON_AddStringToObject(wm_db,"full_sync","yes"); else cJSON_AddStringToObject(wm_db,"full_sync","no");
+    if (data->real_time) cJSON_AddStringToObject(wm_db,"real_time","yes"); else cJSON_AddStringToObject(wm_db,"real_time","no");
+    cJSON_AddNumberToObject(wm_db,"interval",data->interval);
+    cJSON_AddNumberToObject(wm_db,"max_queued_events",data->max_queued_events);
+
+    cJSON_AddItemToObject(root,"database",wm_db);
+
+    return root;
+}
+
 
 // Destroy data
 void* wm_database_destroy(wm_database *data) {
