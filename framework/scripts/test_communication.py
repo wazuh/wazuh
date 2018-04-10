@@ -1,11 +1,22 @@
 #!/usr/bin/env python
 
 import sys
+from os import path
 import asyncore
 import threading
 import time
-from master import MasterManager
-from client import ClientManager
+
+try:
+    sys.path.append(path.dirname(sys.argv[0]) + '/../framework')
+
+    from wazuh import Wazuh
+    from wazuh import common
+    from wazuh.cluster import cluster
+    from wazuh.cluster.master import MasterManager
+    from wazuh.cluster.client import ClientManager
+except Exception as e:
+    print("Error importing 'Wazuh' package: {0}".format(e))
+    sys.exit(1)
 
 #
 # Tests
@@ -141,7 +152,7 @@ class ClientTest(threading.Thread):
 #
 def master_main(test_name, test_size):
     # Read config
-    c_config = {'host': 'localhost', 'port': 8080}
+    c_config = cluster.read_config()
 
     # Initiate master
     master = MasterManager(c_config)
@@ -178,7 +189,7 @@ def master_main(test_name, test_size):
 # Client main
 #
 def client_main(test_name, test_size, filepath):
-    c_config = {'host': 'localhost', 'port': 8080, 'name': 'node1'}
+    c_config = cluster.read_config()
 
 
     # Test threads
@@ -226,6 +237,8 @@ def client_main(test_name, test_size, filepath):
 # Main
 #
 if __name__ == '__main__':
+    myWazuh = Wazuh(get_init=True)
+
     node_type = sys.argv[1]
 
     try:
