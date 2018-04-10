@@ -45,68 +45,94 @@ os_info *get_win_version()
     }
 
     if (osvi.dwMajorVersion == 6) {
-        // Read Windows Version
-        memset(read_buff, 0, buf_tam);
-        command = "wmic os get caption";
-        char *end;
-        cmd_output = popen(command, "r");
-        if (!cmd_output) {
-            merror("Unable to execute command: '%s'.", command);
-        } else {
-            if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff, "Caption", 7) == 0) {
-                if (!fgets(read_buff, buf_tam, cmd_output)){
-                    merror("Can't get OS name.");
-                    info->os_name = strdup("unknown");
-                }
-                else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
-                    }
-                    info->os_name = strdup(read_buff);
-                }else
-                    info->os_name = strdup("unknown");
-            } else {
-                mwarn("Can't get OS name (bad header).");
-                info->os_name = strdup("unknown");
-            }
+        // Read Windows Version from registry
+        char temp[1024];
+        DWORD dwRet;
+        HKEY RegistryKey;
+        const DWORD vsize = 1024;
+        TCHAR value[vsize];
+        DWORD dwCount = vsize;
 
-            if (status = pclose(cmd_output), status) {
-                mwarn("Command 'wmic' returned %d getting OS name.", status);
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"), 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+            merror("Error opening Windows registry.");
+            info->os_name = strdup("Microsoft Windows undefined version");
+        }
+        else {
+            dwRet = RegQueryValueEx(RegistryKey, TEXT("ProductName"), NULL, NULL, (LPBYTE)value, &dwCount);
+            if (dwRet != ERROR_SUCCESS) {
+                merror("Error reading Windows registry. (Error %u)",(unsigned int)dwRet);
+                info->os_name = strdup("Microsoft Windows undefined version");
             }
+            else {
+                memset(temp, '\0', sizeof(temp));
+                strcpy(temp, "Microsoft ");
+                strncat(temp, value, 1022);
+                info->os_name = strdup(temp);
+            }
+            RegCloseKey(RegistryKey);
         }
 
-        // Read version number
-        memset(read_buff, 0, buf_tam);
-        command = "wmic os get Version";
-        cmd_output = popen(command, "r");
-        if (!cmd_output) {
-            merror("Unable to execute command: '%s'.", command);
-            info->os_version = strdup("unknown");
-        } else {
-            if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff, "Version", 7) == 0) {
-                if (!fgets(read_buff, buf_tam, cmd_output)){
-                    merror("Can't get version.");
-                    info->os_version = strdup("unknown");
+        // Read Windows Version number from registry
+        char vn_temp[64];
+        char major[5], minor[5];
+        memset(vn_temp, '\0', 64);
+        const DWORD size = 30;
+        TCHAR winver[size];
+        TCHAR wincomp[size];
+        DWORD winMajor = 0;
+        DWORD winMinor = 0;
+        dwCount = size;
+        unsigned long type=REG_DWORD;
+
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"), 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+            merror("Error opening Windows registry.");
+        }
+
+        // Windows 10
+        dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentMajorVersionNumber"), NULL, &type, (LPBYTE)&winMajor, &dwCount);
+        if (dwRet == ERROR_SUCCESS) {
+            dwCount = size;
+            dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentMinorVersionNumber"), NULL, &type, (LPBYTE)&winMinor, &dwCount);
+            if (dwRet != ERROR_SUCCESS) {
+                merror("Error reading 'CurrentMinorVersionNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            }
+            else {
+                snprintf(vn_temp, 63, "%d", (unsigned int)winMajor);
+                info->os_major = strdup(vn_temp);
+                snprintf(vn_temp, 63, "%d", (unsigned int)winMinor);
+                info->os_minor = strdup(vn_temp);
+                dwCount = size;
+                dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
+                if (dwRet != ERROR_SUCCESS) {
+                    merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
                 }
                 else {
-                    info->os_version = strdup(strtok(read_buff," "));
-                    char ** parts = NULL;
-                    parts = OS_StrBreak('.', info->os_version, 3);
-                    info->os_major = strdup(parts[0]);
-                    info->os_minor = strdup(parts[1]);
-                    info->os_build = strdup(parts[2]);
-                    free(parts);
+                    snprintf(vn_temp, 63, "%s", wincomp);
+                    info->os_build = strdup(vn_temp);
                 }
-            } else {
-                mwarn("Can't get OS version (bad header).");
-                info->os_version = strdup("unknown");
             }
-
-            if (status = pclose(cmd_output), status) {
-                mwarn("Command 'wmic' returned %d getting OS version.", status);
+            RegCloseKey(RegistryKey);
+        }
+        // Windows 6.2 or 6.3
+        else {
+            dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentVersion"), NULL, NULL, (LPBYTE)winver, &dwCount);
+            if (dwRet != ERROR_SUCCESS) {
+                merror("Error reading 'Current Version' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            }
+            else {
+                sscanf(winver, "%d.%d", (unsigned int*)major, (unsigned int*)minor);
+                info->os_major = strdup(major);
+                info->os_minor = strdup(minor);
+                dwCount = size;
+                dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
+                if (dwRet != ERROR_SUCCESS) {
+                    merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
+                }
+                else {
+                    snprintf(vn_temp, 63, "%s", wincomp);
+                    info->os_build = strdup(vn_temp);
+                }
+                RegCloseKey(RegistryKey);
             }
         }
 
