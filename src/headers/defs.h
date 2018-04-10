@@ -127,7 +127,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Local requests socket
 #define COM_LOCAL_SOCK  "/queue/ossec/com"
 #define LC_LOCAL_SOCK  "/queue/ossec/logcollector"
-#define SYS_LOCAL_SOCK  "/queue/ossec/syscheck"
+#define SYS_LOCAL_SOCK  "/queue/ossec/syscheckd"
 #define WM_LOCAL_SOCK  "/queue/ossec/wmodules"
 #define ANLSYS_LOCAL_SOCK  "/queue/ossec/analysisd"
 #define MAIL_LOCAL_SOCK "/queue/ossec/maild"

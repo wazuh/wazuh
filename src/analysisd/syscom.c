@@ -10,10 +10,11 @@
 
 #include <shared.h>
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
 #include "analysisd.h"
 #include "config.h"
 
-size_t syscom_dispatch(char *command, char *output) {
+size_t syscom_dispatch(char * command, char ** output) {
 
     const char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -27,72 +28,91 @@ size_t syscom_dispatch(char *command, char *output) {
         // getconfig section
         if (!rcv_args){
             merror("SYSCOM getconfig needs arguments.");
-            strcpy(output, "err SYSCOM getconfig needs arguments");
-            return strlen(output);
+            *output = strdup("err SYSCOM getconfig needs arguments");
+            return strlen(*output);
         }
         return syscom_getconfig(rcv_args, output);
 
     } else {
         merror("SYSCOM Unrecognized command '%s'.", rcv_comm);
-        strcpy(output, "err Unrecognized command");
-        return strlen(output);
+        *output = strdup("err Unrecognized command");
+        return strlen(*output);
     }
 }
 
-size_t syscom_getconfig(const char * section, char * output) {
+size_t syscom_getconfig(const char * section, char ** output) {
 
     cJSON *cfg;
+    char *json_str;
 
     if (strcmp(section, "global") == 0){
         if (cfg = getGlobalConfig(), cfg) {
-            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     }
     else if (strcmp(section, "active-response") == 0){
         if (cfg = getARManagerConfig(), cfg) {
-            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     }
     else if (strcmp(section, "alerts") == 0){
         if (cfg = getAlertsConfig(), cfg) {
-            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     }
     else if (strcmp(section, "decoders") == 0){
         if (cfg = getDecodersConfig(), cfg) {
-            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     }
     else if (strcmp(section, "rules") == 0){
         if (cfg = getRulesConfig(), cfg) {
-            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     }
     else if (strcmp(section, "command") == 0){
         if (cfg = getARCommandsConfig(), cfg) {
-            snprintf(output, MAX_DYN_STR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
@@ -101,8 +121,8 @@ size_t syscom_getconfig(const char * section, char * output) {
     }
 error:
     merror("At SYSCOM getconfig: Could not get '%s' section", section);
-    strcpy(output, "err Could not get requested section");
-    return strlen(output);
+    *output = strdup("err Could not get requested section");
+    return strlen(*output);
 }
 
 
@@ -110,13 +130,13 @@ void * syscom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
     char *buffer = NULL;
-    char response[MAX_DYN_STR + 1];
+    char *response = NULL;
     ssize_t length;
     fd_set fdset;
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(ANLSYS_LOCAL_SOCK, SOCK_STREAM, MAX_DYN_STR), sock < 0) {
+    if (sock = OS_BindUnixDomain(ANLSYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror("Unable to bind to socket '%s'. Closing local server: %s (%d)", ANLSYS_LOCAL_SOCK,strerror(errno),errno);
         return NULL;
     }
@@ -163,13 +183,14 @@ void * syscom_main(__attribute__((unused)) void * arg) {
             break;
 
         default:
-            length = syscom_dispatch(buffer, response);
+            length = syscom_dispatch(buffer, &response);
             OS_SendSecureTCP(peer, length, response);
+            free(response);
             close(peer);
         }
+        free(buffer);
     }
 
-    if (buffer) free(buffer);
     mdebug1("Local server thread finished.");
 
     close(sock);
