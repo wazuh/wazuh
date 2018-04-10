@@ -464,7 +464,7 @@ class InternalSocketHandler(Handler):
         # ToDo ?
 
         # client manager
-        response = self.manager.send_request(command = command, data=data).split(' ')
+        response = self.manager.send_request(command = command, data=data).split(' ', 1)
         return response
 
 
