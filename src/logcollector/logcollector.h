@@ -88,8 +88,8 @@ void win_format_event_string(char *string);
 #ifndef WIN32
 // Com request thread dispatcher
 void * lccom_main(void * arg);
-size_t lccom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output);
-size_t lccom_getconfig(const char * section, char * output);
+size_t lccom_dispatch(char * command, char ** output);
+size_t lccom_getconfig(const char * section, char ** output);
 #endif
 
 /*** Global variables ***/

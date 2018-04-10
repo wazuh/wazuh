@@ -35,9 +35,10 @@ extern OSDecoderNode *osdecodernode_forpname;
 extern OSDecoderNode *osdecodernode_nopname;
 extern RuleNode *rulenode;
 
+// Read config
 void * syscom_main(__attribute__((unused)) void * arg) ;
-size_t syscom_dispatch(char *command, char *output);
-size_t syscom_getconfig(const char * section, char *output);
+size_t syscom_dispatch(char * command, char ** output);
+size_t syscom_getconfig(const char * section, char ** output);
 
 #define OSSEC_SERVER    "ossec-server"
 #define MAX_DECODER_ORDER_SIZE  1024
