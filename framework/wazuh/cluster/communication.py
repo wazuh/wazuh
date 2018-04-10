@@ -80,6 +80,7 @@ class Handler(asyncore.dispatcher_with_send):
         self.inbuffer = b''
         self.lock = threading.Lock()
 
+
     def compute_md5(self, file, blocksize=2**20):
         hash_algorithm = hashlib.md5()
         with open(file, 'rb') as f:
@@ -328,11 +329,12 @@ class Handler(asyncore.dispatcher_with_send):
 
 class ServerHandler(Handler):
 
-    def __init__(self, sock, server, map):
+    def __init__(self, sock, server, map, addr=None):
         Handler.__init__(self, sock, map)
         self.map = map
         self.name = None
         self.server = server
+        self.addr = addr
 
 
     def handle_close(self):
@@ -353,9 +355,9 @@ class ServerHandler(Handler):
 
 
     def hello(self, data):
-        self.name = data
-        self.server.add_client(data, self)
-        logging.info("[Transport-S] Node '{0}' connected.".format(data))
+        id = self.server.add_client(data, self.addr, self)
+        self.name = id  # TO DO: change self.name to self.id
+        logging.info("[Transport-S] Node '{0}' connected.".format(id))
         return None
 
 
@@ -377,16 +379,27 @@ class Server(asyncore.dispatcher):
         if pair is not None:
             sock, addr = pair
             logging.debug("[Transport-S] Incoming connection from {0}.".format(repr(addr)))
-            handler = self.handle_type(sock, self, self.map)
+            # addr is a tuple of form (ip, port)
+            handler = self.handle_type(sock, self, self.map, addr[0])
 
 
 
-    def add_client(self, name, handler):
-        self.clients[name] = handler
+    def add_client(self, data, ip, handler):
+        name, type = data.split(' ')
+        id = name
+        self.clients[id] = {
+            'handler': handler,
+            'info': {
+                'name': name,
+                'ip': ip,
+                'type': type
+            }
+        }
+        return id
 
 
-    def remove_client(self, name):
-        del self.clients[name]
+    def remove_client(self, id):
+        del self.clients[id]
 
 
     def get_connected_clients(self):
@@ -397,7 +410,7 @@ class Server(asyncore.dispatcher):
         response = None
 
         if client_name in self.clients:
-            response = self.clients[client_name].execute(command, data)
+            response = self.clients[client_name]['handler'].execute(command, payload)
         else:
             print("Error: Trying to send and the client is not connected.")
 
@@ -407,7 +420,7 @@ class Server(asyncore.dispatcher):
         message = "{0} {1}".format(command, data)
 
         for c_name in self.clients:
-            response = self.clients[c_name].execute(command, data)
+            response = self.clients[c_name]['handler'].execute(command, data)
             yield c_name, response
 
 
@@ -427,7 +440,7 @@ class ClientHandler(Handler):
     def handle_connect(self):
         logging.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
-        payload = msgbuild(counter, 'hello', self.name)
+        payload = msgbuild(counter, 'hello', '{} {}'.format(self.name, 'client'))
         self.send(payload)
         self.my_connected = True
         logging.info("[Client] Connected.")

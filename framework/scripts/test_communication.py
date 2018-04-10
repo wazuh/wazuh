@@ -53,7 +53,7 @@ def test_multiple_requests_from_master(thread, name, server, n):
     start = time.time()
     for i in range(n):
         # Broadcast
-        for response in server.send_request_broadcast('echo-m', 'Keep-alive from server!'):
+        for client_name, response in server.send_request_broadcast('echo-m', 'Keep-alive from server!'):
             processed_response = server.handler.process_response(response)
             if processed_response:
                 ok_requests += 1

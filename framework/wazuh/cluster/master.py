@@ -169,8 +169,8 @@ from wazuh.cluster.communication import Server, ServerHandler, Handler
 
 class MasterManagerHandler(ServerHandler):
 
-    def __init__(self, sock, server, map):
-        ServerHandler.__init__(self, sock, server, map)
+    def __init__(self, sock, server, map, addr=None):
+        ServerHandler.__init__(self, sock, server, map, addr)
 
     def process_request(self, command, data):
         logging.debug("[Master] Request received: '{0}'.".format(command))
