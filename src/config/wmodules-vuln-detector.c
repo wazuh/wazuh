@@ -224,7 +224,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     merror("Invalid Windows version '%s'.", version);
                     return OS_INVALID;
                 }
-            } else if (!strcmp(feed, vu_dist_tag[DIS_MACOS])) {
+            } /* else if (!strcmp(feed, vu_dist_tag[DIS_MACOS])) {
                 if (!strcmp(version, "X")) {
                     os_index = CVE_MACOSX;
                     os_strdup("x", upd->version);
@@ -235,7 +235,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     merror("Invalid Mac version '%s'.", version);
                     return OS_INVALID;
                 }
-            } else {
+            } */ else {
                 merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }

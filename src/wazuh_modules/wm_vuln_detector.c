@@ -251,71 +251,122 @@ int wm_vulnerability_detector_step(sqlite3_stmt *stmt) {
 }
 
 int wm_checks_package_vulnerability(char *version, const char *operation, char *operation_value) {
+    int size;
+    int v_result, r_result;
+    int epoch, c_epoch;
+    char version_cl[KEY_SIZE];
+    char cversion_cl[KEY_SIZE];
+    char *version_it, *release_it;
+    char *cversion_it, *crelease_it;
+
     if (operation_value) {
+        // Copy the original values
+        if (size = snprintf(version_cl, KEY_SIZE, "%s", version), size >= KEY_SIZE) {
+            return OS_INVALID;
+        }
+        if (size = snprintf(cversion_cl, KEY_SIZE, "%s", operation_value), size >= KEY_SIZE) {
+            return OS_INVALID;
+        }
+
+        // Check EPOCH
+        if (version_it = strchr(version_cl, ':'), version_it) {
+            *(version_it++) = '\0';
+            epoch = strtol(version_cl, NULL, 10);
+        } else {
+            version_it = version_cl;
+            epoch = 0;
+        }
+        if (cversion_it = strchr(cversion_cl, ':'), cversion_it) {
+            *(cversion_it++) = '\0';
+            c_epoch = strtol(cversion_cl, NULL, 10);
+        } else {
+            cversion_it = cversion_cl;
+            c_epoch = 0;
+        }
+
+        // Separate the version from the revision
+        if (release_it = strchr(version_it, '-'), release_it) {
+            if (*(release_it++) = '\0', *release_it == '\0') {
+                release_it = NULL;
+            }
+        }
+
+        if (crelease_it = strchr(cversion_it, '-'), crelease_it) {
+            if (*(crelease_it++) = '\0', *crelease_it == '\0') {
+                crelease_it = NULL;
+            }
+        }
+
+        // Check version
+        v_result = wm_vulnerability_detector_compare(version_it, cversion_it);
+        // Check release
+        r_result = wm_vulnerability_detector_compare(release_it, crelease_it);
+
         if (!strcmp(operation, "less than")) {
-            int size;
-            int result;
-            int version_value, cversion_value;
-            char version_cl[KEY_SIZE];
-            char cversion_cl[KEY_SIZE];
-            char *version_it, *release_it;
-            char *cversion_it, *crelease_it;
-
-            // Copy the original values
-            if (size = snprintf(version_cl, KEY_SIZE, "%s", version), size >= KEY_SIZE) {
-                return OS_INVALID;
+            if (epoch > c_epoch) {
+                return VU_NOT_VULNERABLE;
+            } else if (epoch < c_epoch) {
+                return VU_VULNERABLE;
             }
 
-            if (size = snprintf(cversion_cl, KEY_SIZE, "%s", operation_value), size >= KEY_SIZE) {
-                return OS_INVALID;
+            if (v_result == VU_LESS) {
+                return VU_VULNERABLE;
+            } else if (v_result == VU_HIGHER) {
+                return VU_NOT_VULNERABLE;
             }
 
-            // Check EPOCH
-            if (version_it = strchr(version_cl, ':'), version_it) {
-                *(version_it++) = '\0';
-                version_value = strtol(version_cl, NULL, 10);
-            } else {
-                version_it = version_cl;
-                version_value = 0;
+            if (r_result == VU_LESS) {
+                return VU_VULNERABLE;
             }
-            if (cversion_it = strchr(cversion_cl, ':'), cversion_it) {
-                *(cversion_it++) = '\0';
-                cversion_value = strtol(cversion_cl, NULL, 10);
-            } else {
-                cversion_it = cversion_cl;
-                cversion_value = 0;
+        } else if (!strcmp(operation, "greater than or equal")) {
+            if (epoch > c_epoch) {
+                return VU_VULNERABLE;
+            } else if (epoch < c_epoch) {
+                return VU_NOT_VULNERABLE;
             }
 
-            if (version_value > cversion_value) {
-                return 0;
-            } else if (version_value < cversion_value) {
-                return 1;
+            if (v_result == VU_LESS) {
+                return VU_NOT_VULNERABLE;
+            } else if (v_result == VU_HIGHER) {
+                return VU_VULNERABLE;
             }
 
-            // Separate the version from the revision
-            if (release_it = strchr(version_it, '-'), release_it) {
-                if (*(release_it++) = '\0', *release_it == '\0') {
-                    release_it = NULL;
-                }
+            if (r_result != VU_LESS) {
+                return VU_VULNERABLE;
+            }
+        } else if (!strcmp(operation, "less than or equal")) {
+            if (epoch < c_epoch) {
+                return VU_VULNERABLE;
+            } else if (epoch > c_epoch) {
+                return VU_NOT_VULNERABLE;
             }
 
-            if (crelease_it = strchr(cversion_it, '-'), crelease_it) {
-                if (*(crelease_it++) = '\0', *crelease_it == '\0') {
-                    crelease_it = NULL;
-                }
+            if (v_result == VU_HIGHER) {
+                return VU_NOT_VULNERABLE;
+            } else if (v_result == VU_LESS) {
+                return VU_VULNERABLE;
             }
 
-            // Check version
-            if (result = wm_vulnerability_detector_compare(version_it, cversion_it), result != VU_EQUAL) {
-                return result;
+            if (r_result != VU_HIGHER) {
+                return VU_VULNERABLE;
+            }
+        } else if (!strcmp(operation, "equal") || !strcmp(operation, "equals")) {
+            if (epoch != c_epoch) {
+                return VU_NOT_VULNERABLE;
             }
 
-            // Check release
-            result = wm_vulnerability_detector_compare(release_it, crelease_it);
-
-            if (result != VU_EQUAL) {
-                return result;
+            if (v_result != VU_EQUAL) {
+                return VU_NOT_VULNERABLE;
             }
+
+            if (r_result == VU_EQUAL) {
+                return VU_VULNERABLE;
+            }
+        } else if (!strcmp(operation, "exists")) {
+            return VU_VULNERABLE;
+        } else {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OPERATION_NOT_REC, operation);
+            return VU_NOT_VULNERABLE;
         }
         // The OVALs supported only contemplate the operation "less than" and "exists"
         return VU_NOT_VULNERABLE;
@@ -330,9 +381,9 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     int version_value, cversion_value;
 
     if (version_it && !cversion_it) {
-        return VU_NOT_VULNERABLE;
+        return VU_HIGHER;
     } else if (!version_it && cversion_it) {
-        return VU_VULNERABLE;
+        return VU_LESS;
     } else if (!version_it && !cversion_it) {
         return VU_EQUAL;
     }
@@ -405,15 +456,15 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
                     cversion_value = strtol(cversion_it, NULL, 10);
                 }
                 if (version_value > cversion_value) {
-                    return VU_NOT_VULNERABLE;
+                    return VU_HIGHER;
                 } else if (version_value < cversion_value) {
-                    return VU_VULNERABLE;
+                    return VU_LESS;
                 } else if (version_found != cversion_found) {
                     // The version with more digits is higher
                     if (version_found < cversion_found) {
-                        return VU_NOT_VULNERABLE;
+                        return VU_HIGHER;
                     } else {
-                        return VU_VULNERABLE;
+                        return VU_LESS;
                     }
                 } else if (version_found > 2) {
                     // The version is over
@@ -437,7 +488,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char alert_msg[OS_MAXSTR];
     char header[OS_SIZE_256];
     char condition[OS_SIZE_1024];
-    int size;
+    const char *query;
     agent_software *agents_it;
     cJSON *alert = NULL;
     cJSON *alert_cve = NULL;
@@ -462,8 +513,13 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
         if (!agents_it->info) {
             continue;
         }
+        if (agents_it->dist != DIS_WINDOWS) {
+            query = vu_queries[VU_JOIN_QUERY];
+        } else {
+            query = vu_queries[VU_JOIN_WIN_QUERY];
+        }
 
-        if (sqlite3_prepare_v2(db, vu_queries[VU_JOIN_QUERY], -1, &stmt, NULL) != SQLITE_OK) {
+        if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
             sqlite3_finalize(stmt);
             cJSON_free(alert);
             return wm_vulnerability_detector_sql_error(db);
@@ -499,22 +555,34 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 updated = published;
             }
             if (pending) {
-                size = snprintf(state, 30, "Pending confirmation");
-            } else if (v_type = wm_checks_package_vulnerability(version, operation, operation_value), v_type != VU_NOT_VULNERABLE && v_type != OS_INVALID) {
-                if (v_type != VU_NOT_FIXED) {
-                    size = snprintf(state, 15, "Fixed");
-                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
-                } else {
-                    size = snprintf(state, 15, "Unfixed");
-                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VULN, package, cve);
-                }
-            } else if (v_type == OS_INVALID) {
-                return OS_INVALID;
+                snprintf(state, 30, "Pending confirmation");
             } else {
-                mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
-                continue;
+                if (v_type = wm_checks_package_vulnerability(version, operation, operation_value), v_type == OS_INVALID) {
+                    return OS_INVALID;
+                }
+                if (v_type == VU_NOT_FIXED) {
+                    snprintf(state, 15, "Unfixed");
+                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VULN, package, cve);
+                } else if (v_type == VU_NOT_VULNERABLE) {
+                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
+                    continue;
+                } else {
+                    snprintf(state, 15, "Fixed");
+                    if (!second_operation) {
+                        mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
+                    } else {
+                        // The first condition is vulnerable, but the second also has to be
+                        if (v_type = wm_checks_package_vulnerability(version, second_operation, second_operation_value), v_type == OS_INVALID) {
+                            return OS_INVALID;
+                        } else if (v_type == VU_VULNERABLE) {
+                            mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DOUBLE_VULN, package, agents_it->agent_id, cve, version, operation, operation_value, second_operation, second_operation_value);
+                        } else {
+                            mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DOUBLE_NOT_VULN, package, agents_it->agent_id, cve, version, operation, operation_value, second_operation, second_operation_value);
+                            continue;
+                        }
+                    }
+                }
             }
-            state[size] = '\0';
 
             if (alert_cve = cJSON_CreateObject(), alert_cve) {
                 cJSON * jPackage = cJSON_CreateObject();
@@ -2605,6 +2673,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                         if (strstr(base, vu_dist_ext[DIS_WINDOWS])) {
                             if (strstr(base, vu_dist_ext[DIS_WS2016])) {
                                 agents->OS = vu_dist_tag[DIS_WS2016];
+                                agents->dist = DIS_WINDOWS;
                             } else {
                                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[DIS_WS2016], agents->agent_name);
                                 if (agents = skip_agent(agents, agents_software), !agents) {
@@ -2616,10 +2685,13 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_UBUNTU])) {
                             if (strstr(buffer, " 16")) {
                                 agents->OS = vu_dist_tag[DIS_XENIAL];
+                                agents->dist = DIS_UBUNTU;
                             } else if (strstr(buffer, " 14")) {
                                 agents->OS = vu_dist_tag[DIS_TRUSTY];
+                                agents->dist = DIS_UBUNTU;
                             } else if (strstr(buffer, " 12")) {
                                 agents->OS = vu_dist_tag[DIS_PRECISE];
+                                agents->dist = DIS_UBUNTU;
                             } else {
                                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[DIS_UBUNTU], agents->agent_name);
                                 if (agents = skip_agent(agents, agents_software), !agents) {
@@ -2631,10 +2703,13 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_DEBIAN])) {
                             if (strstr(buffer, " 7")) {
                                 agents->OS = vu_dist_tag[DIS_WHEEZY];
+                                agents->dist = DIS_DEBIAN;
                             } else if (strstr(buffer, " 8")) {
                                 agents->OS = vu_dist_tag[DIS_JESSIE];
+                                agents->dist = DIS_DEBIAN;
                             } else if (strstr(buffer, " 9")) {
                                 agents->OS = vu_dist_tag[DIS_STRETCH];
+                                agents->dist = DIS_DEBIAN;
                             } else {
                                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[DIS_DEBIAN], agents->agent_name);
                                 if (agents = skip_agent(agents, agents_software), !agents) {
@@ -2646,10 +2721,13 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_REDHAT])) {
                             if (strstr(buffer, " 7")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL7];
+                                agents->dist = DIS_REDHAT;
                             } else if (strstr(buffer, " 6")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL6];
+                                agents->dist = DIS_REDHAT;
                             } else if (strstr(buffer, " 5")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL5];
+                                agents->dist = DIS_REDHAT;
                             } else {
                                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[DIS_REDHAT], agents->agent_name);
                                 if (agents = skip_agent(agents, agents_software), !agents) {
@@ -2661,10 +2739,13 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_CENTOS])) {
                             if (strstr(buffer, " 7")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL7];
+                                agents->dist = DIS_REDHAT;
                             } else if (strstr(buffer, " 6")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL6];
+                                agents->dist = DIS_REDHAT;
                             } else if (strstr(buffer, " 5")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL5];
+                                agents->dist = DIS_REDHAT;
                             } else {
                                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[DIS_CENTOS], agents->agent_name);
                                 if (agents = skip_agent(agents, agents_software), !agents) {

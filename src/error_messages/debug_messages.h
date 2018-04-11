@@ -41,5 +41,8 @@
 #define VU_AG_NO_TARGET       "(5476): The analysis can not be launched because there are no target agents."
 #define VU_SYS_CHECKED        "(5477): The last syscollector scan for the agent %s (ID: %s) has already been checked. The vulnerability search is omitted."
 #define VU_LOCAL_FETCH        "(5478): Fetching OVAL from '%s'..."
+#define VU_OPERATION_NOT_REC  "(5479): Operation '%s' not recognized."
+#define VU_DOUBLE_NOT_VULN    "(5480): The '%s' package from agent %s is not vulnerable to %s. Condition: package version (%s) %s %s and %s %s."
+#define VU_DOUBLE_VULN        "(5481): The '%s' package from agent %s is vulnerable to %s. Condition: package version (%s) %s %s and %s %s."
 
 #endif

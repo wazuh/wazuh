@@ -66,6 +66,8 @@ typedef enum vu_logic {
     VU_FILE_TEST,
     VU_VULNERABLE,
     VU_NOT_VULNERABLE,
+    VU_LESS,
+    VU_HIGHER,
     VU_EQUAL,
     VU_NOT_FIXED
 } vu_logic;
@@ -120,6 +122,7 @@ typedef struct agent_software {
     char *agent_name;
     char *agent_ip;
     const char *OS;
+    distribution dist;
     char info;
     struct agent_software *next;
     struct agent_software *prev;
