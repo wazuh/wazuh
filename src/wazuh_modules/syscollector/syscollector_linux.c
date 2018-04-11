@@ -20,10 +20,9 @@
 #include <net/if.h>
 #include <netinet/tcp.h>
 #include <ifaddrs.h>
-#include <linux/if_link.h>
 #include <linux/if_packet.h>
 #include "external/procps/readproc.h"
-#include <db.h>
+#include "external/libdb/build_unix/db.h"
 
 hw_info *get_system_linux();                    // Get system information
 char* get_serial_number();                      // Get Motherboard serial number
@@ -1201,7 +1200,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
                 /* Get MAC address and stats */
                 char MAC[MAC_LENGTH];
-                struct rtnl_link_stats *stats = ifa->ifa_data;
+                struct link_stats *stats = ifa->ifa_data;
                 struct sockaddr_ll *addr = (struct sockaddr_ll*)ifa->ifa_addr;
                 snprintf(MAC, MAC_LENGTH, "%02X:%02X:%02X:%02X:%02X:%02X", addr->sll_addr[0], addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3], addr->sll_addr[4], addr->sll_addr[5]);
                 cJSON_AddStringToObject(interface, "MAC", MAC);

@@ -116,6 +116,14 @@ typedef struct wm_sys_t {
     wm_sys_state_t state;                   // Running state
 } wm_sys_t;
 
+struct link_stats
+{
+    unsigned int rx_packets;		/* total packets received	*/
+    unsigned int tx_packets;		/* total packets transmitted	*/
+    unsigned int rx_bytes;		/* total bytes received 	*/
+    unsigned int tx_bytes;		/* total bytes transmitted	*/
+};
+
 extern const wm_context WM_SYS_CONTEXT;     // Context
 
 // Parse XML configuration
