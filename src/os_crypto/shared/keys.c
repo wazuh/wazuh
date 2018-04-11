@@ -315,6 +315,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
 
     /* Add additional entry for sender == keysize */
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
+    w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
     return;
 }
