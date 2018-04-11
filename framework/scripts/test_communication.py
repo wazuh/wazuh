@@ -76,7 +76,7 @@ def test_multiple_requests_from_master(thread, name, server, n):
 def test_send_file(thread, my_client, file_path):
     before = time.time()
     print("Sending file: {}".format(file_path))
-    response = my_client.file_send(file_path)
+    response = my_client.file_send('sync_c_m', file_path)
     print "Response: {}".format(response)
     after = time.time()
     print "Total time: {}".format(after - before)

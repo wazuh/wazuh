@@ -79,6 +79,23 @@ class Handler(asyncore.dispatcher_with_send):
         self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
         self.inbuffer = b''
         self.lock = threading.Lock()
+        self.workers = {}
+
+
+    def set_worker(self, command, worker, filename):
+        thread_id = '{}-{}-{}'.format(command, worker.ident, os.path.basename(filename))
+        self.workers[thread_id] = worker
+        worker.id = thread_id
+        return thread_id
+
+
+    def get_worker(self, data):
+        # the worker id will be the first element spliting the data by spaces
+        id = data.split(' ', 1)[0]
+        if id in self.workers:
+            return self.workers[id], 'ack', 'Command received for {}'.format(id)
+        else:
+            return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(id)
 
 
     def compute_md5(self, file, blocksize=2**20):
@@ -90,7 +107,7 @@ class Handler(asyncore.dispatcher_with_send):
         return hash_algorithm.hexdigest()
 
 
-    def file_send(self, file):
+    def file_send(self, reason, file):
         """
         To send a file without collapsing the network, two special commands
         are defined:
@@ -100,96 +117,30 @@ class Handler(asyncore.dispatcher_with_send):
         Every 1MB sent, this function sleeps for 1s. This way, other network
         packages can be sent while a file is being sent
 
+        Before sending the file, a request with a "reason" is sent. This way,
+        the server will get prepared to receive the file.
+
         :param file: filename (path)
         """
+        # response will be of form 'ack id'
+        _, id = self.send_request(reason, file).split(' ',1)
 
-        response = self.execute("file_open", "{} {}".format(self.name, file))
+
+        response = self.execute("file_open", "{}".format(id))
         logging.debug("RESPONSE: {0}".format(response))
         # TO-DO remove ossec_path from sent filepath
-        base_msg = "{} {} ".format(self.name,file).encode()
+        base_msg = "{} ".format(id).encode()
         chunk_size = max_msg_size - len(base_msg)
 
         with open(file, 'rb') as f:
-            # read chunks of chunk_size
-            counter = 0
             for chunk in iter(lambda: f.read(chunk_size), ''):
-                counter = counter + 1
                 response = self.execute("file_update", base_msg + chunk)
                 logging.debug("RESPONSE: {0}".format(response))
                 # for every chunk sent, sleep 0.1 s to prevent network from collapsing
                 #time.sleep(0.1)
 
-        response = self.execute("file_close", "{} {} {}".format(self.name, file, self.compute_md5(file)))
+        response = self.execute("file_close", "{} {}".format(id, self.compute_md5(file)))
         return response
-
-    def file_open(self, data):
-        """
-        Start the protocol of receiving a file. Create a new file
-
-        :parm data: data received from socket
-
-        This data must be:
-            - node name
-            - filename
-
-        and must be separated by a white space
-        """
-        node_name, file_name = data.split(' ')
-        # Create the file
-        tmp_file = "{0}.{1}.tmp".format(file_name, node_name)
-        open(tmp_file, 'w')
-        return "ok", "File {} created successfully".format(tmp_file)
-
-
-    def file_update(self, data):
-        """
-        Continue the protocol of receiving a file. Append data
-
-        :parm data: data received from socket
-
-        This data must be:
-            - node name
-            - filename
-            - chunk
-
-        and must be separated by a white space
-        """
-        node_name, file_name, chunk = data.split(b' ')
-        node_name = node_name.decode()
-        file_name = file_name.decode()
-        # Open the file
-        tmp_file = "{0}.{1}.tmp".format(file_name, node_name)
-        with open(tmp_file, 'a') as f:
-            f.write(chunk)
-        return "ok", "Chunk wrote to {} successfully".format(file_name)
-
-
-    def file_close(self, data):
-        """
-        Ends the protocol of receiving a file
-
-        :parm data: data received from socket
-
-        This data must be:
-            - node name
-            - filename
-            - MD5 sum
-
-        and must be separated by a white space
-        """
-        node_name, file_name, md5_sum = data.split(' ')
-
-        # compare local file's sum with received sum
-        tmp_file = "{0}.{1}.tmp".format(file_name, node_name)
-        local_md5_sum = self.compute_md5(tmp_file)
-        if local_md5_sum != md5_sum:
-            error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
-                            format(tmp_file, md5_sum, local_md5_sum)
-            return error_msg
-            #os.remove(file_name)
-            raise Exception(error_msg)
-
-        return "ok", "File {} received successfully".format(tmp_file)
 
 
     def execute(self, command, payload):
@@ -373,6 +324,7 @@ class Server(asyncore.dispatcher):
         self.map = map
         self.clients = {}
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.set_reuse_addr()
         self.bind((host, port))
         self.listen(5)

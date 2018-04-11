@@ -6,6 +6,10 @@
 import logging
 import threading
 import time
+try:
+    from Queue import Queue
+except ImportError:
+    from queue import Queue
 
 from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files
 from wazuh.exception import WazuhException
@@ -102,6 +106,7 @@ class MasterManagerHandler(ServerHandler):
         ServerHandler.__init__(self, sock, server, map, addr)
         self.manager = server
 
+
     def process_request(self, command, data):
         logging.debug("[Master] Request received: '{0}'.".format(command))
 
@@ -112,7 +117,24 @@ class MasterManagerHandler(ServerHandler):
         elif command == 'sync_c_m':
             mcf_thread = MasterProcessClientFiles(self, self.get_client(), data)
             mcf_thread.start()
-            return 'ack', 'Sync: Thanks client, Im going to do it'  # ToDo
+            # data will contain the filename
+            return 'ack', self.set_worker(command, mcf_thread, data)
+        elif command == "file_open" or command == "file_update":
+            worker, cmd, message = self.get_worker(data)
+            if worker:
+                worker.set_command(command, data)
+            return cmd, message
+        elif command == "file_close":
+            worker, cmd, message = self.get_worker(data)
+            if worker:
+                worker.set_command(command, data)
+                logging.debug("[Master] Acquiring lock...")
+                worker.close_lock.acquire()
+                worker.close_lock.wait()
+                worker.close_lock.release()
+                logging.debug("[Master] Releasing lock... ({})".format(worker.result))
+                return worker.result
+            return cmd, message
         else:
             return ServerHandler.process_request(self, command, data)
 
@@ -240,24 +262,122 @@ class MasterKeepAliveThread(threading.Thread):
 
 class MasterProcessClientFiles(threading.Thread):
 
-    def __init__(self, manager_handler, client_name, data):
+    def __init__(self, manager_handler, client_name, filename):
         threading.Thread.__init__(self)
         self.daemon = True
         self.running = True
         self.manager_handler = manager_handler
         self.client_name = client_name
-        self.data = data
+        self.data = None
+        self.command_queue = Queue()
+        self.filename = filename
+        self.received_all_information = False
+        self.close_lock = threading.Condition()
+        self.f = None
 
     def run(self):
-
         while self.running:
-            logging.debug("[Master-FileThread] Started for {0}.".format(self.client_name))
-            self.manager_handler.process_files_from_client(self.client_name, self.data)
-            logging.debug("[Master-FileThread] Ended for {0}.".format(self.client_name))
-            self.stop()
+            if self.received_all_information:
+                logging.debug("[Master-FileThread] Started for {0}.".format(self.client_name))
+                self.manager_handler.process_files_from_client(self.client_name, self.data)
+                logging.debug("[Master-FileThread] Ended for {0}.".format(self.client_name))
+                self.stop()
+            else:
+                command, data = self.command_queue.get(block=True)
+                if command == "file_open":
+                    logging.debug("[Master-FileThread] Opening file")
+                    command = ""
+                    self.file_open(self.id, self.filename)
+                elif command == "file_update":
+                    logging.debug("[Master-FileThread] Updating file")
+                    command = ""
+                    self.file_update(self.id, self.filename, data)
+                elif command == "file_close":
+                    time.sleep(5)
+                    self.close_lock.acquire()
+                    logging.debug("[Master-FileThread] Closing file")
+                    self.result = self.file_close(self.id, self.filename, data)
+                    self.close_lock.notify()
+                    self.close_lock.release()
+                    command = ""
+                    self.received_all_information = True
+
+            time.sleep(0.1)
+            # logging.debug("[Master-FileThread] Waiting until all zip file is received")
+
 
     def stop(self):
         self.running = False
+
+
+    def set_command(self, command, data):
+        split_data = data.split(' ',1)
+        local_data = split_data[1] if len(split_data) > 1 else None
+        self.command_queue.put((command, local_data))
+
+
+    def file_open(self, node_name, file_name):
+        """
+        Start the protocol of receiving a file. Create a new file
+
+        :parm data: data received from socket
+
+        This data must be:
+            - thread id
+
+        and must be separated by a white space
+        """
+        # Create the file
+        tmp_file = "{0}.{1}.tmp".format(file_name, node_name)
+        logging.debug("[Transport] Creating file {}".format(tmp_file))
+        self.f = open(tmp_file, 'w')
+        return "ok", "File {} created successfully".format(tmp_file)
+
+
+    def file_update(self, node_name, file_name, chunk):
+        """
+        Continue the protocol of receiving a file. Append data
+
+        :parm data: data received from socket
+
+        This data must be:
+            - thread id
+            - filename
+            - chunk
+
+        and must be separated by a white space
+        """
+        # Open the file
+        self.f.write(chunk)
+        return "ok", "Chunk wrote to {} successfully".format(file_name)
+
+
+    def file_close(self, node_name, file_name, md5_sum):
+        """
+        Ends the protocol of receiving a file
+
+        :parm data: data received from socket
+
+        This data must be:
+            - thread id
+            - filename
+            - MD5 sum
+
+        and must be separated by a white space
+        """
+        # compare local file's sum with received sum
+        self.f.close()
+        tmp_file = "{0}.{1}.tmp".format(file_name, node_name)
+        local_md5_sum = self.manager_handler.compute_md5(tmp_file)
+        if local_md5_sum != md5_sum:
+            error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
+                            format(tmp_file, md5_sum, local_md5_sum)
+            return 'err', error_msg
+            #os.remove(file_name)
+            raise Exception(error_msg)
+
+        return "ok", "File {} received successfully".format(tmp_file)
+
 
 #
 # Internal socket
