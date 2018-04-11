@@ -252,7 +252,11 @@ class MasterProcessClientFiles(threading.Thread):
 
         while self.running:
             logging.debug("[Master-FileThread] Started for {0}.".format(self.client_name))
-            self.manager_handler.process_files_from_client(self.client_name, self.data)
+            try:
+                self.manager_handler.process_files_from_client(self.client_name, self.data)
+            except:
+                logging.debug("[Master-FileThread] Unknown error for {0}.".format(self.client_name))
+                self.manager_handler.manager.send_request(self.client_name, 'sync_m_c_err')
             logging.debug("[Master-FileThread] Ended for {0}.".format(self.client_name))
             self.stop()
 
