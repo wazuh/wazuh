@@ -186,13 +186,6 @@ class MasterManagerHandler(ServerHandler):
         return sync_result
 
 
-    def req_file_status_to_clients(self):
-        nodes_file = {}
-        for node_name, response in self.server.send_request_broadcast(command = 'file_status'):
-            logging.debug("Response from {}: {}".format(node_name, response))
-
-        return 'ok', "File status"
-
 
 class MasterManager(Server):
 
@@ -203,7 +196,14 @@ class MasterManager(Server):
         logging.info("[Master] Listening.")
 
         self.config = cluster_config
+        self.handler = MasterManagerHandler
 
+    def req_file_status_to_clients(self):
+        nodes_file = {}
+        for node_name, response in self.send_request_broadcast(command = 'file_status'):
+            logging.debug("Response from {}: {}".format(node_name, response))
+
+        return 'ok', "File status"
 
 #
 # Master threads
@@ -274,7 +274,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         serialized_response = ""
 
         if command == 'req_file_s_c':
-            return self.manager.handler.req_file_status_to_clients()
+            return self.manager.req_file_status_to_clients()
 
         else:
             split_data = data.split(' ', 1)

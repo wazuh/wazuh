@@ -377,7 +377,6 @@ class Server(asyncore.dispatcher):
         self.bind((host, port))
         self.listen(5)
         self.handle_type = handle_type
-        self.handler = None
 
 
     def handle_accept(self):
@@ -386,7 +385,7 @@ class Server(asyncore.dispatcher):
             sock, addr = pair
             logging.debug("[Transport-S] Incoming connection from {0}.".format(repr(addr)))
             # addr is a tuple of form (ip, port)
-            self.handler = handler = self.handle_type(sock, self, self.map, addr[0])
+            handler = self.handle_type(sock, self, self.map, addr[0])
 
 
 
@@ -418,9 +417,9 @@ class Server(asyncore.dispatcher):
         if client_name in self.clients:
             response = self.clients[client_name]['handler'].execute(command, data)
         else:
-            error_msg = "Error: Trying to send and the client is not connected."
-            logging.error(error_msg)
-            return error_msg
+            error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
+            logging.error("[Transport-S] {0}.".format(error_msg))
+            response = "err " + error_msg
 
         return response
 
@@ -466,9 +465,9 @@ class ClientHandler(Handler):
         if self.my_connected:
             response = self.execute(command, data)
         else:
-            error_msg = "Error: Trying to send and the client is not connected."
-            logging.error(error_msg)
-            return error_msg
+            error_msg = "Trying to send and there is no connection with the server"
+            logging.error("[Transport-C] {0}.".format(error_msg))
+            response = "err " + error_msg
 
         return response
 
