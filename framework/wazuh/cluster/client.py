@@ -195,6 +195,7 @@ class ClientManager(ClientHandler):
                 file_path = common.ossec_path + file_to_remove
                 remove(file_path)
 
+
         return True
 
 
@@ -272,7 +273,7 @@ class ClientProcessMasterFiles(threading.Thread):
 # Internal socket
 #
 from wazuh.cluster.communication import InternalSocketHandler
-
+import ast
 class ClientInternalSocketHandler(InternalSocketHandler):
     def __init__(self, sock, manager, map):
         InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
@@ -281,8 +282,19 @@ class ClientInternalSocketHandler(InternalSocketHandler):
         logging.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
         serialized_response = ""
 
-        response = self.manager.send_request(command=command, data=data).split(' ', 1)
-        if response:
-            serialized_response = response.split(' ', 1)
+        if command == "req_file_s_c":
+            split_data = data.split(' ', 1)
+            file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
+            response = json.loads(self.manager.process_request(command = 'file_status', data="")[1])
+
+            if file_list and len(response):
+                response = {node:{f_name:f_content for f_name,f_content in files.iteritems() if f_name in file_list} for node,files in response.iteritems()}
+
+            serialized_response = ['ok',  json.dumps(response)]
+            return serialized_response
+        else:
+            response = self.manager.send_request(command=command, data=data)
+            if response:
+                serialized_response = response.split(' ', 1)
 
         return serialized_response

@@ -6,6 +6,7 @@
 import logging
 import threading
 import time
+import json
 
 from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files
 from wazuh.exception import WazuhException
@@ -57,7 +58,6 @@ def update_client_files_in_master(json_file, files_to_update):
         print(str(e))
         raise e
 
-
 def force_clients_to_start_sync(node_list=None):
     nodes_response = {}
 
@@ -91,7 +91,23 @@ def force_clients_to_start_sync(node_list=None):
 
     return nodes_response
 
+from wazuh.agent import Agent
 
+def get_agents_status():
+    """
+    Return a nested list where each element has the following structure
+    [agent_id, agent_name, agent_status, manager_hostname]
+    """
+    agent_list = []
+    for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
+        if int(agent['id']) == 0:
+            continue
+        try:
+            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
+        except KeyError:
+            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
+
+    return agent_list
 
 from wazuh.cluster.communication import Server, ServerHandler, Handler
 
@@ -199,11 +215,9 @@ class MasterManager(Server):
         self.handler = MasterManagerHandler
 
     def req_file_status_to_clients(self):
-        nodes_file = {}
-        for node_name, response in self.send_request_broadcast(command = 'file_status'):
-            logging.debug("Response from {}: {}".format(node_name, response))
-
-        return 'ok', "File status"
+        responses = list(self.send_request_broadcast(command = 'file_status'))
+        nodes_file = {node:json.loads(data.split(' ',1)[1]) for node,data in responses}
+        return 'ok', json.dumps(nodes_file)
 
 #
 # Master threads
@@ -263,8 +277,7 @@ class MasterProcessClientFiles(threading.Thread):
 # Internal socket
 #
 from wazuh.cluster.communication import InternalSocketHandler
-import json
-
+import ast
 class MasterInternalSocketHandler(InternalSocketHandler):
     def __init__(self, sock, manager, map):
         InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
@@ -274,7 +287,30 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         serialized_response = ""
 
         if command == 'req_file_s_c':
-            return self.manager.req_file_status_to_clients()
+            split_data = data.split(' ', 2)
+            file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
+            node_list = ast.literal_eval(split_data[1]) if split_data[1] else None
+            response = json.loads(self.manager.req_file_status_to_clients()[1])
+
+            if node_list and len(response):
+                response = {node: response.get(node) for node in node_list}
+            if file_list and len(response):
+                response = {node:{f_name:f_content for f_name,f_content in files.iteritems() if f_name in file_list} for node,files in response.iteritems()}
+
+            serialized_response = ['ok',  json.dumps(response)]
+            return serialized_response
+
+        elif command == 'get_nodes':
+            response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
+            if data: # filter a node
+                response = {data:response.get(data)} if response.get(data) else {data:"{} doesn't exist".format(data)}
+            serialized_response = ['ok',  json.dumps(response)]
+            return serialized_response
+
+        elif command == 'get_agents':
+            response = get_agents_status()
+            serialized_response = ['ok',  json.dumps(response)]
+            return serialized_response
 
         else:
             split_data = data.split(' ', 1)
