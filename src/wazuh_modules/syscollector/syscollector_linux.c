@@ -1618,7 +1618,7 @@ char* check_dhcp(char *ifa_name, int family){
                             break;
 
                         default:
-                            mtwarn(WM_SYS_LOGTAG, "Unknown DHCP configuration.");
+                            mtdebug1(WM_SYS_LOGTAG, "Unknown DHCP configuration for interface '%s'", ifa_name);
                             break;
                     }
                 }
@@ -1699,7 +1699,7 @@ char* check_dhcp(char *ifa_name, int family){
                     break;
 
                 default:
-                    mtwarn(WM_SYS_LOGTAG, "Unknown DHCP configuration.");
+                    mtdebug1(WM_SYS_LOGTAG, "Unknown DHCP configuration for interface '%s'", ifa_name);
                     break;
             }
             fclose(fp);
@@ -1714,6 +1714,7 @@ char* get_default_gateway(char *ifa_name){
     FILE *fp;
     char file_location[PATH_LENGTH];
     char interface[IFNAME_LENGTH] = "";
+    char if_name[IFNAME_LENGTH] = "";
     char string[OS_MAXSTR];
     in_addr_t address = 0;
     int destination, gateway;
@@ -1728,8 +1729,8 @@ char* get_default_gateway(char *ifa_name){
 
         while (fgets(string, OS_MAXSTR, fp) != NULL){
 
-            if (sscanf(string, "%s %8x %8x", ifa_name, &destination, &gateway) == 3){
-                if (destination == 00000000 && !strcmp(ifa_name, interface)){
+            if (sscanf(string, "%s %8x %8x", if_name, &destination, &gateway) == 3){
+                if (destination == 00000000 && !strcmp(if_name, interface)){
                     address = gateway;
                     snprintf(def_gateway, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &address));
                     fclose(fp);
