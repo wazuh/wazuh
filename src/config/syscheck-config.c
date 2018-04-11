@@ -815,15 +815,13 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 if (arch != ARCH_BOTH)
                     dump_registry_ignore_regex(syscheck, node[i]->content, arch);
                 else {
-                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_32BIT);
-                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_64BIT);
+                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_BOTH);
                 }
             } else {
                 if (arch != ARCH_BOTH)
                     dump_registry_ignore(syscheck, node[i]->content, arch);
                 else {
-                    dump_registry_ignore(syscheck, node[i]->content, ARCH_32BIT);
-                    dump_registry_ignore(syscheck, node[i]->content, ARCH_64BIT);
+                    dump_registry_ignore(syscheck, node[i]->content, ARCH_BOTH);
                 }
             }
 

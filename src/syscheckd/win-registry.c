@@ -328,7 +328,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
     /* Registry ignore list */
     if (fullkey_name && syscheck.registry_ignore) {
         while (syscheck.registry_ignore[i].entry != NULL) {
-            if (syscheck.registry_ignore[i].arch == arch && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) {
+            if ((syscheck.registry_ignore[i].arch == ARCH_BOTH && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) || (syscheck.registry_ignore[i].arch == arch && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0)) {
                 return;
             }
             i++;
@@ -336,9 +336,9 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
     } else if (fullkey_name && syscheck.registry_ignore_regex) {
         i = 0;
         while (syscheck.registry_ignore_regex[i].regex != NULL) {
-            if (syscheck.registry_ignore[i].arch == arch &&
+            if ((syscheck.registry_ignore[i].arch == ARCH_BOTH && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) || (syscheck.registry_ignore[i].arch == arch &&
                 OSMatch_Execute(fullkey_name, strlen(fullkey_name),
-                                syscheck.registry_ignore_regex[i].regex)) {
+                                syscheck.registry_ignore_regex[i].regex))) {
                 return;
             }
             i++;
