@@ -55,27 +55,7 @@
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
 extern const char *vu_dist_tag[];
-
-static const char *vu_dist_ext[] = {
-    "Ubuntu",
-    "Debian",
-    "Red Hat",
-    "CentOS",
-    "Microsoft Windows",
-    "Apple Mac OS",
-    "Ubuntu Precise",
-    "Ubuntu Trusty",
-    "Ubuntu Xenial",
-    "Debian Jessie",
-    "Debian Stretch",
-    "Debian Wheezy",
-    "Red Hat Enterprise Linux 5",
-    "Red Hat Enterprise Linux 6",
-    "Red Hat Enterprise Linux 7",
-    "Windows Server 2016",
-    "Mac OS X",
-    "Unknow OS"
-};
+extern const char *vu_dist_ext[];
 
 typedef enum vu_logic {
     VU_TRUE,

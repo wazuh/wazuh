@@ -376,7 +376,7 @@ int execute_db_command(char *response, sqlite3 *db, sqlite3_stmt **res) {
 
                     if (snprintf(response, RESPONSE_SIZE, "%s%s", local_response2, local_response1) >= RESPONSE_SIZE)
                         mterror(DB_TAG, "Overflow error copying response in local memory");
-                    
+
                 } else if (response_str) {
                     if (snprintf(response, RESPONSE_SIZE, "%s", (char *)sqlite3_column_text(*res,0)) >= RESPONSE_SIZE)
                         mterror(DB_TAG, "Overflow error copying response in memory");
@@ -410,11 +410,11 @@ int execute_db_command(char *response, sqlite3 *db, sqlite3_stmt **res) {
 int receive_db_cmd(char *buf, char* buf2, char *response, sqlite3 *db, sqlite3_stmt **res) {
     char *cmd;
     if (strlen(buf2) == 0) {
-        strcpy(buf2, buf);
-        size_t supposed_len, real_msg_len = strlen(buf);
         cmd = strtok(buf, " ");
+        strcpy(buf2, buf+strlen(cmd)+1);
+        size_t supposed_len, real_msg_len = strlen(buf2);
         int number_of_fields;
-        if ((number_of_fields = sscanf(cmd, "%zu", &supposed_len)) != 1) 
+        if ((number_of_fields = sscanf(cmd, "%zu", &supposed_len)) != 1)
             mtdebug2(DB_TAG, "Failed extracting lenth of command: %d", number_of_fields);
 
         mtdebug2(DB_TAG, "Length of received command: %zu/%zu", supposed_len, real_msg_len);
@@ -678,9 +678,18 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                 if (subdirs == NULL) mterror_exit(INOTIFY_TAG, "Error allocating memory for subdirectories watchers");
                 unsigned int found_subdirs = get_subdirs(aux_path, &subdirs, max_files_to_watch);
                 unsigned int j;
+                char * name;
                 for (j = 0; j < found_subdirs; j++) {
                     strncpy(files[n_files_to_watch].path, subdirs[j], PATH_MAX);
-                    strncpy(files[n_files_to_watch].name, strstr(subdirs[j], subitem->string), PATH_MAX);
+
+                    if (name = strstr(subdirs[j], subitem->string), name) {
+                        strncpy(files[n_files_to_watch].name, name, PATH_MAX);
+                    } else {
+                        merror("Couldn't find file name string in path.");
+                        mdebug2("path = '%s', file = '%s'", subdirs[j], subitem->string);
+                        files[n_files_to_watch].name[0] = '\0';
+                    }
+
                     files[n_files_to_watch].path[PATH_MAX] = files[n_files_to_watch].name[PATH_MAX] = '\0';
 
                     files[n_files_to_watch].flags = flags;
@@ -695,7 +704,7 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                             free(files);
                             mterror_exit(INOTIFY_TAG, "Error reallocating memory for cluster.json files struct");
                         }
-                        // memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
+                        memset(files + n_files_to_watch, 0, 10 * sizeof(inotify_watch_file));
                     }
 
                 }
@@ -723,7 +732,7 @@ unsigned int get_files_to_watch(char * node_type, inotify_watch_file ** _files, 
                     free(files);
                     mterror_exit(INOTIFY_TAG, "Error reallocating memory for cluster.json files struct");
                 }
-                memset(files + n_files_to_watch, 0, 10 * sizeof(char *));
+                memset(files + n_files_to_watch, 0, 10 * sizeof(inotify_watch_file));
             }
         }
     }
@@ -911,11 +920,13 @@ char * inotify_pop() {
     return cmd;
 }
 
+
 unsigned int get_number_of_digits(int n) {
     unsigned int digits;
     for(digits = 1; n /= 10; digits++);
     return digits;
 }
+
 
 void* daemon_inotify(void * args) {
     char * node_type = args;
@@ -967,11 +978,11 @@ void* daemon_inotify(void * args) {
         // add cmd size before sending
         char *cmd = inotify_pop();
         char aux_buf[BUFFER_SIZE];
-        size_t cmd_size = strlen(cmd) + 1;
-        unsigned int number_of_digits = get_number_of_digits(cmd_size);
-        unsigned int total_size = number_of_digits + cmd_size;
+        size_t cmd_size = strlen(cmd);
         int copied;
-        if ((copied = snprintf(aux_buf, total_size+1, "%d %s", total_size, cmd)) > (ssize_t)total_size)
+        int total_size = cmd_size + get_number_of_digits(cmd_size) + 1;
+
+        if ((copied = snprintf(aux_buf, total_size + 1, "%zu %s", cmd_size, cmd)) > total_size)
             mterror(INOTIFY_TAG, "Overflow copying command to cluster database socket: %d/%d", copied, total_size);
 
         if ((db_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {

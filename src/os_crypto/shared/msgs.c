@@ -18,6 +18,7 @@
 /* Prototypes */
 static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
 static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local) __attribute((nonnull));
+static void ReloadCounter(const keystore *keys, unsigned int id, const char * cid) __attribute((nonnull));
 static char *CheckSum(char *msg, size_t length) __attribute((nonnull));
 
 /* Sending counts */
@@ -42,8 +43,8 @@ agent *agt;
 /* Crypto methods function */
 int doEncryptByMethod(const char *input, char *output, const char *charkey,
     long size, short int action,int method)
-{    
-    switch(method) 
+{
+    switch(method)
     {
         case W_METH_BLOWFISH:
             return OS_BF_Str(input, output,
@@ -136,6 +137,8 @@ void OS_StartCounter(keystore *keys)
                 keys->keyentries[i]->local = l_c;
             }
         }
+
+        keys->keyentries[i]->inode = File_Inode(rids_file);
     }
 
     mdebug2("Stored counter.");
@@ -172,6 +175,7 @@ static void StoreSenderCounter(const keystore *keys, unsigned int global, unsign
     /* Write to the beginning of the file */
     fseek(keys->keyentries[keys->keysize]->fp, 0, SEEK_SET);
     fprintf(keys->keyentries[keys->keysize]->fp, "%u:%u:", global, local);
+    fflush(keys->keyentries[keys->keysize]->fp);
 }
 
 /* Store the global and local count of events */
@@ -180,6 +184,65 @@ static void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
     /* Write to the beginning of the file */
     fseek(keys->keyentries[id]->fp, 0, SEEK_SET);
     fprintf(keys->keyentries[id]->fp, "%u:%u:", global, local);
+    fflush(keys->keyentries[id]->fp);
+}
+
+/* Reload the global and local count of events */
+static void ReloadCounter(const keystore *keys, unsigned int id, const char * cid)
+{
+    ino_t new_inode;
+    char rids_file[OS_FLSIZE + 1];
+
+    snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, cid);
+    new_inode = File_Inode(rids_file);
+
+    w_mutex_lock(&keys->keyentries[id]->mutex);
+
+    if (keys->keyentries[id]->inode != new_inode) {
+        keys->keyentries[id]->fp = fopen(rids_file, "r+");
+
+        if (!keys->keyentries[id]->fp) {
+            keys->keyentries[id]->fp = fopen(rids_file, "w");
+            if (!keys->keyentries[id]->fp) {
+                goto fail_open;
+            }
+        }
+        else {
+            unsigned int g_c = 0;
+            unsigned int l_c = 0;
+
+            if (fscanf(keys->keyentries[id]->fp, "%u:%u", &g_c, &l_c) != 2) {
+                if (id == keys->keysize) {
+                    mdebug1("No previous sender counter.");
+                } else {
+                    mdebug1("No previous counter available for '%s'.", keys->keyentries[id]->id);
+                }
+
+                g_c = 0;
+                l_c = 0;
+            }
+
+            if (id == keys->keysize) {
+                mdebug1("Reloading sender counter: %u:%u", g_c, l_c);
+                global_count = g_c;
+                local_count = l_c;
+            } else {
+                mdebug1("Reloading counter for agent %s: '%u:%u'.", keys->keyentries[id]->id, g_c, l_c);
+
+                keys->keyentries[id]->global = g_c;
+                keys->keyentries[id]->local = l_c;
+            }
+        }
+
+        keys->keyentries[id]->inode = new_inode;
+    }
+
+    w_mutex_unlock(&keys->keyentries[id]->mutex);
+    return;
+
+fail_open:
+    w_mutex_unlock(&keys->keyentries[id]->mutex);
+    merror("Unable to reload counter '%s': %s (%d)", cid, strerror(errno), errno);
 }
 
 /* Verify the checksum of the message
@@ -222,7 +285,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
         #ifndef CLIENT
             keys->keyentries[id]->crypto_method = W_METH_BLOWFISH;
         #endif
-    } 
+    }
 
 
     if (*buffer == ':') {
@@ -306,6 +369,9 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
             return (f_msg);
         }
 
+        if (rcv_count >= _s_recv_flush) {
+            ReloadCounter(keys, id, keys->keyentries[id]->id);
+        }
 
         if ((msg_global > keys->keyentries[id]->global) ||
                 ((msg_global == keys->keyentries[id]->global) &&
@@ -453,14 +519,16 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
             break;
         default:
             return OS_INVALID;
-    }   
-    
+    }
+
     /* Random number, take only 5 chars ~= 2^16=65536*/
     rand1 = (u_int16_t) os_random();
 
     _tmpmsg[OS_MAXSTR + 1] = '\0';
     _finmsg[OS_MAXSTR + 1] = '\0';
     msg_encrypted[OS_MAXSTR] = '\0';
+
+    ReloadCounter(keys, keys->keysize, SENDER_COUNTER);
 
     /* Increase local and global counters */
     if (local_count >= 9997) {
@@ -512,7 +580,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     c_orig_size += length;
     c_comp_size += cmp_size;
     if (evt_count > _s_comp_print) {
-        minfo("Event count after '%u': %lu->%lu (%lu%%)",
+        mdebug1("Event count after '%u': %lu->%lu (%lu%%)",
                 evt_count,
                 (unsigned long)c_orig_size,
                 (unsigned long)c_comp_size,
@@ -525,10 +593,10 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
 
     /* If the IP is dynamic (not single host), append agent ID to the message */
     if (!isSingleHost(keys->keyentries[id]->ip) && isAgent) {
-        length = snprintf(msg_encrypted, 16, "!%s!%s", keys->keyentries[id]->id,crypto_token);    
+        length = snprintf(msg_encrypted, 16, "!%s!%s", keys->keyentries[id]->id,crypto_token);
     } else {
         /* Set beginning of the message */
-        length = snprintf(msg_encrypted, 6, "%s",crypto_token);    
+        length = snprintf(msg_encrypted, 6, "%s",crypto_token);
     }
 
     /* length is the amount of non-encrypted message appended to the buffer
@@ -539,7 +607,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
         keys->keyentries[id]->key,
         (long) cmp_size,
         OS_ENCRYPT,crypto_method);
-    
+
     /* Store before leaving */
     StoreSenderCounter(keys, global_count, local_count);
 

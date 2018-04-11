@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 - Get Windows packages inventory natively. ([#471](https://github.com/wazuh/wazuh/pull/471))
 - Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
 - Extend the operating systems supported by vulnerability-detector. ([#470](https://github.com/wazuh/wazuh/pull/470))
+- Added Rids Synchronization. ([#459](https://github.com/wazuh/wazuh/pull/459))
+- Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
 
 ### Changed
 
@@ -35,20 +37,35 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.2]
 
+### Added
+
+- Created an input queue for Remoted to prevent agent connection starvation. ([#509](https://github.com/wazuh/wazuh/pull/509))
+
 ### Changed
 
 - Updated Slack integration. ([#443](https://github.com/wazuh/wazuh/pull/443))
-
+- Increased connection timeout for remote upgrades. ([#480](https://github.com/wazuh/wazuh/pull/480))
+- Vulnerability-detector does not stop agents detection if it fails to find the software for one of them.
+- Improve the version comparator algorithm in vulnerability-detector. ([#508](https://github.com/wazuh/wazuh/pull/508/files))
 
 ### Fixed
 
 - Fixed bug in labels settings parser that may make Agentd or Logcollector crash.
-- Fixed issue when setting multiple <server-ip> stanzas in versions 3.0 - 3.2.1. ([#433](https://github.com/wazuh/wazuh/pull/433))
-- Fixed bug when socket database messages we not sent correctly. ([#435](https://github.com/wazuh/wazuh/pull/435))
-- Fixed sudden stop in the sources installer when overwriting a previous corrupt installation.
+- Fixed issue when setting multiple `<server-ip>` stanzas in versions 3.0 - 3.2.1. ([#433](https://github.com/wazuh/wazuh/pull/433))
+- Fixed bug when socket database messages are not sent correctly. ([#435](https://github.com/wazuh/wazuh/pull/435))
+- Fixed unexpected stop in the sources installer when overwriting a previous corrupt installation.
 - Added a synchronization timeout in the cluster to prevent it from blocking ([#447](https://github.com/wazuh/wazuh/pull/447))
 - Fixed issue in CSyslogd when filtering by rule group. ([#446](https://github.com/wazuh/wazuh/pull/446))
 - Fixed error on DB daemon when parsing rules with options introduced in version 3.0.0.
+- Fixed unrecognizable characters error in Windows version name. ([#478](https://github.com/wazuh/wazuh/pull/478))
+- Fix Authd client in old versions of Windows ([#479](https://github.com/wazuh/wazuh/pull/479))
+- Cluster's socket management improved to use persistent connections ([#481](https://github.com/wazuh/wazuh/pull/481))
+- Fix memory corruption in Syscollector decoder and memory leaks in Vulnerability Detector. ([#482](https://github.com/wazuh/wazuh/pull/482))
+- Fixed memory corruption in Wazuh DB autoclosing procedure.
+- Fixed dangling db files at DB Sync module folder. ([#489](https://github.com/wazuh/wazuh/pull/489))
+- Fixed agent group file deletion when using Authd.
+- Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
+- Fixed remote command switch option. ([#504](https://github.com/wazuh/wazuh/pull/504))
 
 ## [v3.2.1] 2018-03-03
 

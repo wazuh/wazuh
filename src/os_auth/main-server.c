@@ -929,6 +929,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             delete_agentinfo(cur->id, cur->name);
             OS_RemoveCounter(cur->id);
             OS_RemoveAgentTimestamp(cur->id);
+            OS_RemoveAgentGroup(cur->id);
             free(cur->id);
             free(cur->name);
             free(cur);

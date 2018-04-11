@@ -339,7 +339,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 p >= 1 ? '!' : '+',
                 p == 2 ? '!' : (p > 2) ? '?' : '+',
                 c_sum,
-                (long int)lf->time,
+                (long int)lf->time.tv_sec,
                 f_name);
         fflush(fp);
 
@@ -538,7 +538,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
     /* If we reach here, this file is not present in our database */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time, f_name);
+    fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time.tv_sec, f_name);
     fflush(fp);
 
     /* Insert row in SQLite DB*/

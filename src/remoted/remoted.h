@@ -32,6 +32,13 @@ typedef struct pending_data_t {
     int changed;
 } pending_data_t;
 
+typedef struct message_t {
+    char * buffer;
+    unsigned int size;
+    struct sockaddr_in addr;
+    int sock;
+} message_t;
+
 /** Function prototypes **/
 
 /* Read remoted config */
@@ -81,6 +88,18 @@ void key_lock_read(void);
 void key_lock_write(void);
 
 void key_unlock(void);
+
+// Init message queue
+void rem_msginit(size_t size);
+
+// Push message into queue
+int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * addr, int sock);
+
+// Pop message from queue
+message_t * rem_msgpop();
+
+// Free message
+void rem_msgfree(message_t * message);
 
 /** Global variables **/
 

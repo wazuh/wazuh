@@ -50,3 +50,18 @@ OSSECMX3="devmail.ossec.net mail is handled by 10 ossec.mooo.COM."
 
 ## Predefined file
 PREDEF_FILE="./etc/preloaded-vars.conf"
+
+# Get number of processors
+if [ -z "$THREADS" ]
+then
+    case $(uname) in
+    Linux)
+        THREADS=$(grep processor /proc/cpuinfo | wc -l)
+        ;;
+    Darwin)
+        THREADS=$(sysctl -n hw.ncpu)
+        ;;
+    *)
+        THREADS=1
+    esac
+fi

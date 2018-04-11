@@ -481,7 +481,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a ${EXTERNAL_ZLIB}libz.a win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
+winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -I./${EXTERNAL_ZLIB} -pthread" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -pthread -ladvapi32 -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
@@ -503,8 +503,10 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 
 EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
 
+ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so
+endif
 endif
 
 .PHONY: external test_external
@@ -519,6 +521,7 @@ endif
 
 OPENSSL_LIB=${EXTERNAL_OPENSSL}libssl.a
 CRYPTO_LIB=${EXTERNAL_OPENSSL}libcrypto.a
+OPENSSL_FLAGS = no-shared enable-weak-ssl-ciphers
 
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
 ifeq (${TARGET},winagent)
@@ -527,23 +530,23 @@ endif
 
 ${OPENSSL_LIB}:
 ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} ./Configure no-shared mingw && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} ./Configure ${OPENSSL_FLAGS} mingw && ${MAKE} build_libs
 	${OSSEC_RANLIB} ${OPENSSL_LIB}
 else
 ifeq (${uname_S},Darwin)
-	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared darwin64-x86_64-cc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./Configure ${OPENSSL_FLAGS} darwin64-x86_64-cc && ${MAKE} build_libs
 else
 ifeq (${uname_S},HP-UX)
-	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure no-shared hpux-ia64-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure ${OPENSSL_FLAGS} hpux-ia64-gcc && ${MAKE} build_libs
 else
 ifeq (${uname_S},SunOS)
 ifeq ($(uname_M),i86pc)
-	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared solaris-x86-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./Configure ${OPENSSL_FLAGS} solaris-x86-gcc && ${MAKE} build_libs
 else
-	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared solaris-sparcv9-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./Configure ${OPENSSL_FLAGS} solaris-sparcv9-gcc && ${MAKE} build_libs
 endif
 else
-	cd ${EXTERNAL_OPENSSL} && ./config no-shared && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./config ${OPENSSL_FLAGS} && ${MAKE} build_libs
 endif
 endif
 endif
@@ -635,7 +638,7 @@ deps: $(EXTERNAL_TAR)
 
 external/%.tar.gz:
 	$(CURL) $@ $(RESOURCES_URL)/$(patsubst external/%,%,$@)
-	$(TAR) $@ -C external
+	cd external && $(TAR) $(patsubst external/%,%,$@)
 	rm $(@)
 
 ####################
