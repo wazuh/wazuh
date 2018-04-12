@@ -14,6 +14,7 @@
 #include <errno.h>
 #include "shared.h"
 #include "os_net.h"
+#include "wazuh_modules/wmodules.h"
 
 /* Prototypes */
 static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6);
@@ -643,6 +644,8 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
     else {
         os_malloc(OS_MAXSTR + 2, dyn_buffer);
 
+=======
+>>>>>>> Update send response function
         recvmsg = recv(sock, dyn_buffer + 1, OS_MAXSTR, 0);
 
         switch(recvmsg){
@@ -657,6 +660,10 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
 
         dyn_buffer[recvmsg + 1] = '\0';
         *ret = dyn_buffer;
+<<<<<<< HEAD
+=======
+    }
+>>>>>>> Update send response function
 
         return recvmsg;
     }

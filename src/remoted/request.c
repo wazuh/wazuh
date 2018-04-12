@@ -13,6 +13,7 @@
 #include <os_net/os_net.h>
 #include <request_op.h>
 #include "remoted.h"
+#include "wazuh_modules/wmodules.h"
 
 #define COUNTER_LENGTH 64
 
@@ -77,7 +78,7 @@ void * req_main(__attribute__((unused)) void * arg) {
     while (1) {
         int peer;
         ssize_t length;
-        char buffer[OS_MAXSTR + 1];
+        char *buffer = NULL;
 
         // Wait for socket
 
@@ -115,9 +116,9 @@ void * req_main(__attribute__((unused)) void * arg) {
 
         // Get request string
 
-        switch (length = recv(peer, buffer, OS_MAXSTR, 0), length) {
+        switch (length = OS_RecvSecureTCP_Dynamic(peer, &buffer), length) {
         case -1:
-            merror("recv(): %s", strerror(errno));
+            merror("OS_RecvSecureTCP_Dynamic(): %s", strerror(errno));
             break;
 
         case 0:
@@ -183,7 +184,7 @@ void * req_dispatch(req_node_t * node) {
     char * payload = NULL;
     char * _payload;
     char response[REQ_RESPONSE_LENGTH];
-    char output[OS_MAXSTR];
+    char *output = NULL;
     struct timespec timeout;
     struct timeval now = { 0, 0 };
 
@@ -205,10 +206,10 @@ void * req_dispatch(req_node_t * node) {
 
         if (!_payload){
             merror("request getconfig needs arguments.");
-            strcpy(output, "err request getconfig needs arguments");
+            output = strdup("err request getconfig needs arguments");
             goto cleanup;
         }
-        node->length = rem_getconfig(_payload, output, sizeof(output));
+        node->length = rem_getconfig(_payload, &output);
 
         if (OS_SendSecureTCP(node->sock, node->length, output) < 0) {
             merror("At req_dispatch(): send(): %s", strerror(errno));
@@ -400,15 +401,19 @@ int req_pool_wait() {
 }
 
 
-size_t rem_getconfig(const char * section, char * output, size_t size) {
+size_t rem_getconfig(const char * section, char ** output) {
 
     cJSON *cfg;
+    char *json_str;
 
     if (strcmp(section, "remote") == 0){
         if (cfg = getRemoteConfig(), cfg) {
-            snprintf(output, size, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
@@ -417,6 +422,6 @@ size_t rem_getconfig(const char * section, char * output, size_t size) {
     }
 error:
     merror("At request getconfig: Could not get '%s' section", section);
-    strcpy(output, "err Could not get requested section");
-    return strlen(output);
+    *output = strdup("err Could not get requested section");
+    return strlen(*output);
 }
