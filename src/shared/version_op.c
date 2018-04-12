@@ -16,15 +16,22 @@ os_info *get_win_version()
 {
     os_info *info;
 
-    FILE *cmd_output;
-    char *command;
-    size_t buf_tam = 100;
+    char temp[1024];
+    DWORD dwRet;
+    HKEY RegistryKey;
+    char * subkey;
+    const DWORD vsize = 1024;
+    TCHAR value[vsize];
+    DWORD dwCount = vsize;
+    char arch[64] = "";
+    char nodename[1024] = "";
+    const DWORD size = 30;
+
     size_t ver_length = 60;
     size_t v_length = 20;
-    char read_buff[buf_tam];
-    int status;
 
     os_calloc(1,sizeof(os_info),info);
+    os_calloc(vsize, sizeof(char), subkey);
 
     typedef void (WINAPI * PGNSI)(LPSYSTEM_INFO);
 
@@ -46,21 +53,17 @@ os_info *get_win_version()
 
     if (osvi.dwMajorVersion == 6) {
         // Read Windows Version from registry
-        char temp[1024];
-        DWORD dwRet;
-        HKEY RegistryKey;
-        const DWORD vsize = 1024;
-        TCHAR value[vsize];
-        DWORD dwCount = vsize;
 
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"), 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
-            merror("Error opening Windows registry.");
+        snprintf(subkey, vsize - 1, "%s", "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
+
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+            merror(SK_REG_OPEN, subkey);
             info->os_name = strdup("Microsoft Windows undefined version");
         }
         else {
             dwRet = RegQueryValueEx(RegistryKey, TEXT("ProductName"), NULL, NULL, (LPBYTE)value, &dwCount);
             if (dwRet != ERROR_SUCCESS) {
-                merror("Error reading Windows registry. (Error %u)",(unsigned int)dwRet);
+                merror("Error reading 'ProductName' from Windows registry. (Error %u)",(unsigned int)dwRet);
                 info->os_name = strdup("Microsoft Windows undefined version");
             }
             else {
@@ -74,9 +77,7 @@ os_info *get_win_version()
 
         // Read Windows Version number from registry
         char vn_temp[64];
-        char major[5], minor[5];
         memset(vn_temp, '\0', 64);
-        const DWORD size = 30;
         TCHAR winver[size];
         TCHAR wincomp[size];
         DWORD winMajor = 0;
@@ -84,8 +85,8 @@ os_info *get_win_version()
         dwCount = size;
         unsigned long type=REG_DWORD;
 
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"), 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
-            merror("Error opening Windows registry.");
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+            merror(SK_REG_OPEN, subkey);
         }
 
         // Windows 10
@@ -120,9 +121,13 @@ os_info *get_win_version()
                 merror("Error reading 'Current Version' from Windows registry. (Error %u)",(unsigned int)dwRet);
             }
             else {
-                sscanf(winver, "%d.%d", (unsigned int*)major, (unsigned int*)minor);
-                info->os_major = strdup(major);
-                info->os_minor = strdup(minor);
+                char ** parts = OS_StrBreak('.', winver, 2);
+                info->os_major = strdup(parts[0]);
+                info->os_minor = strdup(parts[1]);
+                for (int i = 0; parts[i]; i++){
+                    free(parts[i]);
+                }
+                free(parts);
                 dwCount = size;
                 dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
                 if (dwRet != ERROR_SUCCESS) {
@@ -135,74 +140,14 @@ os_info *get_win_version()
                 RegCloseKey(RegistryKey);
             }
         }
-
-        // Read version CSName
-        memset(read_buff, 0, buf_tam);
-        command = "wmic os get CSName";
-        cmd_output = popen(command, "r");
-        if (!cmd_output) {
-            merror("Unable to execute command: '%s'.", command);
-            info->nodename = strdup("unknown");
-        } else {
-            if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff, "CSName", 6) == 0) {
-                if (!fgets(read_buff, buf_tam, cmd_output)){
-                    merror("Can't get CSName.");
-                    info->nodename = strdup("unknown");
-                }
-                else {
-                    info->nodename = strdup(strtok(read_buff," "));
-                }
-            } else {
-                mwarn("Unable to execute command: '%s' (bad header).", command);
-                info->nodename = strdup("unknown");
-            }
-
-            if (status = pclose(cmd_output), status) {
-                mwarn("Command 'wmic' returned %d getting host name.", status);
-            }
-        }
-
-        // Read OSArchitecture
-        memset(read_buff, 0, buf_tam);
-        command = "wmic os get OSArchitecture";
-        cmd_output = popen(command, "r");
-        if (!cmd_output) {
-            merror("Unable to execute command: '%s'.", command);
-            info->machine = strdup("unknown");
-        } else {
-            if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff, "OSArchitecture", 14) == 0) {
-                if (!fgets(read_buff, buf_tam, cmd_output)){
-                    merror("Can't get OSArchitecture.");
-                    info->machine = strdup("unknown");
-                }
-                else {
-                    if (strcmp(strtok(read_buff," "), "64-bit") == 0) {
-                        info->machine = strdup("x86_64");
-                    } else if (strncmp(read_buff, "64", 2) == 0) {
-                        info->machine = strdup("x86_64");
-                    } else {
-                        info->machine = strdup("i686");
-                    }
-                }
-            } else {
-                mwarn("Can't get OSArchitecture (bad header).");
-                info->machine = strdup("unknown");
-            }
-
-            if (status = pclose(cmd_output), status) {
-                mwarn("Command 'wmic' returned %d getting OS architecture.", status);
-            }
-        }
     }
     else {
         if (osvi.dwMajorVersion == 5) {
             if (osvi.dwMinorVersion == 0) {
                 info->os_name = strdup("Microsoft Windows 2000");
-                info->machine = strdup("i686");
             }
             else if (osvi.dwMinorVersion == 1) {
                 info->os_name = strdup("Microsoft Windows XP");
-                info->machine = strdup("i686");
             }
             else if (osvi.dwMinorVersion == 2) {
                 pGNSI = (PGNSI) GetProcAddress(GetModuleHandle("kernel32.dll"),"GetNativeSystemInfo");
@@ -211,7 +156,6 @@ os_info *get_win_version()
                 }
                 if (osvi.wProductType == VER_NT_WORKSTATION && si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
                     info->os_name = strdup("Microsoft Windows XP Professional x64 Edition");
-                    info->machine = strdup("x86_64");
                 }
                 else {
                     if ( GetSystemMetrics(89) != 0 ) {
@@ -220,7 +164,6 @@ os_info *get_win_version()
                     else {
                         info->os_name = strdup("Microsoft Windows Server 2003");
                     }
-                    info->machine = strdup("i686");
                 }
             }
         } else if (osvi.dwMajorVersion == 4) {
@@ -241,7 +184,6 @@ os_info *get_win_version()
                     }
                     break;
             }
-            info->machine = strdup("i686");
         }
         else {
             info->os_name = strdup("Microsoft Windows");
@@ -261,6 +203,56 @@ os_info *get_win_version()
                  (int)osvi.dwBuildNumber & 0xFFFF );
 
     }
+
+    // Read Architecture
+
+    snprintf(subkey, vsize - 1, "%s", "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+        merror(SK_REG_OPEN, subkey);
+        info->machine = strdup("unknown");
+    } else {
+        dwCount = vsize;
+        dwRet = RegQueryValueEx(RegistryKey, TEXT("PROCESSOR_ARCHITECTURE"), NULL, NULL, (LPBYTE)&arch, &dwCount);
+
+        if (dwRet != ERROR_SUCCESS) {
+            merror("Error reading 'Architecture' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            info->machine = strdup("unknown");
+        } else {
+
+            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4)) {
+                info->machine = strdup("x86_64");
+            } else if (!strncmp(arch, "x86", 3)) {
+                info->machine = strdup("i686");
+            } else {
+                info->machine = strdup("unknown");
+            }
+
+        }
+        RegCloseKey(RegistryKey);
+    }
+
+    // Read Hostname
+
+    snprintf(subkey, vsize - 1, "%s", "System\\CurrentControlSet\\Control\\ComputerName\\ActiveComputerName");
+
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+        merror(SK_REG_OPEN, subkey);
+        info->nodename = strdup("unknown");
+    } else {
+        dwCount = size;
+        dwRet = RegQueryValueEx(RegistryKey, TEXT("ComputerName"), NULL, NULL, (LPBYTE)&nodename, &dwCount);
+
+        if (dwRet != ERROR_SUCCESS) {
+            merror("Error reading 'hostname' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            info->nodename = strdup("unknown");
+        } else {
+            info->nodename = strdup(nodename);
+        }
+        RegCloseKey(RegistryKey);
+    }
+
+    free(subkey);
 
     return info;
 }
