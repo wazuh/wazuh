@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [TBD]
+
+### Fixed
+
+- Fixed registry_ignore problem on syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
+
 ## [v3.3.0]
 
 ### Added
