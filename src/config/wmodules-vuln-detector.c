@@ -214,11 +214,65 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     return OS_INVALID;
                 }
             } else if (!strcmp(feed, vu_dist_tag[DIS_WINDOWS])) {
-                if (!strcmp(version, "S2016")) {
+                if (!strcmp(version, "S2008")) {
+                    os_index = CVE_WS2008;
+                    os_strdup("server_2008", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WS2008];
+                    upd->dist_ext = vu_dist_ext[DIS_WS2008];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "S2008R2")) {
+                    os_index = CVE_WS2008R2;
+                    os_strdup("server_2008_r2", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WS2008R2];
+                    upd->dist_ext = vu_dist_ext[DIS_WS2008R2];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "S2012")) {
+                    os_index = CVE_WS2012;
+                    os_strdup("server_2012", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WS2012];
+                    upd->dist_ext = vu_dist_ext[DIS_WS2012];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "S2012R2")) {
+                    os_index = CVE_WS2012R2;
+                    os_strdup("server_2012_r2", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WS2012R2];
+                    upd->dist_ext = vu_dist_ext[DIS_WS2012R2];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "S2016")) {
                     os_index = CVE_WS2016;
                     os_strdup("server_2016", upd->version);
                     upd->dist_tag = vu_dist_tag[DIS_WS2016];
                     upd->dist_ext = vu_dist_ext[DIS_WS2016];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "XP")) {
+                    os_index = CVE_WXP;
+                    os_strdup("xp", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WXP];
+                    upd->dist_ext = vu_dist_ext[DIS_WXP];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "7")) {
+                    os_index = CVE_W7;
+                    os_strdup("7", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_W7];
+                    upd->dist_ext = vu_dist_ext[DIS_W7];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "8")) {
+                    os_index = CVE_W8;
+                    os_strdup("8", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_W8];
+                    upd->dist_ext = vu_dist_ext[DIS_W8];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "8.1")) {
+                    os_index = CVE_W81;
+                    os_strdup("81", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_W81];
+                    upd->dist_ext = vu_dist_ext[DIS_W81];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "10")) {
+                    os_index = CVE_W10;
+                    os_strdup("10", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_W10];
+                    upd->dist_ext = vu_dist_ext[DIS_W10];
                     upd->dist_ref = DIS_WINDOWS;
                 } else {
                     merror("Invalid Windows version '%s'.", version);
