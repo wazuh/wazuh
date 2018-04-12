@@ -14,7 +14,7 @@ from wazuh import common
 from datetime import datetime, timedelta
 from hashlib import sha512
 from time import time, mktime, sleep
-from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror
+from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror, remove
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
 from io import BytesIO
@@ -209,14 +209,14 @@ def get_files_status(node_type, get_md5=True):
     return final_items
 
 
-def compress_files(source, list_path, cluster_control_json=None):
-    path_files = "files/"
-    zipped_file = BytesIO()
-    with zipfile.ZipFile(zipped_file, 'w') as zf:
+def compress_files(source, name, list_path, cluster_control_json=None):
+    zip_file_path = "{}/tmp/{}-tempfile.tmp.zip".format(common.ossec_path, name)
+    with zipfile.ZipFile(zip_file_path, 'w') as zf:
         # write files
         for f in list_path:
+            logging.debug("Adding {} to zip file".format(f))
             try:
-                zf.write(filename = common.ossec_path + f, arcname = path_files + f, compress_type=compression)
+                zf.write(filename = common.ossec_path + f, arcname = 'files/' + f, compress_type=compression)
             except Exception as e:
                 logging.error(str(WazuhException(3001, str(e))))
 
@@ -225,19 +225,29 @@ def compress_files(source, list_path, cluster_control_json=None):
         except Exception as e:
             raise WazuhException(3001, str(e))
 
-    return zipped_file.getvalue()
+    return zip_file_path
 
 
-def decompress_files(zip_bytes):
+def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     zip_json = {}
-    with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
-        zip_json = {name:{'data':zipf.open(name).read(), 'time':datetime(*zipf.getinfo(name).date_time)} for name in zipf.namelist()}
+    ko_files = ""
+    # create a directory to store zip's files
+    zip_dir = zip_path + 'dir'
+    mkdir(zip_dir)
+    with zipfile.ZipFile(zip_path) as zipf:
+        for name in zipf.namelist():
+            if name == ko_files_name:
+                ko_files = json.loads(zipf.open(name).read())
+            else:
+                with open("{}/{}".format(zip_dir, name.replace('files','').replace('/','_')), 'w') as f:
+                    f.write(zipf.open(name).read())
 
-    return zip_json
+    # once read all files, remove the zipfile
+    remove(zip_path)
+    return ko_files, zip_dir
 
 
 def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, whoami='master'):
-
     if path.basename(fullpath) == 'client.keys':
         if whoami =='client':
             logging.info("ToDo: _check_removed_agents***********************************************")
@@ -250,6 +260,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
     is_agent_groups = 'agent-groups' in fullpath
     if is_agent_info or is_agent_groups:
         if whoami =='master':
+            mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
             # check if the date is older than the manager's date
             if path.isfile(fullpath) and datetime.utcfromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
                 #logging.debug("Receiving an old file ({})".format(fullpath))
@@ -285,20 +296,41 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
     dest_file.close()
 
-    mtime_epoch = int(mktime(mtime.timetuple()))
-    utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
+    if mtime:
+        mtime_epoch = int(mktime(mtime.timetuple()))
+        utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
 
     # Atomic
     if w_mode == "atomic":
         rename(f_temp, fullpath)
 
 
+def compare_files(good_files, check_files):
+
+    missing_files = set(good_files.keys()) - set(check_files.keys())
+    extra_files = set(check_files.keys()) - set(good_files.keys())
+
+    shared_files = {name: {'cluster_item_key': data['cluster_item_key']} for name, data in good_files.iteritems() if name in check_files and data['md5'] != check_files[name]['md5']}
+
+    if not missing_files:
+        missing_files = {}
+    else:
+        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key']} for missing_file in missing_files }
+
+    if not extra_files:
+        extra_files = {}
+    else:
+        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key']} for extra_file in extra_files }
+
+    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
+
 
 #
 # Agents
 #
 
-def get_agents_status():
+
+def get_agents_status(filter_connected=False):
     """
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
@@ -307,10 +339,12 @@ def get_agents_status():
     for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
         if int(agent['id']) == 0:
             continue
+        if filter_connected and agent['status'] != "Connected":
+            continue
         try:
             agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
         except KeyError:
-            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
+            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "Unknown"])
 
     return agent_list
 
