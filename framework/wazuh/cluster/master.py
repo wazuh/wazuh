@@ -93,7 +93,7 @@ def force_clients_to_start_sync(node_list=None):
 
 from wazuh.agent import Agent
 
-def get_agents_status():
+def get_agents_status(filter_connected=False):
     """
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
@@ -102,10 +102,12 @@ def get_agents_status():
     for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
         if int(agent['id']) == 0:
             continue
+        if filter_connected and agent['status'] != "Connected":
+            continue
         try:
             agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
         except KeyError:
-            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
+            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "Unknown"])
 
     return agent_list
 
@@ -302,19 +304,39 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                 response = {node:{f_name:f_content for f_name,f_content in files.iteritems() if f_name in file_list} for node,files in response.iteritems()}
 
             serialized_response = ['ok',  json.dumps(response)]
+            print  "{}".format(serialized_response)
             return serialized_response
 
         elif command == 'get_nodes':
+            split_data = data.split(' ', 1)
+            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
             response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
-            if data: # filter a node
-                response = {data:response.get(data)} if response.get(data) else {data:"{} doesn't exist".format(data)}
+            if node_list: # filter a node
+                response = {node:info for node, info in response.iteritems() if node in node_list}
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 
         elif command == 'get_agents':
-            response = get_agents_status()
+            split_data = data.split(' ', 1)
+            filter_connected = ast.literal_eval(split_data[0]) if split_data[0] else False
+            response = get_agents_status(filter_connected)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
+
+        elif command == 'req_sync_m_c':
+            split_data = data.split(' ', 1)
+            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
+
+            if node_list:
+                for node in node_list:
+                    response = {node:self.manager.send_request(client_name=node, command=command, data="")}
+                serialized_response = ['ok', json.dumps(response)]
+            else:
+                response = list(self.manager.send_request_broadcast(command=command, data=data))
+                serialized_response = ['ok', json.dumps({node:data for node,data in response})]
+            return serialized_response
+
+
 
         else:
             split_data = data.split(' ', 1)

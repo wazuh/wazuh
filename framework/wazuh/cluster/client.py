@@ -9,7 +9,7 @@ import threading
 import time
 from os import remove
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files
+from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.cluster.communication import ClientHandler, Handler
@@ -50,10 +50,17 @@ class ClientManager(ClientHandler):
         elif command == 'getintegrity':
             return 'json', json.dumps({'/etc/client.keys':'pending'})  # TO DO
         elif command == 'file_status':
+            master_files = get_files_status('master', get_md5=True)
+            client_files = get_files_status('client', get_md5=True)
+            files = master_files
+            files.update(client_files)
+            return 'json', json.dumps(files)
+            """
             return 'json', json.dumps({'/etc/client.keys': {
                                             'mod_time': '2018-04-10 16:31:50',
                                             'md5': 'a'*32
                                     }})
+            """
         else:
             return ClientHandler.process_request(self, command, data)
 
@@ -351,7 +358,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
             response = json.loads(self.manager.process_request(command = 'file_status', data="")[1])
 
             if file_list and len(response):
-                response = {node:{f_name:f_content for f_name,f_content in files.iteritems() if f_name in file_list} for node,files in response.iteritems()}
+                response = {file:content for file,content in response.iteritems() if file in file_list}
 
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response

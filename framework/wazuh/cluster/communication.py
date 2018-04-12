@@ -46,7 +46,6 @@ def msgparse(buf):
         if len(buf) >= size + header_size:
             payload = buf[header_size:size + header_size]
             return size + header_size, counter, command, payload
-
     return None
 
 
@@ -585,7 +584,9 @@ def send_to_internal_socket(socket_name, message):
     try:
         while not response:
             buf += sock.recv(buf_size)
-            offset, counter, command, response = msgparse(buf)
+            parse = msgparse(buf)
+            if parse:
+                offset, counter, command, response = parse
 
         logging.info("[Transport-I] Received: answer: '{0}'. Data: '{1}'.".format(command, response))
 
