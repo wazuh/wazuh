@@ -9,114 +9,11 @@ import time
 import shutil
 import json
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.cluster.communication import ProcessFiles
-
-
-
-def compare_files(good_files, check_files):
-
-    missing_files = set(good_files.keys()) - set(check_files.keys())
-    extra_files = set(check_files.keys()) - set(good_files.keys())
-
-    shared_files = {name: {'cluster_item_key': data['cluster_item_key']} for name, data in good_files.iteritems() if name in check_files and data['md5'] != check_files[name]['md5']}
-
-    if not missing_files:
-        missing_files = {}
-    else:
-        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key']} for missing_file in missing_files }
-
-    if not extra_files:
-        extra_files = {}
-    else:
-        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key']} for extra_file in extra_files }
-
-    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
-
-
-def update_client_files_in_master(json_file, files_to_update_json, zip_dir_path):
-    cluster_items = get_cluster_items()
-
-    try:
-
-        for file_name, data in json_file.items():
-            # Full path
-            file_path = common.ossec_path + file_name
-            zip_path  = "{}/{}".format(zip_dir_path, file_name.replace('/','_'))
-
-            # Cluster items information: write mode and umask
-            cluster_item_key = data['cluster_item_key']
-            w_mode = cluster_items[cluster_item_key]['write_mode']
-            umask = int(cluster_items[cluster_item_key]['umask'], base=0)
-
-            # File content and time
-            with open(zip_path, 'rb') as f:
-                file_data = f.read()
-            file_time = files_to_update_json[file_name]['mod_time']
-
-            _update_file(fullpath=file_path, new_content=file_data,
-                         umask_int=umask, mtime=file_time, w_mode=w_mode,
-                         whoami='master')
-
-    except Exception as e:
-        print(str(e))
-        raise e
-
-def force_clients_to_start_sync(node_list=None):
-    nodes_response = {}
-
-    config_cluster = read_config()
-    if not config_cluster:
-        raise WazuhException(3000, "No config found")
-
-    # Get nodes
-    all_nodes = get_nodes()['items']
-
-    for node in all_nodes:
-        if node['type'] == 'master':
-            continue
-
-        if node_list and node['node'] not in node_list:
-            continue
-
-        if node['status'] == 'connected':
-
-            error, response = send_request( host=node['url'],
-                                    port=config_cluster["port"],
-                                    key=config_cluster['key'],
-                                    connection_timeout=100, #int(config_cluster['connection_timeout']),
-                                    socket_timeout=100, #int(config_cluster['socket_timeout']),
-                                    data="force_sync {0}".format('-'*(common.cluster_protocol_plain_size - len("force_sync ")))
-            )
-
-            nodes_response[node['node']] = response['data']
-        else:
-            nodes_response[node['node']] = 'Disconnected: {0}'.format(node['url'])
-
-    return nodes_response
-
-from wazuh.agent import Agent
-
-def get_agents_status():
-    """
-    Return a nested list where each element has the following structure
-    [agent_id, agent_name, agent_status, manager_hostname]
-    """
-    agent_list = []
-    for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
-        if int(agent['id']) == 0:
-            continue
-        try:
-            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
-        except KeyError:
-            agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
-
-    return agent_list
-
-from wazuh.cluster.communication import Server, ServerHandler, Handler
-
+from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files, compare_files, get_agents_status
+from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, Handler, InternalSocketHandler
+import ast
 
 class MasterManagerHandler(ServerHandler):
 
@@ -156,23 +53,55 @@ class MasterManagerHandler(ServerHandler):
 
         return response_data
 
-    def process_files_from_client(self, client_name, data_received):
+    @staticmethod
+    def update_client_files_in_master(json_file, files_to_update_json, zip_dir_path):
+        cluster_items = get_cluster_items()
+
+        try:
+
+            for file_name, data in json_file.items():
+                # Full path
+                file_path = common.ossec_path + file_name
+                zip_path  = "{}/{}".format(zip_dir_path, file_name.replace('/','_'))
+
+                # Cluster items information: write mode and umask
+                cluster_item_key = data['cluster_item_key']
+                w_mode = cluster_items[cluster_item_key]['write_mode']
+                umask = int(cluster_items[cluster_item_key]['umask'], base=0)
+
+                # File content and time
+                with open(zip_path, 'rb') as f:
+                    file_data = f.read()
+                file_time = files_to_update_json[file_name]['mod_time']
+
+                _update_file(fullpath=file_path, new_content=file_data,
+                             umask_int=umask, mtime=file_time, w_mode=w_mode,
+                             whoami='master')
+
+        except Exception as e:
+            print(str(e))
+            raise e
+
+    def process_files_from_client(self, client_name, data_received, tag=None):
         sync_result = False
 
-        logging.info("[Master] [Sync process c->m] [{0}]: Start.".format(client_name))
+        if not tag:
+            tag = "[Master] [Sync process m->c]"
+
+        logging.info("{0} [{1}]: Start.".format(tag, client_name))
 
         json_file, zip_dir_path = decompress_files(data_received)
         if json_file:
-            logging.debug("[Master] [Sync process c->m] Received cluster_control.json")
+            logging.debug("{0}: Received cluster_control.json".format(tag))
             master_files_from_client = json_file['master_files']
             client_files_json = json_file['client_files']
         else:
             raise Exception("cluster_control.json not included in received zip file")
         # Extract recevied data
-        logging.info("[Master] [Sync process c->m] [{0}] [STEP 1]: Analyzing received files.".format(client_name))
+        logging.info("{0} [{1}] [STEP 1]: Analyzing received files.".format(tag, client_name))
 
-        logging.debug("[Master] [Sync process c->m] Received {} client files to update".format(len(client_files_json)))
-        logging.debug("[Master] [Sync process c->m] Received {} master files to check".format(len(master_files_from_client)))
+        logging.debug("{0} Received {1} client files to update".format(tag, len(client_files_json)))
+        logging.debug("{0} Received {1} master files to check".format(tag, len(master_files_from_client)))
 
         # Get master files
         master_files = get_files_status('master')
@@ -180,31 +109,31 @@ class MasterManagerHandler(ServerHandler):
         # Compare
         client_files_ko = compare_files(master_files, master_files_from_client)
 
-        logging.info("[Master] [Sync process c->m] [{0}] [STEP 2]: Updating manager files.".format(client_name))
+        logging.info("{0} [{1}] [STEP 2]: Updating manager files.".format(tag, client_name))
 
         # Update files
-        update_client_files_in_master(client_files_json, client_files_json, zip_dir_path)
+        MasterManagerHandler.update_client_files_in_master(client_files_json, client_files_json, zip_dir_path)
 
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)
 
         # Compress data: master files (only KO shared and missing)
-        logging.info("[Master] [Sync process c->m] [{0}] [STEP 3]: Compressing KO files for client.".format(client_name))
+        logging.info("{0} [{1}] [STEP 3]: Compressing KO files for client.".format(tag, client_name))
 
         master_files_paths = [item for item in client_files_ko['shared']]
         master_files_paths.extend([item for item in client_files_ko['missing']])
 
         compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
 
-        logging.info("[Master] [Sync process c->m] [{0}]: End. Sending KO files to client.".format(client_name))
+        logging.info("{0} [{1}] [STEP 3]: Sending KO files to client.".format(tag, client_name))
 
         response = self.manager.send_file(client_name, 'sync_m_c', compressed_data, True)
         processed_response = self.process_response(response)
         if processed_response:
             sync_result = True
-            logging.info("[Master] [Sync process m->c] [{0}] [STEP 3]: {1}".format(client_name, processed_response))
+            logging.info("{0} [{1}] [STEP 3]: Client received the sync properly".format(tag, client_name))
         else:
-            logging.error("[Master] [Sync process m->c] [{0}] [STEP 3]: Client reported an error receiving files.".format(client_name))
+            logging.error("{0} [{1}] [STEP 3]: Client reported an error receiving files.".format(tag, client_name))
 
         # Send KO files
         return sync_result
@@ -265,19 +194,25 @@ class MasterProcessClientFiles(ProcessFiles):
     def __init__(self, manager_handler, client_name, filename):
         ProcessFiles.__init__(self, manager_handler, filename, common.ossec_path)
         self.client_name = client_name
-
+        self.thread_tag = "[Master] [ProcessFilesThread] [Sync process m->c]"
 
     def run(self):
         while self.running:
             if self.received_all_information:
-                logging.debug("[Master-FileThread] Started for {0}.".format(self.client_name))
+
                 try:
-                    self.manager_handler.process_files_from_client(self.client_name, self.filename)
+                    result = self.manager_handler.process_files_from_client(self.client_name, self.filename, self.thread_tag)
+                    if result:
+                        logging.info("{0}: Result: Successfully.".format(self.thread_tag))
+                    else:
+                        logging.error("{0}: Result: Error.".format(self.thread_tag))
                 except:
-                    logging.error("[Master-FileThread] Unknown error for {0}".format(self.client_name))
+                    logging.error("{0}: Unknown error for {1}.".format(self.thread_tag, self.client_name))
+
                     self.manager_handler.manager.send_request(self.client_name, 'sync_m_c_err')
-                logging.debug("[Master-FileThread] Ended for {0}.".format(self.client_name))
+
                 self.stop()
+
             else:
                 self.process_file_cmd()
 
@@ -287,8 +222,7 @@ class MasterProcessClientFiles(ProcessFiles):
 #
 # Internal socket
 #
-from wazuh.cluster.communication import InternalSocketHandler
-import ast
+
 class MasterInternalSocketHandler(InternalSocketHandler):
     def __init__(self, sock, manager, map):
         InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)

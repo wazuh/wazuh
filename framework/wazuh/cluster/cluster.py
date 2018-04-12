@@ -305,6 +305,25 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
         rename(f_temp, fullpath)
 
 
+def compare_files(good_files, check_files):
+
+    missing_files = set(good_files.keys()) - set(check_files.keys())
+    extra_files = set(check_files.keys()) - set(good_files.keys())
+
+    shared_files = {name: {'cluster_item_key': data['cluster_item_key']} for name, data in good_files.iteritems() if name in check_files and data['md5'] != check_files[name]['md5']}
+
+    if not missing_files:
+        missing_files = {}
+    else:
+        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key']} for missing_file in missing_files }
+
+    if not extra_files:
+        extra_files = {}
+    else:
+        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key']} for extra_file in extra_files }
+
+    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
+
 
 #
 # Agents

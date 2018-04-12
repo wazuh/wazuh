@@ -102,7 +102,7 @@ class ClientManager(ClientHandler):
         # Getting client file paths: agent-info, agent-groups.
         client_files_paths = client_files.keys()
 
-        logging.debug("[Client] [Sync process c->m] [Step 2]: Client files found: {}".format(len(client_files_paths)))
+        logging.debug("{0} [Step 2]: Client files found: {1}".format(tag, len(client_files_paths)))
         # Compress data: client files + control json
         compressed_data_path = compress_files('client', self.name, client_files_paths, cluster_control_json)
 
@@ -114,7 +114,7 @@ class ClientManager(ClientHandler):
         processed_response = self.process_response(response)
         if processed_response:
             sync_result = True
-            logging.info("{0} [Step 3]: {1}".format(tag, processed_response))
+            logging.info("{0} [Step 3]: Master received the sync properly.".format(tag))
         else:
             logging.error("{0} [Step 3]: Master reported an error receiving files.".format(tag))
 
@@ -135,7 +135,7 @@ class ClientManager(ClientHandler):
         logging.info("{0} [STEP 1]: Analyzing received files.".format(tag))
 
         if ko_files:
-            logging.debug("[Client] [Sync process m->c] [{}] Received cluster_control.json".format(ko_files))
+            logging.debug("{0} [{1}] Received cluster_control.json".format(tag, ko_files))
         else:
             raise Exception("cluster_control.json not included in received zip file.")
 
@@ -220,7 +220,7 @@ class ClientIntervalThread(threading.Thread):
         self.daemon = True
         self.client = None
         self.running = True
-        self.thread_tag = "[Client] [ClientIntervalThread] [Sync process c->m]"
+        self.thread_tag = "[Client] [IntervalThread] [Sync process c->m]"
 
 
     def run(self):
@@ -297,18 +297,21 @@ class ClientProcessMasterFiles(ProcessFiles):
         while self.running:
             if self.manager_handler and self.manager_handler.is_connected():
                 if self.received_all_information:
+
                     try:
-                        result = self.manager_handler.process_files_from_master(self.filename)
+                        result = self.manager_handler.process_files_from_master(self.filename, self.thread_tag)
                         if result:
-                            logging.info("[Client] [Sync process m->c]: Result: Successfully.")
+                            logging.info("{0}: Result: Successfully.".format(self.thread_tag))
                         else:
-                            logging.error("[Client] [Sync process m->c]: Result: Error.")
+                            logging.error("{0}: Result: Error.".format(self.thread_tag))
                     except:
                         logging.error("{0}: Result: Unknown error.".format(self.thread_tag))
 
                     logging.info("{0}: Unlocking Interval thread.".format(self.thread_tag))
                     self.manager_handler.set_lock_interval_thread(False)
+
                     self.stop()
+
                 else:
                     self.process_file_cmd()
             else:

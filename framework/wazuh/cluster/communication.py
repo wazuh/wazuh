@@ -133,7 +133,7 @@ class Handler(asyncore.dispatcher_with_send):
 
 
         response = self.execute("file_open", "{}".format(id))
-        logging.debug("RESPONSE: {0}".format(response))
+        #logging.debug("RESPONSE: {0}".format(response))
         # TO-DO remove ossec_path from sent filepath
         base_msg = "{} ".format(id).encode()
         chunk_size = max_msg_size - len(base_msg)
@@ -141,7 +141,7 @@ class Handler(asyncore.dispatcher_with_send):
         with open(file, 'rb') as f:
             for chunk in iter(lambda: f.read(chunk_size), ''):
                 response = self.execute("file_update", base_msg + chunk)
-                logging.debug("RESPONSE: {0}".format(response))
+                #logging.debug("RESPONSE: {0}".format(response))
                 # for every chunk sent, sleep 0.1 s to prevent network from collapsing
                 #time.sleep(0.1)
 
