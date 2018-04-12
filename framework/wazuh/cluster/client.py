@@ -251,6 +251,7 @@ class ClientIntervalThread(threading.Thread):
                 new_interval = self.client.config['interval']
 
                 # Send files
+                self.client.set_lock_interval_thread(True)
                 result = self.client.send_client_files_to_master(reason="Interval", tag=self.thread_tag)
 
                 # Master received the file properly
@@ -262,7 +263,6 @@ class ClientIntervalThread(threading.Thread):
                     #  - Master sends error: sync_m_c_err
                     #  - Client is disconnected and connected again
                     logging.info("{0}: Locking: Wait for master files.".format(self.thread_tag))
-                    self.client.set_lock_interval_thread(True)
                     n_seconds = 0
                     while self.client.get_lock_interval_thread():
                         # Print each 5 seconds
