@@ -14,7 +14,7 @@ from wazuh import common
 from datetime import datetime, timedelta
 from hashlib import sha512
 from time import time, mktime, sleep
-from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror
+from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror, remove
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
 from io import BytesIO
@@ -209,14 +209,14 @@ def get_files_status(node_type, get_md5=True):
     return final_items
 
 
-def compress_files(source, list_path, cluster_control_json=None):
-    path_files = "files/"
-    zipped_file = BytesIO()
-    with zipfile.ZipFile(zipped_file, 'w') as zf:
+def compress_files(source, name, list_path, cluster_control_json=None):
+    zip_file_path = "{}/tmp/{}-tempfile.tmp.zip".format(common.ossec_path, name)
+    with zipfile.ZipFile(zip_file_path, 'w') as zf:
         # write files
         for f in list_path:
+            logging.debug("Adding {} to zip file".format(f))
             try:
-                zf.write(filename = common.ossec_path + f, arcname = path_files + f, compress_type=compression)
+                zf.write(filename = common.ossec_path + f, arcname = 'files/' + f, compress_type=compression)
             except Exception as e:
                 logging.error(str(WazuhException(3001, str(e))))
 
@@ -225,19 +225,30 @@ def compress_files(source, list_path, cluster_control_json=None):
         except Exception as e:
             raise WazuhException(3001, str(e))
 
-    return zipped_file.getvalue()
+    return zip_file_path
 
 
-def decompress_files(zip_bytes):
+def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     zip_json = {}
-    with zipfile.ZipFile(BytesIO(zip_bytes)) as zipf:
-        zip_json = {name:{'data':zipf.open(name).read(), 'time':datetime(*zipf.getinfo(name).date_time)} for name in zipf.namelist()}
+    ko_files = ""
+    # create a directory to store zip's files
+    zip_dir = zip_path + 'dir'
+    mkdir(zip_dir)
+    with zipfile.ZipFile(zip_path) as zipf:
+        for name in zipf.namelist():
+            if name == ko_files_name:
+                ko_files = json.loads(zipf.open(name).read())
+            else:
+                with open("{}/{}".format(zip_dir, name.replace('files','').replace('/','_')), 'w') as f:
+                    f.write(zipf.open(name).read())
 
-    return zip_json
+    # once read all files, remove the zipfile
+    remove(zip_path)
+    return ko_files, zip_dir
 
 
 def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, whoami='master'):
-
+    mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
     if path.basename(fullpath) == 'client.keys':
         if whoami =='client':
             logging.info("ToDo: _check_removed_agents***********************************************")

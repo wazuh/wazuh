@@ -6,6 +6,7 @@
 import logging
 import threading
 import time
+import shutil
 try:
     from Queue import Queue
 except ImportError:
@@ -37,14 +38,15 @@ def compare_files(good_files, check_files):
     return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
 
 
-def update_client_files_in_master(json_file, files_to_update):
+def update_client_files_in_master(json_file, files_to_update_json, zip_dir_path):
     cluster_items = get_cluster_items()
 
     try:
 
-        for file_name, data in json_file.iteritems():
+        for file_name, data in json_file.items():
             # Full path
             file_path = common.ossec_path + file_name
+            zip_path  = "{}/{}".format(zip_dir_path, file_name.replace('/','_'))
 
             # Cluster items information: write mode and umask
             cluster_item_key = data['cluster_item_key']
@@ -52,10 +54,13 @@ def update_client_files_in_master(json_file, files_to_update):
             umask = int(cluster_items[cluster_item_key]['umask'], base=0)
 
             # File content and time
-            file_data = files_to_update[file_name]['data']
-            file_time = files_to_update[file_name]['time']
+            with open(zip_path, 'rb') as f:
+                file_data = f.read()
+            file_time = files_to_update_json[file_name]['mod_time']
 
-            _update_file(fullpath=file_path, new_content=file_data, umask_int=umask, mtime=file_time, w_mode=w_mode, whoami='master')
+            _update_file(fullpath=file_path, new_content=file_data,
+                         umask_int=umask, mtime=file_time, w_mode=w_mode,
+                         whoami='master')
 
     except Exception as e:
         print(str(e))
@@ -159,21 +164,15 @@ class MasterManagerHandler(ServerHandler):
 
         logging.info("[Master] [Sync process c->m] [{0}]: Start.".format(client_name))
 
-        client_data = decompress_files(data_received)
-
+        json_file, zip_dir_path = decompress_files(data_received)
+        if json_file:
+            logging.debug("[Master] [Sync process c->m] [{}] Received cluster_control.json".format(json_file))
+            master_files_from_client = json_file['master_files']
+            client_files_json = json_file['client_files']
+        else:
+            raise Exception("cluster_control.json not included in received zip file")
         # Extract recevied data
         logging.info("[Master] [Sync process c->m] [{0}] [STEP 1]: Analyzing received files.".format(client_name))
-
-        master_files_from_client = {}
-        client_files = {}
-        for key in client_data:
-            if key == 'cluster_control.json':
-                json_file = json.loads(client_data['cluster_control.json']['data'])
-                master_files_from_client = json_file['master_files']
-                client_files_json = json_file['client_files']
-            else:
-                full_path_key = key.replace('files/', '/')
-                client_files[full_path_key] = client_data[key]
 
         # Get master files
         master_files = get_files_status('master')
@@ -184,7 +183,10 @@ class MasterManagerHandler(ServerHandler):
         logging.info("[Master] [Sync process c->m] [{0}] [STEP 2]: Updating manager files.".format(client_name))
 
         # Update files
-        update_client_files_in_master(client_files_json, client_files)
+        update_client_files_in_master(client_files_json, client_files_json, zip_dir_path)
+
+        # Remove tmp directory created when zip file was received
+        shutil.rmtree(zip_dir_path)
 
         # Compress data: master files (only KO shared and missing)
         logging.info("[Master] [Sync process c->m] [{0}] [STEP 3]: Compressing KO files for client.".format(client_name))
@@ -279,7 +281,7 @@ class MasterProcessClientFiles(threading.Thread):
         while self.running:
             if self.received_all_information:
                 logging.debug("[Master-FileThread] Started for {0}.".format(self.client_name))
-                self.manager_handler.process_files_from_client(self.client_name, self.data)
+                self.manager_handler.process_files_from_client(self.client_name, self.filename)
                 logging.debug("[Master-FileThread] Ended for {0}.".format(self.client_name))
                 self.stop()
             else:
@@ -287,16 +289,16 @@ class MasterProcessClientFiles(threading.Thread):
                 if command == "file_open":
                     logging.debug("[Master-FileThread] Opening file")
                     command = ""
-                    self.file_open(self.id, self.filename)
+                    self.file_open()
                 elif command == "file_update":
                     logging.debug("[Master-FileThread] Updating file")
                     command = ""
-                    self.file_update(self.id, self.filename, data)
+                    self.file_update(data)
                 elif command == "file_close":
                     time.sleep(5)
                     self.close_lock.acquire()
                     logging.debug("[Master-FileThread] Closing file")
-                    self.result = self.file_close(self.id, self.filename, data)
+                    self.result = self.file_close(data)
                     self.close_lock.notify()
                     self.close_lock.release()
                     command = ""
@@ -316,7 +318,7 @@ class MasterProcessClientFiles(threading.Thread):
         self.command_queue.put((command, local_data))
 
 
-    def file_open(self, node_name, file_name):
+    def file_open(self):
         """
         Start the protocol of receiving a file. Create a new file
 
@@ -328,13 +330,13 @@ class MasterProcessClientFiles(threading.Thread):
         and must be separated by a white space
         """
         # Create the file
-        tmp_file = "{0}.{1}.tmp".format(file_name, node_name)
-        logging.debug("[Transport] Creating file {}".format(tmp_file))
-        self.f = open(tmp_file, 'w')
-        return "ok", "File {} created successfully".format(tmp_file)
+        self.filename = "{}/tmp/{}.tmp".format(common.ossec_path, self.id)
+        logging.debug("[Transport] Creating file {}".format(self.filename))
+        self.f = open(self.filename, 'w')
+        return "ok", "File {} created successfully".format(self.filename)
 
 
-    def file_update(self, node_name, file_name, chunk):
+    def file_update(self, chunk):
         """
         Continue the protocol of receiving a file. Append data
 
@@ -349,10 +351,10 @@ class MasterProcessClientFiles(threading.Thread):
         """
         # Open the file
         self.f.write(chunk)
-        return "ok", "Chunk wrote to {} successfully".format(file_name)
+        return "ok", "Chunk wrote to {} successfully".format(self.filename)
 
 
-    def file_close(self, node_name, file_name, md5_sum):
+    def file_close(self, md5_sum):
         """
         Ends the protocol of receiving a file
 
@@ -367,16 +369,15 @@ class MasterProcessClientFiles(threading.Thread):
         """
         # compare local file's sum with received sum
         self.f.close()
-        tmp_file = "{0}.{1}.tmp".format(file_name, node_name)
-        local_md5_sum = self.manager_handler.compute_md5(tmp_file)
+        local_md5_sum = self.manager_handler.compute_md5(self.filename)
         if local_md5_sum != md5_sum:
             error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
-                            format(tmp_file, md5_sum, local_md5_sum)
+                            format(self.filename, md5_sum, local_md5_sum)
             return 'err', error_msg
             #os.remove(file_name)
             raise Exception(error_msg)
 
-        return "ok", "File {} received successfully".format(tmp_file)
+        return "ok", "File {} received successfully".format(self.filename)
 
 
 #

@@ -107,7 +107,7 @@ class Handler(asyncore.dispatcher_with_send):
         return hash_algorithm.hexdigest()
 
 
-    def file_send(self, reason, file):
+    def file_send(self, reason, file, remove = False):
         """
         To send a file without collapsing the network, two special commands
         are defined:
@@ -121,9 +121,11 @@ class Handler(asyncore.dispatcher_with_send):
         the server will get prepared to receive the file.
 
         :param file: filename (path)
+        :param reason: command to send before starting to send the file
+        :param remove: whether to remove the file after sending it or not
         """
         # response will be of form 'ack id'
-        _, id = self.send_request(reason, file).split(' ',1)
+        _, id = self.send_request(reason, os.path.basename(file)).split(' ',1)
 
 
         response = self.execute("file_open", "{}".format(id))
@@ -140,6 +142,10 @@ class Handler(asyncore.dispatcher_with_send):
                 #time.sleep(0.1)
 
         response = self.execute("file_close", "{} {}".format(id, self.compute_md5(file)))
+
+        if remove:
+            os.remove(file)
+
         return response
 
 

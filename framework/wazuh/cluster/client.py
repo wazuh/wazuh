@@ -86,16 +86,15 @@ class ClientManager(ClientHandler):
         # Getting client file paths: agent-info, agent-groups.
         client_files_paths = client_files.keys()
 
+        logging.debug("[Client] [Sync process c->m] [Step 2]: Client files found: {}".format(len(client_files_paths)))
         # Compress data: client files + control json
-        compressed_data = compress_files('client', client_files_paths, cluster_control_json)
-
+        compressed_data_path = compress_files('client', self.name, client_files_paths, cluster_control_json)
 
         # Step 3
         # Send compressed file to master
         logging.info("[Client] [Sync process c->m] [Step 3]: Sending files to master.")
 
-
-        response = self.send_request('sync_c_m', compressed_data)
+        response = self.file_send(reason = 'sync_c_m', file = compressed_data_path, remove = True)
         processed_response = self.process_response(response)
         if processed_response:
             sync_result = True
