@@ -248,7 +248,6 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
 
 
 def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, whoami='master'):
-    mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
     if path.basename(fullpath) == 'client.keys':
         if whoami =='client':
             logging.info("ToDo: _check_removed_agents***********************************************")
@@ -261,6 +260,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
     is_agent_groups = 'agent-groups' in fullpath
     if is_agent_info or is_agent_groups:
         if whoami =='master':
+            mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
             # check if the date is older than the manager's date
             if path.isfile(fullpath) and datetime.utcfromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
                 #logging.debug("Receiving an old file ({})".format(fullpath))
@@ -296,8 +296,9 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
     dest_file.close()
 
-    mtime_epoch = int(mktime(mtime.timetuple()))
-    utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
+    if mtime:
+        mtime_epoch = int(mktime(mtime.timetuple()))
+        utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
 
     # Atomic
     if w_mode == "atomic":

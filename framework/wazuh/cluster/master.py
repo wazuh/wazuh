@@ -7,14 +7,11 @@ import logging
 import threading
 import time
 import shutil
-try:
-    from Queue import Queue
-except ImportError:
-    from queue import Queue
 
 from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files
 from wazuh.exception import WazuhException
 from wazuh import common
+from wazuh.cluster.communication import ProcessFiles
 
 
 
@@ -124,22 +121,6 @@ class MasterManagerHandler(ServerHandler):
             mcf_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker(command, mcf_thread, data)
-        elif command == "file_open" or command == "file_update":
-            worker, cmd, message = self.get_worker(data)
-            if worker:
-                worker.set_command(command, data)
-            return cmd, message
-        elif command == "file_close":
-            worker, cmd, message = self.get_worker(data)
-            if worker:
-                worker.set_command(command, data)
-                logging.debug("[Master] Acquiring lock...")
-                worker.close_lock.acquire()
-                worker.close_lock.wait()
-                worker.close_lock.release()
-                logging.debug("[Master] Releasing lock... ({})".format(worker.result))
-                return worker.result
-            return cmd, message
         else:
             return ServerHandler.process_request(self, command, data)
 
@@ -166,13 +147,16 @@ class MasterManagerHandler(ServerHandler):
 
         json_file, zip_dir_path = decompress_files(data_received)
         if json_file:
-            logging.debug("[Master] [Sync process c->m] [{}] Received cluster_control.json".format(json_file))
+            logging.debug("[Master] [Sync process c->m] Received cluster_control.json")
             master_files_from_client = json_file['master_files']
             client_files_json = json_file['client_files']
         else:
             raise Exception("cluster_control.json not included in received zip file")
         # Extract recevied data
         logging.info("[Master] [Sync process c->m] [{0}] [STEP 1]: Analyzing received files.".format(client_name))
+
+        logging.debug("[Master] [Sync process c->m] Received {} client files to update".format(len(client_files_json)))
+        logging.debug("[Master] [Sync process c->m] Received {} master files to check".format(len(master_files_from_client)))
 
         # Get master files
         master_files = get_files_status('master')
@@ -194,11 +178,11 @@ class MasterManagerHandler(ServerHandler):
         master_files_paths = [item for item in client_files_ko['shared']]
         master_files_paths.extend([item for item in client_files_ko['missing']])
 
-        compressed_data = compress_files('master', master_files_paths, client_files_ko)
+        compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
 
         logging.info("[Master] [Sync process c->m] [{0}]: End. Sending KO files to client.".format(client_name))
 
-        response = self.manager.send_request(client_name, 'sync_m_c', compressed_data)
+        response = self.manager.send_file(client_name, 'sync_m_c', compressed_data, True)
         processed_response = self.process_response(response)
         if processed_response:
             sync_result = True
@@ -262,20 +246,12 @@ class MasterKeepAliveThread(threading.Thread):
         self.running = False
 
 
-class MasterProcessClientFiles(threading.Thread):
+class MasterProcessClientFiles(ProcessFiles):
 
     def __init__(self, manager_handler, client_name, filename):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.running = True
-        self.manager_handler = manager_handler
+        ProcessFiles.__init__(self, manager_handler, filename, common.ossec_path)
         self.client_name = client_name
-        self.data = None
-        self.command_queue = Queue()
-        self.filename = filename
-        self.received_all_information = False
-        self.close_lock = threading.Condition()
-        self.f = None
+
 
     def run(self):
         while self.running:
@@ -285,99 +261,9 @@ class MasterProcessClientFiles(threading.Thread):
                 logging.debug("[Master-FileThread] Ended for {0}.".format(self.client_name))
                 self.stop()
             else:
-                command, data = self.command_queue.get(block=True)
-                if command == "file_open":
-                    logging.debug("[Master-FileThread] Opening file")
-                    command = ""
-                    self.file_open()
-                elif command == "file_update":
-                    logging.debug("[Master-FileThread] Updating file")
-                    command = ""
-                    self.file_update(data)
-                elif command == "file_close":
-                    time.sleep(5)
-                    self.close_lock.acquire()
-                    logging.debug("[Master-FileThread] Closing file")
-                    self.result = self.file_close(data)
-                    self.close_lock.notify()
-                    self.close_lock.release()
-                    command = ""
-                    self.received_all_information = True
+                self.process_file_cmd()
 
             time.sleep(0.1)
-            # logging.debug("[Master-FileThread] Waiting until all zip file is received")
-
-
-    def stop(self):
-        self.running = False
-
-
-    def set_command(self, command, data):
-        split_data = data.split(' ',1)
-        local_data = split_data[1] if len(split_data) > 1 else None
-        self.command_queue.put((command, local_data))
-
-
-    def file_open(self):
-        """
-        Start the protocol of receiving a file. Create a new file
-
-        :parm data: data received from socket
-
-        This data must be:
-            - thread id
-
-        and must be separated by a white space
-        """
-        # Create the file
-        self.filename = "{}/tmp/{}.tmp".format(common.ossec_path, self.id)
-        logging.debug("[Transport] Creating file {}".format(self.filename))
-        self.f = open(self.filename, 'w')
-        return "ok", "File {} created successfully".format(self.filename)
-
-
-    def file_update(self, chunk):
-        """
-        Continue the protocol of receiving a file. Append data
-
-        :parm data: data received from socket
-
-        This data must be:
-            - thread id
-            - filename
-            - chunk
-
-        and must be separated by a white space
-        """
-        # Open the file
-        self.f.write(chunk)
-        return "ok", "Chunk wrote to {} successfully".format(self.filename)
-
-
-    def file_close(self, md5_sum):
-        """
-        Ends the protocol of receiving a file
-
-        :parm data: data received from socket
-
-        This data must be:
-            - thread id
-            - filename
-            - MD5 sum
-
-        and must be separated by a white space
-        """
-        # compare local file's sum with received sum
-        self.f.close()
-        local_md5_sum = self.manager_handler.compute_md5(self.filename)
-        if local_md5_sum != md5_sum:
-            error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
-                            format(self.filename, md5_sum, local_md5_sum)
-            return 'err', error_msg
-            #os.remove(file_name)
-            raise Exception(error_msg)
-
-        return "ok", "File {} received successfully".format(self.filename)
 
 
 #

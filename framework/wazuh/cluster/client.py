@@ -8,11 +8,12 @@ import json
 import threading
 import time
 from os import remove
+import shutil
 
 from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.cluster.communication import ClientHandler, Handler
+from wazuh.cluster.communication import ClientHandler, Handler, ProcessFiles
 
 
 class ClientManager(ClientHandler):
@@ -32,7 +33,7 @@ class ClientManager(ClientHandler):
             cmf_thread = ClientProcessMasterFiles(data)
             cmf_thread.setclient(self)
             cmf_thread.start()
-            return 'ack', 'Sync: Thanks master, Im going to do it'  # TO DO
+            return 'ack', self.set_worker(command, cmf_thread, data)
         elif command == 'req_sync_m_c':
             return 'ack', 'Starting sync from master on demand'  # TO DO
         elif command == 'getintegrity':
@@ -110,31 +111,47 @@ class ClientManager(ClientHandler):
 
         logging.info("[Client] [Sync process m->c]: Start.")
 
-        master_data  = decompress_files(data_received)
+        ko_files, zip_path  = decompress_files(data_received)
 
         # Extract received data
         logging.info("[Client] [Sync process m->c] [STEP 1]: Analyzing received files.")
 
-        ko_files = {}
-        master_files = {}
-        for key in master_data:
-            if key == 'cluster_control.json':
-                ko_files = json.loads(master_data['cluster_control.json']['data'])
-            else:
-                full_path_key = key.replace('files/', '/')
-                master_files[full_path_key] = master_data[key]
+        if ko_files:
+            logging.debug("[Client] [Sync process m->c] [{}] Received cluster_control.json".format(ko_files))
+        else:
+            raise Exception("cluster_control.json not included in received zip file.")
 
         # Update files
         logging.info("[Client] [Sync process m->c] [STEP 2]: Updating client files.")
-        sync_result = ClientManager._update_master_files_in_client(ko_files, master_files)
+        sync_result = ClientManager._update_master_files_in_client(ko_files, zip_path)
 
+        # remove temporal zip file directory
+        shutil.rmtree(zip_path)
 
         # ToDo: Send ACK
 
         return sync_result
 
+
     @staticmethod
-    def _update_master_files_in_client(wrong_files, files_to_update):
+    def _update_master_files_in_client(wrong_files, zip_path_dir):
+        def overwrite_or_create_files(filename, data):
+            # Full path
+            file_path = common.ossec_path + filename
+            zip_path = "{}/{}".format(zip_path_dir, filename.replace('/','_'))
+
+            # Cluster items information: write mode and umask
+            cluster_item_key = data['cluster_item_key']
+            w_mode = cluster_items[cluster_item_key]['write_mode']
+            umask = int(cluster_items[cluster_item_key]['umask'], base=0)
+
+            # File content and time
+            with open(zip_path, 'rb') as f:
+                file_data = f.read()
+
+            _update_file(fullpath=file_path, new_content=file_data,
+                         umask_int=umask, w_mode=w_mode, whoami='client')
+
 
         cluster_items = get_cluster_items()
 
@@ -147,21 +164,9 @@ class ClientManager(ClientHandler):
         if wrong_files['shared']:
             logging.info("[Client] [Sync process] [Step 3]: Received {} wrong files to fix from master. Action: Overwrite files.".format(len(wrong_files['shared'])))
             try:
-                for file_to_overwrite, data in wrong_files['shared'].iteritems():
+                for file_to_overwrite, data in wrong_files['shared'].items():
                     logging.debug("\t[Client] OVERWRITE {0}".format(file_to_overwrite))
-                    # Full path
-                    file_path = common.ossec_path + file_to_overwrite
-
-                    # Cluster items information: write mode and umask
-                    cluster_item_key = data['cluster_item_key']
-                    w_mode = cluster_items[cluster_item_key]['write_mode']
-                    umask = int(cluster_items[cluster_item_key]['umask'], base=0)
-
-                    # File content and time
-                    file_data = files_to_update[file_to_overwrite]['data']
-                    file_time = files_to_update[file_to_overwrite]['time']
-
-                    _update_file(fullpath=file_path, new_content=file_data, umask_int=umask, mtime=file_time, w_mode=w_mode, whoami='client')
+                    overwrite_or_create_files(file_to_overwrite, data)
 
             except Exception as e:
                 print(str(e))
@@ -169,23 +174,9 @@ class ClientManager(ClientHandler):
 
         if wrong_files['missing']:
             logging.info("[Client] [Sync process] [Step 3]: Received {} missing files from master. Action: Create files.".format(len(wrong_files['missing'])))
-            for file_to_create, data in wrong_files['missing'].iteritems():
+            for file_to_create, data in wrong_files['missing'].items():
                 logging.debug("\t[Client] CREATE {0}".format(file_to_create))
-
-                # Full path
-                file_path = common.ossec_path + file_to_create
-
-                # Cluster items information: write mode and umask
-                cluster_item_key = data['cluster_item_key']
-                w_mode = cluster_items[cluster_item_key]['write_mode']
-                umask = int(cluster_items[cluster_item_key]['umask'], base=0)
-
-                # File content and time
-                file_data = files_to_update[file_to_create]['data']
-                file_time = files_to_update[file_to_create]['time']
-
-                _update_file(fullpath=file_path, new_content=file_data, umask_int=umask, mtime=file_time, w_mode=w_mode, whoami='client')
-
+                overwrite_or_create_files(file_to_create, data)
 
         if wrong_files['extra']:
             logging.info("[Client] [Sync process] [Step 3]: Received {} extra files from master. Action: Remove files.".format(len(wrong_files['extra'])))
@@ -232,39 +223,35 @@ class ClientIntervalThread(threading.Thread):
         self.running = False
 
 
-class ClientProcessMasterFiles(threading.Thread):
+class ClientProcessMasterFiles(ProcessFiles):
 
-    def __init__(self, data):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.client = None
-        self.running = True
-        self.data = data
+    def __init__(self, filename, handler=None):
+        ProcessFiles.__init__(self, handler, filename, common.ossec_path)
+        self.client = handler
+        self.filename = filename
 
 
     def run(self):
         while self.running:
-            if self.client and self.client.is_connected():
+            if self.manager_handler and self.manager_handler.is_connected():
+                if self.received_all_information:
+                    logging.debug("[Client-FileThread] Started.")
+                    result = self.manager_handler.process_files_from_master(self.filename)
+                    if result:
+                        logging.info("[Client] [Sync process m->c]: Result: Successfully.")
+                    else:
+                        logging.error("[Client] [Sync process m->c]: Result: Error.")
+                    logging.debug("[Client-FileThread] Ended.")
 
-                logging.debug("[Client-FileThread] Started.")
-                result = self.client.process_files_from_master(self.data)
-                if result:
-                    logging.info("[Client] [Sync process m->c]: Result: Successfully.")
+                    self.stop()
                 else:
-                    logging.error("[Client] [Sync process m->c]: Result: Error.")
-                logging.debug("[Client-FileThread] Ended.")
-
-                self.stop()
+                    self.process_file_cmd()
             else:
                 time.sleep(5)
 
 
     def setclient(self, client):
-        self.client = client
-
-
-    def stop(self):
-        self.running = False
+        self.manager_handler = client
 
 
 #
