@@ -49,18 +49,18 @@ int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
 int WinExecd_Start(void);
 void WinTimeoutRun(void);
 
-size_t wcom_open(const char *file_path, const char *mode, char *output);
-size_t wcom_write(const char *file_path, char *buffer, size_t length, char *output);
-size_t wcom_close(const char *file_path, char *output);
-size_t wcom_sha1(const char *file_path, char *output);
-size_t wcom_unmerge(const char *file_path, char *output);
-size_t wcom_uncompress(const char * source, const char * target, char * output);
-size_t wcom_upgrade(const char * package, const char * installer, char * output);
-size_t wcom_upgrade_result(char *output);
-size_t wcom_restart(char *output);
-size_t wcom_dispatch(char *command, size_t length, char *output);
+size_t wcom_open(const char *file_path, const char *mode, char **output);
+size_t wcom_write(const char *file_path, char *buffer, size_t length, char **output);
+size_t wcom_close(const char *file_path, char **output);
+size_t wcom_sha1(const char *file_path, char **output);
+size_t wcom_unmerge(const char *file_path, char **output);
+size_t wcom_uncompress(const char * source, const char * target, char ** output);
+size_t wcom_upgrade(const char * package, const char * installer, char ** output);
+size_t wcom_upgrade_result(char **output);
+size_t wcom_restart(char **output);
+size_t wcom_dispatch(char *command, size_t length, char **output);
 size_t lock_restart(int timeout);
-size_t wcom_getconfig(const char * section, char * output);
+size_t wcom_getconfig(const char * section, char ** output);
 
 #ifndef WIN32
 // Com request thread dispatcher

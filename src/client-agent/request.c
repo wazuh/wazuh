@@ -189,7 +189,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
     long nsec;
     ssize_t length;
     req_node_t * node;
-    char buffer[OS_MAXSTR + 1];
+    char *buffer = NULL;
     char response[REQ_RESPONSE_LENGTH];
     int rlen;
 
@@ -215,7 +215,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 #else
         // In Unix, forward request to target socket
         if (strncmp(node->target, "agent", 5) == 0) {
-            length = agcom_dispatch(node->buffer, node->length, buffer);
+            length = agcom_dispatch(node->buffer, &buffer);
         }
         else {
 
@@ -231,7 +231,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
                 // Get response
 
-                switch (length = recv(node->sock, buffer, OS_MAXSTR, 0), length) {
+                switch (length = OS_RecvSecureTCP_Dynamic(node->sock, &buffer), length) {
                 case -1:
                     merror("recv(): %s", strerror(errno));
                     strcpy(buffer, "err Receive data");
@@ -241,6 +241,11 @@ void * req_receiver(__attribute__((unused)) void * arg) {
                 case 0:
                     mdebug1("Empty message from local client.");
                     strcpy(buffer, "err Empty response");
+                    length = strlen(buffer);
+                    break;
+
+                case OS_MAXLEN:
+                    merror("Received message > %i", MAX_DYN_STR);
                     length = strlen(buffer);
                     break;
 
@@ -304,6 +309,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         w_mutex_unlock(&mutex_table);
 
         // Delete node
+        free(buffer);
         req_free(node);
     }
 

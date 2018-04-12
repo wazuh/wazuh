@@ -11,10 +11,11 @@
 #include <shared.h>
 #include "agentd.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
 
 #ifndef WIN32
 
-size_t agcom_dispatch(char *command, size_t length __attribute__ ((unused)), char *output){
+size_t agcom_dispatch(char * command, char ** output){
 
     char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -28,51 +29,64 @@ size_t agcom_dispatch(char *command, size_t length __attribute__ ((unused)), cha
         // getconfig section
         if (!rcv_args){
             merror("AGCOM getconfig needs arguments.");
-            strcpy(output, "err AGCOM getconfig needs arguments");
-            return strlen(output);
+            *output = strdup("err AGCOM getconfig needs arguments");
+            return strlen(*output);
         }
         return agcom_getconfig(rcv_args, output);
 
     } else {
         merror("AGCOM Unrecognized command '%s'.", rcv_comm);
-        strcpy(output, "err Unrecognized command");
-        return strlen(output);
+        *output = strdup("err Unrecognized command");
+        return strlen(*output);
     }
 }
 
-size_t agcom_getconfig(const char * section, char * output) {
+size_t agcom_getconfig(const char * section, char ** output) {
 
     cJSON *cfg;
+    char *json_str;
 
     if (strcmp(section, "client") == 0){
         if (cfg = getClientConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     } else if (strcmp(section, "client-buffer") == 0){
         if (cfg = getBufferConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     } else if (strcmp(section, "labels") == 0){
         if (cfg = getLabelsConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
     } else if (strcmp(section, "internal_options") == 0){
         if (cfg = getAgentInternalOptions(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
@@ -81,8 +95,8 @@ size_t agcom_getconfig(const char * section, char * output) {
     }
 error:
     merror("At AGCOM getconfig: Could not get '%s' section", section);
-    strcpy(output, "err Could not get requested section");
-    return strlen(output);
+    *output = strdup("err Could not get requested section");
+    return strlen(*output);
 }
 
 #endif
