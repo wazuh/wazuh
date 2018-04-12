@@ -107,13 +107,13 @@ class Handler(asyncore.dispatcher_with_send):
         return hash_algorithm.hexdigest()
 
 
-    def file_send(self, reason, file, remove = False):
+    def send_file(self, reason, file, remove = False):
         """
         To send a file without collapsing the network, two special commands
         are defined:
-            - file_send_open <node_name> <file_name>
-            - file_send_update <node_name> <file_name> <file_content>
-            - file_send_close <node_name> <file_name> <md5>
+            - send_file_open <node_name> <file_name>
+            - send_file_update <node_name> <file_name> <file_content>
+            - send_file_close <node_name> <file_name> <md5>
         Every 1MB sent, this function sleeps for 1s. This way, other network
         packages can be sent while a file is being sent
 
@@ -125,7 +125,7 @@ class Handler(asyncore.dispatcher_with_send):
         :param remove: whether to remove the file after sending it or not
         """
         # response will be of form 'ack id'
-        _, id = self.send_request(reason, os.path.basename(file)).split(' ',1)
+        _, id = self.execute(reason, os.path.basename(file)).split(' ',1)
 
 
         response = self.execute("file_open", "{}".format(id))

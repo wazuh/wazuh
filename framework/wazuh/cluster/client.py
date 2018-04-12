@@ -94,7 +94,7 @@ class ClientManager(ClientHandler):
         # Send compressed file to master
         logging.info("[Client] [Sync process c->m] [Step 3]: Sending files to master.")
 
-        response = self.file_send(reason = 'sync_c_m', file = compressed_data_path, remove = True)
+        response = self.send_file(reason = 'sync_c_m', file = compressed_data_path, remove = True)
         processed_response = self.process_response(response)
         if processed_response:
             sync_result = True
