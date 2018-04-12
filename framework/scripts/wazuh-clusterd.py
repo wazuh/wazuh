@@ -123,7 +123,7 @@ def client_main(cluster_configuration):
     # ToDo: Add it in ossec.conf
     cluster_configuration['reconnect_time'] = 10  # seconds
     # ToDo: Get in the proper way
-    cluster_configuration['interval'] = 120  # seconds
+    cluster_configuration['interval'] = 20  # seconds
 
     # Create threads
     interval_thread = ClientIntervalThread()
