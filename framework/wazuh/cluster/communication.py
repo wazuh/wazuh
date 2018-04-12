@@ -346,7 +346,6 @@ class Server(asyncore.dispatcher):
         self.map = map
         self.clients = {}
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.set_reuse_addr()
         self.bind((host, port))
         self.listen(5)
@@ -417,7 +416,6 @@ class ClientHandler(Handler):
         self.host = host
         self.port = port
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         ok = self.connect( (host, port) )
         self.name = name
         self.my_connected = False
