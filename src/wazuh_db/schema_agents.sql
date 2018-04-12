@@ -92,6 +92,10 @@ CREATE TABLE IF NOT EXISTS sys_netiface (
     rx_packets INTEGER,
     tx_bytes INTEGER,
     rx_bytes INTEGER,
+    tx_errors INTEGER,
+    rx_errors INTEGER,
+    tx_dropped INTEGER,
+    rx_dropped INTEGER,
     id_ipv4 INTEGER REFERENCES netaddr (id),
     id_ipv6 INTEGER REFERENCES netaddr (id),
     PRIMARY KEY (scan_id, name)

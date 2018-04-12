@@ -1208,6 +1208,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                 cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
                 cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
                 cJSON_AddNumberToObject(interface, "rx_bytes", stats->rx_bytes);
+                cJSON_AddNumberToObject(interface, "tx_errors", stats->tx_errors);
+                cJSON_AddNumberToObject(interface, "rx_errors", stats->rx_errors);
+                cJSON_AddNumberToObject(interface, "tx_dropped", stats->tx_dropped);
+                cJSON_AddNumberToObject(interface, "rx_dropped", stats->rx_dropped);
 
                 /* MTU */
                 char *mtu;

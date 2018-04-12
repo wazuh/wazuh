@@ -337,6 +337,10 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
     long rx_packets;
     long tx_bytes;
     long rx_bytes;
+    long tx_errors;
+    long rx_errors;
+    long tx_dropped;
+    long rx_dropped;
     long result;
 
     if (next = strchr(input, ' '), !next) {
@@ -508,12 +512,72 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
             tx_bytes = strtol(curr,NULL,10);
 
         *next++ = '\0';
-        if (!strncmp(next, "NULL", 4))
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Network query syntax.");
+            mdebug2("Network query: %ld", tx_bytes);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Network query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
             rx_bytes = -1;
         else
-            rx_bytes = strtol(next,NULL,10);
+            rx_bytes = strtol(curr,NULL,10);
 
-        if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes), result < 0) {
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Network query syntax.");
+            mdebug2("Network query: %ld", rx_bytes);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Network query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            tx_errors = -1;
+        else
+            tx_errors = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Network query syntax.");
+            mdebug2("Network query: %ld", tx_errors);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Network query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            rx_errors = -1;
+        else
+            rx_errors = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Network query syntax.");
+            mdebug2("Network query: %ld", rx_errors);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Network query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            tx_dropped = -1;
+        else
+            tx_dropped = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        if (!strncmp(next, "NULL", 4))
+            rx_dropped = -1;
+        else
+            rx_dropped = strtol(next,NULL,10);
+
+        if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped), result < 0) {
             mdebug1("Cannot save Network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Network information.");
         } else {

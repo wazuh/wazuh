@@ -152,6 +152,10 @@ int decode_netinfo(char *agent_id, cJSON * logJSON) {
         cJSON * rx_packets = cJSON_GetObjectItem(iface, "rx_packets");
         cJSON * tx_bytes = cJSON_GetObjectItem(iface, "tx_bytes");
         cJSON * rx_bytes = cJSON_GetObjectItem(iface, "rx_bytes");
+        cJSON * tx_errors = cJSON_GetObjectItem(iface, "tx_errors");
+        cJSON * rx_errors = cJSON_GetObjectItem(iface, "rx_errors");
+        cJSON * tx_dropped = cJSON_GetObjectItem(iface, "tx_dropped");
+        cJSON * rx_dropped = cJSON_GetObjectItem(iface, "rx_dropped");
         cJSON * mtu = cJSON_GetObjectItem(iface, "MTU");
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s netinfo save", agent_id);
@@ -235,6 +239,38 @@ int decode_netinfo(char *agent_id, cJSON * logJSON) {
             char rxbytes[OS_MAXSTR];
             snprintf(rxbytes, OS_MAXSTR - 1, "%d", rx_bytes->valueint);
             wm_strcat(&msg, rxbytes, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tx_errors) {
+            char txerrors[OS_MAXSTR];
+            snprintf(txerrors, OS_MAXSTR - 1, "%d", tx_errors->valueint);
+            wm_strcat(&msg, txerrors, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (rx_errors) {
+            char rxerrors[OS_MAXSTR];
+            snprintf(rxerrors, OS_MAXSTR - 1, "%d", rx_errors->valueint);
+            wm_strcat(&msg, rxerrors, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tx_dropped) {
+            char txdropped[OS_MAXSTR];
+            snprintf(txdropped, OS_MAXSTR - 1, "%d", tx_dropped->valueint);
+            wm_strcat(&msg, txdropped, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (rx_dropped) {
+            char rxdropped[OS_MAXSTR];
+            snprintf(rxdropped, OS_MAXSTR - 1, "%d", rx_dropped->valueint);
+            wm_strcat(&msg, rxdropped, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }

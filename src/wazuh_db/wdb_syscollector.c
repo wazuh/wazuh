@@ -12,7 +12,7 @@
 #include "wdb.h"
 
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
-int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes) {
+int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         merror("at wdb_netinfo_save(): cannot begin transaction");
@@ -31,7 +31,11 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         tx_packets,
         rx_packets,
         tx_bytes,
-        rx_bytes) < 0) {
+        rx_bytes,
+        tx_errors,
+        rx_errors,
+        tx_dropped,
+        rx_dropped) < 0) {
 
         return -1;
     }
@@ -40,7 +44,7 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Insert Network info tuple. Return 0 on success or -1 on error.
-int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes) {
+int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_NETINFO_INSERT) > 0) {
@@ -84,6 +88,26 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
         sqlite3_bind_int64(stmt, 12, rx_bytes);
     } else {
         sqlite3_bind_null(stmt, 12);
+    }
+    if (tx_errors >= 0) {
+        sqlite3_bind_int64(stmt, 13, tx_errors);
+    } else {
+        sqlite3_bind_null(stmt, 13);
+    }
+    if (rx_errors >= 0) {
+        sqlite3_bind_int64(stmt, 14, rx_errors);
+    } else {
+        sqlite3_bind_null(stmt, 14);
+    }
+    if (tx_dropped >= 0) {
+        sqlite3_bind_int64(stmt, 15, tx_dropped);
+    } else {
+        sqlite3_bind_null(stmt, 15);
+    }
+    if (rx_dropped >= 0) {
+        sqlite3_bind_int64(stmt, 16, rx_dropped);
+    } else {
+        sqlite3_bind_null(stmt, 16);
     }
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
