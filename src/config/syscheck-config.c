@@ -93,8 +93,6 @@ void dump_registry_ignore(syscheck_config *syscheck, char *entry, int arch) {
     int ign_size = 0;
 
     if (syscheck->registry_ignore) {
-        int ign_size;
-
         /* We do not add duplicated entries */
         for (ign_size = 0; syscheck->registry_ignore[ign_size].entry; ign_size++)
             if (syscheck->registry_ignore[ign_size].arch == arch &&
@@ -815,13 +813,15 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 if (arch != ARCH_BOTH)
                     dump_registry_ignore_regex(syscheck, node[i]->content, arch);
                 else {
-                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_BOTH);
+                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_32BIT);
+                    dump_registry_ignore_regex(syscheck, node[i]->content, ARCH_64BIT);
                 }
             } else {
                 if (arch != ARCH_BOTH)
                     dump_registry_ignore(syscheck, node[i]->content, arch);
                 else {
-                    dump_registry_ignore(syscheck, node[i]->content, ARCH_BOTH);
+                    dump_registry_ignore(syscheck, node[i]->content, ARCH_32BIT);
+                    dump_registry_ignore(syscheck, node[i]->content, ARCH_64BIT);
                 }
             }
 
