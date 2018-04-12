@@ -782,9 +782,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
                 /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
                 tmpstr+= 2+strlen(centralized_group)+2;
+            }else{
+                tmpstr--;
             }
 
-            /* Check for IP when client uses -s option */
+            /* Check for IP when client uses -i option */
+            int use_client_ip = 0;
             char client_source_ip[IPSIZE + 1] = {0};
             char client_source_ip_token[3] = "IP:";
 	    
@@ -792,13 +795,14 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             {
                 sscanf(tmpstr," IP:\'%15[^\']\"",client_source_ip);
                 memcpy(srcip,client_source_ip,IPSIZE);
+                use_client_ip = 1;
             }
 
             pthread_mutex_lock(&mutex_keys);
 
             /* Check for duplicated IP */
 
-            if (config.flags.use_source_ip) {
+            if (config.flags.use_source_ip || use_client_ip) {
                 if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
                     if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
@@ -883,7 +887,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             /* Add the new agent */
 
-            if (index = OS_AddNewAgent(&keys, NULL, agentname, config.flags.use_source_ip ? srcip : NULL, NULL), index < 0) {
+            if (index = OS_AddNewAgent(&keys, NULL, agentname, (config.flags.use_source_ip || use_client_ip)? srcip : NULL, NULL), index < 0) {
                 pthread_mutex_unlock(&mutex_keys);
                 merror("Unable to add agent: %s (internal error)", agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
@@ -894,10 +898,14 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 close(client.socket);
                 continue;
             }
-
+            
             /* Add the agent to the centralized configuration group */
             if(add_to_centralized_group) {
-                if(set_agent_group(keys.keyentries[index]->id,centralized_group) == -1){
+                char path[PATH_MAX];
+                FILE *fp;
+                if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+                    add_to_centralized_group = 0;
+                    merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
                     OS_RemoveAgent(keys.keyentries[index]->id);
                     merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
                     snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", centralized_group);
@@ -921,7 +929,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
             } else {
                 /* Add pending key to write */
-                add_insert(keys.keyentries[keys.keysize - 1]);
+                add_insert(keys.keyentries[keys.keysize - 1],(add_to_centralized_group) ? centralized_group : NULL);
                 write_pending = 1;
                 pthread_cond_signal(&cond_pending);
             }
@@ -971,7 +979,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteKeys(copy_keys) < 0)
             merror("Couldn't write file client.keys");
-
+        
         OS_FreeKeys(copy_keys);
         free(copy_keys);
         cur_time = time(0);
@@ -979,9 +987,17 @@ void* run_writer(__attribute__((unused)) void *arg) {
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
             OS_AddAgentTimestamp(cur->id, cur->name, cur->ip, cur_time);
+
+            if(cur->group){
+                if(set_agent_group(cur->id,cur->group) == -1){
+                    merror("Unable to set agent centralized group: %s (internal error)", cur->group);
+                }
+            }
+
             free(cur->id);
             free(cur->name);
             free(cur->ip);
+            free(cur->group);
             free(cur);
         }
 
@@ -1010,13 +1026,17 @@ void* run_writer(__attribute__((unused)) void *arg) {
 }
 
 // Append key to insertion queue
-void add_insert(const keyentry *entry) {
+void add_insert(const keyentry *entry,const char *group) {
     struct keynode *node;
 
     os_calloc(1, sizeof(struct keynode), node);
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
     node->ip = strdup(entry->ip->ip);
+    node->group = NULL;
+
+    if(group != NULL)
+        node->group = strdup(group);
 
     (*insert_tail) = node;
     insert_tail = &node->next;
