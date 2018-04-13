@@ -147,7 +147,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 }
             } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
 #else
-            if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_BINARY) < 0)
+            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
 #endif
             {
                 strncpy(mf_sum, "xxx", 4);
@@ -353,10 +353,12 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
 
     /* Check for real time flag */
     if (opts & CHECK_REALTIME) {
-#if defined(INOTIFY_ENABLED) || defined(WIN32)
+#ifdef INOTIFY_ENABLED
         realtime_adddir(dir_name);
 #else
+#ifndef WIN32
         mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
+#endif
 #endif
     }
 
@@ -429,6 +431,16 @@ int create_db()
     do {
         if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
+        }
+        /* Check for real time flag on windows*/
+        if (syscheck.opts[i] & CHECK_REALTIME) {
+#ifdef WIN32
+            realtime_adddir(syscheck.dir[i]);
+#else
+#ifndef INOTIFY_ENABLED
+            mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);
+#endif
+#endif
         }
         i++;
     } while (syscheck.dir[i] != NULL);
