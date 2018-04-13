@@ -80,7 +80,7 @@ class MasterManagerHandler(ServerHandler):
                                  whoami='master')
 
         except Exception as e:
-            print(str(e))
+            logging.error("Error updating client files: {}".format(str(e)))
             raise e
 
 
@@ -106,7 +106,7 @@ class MasterManagerHandler(ServerHandler):
         logging.debug("{0} Received {1} master files to check".format(tag, len(master_files_from_client)))
 
         # Get master files
-        master_files = get_files_status('master')
+        master_files = self.server.get_masters_file_status(client_name)
 
         # Compare
         client_files_ko = compare_files(master_files, master_files_from_client)
@@ -152,11 +152,26 @@ class MasterManager(Server):
 
         self.config = cluster_config
         self.handler = MasterManagerHandler
+        self.file_status_master = {'data': get_files_status('master'),
+                                   'time': time.time()}
+
 
     def req_file_status_to_clients(self):
         responses = list(self.send_request_broadcast(command = 'file_status'))
         nodes_file = {node:json.loads(data.split(' ',1)[1]) for node,data in responses}
         return 'ok', json.dumps(nodes_file)
+
+
+    def get_masters_file_status(self, client_name):
+        with self.clients[client_name]['handler'].lock:
+            now = time.time()
+            if now - self.file_status_master['time'] > 30:
+                logging.debug("[Master] Calculating file status at {}. Old file status: {}.".format(time.ctime(now), time.ctime(self.file_status_master['time'])))
+                self.file_status_master['time'] = now
+                self.file_status_master['data'] = get_files_status('master')
+
+            return self.file_status_master['data']
+
 
 #
 # Master threads
