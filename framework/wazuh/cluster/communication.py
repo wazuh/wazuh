@@ -470,7 +470,7 @@ class InternalSocket(asyncore.dispatcher):
         self.map = map
         self.socket_name = socket_name
         self.manager = manager
-        self.socket_address = "{}/{}.sock".format("/var/ossec/queue", self.socket_name)
+        self.socket_address = "{}/{}.sock".format("/var/ossec/queue/cluster", self.socket_name)
         self.__create_socket()
 
 
@@ -639,7 +639,7 @@ class ProcessFiles(threading.Thread):
         and must be separated by a white space
         """
         # Create the file
-        self.filename = "{}/tmp/{}.tmp".format(self.ossec_path, self.id)
+        self.filename = "{}/queue/cluster/{}.tmp".format(self.ossec_path, self.id)
         logging.debug("[Transport] Creating file {}".format(self.filename))
         self.f = open(self.filename, 'w')
         return "ok", "File {} created successfully".format(self.filename)

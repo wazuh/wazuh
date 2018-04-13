@@ -210,7 +210,7 @@ def get_files_status(node_type, get_md5=True):
 
 
 def compress_files(source, name, list_path, cluster_control_json=None):
-    zip_file_path = "{}/tmp/{}-tempfile.tmp.zip".format(common.ossec_path, name)
+    zip_file_path = "{}/queue/cluster/{}-.tmp.zip".format(common.ossec_path, name)
     with zipfile.ZipFile(zip_file_path, 'w') as zf:
         # write files
         for f in list_path:
