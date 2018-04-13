@@ -521,6 +521,7 @@ class InternalSocketThread(threading.Thread):
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
         except Exception as e:
             logging.error("[Transport-I] err initializing internal socket {}".format(e))
+            self.internal_socket = None
 
     def run(self):
         while self.running:
@@ -535,7 +536,7 @@ class InternalSocketThread(threading.Thread):
 def send_to_internal_socket(socket_name, message):
     # Create a UDS socket
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    socket_address = "{}/{}.sock".format("/var/ossec/queue", socket_name)
+    socket_address = "{}/{}.sock".format("/var/ossec/queue/cluster", socket_name)
     logging.debug("[Transport-I] Starting up on {}".format(socket_address))
     response = ""
 

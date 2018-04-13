@@ -249,9 +249,11 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         serialized_response = ""
 
         if command == 'get_files':
-            split_data = data.split(' ', 2)
+            split_data = data.split('%--%', 2)
             file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
             node_list = ast.literal_eval(split_data[1]) if split_data[1] else None
+            print "file_list --- {}".format(file_list)
+            print "node_list --- {}".format(node_list)
             response = json.loads(self.manager.req_file_status_to_clients()[1])
 
             if node_list and len(response):
@@ -267,7 +269,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             split_data = data.split(' ', 1)
             node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
             response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
-            if node_list: 
+            if node_list:
                 response = {node:info for node, info in response.iteritems() if node in node_list}
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
@@ -280,6 +282,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'sync':
+            command = "req_sync_m_c"
             split_data = data.split(' ', 1)
             node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
 

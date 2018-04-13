@@ -33,7 +33,7 @@ def get_parser(type):
         class WazuhHelpFormatter(argparse.ArgumentParser):
             def format_help(self):
                 msg = """
-{0} --help | --sync [-t Node1 NodeN] [--debug] | --list-files [-t Node1 NodeN] [-f File1 FileN] [--debug] | --list-agents [--debug] | --list-nodes [-t Node1 NodeN] [-c] [--debug]
+{0} --help | --sync [-t Node1 NodeN] [--debug] | --list-files [-t Node1 NodeN] [-f File1 FileN] [--debug] | --list-agents [--debug] [-c] | --list-nodes [-t Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -162,7 +162,7 @@ def __print_node_files(head, tab_size, node_name, files):
 
 ### Get files
 def print_file_status_master(filter_file_list, filter_node_list):
-    files = json.loads(__execute("get_files {} {}".format(filter_file_list, filter_node_list)))
+    files = json.loads(__execute("get_files {}%--%{}".format(filter_file_list, filter_node_list)))
     head = ["Node", "Name", "Mod_time", "md5"]
     tab_size = 51
     __print_head(head, tab_size)
@@ -182,7 +182,7 @@ def print_file_status_master(filter_file_list, filter_node_list):
 def print_file_status_client(filter_file_list, node_name):
     my_files = json.loads(__execute("get_files {}".format(filter_file_list)))
     head = ["Node", "Name", "Mod_time", "md5"]
-    tab_size = 20
+    tab_size = 51
     __print_head(head, tab_size)
     __print_node_files(head, tab_size, node_name, my_files)
     print "(*) Clients can only get his own files"
