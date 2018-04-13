@@ -210,7 +210,7 @@ def get_files_status(node_type, get_md5=True):
 
 
 def compress_files(source, name, list_path, cluster_control_json=None):
-    zip_file_path = "{}/queue/cluster/{}-.tmp.zip".format(common.ossec_path, name)
+    zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}.zip".format(common.ossec_path, name, time())
     with zipfile.ZipFile(zip_file_path, 'w') as zf:
         # write files
         for f in list_path:
@@ -326,6 +326,32 @@ def compare_files(good_files, check_files):
 
     return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
 
+
+
+def clean_up(node_name=""):
+    """
+    Cleans all temporary files generated in the cluster. Optionally, it cleans
+    all temporary files of node node_name.
+
+    :param node_name: Name of the node to clean up
+    """
+    def remove_directory_contents(rm_path):
+        for f in listdir(rm_path):
+            if f == "c-internal.sock":
+                continue
+            f_path = path.join(rm_path, f)
+            try:
+                if path.isdir(f_path):
+                    rmtree(f_path)
+                else:
+                    remove(f_path)
+            except Exception as e:
+                logging.error("Error removing {}: {}".format(f_path, str(e)))
+                continue
+
+    rm_path = "{}/queue/cluster/{}".format(common.ossec_path, node_name)
+    logging.debug("Removing {}.".format(rm_path))
+    remove_directory_contents(rm_path)
 
 #
 # Agents

@@ -33,7 +33,7 @@ try:
         from wazuh import common
         from wazuh.exception import WazuhException
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
-        from wazuh.cluster.cluster import read_config, check_cluster_config
+        from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up
         from wazuh.cluster.master import MasterManager, MasterKeepAliveThread, MasterInternalSocketHandler
         from wazuh.cluster.client import ClientManager, ClientIntervalThread, ClientInternalSocketHandler
         from wazuh.cluster.communication import InternalSocketThread
@@ -78,6 +78,8 @@ def clean_exit(reason, error=False):
         logging.info(msg)
 
     delete_pid("wazuh-clusterd", getpid())
+    logging.debug("Cleaning generated temporary files.")
+    clean_up()
     exit(1)
 
 

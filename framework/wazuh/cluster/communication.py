@@ -601,6 +601,8 @@ class ProcessFiles(threading.Thread):
         self.close_lock = threading.Condition()
         self.f = None
         self.ossec_path = ossec_path
+        self.name = None
+
 
     def run(self):
         raise NotImplementedError
@@ -649,7 +651,7 @@ class ProcessFiles(threading.Thread):
         and must be separated by a white space
         """
         # Create the file
-        self.filename = "{}/queue/cluster/{}.tmp".format(self.ossec_path, self.id)
+        self.filename = "{}/queue/cluster/{}/{}.tmp".format(self.ossec_path, self.name, self.id)
         logging.debug("[Transport] Creating file {}".format(self.filename))
         self.f = open(self.filename, 'w')
         return "ok", "File {} created successfully".format(self.filename)

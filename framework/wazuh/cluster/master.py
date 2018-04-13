@@ -8,10 +8,11 @@ import threading
 import time
 import shutil
 import json
+import os
 
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files, compare_files, get_agents_status
+from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files, compare_files, get_agents_status, clean_up
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, Handler, InternalSocketHandler
 import ast
 
@@ -173,6 +174,14 @@ class MasterManager(Server):
             return self.file_status_master['data']
 
 
+    def add_client(self, data, ip, handler):
+        id = Server.add_client(self, data, ip, handler)
+        # create directory in /queue/cluster to store all node's file there
+        node_path = "{}/queue/cluster/{}".format(common.ossec_path, id)
+        if not os.path.exists(node_path):
+            os.mkdir(node_path)
+        return id
+
 #
 # Master threads
 #
@@ -210,7 +219,7 @@ class MasterProcessClientFiles(ProcessFiles):
 
     def __init__(self, manager_handler, client_name, filename):
         ProcessFiles.__init__(self, manager_handler, filename, common.ossec_path)
-        self.client_name = client_name
+        self.name = client_name
         self.thread_tag = "[Master] [ProcessFilesThread] [Sync process m->c]"
 
     def run(self):
@@ -218,15 +227,15 @@ class MasterProcessClientFiles(ProcessFiles):
             if self.received_all_information:
 
                 try:
-                    result = self.manager_handler.process_files_from_client(self.client_name, self.filename, self.thread_tag)
+                    result = self.manager_handler.process_files_from_client(self.name, self.filename, self.thread_tag)
                     if result:
                         logging.info("{0}: Result: Successfully.".format(self.thread_tag))
                     else:
                         logging.error("{0}: Result: Error.".format(self.thread_tag))
-                except:
-                    logging.error("{0}: Unknown error for {1}.".format(self.thread_tag, self.client_name))
-
-                    self.manager_handler.manager.send_request(self.client_name, 'sync_m_c_err')
+                except Exception as e:
+                    logging.error("{0}: Unknown error for {1}: {2}.".format(self.thread_tag, self.name, str(e)))
+                    clean_up(self.name)
+                    self.manager_handler.manager.send_request(self.name, 'sync_m_c_err')
 
                 self.stop()
 
