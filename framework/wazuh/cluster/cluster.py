@@ -332,7 +332,7 @@ def compare_files(good_files, check_files):
 #
 
 
-def get_agents_status(filter_connected=False):
+def get_agents_status(filter_status=""):
     """
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
@@ -341,7 +341,7 @@ def get_agents_status(filter_connected=False):
     for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
         if int(agent['id']) == 0:
             continue
-        if filter_connected and agent['status'] != "Connected":
+        if filter_status and agent['status'] != filter_status:
             continue
         try:
             agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])

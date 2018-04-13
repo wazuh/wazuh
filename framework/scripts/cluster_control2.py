@@ -6,6 +6,7 @@ import argparse
 import logging
 import json
 from signal import signal, SIGINT
+import collections
 
 # Import framework
 try:
@@ -45,7 +46,7 @@ Usage:
 Filters:
 \t -t, --filter-node                          # Filter by node
 \t -f, --filter-file                          # Filter by file
-\t -c, --filter-connected-agents              # Filter by connected agents
+\t -c, --filter-agents-status                 # Filter by agent status
 
 Others:
 \t     --debug                                # Show debug information
@@ -62,7 +63,7 @@ Others:
 
         parser.add_argument('-t', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-c', '--filter-connected-agents', dest='filter_connected', nargs='*', type=bool, help="Connected agents")
+        parser.add_argument('-c', '--filter-agents-status', dest='filter_status', nargs='*', type=str, help="Agents status")
         parser.add_argument('--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
@@ -146,14 +147,13 @@ def __print_line_table(array_data, tab_size):
 
 
 def __print_table_nodes(nodes, tab_size):
-    for node, info_node in nodes.iteritems():
-        __print_line_table([info_node['name'], info_node['ip'], info_node['type']], tab_size)
+    for node_name in sorted(nodes.iterkeys()):
+        __print_line_table([node_name, nodes[node_name]['ip'], nodes[node_name]['type']], tab_size)
 
 
 def __print_node_files(head, tab_size, node_name, files):
-    for file_name, file_info in files.iteritems():
-        __print_line_table([node_name, file_name, file_info['mod_time'], file_info['md5']], tab_size)
-
+    for file_name in sorted(files.iterkeys()):
+        __print_line_table([node_name, file_name, files[file_name]['mod_time'].split('.', 1)[0], files[file_name]['md5']], tab_size)
 
 
 #
@@ -163,7 +163,7 @@ def __print_node_files(head, tab_size, node_name, files):
 ### Get files
 def print_file_status_master(filter_file_list, filter_node_list):
     files = json.loads(__execute("get_files {}%--%{}".format(filter_file_list, filter_node_list)))
-    head = ["Node", "Name", "Mod_time", "md5"]
+    head = ["Node", "File name", "Modification time", "MD5"]
     tab_size = 51
     __print_head(head, tab_size)
 
@@ -181,11 +181,11 @@ def print_file_status_master(filter_file_list, filter_node_list):
 
 def print_file_status_client(filter_file_list, node_name):
     my_files = json.loads(__execute("get_files {}".format(filter_file_list)))
-    head = ["Node", "Name", "Mod_time", "md5"]
+    head = ["Node", "File name", "Modification time", "MD5"]
     tab_size = 51
     __print_head(head, tab_size)
     __print_node_files(head, tab_size, node_name, my_files)
-    print "(*) Clients can only get his own files"
+    print "(*) Clients only show their own files"
 
 
 ### Get nodes
@@ -207,7 +207,7 @@ def print_nodes_status_client(filter_node, cluster_config):
     tab_size = 18
     __print_head(head, tab_size)
     __print_line_table([master_node['ip'], master_node['type']], tab_size)
-    print "(*) Clients can only get the master node"
+    print "(*) Clients only see the master node"
 
 
 ### Sync
@@ -221,8 +221,19 @@ def sync_master(filter_node):
 
 
 ### Get agents
-def print_agents_master(filter_connected):
-    agents = json.loads(__execute("get_agents {}".format(filter_connected is not None)))
+def print_agents_master(filter_status):
+    filter_status = filter_status[0].lower().replace(" ", "")
+    if filter_status == "neverconnected":
+        filter_status = "Never connected"
+    elif filter_status == "active":
+        filter_status = "Active"
+    elif filter_status == "disconnected":
+        filter_status = "Disconnected"
+    elif filter_status == "pending":
+        filter_status = "Pending"
+
+
+    agents = json.loads(__execute("get_agents {}".format(filter_status)))
     head = ["ID", "Address", "Name", "Status", "Node"]
     tab_size = 18
     __print_head(head, tab_size)
@@ -272,7 +283,7 @@ if __name__ == '__main__':
         elif args.list_files is not None:
             print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
         elif is_master and args.list_agents is not None:
-            print_agents_master(args.filter_connected)
+            print_agents_master(args.filter_status)
         elif args.list_nodes is not None:
             print_nodes_status_master(args.filter_node, cluster_config) if is_master else print_nodes_status_client(args.filter_node, cluster_config)
         else:

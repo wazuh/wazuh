@@ -252,8 +252,6 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             split_data = data.split('%--%', 2)
             file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
             node_list = ast.literal_eval(split_data[1]) if split_data[1] else None
-            print "file_list --- {}".format(file_list)
-            print "node_list --- {}".format(node_list)
             response = json.loads(self.manager.req_file_status_to_clients()[1])
 
             if node_list and len(response):
@@ -262,7 +260,6 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                 response = {node:{f_name:f_content for f_name,f_content in files.iteritems() if f_name in file_list} for node,files in response.iteritems()}
 
             serialized_response = ['ok',  json.dumps(response)]
-            print  "{}".format(serialized_response)
             return serialized_response
 
         elif command == 'get_nodes':
@@ -275,9 +272,9 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_agents':
-            split_data = data.split(' ', 1)
-            filter_connected = ast.literal_eval(split_data[0]) if split_data[0] else False
-            response = get_agents_status(filter_connected)
+            filter_status = data if data != 'None' else None
+            print "{}".format(filter_status)
+            response = get_agents_status(filter_status)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 
