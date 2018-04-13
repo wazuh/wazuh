@@ -167,7 +167,7 @@ void * req_main(__attribute__((unused)) void * arg) {
 
         // If we reached here, there was an error
 
-        send(peer, WR_INTERNAL_ERROR, strlen(WR_INTERNAL_ERROR), 0);
+        OS_SendSecureTCP(peer, strlen(WR_INTERNAL_ERROR), WR_INTERNAL_ERROR);
         close(peer);
     }
 
@@ -211,8 +211,8 @@ void * req_dispatch(req_node_t * node) {
         }
         node->length = rem_getconfig(_payload, &output);
 
-        if (OS_SendSecureTCP(node->sock, node->length, output) < 0) {
-            merror("At req_dispatch(): send(): %s", strerror(errno));
+        if (OS_SendSecureTCP(node->sock, node->length, output) != 0) {
+            merror("At req_dispatch(): OS_SendSecureTCP(): %s", strerror(errno));
             goto cleanup;
         }
     }
@@ -240,7 +240,7 @@ void * req_dispatch(req_node_t * node) {
             if (send_msg(agentid, payload, ldata)) {
                 merror("Sending request to agent '%s'.", agentid);
 
-                if (send(node->sock, WR_SEND_ERROR, strlen(WR_SEND_ERROR), 0) < 0) {
+                if (OS_SendSecureTCP(node->sock, strlen(WR_SEND_ERROR), WR_SEND_ERROR) < 0) {
                     merror("Couldn't report sending error to client.");
                 }
                 goto cleanup;
@@ -268,7 +268,7 @@ void * req_dispatch(req_node_t * node) {
         if (attempts == max_attempts) {
             merror("Couldn't send request to agent '%s': number of attempts exceeded.", agentid);
 
-            if (send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0) < 0) {
+            if (OS_SendSecureTCP(node->sock, strlen(WR_ATTEMPT_ERROR), WR_ATTEMPT_ERROR) < 0) {
                 merror("Couldn't report error about number of attempts exceeded to client.");
             }
 
@@ -286,14 +286,14 @@ void * req_dispatch(req_node_t * node) {
                 continue;
             } else {
                 merror("Response timeout for request counter '%s'.", node->counter);
-                send(node->sock, WR_TIMEOUT_ERROR, strlen(WR_TIMEOUT_ERROR), 0);
+                OS_SendSecureTCP(node->sock, strlen(WR_TIMEOUT_ERROR), WR_TIMEOUT_ERROR);
                 goto cleanup;
             }
         }
 
         if (attempts == max_attempts) {
             merror("Couldn't get response from agent '%s': number of attempts exceeded.", agentid);
-            send(node->sock, WR_ATTEMPT_ERROR, strlen(WR_ATTEMPT_ERROR), 0);
+            OS_SendSecureTCP(node->sock, strlen(WR_ATTEMPT_ERROR), WR_ATTEMPT_ERROR);
             goto cleanup;
         }
 
@@ -310,7 +310,7 @@ void * req_dispatch(req_node_t * node) {
 
         mdebug2("Sending response: '%s'", node->buffer);
 
-        if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
+        if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != (ssize_t)node->length) {
             merror("At req_dispatch(): send(): %s", strerror(errno));
         }
 

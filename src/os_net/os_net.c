@@ -514,11 +514,17 @@ int OS_SetRecvTimeout(int socket, int seconds)
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     int retval;
     void * buffer;
-    size_t bufsz = size + sizeof(uint32_t);
+    char int_char[32];
+    int int_char_size;
+
+    int_char_size = snprintf(int_char, 32, "%i", size);
+    size_t bufsz = size + int_char_size + 2;
 
     os_malloc(bufsz, buffer);
-    *(uint32_t *)buffer = wnet_order(size);
-    memcpy(buffer + sizeof(uint32_t), msg, size);
+
+    snprintf(buffer, bufsz, "!%d ", size);
+    memcpy(buffer + int_char_size + 2, msg, size);
+
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
 
     free(buffer);
@@ -644,8 +650,6 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
     else {
         os_malloc(OS_MAXSTR + 2, dyn_buffer);
 
-=======
->>>>>>> Update send response function
         recvmsg = recv(sock, dyn_buffer + 1, OS_MAXSTR, 0);
 
         switch(recvmsg){
@@ -660,10 +664,6 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
 
         dyn_buffer[recvmsg + 1] = '\0';
         *ret = dyn_buffer;
-<<<<<<< HEAD
-=======
-    }
->>>>>>> Update send response function
 
         return recvmsg;
     }

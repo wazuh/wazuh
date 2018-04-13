@@ -211,7 +211,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
 #ifdef WIN32
         // In Windows, execute directly
-        length = wcom_dispatch(node->buffer, node->length, buffer);
+        length = wcom_dispatch(node->buffer, node->length, &buffer);
 #else
         // In Unix, forward request to target socket
         if (strncmp(node->target, "agent", 5) == 0) {
@@ -223,9 +223,9 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
             // Send data
 
-            if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
-                merror("send(): %s", strerror(errno));
-                strcpy(buffer, "err Send data");
+            if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != 0) {
+                merror("OS_SendSecureTCP(): %s", strerror(errno));
+                os_strdup("err Send data", buffer);
                 length = strlen(buffer);
             } else {
 
@@ -234,18 +234,19 @@ void * req_receiver(__attribute__((unused)) void * arg) {
                 switch (length = OS_RecvSecureTCP_Dynamic(node->sock, &buffer), length) {
                 case -1:
                     merror("recv(): %s", strerror(errno));
-                    strcpy(buffer, "err Receive data");
+                    os_strdup("err Receive data", buffer);
                     length = strlen(buffer);
                     break;
 
                 case 0:
                     mdebug1("Empty message from local client.");
-                    strcpy(buffer, "err Empty response");
+                    os_strdup("err Empty response", buffer);
                     length = strlen(buffer);
                     break;
 
                 case OS_MAXLEN:
-                    merror("Received message > %i", MAX_DYN_STR);
+                    mdebug1("Maximum buffer length reached.");
+                    os_strdup("err Maximum buffer length reached", buffer);
                     length = strlen(buffer);
                     break;
 
@@ -257,13 +258,21 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
 #endif
 
+        if (length <= 0) {
+            // Build error string
+            os_strdup("err Disconnected", buffer);
+            length = strlen(buffer);
+        }
+
         // Build response string
         // Example: #!-req 16 Hello World
         rlen = snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
-        length = length + rlen > OS_MAXSTR ? OS_MAXSTR : length + rlen;
+        length += rlen;
+        os_realloc(buffer, length + 1, buffer);
         memmove(buffer + rlen, buffer, length - rlen);
         memcpy(buffer, response, rlen);
         buffer[length] = '\0';
+
 
         mdebug2("req_receiver(): sending '%s' to server", buffer);
 
