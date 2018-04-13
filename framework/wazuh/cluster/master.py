@@ -53,8 +53,8 @@ class MasterManagerHandler(ServerHandler):
 
         return response_data
 
-    @staticmethod
-    def update_client_files_in_master(json_file, files_to_update_json, zip_dir_path):
+
+    def update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path):
         cluster_items = get_cluster_items()
 
         try:
@@ -74,13 +74,15 @@ class MasterManagerHandler(ServerHandler):
                     file_data = f.read()
                 file_time = files_to_update_json[file_name]['mod_time']
 
-                _update_file(fullpath=file_path, new_content=file_data,
-                             umask_int=umask, mtime=file_time, w_mode=w_mode,
-                             whoami='master')
+                with self.lock:
+                    _update_file(fullpath=file_path, new_content=file_data,
+                                 umask_int=umask, mtime=file_time, w_mode=w_mode,
+                                 whoami='master')
 
         except Exception as e:
             print(str(e))
             raise e
+
 
     def process_files_from_client(self, client_name, data_received, tag=None):
         sync_result = False
@@ -112,7 +114,7 @@ class MasterManagerHandler(ServerHandler):
         logging.info("{0} [{1}] [STEP 2]: Updating manager files.".format(tag, client_name))
 
         # Update files
-        MasterManagerHandler.update_client_files_in_master(client_files_json, client_files_json, zip_dir_path)
+        self.update_client_files_in_master(client_files_json, client_files_json, zip_dir_path)
 
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)
