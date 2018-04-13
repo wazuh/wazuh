@@ -7,10 +7,10 @@ import logging
 import json
 import threading
 import time
-from os import remove
+import os
 import shutil
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status
+from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, clean_up
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.cluster.communication import ClientHandler, Handler, ProcessFiles
@@ -23,6 +23,14 @@ class ClientManager(ClientHandler):
 
         self.config = cluster_config
         self.set_lock_interval_thread(False)
+
+
+    def handle_connect(self):
+        ClientHandler.handle_connect(self)
+        dir_path = "{}/queue/cluster/{}".format(common.ossec_path, self.name)
+        if not os.path.exists(dir_path):
+            os.mkdir(dir_path)
+
 
     def set_lock_interval_thread(self, status):
         with self.lock:
@@ -177,7 +185,6 @@ class ClientManager(ClientHandler):
             _update_file(fullpath=file_path, new_content=file_data,
                          umask_int=umask, w_mode=w_mode, whoami='client')
 
-
         if not tag:
             tag = "[Client] [Sync process]"
 
@@ -211,7 +218,7 @@ class ClientManager(ClientHandler):
             for file_to_remove in wrong_files['extra']:
                 logging.debug("{0} Remove file: '{1}'".format(tag, file_to_remove))
                 file_path = common.ossec_path + file_to_remove
-                remove(file_path)
+                os.remove(file_path)
 
 
         return True
@@ -278,6 +285,7 @@ class ClientIntervalThread(threading.Thread):
                     logging.error("{0}: Result: Error.".format(self.thread_tag))
             except Exception as e:
                 logging.error("{0}: Unknown Error: '{1}'.".format(self.thread_tag, str(e)))
+                clean_up(self.client.name)
 
             logging.info("{0}: Sleeping: {1}s.".format(self.thread_tag, new_interval))
             time.sleep(new_interval)
@@ -295,7 +303,6 @@ class ClientProcessMasterFiles(ProcessFiles):
 
     def __init__(self, filename, handler=None):
         ProcessFiles.__init__(self, handler, filename, common.ossec_path)
-        self.client = handler
         self.filename = filename
         self.thread_tag = "[Client] [ProcessFilesThread] [Sync process m->c]"
 
@@ -311,8 +318,9 @@ class ClientProcessMasterFiles(ProcessFiles):
                             logging.info("{0}: Result: Successfully.".format(self.thread_tag))
                         else:
                             logging.error("{0}: Result: Error.".format(self.thread_tag))
-                    except:
-                        logging.error("{0}: Result: Unknown error.".format(self.thread_tag))
+                    except Exception as e:
+                        logging.error("{0}: Result: Unknown error: {1}".format(self.thread_tag, str(e)))
+                        clean_up(self.name)
 
                     logging.info("{0}: Unlocking Interval thread.".format(self.thread_tag))
                     self.manager_handler.set_lock_interval_thread(False)
@@ -327,6 +335,7 @@ class ClientProcessMasterFiles(ProcessFiles):
 
     def setclient(self, client):
         self.manager_handler = client
+        self.name = client.name
 
 
 #
