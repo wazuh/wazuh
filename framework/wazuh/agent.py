@@ -24,7 +24,7 @@ import hashlib
 from operator import setitem
 import re
 import fcntl
-from json import loads
+from json import loads, dumps
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -2484,3 +2484,78 @@ class Agent:
             raise WazuhException(1307)
 
         return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
+
+
+    def getconfig(self, config):
+        """
+        Read agent loaded config.
+        """
+        sockets_path = common.ossec_path + "/queue/ossec/"
+
+        if int(self.id) == 0:
+            if config in common.manager_socket_list:
+                dest_socket = sockets_path + common.manager_socket_list[config]
+                command = "getconfig " + config
+            else:
+                raise WazuhException(1106)
+        else:
+            if config in common.agent_socket_list:
+                dest_socket = sockets_path + "request"
+                command = str(self.id).zfill(3) + " " + common.agent_socket_list[config] + " getconfig " + config
+            else:
+                raise WazuhException(1106)
+
+        # Socket connection
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            s.connect(dest_socket)
+        except socket.error:
+            raise WazuhException(1013)
+
+        # Generate message
+        msg = "!{0} {1}".format(len(command),command)
+
+        # Send message
+        s.send(msg.encode())
+
+        # Receive response
+        data = s.recv(512).decode()
+        if data.startswith("!"):
+            data = data[1:]
+            size = int(data.split(" ", 1)[0])
+            rec_msg = data.split(" ", 1)[1]
+            rec_len = len(rec_msg)
+
+            if rec_len < size:
+                data = s.recv(size - rec_len, socket.MSG_WAITALL).decode()
+                rec_msg = rec_msg + data
+                rec_len = len(rec_msg)
+
+            s.close()
+        else:
+            s.close()
+            raise WazuhException(1014)
+
+        # Check message
+        if not rec_len == size:
+            raise WazuhException(1101,rec_msg)
+        else:
+            if rec_msg.startswith( 'ok' ):
+                msg = loads(rec_msg[3:])
+                return msg
+            else:
+                raise WazuhException(1101, rec_msg)
+
+
+    @staticmethod
+    def get_config(agent_id, config):
+        """
+        Read selected configuration from agent.
+
+        :param agent_id: Agent ID.
+        :return: Loaded configuration in JSON.
+        """
+        if not config:
+            raise WazuhException(1307)
+
+        return Agent(agent_id).getconfig(config=config)
