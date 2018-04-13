@@ -174,9 +174,9 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
             full_path = path.join(dirname, entry)
 
             if not path.isdir(full_path):
-                file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
+                file_mod_time = datetime.fromtimestamp(stat(full_path).st_mtime)
 
-                if whoami == 'client' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
+                if whoami == 'client' and file_mod_time < (datetime.now() - timedelta(minutes=30)):
                     continue
 
                 new_key = full_path.replace(common.ossec_path, "")
@@ -258,13 +258,15 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
     is_agent_info   = 'agent-info' in fullpath
     is_agent_groups = 'agent-groups' in fullpath
+    mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
     if is_agent_info or is_agent_groups:
         if whoami =='master':
-            mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
-            # check if the date is older than the manager's date
-            if path.isfile(fullpath) and datetime.utcfromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
-                #logging.debug("Receiving an old file ({})".format(fullpath))
-                return
+            if path.isfile(fullpath):
+                local_mtime = datetime.fromtimestamp(int(stat(fullpath).st_mtime))
+                # check if the date is older than the manager's date
+                if local_mtime > mtime:
+                    #logging.debug("Receiving an old file ({})".format(fullpath))
+                    return
         elif is_agent_info:
             logging.warning("Agent-info received in a client node.")
             raise WazuhException(3011)
