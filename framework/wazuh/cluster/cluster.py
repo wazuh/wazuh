@@ -258,10 +258,13 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
     is_agent_info   = 'agent-info' in fullpath
     is_agent_groups = 'agent-groups' in fullpath
-    mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
+
     if is_agent_info or is_agent_groups:
         if whoami =='master':
+            mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
+
             if path.isfile(fullpath):
+
                 local_mtime = datetime.fromtimestamp(int(stat(fullpath).st_mtime))
                 # check if the date is older than the manager's date
                 if local_mtime > mtime:

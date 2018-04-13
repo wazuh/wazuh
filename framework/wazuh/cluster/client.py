@@ -185,7 +185,6 @@ class ClientManager(ClientHandler):
             _update_file(fullpath=file_path, new_content=file_data,
                          umask_int=umask, w_mode=w_mode, whoami='client')
 
-
         if not tag:
             tag = "[Client] [Sync process]"
 
@@ -320,7 +319,7 @@ class ClientProcessMasterFiles(ProcessFiles):
                         else:
                             logging.error("{0}: Result: Error.".format(self.thread_tag))
                     except Exception as e:
-                        logging.error("{0}: Result: Unknown error: {}".format(self.thread_tag, str(e)))
+                        logging.error("{0}: Result: Unknown error: {1}".format(self.thread_tag, str(e)))
                         clean_up(self.name)
 
                     logging.info("{0}: Unlocking Interval thread.".format(self.thread_tag))

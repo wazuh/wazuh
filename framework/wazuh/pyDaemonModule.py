@@ -64,6 +64,7 @@ def create_pid(name, pid):
 def delete_pid(name, pid):
     filename = "{0}{1}/{2}-{3}.pid".format(common.ossec_path, common.os_pidfile, name, pid)
     try:
-        os.unlink(filename)
+        if os.path.exists(filename):
+            os.unlink(filename)
     except OSError as e:
         raise WazuhException(3003, str(e))
