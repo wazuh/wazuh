@@ -343,12 +343,13 @@ class Server(asyncore.dispatcher):
     def __init__(self, host, port, handle_type, map = {}):
         asyncore.dispatcher.__init__(self, map=map)
         self.map = map
-        self.clients = {}
+        self._clients = {}
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.bind((host, port))
         self.listen(5)
         self.handle_type = handle_type
+        self.server_lock = threading.Lock()
 
 
     def handle_accept(self):
@@ -360,38 +361,45 @@ class Server(asyncore.dispatcher):
             handler = self.handle_type(sock, self, self.map, addr[0])
 
 
-
     def add_client(self, data, ip, handler):
         name, type = data.split(' ')
         id = name
-        self.clients[id] = {
-            'handler': handler,
-            'info': {
-                'name': name,
-                'ip': ip,
-                'type': type
+        with self.server_lock:
+            self._clients[id] = {
+                'handler': handler,
+                'info': {
+                    'name': name,
+                    'ip': ip,
+                    'type': type
+                }
             }
-        }
         return id
 
 
     def remove_client(self, id):
-        del self.clients[id]
+        with self.server_lock:
+            del self._clients[id]
 
 
     def get_connected_clients(self):
-        return self.clients
+        with self.server_lock:
+            return self._clients
+
+
+    def get_client_info(self, client_name):
+        with self.server_lock:
+            return self._clients[client_name]
 
 
     def send_file(self, client_name, reason, file, remove = False):
-        return self.clients[client_name]['handler'].send_file(reason, file, remove)
+        return self.get_client_info(client_name)['handler'].send_file(reason, file, remove)
 
 
     def send_request(self, client_name, command, data=None):
         response = None
 
-        if client_name in self.clients:
-            response = self.clients[client_name]['handler'].execute(command, data)
+        if client_name in self.get_connected_clients():
+            response = self.get_client_info(client_name)['handler'].execute(command, data)
         else:
             error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
             logging.error("[Transport-S] {0}.".format(error_msg))
@@ -399,11 +407,12 @@ class Server(asyncore.dispatcher):
 
         return response
 
+
     def send_request_broadcast(self, command, data=None):
         message = "{0} {1}".format(command, data)
 
-        for c_name in self.clients:
-            response = self.clients[c_name]['handler'].execute(command, data)
+        for c_name in self.get_connected_clients():
+            response = self.get_client_info(c_name)['handler'].execute(command, data)
             yield c_name, response
 
 

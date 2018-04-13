@@ -163,7 +163,7 @@ class MasterManager(Server):
 
 
     def get_masters_file_status(self, client_name):
-        with self.clients[client_name]['handler'].lock:
+        with self.get_client_info(client_name)['handler'].lock:
             now = time.time()
             if now - self.file_status_master['time'] > 30:
                 logging.debug("[Master] Calculating file status at {}. Old file status: {}.".format(time.ctime(now), time.ctime(self.file_status_master['time'])))
