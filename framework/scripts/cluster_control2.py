@@ -19,7 +19,7 @@ try:
     myWazuh = Wazuh(get_init=True)
 
     # Import cluster
-    from wazuh.cluster.cluster import read_config, check_cluster_config
+    from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
     from wazuh.cluster.communication import send_to_internal_socket
 
 except Exception as e:
@@ -45,7 +45,7 @@ Usage:
 Filters:
 \t -t, --filter-node                          # Filter by node
 \t -f, --filter-file                          # Filter by file
-\t -c, --filter-connected-nodes               # Filter by connected nodes
+\t -c, --filter-connected-agents              # Filter by connected agents
 
 Others:
 \t     --debug                                # Show debug information
@@ -62,7 +62,7 @@ Others:
 
         parser.add_argument('-t', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-c', '--filter-connected-nodes', dest='filter_connected', nargs='*', type=bool, help="Connected nodes")
+        parser.add_argument('-c', '--filter-connected-agents', dest='filter_connected', nargs='*', type=bool, help="Connected agents")
         parser.add_argument('--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
@@ -162,9 +162,7 @@ def __print_node_files(head, tab_size, node_name, files):
 
 ### Get files
 def print_file_status_master(filter_file_list, filter_node_list):
-
-
-    files = json.loads(__execute("req_file_s_c {} {}".format(filter_file_list, filter_node_list)))
+    files = json.loads(__execute("get_files {} {}".format(filter_file_list, filter_node_list)))
     head = ["Node", "Name", "Mod_time", "md5"]
     tab_size = 55
     __print_head(head, tab_size)
@@ -182,7 +180,7 @@ def print_file_status_master(filter_file_list, filter_node_list):
 
 
 def print_file_status_client(filter_file_list, node_name):
-    my_files = json.loads(__execute("req_file_s_c {}".format(filter_file_list)))
+    my_files = json.loads(__execute("get_files {}".format(filter_file_list)))
     head = ["Node", "Name", "Mod_time", "md5"]
     tab_size = 20
     __print_head(head, tab_size)
@@ -214,7 +212,7 @@ def print_nodes_status_client(filter_node, cluster_config):
 
 ### Sync
 def sync_master(filter_node):
-    node_response = json.loads(__execute("req_sync_m_c {}".format(filter_node) if filter_node else "req_sync_m_c"))
+    node_response = json.loads(__execute("sync {}".format(filter_node) if filter_node else "sync"))
     head = ["Node", "Response"]
     tab_size = 12
     __print_head(head, tab_size)
@@ -252,6 +250,12 @@ if __name__ == '__main__':
         check_cluster_config(cluster_config)
     except WazuhException as e:
         clean_exit(reason="Invalid configuration: '{0}'".format(str(e)), error=True)
+
+    status = get_status_json()
+    if status["running"] != "yes":
+        raise WazuhException(3000, "The cluster is not running")
+        exit(1)
+
 
     is_master = cluster_config['node_type'] == "master"
 

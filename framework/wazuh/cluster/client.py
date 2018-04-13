@@ -342,7 +342,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
         logging.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
         serialized_response = ""
 
-        if command == "req_file_s_c":
+        if command == "get_files":
             split_data = data.split(' ', 1)
             file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
             response = json.loads(self.manager.process_request(command = 'file_status', data="")[1])
