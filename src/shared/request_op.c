@@ -47,7 +47,9 @@ void req_update(req_node_t * node, const char * buffer, size_t length) {
 void req_free(req_node_t * node) {
     if (node) {
 #ifndef WIN32
-        close(node->sock);
+        if (node->sock >= 0) {
+            close(node->sock);
+        }
 #endif
         free(node->target);
         free(node->buffer);
