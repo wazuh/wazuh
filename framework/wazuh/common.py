@@ -98,3 +98,32 @@ ossec_gid = getgrnam("ossec").gr_gid
 
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()
+
+# getConfig sockets list
+global manager_socket_list
+manager_socket_list = {
+    "decoders":"analysisd",
+    "global":"analysisd",
+    "active-response":"analysisd",
+    "alerts":"analysisd",
+    "rules":"analysisd",
+    "command":"analysisd",
+    "agentless":"agentlessd",
+    "localfile":"logcollector",
+    "socket":"logcollector",
+    "syscheck":"syscheckd",
+    "rootcheck":"syscheckd",
+    "syslog_output":"csyslogd",
+    "integration":"integratord",
+    "email":"maild",
+    "email_alerts":"maild",
+    "wmodules":"wmodules",
+    "remote":"request"
+}
+
+global agent_socket_list
+agent_socket_list = {
+    "client":"agent",
+    "client-buffer":"agent",
+    "labels":"agent"
+}
