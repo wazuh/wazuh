@@ -519,9 +519,8 @@ class InternalSocketThread(threading.Thread):
     def setmanager(self, manager, handle_type):
         try:
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
-        except:
+        except Exception as e:
             logging.error("[Transport-I] err initializing internal socket {}".format(e))
-            self.internal_socket = None
 
     def run(self):
         while self.running:
@@ -530,6 +529,7 @@ class InternalSocketThread(threading.Thread):
                 asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
                 logging.info("[Transport-I] Disconnected")
                 time.sleep(5)
+            time.sleep(1)
 
 
 def send_to_internal_socket(socket_name, message):
@@ -547,7 +547,7 @@ def send_to_internal_socket(socket_name, message):
         return response
 
     # Send message
-    logging.info("[Transport-I] Sending request to SI: '{0}'.".format(message))
+    logging.debug("[Transport-I] Sending request to SI: '{0}'.".format(message))
     message = message.split(" ", 1)
     cmd = message[0]
     data = message[1] if len(message) > 1 else None
@@ -565,12 +565,12 @@ def send_to_internal_socket(socket_name, message):
             if parse:
                 offset, counter, command, response = parse
 
-        logging.info("[Transport-I] Received: answer: '{0}'. Data: '{1}'.".format(command, response))
+        logging.debug("[Transport-I] Received: answer: '{0}'. Data: '{1}'.".format(command, response))
 
     except Exception as e:
         logging.error("[Transport-I] err {}".format(e))
     finally:
-        logging.info("[Transport-I] Closing socket...")
+        logging.debug("[Transport-I] Closing socket...")
         sock.close()
 
     return response

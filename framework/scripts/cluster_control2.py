@@ -164,7 +164,7 @@ def __print_node_files(head, tab_size, node_name, files):
 def print_file_status_master(filter_file_list, filter_node_list):
     files = json.loads(__execute("get_files {} {}".format(filter_file_list, filter_node_list)))
     head = ["Node", "Name", "Mod_time", "md5"]
-    tab_size = 55
+    tab_size = 51
     __print_head(head, tab_size)
 
     wrong_nodes = []
