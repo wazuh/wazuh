@@ -9,6 +9,7 @@ import time
 import shutil
 import json
 import os
+import fcntl
 
 from wazuh.exception import WazuhException
 from wazuh import common
@@ -75,10 +76,22 @@ class MasterManagerHandler(ServerHandler):
                     file_data = f.read()
                 file_time = files_to_update_json[file_name]['mod_time']
 
-                with self.lock:
+                lock_file_path = "{}.lock".format(file_path)
+                lock_file = open(lock_file_path, 'a+')
+                try:
+                    fcntl.lockf(lock_file, fcntl.LOCK_EX)
                     _update_file(fullpath=file_path, new_content=file_data,
                                  umask_int=umask, mtime=file_time, w_mode=w_mode,
                                  whoami='master')
+                except:
+                    fcntl.lockf(lock_file, fcntl.LOCK_UN)
+                    lock_file.close()
+                    os.remove(lock_file_path)
+                    raise
+
+                fcntl.lockf(lock_file, fcntl.LOCK_UN)
+                lock_file.close()
+                os.remove(lock_file_path)
 
         except Exception as e:
             logging.error("Error updating client files: {}".format(str(e)))
