@@ -34,7 +34,7 @@ try:
         from wazuh.exception import WazuhException
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
         from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up
-        from wazuh.cluster.master import MasterManager, MasterKeepAliveThread, MasterInternalSocketHandler
+        from wazuh.cluster.master import MasterManager, MasterKeepAliveThread, MasterInternalSocketHandler, FileStatusUpdateThread
         from wazuh.cluster.client import ClientManager, ClientIntervalThread, ClientInternalSocketHandler
         from wazuh.cluster.communication import InternalSocketThread
 
@@ -108,6 +108,11 @@ def master_main(cluster_configuration):
     # Send keep alive
     ka_thread = MasterKeepAliveThread(master)
     ka_thread.start()
+
+
+    # Thread to perform integrity control
+    ic_thread = FileStatusUpdateThread(master)
+    ic_thread.start()
 
     # Internal socket
     internal_socket_thread = InternalSocketThread("c-internal")

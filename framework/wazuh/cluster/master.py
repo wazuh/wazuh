@@ -107,7 +107,7 @@ class MasterManagerHandler(ServerHandler):
         logging.debug("{0} Received {1} master files to check".format(tag, len(master_files_from_client)))
 
         # Get master files
-        master_files = self.server.get_masters_file_status(client_name)
+        master_files = self.server.get_master_integrity_control()
 
         # Compare
         client_files_ko = compare_files(master_files, master_files_from_client)
@@ -153,8 +153,7 @@ class MasterManager(Server):
 
         self.config = cluster_config
         self.handler = MasterManagerHandler
-        self.file_status_master = {'data': get_files_status('master'),
-                                   'time': time.time()}
+        self.integrity_control = {}
 
 
     def req_file_status_to_clients(self):
@@ -163,15 +162,9 @@ class MasterManager(Server):
         return 'ok', json.dumps(nodes_file)
 
 
-    def get_masters_file_status(self, client_name):
-        with self.get_client_info(client_name)['handler'].lock:
-            now = time.time()
-            if now - self.file_status_master['time'] > 30:
-                logging.debug("[Master] Calculating file status at {}. Old file status: {}.".format(time.ctime(now), time.ctime(self.file_status_master['time'])))
-                self.file_status_master['time'] = now
-                self.file_status_master['data'] = get_files_status('master')
-
-            return self.file_status_master['data']
+    def get_master_integrity_control(self):
+        with self.server_lock:
+            return self.integrity_control
 
 
     def add_client(self, data, ip, handler):
@@ -315,3 +308,29 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                     serialized_response = response.split(' ', 1)
 
             return serialized_response
+
+
+class FileStatusUpdateThread(threading.Thread):
+    def __init__(self, server, interval=30):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.running = True
+        self.server = server
+        self.interval = interval
+
+
+    def stop(self):
+        self.running = False
+
+
+    def run(self):
+        while self.running:
+            self.job()
+
+
+    def job(self):
+        logging.debug("[Master] Recalculating integrity control file.")
+        tmp_status = get_files_status('master')
+        with self.server.server_lock:
+            self.server.integrity_control = tmp_status
+        time.sleep(self.interval)
