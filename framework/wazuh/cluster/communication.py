@@ -378,7 +378,10 @@ class Server(asyncore.dispatcher):
 
     def remove_client(self, id):
         with self.server_lock:
-            del self._clients[id]
+            try:
+                del self._clients[id]
+            except KeyError:
+                logging.error("Client {} is already disconnected.".format(id))
 
 
     def get_connected_clients(self):
@@ -388,7 +391,12 @@ class Server(asyncore.dispatcher):
 
     def get_client_info(self, client_name):
         with self.server_lock:
-            return self._clients[client_name]
+            try:
+                return self._clients[client_name]
+            except KeyError:
+                error_msg = "Client {} is disconnected.".format(client_name)
+                logging.error(error_msg)
+                raise Exception(error_msg)
 
 
     def send_file(self, client_name, reason, file, remove = False):
