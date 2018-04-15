@@ -50,6 +50,10 @@ class ClientManager(ClientHandler):
             cmf_thread.setclient(self)
             cmf_thread.start()
             return 'ack', self.set_worker(command, cmf_thread, data)
+        elif command == 'sync_m_c_ok':
+            logging.info("[Client] The master says that everything is right. Unlocking.")
+            self.set_lock_interval_thread(False)
+            return 'ack', "Thanks2!"
         elif command == 'sync_m_c_err':
             logging.info("[Client] The master was not able to send me the files. Unlocking.")
             self.set_lock_interval_thread(False)
@@ -328,7 +332,12 @@ class ClientProcessMasterFiles(ProcessFiles):
                     self.stop()
 
                 else:
+                    # try:
                     self.process_file_cmd()
+                    # except Exception as e:
+                    #     logging.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, str(e)))
+                    #     self.manager_handler.set_lock_interval_thread(False)
+                    #     self.stop()
             else:
                 time.sleep(5)
 

@@ -133,23 +133,29 @@ class MasterManagerHandler(ServerHandler):
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)
 
-        # Compress data: master files (only KO shared and missing)
-        logging.info("{0} [{1}] [STEP 3]: Compressing KO files for client.".format(tag, client_name))
+        # Step 3: KO files
+        if not client_files_ko['shared'] and not client_files_ko['missing'] and not client_files_ko['extra']:
+            logging.info("{0} [{1}] [STEP 3]: There are no KO files for client.".format(tag, client_name))
+            response = self.manager.send_request(client_name, 'sync_m_c_ok')
+        else:
+            # Compress data: master files (only KO shared and missing)
+            logging.info("{0} [{1}] [STEP 3]: Compressing KO files for client.".format(tag, client_name))
 
-        master_files_paths = [item for item in client_files_ko['shared']]
-        master_files_paths.extend([item for item in client_files_ko['missing']])
+            master_files_paths = [item for item in client_files_ko['shared']]
+            master_files_paths.extend([item for item in client_files_ko['missing']])
 
-        compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
+            compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
 
-        logging.info("{0} [{1}] [STEP 3]: Sending KO files to client.".format(tag, client_name))
+            logging.info("{0} [{1}] [STEP 3]: Sending KO files to client.".format(tag, client_name))
 
-        response = self.manager.send_file(client_name, 'sync_m_c', compressed_data, True)
+            response = self.manager.send_file(client_name, 'sync_m_c', compressed_data, True)
+
         processed_response = self.process_response(response)
         if processed_response:
             sync_result = True
             logging.info("{0} [{1}] [STEP 3]: Client received the sync properly".format(tag, client_name))
         else:
-            logging.error("{0} [{1}] [STEP 3]: Client reported an error receiving files.".format(tag, client_name))
+            logging.error("{0} [{1}] [STEP 3]: Client reported an error receiving the sync.".format(tag, client_name))
 
         # Send KO files
         return sync_result
@@ -246,7 +252,12 @@ class MasterProcessClientFiles(ProcessFiles):
                 self.stop()
 
             else:
+                # try:
                 self.process_file_cmd()
+                # except Exception as e:
+                #     logging.error("{0}: Unknown error in process_file_cmd {1}: {2}.".format(self.thread_tag, self.name, str(e)))
+                #     self.manager_handler.manager.send_request(self.name, 'sync_m_c_err')
+                #     self.stop()
 
             time.sleep(0.1)
 
