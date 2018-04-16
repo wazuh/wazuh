@@ -620,7 +620,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *id_exist = NULL;
     char buf[4096 + 1];
     int index;
-    int add_to_centralized_group = 0;
 
     authd_sigblock();
 
@@ -670,7 +669,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
 
         buf[0] = '\0';
-        ret = SSL_read(ssl, buf, sizeof(buf));
+        ret = SSL_read(ssl, buf, sizeof(buf) - 1);
 
         if (ssl_error(ssl, ret)) {
             merror("SSL Error (%d)", ret);
@@ -679,8 +678,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             continue;
         }
 
+        buf[ret] = '\0';
         parseok = 0;
         tmpstr = buf;
+
+        mdebug2("Request received: <%s>", buf);
 
         /* Checking for shared password authentication. */
         if(authpass) {
@@ -744,15 +746,15 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Check for valid centralized group */
             char centralized_group[256] = {0};
             char centralized_group_token[2] = "G:";
-	    
+
             if(strncmp(++tmpstr,centralized_group_token,2)==0)
             {
-                
+
                 char group_path[PATH_MAX] = {0};
-        
+
                 sscanf(tmpstr," G:\'%255[^\']\"",centralized_group);
-                
-                if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",centralized_group) >= PATH_MAX){	
+
+                if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",centralized_group) >= PATH_MAX){
                     merror("Invalid group name: %.255s... , group path is too large.",centralized_group);
                     snprintf(response, 2048, "ERROR: Invalid group name: %.255s...\n\n, group path is too large", centralized_group);
                     SSL_write(ssl, response, strlen(response));
@@ -765,10 +767,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
                 /* Check if group exists */
                 DIR *group_dir = opendir(group_path);
-                if(group_dir){ 
-                    add_to_centralized_group = 1;
-                }
-                else{
+                if (!group_dir) {
                     merror("Invalid group: %.255s",centralized_group);
                     snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", centralized_group);
                     SSL_write(ssl, response, strlen(response));
@@ -790,7 +789,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             int use_client_ip = 0;
             char client_source_ip[IPSIZE + 1] = {0};
             char client_source_ip_token[3] = "IP:";
-	    
+
             if(strncmp(++tmpstr,client_source_ip_token,3)==0)
             {
                 sscanf(tmpstr," IP:\'%15[^\']\"",client_source_ip);
@@ -800,7 +799,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 {
                     memcpy(srcip,client_source_ip,IPSIZE);
                 }
-                
+
                 use_client_ip = 1;
             }
 
@@ -904,13 +903,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 close(client.socket);
                 continue;
             }
-            
+
             /* Add the agent to the centralized configuration group */
-            if(add_to_centralized_group) {
+            if(*centralized_group) {
                 char path[PATH_MAX];
-                FILE *fp;
+
                 if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-                    add_to_centralized_group = 0;
                     merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
                     OS_RemoveAgent(keys.keyentries[index]->id);
                     merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
@@ -924,7 +922,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 }
             }
 
-            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, config.flags.use_source_ip ? srcip : "any", keys.keyentries[index]->key);
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, (config.flags.use_source_ip || use_client_ip) ? srcip : "any", keys.keyentries[index]->key);
             minfo("Agent key generated for '%s' (requested by %s)", agentname, srcip);
             ret = SSL_write(ssl, response, strlen(response));
 
@@ -935,7 +933,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
             } else {
                 /* Add pending key to write */
-                add_insert(keys.keyentries[keys.keysize - 1],(add_to_centralized_group) ? centralized_group : NULL);
+                add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
                 write_pending = 1;
                 pthread_cond_signal(&cond_pending);
             }
@@ -985,7 +983,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         if (OS_WriteKeys(copy_keys) < 0)
             merror("Couldn't write file client.keys");
-        
+
         OS_FreeKeys(copy_keys);
         free(copy_keys);
         cur_time = time(0);
