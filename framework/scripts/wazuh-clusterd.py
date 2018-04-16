@@ -37,6 +37,7 @@ try:
         from wazuh.cluster.master import MasterManager, MasterKeepAliveThread, MasterInternalSocketHandler, FileStatusUpdateThread
         from wazuh.cluster.client import ClientManager, ClientIntervalThread, ClientInternalSocketHandler
         from wazuh.cluster.communication import InternalSocketThread
+        from wazuh import configuration as config
 
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -171,7 +172,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Set logger
-    set_logging(foreground_mode=args.f, debug_mode=args.d)
+    debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',1,0) or args.d
+    set_logging(foreground_mode=args.f, debug_mode=debug_mode)
 
     # Foreground/Daemon
     if not args.f:
