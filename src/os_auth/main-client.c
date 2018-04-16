@@ -55,8 +55,8 @@ static void help_agent_auth()
     print_out("    -P <pass>   Authorization password");
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -G <group>  Set the group for centralized configuration");
-    print_out("    -i <IP>     Set the agent IP address");
-    print_out("    -I <IP>     Let the agent IP address be set by the manager connection");
+    print_out("    -I <IP>     Set the agent IP address");
+    print_out("    -i          Let the agent IP address be set by the manager connection");
     print_out(" ");
     exit(1);
 }
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a:i:I")) != -1) {
+    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a:I:i")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -186,13 +186,13 @@ int main(int argc, char **argv)
                 }
                 centralized_group = optarg;
                 break;
-            case 'i':
+            case 'I':
                 if(!optarg){
                     merror_exit("-%c needs an argument",c);
                 }
                 sender_ip = optarg;
                 break;
-            case 'I':
+            case 'i':
                 use_src_ip = 1;
                 break;
             default:
@@ -209,6 +209,11 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, "", group);
+    }
+
+    if (sender_ip && use_src_ip) {
+        merror("Options '-I' and '-i' are uncompatible.");
+        exit(1);
     }
 
     /* Exit here if test config is set */
