@@ -32,6 +32,7 @@ import asynchat
 import errno
 import logging
 import re
+from calendar import timegm
 
 # import the C accelerated API of ElementTree
 try:
@@ -174,9 +175,9 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
             full_path = path.join(dirname, entry)
 
             if not path.isdir(full_path):
-                file_mod_time = datetime.fromtimestamp(stat(full_path).st_mtime)
+                file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
 
-                if whoami == 'client' and file_mod_time < (datetime.now() - timedelta(minutes=30)):
+                if whoami == 'client' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
                     continue
 
                 new_key = full_path.replace(common.ossec_path, "")
@@ -265,7 +266,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
             if path.isfile(fullpath):
 
-                local_mtime = datetime.fromtimestamp(int(stat(fullpath).st_mtime))
+                local_mtime = datetime.utcfromtimestamp(int(stat(fullpath).st_mtime))
                 # check if the date is older than the manager's date
                 if local_mtime > mtime:
                     #logging.debug("Receiving an old file ({})".format(fullpath))
@@ -302,7 +303,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
     dest_file.close()
 
     if mtime:
-        mtime_epoch = int(mktime(mtime.timetuple()))
+        mtime_epoch = timegm(mtime.timetuple())
         utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
 
     # Atomic
