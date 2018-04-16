@@ -36,7 +36,7 @@ static void help_agent_auth(void) __attribute__((noreturn));
 static void help_agent_auth()
 {
     print_header();
-    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-i IP address]", ARGV0);
+    print_out("  %s: -[VhdtI] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-i IP address]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -56,6 +56,7 @@ static void help_agent_auth()
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -G <group>  Set the group for centralized configuration");
     print_out("    -i <IP>     Set the agent IP address");
+    print_out("    -I <IP>     Let the agent IP address be set by the manager connection");
     print_out(" ");
     exit(1);
 }
@@ -83,6 +84,7 @@ int main(int argc, char **argv)
     const char *ca_cert = NULL;
     const char *centralized_group = NULL;
     const char *sender_ip = NULL;
+    int use_src_ip = 0;
     char lhostname[512 + 1];
     char buf[4096 + 1];
     SSL_CTX *ctx;
@@ -98,7 +100,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a:i:")) != -1) {
+    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a:i:I")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -189,6 +191,9 @@ int main(int argc, char **argv)
                     merror_exit("-%c needs an argument",c);
                 }
                 sender_ip = optarg;
+                break;
+            case 'I':
+                use_src_ip = 1;
                 break;
             default:
                 help_agent_auth();
@@ -342,6 +347,13 @@ int main(int argc, char **argv)
         char opt_buf[256] = {0};
         snprintf(opt_buf,254," IP:'%s'",sender_ip);
         strncat(buf,opt_buf,254);
+    }
+
+    if(use_src_ip)
+    {
+        char opt_buf[10] = {0};
+        snprintf(opt_buf,10," IP:'src'");
+        strncat(buf,opt_buf,10);
     }
 
     /* Append new line character */
