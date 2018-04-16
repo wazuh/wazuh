@@ -16,6 +16,11 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global ossec_conf
     ossec_conf = "{0}/etc/ossec.conf".format(ossec_path)
 
+    global internal_options
+    internal_options = "{0}/etc/internal_options.conf".format(ossec_path)
+    global local_internal_options
+    local_internal_options = "{0}/etc/local_internal_options.conf".format(ossec_path)
+
     global ossec_log
     ossec_log = "{0}/logs/ossec.log".format(ossec_path)
 
