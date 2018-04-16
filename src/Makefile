@@ -46,13 +46,13 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto -lcurl -lyaml ${LDFLAGS}
+OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -L${EXTERNAL_CURL} -L${EXTERNAL_LIBYAML} -lm -lssl -lcrypto -lyaml -lcurl ${LDFLAGS}
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl 
 		OSSEC_LDFLAGS+=-L${EXTERNAL_LIBDB}.libs -ldb-6.2
 		OSSEC_LDFLAGS+=-Wl,-rpath,${PREFIX}/lib
 #		OSSEC_LDFLAGS+=-L/usr/local/lib
@@ -505,11 +505,11 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a ${EXTERNAL_LIBYAML}libyaml.a ${EXTERNAL_CURL}libcurl.a
+EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a ${EXTERNAL_CURL}libcurl.a ${EXTERNAL_LIBYAML}libyaml.a
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2
+EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so 
 endif
 endif
 
@@ -598,14 +598,14 @@ libcJSON.a: ${cjson_o}
 LIBYAML_LIB=${EXTERNAL_LIBYAML}libyaml.a
 
 ${LIBYAML_LIB}:
-	cd ${EXTERNAL_LIBYAML} && ./configure && ${MAKE}
+	cd ${EXTERNAL_LIBYAML} && ./bootstrap && ./configure && ${MAKE}
 	cp ${EXTERNAL_LIBYAML}src/.libs/libyaml.a ${EXTERNAL_LIBYAML}libyaml.a
 
 #### curl ##########
 LIBCURL_LIB=${EXTERNAL_CURL}libcurl.a
 
 ${LIBCURL_LIB}:
-	cd ${EXTERNAL_CURL} && ./configure --enable-static && ${MAKE}
+	cd ${EXTERNAL_CURL} && ./buildconf && ./configure --enable-static && ${MAKE}
 	cp ${EXTERNAL_CURL}lib/.libs/libcurl.a ${EXTERNAL_CURL}libcurl.a
 
 #### procps #########
@@ -646,7 +646,7 @@ space +=
 VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 
-EXTERNAL_RES := cJSON libdb openssl procps sqlite zlib
+EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -1361,6 +1361,10 @@ ifneq ($(wildcard external/*/*),)
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
 	rm -f ${procps_o} libproc.a
+	cd ${EXTERNAL_LIBYAML} && ${MAKE} clean
+	rm -f ${LIBYAML_LIB}
+	cd ${EXTERNAL_CURL} && ${MAKE} distclean
+	rm -f ${LIBCURL_LIB}
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
