@@ -74,6 +74,35 @@ class Response:
             self.cond.notify()
 
 
+class ClusterThread(threading.Thread):
+    def __init__(self, stopper):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.running = True
+
+        # An event that tells the thread to stop
+        self.stopper = stopper
+
+
+    def stop(self):
+        self.running = False
+
+
+    def run(self):
+        # while not self.stopper.is_set() and self.running:
+        raise NotImplementedError
+
+
+    def sleep(self, delay):
+        exit = False
+        count = 0
+        while not exit and not self.stopper.is_set() and self.running:
+            time.sleep(1)
+            count += 1
+            if count == delay:
+                exit = True
+
+
 class Handler(asyncore.dispatcher_with_send):
 
     def __init__(self, sock=None, map=None):
@@ -83,7 +112,20 @@ class Handler(asyncore.dispatcher_with_send):
         self.inbuffer = b''
         self.lock = threading.Lock()
         self.workers = {}
+        self.stopper = threading.Event()
 
+
+    def exit(self):
+        logging.debug("[Transport] Cleaning connection")
+        self.stopper.set()
+
+        for worker in self.workers:
+            logging.debug("[Transport] Cleaning thread: '{0}'".format(worker))
+            self.workers[worker].join(timeout=5)
+            if self.workers[worker].isAlive():
+                logging.warning("[Transport] Cleaning thread. Timeout for: '{0}'.".format(worker))
+            else:
+                logging.debug("[Transport] Cleaning main threads. Terminated: '{0}'.".format(worker))
 
     def set_worker(self, command, worker, filename):
         thread_id = '{}-{}-{}'.format(command, worker.ident, os.path.basename(filename))
@@ -242,6 +284,7 @@ class Handler(asyncore.dispatcher_with_send):
 
         return cmd, payload
 
+
     def dispatch(self, command, payload):
         try:
             return self.process_request(command, payload)
@@ -342,14 +385,15 @@ class Server(asyncore.dispatcher):
 
     def __init__(self, host, port, handle_type, map = {}):
         asyncore.dispatcher.__init__(self, map=map)
-        self.map = map
         self._clients = {}
+        self._clients_lock = threading.Lock()
+
+        self.map = map
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.bind((host, port))
         self.listen(5)
         self.handle_type = handle_type
-        self.server_lock = threading.Lock()
 
 
     def handle_accept(self):
@@ -364,7 +408,7 @@ class Server(asyncore.dispatcher):
     def add_client(self, data, ip, handler):
         name, type = data.split(' ')
         id = name
-        with self.server_lock:
+        with self._clients_lock:
             self._clients[id] = {
                 'handler': handler,
                 'info': {
@@ -377,20 +421,23 @@ class Server(asyncore.dispatcher):
 
 
     def remove_client(self, id):
-        with self.server_lock:
+        with self._clients_lock:
             try:
+                # Remove threads
+                self._clients[id]['handler'].exit()
+
                 del self._clients[id]
             except KeyError:
                 logging.error("Client {} is already disconnected.".format(id))
 
 
     def get_connected_clients(self):
-        with self.server_lock:
+        with self._clients_lock:
             return self._clients
 
 
     def get_client_info(self, client_name):
-        with self.server_lock:
+        with self._clients_lock:
             try:
                 return self._clients[client_name]
             except KeyError:
@@ -463,6 +510,7 @@ class ClientHandler(Handler):
             response = "err " + error_msg
 
         return response
+
 
     def is_connected(self):
         return self.my_connected
@@ -594,30 +642,25 @@ def send_to_internal_socket(socket_name, message):
     return response
 
 
+class ProcessFiles(ClusterThread):
 
-class ProcessFiles(threading.Thread):
+    def __init__(self, manager_handler, filename, client_name, ossec_path, stopper):
+        ClusterThread.__init__(self, stopper)
 
-    def __init__(self, manager_handler, filename, ossec_path):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.running = True
         self.manager_handler = manager_handler
+        self.filename = filename
+        self.name = client_name
+        self.ossec_path = ossec_path
+
         self.data = None
         self.command_queue = Queue()
-        self.filename = filename
         self.received_all_information = False
         self.close_lock = threading.Condition()
         self.f = None
-        self.ossec_path = ossec_path
-        self.name = None
 
 
     def run(self):
         raise NotImplementedError
-
-
-    def stop(self):
-        self.running = False
 
 
     def set_command(self, command, data):
@@ -637,7 +680,6 @@ class ProcessFiles(threading.Thread):
             command = ""
             self.file_update(data)
         elif command == "file_close":
-            time.sleep(5)
             self.close_lock.acquire()
             logging.debug("[FileThread] Closing file")
             self.result = self.file_close(data)
@@ -707,3 +749,6 @@ class ProcessFiles(threading.Thread):
             raise Exception(error_msg)
 
         return "ok", "File {} received successfully".format(self.filename)
+
+
+

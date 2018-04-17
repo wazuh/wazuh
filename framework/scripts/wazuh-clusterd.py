@@ -33,9 +33,9 @@ try:
         from wazuh import common
         from wazuh.exception import WazuhException
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
-        from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up
-        from wazuh.cluster.master import MasterManager, MasterKeepAliveThread, MasterInternalSocketHandler, FileStatusUpdateThread
-        from wazuh.cluster.client import ClientManager, ClientIntervalThread, ClientInternalSocketHandler
+        from wazuh.cluster.cluster import read_config, check_cluster_config
+        from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
+        from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
         from wazuh.cluster.communication import InternalSocketThread
         from wazuh import configuration as config
 
@@ -79,8 +79,9 @@ def clean_exit(reason, error=False):
         logging.info(msg)
 
     delete_pid("wazuh-clusterd", getpid())
-    logging.debug("Cleaning generated temporary files.")
-    clean_up()
+
+    manager.exit()
+
     exit(1)
 
 
@@ -100,42 +101,34 @@ def signal_handler(n_signal, frame):
 # Master main
 #
 def master_main(cluster_configuration):
-    # ToDo: Add it in ossec.conf
-    cluster_configuration['ka_interval'] = 60  # seconds
+    global manager
 
     # Initiate master
-    master = MasterManager(cluster_config=cluster_configuration)
-
-    # Send keep alive
-    ka_thread = MasterKeepAliveThread(master)
-    ka_thread.start()
-
-
-    # Thread to perform integrity control
-    ic_thread = FileStatusUpdateThread(master)
-    ic_thread.start()
+    manager = MasterManager(cluster_config=cluster_configuration)
 
     # Internal socket
     internal_socket_thread = InternalSocketThread("c-internal")
     internal_socket_thread.start()
-    internal_socket_thread.setmanager(master, MasterInternalSocketHandler)
+    internal_socket_thread.setmanager(manager, MasterInternalSocketHandler)
 
     # Loop
-    asyncore.loop(timeout=1, use_poll=False, map=master.map, count=None)
+    asyncore.loop(timeout=1, use_poll=False, map=manager.map, count=None)
 
 
 #
 # Client main
 #
 def client_main(cluster_configuration):
+    global manager
+
+    # ToDo: Add it in ossec.conf
+    cluster_configuration['ka_interval'] = 60  # seconds
+
     # ToDo: Add it in ossec.conf
     cluster_configuration['reconnect_time'] = 10  # seconds
     # ToDo: Get in the proper way
     cluster_configuration['interval'] = 20  # seconds
 
-    # Create threads
-    interval_thread = ClientIntervalThread()
-    interval_thread.start()
 
     # Internal socket
     internal_socket_thread = InternalSocketThread("c-internal")
@@ -143,14 +136,15 @@ def client_main(cluster_configuration):
 
     # Loop
     while True:
-        client = ClientManager(cluster_config=cluster_configuration)
+        manager = ClientManager(cluster_config=cluster_configuration)
 
-        interval_thread.setclient(client)
-        internal_socket_thread.setmanager(client, ClientInternalSocketHandler)
+        internal_socket_thread.setmanager(manager, ClientInternalSocketHandler)
 
-        asyncore.loop(timeout=1, use_poll=False, map=client.map, count=None)
+        asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 
         logging.error("[wazuh-clusterd] Client disconnected. Trying to connect again in {0}s.".format(cluster_configuration['reconnect_time']))
+
+        manager.exit()
 
         time.sleep(cluster_configuration['reconnect_time'])
 
@@ -159,6 +153,8 @@ def client_main(cluster_configuration):
 # Main
 #
 if __name__ == '__main__':
+    manager = None
+
     # Signals
     signal(SIGINT, signal_handler)
     signal(SIGTERM, signal_handler)

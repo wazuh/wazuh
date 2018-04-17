@@ -10,21 +10,27 @@ import shutil
 import json
 import os
 import fcntl
+import ast
 
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files, compare_files, get_agents_status, clean_up, read_config
-from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, Handler, InternalSocketHandler
+from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, Handler, InternalSocketHandler, ClusterThread
 from wazuh.utils import mkdir_with_mode
-import ast
 
+
+
+#
+# Master Handler
+# There is a MasterManagerHandler for each connected client
+#
 class MasterManagerHandler(ServerHandler):
 
     def __init__(self, sock, server, map, addr=None):
         ServerHandler.__init__(self, sock, server, map, addr)
         self.manager = server
 
-
+    # Overridden methods
     def process_request(self, command, data):
         logging.debug("[Master] Request received: '{0}'.".format(command))
 
@@ -33,7 +39,7 @@ class MasterManagerHandler(ServerHandler):
         elif command == 'req_sync_m_c':
             return 'ack', 'Starting sync from master'
         elif command == 'sync_c_m':
-            mcf_thread = MasterProcessClientFiles(self, self.get_client(), data)
+            mcf_thread = MasterProcessClientFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker(command, mcf_thread, data)
@@ -62,8 +68,8 @@ class MasterManagerHandler(ServerHandler):
 
         return response_data
 
-
-    def update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path):
+    # Private methods
+    def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path):
         cluster_items = get_cluster_items()
 
         try:
@@ -104,7 +110,7 @@ class MasterManagerHandler(ServerHandler):
             logging.error("Error updating client files: {}".format(str(e)))
             raise e
 
-
+    # New methods
     def process_files_from_client(self, client_name, data_received, tag=None):
         sync_result = False
 
@@ -132,7 +138,7 @@ class MasterManagerHandler(ServerHandler):
         logging.debug("{0} Received {1} master files to check".format(tag, len(master_files_from_client)))
 
         # Get master files
-        master_files = self.server.get_master_integrity_control()
+        master_files = self.server.get_integrity_control()
 
         # Compare
         client_files_ko = compare_files(master_files, master_files_from_client)
@@ -140,7 +146,7 @@ class MasterManagerHandler(ServerHandler):
         logging.info("{0} [{1}] [STEP 2]: Updating manager files.".format(tag, client_name))
 
         # Update files
-        self.update_client_files_in_master(client_files_json, client_files_json, zip_dir_path)
+        self._update_client_files_in_master(client_files_json, client_files_json, zip_dir_path)
 
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)
@@ -172,82 +178,19 @@ class MasterManagerHandler(ServerHandler):
         # Send KO files
         return sync_result
 
-
-class MasterManager(Server):
-
-    def __init__(self, cluster_config):
-        Server.__init__(self, cluster_config['bind_addr'],
-            cluster_config['port'], MasterManagerHandler)
-
-        logging.info("[Master] Listening.")
-
-        self.config = cluster_config
-        self.handler = MasterManagerHandler
-        self.integrity_control = {}
-
-
-    def req_file_status_to_clients(self):
-        responses = list(self.send_request_broadcast(command = 'file_status'))
-        nodes_file = {node:json.loads(data.split(' ',1)[1]) for node,data in responses}
-        return 'ok', json.dumps(nodes_file)
-
-
-    def get_master_integrity_control(self):
-        with self.server_lock:
-            return self.integrity_control
-
-
-    def add_client(self, data, ip, handler):
-        id = Server.add_client(self, data, ip, handler)
-        # create directory in /queue/cluster to store all node's file there
-        node_path = "{}/queue/cluster/{}".format(common.ossec_path, id)
-        if not os.path.exists(node_path):
-            mkdir_with_mode(node_path)
-        return id
-
 #
-# Master threads
+# Threads (workers) created by MasterManagerHandler
 #
-class MasterKeepAliveThread(threading.Thread):
-
-    def __init__(self, manager):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.running = True
-        self.manager = manager
-
-
-    def run(self):
-
-        while self.running:
-            connected_clients = len(self.manager.get_connected_clients())
-
-            if connected_clients > 0:
-                logging.debug("[Master] Sending KA to clients ({0}).".format(connected_clients))
-
-                for client_name, response in self.manager.send_request_broadcast('echo-m', 'Keep-alive from master!'):
-                    processed_response = self.manager.handler.process_response(response)
-                    if processed_response:
-                        logging.debug("[Master] KA received from client: '{0}'.".format(client_name))
-                    else:
-                        logging.error("[Master] KA was not received from client: '{0}'.".format(client_name))
-
-            time.sleep(self.manager.config['ka_interval'])
-
-    def stop(self):
-        self.running = False
-
-
 class MasterProcessClientFiles(ProcessFiles):
 
-    def __init__(self, manager_handler, client_name, filename):
-        ProcessFiles.__init__(self, manager_handler, filename, common.ossec_path)
-        self.name = client_name
+    def __init__(self, manager_handler, filename, stopper):
+        ProcessFiles.__init__(self, manager_handler, filename, manager_handler.get_client(), common.ossec_path, stopper)
         self.thread_tag = "[Master] [ProcessFilesThread] [Sync process m->c]"
 
     def run(self):
-        while self.running:
+        while not self.stopper.is_set() and self.running:
             if self.received_all_information:
+                logging.debug("{0}: All files received.".format(self.thread_tag))
 
                 try:
                     result = self.manager_handler.process_files_from_client(self.name, self.filename, self.thread_tag)
@@ -274,9 +217,106 @@ class MasterProcessClientFiles(ProcessFiles):
 
 
 #
+# Master
+#
+class MasterManager(Server):
+    Integrity_T = "Integrity_Thread"
+
+    def __init__(self, cluster_config):
+        Server.__init__(self, cluster_config['bind_addr'], cluster_config['port'], MasterManagerHandler)
+
+        logging.info("[Master] Listening.")
+
+        self.config = cluster_config
+        self.handler = MasterManagerHandler
+        self._integrity_control = {}
+        self._integrity_control_lock = threading.Lock()
+
+        # Threads
+        self.stopper = threading.Event()  # Event to stop threads
+        self.threads = {}
+        self._initiate_master_threads()
+
+    # Overridden methods
+    def add_client(self, data, ip, handler):
+        id = Server.add_client(self, data, ip, handler)
+        # create directory in /queue/cluster to store all node's file there
+        node_path = "{}/queue/cluster/{}".format(common.ossec_path, id)
+        if not os.path.exists(node_path):
+            mkdir_with_mode(node_path)
+        return id
+
+    # Private methods
+    def _initiate_master_threads(self):
+        logging.debug("[Master] Creating threads.")
+        self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=30, stopper=self.stopper)
+        self.threads[MasterManager.Integrity_T].start()
+
+    # New methods
+    def req_file_status_to_clients(self):
+        responses = list(self.send_request_broadcast(command = 'file_status'))
+        nodes_file = {node:json.loads(data.split(' ',1)[1]) for node,data in responses}
+        return 'ok', json.dumps(nodes_file)
+
+
+    def get_integrity_control(self):
+        with self._integrity_control_lock:
+            return self._integrity_control
+
+
+    def set_integrity_control(self, new_integrity_control):
+        with self._integrity_control_lock:
+            self._integrity_control = new_integrity_control
+
+
+    def exit(self):
+        logging.info("[Master] Cleaning...")
+
+        # Cleaning master threads
+        logging.debug("[Master] Cleaning main threads")
+        self.stopper.set()
+
+        for thread in self.threads:
+            logging.debug("[Master] Cleaning main threads: '{0}'.".format(thread))
+            self.threads[thread].join(timeout=5)
+            if self.threads[thread].isAlive():
+                logging.warning("[Master] Cleaning main threads. Timeout for: '{0}'.".format(thread))
+            else:
+                logging.debug("[Master] Cleaning main threads. Terminated: '{0}'.".format(thread))
+
+        # Cleaning handler threads
+        logging.debug("[Master] Cleaning threads of clients.")
+        clients = self.get_connected_clients().keys()
+        for client in clients:
+            self.remove_client(id=client)
+
+        logging.debug("[Master] Cleaning generated temporary files.")
+        clean_up()
+
+        logging.info("[Master] Cleaning end.")
+
+#
+# Master threads
+#
+class FileStatusUpdateThread(ClusterThread):
+    def __init__(self, master, interval, stopper):
+        ClusterThread.__init__(self, stopper)
+        self.master = master
+        self.interval = interval
+
+
+    def run(self):
+        while not self.stopper.is_set() and self.running:
+            logging.debug("[Master] Recalculating integrity control file.")
+            tmp_integrity_control = get_files_status('master')
+            self.master.set_integrity_control(tmp_integrity_control)
+            #time.sleep(self.interval)
+            self.sleep(self.interval)
+
+
+#
 # Internal socket
 #
-
 class MasterInternalSocketHandler(InternalSocketHandler):
     def __init__(self, sock, manager, map):
         InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
@@ -302,7 +342,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         elif command == 'get_nodes':
             split_data = data.split(' ', 1)
             node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-            
+
             response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
@@ -349,28 +389,3 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
             return serialized_response
 
-
-class FileStatusUpdateThread(threading.Thread):
-    def __init__(self, server, interval=30):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.running = True
-        self.server = server
-        self.interval = interval
-
-
-    def stop(self):
-        self.running = False
-
-
-    def run(self):
-        while self.running:
-            self.job()
-
-
-    def job(self):
-        logging.debug("[Master] Recalculating integrity control file.")
-        tmp_status = get_files_status('master')
-        with self.server.server_lock:
-            self.server.integrity_control = tmp_status
-        time.sleep(self.interval)

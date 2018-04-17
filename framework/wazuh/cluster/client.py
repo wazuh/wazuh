@@ -9,15 +9,20 @@ import threading
 import time
 import os
 import shutil
+import ast
 
 from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, clean_up
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
-from wazuh.cluster.communication import ClientHandler, Handler, ProcessFiles
+from wazuh.cluster.communication import ClientHandler, Handler, ProcessFiles, ClusterThread, InternalSocketHandler
 
 
-class ClientManager(ClientHandler):
+#
+# Client Handler
+# There is only one ClientManagerHandler: the connection with master.
+#
+class ClientManagerHandler(ClientHandler):
 
     def __init__(self, cluster_config):
         ClientHandler.__init__(self, cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'])
@@ -25,7 +30,7 @@ class ClientManager(ClientHandler):
         self.config = cluster_config
         self.set_lock_interval_thread(False)
 
-
+    # Overridden methods
     def handle_connect(self):
         ClientHandler.handle_connect(self)
         dir_path = "{}/queue/cluster/{}".format(common.ossec_path, self.name)
@@ -33,22 +38,13 @@ class ClientManager(ClientHandler):
             mkdir_with_mode(dir_path)
 
 
-    def set_lock_interval_thread(self, status):
-        with self.lock:
-            self.lock_interval_thread = status
-
-    def get_lock_interval_thread(self):
-        with self.lock:
-            return self.lock_interval_thread
-
     def process_request(self, command, data):
         logging.debug("[Client] Request received: '{0}'.".format(command))
 
         if command == 'echo-m':
             return 'ok-m ', data.decode()
         elif command == 'sync_m_c':
-            cmf_thread = ClientProcessMasterFiles(data)
-            cmf_thread.setclient(self)
+            cmf_thread = ClientProcessMasterFiles(manager_handler=self, filename=data, stopper=self.stopper)
             cmf_thread.start()
             return 'ack', self.set_worker(command, cmf_thread, data)
         elif command == 'sync_m_c_ok':
@@ -94,6 +90,75 @@ class ClientManager(ClientHandler):
             response_data = ClientHandler.process_response(response)
 
         return response_data
+
+    # Private methods
+    @staticmethod
+    def _update_master_files_in_client(wrong_files, zip_path_dir, tag=None):
+        def overwrite_or_create_files(filename, data):
+            # Full path
+            file_path = common.ossec_path + filename
+            zip_path = "{}/{}".format(zip_path_dir, filename.replace('/','_'))
+
+            # Cluster items information: write mode and umask
+            cluster_item_key = data['cluster_item_key']
+            w_mode = cluster_items[cluster_item_key]['write_mode']
+            umask = int(cluster_items[cluster_item_key]['umask'], base=0)
+
+            # File content and time
+            with open(zip_path, 'rb') as f:
+                file_data = f.read()
+
+            _update_file(fullpath=file_path, new_content=file_data,
+                         umask_int=umask, w_mode=w_mode, whoami='client')
+
+        if not tag:
+            tag = "[Client] [Sync process]"
+
+        cluster_items = get_cluster_items()
+
+        if not wrong_files['shared'] and not wrong_files['missing'] and not wrong_files['extra']:
+            logging.info("{0} [Step 3]: Client meets integrity checks. No actions.".format(tag))
+        else:
+            logging.info("{0} [Step 3]: Client does not meet integrity checks. Actions required.".format(tag))
+
+
+        if wrong_files['shared']:
+            logging.info("{0} [Step 3]: Received {1} wrong files to fix from master. Action: Overwrite files.".format(tag, len(wrong_files['shared'])))
+            try:
+                for file_to_overwrite, data in wrong_files['shared'].items():
+                    logging.debug("{0} Overwrite file: '{1}'".format(tag, file_to_overwrite))
+                    overwrite_or_create_files(file_to_overwrite, data)
+
+            except Exception as e:
+                print(str(e))
+                raise e
+
+        if wrong_files['missing']:
+            logging.info("[Client] [Sync process] [Step 3]: Received {} missing files from master. Action: Create files.".format(len(wrong_files['missing'])))
+            for file_to_create, data in wrong_files['missing'].items():
+                logging.debug("{0} Create file: '{1}'".format(tag, file_to_create))
+                overwrite_or_create_files(file_to_create, data)
+
+        if wrong_files['extra']:
+            logging.info("{0} [Step 3]: Received {1} extra files from master. Action: Remove files.".format(tag, len(wrong_files['extra'])))
+            for file_to_remove in wrong_files['extra']:
+                logging.debug("{0} Remove file: '{1}'".format(tag, file_to_remove))
+                file_path = common.ossec_path + file_to_remove
+                os.remove(file_path)
+
+
+        return True
+
+
+    # New methods
+    def set_lock_interval_thread(self, status):
+        with self.lock:
+            self.lock_interval_thread = status
+
+
+    def get_lock_interval_thread(self):
+        with self.lock:
+            return self.lock_interval_thread
 
 
     def send_client_files_to_master(self, reason=None, tag=None):
@@ -175,149 +240,19 @@ class ClientManager(ClientHandler):
         return sync_result
 
 
-    @staticmethod
-    def _update_master_files_in_client(wrong_files, zip_path_dir, tag=None):
-        def overwrite_or_create_files(filename, data):
-            # Full path
-            file_path = common.ossec_path + filename
-            zip_path = "{}/{}".format(zip_path_dir, filename.replace('/','_'))
-
-            # Cluster items information: write mode and umask
-            cluster_item_key = data['cluster_item_key']
-            w_mode = cluster_items[cluster_item_key]['write_mode']
-            umask = int(cluster_items[cluster_item_key]['umask'], base=0)
-
-            # File content and time
-            with open(zip_path, 'rb') as f:
-                file_data = f.read()
-
-            _update_file(fullpath=file_path, new_content=file_data,
-                         umask_int=umask, w_mode=w_mode, whoami='client')
-
-        if not tag:
-            tag = "[Client] [Sync process]"
-
-        cluster_items = get_cluster_items()
-
-        if not wrong_files['shared'] and not wrong_files['missing'] and not wrong_files['extra']:
-            logging.info("{0} [Step 3]: Client meets integrity checks. No actions.".format(tag))
-        else:
-            logging.info("{0} [Step 3]: Client does not meet integrity checks. Actions required.".format(tag))
-
-
-        if wrong_files['shared']:
-            logging.info("{0} [Step 3]: Received {1} wrong files to fix from master. Action: Overwrite files.".format(tag, len(wrong_files['shared'])))
-            try:
-                for file_to_overwrite, data in wrong_files['shared'].items():
-                    logging.debug("{0} Overwrite file: '{1}'".format(tag, file_to_overwrite))
-                    overwrite_or_create_files(file_to_overwrite, data)
-
-            except Exception as e:
-                print(str(e))
-                raise e
-
-        if wrong_files['missing']:
-            logging.info("[Client] [Sync process] [Step 3]: Received {} missing files from master. Action: Create files.".format(len(wrong_files['missing'])))
-            for file_to_create, data in wrong_files['missing'].items():
-                logging.debug("{0} Create file: '{1}'".format(tag, file_to_create))
-                overwrite_or_create_files(file_to_create, data)
-
-        if wrong_files['extra']:
-            logging.info("{0} [Step 3]: Received {1} extra files from master. Action: Remove files.".format(tag, len(wrong_files['extra'])))
-            for file_to_remove in wrong_files['extra']:
-                logging.debug("{0} Remove file: '{1}'".format(tag, file_to_remove))
-                file_path = common.ossec_path + file_to_remove
-                os.remove(file_path)
-
-
-        return True
-
 
 #
-# Client threads
+# Threads (workers) created by ClientManagerHandler
 #
-class ClientIntervalThread(threading.Thread):
-
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.client = None
-        self.running = True
-        self.thread_tag = "[Client] [IntervalThread] [Sync process c->m]"
-
-
-    def run(self):
-        while self.running:
-            # Waint until client is set
-            if not self.client:
-                time.sleep(2)
-                continue
-
-            # Waint until client is connected
-            if not self.client.is_connected():
-                check_seconds = 2
-                logging.info("{0}: Client is not connected. Waiting: {1}s.".format(self.thread_tag, check_seconds))
-                time.sleep(check_seconds)
-                continue
-
-            # Client set and connected
-            try:
-                new_interval = self.client.config['interval']
-
-                # Send files
-                self.client.set_lock_interval_thread(True)
-                result = self.client.send_client_files_to_master(reason="Interval", tag=self.thread_tag)
-
-                # Master received the file properly
-                if result:
-                    logging.info("{0}: Result: Successfully.".format(self.thread_tag))
-
-                    # Lock until:
-                    #  - Master sends files: sync_m_c
-                    #  - Master sends error: sync_m_c_err
-                    #  - Client is disconnected and connected again
-                    logging.info("{0}: Locking: Wait for master files.".format(self.thread_tag))
-                    n_seconds = 0
-                    while self.client.get_lock_interval_thread():
-                        # Print each 5 seconds
-                        if n_seconds != 0 and n_seconds % 5 == 0:
-                            logging.info("{0}: Master didnt send the files in the last 5 seconds.".format(self.thread_tag))
-
-                        time.sleep(1)
-                        n_seconds += 1
-
-                    logging.info("{0}: Unlocked: Master files processed.".format(self.thread_tag))
-                    new_interval = max(0, self.client.config['interval'] - n_seconds)
-
-                # Master reported an error receiving files
-                else:
-                    logging.error("{0}: Result: Error.".format(self.thread_tag))
-            except Exception as e:
-                logging.error("{0}: Unknown Error: '{1}'.".format(self.thread_tag, str(e)))
-                clean_up(self.client.name)
-
-            logging.info("{0}: Sleeping: {1}s.".format(self.thread_tag, new_interval))
-            time.sleep(new_interval)
-
-
-    def setclient(self, client):
-        self.client = client
-
-
-    def stop(self):
-        self.running = False
-
-
 class ClientProcessMasterFiles(ProcessFiles):
 
-    def __init__(self, filename, handler=None):
-        ProcessFiles.__init__(self, handler, filename, common.ossec_path)
-        self.filename = filename
+    def __init__(self, manager_handler, filename, stopper):
+        ProcessFiles.__init__(self, manager_handler, filename, manager_handler.name, common.ossec_path, stopper)
         self.thread_tag = "[Client] [ProcessFilesThread] [Sync process m->c]"
 
 
     def run(self):
-        while self.running:
+        while not self.stopper.is_set() and self.running:
             if self.manager_handler and self.manager_handler.is_connected():
                 if self.received_all_information:
 
@@ -347,16 +282,179 @@ class ClientProcessMasterFiles(ProcessFiles):
                 time.sleep(5)
 
 
-    def setclient(self, client):
-        self.manager_handler = client
-        self.name = client.name
+#
+# Client
+#
+class ClientManager():
+    INTERVAL_T = "Interval_Thread"
+    KA_T = "KeepAlive_Thread"
+
+    def __init__(self, cluster_config):
+        self.handler = ClientManagerHandler(cluster_config=cluster_config)
+        self.cluster_config = cluster_config
+
+        # Threads
+        self.stopper = threading.Event()
+        self.threads = {}
+        self._initiate_client_threads()
+
+    # Private methods
+    def _initiate_client_threads(self):
+        logging.debug("[Master] Creating threads.")
+        # Sync interval
+        self.threads[ClientManager.INTERVAL_T] = ClientIntervalThread(client_handler=self.handler, stopper=self.stopper)
+        self.threads[ClientManager.INTERVAL_T].start()
+
+        # KA
+        self.threads[ClientManager.KA_T] = ClientKeepAliveThread(client_handler=self.handler, stopper=self.stopper)
+        self.threads[ClientManager.KA_T].start()
+
+    # New methods
+    def exit(self):
+        logging.info("[Client] Cleaning...")
+
+        # Cleaning client threads
+        logging.debug("[Client] Cleaning main threads")
+        self.stopper.set()
+
+        for thread in self.threads:
+            logging.debug("[Client] Cleaning main threads: '{0}'.".format(thread))
+            self.threads[thread].join(timeout=5)
+            if self.threads[thread].isAlive():
+                logging.warning("[Client] Cleaning main threads. Timeout for: '{0}'.".format(thread))
+            else:
+                logging.debug("[Client] Cleaning main threads. Terminated: '{0}'.".format(thread))
+
+        # Cleaning handler threads
+        logging.debug("[Client] Cleaning handler threads.")
+        self.handler.exit()
+
+        logging.debug("[Client] Cleaning generated temporary files.")
+        clean_up()
+
+        logging.info("[Client] Cleaning end.")
+
+
+#
+# Client threads
+#
+class ClientKeepAliveThread(ClusterThread):
+
+    def __init__(self, client_handler, stopper):
+        ClusterThread.__init__(self, stopper)
+        self.client = client_handler
+        self.thread_tag = "[Client] [KeepAliveThread {0}] [Sync process c->m]".format(self.ident)
+
+
+    def run(self):
+
+        while not self.stopper.is_set() and self.running:
+            self.thread_tag = "[Client] [KeepAliveThread {0}] [Sync process c->m]".format(self.ident)
+
+            # Waint until client is set
+            if not self.client:
+                #time.sleep(2)
+                self.sleep(2)
+                continue
+
+            # Waint until client is connected
+            if not self.client.is_connected():
+                check_seconds = 2
+                logging.info("{0}: Client is not connected. Waiting: {1}s.".format(self.thread_tag, check_seconds))
+                #time.sleep(check_seconds)
+                self.sleep(check_seconds)
+                continue
+
+            # Client set and connected
+            try:
+                result = self.client.send_request('echo-c', 'Keep-alive from client!')
+
+                if result:
+                    logging.info("{0}: KA: Successfully.".format(self.thread_tag))
+                else:
+                    logging.error("{0}: KA: Error.".format(self.thread_tag))
+            except Exception as e:
+                logging.error("{0}: KA Unknown Error: '{1}'.".format(self.thread_tag, str(e)))
+                clean_up(self.client.name)
+
+            logging.info("{0}: KA Sleeping: {1}s.".format(self.thread_tag, self.client.config['ka_interval']))
+            #time.sleep(self.client.config['ka_interval'])
+            self.sleep(self.client.config['ka_interval'])
+
+
+class ClientIntervalThread(ClusterThread):
+
+    def __init__(self, client_handler, stopper):
+        ClusterThread.__init__(self, stopper)
+        self.client = client_handler
+        self.thread_tag = "[Client] [IntervalThread [Sync process c->m]"
+
+
+    def run(self):
+
+        while not self.stopper.is_set() and self.running:
+            self.thread_tag = "[Client] [IntervalThread] [Sync process c->m]"
+
+            # Waint until client is set
+            if not self.client:
+                # time.sleep(2)
+                self.sleep(2)
+                continue
+
+            # Waint until client is connected
+            if not self.client.is_connected():
+                check_seconds = 2
+                logging.info("{0}: Client is not connected. Waiting: {1}s.".format(self.thread_tag, check_seconds))
+                #time.sleep(check_seconds)
+                self.sleep(check_seconds)
+                continue
+
+            # Client set and connected
+            try:
+                new_interval = self.client.config['interval']
+
+                # Send files
+                self.client.set_lock_interval_thread(True)
+                result = self.client.send_client_files_to_master(reason="Interval", tag=self.thread_tag)
+
+                # Master received the file properly
+                if result:
+                    logging.info("{0}: Result: Successfully.".format(self.thread_tag))
+
+                    # Lock until:
+                    #  - Master sends files: sync_m_c
+                    #  - Master sends error: sync_m_c_err
+                    #  - Client is disconnected and connected again
+                    logging.info("{0}: Locking: Wait for master files.".format(self.thread_tag))
+                    n_seconds = 0
+                    while self.client.get_lock_interval_thread():
+                        # Print each 5 seconds
+                        if n_seconds != 0 and n_seconds % 5 == 0:
+                            logging.info("{0}: Master didnt send the files in the last 5 seconds.".format(self.thread_tag))
+
+                        time.sleep(1)
+                        n_seconds += 1
+                        if self.stopper.is_set() or not self.running:
+                            break  # it doesnt go to the else
+                    else:
+                        logging.info("{0}: Unlocked: Master files processed.".format(self.thread_tag))
+                        new_interval = max(0, self.client.config['interval'] - n_seconds)
+
+                # Master reported an error receiving files
+                else:
+                    logging.error("{0}: Result: Error.".format(self.thread_tag))
+            except Exception as e:
+                logging.error("{0}: Unknown Error: '{1}'.".format(self.thread_tag, str(e)))
+                clean_up(self.client.name)
+
+            logging.info("{0}: Sleeping: {1}s.".format(self.thread_tag, new_interval))
+            #time.sleep(new_interval)
+            self.sleep(new_interval)
 
 
 #
 # Internal socket
 #
-from wazuh.cluster.communication import InternalSocketHandler
-import ast
 class ClientInternalSocketHandler(InternalSocketHandler):
     def __init__(self, sock, manager, map):
         InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
