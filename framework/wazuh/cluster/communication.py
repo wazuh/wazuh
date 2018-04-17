@@ -112,6 +112,7 @@ class Handler(asyncore.dispatcher_with_send):
         self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
         self.inbuffer = b''
         self.lock = threading.Lock()
+        self.workers_lock = threading.Lock()
         self.workers = {}
         self.stopper = threading.Event()
 
@@ -120,28 +121,45 @@ class Handler(asyncore.dispatcher_with_send):
         logging.debug("[Transport] Cleaning connection")
         self.stopper.set()
 
-        for worker in self.workers:
-            logging.debug("[Transport] Cleaning thread: '{0}'".format(worker))
-            self.workers[worker].join(timeout=5)
-            if self.workers[worker].isAlive():
-                logging.warning("[Transport] Cleaning thread. Timeout for: '{0}'.".format(worker))
+        with self.workers_lock:
+            worker_ids = self.workers.keys()
+
+
+        for worker_id in worker_ids:
+            logging.debug("[Transport] Cleaning thread: '{0}'".format(worker_id))
+
+            with self.workers_lock:
+                my_worker = self.workers[worker_id]
+
+            my_worker.join(timeout=5)
+            if my_worker.isAlive():
+                logging.warning("[Transport] Cleaning thread. Timeout for: '{0}'.".format(worker_id))
             else:
-                logging.debug("[Transport] Cleaning main threads. Terminated: '{0}'.".format(worker))
+                logging.debug("[Transport] Cleaning main threads. Terminated: '{1}'.".format(worker_id))
+
 
     def set_worker(self, command, worker, filename):
         thread_id = '{}-{}-{}'.format(command, worker.ident, os.path.basename(filename))
-        self.workers[thread_id] = worker
+        with self.workers_lock:
+            self.workers[thread_id] = worker
         worker.id = thread_id
         return thread_id
+
+
+    def del_worker(self, worker_id):
+        with self.workers_lock:
+            if worker_id in self.workers:
+                del self.workers[worker_id]
 
 
     def get_worker(self, data):
         # the worker id will be the first element spliting the data by spaces
         id = data.split(' ', 1)[0]
-        if id in self.workers:
-            return self.workers[id], 'ack', 'Command received for {}'.format(id)
-        else:
-            return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(id)
+        with self.workers_lock:
+            if id in self.workers:
+                return self.workers[id], 'ack', 'Command received for {}'.format(id)
+            else:
+                return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(id)
 
 
     def compute_md5(self, file, blocksize=2**20):
@@ -658,6 +676,13 @@ class ProcessFiles(ClusterThread):
         self.received_all_information = False
         self.close_lock = threading.Condition()
         self.f = None
+        self.id = None
+
+
+    def stop(self):
+        if self.id:
+            self.manager_handler.del_worker(self.id)
+        ClusterThread.stop(self)
 
 
     def run(self):
@@ -750,6 +775,3 @@ class ProcessFiles(ClusterThread):
             raise Exception(error_msg)
 
         return "ok", "File {} received successfully".format(self.filename)
-
-
-
