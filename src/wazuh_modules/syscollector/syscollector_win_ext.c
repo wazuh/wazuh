@@ -155,6 +155,30 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
     cJSON *ipv6_addr = cJSON_CreateArray();
     cJSON *ipv6_netmask = cJSON_CreateArray();
 
+    /* Get network stats */
+
+    ULONG retVal = 0;
+
+    MIB_IF_ROW2 ifRow;
+    SecureZeroMemory((PVOID) &ifRow, sizeof(MIB_IF_ROW2));
+
+    ifRow.InterfaceIndex = pCurrAddresses->IfIndex;
+
+    if ((retVal = GetIfEntry2(&ifRow)) == NO_ERROR) {
+
+        int tx_packets = ifRow.OutUcastPkts + ifRow.OutNUcastPkts;
+        int rx_packets = ifRow.InUcastPkts + ifRow.InNUcastPkts;
+
+        cJSON_AddNumberToObject(iface_info, "tx_packets", tx_packets);
+        cJSON_AddNumberToObject(iface_info, "rx_packets", rx_packets);
+        cJSON_AddNumberToObject(iface_info, "tx_bytes", ifRow.OutOctets);
+        cJSON_AddNumberToObject(iface_info, "rx_bytes", ifRow.InOctets);
+        cJSON_AddNumberToObject(iface_info, "tx_errors", ifRow.OutErrors);
+        cJSON_AddNumberToObject(iface_info, "rx_errors", ifRow.InErrors);
+        cJSON_AddNumberToObject(iface_info, "tx_dropped", ifRow.OutDiscards);
+        cJSON_AddNumberToObject(iface_info, "rx_dropped", ifRow.InDiscards);
+    }
+
     /* Extract IPv4 and IPv6 addresses */
     pUnicast = pCurrAddresses->FirstUnicastAddress;
 
