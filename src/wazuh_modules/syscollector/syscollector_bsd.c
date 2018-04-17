@@ -143,7 +143,6 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
-    int status;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -189,6 +188,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     FILE *output;
     char read_buff[SERIAL_LENGTH];
     int i;
+    int status;
 
     memset(read_buff, 0, SERIAL_LENGTH);
     command = "system_profiler SPHardwareDataType | grep Serial";
@@ -602,6 +602,9 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                 cJSON_AddNumberToObject(interface, "rx_packets", stats->ifi_ipackets);
                 cJSON_AddNumberToObject(interface, "tx_bytes", stats->ifi_obytes);
                 cJSON_AddNumberToObject(interface, "rx_bytes", stats->ifi_ibytes);
+                cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_oerrors);
+                cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_ierrors);
+                cJSON_AddNumberToObject(interface, "rx_dropped", stats->ifi_iqdrops);
 
                 cJSON_AddNumberToObject(interface, "MTU", stats->ifi_mtu);
 
