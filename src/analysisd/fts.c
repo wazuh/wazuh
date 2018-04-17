@@ -14,7 +14,8 @@
 #include "config.h"
 
 /* Local variables */
-static unsigned int fts_minsize_for_str = 0;
+unsigned int fts_minsize_for_str = 0;
+int fts_list_size;
 
 static OSList *fts_list = NULL;
 static OSHash *fts_store = NULL;
@@ -26,7 +27,6 @@ static FILE *fp_ignore = NULL;
 /* Start the FTS module */
 int FTS_Init()
 {
-    int fts_list_size;
     char _line[OS_FLSIZE + 1];
 
     _line[OS_FLSIZE] = '\0';

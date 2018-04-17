@@ -34,6 +34,8 @@ extern OSDecoderInfo *NULL_Decoder;
 extern OSDecoderNode *osdecodernode_forpname;
 extern OSDecoderNode *osdecodernode_nopname;
 extern RuleNode *rulenode;
+extern rlim_t nofile;
+extern int sys_debug_level;
 
 // Com request thread dispatcher
 void * syscom_main(__attribute__((unused)) void * arg) ;

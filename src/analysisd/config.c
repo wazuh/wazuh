@@ -14,6 +14,8 @@
 #include "os_regex/os_regex.h"
 #include "analysisd.h"
 #include "config.h"
+#include "rules.h"
+#include "stats.h"
 
 long int __crt_ftell; /* Global ftell pointer */
 _Config Config;       /* Global Config structure */
@@ -22,6 +24,16 @@ OSList *ar_commands;
 OSDecoderNode *osdecodernode_forpname;
 OSDecoderNode *osdecodernode_nopname;
 RuleNode *rulenode;
+// Extern internal options
+int default_timeframe;
+int maxdiff;
+int mindiff;
+int percent_diff;
+unsigned int fts_minsize_for_str;
+int fts_list_size;
+rlim_t nofile;
+int sys_debug_level;
+
 
 int GlobalConf(const char *cfgfile)
 {
@@ -242,6 +254,36 @@ cJSON *getAlertsConfig(void) {
 #endif
 
     cJSON_AddItemToObject(root,"alerts",alerts);
+
+    return root;
+}
+
+
+cJSON *getAnalysisInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+    cJSON *analysisd = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(analysisd,"debug",sys_debug_level);
+    cJSON_AddNumberToObject(analysisd,"default_timeframe",default_timeframe);
+    cJSON_AddNumberToObject(analysisd,"stats_maxdiff",maxdiff);
+    cJSON_AddNumberToObject(analysisd,"stats_mindiff",mindiff);
+    cJSON_AddNumberToObject(analysisd,"stats_percent_diff",percent_diff);
+    cJSON_AddNumberToObject(analysisd,"fts_list_size",fts_list_size);
+    cJSON_AddNumberToObject(analysisd,"fts_minsize_for_str",fts_minsize_for_str);
+    cJSON_AddNumberToObject(analysisd,"log_fw",Config.logfw);
+    cJSON_AddNumberToObject(analysisd,"decoder_order_size",Config.decoder_order_size);
+    cJSON_AddNumberToObject(analysisd,"label_cache_maxage",Config.label_cache_maxage);
+    cJSON_AddNumberToObject(analysisd,"show_hidden_labels",Config.show_hidden_labels);
+    cJSON_AddNumberToObject(analysisd,"rlimit_nofile",nofile);
+    cJSON_AddNumberToObject(analysisd,"min_rotate_interval",Config.min_rotate_interval);
+#ifdef LIBGEOIP_ENABLED
+    cJSON_AddNumberToObject(analysisd,"geoip_jsonout",Config.geoip_jsonout);
+#endif
+
+    cJSON_AddItemToObject(internals,"analysisd",analysisd);
+    cJSON_AddItemToObject(root,"internal_options",internals);
 
     return root;
 }
