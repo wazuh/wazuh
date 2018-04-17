@@ -236,7 +236,7 @@ if __name__ == '__main__':
         cluster_config = None
 
     if not cluster_config or cluster_config['disabled'] == 'yes':
-        raise WazuhException(3000, "The cluster is disabled")
+        print "Error: The cluster is disabled"
         exit(1)
 
     # Validate cluster config
@@ -247,7 +247,7 @@ if __name__ == '__main__':
 
     status = get_status_json()
     if status["running"] != "yes":
-        raise WazuhException(3000, "The cluster is not running")
+        print "Error: The cluster is not runnig"
         exit(1)
 
     is_master = cluster_config['node_type'] == "master"
@@ -260,17 +260,23 @@ if __name__ == '__main__':
         logging.getLogger('').setLevel(logging.DEBUG) #10
 
     try:
-        if is_master and args.list_agents is not None:
-            print_agents_master(args.filter_status)
-            #if args.list_files is not None:
-            #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
-            #elif is_master and args.sync is not None:
-            #    sync_master(args.filter_node)
+        if args.list_agents is not None:
+            if is_master:
+                print_agents_master(args.filter_status)
+            else:
+                print "Wrong arguments. To use this command you need to be a master node."
+                parser.print_help()
+            
         elif args.list_nodes is not None:
             print_nodes_status(args.filter_node)
         else:
             parser.print_help()
             exit()
+
+        #elif args.list_files is not None:
+        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
+        #elif is_master and args.sync is not None:
+        #    sync_master(args.filter_node)
 
     except Exception as e:
         logging.error(str(e))
