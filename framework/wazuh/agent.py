@@ -2534,7 +2534,7 @@ class Agent:
             s.close()
         else:
             s.close()
-            raise WazuhException(1014)
+            raise WazuhException(1014, "("+data+")")
 
         # Check message
         if not rec_len == size:
