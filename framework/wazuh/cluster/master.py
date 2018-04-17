@@ -246,6 +246,14 @@ class MasterManager(Server):
             mkdir_with_mode(node_path)
         return id
 
+
+    def remove_client(self, id):
+        Server.remove_client(self, id)
+        node_path = "{}/queue/cluster/{}".format(common.ossec_path, id)
+        if id not in self.get_connected_clients() and os.path.exists(node_path):
+            shutil.rmtree(node_path)
+
+
     # Private methods
     def _initiate_master_threads(self):
         logging.debug("[Master] Creating threads.")
