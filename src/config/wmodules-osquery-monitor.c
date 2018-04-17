@@ -51,7 +51,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
             if(fopen (nodes[i]->content, "w+"))  //CHECK IF FILE EXISTS
             {
                 osquery_monitor->log_path = strdup(nodes[i]->content);
-                mdebug2("LOGPATH LEIDO: ,%s", osquery_monitor->log_path);
+                mdebug2("LOGPATH LEIDO: %s", osquery_monitor->log_path);
             }
             else
             {

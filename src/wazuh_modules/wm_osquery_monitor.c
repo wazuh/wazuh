@@ -1,10 +1,10 @@
-
 #include "wmodules.h"
 #include <sys/stat.h>
 #include <pthread.h>
 #include <time.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <stdio.h>
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor);
 void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
@@ -77,7 +77,7 @@ void *Read_Log(wm_osquery_monitor_t *osquery_monitor)
         }
         else
         {
-            current_inode = get_inode(result_log);
+            current_inode = get_inode(fileno(result_log));
             fseek(result_log, 0, SEEK_END);
             //Read the file
             while(1)
@@ -93,7 +93,7 @@ void *Read_Log(wm_osquery_monitor_t *osquery_monitor)
                 else
                 {
                     //check if result path inode has changed.
-                    if(get_inode(result_log) != current_inode)
+                    if(get_inode(fileno(result_log)) != current_inode)
                     {
                         for (i = 0; i < WM_MAX_ATTEMPTS && (result_log = fopen(osquery_monitor->log_path, "r"), !result_log); i++)
                         {
@@ -105,7 +105,7 @@ void *Read_Log(wm_osquery_monitor_t *osquery_monitor)
                         }
                         else
                         {
-                            current_inode = get_inode(result_log);
+                            current_inode = get_inode(fileno(result_log));
                         }
                     }
 
@@ -136,75 +136,158 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
             switch(pid)
             {
             case 0: //Child
-                setsid();
+                
                 daemon_pid = getpid();
-                if (execl(osquery_monitor->bin_path, "osqueryd", "-verbose"/*(char *)NULL*/) < 0)
+                if (execl(osquery_monitor->bin_path, "osqueryd", (char *)NULL) < 0)
                 {
                     mterror(WM_OSQUERYMONITOR_LOGTAG, "cannot execute osquery daemon");
                 }
+                setsid();
                 break;
             case -1: //ERROR
                 mterror(WM_OSQUERYMONITOR_LOGTAG, "child has not been created");
             default:
-                wm_append_sid(pid);
+                wm_append_sid(daemon_pid);
                 switch (waitpid(daemon_pid, &status, WNOHANG))
                 {
-                case 0:
-                    if (errno == ECHILD) //Not working
-                    {
-                        down = 1;
-                    }
-                    else
-                    {
-                        //OSQUERY IS WORKING, wake up the other thread to read the log file
-
-                        down = 0;
-                        unlock = 1;
-                        pthread_cond_signal( &active );
-                        pthread_mutex_unlock( &mutex1 );
-                    }
+                case 0:               
+                    //OSQUERY IS WORKING, wake up the other thread to read the log file
+                    down = 0;
+                    unlock = 1;
+                    pthread_cond_signal( &active );
+                    pthread_mutex_unlock( &mutex1 );
                     break;
                 case -1:
-                    // Finished. Bad Configuration
-                    stopped = 1;
-                    down = 1;
-                    mterror(WM_OSQUERYMONITOR_LOGTAG, "Bad Configuration!");
-                    pthread_exit(NULL);
-                }
-            }
-        }
-        else	//If not down, check periodically every second the osQuery status.
-        {
-            while(down == 0)
-            {
-                switch (waitpid(daemon_pid, &status, WNOHANG))
-                {
-                case 0:
                     if (errno == ECHILD)
                     {
+                        mterror(WM_OSQUERYMONITOR_LOGTAG,"ECHILD");
                         down = 1;
                     }
-                    else
-                    {
-                        down = 0;
-                    }
-                    break;
-                case -1:
                     // Finished. Bad Configuration
-                    down = 1;
-                    mterror(WM_OSQUERYMONITOR_LOGTAG, "Bad configuration!");
+                    stopped = 1;
+                    //mterror(WM_OSQUERYMONITOR_LOGTAG, "Bad Configuration!");
                     pthread_exit(NULL);
+                    break;
                 }
-                sleep(1);
             }
         }
+        while(down==0)
+        {
+            switch (waitpid(daemon_pid, &status, WNOHANG))
+            {
+            case 0:
+                down = 0;
+                break; 
+            case -1:
+                if (errno == ECHILD)
+                {
+                    mterror(WM_OSQUERYMONITOR_LOGTAG,"ECHILD");
+                }
+                down = 1;
+            }   
+            sleep(1);
+        }
+        sleep(1);
+    }
+}
+
+void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
+{
+    char * LINE = strdup("");
+    char * select=strdup("SELECT ");
+    char * as = strdup(" AS ");
+    char * key = NULL;
+    char * value = NULL;
+    char * coma = strdup(", ");
+    
+    //PATH CREATION
+    char * firstPath = strdup("/var/ossec");
+    char * lastpath = strdup("/etc/ossec.conf");
+    char * configPath = NULL;
+    configPath = malloc(strlen(firstPath)+strlen(lastpath));
+    strcpy(configPath,firstPath);
+    strcat(configPath,lastpath);
+    mdebug2("CONFIGPATH: %s",configPath);
+    char * json_block = NULL;
+
+    //CJSON OBJECTS
+    int i=0;
+    cJSON *root;
+    cJSON *decorators;
+    cJSON *always;
+    wlabel_t* labels;
+    os_calloc(1, sizeof(wlabel_t), labels);
+    ReadConfig(CLABELS, configPath, &labels, NULL);
+
+    int len=0;
+
+    root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root,"decorators",decorators = cJSON_CreateObject());
+    cJSON_AddItemToObject(decorators,"always",always = cJSON_CreateArray());
+
+    FILE * osquery_conf = NULL;
+    osquery_conf = fopen("/etc/osquery/osquery.conf","r");
+    struct stat stp = { 0 };  
+    char *content;
+    stat("/etc/osquery/osquery.conf", &stp);
+    int filesize = stp.st_size;
+
+    mdebug2("FILESIZE: %d", filesize);
+    content = (char *) malloc(sizeof(char) * filesize);
+    json_block = cJSON_PrintUnformatted(root);
+        mdebug2("CONTENT : %s", json_block); 
+    if (fread(content, 1, filesize - 1, osquery_conf) == -1) {
+        printf("\nerror in reading\n");
+        /**close the read file*/
+        fclose(osquery_conf);
+        //free input string
+        free(content);
+    }
+        
+    int decorated=0;
+    if(strstr(content, "decorators")!=NULL)
+        decorated = 1;
+    else
+        decorated = 0;
+
+    if(!decorated){
+        
+        for(i;labels[i].key!=NULL;i++){  
+            key = strdup(labels[i].key);
+            value = strdup(labels[i].value); 
+            LINE = strdup(select);
+            int newlen = sizeof(char)*(strlen(LINE)+strlen(key)+strlen(as)+strlen(value));
+            LINE = (char*)realloc(LINE, newlen);  
+            strcat(LINE,key);
+            strcat(LINE,as);
+            strcat(LINE,value);
+            mdebug2("VALUE: %s",value);
+            cJSON_AddStringToObject(always,"line",LINE);
+        }
+        
+        
+        json_block = cJSON_PrintUnformatted(root);
+        mdebug2("CONTENT : %s", content);
+        mdebug2("CREE LAS QUERYS!: %s", json_block);
+        content = realloc(content,sizeof(char)*(strlen(content)+strlen(json_block))); 
+        strcat(content,json_block);
+        mdebug2("FINALCONTENT : %s", content);
+
+        //mdebug2("ARCHIVO DE CONFIG: %s",json_block);
+        free(json_block);
+        cJSON_Delete(root);
+        fclose(osquery_conf);
+        //Escribir contenido en el fichero
+        osquery_conf = fopen("/etc/osquery/osquery.conf","w");
+        fprintf(osquery_conf,content);
+        fclose(osquery_conf);
     }
 }
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor)
 {
+    wm_osquery_decorators(osquery_monitor);
     pthread_t thread1, thread2;
-    wm_osquery_monitor_decorate(osquery_monitor);
     pthread_create( &thread1, NULL, &Read_Log, osquery_monitor);
     pthread_create( &thread2, NULL, &Execute_Osquery, osquery_monitor);
     pthread_join( thread2, NULL);
@@ -215,79 +298,4 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
     free(osquery_monitor);
 }
 
-void wm_osquery_monitor_decorate(wm_osquery_monitor_t *osquery_monitor)
-{
-    FILE *agent_config = NULL;
-    char *second_path = "/etc/ossec.conf";
-    //char *path[OS_MAXSTR];
-    char * path;
-    strncpy(path,DEFAULTDIR,strlen(DEFAULTDIR));
-    strcat(path, second_path);
-   	mdebug2("PATH: %s",path);
-    cJSON *root, *decorators, *always, *decorator;
-    int i = 0;
-
-    for (i = 0; i < WM_MAX_ATTEMPTS && (agent_config = fopen(path, "r"), !agent_config); i++)
-    {
-        sleep(1);
-    }
-    if(!agent_config)
-    {
-        mterror(WM_OSQUERYMONITOR_LOGTAG, "cannot read ossec conf");
-        pthread_exit(NULL);
-    }
-    /*else
-    {
-        wlabel_t *labels;
-
-
-        ReadConfig(CLABELS, AGENTCONFIG, &labels,labels); //Leer los labels de la configuracion
-
-        char *query_full = NULL;
-        char *query_first = NULL;
-        char *query_second = NULL;
-        char * query_total=NULL;
-        char *key = NULL;
-        char *value = NULL;
-        char * json_Result;
-        
-
-        root = cJSON_CreateObject();
-        decorators = cJSON_CreateObject();
-        always = cJSON_CreateArray();
-        cJSON_AddItemToObject(root, "decorators", decorators);
-
-        cJSON_AddItemToObject(decorators, "always", always);
-
-        
-        for(i=0; labels[i].key != NULL; i++)
-        {
-            //Creating the JSON line;
-            strcpy(query_first, "select ");
-            strcpy(query_second, " AS ");
-            strcpy(key, labels[i].key);
-            strcpy(value, labels[i].value);
-            query_first = strdup(key);
-            query_second = strdup(value);
-            query_total = strdup(strcat(query_first,query_second));
-            
-
-            cJSON_AddItemToArray(always, decorator = cJSON_CreateObject());
-            cJSON_AddItemToObject(decorator, query_total,NULL);
-        }
-
-        strcpy(json_Result,cJSON_Print(root));
-        mdebug2("Resultado json: %d",json_Result);
-        free(query_full);
-        free(query_first);
-        free(query_second);
-        free(query_total);
-        free(key);
-        free(value);
-        free(json_Result);
-        //Añadir el trozo de JSON en osquery.conf
-    }
-*/
-
-}
 
