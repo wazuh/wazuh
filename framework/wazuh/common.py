@@ -125,5 +125,12 @@ global agent_socket_list
 agent_socket_list = {
     "client":"agent",
     "client-buffer":"agent",
-    "labels":"agent"
+    "labels":"agent",
+    "syscheck":"syscheckd",
+    "rootcheck":"syscheckd",
+    "localfile":"logcollector",
+    "socket":"logcollector",
+    "wmodules":"wmodules",
+    "active-response":"com",
+    "logging":"com"
 }
