@@ -14,6 +14,7 @@
 
 /* Global definition */
 RuleInfo *currently_rule;
+int default_timeframe;
 
 /* Change path for test rule */
 #ifdef TESTRULE
@@ -150,7 +151,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     char *location = NULL;
 
     size_t i;
-    int default_timeframe = 360;
+    default_timeframe = 360;
 
     /* If no directory in the rulefile, add the default */
     if ((strchr(rulefile, '/')) == NULL) {

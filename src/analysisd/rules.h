@@ -251,5 +251,6 @@ int _setlevels(RuleNode *node, int nnode);
 
 /* Global variables */
 extern int _max_freq;
+extern int default_timeframe;
 
 #endif /* _OS_RULES */
