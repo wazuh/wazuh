@@ -329,12 +329,32 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             split_data = data.split('%--%', 2)
             file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
             node_list = ast.literal_eval(split_data[1]) if split_data[1] else None
-            response = json.loads(self.manager.req_file_status_to_clients()[1])
+            get_my_files = False
+
+            response = {}
+
+            if node_list and len(node_list) > 0:
+                for node in node_list:
+                    if node == read_config()['node_name']:
+                        get_my_files = True
+                        continue
+                    node_file = self.manager.send_request(client_name=node, command='file_status', data='')
+                    print "{}".format(node_file)
+                    response.update({node:json.loads(node_file.split(' ',1)[1])})
+            else:
+                node_file = list(self.manager.send_request_broadcast(command = 'file_status'))
+                response = {node:json.loads(data.split(' ',1)[1]) for node,data in node_file}
+                get_my_files = True
+        
+            if get_my_files:
+                master_files = get_files_status('master', get_md5=True)
+                client_files = get_files_status('client', get_md5=True)
+                my_files = master_files
+                my_files.update(client_files)
+                response.update({read_config()['node_name']:my_files})
 
             if node_list and len(response):
                 response = {node: response.get(node) for node in node_list}
-            if file_list and len(response):
-                response = {node:{f_name:f_content for f_name,f_content in files.iteritems() if f_name in file_list} for node,files in response.iteritems()}
 
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
@@ -388,4 +408,3 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                     serialized_response = response.split(' ', 1)
 
             return serialized_response
-

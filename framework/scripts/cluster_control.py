@@ -39,13 +39,11 @@ def get_parser(type):
 
 Usage:
 \t-h, --help                                  # Show this help message
-\t-l, --list-files                            # List the file status for every node
 \t-a, --list-agents                           # List agents
 \t-n, --list-nodes                            # List nodes
 
 Filters:
 \t -t, --filter-node                          # Filter by node
-\t -f, --filter-file                          # Filter by file
 \t -c, --filter-agents-status                 # Filter by agent status
 
 Others:
@@ -53,6 +51,8 @@ Others:
 
 """.format(basename(argv[0]))
                 #\t-s, --sync                                 # Force the nodes to initiate the synchronization process
+                #\t-l, --list-files                           # List the file status for every node
+                #\t-f, --filter-file                         # Filter by file
                 return msg
             def error(self, message):
                 print("Wrong arguments: {0}".format(message))
@@ -63,13 +63,13 @@ Others:
         parser._positionals.title = 'Wazuh Cluster control interface'
 
         parser.add_argument('-t', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
-        parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
+        #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
         parser.add_argument('-c', '--filter-agents-status', dest='filter_status', nargs='*', type=str, help="Agents status")
         parser.add_argument('--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
         #exclusive.add_argument('-s', '--sync', const='sync', action='store_const', help="Force the nodes to initiate the synchronization process")
-        exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
+        #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
         exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
         exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
         return parser
@@ -81,17 +81,17 @@ Others:
 
 Usage:
 \t-h, --help                                  # Show this help message
-\t-l, --list-files                            # List the status of his own files
 \t-n, --list-nodes                            # List nodes
 
 Filters:
 \t -t, --filter-node                          # Filter by node
-\t -f, --filter-file                          # Filter by file
 
 Others:
 \t     --debug                                # Show debug information
 
 """.format(basename(argv[0]))
+                #\t-l, --list-files                            # List the status of his own files
+                #\t -f, --filter-file                          # Filter by file
                 return msg
             def error(self, message):
                 print("Wrong arguments: {0}".format(message))
@@ -102,11 +102,13 @@ Others:
         parser._positionals.title = 'Wazuh Cluster control interface'
 
         parser.add_argument('-t', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
-        parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
+        #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
+        parser.add_argument('-c', '--filter-agents-status', dest='filter_status', nargs='*', type=str, help="Agents status")
         parser.add_argument('--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
-        exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
+        #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
+        exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
         exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
         return parser
 
@@ -258,12 +260,12 @@ if __name__ == '__main__':
         logging.getLogger('').setLevel(logging.DEBUG) #10
 
     try:
-        if args.list_files is not None:
-            print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
+        if is_master and args.list_agents is not None:
+            print_agents_master(args.filter_status)
+            #if args.list_files is not None:
+            #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
             #elif is_master and args.sync is not None:
             #    sync_master(args.filter_node)
-        elif is_master and args.list_agents is not None:
-            print_agents_master(args.filter_status)
         elif args.list_nodes is not None:
             print_nodes_status(args.filter_node)
         else:
