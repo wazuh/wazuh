@@ -57,7 +57,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
             goto error;
         }
     }
-    else if (strcmp(section, "active-response") == 0){
+    else if (strcmp(section, "active_response") == 0){
         if (cfg = getARManagerConfig(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
@@ -95,6 +95,18 @@ size_t syscom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "rules") == 0){
         if (cfg = getRulesConfig(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+    }
+    else if (strcmp(section, "internal_options") == 0){
+        if (cfg = getAnalysisInternalOptions(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');

@@ -26,5 +26,8 @@ void AddtoIGnore(Eventinfo *lf);
 int IGnore(Eventinfo *lf);
 int FTS(Eventinfo *lf);
 
-#endif /* __FTS_H */
+/* Global variables */
+extern unsigned int fts_minsize_for_str;
+extern int fts_list_size;
 
+#endif /* __FTS_H */
