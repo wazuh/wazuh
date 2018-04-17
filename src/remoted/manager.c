@@ -13,7 +13,7 @@
 #include "os_net/os_net.h"
 #include <pthread.h>
 
-#if defined(__FreeBSD__) || defined(__MACH__)
+#if defined(__FreeBSD__) || defined(__MACH__) || defined(__sun__)
 #define HOST_NAME_MAX 64
 #endif
 
