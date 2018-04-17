@@ -97,8 +97,6 @@ int realtime_checksumfile(const char *file_name)
             mdebug2("Discarding '%s': checksum already reported.", file_name);
         }
 
-        free(buf);
-
         return (0);
     } else {
         /* New file */
