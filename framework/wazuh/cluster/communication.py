@@ -98,9 +98,10 @@ class ClusterThread(threading.Thread):
         count = 0
         while not exit and not self.stopper.is_set() and self.running:
             time.sleep(1)
-            count += 1
             if count == delay:
                 exit = True
+            else:
+                count += 1
 
 
 class Handler(asyncore.dispatcher_with_send):
