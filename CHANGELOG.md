@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Add default value for option -x in agent_control tool.
 - Syscheck RT process granularized to make frequency option more accurate.
 - External libraries moved to an external repository.
+- Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
 
 ### Fixed
 
