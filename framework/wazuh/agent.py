@@ -2486,24 +2486,18 @@ class Agent:
         return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
 
 
-    def getconfig(self, config):
+    def getconfig(self, component, config):
         """
         Read agent loaded config.
         """
         sockets_path = common.ossec_path + "/queue/ossec/"
 
         if int(self.id) == 0:
-            if config in common.manager_socket_list:
-                dest_socket = sockets_path + common.manager_socket_list[config]
-                command = "getconfig " + config
-            else:
-                raise WazuhException(1106)
+            dest_socket = sockets_path + component
+            command = "getconfig " + config
         else:
-            if config in common.agent_socket_list:
-                dest_socket = sockets_path + "request"
-                command = str(self.id).zfill(3) + " " + common.agent_socket_list[config] + " getconfig " + config
-            else:
-                raise WazuhException(1106)
+            dest_socket = sockets_path + "request"
+            command = str(self.id).zfill(3) + " " + component + " getconfig " + config
 
         # Socket connection
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -2548,14 +2542,14 @@ class Agent:
 
 
     @staticmethod
-    def get_config(agent_id, config):
+    def get_config(agent_id, component, config):
         """
         Read selected configuration from agent.
 
         :param agent_id: Agent ID.
         :return: Loaded configuration in JSON.
         """
-        if not config:
+        if not component or not config:
             raise WazuhException(1307)
 
-        return Agent(agent_id).getconfig(config=config)
+        return Agent(agent_id).getconfig(component=component, config=config)
