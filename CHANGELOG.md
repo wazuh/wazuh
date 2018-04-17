@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
 - Added Rids Synchronization. ([#459](https://github.com/wazuh/wazuh/pull/459))
 - Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
+- Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
 
 ### Changed
 
