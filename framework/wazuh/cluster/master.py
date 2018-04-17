@@ -15,6 +15,7 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files, compare_files, get_agents_status, clean_up, read_config
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, Handler, InternalSocketHandler
+from wazuh.utils import mkdir_with_mode
 import ast
 
 class MasterManagerHandler(ServerHandler):
@@ -112,7 +113,12 @@ class MasterManagerHandler(ServerHandler):
 
         logging.info("{0} [{1}]: Start.".format(tag, client_name))
 
-        json_file, zip_dir_path = decompress_files(data_received)
+        try:
+            json_file, zip_dir_path = decompress_files(data_received)
+        except Exception as e:
+            logging.error("{}: Error decompressing data from client {}: {}".format(tag, client_name, str(e)))
+            raise e
+
         if json_file:
             logging.debug("{0}: Received cluster_control.json".format(tag))
             master_files_from_client = json_file['master_files']
@@ -196,7 +202,7 @@ class MasterManager(Server):
         # create directory in /queue/cluster to store all node's file there
         node_path = "{}/queue/cluster/{}".format(common.ossec_path, id)
         if not os.path.exists(node_path):
-            os.mkdir(node_path)
+            mkdir_with_mode(node_path)
         return id
 
 #

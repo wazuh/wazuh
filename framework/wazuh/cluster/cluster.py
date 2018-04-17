@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import md5
+from wazuh.utils import md5, mkdir_with_mode
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh.manager import status
@@ -14,7 +14,7 @@ from wazuh import common
 from datetime import datetime, timedelta
 from hashlib import sha512
 from time import time, mktime, sleep
-from os import path, listdir, rename, utime, environ, umask, stat, mkdir, chmod, devnull, strerror, remove
+from os import path, listdir, rename, utime, environ, umask, stat, chmod, devnull, strerror, remove
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
 from io import BytesIO
@@ -234,7 +234,7 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     ko_files = ""
     # create a directory to store zip's files
     zip_dir = zip_path + 'dir'
-    mkdir(zip_dir)
+    mkdir_with_mode(zip_dir)
     with zipfile.ZipFile(zip_path) as zipf:
         for name in zipf.namelist():
             if name == ko_files_name:
@@ -289,7 +289,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
     except IOError as e:
         if e.errno == errno.ENOENT:
             dirpath = path.dirname(fullpath)
-            mkdir(dirpath)
+            mkdir_with_mode(dirpath)
             chmod(dirpath, S_IRWXU | S_IRWXG)
             dest_file = open(f_temp, "a+")
         else:

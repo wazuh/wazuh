@@ -13,6 +13,7 @@ import shutil
 from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, clean_up
 from wazuh.exception import WazuhException
 from wazuh import common
+from wazuh.utils import mkdir_with_mode
 from wazuh.cluster.communication import ClientHandler, Handler, ProcessFiles
 
 
@@ -29,7 +30,7 @@ class ClientManager(ClientHandler):
         ClientHandler.handle_connect(self)
         dir_path = "{}/queue/cluster/{}".format(common.ossec_path, self.name)
         if not os.path.exists(dir_path):
-            os.mkdir(dir_path)
+            mkdir_with_mode(dir_path)
 
 
     def set_lock_interval_thread(self, status):
@@ -148,7 +149,11 @@ class ClientManager(ClientHandler):
 
         logging.info("{0}: Start.".format(tag))
 
-        ko_files, zip_path  = decompress_files(data_received)
+        try:
+            ko_files, zip_path  = decompress_files(data_received)
+        except Exception as e:
+            logging.error("{}: Error decompressing files from master: {}".format(tag, str(e)))
+            raise e
 
         # Extract received data
         logging.info("{0} [STEP 1]: Analyzing received files.".format(tag))
