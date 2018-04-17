@@ -370,6 +370,17 @@ class ClientInternalSocketHandler(InternalSocketHandler):
 
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
+        elif command == "get_nodes":
+            split_data = data.split(' ', 1)
+            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
+
+            response = json.loads(self.manager.send_request(command=command, data=data).split(' ', 1)[1])
+
+            if node_list:
+                response = {node:info for node, info in response.iteritems() if node in node_list}
+
+            serialized_response = ['ok', json.dumps(response)]
+            return serialized_response
         else:
             response = self.manager.send_request(command=command, data=data)
             if response:

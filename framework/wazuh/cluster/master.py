@@ -13,7 +13,7 @@ import fcntl
 
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files, compare_files, get_agents_status, clean_up
+from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files, compare_files, get_agents_status, clean_up, read_config
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, Handler, InternalSocketHandler
 import ast
 
@@ -36,6 +36,12 @@ class MasterManagerHandler(ServerHandler):
             mcf_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker(command, mcf_thread, data)
+        elif command == 'get_nodes':
+            response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
+            cluster_config = read_config()
+            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
+            serialized_response = ['ok', json.dumps(response)]
+            return serialized_response
         else:
             return ServerHandler.process_request(self, command, data)
 
@@ -159,7 +165,6 @@ class MasterManagerHandler(ServerHandler):
 
         # Send KO files
         return sync_result
-
 
 
 class MasterManager(Server):
@@ -291,10 +296,15 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         elif command == 'get_nodes':
             split_data = data.split(' ', 1)
             node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
+            
             response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
+            cluster_config = read_config()
+            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
+
             if node_list:
                 response = {node:info for node, info in response.iteritems() if node in node_list}
-            serialized_response = ['ok',  json.dumps(response)]
+
+            serialized_response = ['ok', json.dumps(response)]
             return serialized_response
 
         elif command == 'get_agents':
