@@ -68,7 +68,6 @@ int realtime_checksumfile(const char *file_name)
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
-            free(buf);
 
             if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
                 merror("Unable to update file to db: %s", file_name);
@@ -91,10 +90,13 @@ int realtime_checksumfile(const char *file_name)
             }
             send_syscheck_msg(alert_msg);
 
+            free(buf);
+
             return (1);
         } else {
             mdebug2("Discarding '%s': checksum already reported.", file_name);
         }
+
         return (0);
     } else {
         /* New file */
