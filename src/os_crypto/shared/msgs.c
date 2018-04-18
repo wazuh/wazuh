@@ -31,11 +31,10 @@ static unsigned int rcv_count = 0;
 static size_t c_orig_size = 0;
 static size_t c_comp_size = 0;
 
-/* Static variables (read from define file) */
-static unsigned int _s_comp_print = 0;
-static unsigned int _s_recv_flush = 0;
-
-static int _s_verify_counter = 1;
+/* Global variables (read from define file) */
+unsigned int _s_comp_print = 0;
+unsigned int _s_recv_flush = 0;
+int _s_verify_counter = 1;
 
 agent *agt;
 

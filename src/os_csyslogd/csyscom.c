@@ -44,7 +44,7 @@ size_t csyscom_getconfig(const char * section, char ** output) {
     cJSON *cfg;
     char *json_str;
 
-    if (strcmp(section, "syslog_output") == 0){
+    if (strcmp(section, "csyslog") == 0){
         if (cfg = getCsyslogConfig(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);

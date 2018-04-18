@@ -83,8 +83,8 @@ void add_remove(const keyentry *entry);
 // Read configuration
 int authd_read_config(const char *path);
 cJSON *getAuthdConfig(void);
-size_t authcom_dispatch(const char *command, char *output);
-size_t authcom_getconfig(const char * section, char * output);
+size_t authcom_dispatch(const char * command, char ** output);
+size_t authcom_getconfig(const char * section, char ** output);
 
 // Block signals
 void authd_sigblock();

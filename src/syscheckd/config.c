@@ -217,13 +217,22 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *internals = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(internals,"syscheck.sleep",syscheck.tsleep);
-    cJSON_AddNumberToObject(internals,"syscheck.sleep_after",syscheck.sleep_after);
-    cJSON_AddNumberToObject(internals,"syscheck.rt_delay",syscheck.rt_delay);
-    cJSON_AddNumberToObject(internals,"syscheck.debug",sys_debug_level);
-    cJSON_AddNumberToObject(internals,"rootcheck.sleep",rootcheck.tsleep);
+    cJSON *syscheckd = cJSON_CreateObject();
 
-    cJSON_AddItemToObject(root,"internal_options",internals);
+    cJSON_AddNumberToObject(syscheckd,"sleep",syscheck.tsleep);
+    cJSON_AddNumberToObject(syscheckd,"sleep_after",syscheck.sleep_after);
+    cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
+    cJSON_AddNumberToObject(syscheckd,"debug",sys_debug_level);
+
+    cJSON_AddItemToObject(internals,"syscheck",syscheckd);
+
+    cJSON *rootcheckd = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(rootcheckd,"sleep",rootcheck.tsleep);
+
+    cJSON_AddItemToObject(internals,"rootcheck",rootcheckd);
+
+    cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
 }

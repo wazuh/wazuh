@@ -10,9 +10,10 @@
 
 #include <shared.h>
 #include "auth.h"
+#include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 
-size_t authcom_dispatch(const char *command, char *output){
+size_t authcom_dispatch(const char * command, char ** output){
 
     const char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -26,27 +27,31 @@ size_t authcom_dispatch(const char *command, char *output){
         // getconfig section
         if (!rcv_args){
             merror("AUTHCOM getconfig needs arguments.");
-            strcpy(output, "err AUTHCOM getconfig needs arguments");
-            return strlen(output);
+            *output = strdup("err AUTHCOM getconfig needs arguments");
+            return strlen(*output);
         }
         return authcom_getconfig(rcv_args, output);
 
     } else {
         merror("AUTHCOM Unrecognized command '%s'.", rcv_comm);
-        strcpy(output, "err Unrecognized command");
-        return strlen(output);
+        *output = strdup("err Unrecognized command");
+        return strlen(*output);
     }
 }
 
-size_t authcom_getconfig(const char * section, char * output) {
+size_t authcom_getconfig(const char * section, char ** output) {
 
     cJSON *cfg;
+    char *json_str;
 
     if (strcmp(section, "auth") == 0){
         if (cfg = getAuthdConfig(), cfg) {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", cJSON_PrintUnformatted(cfg));
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
             cJSON_free(cfg);
-            return strlen(output);
+            return strlen(*output);
         } else {
             goto error;
         }
@@ -55,6 +60,6 @@ size_t authcom_getconfig(const char * section, char * output) {
     }
 error:
     merror("At AUTHCOM getconfig: Could not get '%s' section", section);
-    strcpy(output, "err Could not get requested section");
-    return strlen(output);
+    *output = strdup("err Could not get requested section");
+    return strlen(*output);
 }

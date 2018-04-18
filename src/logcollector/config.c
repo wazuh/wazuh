@@ -103,7 +103,7 @@ cJSON *getLocalfileConfig(void) {
     }
 
     if (cJSON_GetArraySize(localfiles) > 0) {
-        cJSON_AddItemToObject(root,"localfiles",localfiles);
+        cJSON_AddItemToObject(root,"localfile",localfiles);
     }
 
     return root;
@@ -135,7 +135,7 @@ cJSON *getSocketConfig(void) {
     }
 
     if (cJSON_GetArraySize(targets) > 0) {
-        cJSON_AddItemToObject(root,"targets",targets);
+        cJSON_AddItemToObject(root,"target",targets);
     }
 
     return root;
@@ -145,15 +145,17 @@ cJSON *getLogcollectorInternalOptions(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *internals = cJSON_CreateObject();
+    cJSON *logcollector = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(internals,"logcollector.remote_commands",accept_remote);
-    cJSON_AddNumberToObject(internals,"logcollector.loop_timeout",loop_timeout);
-    cJSON_AddNumberToObject(internals,"logcollector.open_attempts",open_file_attempts);
-    cJSON_AddNumberToObject(internals,"logcollector.vcheck_files",vcheck_files);
-    cJSON_AddNumberToObject(internals,"logcollector.max_lines",maximum_lines);
-    cJSON_AddNumberToObject(internals,"logcollector.debug",lc_debug_level);
+    cJSON_AddNumberToObject(logcollector,"remote_commands",accept_remote);
+    cJSON_AddNumberToObject(logcollector,"loop_timeout",loop_timeout);
+    cJSON_AddNumberToObject(logcollector,"open_attempts",open_file_attempts);
+    cJSON_AddNumberToObject(logcollector,"vcheck_files",vcheck_files);
+    cJSON_AddNumberToObject(logcollector,"max_lines",maximum_lines);
+    cJSON_AddNumberToObject(logcollector,"debug",lc_debug_level);
 
-    cJSON_AddItemToObject(root,"internal_options",internals);
+    cJSON_AddItemToObject(internals,"logcollector",logcollector);
+    cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
 }
