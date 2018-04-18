@@ -80,7 +80,8 @@ def clean_exit(reason, error=False):
 
     delete_pid("wazuh-clusterd", getpid())
 
-    manager.exit()
+    if manager:
+        manager.exit()
 
     exit(1)
 
@@ -136,15 +137,18 @@ def client_main(cluster_configuration):
 
     # Loop
     while True:
-        manager = ClientManager(cluster_config=cluster_configuration)
+        try:
+            manager = ClientManager(cluster_config=cluster_configuration)
 
-        internal_socket_thread.setmanager(manager, ClientInternalSocketHandler)
+            internal_socket_thread.setmanager(manager, ClientInternalSocketHandler)
 
-        asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
+            asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 
-        logging.error("[wazuh-clusterd] Client disconnected. Trying to connect again in {0}s.".format(cluster_configuration['reconnect_time']))
+            logging.error("[wazuh-clusterd] Client disconnected. Trying to connect again in {0}s.".format(cluster_configuration['reconnect_time']))
 
-        manager.exit()
+            manager.exit()
+        except Exception as e:
+            logging.error("{}. Trying to connect again in {}s".format(str(e), cluster_configuration['reconnect_time']))  # TO DO: change to WazuhException
 
         time.sleep(cluster_configuration['reconnect_time'])
 
