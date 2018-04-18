@@ -25,9 +25,8 @@
 # Multiple patterns can be specified by using " && " between them.
 # (All of them must match for it to return true).
 
-# CIS Checks for Windows Server 2012 R2 Domain Controller L1
+# CIS Checks for Windows Server 2012 R2 Domain Controller L2
 # Based on Center for Internet Security Benchmark v2.2.1 for Microsoft Windows Server 2012 R2 (https://workbench.cisecurity.org/benchmarks/288)
-#
 #
 #
 #1.1.2 Ensure 'Maximum password age' is set to '60 or fewer days, but not 0'
@@ -74,7 +73,7 @@ r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail ->
 r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 2;
 #
 #
-#2.3.4.1 Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators' 
+#2.3.4.1 Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'
 [CIS - Microsoft Windows Server 2012 R2 - 2.3.4.1: Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AllocateDASD -> 1;
 r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AllocateDASD -> 2;
@@ -83,22 +82,6 @@ r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> All
 #2.3.4.2 Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'
 [CIS - Microsoft Windows Server 2012 R2 - 2.3.4.2: Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> !1;
-#
-#
-#2.3.5.1 Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only)
-[CIS - Microsoft Windows Server 2012 R2 - 2.3.5.1: Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only)] [any] [https://workbench.cisecurity.org/benchmarks/288]
-r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\SubmitControl -> !0;
-
-#
-#
-#2.3.5.2 Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing'
-[CIS - Microsoft Windows Server 2012 R2 - 2.3.5.2: Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing'] [any] [https://workbench.cisecurity.org/benchmarks/288]
-r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerIntegrity -> !2;
-#
-#
-#2.3.5.3 Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled'
-[CIS - Microsoft Windows Server 2012 R2 - 2.3.5.3: Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
-r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RefusePasswordChange -> 1;
 #
 #
 #2.3.6.1 Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'
@@ -181,6 +164,12 @@ r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> Pas
 r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:\w\w\w+;
 #
 #
+#2.3.7.8 Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.7.8: Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ForceUnlockLogon -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> !ForceUnlockLogon;
+#
+#
 #2.3.7.9 Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher
 [CIS - Microsoft Windows Server 2012 R2 - 2.3.7.9: Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> ScRemoveOption -> 0;
@@ -235,6 +224,22 @@ r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -
 #2.3.9.4 Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'
 [CIS - Microsoft Windows Server 2012 R2 - 2.3.9.4: Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> !1;
+#
+#
+#2.3.9.5 Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.9.5: Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> !0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> !SMBServerNameHardeningLevel;
+#
+#
+#2.3.10.2 Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.2: Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM -> 0;
+#
+#
+#2.3.10.3 Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.3: Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous -> !1;
 #
 #
 #2.3.10.5 Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'
@@ -495,7 +500,7 @@ r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\F
 #
 #9.2.5 Ensure 'Windows Firewall: Private: Settings: Apply local firewall rules' is set to 'Yes (default)'
 [CIS - Microsoft Windows Server 2012 R2 - 9.2.5: Ensure 'Windows Firewall: Private: Settings: Apply local firewall rules' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
-r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> AllowLocalPolicyMerge -> 0; 
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> AllowLocalPolicyMerge -> 0;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile -> AllowLocalPolicyMerge -> 0;
 #
 #
@@ -519,7 +524,7 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:1\w\w\w;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:2\w\w\w;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:3\w\w\w;
-r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w; 
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w\w;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w\w\w;
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:1\w\w\w;
@@ -578,7 +583,7 @@ r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\F
 #9.3.7 Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'
 [CIS - Microsoft Windows Server 2012 R2 - 9.3.7: Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog;
-r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog; 
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog;
 #
 #
 #9.3.8 Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16384 KB or greater'
@@ -619,6 +624,54 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> !NoL
 [CIS - Microsoft Windows Server 2012 R2 - 18.1.1.2: Ensure 'Prevent enabling lock screen slide show' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> NoLockScreenSlideshow -> !1;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> !NoLockScreenSlideshow;
+#
+#
+#18.2.1 Ensure LAPS AdmPwd GPO Extension / CSE is installed
+[CIS - Microsoft Windows Server 2012 R2 - 18.2.1: Ensure LAPS AdmPwd GPO Extension / CSE is installed] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> !DllName;
+#
+#
+#18.2.2 Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.2.2: Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PwdExpirationProtectionEnabled -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> !PwdExpirationProtectionEnabled;
+#
+#
+#18.2.3 Ensure 'Enable Local Admin Password Management' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.2.3: Ensure 'Enable Local Admin Password Management' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> AdmPwdEnabled -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> !AdmPwdEnabled;
+#
+#
+#18.2.4 Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters'
+[CIS - Microsoft Windows Server 2012 R2 - 18.2.4: Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordComplexity -> !4;
+#
+#
+#18.2.5 Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more'
+[CIS - Microsoft Windows Server 2012 R2 - 18.2.5: Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> r:\d;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> r:a;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> r:b;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> r:c;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> r:d;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> r:e;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> !PasswordLength;
+#
+#
+#18.2.6 Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer'
+[CIS - Microsoft Windows Server 2012 R2 - 18.2.6: Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> 1F;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:2\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:3\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:4\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:5\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:6\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:7\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:8\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:9\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:\D\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> r:\w\w\w+;
 #
 #
 #18.3.1 Ensure 'MSS: (AutoAdminLogon) Enable Automatic Logon (not recommended)' is set to 'Disabled'
@@ -696,6 +749,11 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> 
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections -> !1;
 #
 #
+#18.6.1 Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.6.1: Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy -> !0;
+#
+#
 #18.6.2 Ensure 'WDigest Authentication' is set to 'Disabled'
 [CIS - Microsoft Windows Server 2012 R2 - 18.6.2: Ensure 'WDigest Authentication' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest -> UseLogonCredential -> !0;
@@ -765,6 +823,12 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services ->
 [CIS - Microsoft Windows Server 2012 R2 - 18.8.31.2: Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp -> !0;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fAllowToGetHelp;
+#
+#
+#18.8.32.1 Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.32.1: Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> EnableAuthEpResolution -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> !EnableAuthEpResolution;
 #
 #
 #18.9.6.1 Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'
@@ -1059,4 +1123,6 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> !Sc
 #18.9.90.4 Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'
 [CIS - Microsoft Windows Server 2012 R2 - 18.9.90.4: Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers -> !0;
+#
+#
 #
