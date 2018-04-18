@@ -34,22 +34,31 @@ class MasterManagerHandler(ServerHandler):
     def process_request(self, command, data):
         logging.debug("[Master] Request received: '{0}'.".format(command))
 
-        if command == 'echo-c':
+
+        if command == 'echo-c':  # Echo
             return 'ok-c ', data.decode()
-        elif command == 'req_sync_m_c':
-            return 'ack', 'Starting sync from master'
-        elif command == 'sync_c_m':
-            mcf_thread = MasterProcessClientFiles(manager_handler=self, filename=data, stopper=self.stopper)
+        elif command == 'sync_i_c_m_p':
+            result = self.manager.get_client_status(client_id=self.name, key='sync_integrity_free')
+            return 'ack', str(result)
+        elif command == 'sync_ai_c_mp':
+            return 'ack', str(self.manager.get_client_status(client_id=self.name, key='sync_agentinfo_free'))
+        elif command == 'sync_i_c_m':  # Client syncs integrity
+            pci_thread = ProcessClientIntegrity(manager_handler=self, filename=data, stopper=self.stopper)
+            pci_thread.start()
+            # data will contain the filename
+            return 'ack', self.set_worker(command, pci_thread, data)
+        elif command == 'sync_ai_c_m':
+            mcf_thread = ProcessClientFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker(command, mcf_thread, data)
-        elif command == 'get_nodes':
+        elif command == 'get_nodes':  # Get nodes
             response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
-        else:
+        else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
     @staticmethod
@@ -119,6 +128,10 @@ class MasterManagerHandler(ServerHandler):
 
         logging.info("{0} [{1}]: Start.".format(tag, client_name))
 
+
+        # Extract received data
+        logging.info("{0} [{1}] [STEP 1]: Analyzing received files.".format(tag, client_name))
+
         try:
             json_file, zip_dir_path = decompress_files(data_received)
         except Exception as e:
@@ -126,22 +139,13 @@ class MasterManagerHandler(ServerHandler):
             raise e
 
         if json_file:
-            logging.debug("{0}: Received cluster_control.json".format(tag))
-            master_files_from_client = json_file['master_files']
             client_files_json = json_file['client_files']
         else:
             raise Exception("cluster_control.json not included in received zip file")
-        # Extract recevied data
-        logging.info("{0} [{1}] [STEP 1]: Analyzing received files.".format(tag, client_name))
 
         logging.debug("{0} Received {1} client files to update".format(tag, len(client_files_json)))
-        logging.debug("{0} Received {1} master files to check".format(tag, len(master_files_from_client)))
 
-        # Get master files
-        master_files = self.server.get_integrity_control()
 
-        # Compare
-        client_files_ko = compare_files(master_files, master_files_from_client)
 
         logging.info("{0} [{1}] [STEP 2]: Updating manager files.".format(tag, client_name))
 
@@ -151,37 +155,77 @@ class MasterManagerHandler(ServerHandler):
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)
 
+        sync_result = True
+
+        # Send KO files
+        return sync_result
+
+
+    def process_integrity_from_client(self, client_name, data_received, tag=None):
+        sync_result = False
+
+        if not tag:
+            tag = "[Master] [Sync process m->c]"
+
+        logging.info("{0} [{1}]: Start.".format(tag, client_name))
+
+        try:
+            json_file, zip_dir_path = decompress_files(data_received)
+        except Exception as e:
+            logging.error("{}: Error decompressing data from client {}: {}".format(tag, client_name, str(e)))
+            raise e
+
+        if json_file:
+            master_files_from_client = json_file['master_files']
+        else:
+            raise Exception("cluster_control.json not included in received zip file")
+
+        # Extract recevied data
+        logging.info("{0} [{1}] [STEP 1]: Analyzing received files.".format(tag, client_name))
+
+        logging.debug("{0} Received {1} master files to check".format(tag, len(master_files_from_client)))
+
+        # Get master files
+        master_files = self.server.get_integrity_control()
+
+        # Compare
+        client_files_ko = compare_files(master_files, master_files_from_client)
+
+        # Remove tmp directory created when zip file was received
+        shutil.rmtree(zip_dir_path)
+
         # Step 3: KO files
         if not client_files_ko['shared'] and not client_files_ko['missing'] and not client_files_ko['extra']:
-            logging.info("{0} [{1}] [STEP 3]: There are no KO files for client.".format(tag, client_name))
-            response = self.manager.send_request(client_name, 'sync_m_c_ok')
+            sync_result = True
+            logging.info("{0} [{1}] [STEP 2]: There are no KO files for client.".format(tag, client_name))
         else:
             # Compress data: master files (only KO shared and missing)
-            logging.info("{0} [{1}] [STEP 3]: Compressing KO files for client.".format(tag, client_name))
+            logging.info("{0} [{1}] [STEP 2]: Compressing KO files for client.".format(tag, client_name))
 
             master_files_paths = [item for item in client_files_ko['shared']]
             master_files_paths.extend([item for item in client_files_ko['missing']])
 
             compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
 
-            logging.info("{0} [{1}] [STEP 3]: Sending KO files to client.".format(tag, client_name))
+            logging.info("{0} [{1}] [STEP 2]: Sending KO files to client.".format(tag, client_name))
 
             response = self.manager.send_file(client_name, 'sync_m_c', compressed_data, True)
 
-        processed_response = self.process_response(response)
-        if processed_response:
-            sync_result = True
-            logging.info("{0} [{1}] [STEP 3]: Client received the sync properly".format(tag, client_name))
-        else:
-            logging.error("{0} [{1}] [STEP 3]: Client reported an error receiving the sync.".format(tag, client_name))
+            processed_response = self.process_response(response)
+            if processed_response:
+                sync_result = True
+                logging.info("{0} [{1}] [STEP 2]: Client received the sync properly".format(tag, client_name))
+            else:
+                logging.error("{0} [{1}] [STEP 2]: Client reported an error receiving the sync.".format(tag, client_name))
 
         # Send KO files
         return sync_result
 
+
 #
 # Threads (workers) created by MasterManagerHandler
 #
-class MasterProcessClientFiles(ProcessFiles):
+class ProcessClientFiles(ProcessFiles):
 
     def __init__(self, manager_handler, filename, stopper):
         ProcessFiles.__init__(self, manager_handler, filename, manager_handler.get_client(), common.ossec_path, stopper)
@@ -189,8 +233,10 @@ class MasterProcessClientFiles(ProcessFiles):
 
     def run(self):
         while not self.stopper.is_set() and self.running:
+            self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', False)
+
             if self.received_all_information:
-                logging.debug("{0}: All files received.".format(self.thread_tag))
+                logging.debug("{0}: File reception completed.".format(self.thread_tag))
 
                 try:
                     result = self.manager_handler.process_files_from_client(self.name, self.filename, self.thread_tag)
@@ -201,20 +247,62 @@ class MasterProcessClientFiles(ProcessFiles):
                 except Exception as e:
                     logging.error("{0}: Unknown error for {1}: {2}.".format(self.thread_tag, self.name, str(e)))
                     clean_up(self.name)
-                    self.manager_handler.manager.send_request(self.name, 'sync_m_c_err')
+                    self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
 
+                self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
                 self.stop()
 
             else:
-                # try:
-                self.process_file_cmd()
-                # except Exception as e:
-                #     logging.error("{0}: Unknown error in process_file_cmd {1}: {2}.".format(self.thread_tag, self.name, str(e)))
-                #     self.manager_handler.manager.send_request(self.name, 'sync_m_c_err')
-                #     self.stop()
+                try:
+                    self.process_file_cmd()
+                except Exception as e:
+                    logging.error("{0}: Unknown error in process_file_cmd {1}: {2}.".format(self.thread_tag, self.name, str(e)))
+                    self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
+                    self.stop()
 
             time.sleep(0.1)
 
+        self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
+
+
+class ProcessClientIntegrity(ProcessFiles):
+
+    def __init__(self, manager_handler, filename, stopper):
+        ProcessFiles.__init__(self, manager_handler, filename, manager_handler.get_client(), common.ossec_path, stopper)
+        self.thread_tag = "[Master] [ProcessIntegrityThread] [Sync process m->c]"
+
+    def run(self):
+        while not self.stopper.is_set() and self.running:
+            self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', False)
+
+            if self.received_all_information:
+                logging.debug("{0}: File reception completed.".format(self.thread_tag))
+
+                try:
+                    result = self.manager_handler.process_integrity_from_client(self.name, self.filename, self.thread_tag)
+                    if result:
+                        logging.info("{0}: Result: Successfully.".format(self.thread_tag))
+                    else:
+                        logging.error("{0}: Result: Error.".format(self.thread_tag))
+                except Exception as e:
+                    logging.error("{0}: Unknown error for {1}: {2}.".format(self.thread_tag, self.name, str(e)))
+                    clean_up(self.name)
+                    self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
+
+                self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
+                self.stop()
+
+            else:
+                try:
+                    self.process_file_cmd()
+                except Exception as e:
+                    logging.error("{0}: Unknown error in process_file_cmd {1}: {2}.".format(self.thread_tag, self.name, str(e)))
+                    self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
+                    self.stop()
+
+            time.sleep(0.1)
+
+        self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
 
 #
 # Master
@@ -261,6 +349,26 @@ class MasterManager(Server):
         self.threads[MasterManager.Integrity_T].start()
 
     # New methods
+    def set_client_status(self, client_id, key, status):
+        result = False
+        with self._clients_lock:
+            if client_id in self._clients:
+                self._clients[client_id]['status'][key] = status
+                result = True
+
+        return result
+
+
+    def get_client_status(self, client_id, key):
+        result = False
+
+        with self._clients_lock:
+            if client_id in self._clients:
+                result = self._clients[client_id]['status'][key]
+
+        return result
+
+
     def req_file_status_to_clients(self):
         responses = list(self.send_request_broadcast(command = 'file_status'))
         nodes_file = {node:json.loads(data.split(' ',1)[1]) for node,data in responses}

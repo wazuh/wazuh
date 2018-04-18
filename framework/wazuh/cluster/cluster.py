@@ -214,12 +214,13 @@ def compress_files(source, name, list_path, cluster_control_json=None):
     zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}.zip".format(common.ossec_path, name, time())
     with zipfile.ZipFile(zip_file_path, 'w') as zf:
         # write files
-        for f in list_path:
-            logging.debug("Adding {} to zip file".format(f))
-            try:
-                zf.write(filename = common.ossec_path + f, arcname = 'files/' + f, compress_type=compression)
-            except Exception as e:
-                logging.error(str(WazuhException(3001, str(e))))
+        if list_path:
+            for f in list_path:
+                logging.debug("Adding {} to zip file".format(f))
+                try:
+                    zf.write(filename = common.ossec_path + f, arcname = 'files/' + f, compress_type=compression)
+                except Exception as e:
+                    logging.error(str(WazuhException(3001, str(e))))
 
         try:
             zf.writestr("cluster_control.json", json.dumps(cluster_control_json), compression)
@@ -375,7 +376,7 @@ def get_agents_status(filter_status=""):
             continue
         if agent.get('node_name') is None or agent['node_name'] == '':
             agent['node_name'] = "Unknown"
-            
+
         agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "Unknown"])
 
     return agent_list

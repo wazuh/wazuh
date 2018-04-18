@@ -134,7 +134,7 @@ class ClientManagerHandler(ClientHandler):
                 raise e
 
         if wrong_files['missing']:
-            logging.info("[Client] [Sync process] [Step 3]: Received {} missing files from master. Action: Create files.".format(len(wrong_files['missing'])))
+            logging.info("{0} [Step 3]: Received {1} missing files from master. Action: Create files.".format(tag, len(wrong_files['missing'])))
             for file_to_create, data in wrong_files['missing'].items():
                 logging.debug("{0} Create file: '{1}'".format(tag, file_to_create))
                 overwrite_or_create_files(file_to_create, data)
@@ -161,7 +161,7 @@ class ClientManagerHandler(ClientHandler):
             return self.lock_interval_thread
 
 
-    def send_client_files_to_master(self, reason=None, tag=None):
+    def send_integrity_to_master(self, reason=None, tag=None):
         sync_result = False
 
         if not tag:
@@ -181,8 +181,47 @@ class ClientManagerHandler(ClientHandler):
         logging.info("{0} [Step 2]: Gathering files.".format(tag))
         # Get master files (path, md5, mtime): client.keys, ossec.conf, groups, ...
         master_files = get_files_status('master')
+        cluster_control_json = {'master_files': master_files, 'client_files': None}
+
+        # Compress data: control json
+        compressed_data_path = compress_files('client', self.name, None, cluster_control_json)
+
+        # Step 3
+        # Send compressed file to master
+        logging.info("{0} [Step 3]: Sending files to master.".format(tag))
+
+        response = self.send_file(reason = 'sync_i_c_m', file = compressed_data_path, remove = True)
+        processed_response = self.process_response(response)
+        if processed_response:
+            sync_result = True
+            logging.info("{0} [Step 3]: Master received the sync properly.".format(tag))
+        else:
+            logging.error("{0} [Step 3]: Master reported an error receiving files.".format(tag))
+
+        return sync_result
+
+
+    def send_client_files_to_master(self, reason=None, tag=None):
+        sync_result = False
+
+        if not tag:
+            tag = "[Client] [Sync process c->m]"
+
+        logging.info("{0}: Start. Reason: '{1}'".format(tag, reason))
+
+        # Step 1
+        logging.info("{0} [Step 1]: Finding master.".format(tag))
+
+        master_node = self.config['nodes'][0]  # Now, we only have 1 node: the master
+
+        logging.info("{0} [Step 1]: Master: {1}.".format(tag, master_node))
+
+
+        # Step 2
+        logging.info("{0} [Step 2]: Gathering files.".format(tag))
+        # Get master files (path, md5, mtime): client.keys, ossec.conf, groups, ...
         client_files = get_files_status('client', get_md5=False)
-        cluster_control_json = {'master_files': master_files, 'client_files': client_files}
+        cluster_control_json = {'master_files': {}, 'client_files': client_files}
 
         # Getting client file paths: agent-info, agent-groups.
         client_files_paths = client_files.keys()
@@ -195,7 +234,7 @@ class ClientManagerHandler(ClientHandler):
         # Send compressed file to master
         logging.info("{0} [Step 3]: Sending files to master.".format(tag))
 
-        response = self.send_file(reason = 'sync_c_m', file = compressed_data_path, remove = True)
+        response = self.send_file(reason = 'sync_ai_c_m', file = compressed_data_path, remove = True)
         processed_response = self.process_response(response)
         if processed_response:
             sync_result = True
@@ -214,23 +253,24 @@ class ClientManagerHandler(ClientHandler):
 
         logging.info("{0}: Start.".format(tag))
 
+        # Extract received data
+        logging.info("{0} [STEP 1]: Analyzing received files.".format(tag))
+
         try:
             ko_files, zip_path  = decompress_files(data_received)
         except Exception as e:
             logging.error("{}: Error decompressing files from master: {}".format(tag, str(e)))
             raise e
 
-        # Extract received data
-        logging.info("{0} [STEP 1]: Analyzing received files.".format(tag))
-
         if ko_files:
-            logging.debug("{0} [{1}] Received cluster_control.json".format(tag, ko_files))
+            logging.debug("{0}: Integrity: Missing: {1}. Shared: {2}. Extra: {3}.".format(tag, len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra'])))
+            logging.debug("{0}: Received cluster_control.json: {1}".format(tag, ko_files))
         else:
             raise Exception("cluster_control.json not included in received zip file.")
 
         # Update files
         logging.info("{0} [STEP 2]: Updating client files.".format(tag))
-        sync_result = ClientManager._update_master_files_in_client(ko_files, zip_path, tag)
+        sync_result = ClientManagerHandler._update_master_files_in_client(ko_files, zip_path, tag)
 
         # remove temporal zip file directory
         shutil.rmtree(zip_path)
@@ -253,40 +293,59 @@ class ClientProcessMasterFiles(ProcessFiles):
 
     def run(self):
         while not self.stopper.is_set() and self.running:
-            if self.manager_handler and self.manager_handler.is_connected():
-                if self.received_all_information:
 
-                    try:
-                        result = self.manager_handler.process_files_from_master(self.filename, self.thread_tag)
-                        if result:
-                            logging.info("{0}: Result: Successfully.".format(self.thread_tag))
-                        else:
-                            logging.error("{0}: Result: Error.".format(self.thread_tag))
-                    except Exception as e:
-                        logging.error("{0}: Result: Unknown error: {1}".format(self.thread_tag, str(e)))
-                        clean_up(self.name)
+            # Waint until client is set
+            if not self.manager_handler:
+                # time.sleep(2)
+                self.sleep(2)
+                continue
 
-                    logging.info("{0}: Unlocking Interval thread.".format(self.thread_tag))
+            # Waint until client is connected
+            if not self.manager_handler.is_connected():
+                check_seconds = 2
+                logging.info("{0}: Client is not connected. Waiting: {1}s.".format(self.thread_tag, check_seconds))
+                #time.sleep(check_seconds)
+                self.sleep(check_seconds)
+                continue
+
+            if self.received_all_information:
+                logging.debug("{0}: File reception completed.".format(self.thread_tag))
+
+                try:
+                    result = self.manager_handler.process_files_from_master(self.filename, self.thread_tag)
+                    if result:
+                        logging.info("{0}: Result: Successfully.".format(self.thread_tag))
+                    else:
+                        logging.error("{0}: Result: Error.".format(self.thread_tag))
+                except Exception as e:
+                    logging.error("{0}: Result: Unknown error: {1}".format(self.thread_tag, str(e)))
+                    logging.info("{0}: Unlocking SyncIntegrityThread.".format(self.thread_tag))
                     self.manager_handler.set_lock_interval_thread(False)
+                    clean_up(self.name)
 
+                logging.info("{0}: Unlocking SyncIntegrityThread.".format(self.thread_tag))
+                self.manager_handler.set_lock_interval_thread(False)
+
+                self.stop()
+
+            else:
+                try:
+                    self.process_file_cmd()
+                except Exception as e:
+                    logging.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, str(e)))
+                    self.manager_handler.set_lock_interval_thread(False)
                     self.stop()
 
-                else:
-                    # try:
-                    self.process_file_cmd()
-                    # except Exception as e:
-                    #     logging.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, str(e)))
-                    #     self.manager_handler.set_lock_interval_thread(False)
-                    #     self.stop()
-            else:
-                time.sleep(5)
+            time.sleep(0.1)
+
 
 
 #
 # Client
 #
 class ClientManager():
-    INTERVAL_T = "Interval_Thread"
+    SYNC_I_T = "Sync_I_Thread"
+    SYNC_AI_T = "Sync_AI_Thread"
     KA_T = "KeepAlive_Thread"
 
     def __init__(self, cluster_config):
@@ -301,12 +360,16 @@ class ClientManager():
     # Private methods
     def _initiate_client_threads(self):
         logging.debug("[Master] Creating threads.")
-        # Sync interval
-        self.threads[ClientManager.INTERVAL_T] = ClientIntervalThread(client_handler=self.handler, stopper=self.stopper)
-        self.threads[ClientManager.INTERVAL_T].start()
+        # Sync integrity
+        self.threads[ClientManager.SYNC_I_T] = SyncIntegrityThread(client_handler=self.handler, stopper=self.stopper)
+        self.threads[ClientManager.SYNC_I_T].start()
+
+        # Sync AgentInfo
+        # self.threads[ClientManager.SYNC_AI_T] = SyncAgentInfoThread(client_handler=self.handler, stopper=self.stopper)
+        # self.threads[ClientManager.SYNC_AI_T].start()
 
         # KA
-        self.threads[ClientManager.KA_T] = ClientKeepAliveThread(client_handler=self.handler, stopper=self.stopper)
+        self.threads[ClientManager.KA_T] = KeepAliveThread(client_handler=self.handler, stopper=self.stopper)
         self.threads[ClientManager.KA_T].start()
 
     # New methods
@@ -338,18 +401,18 @@ class ClientManager():
 #
 # Client threads
 #
-class ClientKeepAliveThread(ClusterThread):
+class KeepAliveThread(ClusterThread):
 
     def __init__(self, client_handler, stopper):
         ClusterThread.__init__(self, stopper)
         self.client = client_handler
-        self.thread_tag = "[Client] [KeepAliveThread {0}] [Sync process c->m]".format(self.ident)
+        self.thread_tag = "[Client] [KeepAliveThread] [Sync process c->m]"
 
 
     def run(self):
 
         while not self.stopper.is_set() and self.running:
-            self.thread_tag = "[Client] [KeepAliveThread {0}] [Sync process c->m]".format(self.ident)
+            self.thread_tag = "[Client] [KeepAliveThread] [Sync process c->m]"
 
             # Waint until client is set
             if not self.client:
@@ -382,18 +445,17 @@ class ClientKeepAliveThread(ClusterThread):
             self.sleep(self.client.config['ka_interval'])
 
 
-class ClientIntervalThread(ClusterThread):
+class SyncIntegrityThread(ClusterThread):
 
     def __init__(self, client_handler, stopper):
         ClusterThread.__init__(self, stopper)
         self.client = client_handler
-        self.thread_tag = "[Client] [IntervalThread [Sync process c->m]"
+        self.thread_tag = "[Client] [SyncIntegrityThread [Sync process c->m]"
 
 
     def run(self):
 
         while not self.stopper.is_set() and self.running:
-            self.thread_tag = "[Client] [IntervalThread] [Sync process c->m]"
 
             # Waint until client is set
             if not self.client:
@@ -413,9 +475,27 @@ class ClientIntervalThread(ClusterThread):
             try:
                 new_interval = self.client.config['interval']
 
+                wait_for_permission = True
+                n_seconds = 0
+
+                logging.info("{0}: Asking permission to sync integrity.".format(self.thread_tag))
+                while wait_for_permission:
+                    response = self.client.send_request('sync_i_c_m_p')
+                    processed_response = self.client.process_response(response)
+
+                    if processed_response:
+                        if 'True' in processed_response:
+                            wait_for_permission = False
+
+                    time.sleep(1)
+                    n_seconds += 1
+                    if n_seconds != 0 and n_seconds % 5 == 0:
+                        logging.info("{0}: Waiting for Master permission to sync integrity.".format(self.thread_tag))
+
+                logging.info("{0}: Permission granted.".format(self.thread_tag))
+
                 # Send files
-                self.client.set_lock_interval_thread(True)
-                result = self.client.send_client_files_to_master(reason="Interval", tag=self.thread_tag)
+                result = self.client.send_integrity_to_master(reason="Interval", tag=self.thread_tag)
 
                 # Master received the file properly
                 if result:
@@ -452,6 +532,72 @@ class ClientIntervalThread(ClusterThread):
             self.sleep(new_interval)
 
 
+class SyncAgentInfoThread(ClusterThread):
+
+    def __init__(self, client_handler, stopper):
+        ClusterThread.__init__(self, stopper)
+        self.client = client_handler
+        self.thread_tag = "[Client] [SyncAgentInfoThread] [Sync process c->m]"
+
+
+    def run(self):
+
+        while not self.stopper.is_set() and self.running:
+
+            # Waint until client is set
+            if not self.client:
+                # time.sleep(2)
+                self.sleep(2)
+                continue
+
+            # Waint until client is connected
+            if not self.client.is_connected():
+                check_seconds = 2
+                logging.info("{0}: Client is not connected. Waiting: {1}s.".format(self.thread_tag, check_seconds))
+                #time.sleep(check_seconds)
+                self.sleep(check_seconds)
+                continue
+
+            # Client set and connected
+            try:
+                new_interval = self.client.config['interval']
+
+                wait_for_permission = True
+                n_seconds = 0
+
+                logging.info("{0}: Asking permission to sync agentinfo.".format(self.thread_tag))
+                while wait_for_permission:
+                    response = self.client.send_request('sync_ai_c_mp')
+                    processed_response = self.client.process_response(response)
+
+                    if processed_response:
+                        if 'True' in processed_response:
+                            wait_for_permission = False
+
+                    time.sleep(1)
+                    n_seconds += 1
+                    if n_seconds != 0 and n_seconds % 5 == 0:
+                        logging.info("{0}: Waiting for Master permission to sync agentinfo.".format(self.thread_tag))
+
+                logging.info("{0}: Permission granted.".format(self.thread_tag))
+
+                # Send files
+                result = self.client.send_client_files_to_master(reason="Interval", tag=self.thread_tag)
+
+                # Master received the file properly
+                if result:
+                    logging.info("{0}: Result: Successfully.".format(self.thread_tag))
+                # Master reported an error receiving files
+                else:
+                    logging.error("{0}: Result: Error.".format(self.thread_tag))
+            except Exception as e:
+                logging.error("{0}: Unknown Error: '{1}'.".format(self.thread_tag, str(e)))
+                clean_up(self.client.name)
+
+            logging.info("{0}: Sleeping: {1}s.".format(self.thread_tag, new_interval))
+            #time.sleep(new_interval)
+            self.sleep(new_interval)
+
 #
 # Internal socket
 #
@@ -466,7 +612,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
         if command == "get_files":
             split_data = data.split(' ', 1)
             file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-            response = json.loads(self.manager.handler.process_request(command = 'file_status', data="")[1])
+            response = json.loads(self.manager.process_request(command = 'file_status', data="")[1])
 
             if file_list and len(response):
                 response = {file:content for file,content in response.iteritems() if file in file_list}
@@ -477,7 +623,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
             split_data = data.split(' ', 1)
             node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
 
-            response = json.loads(self.manager.handler.send_request(command=command, data=data).split(' ', 1)[1])
+            response = json.loads(self.manager.send_request(command=command, data=data).split(' ', 1)[1])
 
             if node_list:
                 response = {node:info for node, info in response.iteritems() if node in node_list}
@@ -485,7 +631,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         else:
-            response = self.manager.handler.send_request(command=command, data=data)
+            response = self.manager.send_request(command=command, data=data)
             if response:
                 serialized_response = response.split(' ', 1)
 

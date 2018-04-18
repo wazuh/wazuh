@@ -331,7 +331,9 @@ class Handler(asyncore.dispatcher_with_send):
                 worker.close_lock.wait()
                 worker.close_lock.release()
                 logging.debug("[Transport] Releasing lock... ({})".format(worker.result))
+
                 return worker.result
+
             return cmd, message
         else:
             logging.error("[Transport] Unknown command received: '{0}'.".format(command))
@@ -434,6 +436,10 @@ class Server(asyncore.dispatcher):
                     'name': name,
                     'ip': ip,
                     'type': type
+                },
+                'status': {
+                    'sync_integrity_free': True,
+                    'sync_agentinfo_free': True
                 }
             }
         return id
@@ -715,6 +721,7 @@ class ProcessFiles(ClusterThread):
             self.result = self.file_close(data)
             self.close_lock.notify()
             self.close_lock.release()
+            logging.debug("[FileThread] File closed")
             command = ""
             self.received_all_information = True
 
