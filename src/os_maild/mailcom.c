@@ -44,7 +44,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
     cJSON *cfg;
     char *json_str;
 
-    if (strcmp(section, "email_global") == 0){
+    if (strcmp(section, "global") == 0){
         if (cfg = getMailConfig(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
@@ -55,7 +55,7 @@ size_t mailcom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
-    } else if (strcmp(section, "email_alerts") == 0){
+    } else if (strcmp(section, "alerts") == 0){
         if (cfg = getMailAlertsConfig(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);

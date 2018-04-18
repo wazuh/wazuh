@@ -35,12 +35,12 @@ static OSHash * req_table;
 static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
-static int rto_sec;
-static int rto_msec;
-static int max_attempts;
-static int request_pool;
-static int request_timeout;
-static int response_timeout;
+int rto_sec;
+int rto_msec;
+int max_attempts;
+int request_pool;
+int request_timeout;
+int response_timeout;
 
 // Request listener thread entry point
 void * req_main(__attribute__((unused)) void * arg) {
@@ -408,6 +408,17 @@ size_t rem_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "remote") == 0){
         if (cfg = getRemoteConfig(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "internal") == 0){
+        if (cfg = getRemoteInternalConfig(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');

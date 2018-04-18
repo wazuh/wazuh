@@ -18,6 +18,9 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+/* Global variables */
+int sender_pool;
+
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
 
@@ -76,7 +79,7 @@ void HandleSecure()
 
     {
         int i;
-        int sender_pool = getDefine_Int("remoted", "sender_pool", 1, 64);
+        sender_pool = getDefine_Int("remoted", "sender_pool", 1, 64);
 
         mdebug2("Creating %d sender threads.", sender_pool);
 
