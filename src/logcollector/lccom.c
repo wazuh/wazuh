@@ -13,7 +13,6 @@
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 
-#ifndef WIN32
 
 size_t lccom_dispatch(char * command, char ** output){
 
@@ -88,6 +87,8 @@ error:
     return strlen(*output);
 }
 
+
+#ifndef WIN32
 void * lccom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;

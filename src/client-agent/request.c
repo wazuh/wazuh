@@ -16,6 +16,10 @@
 
 #ifdef WIN32
 #include "../os_execd/execd.h"
+#include "../client-agent/agentd.h"
+#include "../syscheckd/syscheck.h"
+#include "../wazuh_modules/wmodules.h"
+#include "../logcollector/logcollector.h"
 #endif
 
 static OSHash * req_table;
@@ -114,18 +118,6 @@ int req_push(char * buffer, size_t length) {
             }
         }
 
-#else
-
-        // Windows only supports requests to "com"
-
-        if (strcmp(target, "com")) {
-            merror("Request attempt to invalid target '%s'", target);
-            // Example: #!-req 16 err Permission denied
-            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err Invalid target", counter);
-            send_msg(response, -1);
-            return -1;
-        }
-
 #endif
 
         // Send ACK, only in UDP mode
@@ -187,7 +179,7 @@ int req_push(char * buffer, size_t length) {
 void * req_receiver(__attribute__((unused)) void * arg) {
     int attempts;
     long nsec;
-    ssize_t length;
+    ssize_t length = 0;
     req_node_t * node;
     char *buffer = NULL;
     char response[REQ_RESPONSE_LENGTH];
@@ -210,8 +202,18 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         w_mutex_lock(&node->mutex);
 
 #ifdef WIN32
-        // In Windows, execute directly
-        length = wcom_dispatch(node->buffer, node->length, &buffer);
+        // In Windows, forward request to target socket
+        if (strncmp(node->target, "agent", 5) == 0) {
+            length = agcom_dispatch(node->buffer, &buffer);
+        } else if (strncmp(node->target, "logcollector", 12) == 0) {
+            length = lccom_dispatch(node->buffer, &buffer);
+        } else if (strncmp(node->target, "com", 3) == 0) {
+            length = wcom_dispatch(node->buffer, node->length, &buffer);
+        } else if (strncmp(node->target, "syscheck", 8) == 0) {
+            length = syscom_dispatch(node->buffer, &buffer);
+        } else if (strncmp(node->target, "wmodules", 8) == 0) {
+            length = wmcom_dispatch(node->buffer, &buffer);
+        }
 #else
         // In Unix, forward request to target socket
         if (strncmp(node->target, "agent", 5) == 0) {
