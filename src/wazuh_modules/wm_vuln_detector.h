@@ -93,6 +93,7 @@ typedef struct agent_software {
     char *agent_name;
     char *agent_ip;
     const char *OS;
+    distribution dist;
     char info;
     struct agent_software *next;
     struct agent_software *prev;
@@ -169,8 +170,16 @@ typedef struct info_cve {
     char *updated;
     char *reference;
     char *description;
+    char *cvss2;
+    char *cvss3;
     struct info_cve *prev;
 } info_cve;
+
+typedef struct patch {
+    char **patch_id;
+    info_cve *cve_ref; // A CVE sublist for each patch
+    struct patch *prev;
+} patch;
 
 typedef struct vulnerability {
     char *cve_id;
@@ -185,6 +194,7 @@ typedef struct wm_vulnerability_detector_db {
     info_test *info_tests;
     info_state *info_states;
     info_cve *info_cves;
+    patch *patches;
     oval_metadata metadata;
     char *OS;
 } wm_vulnerability_detector_db;

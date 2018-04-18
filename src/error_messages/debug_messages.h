@@ -41,5 +41,8 @@
 #define VU_AG_NO_TARGET       "(5476): The analysis can not be launched because there are no target agents."
 #define VU_SYS_CHECKED        "(5477): The last syscollector scan for the agent %s (ID: %s) has already been checked. The vulnerability search is omitted."
 #define VU_LOCAL_FETCH        "(5478): Fetching OVAL from '%s'..."
+#define VU_UNEXP_VALUE        "(5479): Unexpected %s attribute."
+#define VU_SOL_PATCHES        "(5480): Solving patches..."
+#define VU_INS_TEST_SEC       "(5481): Inserting test section..."
 
 #endif
