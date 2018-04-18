@@ -112,17 +112,16 @@ Others:
         exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
         return parser
 
-
 def signal_handler(n_signal, frame):
     exit(1)
-
 
 def __execute(request):
     response = ""
     try:
         response = send_to_internal_socket(socket_name="c-internal", message=request)
     except KeyboardInterrupt:
-        pass
+        print "Interrupted"
+        exit(1)
     return response
 
 #
@@ -247,7 +246,7 @@ if __name__ == '__main__':
 
     status = get_status_json()
     if status["running"] != "yes":
-        print "Error: The cluster is not runnig"
+        print "Error: The cluster is not running"
         exit(1)
 
     is_master = cluster_config['node_type'] == "master"
