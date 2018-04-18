@@ -13,7 +13,6 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 
-#ifndef WIN32
 
 size_t agcom_dispatch(char * command, char ** output){
 
@@ -98,5 +97,3 @@ error:
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }
-
-#endif

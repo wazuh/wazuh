@@ -118,9 +118,9 @@ void update_ack(time_t curr_time);
 #ifndef WIN32
 // Com request thread dispatcher
 void * agcom_main(void * arg);
+#endif
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
-#endif
 
 /*** Global variables ***/
 extern int agent_debug_level;

@@ -255,41 +255,8 @@ cJSON *getExecdInternalOptions(void) {
 
     cJSON_AddNumberToObject(execd,"request_timeout",req_timeout);
     cJSON_AddNumberToObject(execd,"max_restart_lock",max_restart_lock);
-    
-    cJSON_AddItemToObject(internals,"execd",execd);
 
-#ifdef WIN32
-    cJSON_AddNumberToObject(internals,"agent.warn_level",warn_level);
-    cJSON_AddNumberToObject(internals,"agent.normal_level",normal_level);
-    cJSON_AddNumberToObject(internals,"agent.tolerance",tolerance);
-    cJSON_AddNumberToObject(internals,"agent.recv_timeout",timeout);
-    cJSON_AddNumberToObject(internals,"agent.state_interval",interval);
-    cJSON_AddNumberToObject(internals,"agent.min_eps",min_eps);
-    cJSON_AddNumberToObject(internals,"agent.remote_conf",remote_conf);
-    cJSON_AddNumberToObject(internals,"monitord.rotate_log",rotate_log);
-    cJSON_AddNumberToObject(internals,"monitord.request_pool",request_pool);
-    cJSON_AddNumberToObject(internals,"monitord.request_rto_sec",rto_sec);
-    cJSON_AddNumberToObject(internals,"monitord.request_rto_msec",rto_msec);
-    cJSON_AddNumberToObject(internals,"monitord.max_attempts",max_attempts);
-    cJSON_AddNumberToObject(internals,"monitord.compress",log_compress);
-    cJSON_AddNumberToObject(internals,"monitord.keep_log_days",keep_log_days);
-    cJSON_AddNumberToObject(internals,"monitord.day_wait",day_wait);
-    cJSON_AddNumberToObject(internals,"monitord.size_rotate",size_rotate_read);
-    cJSON_AddNumberToObject(internals,"monitord.daily_rotations",daily_rotations);
-    cJSON_AddNumberToObject(internals,"logcollector.remote_commands",accept_remote);
-    cJSON_AddNumberToObject(internals,"logcollector.loop_timeout",loop_timeout);
-    cJSON_AddNumberToObject(internals,"logcollector.open_attempts",open_file_attempts);
-    cJSON_AddNumberToObject(internals,"logcollector.vcheck_files",vcheck_files);
-    cJSON_AddNumberToObject(internals,"logcollector.max_lines",maximum_lines);
-    cJSON_AddNumberToObject(internals,"syscheck.sleep",syscheck.tsleep);
-    cJSON_AddNumberToObject(internals,"syscheck.sleep_after",syscheck.sleep_after);
-    cJSON_AddNumberToObject(internals,"syscheck.rt_delay",syscheck.rt_delay);
-    cJSON_AddNumberToObject(internals,"rootcheck.sleep",rootcheck.tsleep);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_task_nice);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
-    cJSON_AddNumberToObject(internals,"windows.debug",win_debug_level);
-#endif
+    cJSON_AddItemToObject(internals,"execd",execd);
     cJSON_AddItemToObject(root,"internal",internals);
 
     return root;

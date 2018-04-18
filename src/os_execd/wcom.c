@@ -555,132 +555,6 @@ size_t wcom_restart(char ** output) {
     return strlen(*output);
 }
 
-#ifdef WIN32
-size_t wcom_getconfig(const char * section, char ** output) {
-
-    cJSON *cfg;
-    char *json_str;
-
-    if (strcmp(section, "client") == 0){
-        if (cfg = getClientConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "buffer") == 0){
-        if (cfg = getBufferConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "localfile") == 0){
-        if (cfg = getLocalfileConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "labels") == 0){
-        if (cfg = getLabelsConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "syscheck") == 0){
-        if (cfg = getSyscheckConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "rootcheck") == 0){
-        if (cfg = getRootcheckConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "active-response") == 0){
-        if (cfg = getARConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "logging") == 0){
-        if (cfg = getLoggingConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "wmodules") == 0){
-        if (cfg = getModulesConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "internal") == 0){
-        if (cfg = getExecdInternalOptions(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else {
-        goto error;
-    }
-error:
-    merror("At WCOM getconfig: Could not get '%s' section", section);
-    strcpy(output, "err Could not get requested section");
-    return strlen(output);
-}
-
-#else
 
 size_t wcom_getconfig(const char * section, char ** output) {
 
@@ -729,6 +603,7 @@ error:
     return strlen(*output);
 }
 
+#ifndef WIN32
 void * wcom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
