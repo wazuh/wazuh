@@ -150,7 +150,11 @@ cJSON *getAgentInternalOptions(void) {
 
     cJSON *agent = cJSON_CreateObject();
 
+#ifdef WIN32
+    cJSON_AddNumberToObject(agent,"debug",win_debug_level);
+#else
     cJSON_AddNumberToObject(agent,"debug",agent_debug_level);
+#endif
     cJSON_AddNumberToObject(agent,"warn_level",warn_level);
     cJSON_AddNumberToObject(agent,"normal_level",normal_level);
     cJSON_AddNumberToObject(agent,"tolerance",tolerance);

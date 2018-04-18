@@ -310,8 +310,8 @@ void * req_dispatch(req_node_t * node) {
 
         mdebug2("Sending response: '%s'", node->buffer);
 
-        if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != (ssize_t)node->length) {
-            merror("At req_dispatch(): send(): %s", strerror(errno));
+        if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != 0) {
+            merror("At req_dispatch(): OS_SendSecureTCP(): %s", strerror(errno));
         }
 
     }

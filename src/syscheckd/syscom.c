@@ -14,7 +14,6 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 
-#ifndef WIN32
 
 size_t syscom_dispatch(char * command, char ** output){
 
@@ -89,6 +88,8 @@ error:
     return strlen(*output);
 }
 
+
+#ifndef WIN32
 void * syscom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
