@@ -127,12 +127,13 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
     int down = 1;
     int daemon_pid = 0;
     int status;
+    int pid;
     //We check that the osquery demon is not down, in which case we run it again.
     while(1)
     {
         if(down)
         {
-            int pid = fork();
+            pid = fork();
             switch(pid)
             {
             case 0: //Child
@@ -160,12 +161,11 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
                 case -1:
                     if (errno == ECHILD)
                     {
-                        mterror(WM_OSQUERYMONITOR_LOGTAG,"ECHILD");
                         down = 1;
                     }
                     // Finished. Bad Configuration
                     stopped = 1;
-                    //mterror(WM_OSQUERYMONITOR_LOGTAG, "Bad Configuration!");
+                    mterror(WM_OSQUERYMONITOR_LOGTAG, "Bad Configuration!");
                     pthread_exit(NULL);
                     break;
                 }
@@ -173,18 +173,18 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
         }
         while(down==0)
         {
-            switch (waitpid(daemon_pid, &status, WNOHANG))
-            {
-            case 0:
-                down = 0;
-                break; 
-            case -1:
-                if (errno == ECHILD)
-                {
-                    mterror(WM_OSQUERYMONITOR_LOGTAG,"ECHILD");
-                }
-                down = 1;
-            }   
+            //CHECK PERIODICALLY THE DAEMON STATUS
+            int status;
+            pid_t return_pid = waitpid(pid, &status, WNOHANG); /* WNOHANG def'd in wait.h */
+            if (return_pid == -1) {
+                if(errno == ECHILD)
+                    down = 1;
+            } else if (return_pid == 0) {
+                if(errno==ECHILD)
+                    down = 0;
+            } else if (return_pid == daemon_pid) {
+               down = 0;
+            }
             sleep(1);
         }
         sleep(1);
@@ -199,15 +199,15 @@ void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
     char * key = NULL;
     char * value = NULL;
     char * coma = strdup(", ");
+    char * osq_conf_file = strdup("/etc/osquery/osquery.conf");
     
     //PATH CREATION
-    char * firstPath = strdup("/var/ossec");
+    char * firstPath = strdup(DEFAULTDIR);
     char * lastpath = strdup("/etc/ossec.conf");
     char * configPath = NULL;
     configPath = malloc(strlen(firstPath)+strlen(lastpath));
     strcpy(configPath,firstPath);
     strcat(configPath,lastpath);
-    mdebug2("CONFIGPATH: %s",configPath);
     char * json_block = NULL;
 
     //CJSON OBJECTS
@@ -218,70 +218,84 @@ void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
     wlabel_t* labels;
     os_calloc(1, sizeof(wlabel_t), labels);
     ReadConfig(CLABELS, configPath, &labels, NULL);
-
     int len=0;
-
     root = cJSON_CreateObject();
     cJSON_AddItemToObject(root,"decorators",decorators = cJSON_CreateObject());
     cJSON_AddItemToObject(decorators,"always",always = cJSON_CreateArray());
 
+    //OPEN OSQUERY CONF
     FILE * osquery_conf = NULL;
-    osquery_conf = fopen("/etc/osquery/osquery.conf","r");
+    osquery_conf = fopen(osq_conf_file,"r");
     struct stat stp = { 0 };  
     char *content;
-    stat("/etc/osquery/osquery.conf", &stp);
+    stat(osq_conf_file, &stp);
     int filesize = stp.st_size;
-
-    mdebug2("FILESIZE: %d", filesize);
     content = (char *) malloc(sizeof(char) * filesize);
     json_block = cJSON_PrintUnformatted(root);
-        mdebug2("CONTENT : %s", json_block); 
+ 
     if (fread(content, 1, filesize - 1, osquery_conf) == -1) {
-        printf("\nerror in reading\n");
+        mterror(WM_OSQUERYMONITOR_LOGTAG,"error in reading");
         /**close the read file*/
         fclose(osquery_conf);
         //free input string
         free(content);
     }
         
+    //CHECK IF CONF HAVE DECORATORS
     int decorated=0;
     if(strstr(content, "decorators")!=NULL)
         decorated = 1;
     else
         decorated = 0;
 
+    //ADD DECORATORS FROM AGENT LABELS
     if(!decorated){
         
         for(i;labels[i].key!=NULL;i++){  
             key = strdup(labels[i].key);
             value = strdup(labels[i].value); 
             LINE = strdup(select);
-            int newlen = sizeof(char)*(strlen(LINE)+strlen(key)+strlen(as)+strlen(value));
-            LINE = (char*)realloc(LINE, newlen);  
+            int newlen = sizeof(char)*(strlen(LINE)+strlen(key)+strlen(as)+strlen(value)+(6*sizeof(char)));
+            LINE = (char*)realloc(LINE, newlen);
+            strcat(LINE,"'");  
             strcat(LINE,key);
+            strcat(LINE,"'");
             strcat(LINE,as);
+            strcat(LINE,"'");
             strcat(LINE,value);
+            strcat(LINE,"';");
             mdebug2("VALUE: %s",value);
             cJSON_AddStringToObject(always,"line",LINE);
         }
         
-        
         json_block = cJSON_PrintUnformatted(root);
-        mdebug2("CONTENT : %s", content);
-        mdebug2("CREE LAS QUERYS!: %s", json_block);
+        content[strlen(content)-1]=',';
         content = realloc(content,sizeof(char)*(strlen(content)+strlen(json_block))); 
         strcat(content,json_block);
-        mdebug2("FINALCONTENT : %s", content);
+        
 
-        //mdebug2("ARCHIVO DE CONFIG: %s",json_block);
-        free(json_block);
-        cJSON_Delete(root);
+
         fclose(osquery_conf);
+
         //Escribir contenido en el fichero
-        osquery_conf = fopen("/etc/osquery/osquery.conf","w");
-        fprintf(osquery_conf,content);
+        osquery_conf = fopen("/var/ossec/tmp/osquery.conf.tmp","w");
+        fprintf(osquery_conf,"%s}",content);
         fclose(osquery_conf);
     }
+
+        //FREE MEMORY
+         free(LINE);
+         free(select);
+         free(as);
+         free(key);
+         free(value);
+         free(coma);
+         free(firstPath);
+         free(lastpath);
+         free(configPath);
+        free(root);
+        free(json_block);
+        cJSON_Delete(root);
 }
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor)
