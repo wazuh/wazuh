@@ -12,6 +12,7 @@ pthread_mutex_t mutex1 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  active   = PTHREAD_COND_INITIALIZER;
 int stopped;
 int unlock = 0;
+char * osquery_config_temp = NULL;
 
 const wm_context WM_OSQUERYMONITOR_CONTEXT =
 {
@@ -37,7 +38,6 @@ int get_inode (int fd)
 void *Read_Log(wm_osquery_monitor_t *osquery_monitor)
 {
     int i;
-    int lenght;
     int queue_fd;
     int current_inode;
     int usec = 1000000 / wm_max_eps;
@@ -82,7 +82,7 @@ void *Read_Log(wm_osquery_monitor_t *osquery_monitor)
             //Read the file
             while(1)
             {
-                if(lenght = fgets(line, OS_MAXSTR, result_log), lenght)
+                if(fgets(line, OS_MAXSTR, result_log)!=NULL)
                 {
                     mdebug2("Sending... '%s'", line);
                     if (wm_sendmsg(usec, queue_fd, line, "osquery-monitor", LOCALFILE_MQ) < 0)
@@ -128,6 +128,11 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
     int daemon_pid = 0;
     int status;
     int pid;
+    char * arg2 = strdup("/tmp/osquery.conf.tmp");
+    char * arg1 = strdup(DEFAULTDIR);
+    char * arg0 = strdup("--config_path=");
+    char * arg = malloc(((strlen(arg0)+strlen(arg1)+strlen(arg2)+2)*sizeof(char)));
+    snprintf(arg,strlen(arg0)+strlen(arg1)+strlen(arg2)+2,"%s%s%s",arg0,arg1,arg2);
     //We check that the osquery demon is not down, in which case we run it again.
     while(1)
     {
@@ -137,18 +142,17 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
             switch(pid)
             {
             case 0: //Child
-                
+                setsid();
                 daemon_pid = getpid();
-                if (execl(osquery_monitor->bin_path, "osqueryd", (char *)NULL) < 0)
+                if (execl(osquery_monitor->bin_path, "osqueryd", arg,(char  *) NULL))
                 {
                     mterror(WM_OSQUERYMONITOR_LOGTAG, "cannot execute osquery daemon");
                 }
-                setsid();
                 break;
             case -1: //ERROR
                 mterror(WM_OSQUERYMONITOR_LOGTAG, "child has not been created");
             default:
-                wm_append_sid(daemon_pid);
+                wm_append_sid(pid);
                 switch (waitpid(daemon_pid, &status, WNOHANG))
                 {
                 case 0:               
@@ -191,7 +195,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
     }
 }
 
-void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
+void wm_osquery_decorators()
 {
     char * LINE = strdup("");
     char * select=strdup("SELECT ");
@@ -200,40 +204,42 @@ void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
     char * value = NULL;
     char * coma = strdup(", ");
     char * osq_conf_file = strdup("/etc/osquery/osquery.conf");
-    
-    //PATH CREATION
+    char * json_block = NULL;
     char * firstPath = strdup(DEFAULTDIR);
     char * lastpath = strdup("/etc/ossec.conf");
     char * configPath = NULL;
-    configPath = malloc(strlen(firstPath)+strlen(lastpath));
-    strcpy(configPath,firstPath);
-    strcat(configPath,lastpath);
-    char * json_block = NULL;
-
-    //CJSON OBJECTS
-    int i=0;
     cJSON *root;
     cJSON *decorators;
     cJSON *always;
     wlabel_t* labels;
+    struct stat stp = { 0 };  
+    char *content;
+    FILE * osquery_conf = NULL;
+    //PATH CREATION
+    
+    osquery_config_temp = strdup("/var/ossec/tmp/osquery.conf.tmp");
+    configPath = malloc(strlen(firstPath)+strlen(lastpath));
+    strcpy(configPath,firstPath);
+    strcat(configPath,lastpath);
+    
+
+    //CJSON OBJECTS
+    int i=0;
+    
     os_calloc(1, sizeof(wlabel_t), labels);
     ReadConfig(CLABELS, configPath, &labels, NULL);
-    int len=0;
     root = cJSON_CreateObject();
     cJSON_AddItemToObject(root,"decorators",decorators = cJSON_CreateObject());
     cJSON_AddItemToObject(decorators,"always",always = cJSON_CreateArray());
 
     //OPEN OSQUERY CONF
-    FILE * osquery_conf = NULL;
     osquery_conf = fopen(osq_conf_file,"r");
-    struct stat stp = { 0 };  
-    char *content;
     stat(osq_conf_file, &stp);
     int filesize = stp.st_size;
     content = (char *) malloc(sizeof(char) * filesize);
     json_block = cJSON_PrintUnformatted(root);
- 
-    if (fread(content, 1, filesize - 1, osquery_conf) == -1) {
+    
+    if (fread(content, 1, filesize - 1, osquery_conf) == 0) {
         mterror(WM_OSQUERYMONITOR_LOGTAG,"error in reading");
         /**close the read file*/
         fclose(osquery_conf);
@@ -251,35 +257,34 @@ void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
     //ADD DECORATORS FROM AGENT LABELS
     if(!decorated){
         
-        for(i;labels[i].key!=NULL;i++){  
+        for(i=0;labels[i].key!=NULL;i++){  
             key = strdup(labels[i].key);
             value = strdup(labels[i].value); 
             LINE = strdup(select);
             int newlen = sizeof(char)*(strlen(LINE)+strlen(key)+strlen(as)+strlen(value)+(6*sizeof(char)));
             LINE = (char*)realloc(LINE, newlen);
             strcat(LINE,"'");  
-            strcat(LINE,key);
+            strcat(LINE,value);
             strcat(LINE,"'");
             strcat(LINE,as);
             strcat(LINE,"'");
-            strcat(LINE,value);
+            strcat(LINE,key);
             strcat(LINE,"';");
-            mdebug2("VALUE: %s",value);
             cJSON_AddStringToObject(always,"line",LINE);
         }
         
         json_block = cJSON_PrintUnformatted(root);
+        memmove(json_block, json_block+1, strlen(json_block));
         content[strlen(content)-1]=',';
         content = realloc(content,sizeof(char)*(strlen(content)+strlen(json_block))); 
         strcat(content,json_block);
         
 
-
         fclose(osquery_conf);
 
         //Escribir contenido en el fichero
-        osquery_conf = fopen("/var/ossec/tmp/osquery.conf.tmp","w");
-        fprintf(osquery_conf,"%s}",content);
+        osquery_conf = fopen(osquery_config_temp,"w");
+        fprintf(osquery_conf,"%s",content);
         fclose(osquery_conf);
     }
 
@@ -300,12 +305,13 @@ void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor)
 {
-    wm_osquery_decorators(osquery_monitor);
+    wm_osquery_decorators();
     pthread_t thread1, thread2;
-    pthread_create( &thread1, NULL, &Read_Log, osquery_monitor);
-    pthread_create( &thread2, NULL, &Execute_Osquery, osquery_monitor);
+    pthread_create( &thread1, NULL, (void*)&Read_Log, osquery_monitor);
+    pthread_create( &thread2, NULL, (void*)&Execute_Osquery, osquery_monitor);
     pthread_join( thread2, NULL);
     pthread_join( thread1, NULL);
+    return NULL;
 }
 void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
 {
