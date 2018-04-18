@@ -156,7 +156,7 @@ cJSON *getMailAlertsConfig(void) {
         cJSON_AddItemToObject(email,"format",list);
     }
 
-    cJSON_AddItemToObject(root,"email_alerts",email);
+    cJSON_AddItemToObject(root,"alerts",email);
 
     return root;
 }

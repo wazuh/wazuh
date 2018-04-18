@@ -63,7 +63,7 @@ static cJSON* local_get(const char *id);
 void* run_local_server(__attribute__((unused)) void *arg) {
     int sock;
     int peer;
-    char buffer[OS_MAXSTR + 1];
+    char *buffer = NULL;
     char *response;
     ssize_t length;
     fd_set fdset;
@@ -106,9 +106,9 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             continue;
         }
 
-        switch (length = recv(peer, buffer, OS_MAXSTR, 0), length) {
+        switch (length = OS_RecvSecureTCP_Dynamic(peer, &buffer), length) {
         case -1:
-            merror("recv(): %s", strerror(errno));
+            merror("OS_RecvSecureTCP_Dynamic(): %s", strerror(errno));
             break;
 
         case 0:
@@ -116,16 +116,19 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             close(peer);
             break;
 
-        default:
-            buffer[length] = '\0';
+        case OS_MAXLEN:
+            merror("Received message > %i", MAX_DYN_STR);
+            close(peer);
+            break;
 
+        default:
             if (response = local_dispatch(buffer), response) {
-                send(peer, response, strlen(response), 0);
+                OS_SendSecureTCP(peer, strlen(response), response);
                 free(response);
             }
-
             close(peer);
         }
+        free(buffer);
     }
 
     mdebug1("Local server thread finished");
@@ -142,7 +145,6 @@ char* local_dispatch(const char *input) {
     cJSON *response = NULL;
     char *output = NULL;
     int ierror;
-    char com_response[OS_MAXSTR + 1];
 
     if (input[0] == '{') {
         if (request = cJSON_Parse(input), !request) {
@@ -233,8 +235,7 @@ char* local_dispatch(const char *input) {
     }
     // Read configuration commands
     else {
-        authcom_dispatch(input,com_response);
-        output = strdup(com_response);
+        authcom_dispatch(input,&output);
     }
 
     return output;

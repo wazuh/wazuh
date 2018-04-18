@@ -143,6 +143,10 @@ extern int interval;
 extern int remote_conf;
 extern int min_eps;
 
+extern unsigned int _s_comp_print;
+extern unsigned int _s_recv_flush;
+extern int _s_verify_counter;
+
 /* Global variables. Only modified during startup. */
 
 extern time_t available_server;

@@ -14,6 +14,18 @@
 #include "remoted.h"
 #include "config/config.h"
 
+/* Global variables */
+int timeout;
+int pass_empty_keyfile;
+int sender_pool;
+int rto_sec;
+int rto_msec;
+int max_attempts;
+int request_pool;
+int request_timeout;
+int response_timeout;
+int INTERVAL;
+rlim_t nofile;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
@@ -92,4 +104,30 @@ cJSON *getRemoteConfig(void) {
     cJSON_AddItemToObject(root,"remote",rem);
 
     return root;
+}
+
+
+cJSON *getRemoteInternalConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+    cJSON *remoted = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(remoted,"recv_timeout",timeout);
+    cJSON_AddNumberToObject(remoted,"pass_empty_keyfile",pass_empty_keyfile);
+    cJSON_AddNumberToObject(remoted,"sender_pool",sender_pool);
+    cJSON_AddNumberToObject(remoted,"request_pool",request_pool);
+    cJSON_AddNumberToObject(remoted,"request_rto_sec",rto_sec);
+    cJSON_AddNumberToObject(remoted,"request_rto_msec",rto_msec);
+    cJSON_AddNumberToObject(remoted,"max_attempts",max_attempts);
+    cJSON_AddNumberToObject(remoted,"request_timeout",request_timeout);
+    cJSON_AddNumberToObject(remoted,"response_timeout",response_timeout);
+    cJSON_AddNumberToObject(remoted,"shared_reload",INTERVAL);
+    cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
+
+    cJSON_AddItemToObject(internals,"remoted",remoted);
+    cJSON_AddItemToObject(root,"internal",internals);
+
+    return root;
+
 }

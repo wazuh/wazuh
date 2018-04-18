@@ -251,9 +251,13 @@ cJSON *getExecdInternalOptions(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *internals = cJSON_CreateObject();
+    cJSON *execd = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(internals,"execd.request_timeout",req_timeout);
-    cJSON_AddNumberToObject(internals,"execd.max_restart_lock",max_restart_lock);
+    cJSON_AddNumberToObject(execd,"request_timeout",req_timeout);
+    cJSON_AddNumberToObject(execd,"max_restart_lock",max_restart_lock);
+    
+    cJSON_AddItemToObject(internals,"execd",execd);
+
 #ifdef WIN32
     cJSON_AddNumberToObject(internals,"agent.warn_level",warn_level);
     cJSON_AddNumberToObject(internals,"agent.normal_level",normal_level);
@@ -286,7 +290,7 @@ cJSON *getExecdInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
     cJSON_AddNumberToObject(internals,"windows.debug",win_debug_level);
 #endif
-    cJSON_AddItemToObject(root,"internal_options",internals);
+    cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
 }
