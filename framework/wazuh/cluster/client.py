@@ -65,12 +65,6 @@ class ClientManagerHandler(ClientHandler):
             files = master_files
             files.update(client_files)
             return 'json', json.dumps(files)
-            """
-            return 'json', json.dumps({'/etc/client.keys': {
-                                            'mod_time': '2018-04-10 16:31:50',
-                                            'md5': 'a'*32
-                                    }})
-            """
         else:
             return ClientHandler.process_request(self, command, data)
 
@@ -195,6 +189,7 @@ class ClientManagerHandler(ClientHandler):
         if processed_response:
             sync_result = True
             logging.info("{0} [Step 3]: Master received the sync properly.".format(tag))
+            self.set_lock_interval_thread(True)
         else:
             logging.error("{0} [Step 3]: Master reported an error receiving files.".format(tag))
 

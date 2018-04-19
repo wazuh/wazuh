@@ -196,8 +196,9 @@ class MasterManagerHandler(ServerHandler):
 
         # Step 3: KO files
         if not client_files_ko['shared'] and not client_files_ko['missing'] and not client_files_ko['extra']:
-            sync_result = True
             logging.info("{0} [{1}] [STEP 2]: There are no KO files for client.".format(tag, client_name))
+            processed_response = self.process_response(self.manager.send_request(client_name, 'sync_m_c_ok'))
+
         else:
             # Compress data: master files (only KO shared and missing)
             logging.info("{0} [{1}] [STEP 2]: Compressing KO files for client.".format(tag, client_name))
@@ -212,11 +213,12 @@ class MasterManagerHandler(ServerHandler):
             response = self.manager.send_file(client_name, 'sync_m_c', compressed_data, True)
 
             processed_response = self.process_response(response)
-            if processed_response:
-                sync_result = True
-                logging.info("{0} [{1}] [STEP 2]: Client received the sync properly".format(tag, client_name))
-            else:
-                logging.error("{0} [{1}] [STEP 2]: Client reported an error receiving the sync.".format(tag, client_name))
+
+        if processed_response:
+            sync_result = True
+            logging.info("{0} [{1}] [STEP 2]: Client received the sync properly".format(tag, client_name))
+        else:
+            logging.error("{0} [{1}] [STEP 2]: Client reported an error receiving the sync.".format(tag, client_name))
 
         # Send KO files
         return sync_result
@@ -461,7 +463,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                 node_file = list(self.manager.send_request_broadcast(command = 'file_status'))
                 response = {node:json.loads(data.split(' ',1)[1]) for node,data in node_file}
                 get_my_files = True
-        
+
             if get_my_files:
                 master_files = get_files_status('master', get_md5=True)
                 client_files = get_files_status('client', get_md5=True)
