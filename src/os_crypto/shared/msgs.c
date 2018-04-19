@@ -33,7 +33,7 @@ static unsigned int _s_comp_print = 0;
 static unsigned int _s_recv_flush = 0;
 
 static int _s_verify_counter = 1;
-
+static time_t saved_time = 0;
 
 /* Read counters for each agent */
 void OS_StartCounter(keystore *keys)
@@ -375,13 +375,14 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     char _tmpmsg[OS_MAXSTR + 2];
     char _finmsg[OS_MAXSTR + 2];
     os_md5 md5sum;
-    static int fired = 0;
+    time_t curr_time;
 
     /* Check for invalid msg sizes */
     if ((msg_length > (OS_MAXSTR - OS_HEADER_SIZE)) || (msg_length < 1)) {
-        if (!fired) {
+        curr_time = time(0);
+        if (curr_time - saved_time > 3600) {
             merror("Incorrect message size: %li", msg_length);
-            fired = 1;
+            saved_time = curr_time;
         }
         mdebug2(ENCSIZE_ERROR, msg);
         return (0);
