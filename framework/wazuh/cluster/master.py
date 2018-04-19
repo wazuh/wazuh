@@ -377,6 +377,17 @@ class MasterManager(Server):
             self._integrity_control = new_integrity_control
 
 
+    def get_healtcheck(self):
+        clients_info = {name:{"info":data['info'], "status":data['status']} for name,data in self.get_connected_clients().iteritems()}
+
+        cluster_config = read_config()
+        clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}}})
+
+        healtcheck = {"n_connected_nodes":len(clients_info), "nodes_info": clients_info}
+        return healtcheck
+
+
+
     def exit(self):
         logging.info("[Master] Cleaning...")
 
@@ -402,6 +413,7 @@ class MasterManager(Server):
         clean_up()
 
         logging.info("[Master] Cleaning end.")
+
 
 #
 # Master threads
@@ -492,6 +504,12 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         elif command == 'get_agents':
             filter_status = data if data != 'None' else None
             response = get_agents_status(filter_status)
+            serialized_response = ['ok',  json.dumps(response)]
+            return serialized_response
+
+        elif command == 'get_health':
+            response = self.manager.get_healtcheck()
+
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 

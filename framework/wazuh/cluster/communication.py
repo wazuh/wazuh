@@ -486,7 +486,11 @@ class Server(asyncore.dispatcher):
                 },
                 'status': {
                     'sync_integrity_free': True,
-                    'sync_agentinfo_free': True
+                    'sync_agentinfo_free': True,
+                    'timestamp_last_sync_keys_start': "Unknown",
+                    'timestamp_last_sync_keys_end': "Unknown",
+                    'timestamp_last_sync_integrity_start': "Unknown",
+                    'timestamp_last_sync_integrity_end': "Unknown"
                 }
             }
         return id

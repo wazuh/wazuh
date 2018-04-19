@@ -40,20 +40,21 @@ Syntax: {0} --help | --sync [-t Node1 NodeN] [--debug] | --list-nodes [-t Node1 
 
 Usage:
 \t-h, --help                                  # Show this help message
+\t-s, --healthcheck                           # Show healthcheck
 \t-a, --list-agents                           # List agents
 \t-n, --list-nodes                            # List nodes
 
 Filters:
-\t -t, --filter-node                          # Filter by node
-\t -c, --filter-agents-status                 # Filter by agent status
+\t-t, --filter-node                          # Filter by node
+\t-c, --filter-agents-status                 # Filter by agent status
 
 Others:
-\t -d, --debug                                # Show debug information
+\t-d, --debug                                # Show debug information
 
 """.format(basename(argv[0]))
                 #\t-s, --sync                                 # Force the nodes to initiate the synchronization process
                 #\t-l, --list-files                           # List the file status for every node
-                #\t-f, --filter-file                         # Filter by file
+                #\t-f, --filter-file                          # Filter by file
                 return msg
             def error(self, message):
                 print("Wrong arguments: {0}".format(message))
@@ -73,6 +74,7 @@ Others:
         #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
         exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
         exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
+        exclusive.add_argument('-s', '--healthcheck', const='healthcheck', action='store_const', help="Show healthcheck")
         return parser
     else:
         class WazuhHelpFormatter(argparse.ArgumentParser):
@@ -86,10 +88,10 @@ Usage:
 \t-n, --list-nodes                            # List nodes
 
 Filters:
-\t -t, --filter-node                          # Filter by node
+\t-t, --filter-node                          # Filter by node
 
 Others:
-\t -d, --debug                                # Show debug information
+\t-d, --debug                                # Show debug information
 
 """.format(basename(argv[0]))
                 #\t-l, --list-files                            # List the status of his own files
@@ -119,6 +121,7 @@ def signal_handler(n_signal, frame):
 
 def __execute(request):
     response_json = {}
+    response = None
     try:
         response = send_to_internal_socket(socket_name="c-internal", message=request)
         response_json = json.loads(response)
@@ -126,7 +129,10 @@ def __execute(request):
         print ("Interrupted")
         exit(1)
     except Exception as e:
-        print ("Error: {}".format(response))
+        if response:
+            print ("Error: {}".format(response))
+        else:
+            print ("Error: {}".format(e))
         exit(1)
 
     return response_json
@@ -252,6 +258,15 @@ def print_agents_master(filter_status):
     __print_table(agents, headers, True)
 
 
+### Get healthchech
+def print_healthcheck():
+    node_response = __execute("get_health")
+
+    print json.dumps(node_response, sort_keys=True, indent=4)
+
+    
+
+
 #
 # Main
 #
@@ -264,7 +279,7 @@ if __name__ == '__main__':
         cluster_config = None
 
     if not cluster_config or cluster_config['disabled'] == 'yes':
-        print "Error: The cluster is disabled"
+        print ("Error: The cluster is disabled")
         exit(1)
 
     # Validate cluster config
@@ -275,7 +290,7 @@ if __name__ == '__main__':
 
     status = get_status_json()
     if status["running"] != "yes":
-        print "Error: The cluster is not running"
+        print ("Error: The cluster is not running")
         exit(1)
 
     is_master = cluster_config['node_type'] == "master"
@@ -288,15 +303,17 @@ if __name__ == '__main__':
         logging.getLogger('').setLevel(logging.DEBUG) #10
 
     try:
-        if args.list_agents is not None:
+        if args.list_agents:
             if is_master:
                 print_agents_master(args.filter_status)
             else:
-                print "Wrong arguments. To use this command you need to be a master node."
+                print ("Wrong arguments. To use this command you need to be a master node.")
                 parser.print_help()
             
-        elif args.list_nodes is not None:
+        elif args.list_nodes:
             print_nodes_status(args.filter_node)
+        elif is_master and args.healthcheck:
+            print_healthcheck()
         else:
             parser.print_help()
             exit()
