@@ -169,7 +169,7 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
         raise WazuhException(3015, str(e))
 
     for entry in entries:
-        if entry in excluded_files or entry[-1] == '~':
+        if entry in excluded_files or entry[-1] == '~' or entry[-4:] == ".tmp":
             continue
 
         if entry in files or files == ["all"]:
