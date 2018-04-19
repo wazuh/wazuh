@@ -93,11 +93,8 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     char read_buff[OS_MAXSTR];
     char file[OS_MAXSTR];
     FILE *fp;
-    int first_line = 1, i;
+    int first_line = 1;
     int listening;
-    char *command;
-    FILE *output;
-    int status;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -106,7 +103,6 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
     os_calloc(NI_MAXHOST, sizeof(char), laddress);
     os_calloc(NI_MAXHOST, sizeof(char), raddress);
-    os_calloc(COMMAND_LENGTH, sizeof(char), command);
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -145,6 +141,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             cJSON_AddNumberToObject(port, "remote_port", rem_port);
             cJSON_AddNumberToObject(port, "tx_queue", txq);
             cJSON_AddNumberToObject(port, "rx_queue", rxq);
+            cJSON_AddNumberToObject(port, "inode", inode);
 
             if (!strncmp(protocol, "tcp", 3)){
                 char *port_state;
@@ -154,39 +151,6 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                     listening = 1;
                 }
                 free(port_state);
-            }
-
-            snprintf(command, COMMAND_LENGTH - 1, "lsof | grep %lu", inode);
-            char *proc_name;
-            if ((output = popen(command, "r"))){
-                if(fgets(read_buff, OS_MAXSTR, output)){
-                    char ** parts = NULL;
-                    char *aux_string;
-                    parts = OS_StrBreak(' ', read_buff, 2);
-                    proc_name = strdup(parts[0]);
-                    int spaces = strspn(parts[1], " ");
-                    aux_string = strdup(parts[1] + spaces);
-
-                    for (i=0; parts[i]; i++){
-                        free(parts[i]);
-                    }
-                    free(parts);
-                    parts = OS_StrBreak(' ', aux_string, 2);
-                    cJSON_AddNumberToObject(port, "PID", atoi(parts[0]));
-                    cJSON_AddStringToObject(port, "process", proc_name);
-                    for (i=0; parts[i]; i++){
-                        free(parts[i]);
-                    }
-                    free(parts);
-                    free(proc_name);
-                    free(aux_string);
-                }
-
-                if (status = pclose(output), status) {
-                    mtwarn(WM_SYS_LOGTAG, "Command 'lsof' returned %d getting IPv4 ports.", status);
-                }
-            }else{
-                mtdebug1(WM_SYS_LOGTAG, "No process found for inode %lu", inode);
             }
 
             if (check_all || listening) {
@@ -206,7 +170,6 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     }else{
         mterror(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
     }
-    free(command);
     free(laddress);
     free(raddress);
 }
@@ -225,11 +188,8 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     char read_buff[OS_MAXSTR];
     char file[PATH_LENGTH];
     FILE *fp;
-    int first_line = 1, i;
+    int first_line = 1;
     int listening;
-    char command[COMMAND_LENGTH];
-    FILE *output;
-    int status;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -286,40 +246,6 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                     listening = 1;
                 }
                 free(port_state);
-            }
-
-            snprintf(command, COMMAND_LENGTH - 1, "lsof | grep %lu", inode);
-            char *proc_name;
-            if ((output = popen(command, "r"))){
-                if(fgets(read_buff, OS_MAXSTR, output)){
-                    char ** parts = NULL;
-                    char *aux_string;
-                    parts = OS_StrBreak(' ', read_buff, 2);
-                    proc_name = strdup(parts[0]);
-                    int spaces = strspn(parts[1], " ");
-                    aux_string = strdup(parts[1] + spaces);
-
-                    for (i=0; parts[i]; i++){
-                        free(parts[i]);
-                    }
-
-                    free(parts);
-                    parts = OS_StrBreak(' ', aux_string, 2);
-                    cJSON_AddNumberToObject(port, "PID", atoi(parts[0]));
-                    cJSON_AddStringToObject(port, "process", proc_name);
-                    for (i=0; parts[i]; i++){
-                        free(parts[i]);
-                    }
-                    free(parts);
-                    free(proc_name);
-                    free(aux_string);
-                }
-
-                if (status = pclose(output), status) {
-                    mtwarn(WM_SYS_LOGTAG, "Command 'lsof' returned %d getting IPv6 ports.", status);
-                }
-            }else{
-                mtdebug1(WM_SYS_LOGTAG, "No process found for inode %lu", inode);
             }
 
             if (check_all || listening) {
