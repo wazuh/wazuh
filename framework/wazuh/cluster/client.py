@@ -286,60 +286,33 @@ class ClientManagerHandler(ClientHandler):
 class ClientProcessMasterFiles(ProcessFiles):
 
     def __init__(self, manager_handler, filename, stopper):
-        ProcessFiles.__init__(self, manager_handler, filename, manager_handler.name, common.ossec_path, stopper)
+        ProcessFiles.__init__(self, manager_handler, filename, manager_handler.name, stopper)
         self.thread_tag = "[Client] [ProcessFilesThread] [Sync process m->c]"
 
 
-    def run(self):
-        while not self.stopper.is_set() and self.running:
+    def check_connection(self):
+        # if not self.manager_handler:
+        #     self.sleep(2)
+        #     return False
 
-            # Waint until client is set
-            if not self.manager_handler:
-                # time.sleep(2)
-                self.sleep(2)
-                continue
+        if not self.manager_handler.is_connected():
+            check_seconds = 2
+            logging.info("{0}: Client is not connected. Waiting {1}s".format(self.thread_tag, check_seconds))
+            self.sleep(check_seconds)
+            return False
 
-            # Waint until client is connected
-            if not self.manager_handler.is_connected():
-                check_seconds = 2
-                logging.info("{0}: Client is not connected. Waiting: {1}s.".format(self.thread_tag, check_seconds))
-                #time.sleep(check_seconds)
-                self.sleep(check_seconds)
-                continue
-
-            if self.received_all_information:
-                logging.debug("{0}: File reception completed.".format(self.thread_tag))
-
-                try:
-                    result = self.manager_handler.process_files_from_master(self.filename, self.thread_tag)
-                    if result:
-                        logging.info("{0}: Result: Successfully.".format(self.thread_tag))
-                    else:
-                        logging.error("{0}: Result: Error.".format(self.thread_tag))
-                except Exception as e:
-                    logging.error("{0}: Result: Unknown error: {1}".format(self.thread_tag, str(e)))
-                    logging.info("{0}: Unlocking SyncIntegrityThread.".format(self.thread_tag))
-                    self.manager_handler.set_lock_interval_thread(False)
-                    clean_up(self.name)
-
-                logging.info("{0}: Unlocking SyncIntegrityThread.".format(self.thread_tag))
-                self.manager_handler.set_lock_interval_thread(False)
-
-                self.stop()
-
-            else:
-                try:
-                    self.process_file_cmd()
-                except Exception as e:
-                    logging.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, str(e)))
-                    self.manager_handler.set_lock_interval_thread(False)
-                    self.stop()
-
-            time.sleep(0.1)
-
-        self.manager_handler.set_lock_interval_thread(False)
+        return True
 
 
+    def lock_status(self, status):
+        # the client only needs to do the unlock
+        # because the lock was performed in the Integrity thread
+        if not status:
+            self.manager_handler.set_lock_interval_thread(status)
+
+
+    def process_file(self):
+        return self.manager_handler.process_files_from_master(self.filename, self.thread_tag)
 
 #
 # Client

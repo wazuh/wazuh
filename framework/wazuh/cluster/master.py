@@ -227,96 +227,47 @@ class MasterManagerHandler(ServerHandler):
 #
 # Threads (workers) created by MasterManagerHandler
 #
-class ProcessClientFiles(ProcessFiles):
+
+
+class ProcessClient(ProcessFiles):
 
     def __init__(self, manager_handler, filename, stopper):
-        ProcessFiles.__init__(self, manager_handler, filename, manager_handler.get_client(), common.ossec_path, stopper)
-        self.thread_tag = "[Master] [ProcessClientFilesThread] [Sync process m->c]"
-
-    def run(self):
-        while not self.stopper.is_set() and self.running:
-            self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', False)
-
-            if self.received_all_information:
-                logging.debug("{0}: File reception completed.".format(self.thread_tag))
-
-                try:
-                    result = self.manager_handler.process_files_from_client(self.name, self.filename, self.thread_tag)
-                    if result:
-                        logging.info("{0}: Result: Successfully.".format(self.thread_tag))
-                    else:
-                        logging.error("{0}: Result: Error.".format(self.thread_tag))
-                except Exception as e:
-                    logging.error("{0}: Unknown error for {1}: {2}.".format(self.thread_tag, self.name, str(e)))
-                    clean_up(self.name)
-                    self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
-
-                self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
-                self.stop()
-
-            elif self.received_error:
-                logging.debug("{}: An error took place during file reception.".format(self.thread_tag))
-                self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
-                self.stop()
-
-            else:
-                try:
-                    self.process_file_cmd()
-                except Exception as e:
-                    logging.error("{0}: Unknown error in process_file_cmd {1}: {2}.".format(self.thread_tag, self.name, str(e)))
-                    self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
-                    self.stop()
-
-            time.sleep(0.1)
-
-        self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
+        ProcessFiles.__init__(self, manager_handler, filename,
+                              manager_handler.get_client(),
+                              stopper)
 
 
-class ProcessClientIntegrity(ProcessFiles):
+    def check_connection(self):
+        return True
+
+
+    def lock_status(self, status):
+        # status_type is used to indicate whether a lock is free or not.
+        # if the lock is True, the status should be False because it is not free
+        self.manager_handler.manager.set_client_status(self.name, self.status_type, not status)
+
+
+    def process_file(self):
+        return self.function(self.name, self.filename, self.thread_tag)
+
+
+class ProcessClientIntegrity(ProcessClient):
 
     def __init__(self, manager_handler, filename, stopper):
-        ProcessFiles.__init__(self, manager_handler, filename, manager_handler.get_client(), common.ossec_path, stopper)
-
+        ProcessClient.__init__(self, manager_handler, filename, stopper)
         self.thread_tag = "[Master] [ProcessIntegrityThread] [Sync process m->c]"
+        self.status_type = "sync_integrity_free"
+        self.function = self.manager_handler.process_integrity_from_client
 
 
-    def run(self):
-        while not self.stopper.is_set() and self.running:
-            self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', False)
+class ProcessClientFiles(ProcessClient):
 
-            if self.received_all_information:
-                logging.debug("{0}: File reception completed.".format(self.thread_tag))
+   def __init__(self, manager_handler, filename, stopper):
+        ProcessClient.__init__(self, manager_handler, filename, stopper)
+        self.thread_tag = "[Master] [ProcessClientFilesThread] [Sync process m->c]"
+        self.status_type = "sync_agentinfo_free"
+        self.function = self.manager_handler.process_files_from_client
 
-                try:
-                    result = self.manager_handler.process_integrity_from_client(self.name, self.filename, self.thread_tag)
-                    if result:
-                        logging.info("{0}: Result: Successfully.".format(self.thread_tag))
-                    else:
-                        logging.error("{0}: Result: Error.".format(self.thread_tag))
-                except Exception as e:
-                    logging.error("{0}: Unknown error for {1}: {2}.".format(self.thread_tag, self.name, str(e)))
-                    clean_up(self.name)
-                    self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
-
-                self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
-                self.stop()
-
-            elif self.received_error:
-                logging.debug("{}: An error took place during file reception.".format(self.thread_tag))
-                self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
-                self.stop()
-
-            else:
-                try:
-                    self.process_file_cmd()
-                except Exception as e:
-                    logging.error("{0}: Unknown error in process_file_cmd {1}: {2}.".format(self.thread_tag, self.name, str(e)))
-                    self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
-                    self.stop()
-
-            time.sleep(0.1)
-
-        self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
 
 #
 # Master

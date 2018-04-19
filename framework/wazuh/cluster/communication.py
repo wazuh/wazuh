@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from wazuh import common
+from wazuh.cluster.cluster import clean_up
 import asyncore
 import threading
 import random
@@ -729,14 +731,15 @@ def send_to_internal_socket(socket_name, message):
 
 class ProcessFiles(ClusterThread):
 
-    def __init__(self, manager_handler, filename, client_name, ossec_path, stopper):
+    def __init__(self, manager_handler, filename, client_name, stopper):
+        """
+
+        """
         ClusterThread.__init__(self, stopper)
 
         self.manager_handler = manager_handler
         self.filename = filename
         self.name = client_name
-        self.ossec_path = ossec_path
-
         self.data = None
         self.command_queue = Queue()
         self.received_all_information = False
@@ -744,9 +747,10 @@ class ProcessFiles(ClusterThread):
         self.close_lock = threading.Condition()
         self.f = None
         self.id = None
-
         self.thread_tag = "[FileThread]"
 
+
+    # Overridden methods
     def stop(self):
         if self.id:
             self.manager_handler.del_worker(self.id)
@@ -754,6 +758,64 @@ class ProcessFiles(ClusterThread):
 
 
     def run(self):
+        while not self.stopper.is_set() and self.running:
+            self.lock_status(True)
+
+            if not self.check_connection():
+                continue
+
+            if self.received_all_information:
+                logging.debug("{0}: File reception completed.".format(self.thread_tag))
+                try:
+                    result = self.process_file()
+                    if result:
+                        logging.info("{0}: Result: Successfully.".format(self.thread_tag))
+                    else:
+                        logging.error("{0}: Result: Error.".format(self.thread_tag))
+                except Exception as e:
+                    logging.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, str(e)))
+                    logging.info("{0}: Unlocking thread.".format(self.thread_tag))
+                    self.lock_status(False)
+                    clean_up(self.name)
+
+                logging.info("{0}: Unlocking thread".format(self.thread_tag))
+                self.lock_status(False)
+
+                self.stop()
+
+            elif self.received_error:
+                logging.debug("{0}: An error took place during file reception.".format(self.thread_tag))
+                logging.info("{0}: Unlocking thread".format(self.thread_tag))
+                self.lock_status(False)
+                clean_up(self.name)
+                self.stop()
+
+            else:  # receiving file
+                try:
+                    self.process_file_cmd()
+                except Exception as e:
+                    logging.error("{0}: Unknown error in process_file_cmd: {1}".format(self.thread_tag, str(e)))
+                    logging.info("{0}: Unlocking thread".format(self.thread_tag))
+                    self.lock_status(False)
+                    clean_up(self.name)
+                    self.stop()
+
+            time.sleep(0.1)
+
+        # logging.info("{0}: Unlocking thread".format(self.thread_tag))
+        # self.lock_status(False)
+
+
+    # New methods
+    def check_connection(self):
+        raise NotImplementedError
+
+
+    def lock_status(self, status):
+        raise NotImplementedError
+
+
+    def process_file(self):
         raise NotImplementedError
 
 
@@ -802,7 +864,7 @@ class ProcessFiles(ClusterThread):
         and must be separated by a white space
         """
         # Create the file
-        self.filename = "{}/queue/cluster/{}/{}.tmp".format(self.ossec_path, self.name, self.id)
+        self.filename = "{}/queue/cluster/{}/{}.tmp".format(common.ossec_path, self.name, self.id)
         logging.debug("{0}: Creating file {1}".format(self.thread_tag, self.filename))
         self.f = open(self.filename, 'w')
         return "ok", "File {} created successfully".format(self.filename)
