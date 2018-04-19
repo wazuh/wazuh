@@ -78,6 +78,13 @@
 #define WM_SYS_NET_DIR  "/proc/net/"
 #define RPM_DATABASE    "/var/lib/rpm/Packages"
 
+/* MAC package search paths */
+
+#define MAC_APPS        "/Applications"
+#define UTILITIES       "/Applications/Utilities"
+#define HOMEBREW_APPS   "/usr/local/Cellar"
+#define INFO_FILE       "Contents/Info.plist"
+
 typedef struct rpm_data {
     char *tag;
     int type;
@@ -158,7 +165,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
 void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__MACH__)
 // Installed programs inventory for BSD based systems
 void sys_packages_bsd(int queue_fd, const char* LOCATION);
 #endif
