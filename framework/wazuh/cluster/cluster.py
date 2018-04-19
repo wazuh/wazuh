@@ -33,6 +33,7 @@ import errno
 import logging
 import re
 from calendar import timegm
+from random import random
 
 # import the C accelerated API of ElementTree
 try:
@@ -211,7 +212,7 @@ def get_files_status(node_type, get_md5=True):
 
 
 def compress_files(source, name, list_path, cluster_control_json=None):
-    zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}.zip".format(common.ossec_path, name, time())
+    zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}-{3}.zip".format(common.ossec_path, name, time(), str(random())[2:])
     with zipfile.ZipFile(zip_file_path, 'w') as zf:
         # write files
         if list_path:
