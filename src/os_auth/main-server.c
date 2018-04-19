@@ -669,7 +669,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         }
 
         buf[0] = '\0';
-        ret = SSL_read(ssl, buf, sizeof(buf));
+        ret = SSL_read(ssl, buf, sizeof(buf) - 1);
 
         if (ssl_error(ssl, ret)) {
             merror("SSL Error (%d)", ret);
@@ -678,8 +678,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             continue;
         }
 
+        buf[ret] = '\0';
         parseok = 0;
         tmpstr = buf;
+
+        mdebug2("Request received: <%s>", buf);
 
         /* Checking for shared password authentication. */
         if(authpass) {
@@ -720,6 +723,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 tmpstr++;
             }
         }
+        tmpstr++;
 
         if (parseok == 0) {
             merror("Invalid request for new agent from: %s", srcip);
@@ -739,11 +743,71 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 continue;
             }
 
+            /* Check for valid centralized group */
+            char centralized_group[256] = {0};
+            char centralized_group_token[2] = "G:";
+
+            if(strncmp(++tmpstr,centralized_group_token,2)==0)
+            {
+
+                char group_path[PATH_MAX] = {0};
+
+                sscanf(tmpstr," G:\'%255[^\']\"",centralized_group);
+
+                if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",centralized_group) >= PATH_MAX){
+                    merror("Invalid group name: %.255s... , group path is too large.",centralized_group);
+                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s...\n\n, group path is too large", centralized_group);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
+
+                /* Check if group exists */
+                DIR *group_dir = opendir(group_path);
+                if (!group_dir) {
+                    merror("Invalid group: %.255s",centralized_group);
+                    snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", centralized_group);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
+                closedir(group_dir);
+
+                /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
+                tmpstr+= 2+strlen(centralized_group)+2;
+            }else{
+                tmpstr--;
+            }
+
+            /* Check for IP when client uses -i option */
+            int use_client_ip = 0;
+            char client_source_ip[IPSIZE + 1] = {0};
+            char client_source_ip_token[3] = "IP:";
+
+            if(strncmp(++tmpstr,client_source_ip_token,3)==0)
+            {
+                sscanf(tmpstr," IP:\'%15[^\']\"",client_source_ip);
+
+                /* If IP: != 'src' overwrite the srcip */
+                if(strncmp(client_source_ip,"src",3) != 0)
+                {
+                    memcpy(srcip,client_source_ip,IPSIZE);
+                }
+
+                use_client_ip = 1;
+            }
+
             pthread_mutex_lock(&mutex_keys);
 
             /* Check for duplicated IP */
 
-            if (config.flags.use_source_ip) {
+            if (config.flags.use_source_ip || use_client_ip) {
                 if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
                     if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
@@ -828,7 +892,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             /* Add the new agent */
 
-            if (index = OS_AddNewAgent(&keys, NULL, agentname, config.flags.use_source_ip ? srcip : NULL, NULL), index < 0) {
+            if (index = OS_AddNewAgent(&keys, NULL, agentname, (config.flags.use_source_ip || use_client_ip)? srcip : NULL, NULL), index < 0) {
                 pthread_mutex_unlock(&mutex_keys);
                 merror("Unable to add agent: %s (internal error)", agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
@@ -840,7 +904,25 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 continue;
             }
 
-            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, config.flags.use_source_ip ? srcip : "any", keys.keyentries[index]->key);
+            /* Add the agent to the centralized configuration group */
+            if(*centralized_group) {
+                char path[PATH_MAX];
+
+                if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+                    merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
+                    OS_RemoveAgent(keys.keyentries[index]->id);
+                    merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
+                    snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", centralized_group);
+                    SSL_write(ssl, response, strlen(response));
+                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                    SSL_write(ssl, response, strlen(response));
+                    SSL_free(ssl);
+                    close(client.socket);
+                    continue;
+                }
+            }
+
+            snprintf(response, 2048, "OSSEC K:'%s %s %s %s'\n\n", keys.keyentries[index]->id, agentname, (config.flags.use_source_ip || use_client_ip) ? srcip : "any", keys.keyentries[index]->key);
             minfo("Agent key generated for '%s' (requested by %s)", agentname, srcip);
             ret = SSL_write(ssl, response, strlen(response));
 
@@ -851,7 +933,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
             } else {
                 /* Add pending key to write */
-                add_insert(keys.keyentries[keys.keysize - 1]);
+                add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
                 write_pending = 1;
                 pthread_cond_signal(&cond_pending);
             }
@@ -909,9 +991,17 @@ void* run_writer(__attribute__((unused)) void *arg) {
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
             OS_AddAgentTimestamp(cur->id, cur->name, cur->ip, cur_time);
+
+            if(cur->group){
+                if(set_agent_group(cur->id,cur->group) == -1){
+                    merror("Unable to set agent centralized group: %s (internal error)", cur->group);
+                }
+            }
+
             free(cur->id);
             free(cur->name);
             free(cur->ip);
+            free(cur->group);
             free(cur);
         }
 
@@ -940,13 +1030,17 @@ void* run_writer(__attribute__((unused)) void *arg) {
 }
 
 // Append key to insertion queue
-void add_insert(const keyentry *entry) {
+void add_insert(const keyentry *entry,const char *group) {
     struct keynode *node;
 
     os_calloc(1, sizeof(struct keynode), node);
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
     node->ip = strdup(entry->ip->ip);
+    node->group = NULL;
+
+    if(group != NULL)
+        node->group = strdup(group);
 
     (*insert_tail) = node;
     insert_tail = &node->next;

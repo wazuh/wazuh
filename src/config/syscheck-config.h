@@ -93,6 +93,7 @@ typedef struct _config {
     registry_regex *registry_ignore_regex;      /* regex of registry entries to ignore */
     registry *registry;                         /* array of registry entries to be scanned */
     FILE *reg_fp;
+    int max_fd_win_rt;
 #endif
 
     OSHash *fp;
