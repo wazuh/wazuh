@@ -100,6 +100,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define REMUSER         "ossecr"
 #endif
 
+#ifndef ROOTUSER
+#define ROOTUSER        "root"
+#endif
+
 #ifndef GROUPGLOBAL
 #define GROUPGLOBAL     "ossec"
 #endif

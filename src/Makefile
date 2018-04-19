@@ -3,6 +3,7 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
+ROUTE_PATH := $(shell sh -c 'pwd')
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
@@ -46,7 +47,7 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -L${EXTERNAL_CURL} -L${EXTERNAL_LIBYAML} -lm -lssl -lcrypto -lyaml -lcurl ${LDFLAGS}
+OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -L${EXTERNAL_CURL} -L${EXTERNAL_CURL}lib/.libs -L${EXTERNAL_LIBYAML}src/.libs -lm -lssl -lcrypto -lcurl -lyaml ${LDFLAGS}
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -505,11 +506,11 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a ${EXTERNAL_CURL}libcurl.a ${EXTERNAL_LIBYAML}libyaml.a
+EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a ${EXTERNAL_OPENSSL}libssl.so ${EXTERNAL_OPENSSL}libcrypto.so ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so 
+EXTERNAL_LIBS += libproc.a ${EXTERNAL_LIBDB}.libs/libdb-6.2.so ${EXTERNAL_CURL}lib/.libs/libcurl.so
 endif
 endif
 
@@ -523,8 +524,8 @@ endif
 
 #### OpenSSL ##########
 
-OPENSSL_LIB=${EXTERNAL_OPENSSL}libssl.a
-CRYPTO_LIB=${EXTERNAL_OPENSSL}libcrypto.a
+OPENSSL_LIB=${EXTERNAL_OPENSSL}libssl.so
+CRYPTO_LIB=${EXTERNAL_OPENSSL}libcrypto.so
 
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
 ifeq (${TARGET},winagent)
@@ -549,7 +550,7 @@ else
 	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared solaris-sparcv9-gcc && ${MAKE} build_libs
 endif
 else
-	cd ${EXTERNAL_OPENSSL} && ./config no-shared && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./config enable-weak-ssl-ciphers && ${MAKE} build_libs
 endif
 endif
 endif
@@ -595,19 +596,18 @@ libcJSON.a: ${cjson_o}
 	${OSSEC_RANLIB} $@
 
 #### libyaml ##########
-LIBYAML_LIB=${EXTERNAL_LIBYAML}libyaml.a
+LIBYAML_LIB=${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2
 
 ${LIBYAML_LIB}:
 	cd ${EXTERNAL_LIBYAML} && ./bootstrap && ./configure && ${MAKE}
-	cp ${EXTERNAL_LIBYAML}src/.libs/libyaml.a ${EXTERNAL_LIBYAML}libyaml.a
 
 #### curl ##########
-LIBCURL_LIB=${EXTERNAL_CURL}libcurl.a
+LIBCURL_LIB=${EXTERNAL_CURL}lib/.libs/libcurl.so
 
 ${LIBCURL_LIB}:
-	cd ${EXTERNAL_CURL} && ./buildconf && ./configure --enable-static && ${MAKE}
-	cp ${EXTERNAL_CURL}lib/.libs/libcurl.a ${EXTERNAL_CURL}libcurl.a
-
+	cd ${EXTERNAL_CURL} && ./buildconf && CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LIBS="-lssl -lcrypto" LD_LIBRARY_PATH="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure && ${MAKE}
+	
+ 
 #### procps #########
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
