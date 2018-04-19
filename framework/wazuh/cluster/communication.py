@@ -219,7 +219,7 @@ class Handler(asyncore.dispatcher_with_send):
 
         with self.lock:
             self.box[counter] = response
-
+            
         self.push(counter, command, payload)
         response = response.read()
 
@@ -254,6 +254,19 @@ class Handler(asyncore.dispatcher_with_send):
                         self.push(counter, command, data)
 
 
+    def handle_error(self):
+        nil, t, v, tbinfo = asyncore.compact_traceback()
+
+        try:
+            self_repr = repr(self)
+        except:
+            self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
+
+        self.handle_close()
+        logging.error("[Transport] err {}".format(v))
+        
+
+
     def handle_close(self):
         self.close()
 
@@ -277,7 +290,11 @@ class Handler(asyncore.dispatcher_with_send):
 
 
     def push(self, counter, command, payload):
-        message = msgbuild(counter, command, payload)
+        try:
+            message = msgbuild(counter, command, payload)
+        except Exception as e:
+            logger.error("[Transport] Error sending a request/response due to '{}'.".format(str(e)))
+            message = msgbuild(counter, "err", str(e))
 
         with self.lock:
             self.send(message)
@@ -424,6 +441,18 @@ class Server(asyncore.dispatcher):
             logging.debug("[Transport-S] Incoming connection from {0}.".format(repr(addr)))
             # addr is a tuple of form (ip, port)
             handler = self.handle_type(sock, self, self.map, addr[0])
+
+
+    def handle_error(self):
+        nil, t, v, tbinfo = asyncore.compact_traceback()
+
+        try:
+            self_repr = repr(self)
+        except:
+            self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
+
+        self.handle_close()
+        logging.error("[Transport-S] err {}".format(v))
 
 
     def add_client(self, data, ip, handler):
@@ -597,6 +626,17 @@ class InternalSocket(asyncore.dispatcher):
             logging.debug("[Transport-I] New connection in internal socket")
             handler = self.handle_type(sock=sock, manager=self.manager, map=self.map)
 
+
+    def handle_error(self):
+        nil, t, v, tbinfo = asyncore.compact_traceback()
+
+        try:
+            self_repr = repr(self)
+        except:
+            self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
+
+        self.handle_close()
+        logging.error("[Transport-I] err {}".format(v))
 
 #
 # Internal Socket thread

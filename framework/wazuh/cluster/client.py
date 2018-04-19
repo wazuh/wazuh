@@ -610,25 +610,41 @@ class ClientInternalSocketHandler(InternalSocketHandler):
     def process_request(self, command, data):
         logging.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
         serialized_response = ""
+        
 
         if command == "get_files":
             split_data = data.split(' ', 1)
             file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-            response = json.loads(self.manager.process_request(command = 'file_status', data="")[1])
+            node_response = self.manager.handler.process_request(command = 'file_status', data="")
 
-            if file_list and len(response):
-                response = {file:content for file,content in response.iteritems() if file in file_list}
+            if node_response[0] == 'err': # Error response
+                response = {"err":node_response[1]}
+            else:
+                response = json.loads(node_response[1])
+                # Filter files
+                if file_list and len(response):
+                    response = {file:content for file,content in response.iteritems() if file in file_list}
+            
+            response =  json.dumps(response)
 
-            serialized_response = ['ok',  json.dumps(response)]
+            serialized_response = ['ok', response]
+
             return serialized_response
         elif command == "get_nodes":
             split_data = data.split(' ', 1)
             node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
 
-            response = json.loads(self.manager.send_request(command=command, data=data).split(' ', 1)[1])
+            node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
 
-            if node_list:
-                response = {node:info for node, info in response.iteritems() if node in node_list}
+            type_response = node_response[0]
+            response = node_response[1]
+
+            if type_response == "err":
+                response = {"err":response}
+            else:
+                response = json.loads(response)
+                if node_list:
+                    response = {node:info for node, info in response.iteritems() if node in node_list}
 
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response

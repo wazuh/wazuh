@@ -453,26 +453,34 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
             response = {}
 
-            if node_list and len(node_list) > 0:
+            if node_list and len(node_list) > 0: #Selected nodes
                 for node in node_list:
                     if node == read_config()['node_name']:
                         get_my_files = True
                         continue
                     node_file = self.manager.send_request(client_name=node, command='file_status', data='')
-                    print "{}".format(node_file)
-                    response.update({node:json.loads(node_file.split(' ',1)[1])})
-            else:
-                node_file = list(self.manager.send_request_broadcast(command = 'file_status'))
-                response = {node:json.loads(data.split(' ',1)[1]) for node,data in node_file}
+
+                    if node_file.split(' ', 1)[0] == 'err': # Error response
+                        response.update({node:node_file.split(' ', 1)[1]})
+                    else:
+                        response.update({node:json.loads(node_file.split(' ',1)[1])})
+            else: # Broadcast
                 get_my_files = True
+                
+                node_file = list(self.manager.send_request_broadcast(command = 'file_status'))
+
+                for node,data in node_file:
+                    try:
+                        response.update({node:json.loads(data.split(' ',1)[1])})
+                    except: # Error response
+                        response.update({node:data.split(' ',1)[1]})
 
             if get_my_files:
-                master_files = get_files_status('master', get_md5=True)
-                client_files = get_files_status('client', get_md5=True)
-                my_files = master_files
-                my_files.update(client_files)
+                my_files = get_files_status('master', get_md5=True)
+                my_files.update(get_files_status('client', get_md5=True))
                 response.update({read_config()['node_name']:my_files})
 
+            # Filter files
             if node_list and len(response):
                 response = {node: response.get(node) for node in node_list}
 
@@ -495,7 +503,6 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
         elif command == 'get_agents':
             filter_status = data if data != 'None' else None
-            print "{}".format(filter_status)
             response = get_agents_status(filter_status)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
@@ -525,6 +532,12 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             else:
                 response = self.manager.send_request(client_name=host, command=command, data=data)
                 if response:
-                    serialized_response = response.split(' ', 1)
+                    type_response = node_response[0]
+                    response = node_response[1]
+
+                    if type_response == "err":
+                        serialized_response = {"err":response}
+                    else:
+                        serialized_response = response
 
             return serialized_response

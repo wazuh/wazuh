@@ -34,8 +34,9 @@ def get_parser(type):
     if type == "master":
         class WazuhHelpFormatter(argparse.ArgumentParser):
             def format_help(self):
-                msg = """
-{0} --help | --sync [-t Node1 NodeN] [--debug] | --list-files [-t Node1 NodeN] [-f File1 FileN] [--debug] | --list-agents [--debug] [-c] | --list-nodes [-t Node1 NodeN] [--debug]
+                msg = """Wazuh cluster control - Master node
+
+Syntax: {0} --help | --sync [-t Node1 NodeN] [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -47,7 +48,7 @@ Filters:
 \t -c, --filter-agents-status                 # Filter by agent status
 
 Others:
-\t     --debug                                # Show debug information
+\t -d, --debug                                # Show debug information
 
 """.format(basename(argv[0]))
                 #\t-s, --sync                                 # Force the nodes to initiate the synchronization process
@@ -65,7 +66,7 @@ Others:
         parser.add_argument('-t', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
         parser.add_argument('-c', '--filter-agents-status', dest='filter_status', nargs='*', type=str, help="Agents status")
-        parser.add_argument('--debug', action='store_const', const='debug', help="Enable debug mode")
+        parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
         #exclusive.add_argument('-s', '--sync', const='sync', action='store_const', help="Force the nodes to initiate the synchronization process")
@@ -76,8 +77,9 @@ Others:
     else:
         class WazuhHelpFormatter(argparse.ArgumentParser):
             def format_help(self):
-                msg = """
-{0} --help | --list-files [-f File1 FileN] [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
+                msg = """Wazuh cluster control - Client node
+
+Syntax: {0} --help | --list-files [-f File1 FileN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -87,7 +89,7 @@ Filters:
 \t -t, --filter-node                          # Filter by node
 
 Others:
-\t     --debug                                # Show debug information
+\t -d, --debug                                # Show debug information
 
 """.format(basename(argv[0]))
                 #\t-l, --list-files                            # List the status of his own files
@@ -104,7 +106,7 @@ Others:
         parser.add_argument('-t', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
         parser.add_argument('-c', '--filter-agents-status', dest='filter_status', nargs='*', type=str, help="Agents status")
-        parser.add_argument('--debug', action='store_const', const='debug', help="Enable debug mode")
+        parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
         #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
@@ -116,13 +118,18 @@ def signal_handler(n_signal, frame):
     exit(1)
 
 def __execute(request):
-    response = ""
+    response_json = {}
     try:
         response = send_to_internal_socket(socket_name="c-internal", message=request)
+        response_json = json.loads(response)
     except KeyboardInterrupt:
-        print "Interrupted"
+        print ("Interrupted")
         exit(1)
-    return response
+    except Exception as e:
+        print ("Error: {}".format(response))
+        exit(1)
+
+    return response_json
 
 #
 # Format
@@ -163,24 +170,41 @@ def __print_table(data, headers, show_header=False):
 
 ### Get files
 def print_file_status_master(filter_file_list, filter_node_list):
-    files = json.loads(__execute("get_files {}%--%{}".format(filter_file_list, filter_node_list)))
+    files = __execute("get_files {}%--%{}".format(filter_file_list, filter_node_list))
     headers = ["Node", "File name", "Modification time", "MD5"]
 
+    node_error = {}
+
     data = []
+    # Convert JSON data to table format
     for node_name in sorted(files.iterkeys()):
+        
         if not files[node_name]:
             continue
+        if not isinstance(files[node_name], dict):
+            node_error[node_name] = files[node_name]
+            continue
+
         for file_name in sorted(files[node_name].iterkeys()):
             file = [node_name, file_name, files[node_name][file_name]['mod_time'].split('.', 1)[0], files[node_name][file_name]['md5']] 
             data.append(file)
 
     __print_table(data, headers, True)
+    
+    if len(node_error) > 0:
+        print "Error:"
+        for node, error in node_error.iteritems():
+            print " - {}: {}".format(node, error)
 
 
 def print_file_status_client(filter_file_list, node_name):
-    my_files = json.loads(__execute("get_files {}".format(filter_file_list)))
-    headers = ["Node", "File name", "Modification time", "MD5"]
+    my_files = __execute("get_files {}".format(filter_file_list))
     
+    if my_files.get("err"):
+        print "Err {}"
+        exit(1)
+    
+    headers = ["Node", "File name", "Modification time", "MD5"]
     data = []
     for file_name in sorted(my_files.iterkeys()):
             file = [node_name, file_name, my_files[file_name]['mod_time'].split('.', 1)[0], my_files[file_name]['md5']] 
@@ -192,7 +216,12 @@ def print_file_status_client(filter_file_list, node_name):
 
 ### Get nodes
 def print_nodes_status(filter_node):
-    nodes = json.loads(__execute("get_nodes {}".format(filter_node) if filter_node else "get_nodes"))
+    nodes = __execute("get_nodes {}".format(filter_node) if filter_node else "get_nodes")
+
+    if nodes.get("err"):
+        print "Err {}"
+        exit(1)
+
     headers = ["Name", "Address", "Type"]
     data = [[nodes[node_name]['name'], nodes[node_name]['ip'], nodes[node_name]['type']] for node_name in sorted(nodes.iterkeys())]
     __print_table(data, headers, True)
@@ -200,7 +229,7 @@ def print_nodes_status(filter_node):
 
 ### Sync
 def sync_master(filter_node):
-    node_response = json.loads(__execute("sync {}".format(filter_node) if filter_node else "sync"))
+    node_response = __execute("sync {}".format(filter_node) if filter_node else "sync")
     headers = ["Node", "Response"]
     data = [[node, response] for node, response in node_response.iteritems()]
     __print_table(data, headers, True)
@@ -218,7 +247,7 @@ def print_agents_master(filter_status):
             filter_status = "Disconnected"
         elif filter_status == "pending":
             filter_status = "Pending"
-    agents = json.loads(__execute("get_agents {}".format(filter_status)))
+    agents = __execute("get_agents {}".format(filter_status))
     headers = ["ID", "Address", "Name", "Status", "Node"]
     __print_table(agents, headers, True)
 
@@ -276,6 +305,8 @@ if __name__ == '__main__':
         #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
         #elif is_master and args.sync is not None:
         #    sync_master(args.filter_node)
+        #elif args.list_files is not None:
+        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
 
     except Exception as e:
         logging.error(str(e))
