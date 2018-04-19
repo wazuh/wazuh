@@ -231,7 +231,7 @@ class ProcessClientFiles(ProcessFiles):
 
     def __init__(self, manager_handler, filename, stopper):
         ProcessFiles.__init__(self, manager_handler, filename, manager_handler.get_client(), common.ossec_path, stopper)
-        self.thread_tag = "[Master] [ProcessFilesThread] [Sync process m->c]"
+        self.thread_tag = "[Master] [ProcessClientFilesThread] [Sync process m->c]"
 
     def run(self):
         while not self.stopper.is_set() and self.running:
@@ -271,7 +271,9 @@ class ProcessClientIntegrity(ProcessFiles):
 
     def __init__(self, manager_handler, filename, stopper):
         ProcessFiles.__init__(self, manager_handler, filename, manager_handler.get_client(), common.ossec_path, stopper)
+
         self.thread_tag = "[Master] [ProcessIntegrityThread] [Sync process m->c]"
+
 
     def run(self):
         while not self.stopper.is_set() and self.running:

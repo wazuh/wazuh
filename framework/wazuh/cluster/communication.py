@@ -135,7 +135,7 @@ class Handler(asyncore.dispatcher_with_send):
             if my_worker.isAlive():
                 logging.warning("[Transport] Cleaning thread. Timeout for: '{0}'.".format(worker_id))
             else:
-                logging.debug("[Transport] Cleaning main threads. Terminated: '{1}'.".format(worker_id))
+                logging.debug("[Transport] Cleaning main threads. Terminated: '{0}'.".format(worker_id))
 
 
     def set_worker(self, command, worker, filename):
@@ -688,6 +688,7 @@ class ProcessFiles(ClusterThread):
         self.f = None
         self.id = None
 
+        self.thread_tag = "[FileThread]"
 
     def stop(self):
         if self.id:
@@ -708,20 +709,20 @@ class ProcessFiles(ClusterThread):
     def process_file_cmd(self):
         command, data = self.command_queue.get(block=True)
         if command == "file_open":
-            logging.debug("[FileThread] Opening file")
+            logging.debug("{0}: Opening file".format(self.thread_tag))
             command = ""
             self.file_open()
         elif command == "file_update":
-            logging.debug("[FileThread] Updating file")
+            logging.debug("{0}: Updating file".format(self.thread_tag))
             command = ""
             self.file_update(data)
         elif command == "file_close":
             self.close_lock.acquire()
-            logging.debug("[FileThread] Closing file")
+            logging.debug("{0}: Closing file".format(self.thread_tag))
             self.result = self.file_close(data)
             self.close_lock.notify()
             self.close_lock.release()
-            logging.debug("[FileThread] File closed")
+            logging.debug("{0}: File closed".format(self.thread_tag))
             command = ""
             self.received_all_information = True
 
@@ -739,7 +740,7 @@ class ProcessFiles(ClusterThread):
         """
         # Create the file
         self.filename = "{}/queue/cluster/{}/{}.tmp".format(self.ossec_path, self.name, self.id)
-        logging.debug("[Transport] Creating file {}".format(self.filename))
+        logging.debug("{0}: Creating file {1}".format(self.thread_tag, self.filename))
         self.f = open(self.filename, 'w')
         return "ok", "File {} created successfully".format(self.filename)
 

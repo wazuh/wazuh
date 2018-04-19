@@ -221,20 +221,25 @@ class ClientManagerHandler(ClientHandler):
         client_files_paths = client_files.keys()
 
         logging.debug("{0} [Step 2]: Client files found: {1}".format(tag, len(client_files_paths)))
-        # Compress data: client files + control json
-        compressed_data_path = compress_files('client', self.name, client_files_paths, cluster_control_json)
 
-        # Step 3
-        # Send compressed file to master
-        logging.info("{0} [Step 3]: Sending files to master.".format(tag))
+        if len(client_files_paths) != 0:
+            # Compress data: client files + control json
+            compressed_data_path = compress_files('client', self.name, client_files_paths, cluster_control_json)
 
-        response = self.send_file(reason = 'sync_ai_c_m', file = compressed_data_path, remove = True)
-        processed_response = self.process_response(response)
-        if processed_response:
-            sync_result = True
-            logging.info("{0} [Step 3]: Master received the sync properly.".format(tag))
+            # Step 3
+            # Send compressed file to master
+            logging.info("{0} [Step 3]: Sending files to master.".format(tag))
+
+            response = self.send_file(reason = 'sync_ai_c_m', file = compressed_data_path, remove = True)
+            processed_response = self.process_response(response)
+            if processed_response:
+                sync_result = True
+                logging.info("{0} [Step 3]: Master received the sync properly.".format(tag))
+            else:
+                logging.error("{0} [Step 3]: Master reported an error receiving files.".format(tag))
         else:
-            logging.error("{0} [Step 3]: Master reported an error receiving files.".format(tag))
+            sync_result = True
+            logging.info("{0} [Step 3]: There are no agent-info files to send.".format(tag))
 
         return sync_result
 
@@ -361,8 +366,8 @@ class ClientManager():
         self.threads[ClientManager.SYNC_I_T].start()
 
         # Sync AgentInfo
-        # self.threads[ClientManager.SYNC_AI_T] = SyncAgentInfoThread(client_handler=self.handler, stopper=self.stopper)
-        # self.threads[ClientManager.SYNC_AI_T].start()
+        self.threads[ClientManager.SYNC_AI_T] = SyncAgentInfoThread(client_handler=self.handler, stopper=self.stopper)
+        self.threads[ClientManager.SYNC_AI_T].start()
 
         # KA
         self.threads[ClientManager.KA_T] = KeepAliveThread(client_handler=self.handler, stopper=self.stopper)

@@ -218,7 +218,7 @@ def compress_files(source, name, list_path, cluster_control_json=None):
             for f in list_path:
                 logging.debug("Adding {} to zip file".format(f))
                 try:
-                    zf.write(filename = common.ossec_path + f, arcname = 'files/' + f, compress_type=compression)
+                    zf.write(filename = common.ossec_path + f, arcname = 'rootpath/' + f, compress_type=compression)
                 except Exception as e:
                     logging.error(str(WazuhException(3001, str(e))))
 
@@ -241,7 +241,7 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
             if name == ko_files_name:
                 ko_files = json.loads(zipf.open(name).read())
             else:
-                with open("{}/{}".format(zip_dir, name.replace('files','').replace('/','_')), 'w') as f:
+                with open("{}/{}".format(zip_dir, name.replace('rootpath','').replace('/','_')), 'w') as f:
                     f.write(zipf.open(name).read())
 
     # once read all files, remove the zipfile
