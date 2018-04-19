@@ -65,7 +65,12 @@ runopenscap="Möchten Sie OpenSCAP benutzen?"
 norunopenscap="OpenSCAP wird nicht benutzt"
 yesrunopenscap="OpenSCAP wird gestartet"
 
-# Part 3.5/server/local
+#Part 3.5
+runciscat="Möchten Sie CIS-CAT benutzen?"
+norunciscat="CIS-CAT wird nicht benutzt"
+yesrunciscat="CIS-CAT wird gestartet"
+
+# Part 3.6/server/local
 enable_ar="Möchten Sie active response benutzen?"
 noactive="Active response wird nicht benutzt"
 nohosts="host-deny ausgeschaltet"
@@ -78,12 +83,12 @@ addwhite="Möchten Sie weitere IPs zur White-list hinzufügen?"
 ipswhite="IPs (Durch Leerzeichen getrennt): "
 
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="Möchten Sie Nachrichten von einem remote syslog (514 udp) empfangen?"
 nosyslog="Remote syslog empfang ausgeschaltet"
 yessyslog="Remote syslog empfang eingeschaltet"
 
-# Part 3.4/3.5
+# Part 3.5/3.6
 readlogs="Die folgenden Log-Files werden analysiert:"
 
 # Part 3.7

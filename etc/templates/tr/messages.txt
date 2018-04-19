@@ -64,7 +64,12 @@ runopenscap="Güvenilirlik/bütünlük OpenSCAP çalıştırılmasını ister mi
 norunopenscap="OpenSCAP çalıştırılmıyor"
 yesrunopenscap="OpenSCAP çalıştırılıyor"
 
-# Part 3.5/server/local
+# Part 3.5
+runciscat="Güvenilirlik/bütünlük CIS-CAT çalıştırılmasını ister misiniz?"
+norunciscat="CIS-CAT çalıştırılmıyor"
+yesrunciscat="CIS-CAT çalıştırılıyor"
+
+# Part 3.6/server/local
 enable_ar="Etkin yanıt üretmenin (Active response) etkin kılınmasını ister misiniz?"
 noactive="Etkin yanıt üretme(Active response) etkisiz kılındı"
 nohosts="host-deny etkin kılınmadı"
@@ -76,12 +81,12 @@ defaultwhitelist="Etkin yanıt üretme için öntanımlı beyaz liste:"
 addwhite="Beyaz listeye başka IP adreslerini de eklemek ister misiniz?"
 ipswhite="IPler (boşlukla ayrılmış): "
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="Uzak syslog'un (514 udp) etkin kılınmasını ister misiniz?"
 nosyslog="Uzak syslog etkisiz kılındı"
 yessyslog="Uzak syslog etkin kılındı"
 
-# Part 3.4/3.5
+# Part 3.5/3.6
 readlogs="Bu dosyaları incelemek için yapılandırma oluşturuluyor:"
 
 # Part 3.7

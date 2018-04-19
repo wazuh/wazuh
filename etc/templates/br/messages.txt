@@ -65,7 +65,12 @@ runopenscap="Deseja habilitar OpenSCAP?"
 norunopenscap="OpenSCAP desabilitado"
 yesrunopenscap="OpenSCAP desabilitado"
 
-# Parte 3.5/servidor/local
+# Part 3.5
+runciscat="Deseja habilitar CIS-CAT?"
+norunciscat="CIS-CAT desabilitado"
+yesrunciscat="CIS-CAT desabilitado"
+
+# Parte 3.6/servidor/local
 enable_ar="Deseja habilitar o sistema de respostas automáticas?"
 noactive="Sistema de respostas automáticas desabilitado"
 nohosts="host-deny desabilitado"
@@ -78,12 +83,12 @@ addwhite="Deseja adicionar mais algum endereço a essa lista?"
 ipswhite="Endereços de IP (separados por espaço): "
 
 
-# Parte 3.5/servidor/local
+# Parte 3.6/servidor/local
 syslog="Deseja habilitar o syslog remoto (514 udp)?"
 nosyslog="Syslog desabilitado"
 yessyslog="Syslog habilitado"
 
-# Parte 3.4/3.5
+# Parte 3.5/3.6
 readlogs="Ajustando a configuração para analisar os seguintes logs:"
 
 # Part 3.7

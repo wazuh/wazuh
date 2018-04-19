@@ -64,7 +64,12 @@ runopenscap="Czy chcesz OpenSCAP był uruchomiony?"
 norunopenscap="Nie uruchomiony OpenSCAP"
 yesrunopenscap="Uruchomiony OpenSCAP"
 
-# Część 3.5/server/local
+# Part 3.5
+runciscat="Czy chcesz CIS-CAT był uruchomiony?"
+norunciscat="Nie uruchomiony CIS-CAT"
+yesrunciscat="Uruchomiony CIS-CAT"
+
+# Część 3.6/server/local
 enable_ar="Czy chcesz uaktywnić aktywną ochrone?"
 noactive="Aktywna ochrona wyłączona"
 nohosts="host-deny wyłączone"
@@ -76,12 +81,12 @@ defaultwhitelist="Domyślna biała lista dla aktywnej ochrony:"
 addwhite="Czy chcesz dodać więcej adresów IP do białej listy?"
 ipswhite="Adresy IP (część oddzielona): "
 
-# Część 3.5/server/local
+# Część 3.6/server/local
 syslog="Czy chcesz uaktywnić zdalnego syslog'a (port 514 udp)?"
 nosyslog="Zdalny syslog wyłączony"
 yessyslog="Zdalny syslog włączony"
 
-# Część 3.4/3.5
+# Część 3.5/3.6
 readlogs="Ustawianie konfiguracji do analizy następujących logów:"
 
 # Part 3.7

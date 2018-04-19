@@ -65,7 +65,12 @@ runopenscap="Do you want to run policy monitoring checks? (OpenSCAP)"
 norunopenscap="Not running OpenSCAP (policy monitoring checks)"
 yesrunopenscap="Running OpenSCAP (policy monitoring checks)"
 
-# Part 3.5/server/local
+# Part 3.5
+runciscat="Do you want to run CIS-CAT?"
+norunciscat="Not running CIS-CAT"
+yesrunciscat="Running CIS-CAT"
+
+# Part 3.6/server/local
 enable_ar="Do you want to enable active response?"
 noactive="Active response disabled"
 yesactive="Active response enabled"
@@ -79,12 +84,12 @@ defaultwhitelist="Default white list for the active response:"
 addwhite="Do you want to add more IPs to the white list?"
 ipswhite="IPs (space separated): "
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="Do you want to enable remote syslog (port 514 udp)?"
 nosyslog="Remote syslog disabled"
 yessyslog="Remote syslog enabled"
 
-# Part 3.4/3.5
+# Part 3.5/3.6
 readlogs="Setting the configuration to analyze the following logs:"
 
 # Part 3.7

@@ -64,7 +64,12 @@ runopenscap="Do you want to run OpenSCAP?"
 norunopenscap="Not running OpenSCAP"
 yesrunopenscap="Running OpenSCAP"
 
-# Part 3.5/server/local
+# Part 3.5
+runciscat="Do you want to run CIS-CAT?"
+norunciscat="Not running CIS-CAT"
+yesrunciscat="Running CIS-CAT"
+
+# Part 3.6/server/local
 enable_ar="Θέλετε να ενεργοποιήσετε την ενεργή αντίδραση (active response);"
 noactive="Η ενεργή αντίδραση (active response) απενεργοποιήθηκε"
 nohosts="Το host-deny απενεργοποιήθηκε"
@@ -76,7 +81,7 @@ defaultwhitelist="Προεπιλεγμένη white list για την ενεργ
 addwhite="Θέλετε να προσθέσετε περισσότερες IPs στην white list;"
 ipswhite="Διευθύνσεις IPs (χωρισμένες με κενό): "
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="Θέλετε να ενεργοποιήσετε την καταγραφή συμβάντων σε απομακρυσμένο syslog διακομιστή (port 514 udp);"
 nosyslog="Η απομακρυσμένη καταγραφή συμβάντων απενεργοποιήθηκε"
 yessyslog="Η απομακρυσμένη καταγραφή συμβάντων ενεργοποιήθηκε"

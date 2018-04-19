@@ -64,7 +64,12 @@ runopenscap="Szeretné futtatni OpenSCAP?"
 norunopenscap="Rendszerellenőrzés mellőzése OpenSCAP"
 yesrunopenscap="Gyökérellenőrzés futtatása OpenSCAP"
 
-# Part 3.5/server/local
+# Part 3.5
+runciscat="Szeretné futtatni CIS-CAT?"
+norunciscat="Rendszerellenőrzés mellőzése CIS-CAT"
+yesrunciscat="Gyökérellenőrzés futtatása CIS-CAT"
+
+# Part 3.6/server/local
 enable_ar="Szeretné bekapcsolni az active response funkciót?"
 noactive="Active response kikapcsolva"
 nohosts="host-deny kikapcsolva"
@@ -76,12 +81,12 @@ defaultwhitelist="Alapértelmezett fehér lista az active response számára:"
 addwhite="Szeretne további IP címeket hozzáadni a fehér listához?"
 ipswhite="IP-k (szóközzel elválasztva): "
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="Be szeretné kapcsolni a távoli rendszernaplózást (port 514 udp)?"
 nosyslog="Távoli rendszernaplózás kikapcsolva"
 yessyslog="Távoli rendszernaplózás bekapcsolva"
 
-# Part 3.4/3.5
+# Part 3.5/3.6
 readlogs="A konfiguráció beállítása a következő naplók elemzéséhez:"
 
 # Part 3.7
