@@ -364,13 +364,19 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     }
 
     (found = strchr(version_it, '~'))? *found = '\0' : 0;
+    (found = strchr(version_it, '-'))? *found = '\0' : 0;
     (found = strchr(version_it, '+'))? *found = '\0' : 0;
     (found = strchr(cversion_it, '~'))? *found = '\0' : 0;
+    (found = strchr(cversion_it, '-'))? *found = '\0' : 0;
     (found = strchr(cversion_it, '+'))? *found = '\0' : 0;
 
     // For RedHat/CentOS packages
     (found = strstr(version_it, ".el"))? *found = '\0' : 0;
     (found = strstr(cversion_it, ".el"))? *found = '\0' : 0;
+
+    // For Ubuntu packages
+    (found = strstr(version_it, "ubuntu"))? *found = '\0' : 0;
+    (found = strstr(cversion_it, "ubuntu"))? *found = '\0' : 0;
 
     // Check version
     if (strcmp(version_it, cversion_it)) {
