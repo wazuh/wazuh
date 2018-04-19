@@ -254,6 +254,11 @@ class ProcessClientFiles(ProcessFiles):
                 self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
                 self.stop()
 
+            elif self.received_error:
+                logging.debug("{}: An error took place during file reception.".format(self.thread_tag))
+                self.manager_handler.manager.set_client_status(self.name, 'sync_agentinfo_free', True)
+                self.stop()
+
             else:
                 try:
                     self.process_file_cmd()
@@ -293,6 +298,11 @@ class ProcessClientIntegrity(ProcessFiles):
                     clean_up(self.name)
                     self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
 
+                self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
+                self.stop()
+
+            elif self.received_error:
+                logging.debug("{}: An error took place during file reception.".format(self.thread_tag))
                 self.manager_handler.manager.set_client_status(self.name, 'sync_integrity_free', True)
                 self.stop()
 

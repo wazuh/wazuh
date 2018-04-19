@@ -684,6 +684,7 @@ class ProcessFiles(ClusterThread):
         self.data = None
         self.command_queue = Queue()
         self.received_all_information = False
+        self.received_error = False
         self.close_lock = threading.Condition()
         self.f = None
         self.id = None
@@ -719,12 +720,18 @@ class ProcessFiles(ClusterThread):
         elif command == "file_close":
             self.close_lock.acquire()
             logging.debug("{0}: Closing file".format(self.thread_tag))
-            self.result = self.file_close(data)
-            self.close_lock.notify()
-            self.close_lock.release()
-            logging.debug("{0}: File closed".format(self.thread_tag))
-            command = ""
-            self.received_all_information = True
+            try:
+                self.result = self.file_close(data)
+                logging.debug("{0}: File closed".format(self.thread_tag))
+                self.received_all_information = True
+            except Exception as e:
+                logging.error("{0}: {1}".format(self.thread_tag, str(e)))
+                self.received_error = True
+                self.result = "err", str(e)
+            finally:
+                command = ""
+                self.close_lock.notify()
+                self.close_lock.release()
 
 
     def file_open(self):
@@ -782,8 +789,8 @@ class ProcessFiles(ClusterThread):
         if local_md5_sum != md5_sum:
             error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
                             format(self.filename, md5_sum, local_md5_sum)
-            return 'err', error_msg
-            #os.remove(file_name)
+            #return 'err', error_msg
+            os.remove(self.filename)
             raise Exception(error_msg)
 
         return "ok", "File {} received successfully".format(self.filename)
