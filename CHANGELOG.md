@@ -8,17 +8,18 @@ All notable changes to this project will be documented in this file.
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
 - Improved configuration of OVAL updates. ([#416](https://github.com/wazuh/wazuh/pull/416))
-- Add selective agent software request in vulnerability-detector. ([#404](https://github.com/wazuh/wazuh/pull/404))
+- Added selective agent software request in vulnerability-detector. ([#404](https://github.com/wazuh/wazuh/pull/404))
 - Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
 - Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
 - Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
 - Get Windows packages inventory natively. ([#471](https://github.com/wazuh/wazuh/pull/471))
 - Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
-- Add Debian support in vulnerability-detector. ([#470](https://github.com/wazuh/wazuh/pull/470))
+- Added Debian support in vulnerability-detector. ([#470](https://github.com/wazuh/wazuh/pull/470))
 - Added Rids Synchronization. ([#459](https://github.com/wazuh/wazuh/pull/459))
 - Added option for setting the group that the agent belongs to when registering it with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
 - Added option for setting the source IP when the agent registers with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
 - Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
+- Added option to force the vulnerability detection in unsupported OS. ([#462](https://github.com/wazuh/wazuh/pull/462))
 
 ### Changed
 
