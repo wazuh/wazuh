@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Fixed agent group file deletion when using Authd.
 - Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
 - Fixed remote command switch option. ([#504](https://github.com/wazuh/wazuh/pull/504))
+- Fixed agent wait condition and improve logging messages. ([#550](https://github.com/wazuh/wazuh/pull/550))
 
 ## [v3.2.1]
 
