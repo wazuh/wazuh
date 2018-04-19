@@ -64,7 +64,12 @@ runopenscap="Da li želiš da pustiš OpenSCAP?"
 norunopenscap="Ne obavlja OpenSCAP"
 yesrunopenscap="Obavlja OpenSCAP"
 
-# Part 3.5/server/local
+# Part 3.5
+runciscat="Da li želiš da pustiš CIS-CAT"
+norunciscat="Ne obavlja CIS-CAT"
+yesrunciscat="Obavlja CIS-CAT"
+
+# Part 3.6/server/local
 enable_ar="Da li želiš da osposobiš aktivnu reakciju?"
 noactive="Aktivna reakcija onesposobljena"
 nohosts="host-deny onesposobljen"
@@ -76,12 +81,12 @@ defaultwhitelist="Default bele liste za aktivnu reakciju:"
 addwhite="Da li želiš da dodaš još IP-jeva beloj listi?"
 ipswhite="IP-jevi (odvojen prostor): "
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="Da li želiš da osposobiš udaljeni syslog (port 514 udp)?"
 nosyslog="Udaljeni syslog onesposobljen"
 yessyslog="Udaljeni syslog osposobljen"
 
-# Part 3.4/3.5
+# Part 3.5/3.6
 readlogs="Postavlja konfiguraciju da analizira sledeće logove:"
 
 # Part 3.7

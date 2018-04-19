@@ -64,7 +64,12 @@ runopenscap="Wilt u OpenSCAP?"
 norunopenscap="Geen running OpenSCAP"
 yesrunopenscap="Starten OpenSCAP"
 
-# Part 3.5/server/local
+# Part 3.5
+runciscat="Wilt u CIS-CAT?"
+norunciscat="Geen running CIS-CAT"
+yesrunciscat="Starten CIS-CAT"
+
+# Part 3.6/server/local
 enable_ar="Wilt u actief handelen?"
 noactive="Actief handelen uitgeschakeld"
 nohosts="host-deny uitgeschakeld"
@@ -76,12 +81,12 @@ defaultwhitelist="Standaard witte lijst voor actief handelen:"
 addwhite="Wilt u meer IPs toevoegen aan de witte lijst?"
 ipswhite="IPs (spatie gescheiden): "
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="Wilt u externe systeem logging (syslog) inschakelen (poort 514 udp)?"
 nosyslog="Externe systeem logging uitgeschakeld"
 yessyslog="Externe systeem logging ingeschakeld"
 
-# Part 3.4/3.5
+# Part 3.5/3.6
 readlogs="Systeem instellen om de volgende logbestanden te controleren:"
 
 # Part 3.7

@@ -253,6 +253,32 @@ UseOpenSCAP()
 }
 
 ##########
+# UseCisCat()
+##########
+UseCisCat()
+{
+    # OpenSCAP config
+    echo ""
+    $ECHO "  3.5- ${runciscat} ($yes/$no) [$yes]: "
+    if [ "X${USER_ENABLE_CISCAT}" = "X" ]; then
+        read CS
+    else
+        CS=${USER_ENABLE_CISCAT}
+    fi
+    echo ""
+    case $CS in
+        $nomatch)
+            echo "   - ${norunciscat}."
+            ;;
+        *)
+            CISCAT="yes"
+            echo "   - ${yesrunciscat}."
+            ;;
+    esac
+}
+
+
+##########
 # EnableAuthd()
 ##########
 EnableAuthd()
@@ -373,8 +399,12 @@ ConfigureClient()
     # OpenSCAP?
     UseOpenSCAP
 
+    # OpenCISCAT?
+    UseCisCat
+
+
     echo ""
-    $ECHO "  3.5 - ${enable_ar} ($yes/$no) [$yes]: "
+    $ECHO "  3.6 - ${enable_ar} ($yes/$no) [$yes]: "
 
     if [ "X${USER_ENABLE_ACTIVE_RESPONSE}" = "X" ]; then
         read ANY
@@ -399,7 +429,7 @@ ConfigureClient()
     AddCAStore
 
     # Set up the log files
-    SetupLogs "3.7"
+    SetupLogs "3.8"
 
     # Write configuration
     WriteAgent
@@ -503,6 +533,9 @@ ConfigureServer()
 
     # Checking if OpenSCAP should run
     UseOpenSCAP
+
+    # OpenCISCAT?
+    UseCisCat
 
     # Active response
     catMsg "0x107-ar"

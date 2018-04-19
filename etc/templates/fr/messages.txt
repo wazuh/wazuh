@@ -64,7 +64,12 @@ runopenscap="Voulez-vous démarrer OpenSCAP?"
 norunopenscap="OpenSCAP non lancé"
 yesrunopenscap="Lancement de OpenSCAP"
 
-# Part 3.5/server/local
+# Part 3.5
+runciscat="Voulez-vous démarrer CIS-CAT?"
+norunciscat="CIS-CAT non lancé"
+yesrunciscat="Lancement de CIS-CAT"
+
+# Part 3.6/server/local
 enable_ar="voulez-vous démarrer la réponse active ?"
 noactive="Réponse active désactivée"
 nohosts="contrôle d'hôte (host-deny) désactivé"
@@ -76,12 +81,12 @@ defaultwhitelist="liste blanche (white list) par défaut pour la réponse active
 addwhite="Voulez-vous d'autres adresses IP dans votre liste (white list) ?"
 ipswhite="IPs (séparées par des espaces) : "
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="Voulez-vous activer fonctionnalité syslog (port udp 514) ?"
 nosyslog="Fonctionnalité syslog désactivé"
 yessyslog="Fonctionnalité syslog activé"
 
-# Part 3.4/3.5
+# Part 3.5/3.6
 readlogs="Mise en place de la configuration pour analyser les logs suivants :"
 
 # Part 3.7

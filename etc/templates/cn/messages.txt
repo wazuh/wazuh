@@ -60,11 +60,16 @@ norootcheck="rootkit检测将不被部署"
 yesrootcheck="rootkit检测将被部署"
 
 # Part 3.4
-runopenscap="Do you want to run OpenSCAP?"
-norunopenscap="Not running OpenSCAP"
-yesrunopenscap="Running OpenSCAP"
+runopenscap="你想运行 OpenSCAP?"
+norunopenscap="未运行 OpenSCAP"
+yesrunopenscap="运行 OpenSCAP"
 
-# Part 3.5/server/local
+# Part 3.5
+runciscat="你想运行 CIS-CAT?"
+norunciscat="未运行 CIS-CAT"
+yesrunciscat="运行 CIS CAT"
+
+# Part 3.6/server/local
 enable_ar="您希望开启联动(active response)功能吗?"
 noactive="联动功能(Active response)被关闭"
 nohosts="主机联动(host-deny) 被关闭"
@@ -76,12 +81,12 @@ defaultwhitelist="联动功能默认的白名单是:"
 addwhite="您希望添加更多的IP到白名单吗?"
 ipswhite="请输入IP (用空格进行分隔): "
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="您希望接收远程机器syslog吗 (port 514 udp)?"
 nosyslog="远程机器syslog将不被接收"
 yessyslog="远程机器syslog将被接收"
 
-# Part 3.4/3.5
+# Part 3.5/3.6
 readlogs="设置配置文件以分析一下日志:"
 
 # Part 3.7

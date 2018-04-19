@@ -60,11 +60,16 @@ norootcheck="Сервис обнаружения руткитов (rootcheck) н
 yesrootcheck="Запускается rootcheck (обнаружение руткитов)"
 
 # Part 3.4
-runopenscap="Хотите запустить OpenScap?"
+runopenscap="Хотите запустить OpenSCAP?"
 norunopenscap="Не работает OpenSCAP"
 yesrunopenscap="Запуск OpenSCAP"
 
-# Part 3.5/server/local
+# Part 3.5
+runciscat="Хотите запустить CIS-CAT?"
+norunciscat="Не работает CIS-CAT"
+yesrunciscat="Запуск CIS-CAT"
+
+# Part 3.6/server/local
 enable_ar="Включить систему активного реагирования?"
 noactive="Система активного реагирования отключена"
 nohosts="Блокирование хостов отключено "
@@ -76,12 +81,12 @@ defaultwhitelist="Список разрешённых адресов по умо
 addwhite="Вы хотите добавить ещё адресов IP в список разрешённых?"
 ipswhite="Адреса IP (разделяйте пробелом): "
 
-# Part 3.5/server/local
+# Part 3.6/server/local
 syslog="Активировать сохранение логов на удаленном сервере syslog (порт 514 udp)?"
 nosyslog="Удалённое сохранение логов отменено"
 yessyslog="Удалённое сохранение логов включено"
 
-# Part 3.4/3.5
+# Part 3.5/3.6
 readlogs="Устанавливается конфигурация для анализа следующих логов"
 
 # Part 3.7
