@@ -23,7 +23,6 @@
 
   <rule id="1002" level="2">
     <match>$BAD_WORDS</match>
-    <options>alert_by_email</options>
     <description>Unknown problem somewhere in the system.</description>
     <group>gpg13_4.3,</group>
   </rule>
@@ -605,7 +604,7 @@
 <group name="syslog,dpkg,">
   <rule id="2900" level="0">
     <decoded_as>windows-date-format</decoded_as>
-    <regex offet="after_parent">^startup |^status |^remove |^configure |^install |^purge |^trigproc </regex> 
+    <regex offet="after_parent">^startup |^status |^remove |^configure |^install |^purge |^trigproc </regex>
     <description>Dpkg (Debian Package) log.</description>
   </rule>
 

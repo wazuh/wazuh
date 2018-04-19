@@ -24,11 +24,25 @@
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
 static int sc_send_db(char * msg);
+static int decode_netinfo(char *agent_id, cJSON * logJSON);
 static int decode_osinfo(char *agent_id, cJSON * logJSON);
 static int decode_hardware(char *agent_id, cJSON * logJSON);
-static int decode_program(char *agent_id, cJSON * logJSON);
+static int decode_package(char *agent_id, cJSON * logJSON);
 static int decode_port(char *agent_id, cJSON * logJSON);
 static int decode_process(char *agent_id, cJSON * logJSON);
+
+static OSDecoderInfo *sysc_decoder = NULL;
+
+void SyscollectorInit(){
+
+    os_calloc(1, sizeof(OSDecoderInfo), sysc_decoder);
+    sysc_decoder->id = getDecoderfromlist(SYSCOLLECTOR_MOD);
+    sysc_decoder->name = SYSCOLLECTOR_MOD;
+    sysc_decoder->type = OSSEC_RL;
+    sysc_decoder->fts = 0;
+
+    mdebug1("SyscollectorInit completed.");
+}
 
 /* Special decoder for syscollector */
 int DecodeSyscollector(Eventinfo *lf)
@@ -38,6 +52,8 @@ int DecodeSyscollector(Eventinfo *lf)
 
     // Decoding JSON
     JSON_Decoder_Exec(lf);
+
+    lf->decoder_info = sysc_decoder;
 
     // Check location
     if (lf->location[0] == '(') {
@@ -77,8 +93,8 @@ int DecodeSyscollector(Eventinfo *lf)
         }
     }
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
-        if (decode_program(lf->agent_id, logJSON) < 0) {
-            mdebug1("Unable to send programs information to Wazuh DB.");
+        if (decode_package(lf->agent_id, logJSON) < 0) {
+            mdebug1("Unable to send packages information to Wazuh DB.");
             return (0);
         }
     }
@@ -95,7 +111,10 @@ int DecodeSyscollector(Eventinfo *lf)
         }
     }
     else if (strcmp(msg_type, "network") == 0 || strcmp(msg_type, "network_end") == 0) {
-        return (1);
+        if (decode_netinfo(lf->agent_id, logJSON) < 0) {
+            merror("Unable to send netinfo message to Wazuh DB.");
+            return (0);
+        }
     }
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_list") == 0  || strcmp(msg_type, "process_end") == 0) {
         if (decode_process(lf->agent_id, logJSON) < 0) {
@@ -112,11 +131,264 @@ int DecodeSyscollector(Eventinfo *lf)
     return (1);
 }
 
-int decode_osinfo(char *agent_id, cJSON * logJSON) {
+int decode_netinfo(char *agent_id, cJSON * logJSON) {
 
-    char * msg = NULL;
+    char *msg = NULL;
+    cJSON * iface;
+    char id[OS_MAXSTR];
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
+
+    if (iface = cJSON_GetObjectItem(logJSON, "iface"), iface) {
+        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+        cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
+        cJSON * name = cJSON_GetObjectItem(iface, "name");
+        cJSON * adapter = cJSON_GetObjectItem(iface, "adapter");
+        cJSON * type = cJSON_GetObjectItem(iface, "type");
+        cJSON * state = cJSON_GetObjectItem(iface, "state");
+        cJSON * mac = cJSON_GetObjectItem(iface, "MAC");
+        cJSON * tx_packets = cJSON_GetObjectItem(iface, "tx_packets");
+        cJSON * rx_packets = cJSON_GetObjectItem(iface, "rx_packets");
+        cJSON * tx_bytes = cJSON_GetObjectItem(iface, "tx_bytes");
+        cJSON * rx_bytes = cJSON_GetObjectItem(iface, "rx_bytes");
+        cJSON * mtu = cJSON_GetObjectItem(iface, "MTU");
+
+        snprintf(msg, OS_MAXSTR - 1, "agent %s netinfo save", agent_id);
+
+        if (scan_id) {
+            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+            wm_strcat(&msg, id, ' ');
+        } else {
+            wm_strcat(&msg, "NULL", ' ');
+        }
+
+        if (scan_time) {
+            wm_strcat(&msg, scan_time->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (name) {
+            wm_strcat(&msg, name->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (adapter) {
+            wm_strcat(&msg, adapter->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (type) {
+            wm_strcat(&msg, type->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (state) {
+            wm_strcat(&msg, state->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (mtu) {
+            char _mtu[OS_MAXSTR];
+            snprintf(_mtu, OS_MAXSTR - 1, "%d", mtu->valueint);
+            wm_strcat(&msg, _mtu, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (mac) {
+            wm_strcat(&msg, mac->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tx_packets) {
+            char txpack[OS_MAXSTR];
+            snprintf(txpack, OS_MAXSTR - 1, "%d", tx_packets->valueint);
+            wm_strcat(&msg, txpack, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (rx_packets) {
+            char rxpack[OS_MAXSTR];
+            snprintf(rxpack, OS_MAXSTR - 1, "%d", rx_packets->valueint);
+            wm_strcat(&msg, rxpack, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (tx_bytes) {
+            char txbytes[OS_MAXSTR];
+            snprintf(txbytes, OS_MAXSTR - 1, "%d", tx_bytes->valueint);
+            wm_strcat(&msg, txbytes, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (rx_bytes) {
+            char rxbytes[OS_MAXSTR];
+            snprintf(rxbytes, OS_MAXSTR - 1, "%d", rx_bytes->valueint);
+            wm_strcat(&msg, rxbytes, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (sc_send_db(msg) < 0) {
+            return -1;
+        } else {
+            cJSON * ip;
+
+            if (ip = cJSON_GetObjectItem(iface, "IPv4"), ip) {
+
+                cJSON * address = cJSON_GetObjectItem(ip, "address");
+                cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
+                cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
+                cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
+                cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
+
+                os_calloc(OS_MAXSTR, sizeof(char), msg);
+                snprintf(msg, OS_MAXSTR - 1, "agent %s netaddr save", agent_id);
+
+                if (scan_id) {
+                    wm_strcat(&msg, id, ' ');
+                } else {
+                    wm_strcat(&msg, "NULL", ' ');
+                }
+
+                // Information about an IPv4 interface
+                wm_strcat(&msg, "0", '|');
+
+                if (name) {
+                    wm_strcat(&msg, name->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (address) {
+                    wm_strcat(&msg, address->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (netmask) {
+                    wm_strcat(&msg, netmask->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (broadcast) {
+                    wm_strcat(&msg, broadcast->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (gateway) {
+                    wm_strcat(&msg, gateway->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (dhcp) {
+                    wm_strcat(&msg, dhcp->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (sc_send_db(msg) < 0) {
+                    return -1;
+                }
+            }
+
+            if (ip = cJSON_GetObjectItem(iface, "IPv6"), ip) {
+                cJSON * address = cJSON_GetObjectItem(ip, "address");
+                cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
+                cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
+                cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
+                cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
+
+                os_calloc(OS_MAXSTR, sizeof(char), msg);
+                snprintf(msg, OS_MAXSTR - 1, "agent %s netaddr save", agent_id);
+
+                if (scan_id) {
+                    wm_strcat(&msg, id, ' ');
+                } else {
+                    wm_strcat(&msg, "NULL", ' ');
+                }
+
+                // Information about an IPv6 interface
+                wm_strcat(&msg, "1", '|');
+
+                if (name) {
+                    wm_strcat(&msg, name->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (address) {
+                    wm_strcat(&msg, address->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (netmask) {
+                    wm_strcat(&msg, netmask->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (broadcast) {
+                    wm_strcat(&msg, broadcast->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (gateway) {
+                    wm_strcat(&msg, gateway->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (dhcp) {
+                    wm_strcat(&msg, dhcp->valuestring, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (sc_send_db(msg) < 0) {
+                    return -1;
+                }
+            }
+        }
+    } else {
+        // Looking for 'end' message.
+        char * msg_type = NULL;
+
+        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+
+        if (!msg_type) {
+            merror("Invalid message. Type not found.");
+            free(msg);
+            return -1;
+        } else if (strcmp(msg_type, "network_end") == 0) {
+
+            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
+            snprintf(msg, OS_MAXSTR - 1, "agent %s netinfo del %d", agent_id, scan_id->valueint);
+
+            if (sc_send_db(msg) < 0) {
+                return -1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+int decode_osinfo(char *agent_id, cJSON * logJSON) {
 
     cJSON * inventory;
 
@@ -135,6 +407,9 @@ int decode_osinfo(char *agent_id, cJSON * logJSON) {
         cJSON * sysname = cJSON_GetObjectItem(inventory, "sysname");
         cJSON * release = cJSON_GetObjectItem(inventory, "release");
         cJSON * version = cJSON_GetObjectItem(inventory, "version");
+
+        char * msg = NULL;
+        os_calloc(OS_MAXSTR, sizeof(char), msg);
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s osinfo save", agent_id);
 
@@ -226,7 +501,6 @@ int decode_osinfo(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
-            free(msg);
             return -1;
         }
 
@@ -238,7 +512,6 @@ int decode_osinfo(char *agent_id, cJSON * logJSON) {
 int decode_port(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
-
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
     cJSON * inventory;
@@ -353,7 +626,6 @@ int decode_port(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
-            free(msg);
             return -1;
         }
 
@@ -373,9 +645,10 @@ int decode_port(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s port del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
-                free(msg);
                 return -1;
             }
+        } else {
+            free(msg);
         }
     }
 
@@ -383,10 +656,6 @@ int decode_port(char *agent_id, cJSON * logJSON) {
 }
 
 int decode_hardware(char *agent_id, cJSON * logJSON) {
-
-    char * msg = NULL;
-
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
 
     cJSON * inventory;
 
@@ -399,6 +668,9 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
         cJSON * cpu_mhz = cJSON_GetObjectItem(inventory, "cpu_mhz");
         cJSON * ram_total = cJSON_GetObjectItem(inventory, "ram_total");
         cJSON * ram_free = cJSON_GetObjectItem(inventory, "ram_free");
+
+        char * msg = NULL;
+        os_calloc(OS_MAXSTR, sizeof(char), msg);
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s hardware save", agent_id);
 
@@ -462,7 +734,6 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
-            free(msg);
             return -1;
         }
     }
@@ -470,26 +741,31 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
     return 0;
 }
 
-int decode_program(char *agent_id, cJSON * logJSON) {
+int decode_package(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
-
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
-    cJSON * program;
+    cJSON * package;
 
-    if (program = cJSON_GetObjectItem(logJSON, "program"), program) {
+    if (package = cJSON_GetObjectItem(logJSON, "program"), package) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
-        cJSON * format = cJSON_GetObjectItem(program, "format");
-        cJSON * name = cJSON_GetObjectItem(program, "name");
-        cJSON * vendor = cJSON_GetObjectItem(program, "vendor");
-        cJSON * version = cJSON_GetObjectItem(program, "version");
-        cJSON * architecture = cJSON_GetObjectItem(program, "architecture");
-        cJSON * description = cJSON_GetObjectItem(program, "description");
+        cJSON * format = cJSON_GetObjectItem(package, "format");
+        cJSON * name = cJSON_GetObjectItem(package, "name");
+        cJSON * priority = cJSON_GetObjectItem(package, "priority");
+        cJSON * section = cJSON_GetObjectItem(package, "group");
+        cJSON * size = cJSON_GetObjectItem(package, "size");
+        cJSON * vendor = cJSON_GetObjectItem(package, "vendor");
+        cJSON * version = cJSON_GetObjectItem(package, "version");
+        cJSON * architecture = cJSON_GetObjectItem(package, "architecture");
+        cJSON * multiarch = cJSON_GetObjectItem(package, "multi-arch");
+        cJSON * source = cJSON_GetObjectItem(package, "source");
+        cJSON * description = cJSON_GetObjectItem(package, "description");
+        cJSON * installtime = cJSON_GetObjectItem(package, "install_time");
+        cJSON * location = cJSON_GetObjectItem(package, "location");
 
-        snprintf(msg, OS_MAXSTR - 1, "agent %s program save", agent_id);
-
+        snprintf(msg, OS_MAXSTR - 1, "agent %s package save", agent_id);
 
         if (scan_id) {
             char id[OS_MAXSTR];
@@ -517,8 +793,34 @@ int decode_program(char *agent_id, cJSON * logJSON) {
             wm_strcat(&msg, "NULL", '|');
         }
 
+        if (priority) {
+            wm_strcat(&msg, priority->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (section) {
+            wm_strcat(&msg, section->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (size) {
+            char _size[OS_MAXSTR];
+            snprintf(_size, OS_MAXSTR - 1, "%d", size->valueint);
+            wm_strcat(&msg, _size, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
         if (vendor) {
             wm_strcat(&msg, vendor->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (installtime) {
+            wm_strcat(&msg, installtime->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -535,8 +837,26 @@ int decode_program(char *agent_id, cJSON * logJSON) {
             wm_strcat(&msg, "NULL", '|');
         }
 
+        if (multiarch) {
+            wm_strcat(&msg, multiarch->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (source) {
+            wm_strcat(&msg, source->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
         if (description) {
             wm_strcat(&msg, description->valuestring, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (location) {
+            wm_strcat(&msg, location->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -559,12 +879,13 @@ int decode_program(char *agent_id, cJSON * logJSON) {
         } else if (strcmp(msg_type, "program_end") == 0) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
-            snprintf(msg, OS_MAXSTR - 1, "agent %s program del %d", agent_id, scan_id->valueint);
+            snprintf(msg, OS_MAXSTR - 1, "agent %s package del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
-                free(msg);
                 return -1;
             }
+        } else {
+            free(msg);
         }
     }
 
@@ -573,9 +894,8 @@ int decode_program(char *agent_id, cJSON * logJSON) {
 
 int decode_process(char *agent_id, cJSON * logJSON) {
 
-    char * msg = NULL;
     int i;
-
+    char * msg = NULL;
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
     cJSON * inventory;
@@ -835,7 +1155,6 @@ int decode_process(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
-            free(msg);
             return -1;
         }
 
@@ -855,9 +1174,10 @@ int decode_process(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s process del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
-                free(msg);
                 return -1;
             }
+        } else {
+            free(msg);
         }
     }
 

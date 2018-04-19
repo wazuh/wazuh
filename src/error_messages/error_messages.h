@@ -286,7 +286,7 @@
 #define VU_QUERY_ERROR              "(5407): The query could not be formed."
 #define VU_OS_VERSION_ERROR         "(5408): Invalid OS version."
 #define VU_REFRESH_DB_ERROR         "(5409): Could not refresh the %s DB."
-#define VU_GET_SOFTWARE_ERROR       "(5410): Agent software could not be obtained."
+#define VU_GET_SOFTWARE_ERROR       "(5410): The software of the agent '%s' could not be obtained."
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
 #define VU_TABLE_ERROR              "(5412): Table %s is not available."
 #define VU_PACKAGE_TABLE_ERROR      "(5414): The packages table for agent %s could not be created."
@@ -308,7 +308,7 @@
 #define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last Syscollector scan from the agent %s could not be requested."
 #define VU_HTTP_HEADER_ERROR        "(5432): Invalid HTTP header."
 #define VU_PACKAGE_RECOG_ERROR      "(5433): The package could not be recognized in '%s'."
-#define VU_NO_SYSC_SCANS            "(5433): No Syscollector scans found for agent %s, so their vulnerabilities will not be checked."
+#define VU_NO_SYSC_SCANS            "(5434): No Syscollector scans found for agent %s, so their vulnerabilities will not be checked."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
@@ -327,8 +327,8 @@
 #define READ_CONFIG "Read configuration ..."
 
 /* Wait operations */
-#define WAITING_MSG     "Process locked. Waiting for permission..."
-#define WAITING_FREE    "Lock free. Continuing..."
+#define WAITING_MSG     "Process locked due to agent is offline. Waiting for connection..."
+#define WAITING_FREE    "Agent is now online. Process unlocked, continuing..."
 #define SERVER_UNAV     "Server unavailable. Setting lock."
 #define SERVER_UP       "Server responded. Releasing lock."
 #define LOCK_RES        "Agent auto-restart locked for %d seconds."

@@ -64,7 +64,7 @@ int prev_year;
 char prev_month[4];
 int __crt_hour;
 int __crt_wday;
-time_t c_time;
+struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 
@@ -561,6 +561,9 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Initialize Rootcheck */
     RootcheckInit();
 
+    /* Initialize Syscollector */
+    SyscollectorInit();
+
     /* Initialize host info */
     HostinfoInit();
 
@@ -630,7 +633,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     mdebug1("Active response Init completed.");
 
     /* Get current time before starting */
-    c_time = time(NULL);
+    gettime(&c_timespec);
 
     /* Start the hourly/weekly stats */
     if (Start_Hour() < 0) {
@@ -690,7 +693,7 @@ void OS_ReadMSG_analysisd(int m_queue)
             RuleNode *rulenode_pt;
 
             /* Get the time we received the event */
-            c_time = time(NULL);
+            gettime(&c_timespec);
 
             /* Default values for the log info */
             Zero_Eventinfo(lf);
@@ -896,17 +899,17 @@ void OS_ReadMSG_analysisd(int m_queue)
                 /* Check ignore time */
                 if (currently_rule->ignore_time) {
                     if (currently_rule->time_ignored == 0) {
-                        currently_rule->time_ignored = lf->time;
+                        currently_rule->time_ignored = lf->time.tv_sec;
                     }
                     /* If the current time - the time the rule was ignored
                      * is less than the time it should be ignored,
                      * leave (do not alert again)
                      */
-                    else if ((lf->time - currently_rule->time_ignored)
+                    else if ((lf->time.tv_sec - currently_rule->time_ignored)
                              < currently_rule->ignore_time) {
                         break;
                     } else {
-                        currently_rule->time_ignored = lf->time;
+                        currently_rule->time_ignored = lf->time.tv_sec;
                     }
                 }
 

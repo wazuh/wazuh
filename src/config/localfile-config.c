@@ -96,7 +96,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             char *key_value = 0;
             int j;
-            for (j = 0; node[i]->attributes[j]; j++) {
+            for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                 if (strcmp(node[i]->attributes[j], "key") == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
                         key_value = node[i]->values[j];
@@ -239,10 +239,18 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     logf[pl].logformat = NULL;
                     logf[pl].fp = NULL;
                     logf[pl].ffile = NULL;
+		            logf[pl].djb_program_name = NULL;
+		            logf[pl].labels = NULL;
+		            logf[pl].query = NULL;
 
                     logf[pl +1].file = NULL;
                     logf[pl +1].alias = NULL;
                     logf[pl +1].logformat = NULL;
+		            logf[pl +1].fp = NULL;
+		            logf[pl +1].ffile = NULL;
+                    logf[pl +1].djb_program_name = NULL;
+                    logf[pl +1].labels = NULL;
+		            logf[pl +1].query = NULL;
                 }
 
 
@@ -350,9 +358,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
         /* Get log format */
         if (logf[pl].logformat) {
-            format = logf[pl].logformat;
+           format = logf[0].logformat;
         } else if (logf[glob_set - 1].logformat) {
-            format = logf[glob_set - 1].logformat;
+            format = logf[0].logformat;
         } else {
             merror(MISS_LOG_FORMAT);
             return (OS_INVALID);
@@ -370,9 +378,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
 
             if (logf[i].logformat == NULL) {
-                logf[i].logformat = format;
+		        os_strdup(format,logf[i].logformat);
             }
-
         }
     }
 
@@ -441,7 +448,7 @@ void Free_Localfile(logreader_config * config){
             for (i = 0; config->config[i].file; i++) {
                 free(config->config[i].ffile);
                 free(config->config[i].file);
-                free(config->config[i].logformat);
+		        free(config->config[i].logformat);
                 free(config->config[i].djb_program_name);
                 free(config->config[i].alias);
                 free(config->config[i].query);

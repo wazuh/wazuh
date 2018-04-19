@@ -54,47 +54,8 @@
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
-static const char *vu_dist_tag[] = {
-    "UBUNTU",
-    "DEBIAN",
-    "REDHAT",
-    "CENTOS",
-    "WINDOWS",
-    "MACOS",
-    "PRECISE",
-    "TRUSTY",
-    "XENIAL",
-    "JESSIE",
-    "STRETCH",
-    "WHEEZY",
-    "RHEL5",
-    "RHEL6",
-    "RHEL7",
-    "WS2016",
-    "MACOSX",
-    "UNKNOW"
-};
-
-static const char *vu_dist_ext[] = {
-    "Ubuntu",
-    "Debian",
-    "Red Hat",
-    "CentOS",
-    "Microsoft Windows",
-    "Apple Mac OS",
-    "Ubuntu Precise",
-    "Ubuntu Trusty",
-    "Ubuntu Xenial",
-    "Debian Jessie",
-    "Debian Stretch",
-    "Debian Wheezy",
-    "Red Hat Enterprise Linux 5",
-    "Red Hat Enterprise Linux 6",
-    "Red Hat Enterprise Linux 7",
-    "Windows Server 2016",
-    "Mac OS X",
-    "Unknow OS"
-};
+extern const char *vu_dist_tag[];
+extern const char *vu_dist_ext[];
 
 typedef enum vu_logic {
     VU_TRUE,
@@ -105,6 +66,8 @@ typedef enum vu_logic {
     VU_FILE_TEST,
     VU_VULNERABLE,
     VU_NOT_VULNERABLE,
+    VU_LESS,
+    VU_HIGHER,
     VU_EQUAL,
     VU_NOT_FIXED
 } vu_logic;
@@ -129,6 +92,15 @@ typedef enum distribution{
     DIS_RHEL6,
     DIS_RHEL7,
     // Windows versions
+    DIS_WXP,
+    DIS_W7,
+    DIS_W8,
+    DIS_W81,
+    DIS_W10,
+    DIS_WS2008,
+    DIS_WS2008R2,
+    DIS_WS2012,
+    DIS_WS2012R2,
     DIS_WS2016,
     // MacOS versions
     DIS_MACOSX,
@@ -159,6 +131,7 @@ typedef struct agent_software {
     char *agent_name;
     char *agent_ip;
     const char *OS;
+    distribution dist;
     char info;
     struct agent_software *next;
     struct agent_software *prev;
@@ -174,6 +147,15 @@ typedef enum {
     CVE_RHEL5,
     CVE_RHEL6,
     CVE_RHEL7,
+    CVE_WXP,
+    CVE_W7,
+    CVE_W8,
+    CVE_W81,
+    CVE_W10,
+    CVE_WS2008,
+    CVE_WS2008R2,
+    CVE_WS2012,
+    CVE_WS2012R2,
     CVE_WS2016,
     CVE_MACOSX,
     OS_SUPP_SIZE
@@ -199,7 +181,7 @@ typedef struct wm_vulnerability_detector_t {
     unsigned long ignore_time;
     time_t last_detection;
     agent_software *agents_software;
-    OSHash *agents_trig;
+    OSHash *agents_triag;
     int queue_fd;
     wm_vulnerability_detector_state state;
     wm_vulnerability_detector_flags flags;
@@ -253,8 +235,16 @@ typedef struct info_cve {
     char *updated;
     char *reference;
     char *description;
+    char *cvss2;
+    char *cvss3;
     struct info_cve *prev;
 } info_cve;
+
+typedef struct patch {
+    char **patch_id;
+    info_cve *cve_ref; // A CVE sublist for each patch
+    struct patch *prev;
+} patch;
 
 typedef struct vulnerability {
     char *cve_id;
@@ -271,6 +261,7 @@ typedef struct wm_vulnerability_detector_db {
     file_test *file_tests;
     info_state *info_states;
     info_cve *info_cves;
+    patch *patches;
     oval_metadata metadata;
     char *OS;
 } wm_vulnerability_detector_db;

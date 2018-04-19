@@ -49,7 +49,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
-        if ((c_time - lf->time) > rule->timeframe) {
+        if ((c_time - lf->time.tv_sec) > rule->timeframe) {
             return (NULL);
         }
 
@@ -202,7 +202,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
-        if ((c_time - lf->time) > rule->timeframe) {
+        if ((c_time - lf->time.tv_sec) > rule->timeframe) {
             return (NULL);
         }
 
@@ -349,7 +349,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
         lf = eventnode_pt->event;
 
         /* If time is outside the timeframe, return */
-        if ((c_time - lf->time) > rule->timeframe) {
+        if ((c_time - lf->time.tv_sec) > rule->timeframe) {
             return (NULL);
         }
 
@@ -491,7 +491,8 @@ void Zero_Eventinfo(Eventinfo *lf)
 
     lf->nfields = 0;
 
-    lf->time = 0;
+    lf->time.tv_sec = 0;
+    lf->time.tv_nsec = 0;
     lf->matched = 0;
 
     lf->year = 0;
@@ -510,6 +511,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->md5_after = NULL;
     lf->sha1_before = NULL;
     lf->sha1_after = NULL;
+    lf->sha256_before = NULL;
+    lf->sha256_after = NULL;
     lf->size_before = NULL;
     lf->size_after = NULL;
     lf->owner_before = NULL;
@@ -634,6 +637,12 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->sha1_after) {
         free(lf->sha1_after);
+    }
+    if (lf->sha256_before) {
+        free(lf->sha256_before);
+    }
+    if (lf->sha256_after) {
+        free(lf->sha256_after);
     }
     if (lf->size_before) {
         free(lf->size_before);

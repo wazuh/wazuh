@@ -25,38 +25,95 @@
 
 static void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector);
 static void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector);
-int wm_vulnerability_detector_socketconnect(char *host, in_port_t port);
-int wm_vulnerability_detector_updatedb(update_node **updates);
-char * wm_vulnerability_detector_preparser(char *path, distribution dist);
-int wm_vulnerability_update_oval(update_node *update);
-int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_update);
-int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerability_detector_db *parsed_oval, update_node *update, vu_logic condition);
-int wm_vulnerability_detector_check_db();
-int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval, distribution dist);
-int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS);
-int wm_vulnerability_detector_sql_error(sqlite3 *db);
-int wm_vulnerability_detector_sql_exec(sqlite3 *db, char *sql, size_t size, int allows_constr);
-int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_trig, unsigned long ignore_time);
-int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max);
-int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_trig, unsigned long ignore_time);
-int wm_vulnerability_detector_sql_prepare(sqlite3 *db, char *sql, size_t size, sqlite3_stmt **stmt);
-int wm_checks_package_vulnerability(char *version, const char *operation, char *operation_value);
-int wm_vulnerability_detector_step(sqlite3_stmt *stmt);
-int wm_vulnerability_create_file(const char *path, const char *source);
-int wm_vulnerability_check_update_period(update_node *upd);
-int wm_vulnerability_check_update(update_node *upd, const char *dist);
-int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed);
-OSRegex * wm_vulnerability_set_packages_patterns();
-int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *tag);
-int wm_vulnerability_detector_compare(char *version_it, char *cversion_it);
-const char *wm_vulnerability_set_oval(char *uname, update_node **updates);
-int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
+static int wm_vulnerability_detector_socketconnect(char *host, in_port_t port);
+static int wm_vulnerability_detector_updatedb(update_node **updates);
+static char * wm_vulnerability_detector_preparser(char *path, distribution dist);
+static int wm_vulnerability_update_oval(update_node *update);
+static int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_update);
+static int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerability_detector_db *parsed_oval, update_node *update, vu_logic condition);
+static int wm_vulnerability_detector_check_db();
+static int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval);
+static int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS);
+static int wm_vulnerability_detector_sql_error(sqlite3 *db);
+static int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_triag, unsigned long ignore_time);
+static int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max);
+static int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_triag, unsigned long ignore_time);
+static int wm_checks_package_vulnerability(char *version, const char *operation, char *operation_value);
+static int wm_vulnerability_detector_step(sqlite3_stmt *stmt);
+static int wm_vulnerability_create_file(const char *path, const char *source);
+static int wm_vulnerability_check_update_period(update_node *upd);
+static int wm_vulnerability_check_update(update_node *upd, const char *dist);
+static int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed);
+static int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *tag);
+static int wm_vulnerability_detector_compare(char *version_it, char *cversion_it);
+static const char *wm_vulnerability_set_oval(char *uname, update_node **updates);
+static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
     "vulnerability-detector",
     (wm_routine)wm_vulnerability_detector_main,
     (wm_routine)wm_vulnerability_detector_destroy
+};
+
+const char *vu_dist_tag[] = {
+    "UBUNTU",
+    "DEBIAN",
+    "REDHAT",
+    "CENTOS",
+    "WINDOWS",
+    "MACOS",
+    "PRECISE",
+    "TRUSTY",
+    "XENIAL",
+    "JESSIE",
+    "STRETCH",
+    "WHEEZY",
+    "RHEL5",
+    "RHEL6",
+    "RHEL7",
+    "WXP",
+    "W7",
+    "W8",
+    "W81",
+    "W10",
+    "WS2008",
+    "WS2008R2",
+    "WS2012",
+    "WS2012R2",
+    "WS2016",
+    "MACOSX",
+    "UNKNOW"
+};
+
+const char *vu_dist_ext[] = {
+    "Ubuntu",
+    "Debian",
+    "Red Hat",
+    "CentOS",
+    "Microsoft Windows",
+    "Apple Mac OS",
+    "Ubuntu Precise",
+    "Ubuntu Trusty",
+    "Ubuntu Xenial",
+    "Debian Jessie",
+    "Debian Stretch",
+    "Debian Wheezy",
+    "Red Hat Enterprise Linux 5",
+    "Red Hat Enterprise Linux 6",
+    "Red Hat Enterprise Linux 7",
+    "Windows XP",
+    "Windows 7",
+    "Windows 8",
+    "Windows 8.1",
+    "Windows 10",
+    "Windows Server 2008",
+    "Windows Server 2008 R2",
+    "Windows Server 2012",
+    "Windows Server 2012 R2",
+    "Windows Server 2016",
+    "Mac OS X",
+    "Unknow OS"
 };
 
 const char *wm_vulnerability_set_oval(char *uname, update_node **updates) {
@@ -78,48 +135,6 @@ const char *wm_vulnerability_set_oval(char *uname, update_node **updates) {
     }
 
     return retval;
-}
-
-OSRegex * wm_vulnerability_set_packages_patterns() {
-    int i;
-    char result = 0;
-    OSRegex *reg;
-    const char patterns[][OS_SIZE_1024] = {
-        "the firmware version is",
-        "the release of (\\.+) is",
-        "the version of (\\.+) is",
-        "Version of (\\.+) is",
-        "(\\.+) version is",
-        "(\\.+) version greater",
-        "(\\.+) version less",
-        "(\\.+) *is \\.+ or",
-        "(\\.+) byte size is",
-        "the (\\.+) exists",
-        "(\\.+) is",
-        "\0"
-    };
-
-    os_calloc(1, sizeof(OSRegex), reg);
-
-    for(i = 0; *patterns[i] != '\0'; i++) {
-        os_realloc(reg, (i + 2)*sizeof(OSRegex), reg);
-        if (!OSRegex_Compile(patterns[i], &reg[i], OS_RETURN_SUBSTRING)) {
-            mterror(WM_VULNDETECTOR_LOGTAG, REGEX_COMPILE, patterns[i], reg[i].error);
-            result = 1;
-            break;
-        }
-    }
-
-    reg[i].patterns = NULL;
-
-    if (result) {
-        int k;
-        for (k = 0; k <= i; k++) {
-            OSRegex_FreePattern(&reg[k]);
-        }
-        return NULL;
-    }
-    return reg;
 }
 
 int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed) {
@@ -177,6 +192,7 @@ int wm_vulnerability_create_file(const char *path, const char *source) {
 
     for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
+            sqlite3_finalize(stmt);
             mterror(WM_VULNDETECTOR_LOGTAG, VU_CREATE_DB_ERROR);
             return wm_vulnerability_detector_sql_error(db);
         }
@@ -232,6 +248,130 @@ int wm_vulnerability_detector_step(sqlite3_stmt *stmt) {
     return result;
 }
 
+int wm_checks_package_vulnerability(char *version, const char *operation, char *operation_value) {
+    int size;
+    int v_result, r_result;
+    int epoch, c_epoch;
+    char version_cl[KEY_SIZE];
+    char cversion_cl[KEY_SIZE];
+    char *version_it, *release_it;
+    char *cversion_it, *crelease_it;
+
+    if (operation_value) {
+        // Copy the original values
+        if (size = snprintf(version_cl, KEY_SIZE, "%s", version), size >= KEY_SIZE) {
+            return OS_INVALID;
+        }
+        if (size = snprintf(cversion_cl, KEY_SIZE, "%s", operation_value), size >= KEY_SIZE) {
+            return OS_INVALID;
+        }
+
+        // Check EPOCH
+        if (version_it = strchr(version_cl, ':'), version_it) {
+            *(version_it++) = '\0';
+            epoch = strtol(version_cl, NULL, 10);
+        } else {
+            version_it = version_cl;
+            epoch = 0;
+        }
+        if (cversion_it = strchr(cversion_cl, ':'), cversion_it) {
+            *(cversion_it++) = '\0';
+            c_epoch = strtol(cversion_cl, NULL, 10);
+        } else {
+            cversion_it = cversion_cl;
+            c_epoch = 0;
+        }
+
+        // Separate the version from the revision
+        if (release_it = strchr(version_it, '-'), release_it) {
+            if (*(release_it++) = '\0', *release_it == '\0') {
+                release_it = NULL;
+            }
+        }
+
+        if (crelease_it = strchr(cversion_it, '-'), crelease_it) {
+            if (*(crelease_it++) = '\0', *crelease_it == '\0') {
+                crelease_it = NULL;
+            }
+        }
+
+        // Check version
+        v_result = wm_vulnerability_detector_compare(version_it, cversion_it);
+        // Check release
+        r_result = wm_vulnerability_detector_compare(release_it, crelease_it);
+
+        if (!strcmp(operation, "less than")) {
+            if (epoch > c_epoch) {
+                return VU_NOT_VULNERABLE;
+            } else if (epoch < c_epoch) {
+                return VU_VULNERABLE;
+            }
+
+            if (v_result == VU_LESS) {
+                return VU_VULNERABLE;
+            } else if (v_result == VU_HIGHER) {
+                return VU_NOT_VULNERABLE;
+            }
+
+            if (r_result == VU_LESS) {
+                return VU_VULNERABLE;
+            }
+        } else if (!strcmp(operation, "greater than or equal")) {
+            if (epoch > c_epoch) {
+                return VU_VULNERABLE;
+            } else if (epoch < c_epoch) {
+                return VU_NOT_VULNERABLE;
+            }
+
+            if (v_result == VU_LESS) {
+                return VU_NOT_VULNERABLE;
+            } else if (v_result == VU_HIGHER) {
+                return VU_VULNERABLE;
+            }
+
+            if (r_result != VU_LESS) {
+                return VU_VULNERABLE;
+            }
+        } else if (!strcmp(operation, "less than or equal")) {
+            if (epoch < c_epoch) {
+                return VU_VULNERABLE;
+            } else if (epoch > c_epoch) {
+                return VU_NOT_VULNERABLE;
+            }
+
+            if (v_result == VU_HIGHER) {
+                return VU_NOT_VULNERABLE;
+            } else if (v_result == VU_LESS) {
+                return VU_VULNERABLE;
+            }
+
+            if (r_result != VU_HIGHER) {
+                return VU_VULNERABLE;
+            }
+        } else if (!strcmp(operation, "equal") || !strcmp(operation, "equals")) {
+            if (epoch != c_epoch) {
+                return VU_NOT_VULNERABLE;
+            }
+
+            if (v_result != VU_EQUAL) {
+                return VU_NOT_VULNERABLE;
+            }
+
+            if (r_result == VU_EQUAL) {
+                return VU_VULNERABLE;
+            }
+        } else if (!strcmp(operation, "exists")) {
+            return VU_VULNERABLE;
+        } else {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OPERATION_NOT_REC, operation);
+            return VU_NOT_VULNERABLE;
+        }
+        // The OVALs supported only contemplate the operation "less than" and "exists"
+        return VU_NOT_VULNERABLE;
+    }
+    return VU_NOT_FIXED;
+}
+
 int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     char *found;
     int i, j;
@@ -239,15 +379,21 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     int version_value, cversion_value;
 
     if (version_it && !cversion_it) {
-        return VU_NOT_VULNERABLE;
+        return VU_HIGHER;
     } else if (!version_it && cversion_it) {
-        return VU_VULNERABLE;
+        return VU_LESS;
+    } else if (!version_it && !cversion_it) {
+        return VU_EQUAL;
     }
 
     (found = strchr(version_it, '~'))? *found = '\0' : 0;
     (found = strchr(version_it, '+'))? *found = '\0' : 0;
     (found = strchr(cversion_it, '~'))? *found = '\0' : 0;
     (found = strchr(cversion_it, '+'))? *found = '\0' : 0;
+
+    // For RedHat/CentOS packages
+    (found = strstr(version_it, ".el"))? *found = '\0' : 0;
+    (found = strstr(cversion_it, ".el"))? *found = '\0' : 0;
 
     // Check version
     if (strcmp(version_it, cversion_it)) {
@@ -308,15 +454,15 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
                     cversion_value = strtol(cversion_it, NULL, 10);
                 }
                 if (version_value > cversion_value) {
-                    return VU_NOT_VULNERABLE;
+                    return VU_HIGHER;
                 } else if (version_value < cversion_value) {
-                    return VU_VULNERABLE;
+                    return VU_LESS;
                 } else if (version_found != cversion_found) {
                     // The version with more digits is higher
                     if (version_found < cversion_found) {
-                        return VU_NOT_VULNERABLE;
+                        return VU_HIGHER;
                     } else {
-                        return VU_VULNERABLE;
+                        return VU_LESS;
                     }
                 } else if (version_found > 2) {
                     // The version is over
@@ -335,84 +481,12 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     return VU_EQUAL;
 }
 
-int wm_checks_package_vulnerability(char *version, const char *operation, char *operation_value) {
-    if (operation_value) {
-        if (!strcmp(operation, "less than")) {
-            int size;
-            int result;
-            int version_value, cversion_value;
-            char version_cl[KEY_SIZE];
-            char cversion_cl[KEY_SIZE];
-            char *version_it, *release_it;
-            char *cversion_it, *crelease_it;
-
-            // Copy the original values
-            if (size = snprintf(version_cl, KEY_SIZE, "%s", version), size < 1) {
-                return OS_INVALID;
-            } else {
-                cversion_cl[size] = '\0';
-            }
-            if (size = snprintf(cversion_cl, KEY_SIZE, "%s", operation_value), size < 1) {
-                return OS_INVALID;
-            } else {
-                cversion_cl[size] = '\0';
-            }
-
-            // Check EPOCH
-            if (version_it = strchr(version_cl, ':'), version_it) {
-                *(version_it++) = '\0';
-                version_value = strtol(version_cl, NULL, 10);
-            } else {
-                version_it = version_cl;
-                version_value = 0;
-            }
-            if (cversion_it = strchr(cversion_cl, ':'), cversion_it) {
-                *(cversion_it++) = '\0';
-                cversion_value = strtol(cversion_cl, NULL, 10);
-            } else {
-                cversion_it = cversion_cl;
-                cversion_value = 0;
-            }
-
-            if (version_value > cversion_value) {
-                return 0;
-            } else if (version_value < cversion_value) {
-                return 1;
-            }
-
-            // Separate the version from the revision
-            if (release_it = strchr(version_it, '-'), release_it) {
-                if (*(release_it++) = '\0', *release_it == '\0') {
-                    release_it = NULL;
-                }
-            }
-
-            if (crelease_it = strchr(cversion_it, '-'), crelease_it) {
-                if (*(crelease_it++) = '\0', *crelease_it == '\0') {
-                    crelease_it = NULL;
-                }
-            }
-
-            // Check version
-            if (result = wm_vulnerability_detector_compare(version_it, cversion_it), result != VU_EQUAL) {
-                return result;
-            }
-
-            // Check release
-            result = wm_vulnerability_detector_compare(release_it, crelease_it);
-            return result;
-        }
-        // Improve checks
-        return VU_NOT_VULNERABLE;
-    }
-    return VU_NOT_FIXED;
-}
-
 int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max) {
     sqlite3_stmt *stmt = NULL;
     char alert_msg[OS_MAXSTR];
     char header[OS_SIZE_256];
-    int size;
+    char condition[OS_SIZE_1024];
+    const char *query;
     agent_software *agents_it;
     cJSON *alert = NULL;
     cJSON *alert_cve = NULL;
@@ -424,6 +498,8 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char *updated;
     char *reference;
     char *rationale;
+    char *cvss2;
+    char *cvss3;
     int i;
 
     // Define time to sleep between messages sent
@@ -438,7 +514,14 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             continue;
         }
 
-        if (sqlite3_prepare_v2(db, vu_queries[VU_JOIN_QUERY], -1, &stmt, NULL) != SQLITE_OK) {
+        if (agents_it->dist != DIS_REDHAT) {
+            query = vu_queries[VU_JOIN_QUERY];
+        } else {
+            query = vu_queries[VU_JOIN_PATCH_QUERY];
+        }
+
+        if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+            sqlite3_finalize(stmt);
             cJSON_free(alert);
             return wm_vulnerability_detector_sql_error(db);
         }
@@ -448,8 +531,8 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             char *package;
             char *version;
-            char *operation;
-            char *operation_value;
+            char *operation, *second_operation;
+            char *operation_value, *second_operation_value;
             int pending = 0;
             char state[50];
             int v_type;
@@ -465,28 +548,43 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             version = (char *)sqlite3_column_text(stmt, 8);
             operation = (char *)sqlite3_column_text(stmt, 9);
             operation_value = (char *)sqlite3_column_text(stmt, 10);
-            pending = sqlite3_column_int(stmt, 11);
-
-            if (*updated == '\0') {
+            second_operation = (char *)sqlite3_column_text(stmt, 11);
+            second_operation_value = (char *)sqlite3_column_text(stmt, 12);
+            pending = sqlite3_column_int(stmt, 13);
+            cvss2 = (char *)sqlite3_column_text(stmt, 14);
+            cvss3 = (char *)sqlite3_column_text(stmt, 15);
+            if (!updated || *updated == '\0') {
                 updated = published;
             }
             if (pending) {
-                size = snprintf(state, 30, "Pending confirmation");
-            } else if (v_type = wm_checks_package_vulnerability(version, operation, operation_value), v_type != VU_NOT_VULNERABLE && v_type != OS_INVALID) {
-                if (v_type != VU_NOT_FIXED) {
-                    size = snprintf(state, 15, "Fixed");
-                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, version, operation_value, agents_it->agent_id, cve);
-                } else {
-                    size = snprintf(state, 15, "Unfixed");
-                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VULN, package, cve);
-                }
-            } else if (v_type == OS_INVALID) {
-                return OS_INVALID;
+                snprintf(state, 30, "Pending confirmation");
             } else {
-                mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, version, operation_value, agents_it->agent_id, cve);
-                continue;
+                if (v_type = wm_checks_package_vulnerability(version, operation, operation_value), v_type == OS_INVALID) {
+                    return OS_INVALID;
+                }
+                if (v_type == VU_NOT_FIXED) {
+                    snprintf(state, 15, "Unfixed");
+                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VULN, package, cve);
+                } else if (v_type == VU_NOT_VULNERABLE) {
+                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
+                    continue;
+                } else {
+                    snprintf(state, 15, "Fixed");
+                    if (!second_operation) {
+                        mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
+                    } else {
+                        // The first condition is vulnerable, but the second also has to be
+                        if (v_type = wm_checks_package_vulnerability(version, second_operation, second_operation_value), v_type == OS_INVALID) {
+                            return OS_INVALID;
+                        } else if (v_type == VU_VULNERABLE) {
+                            mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DOUBLE_VULN, package, agents_it->agent_id, cve, version, operation, operation_value, second_operation, second_operation_value);
+                        } else {
+                            mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DOUBLE_NOT_VULN, package, agents_it->agent_id, cve, version, operation, operation_value, second_operation, second_operation_value);
+                            continue;
+                        }
+                    }
+                }
             }
-            state[size] = '\0';
 
             if (alert_cve = cJSON_CreateObject(), alert_cve) {
                 cJSON * jPackage = cJSON_CreateObject();
@@ -507,6 +605,20 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 cJSON_AddItemToObject(alert, "vulnerability", alert_cve);
                 cJSON_AddStringToObject(jPackage, "name", package);
                 cJSON_AddStringToObject(jPackage, "version", version);
+                if (cvss2) {
+                    cJSON_AddStringToObject(jPackage, "cvss2", cvss2);
+                }
+                if (cvss3) {
+                    cJSON_AddStringToObject(jPackage, "cvss3", cvss3);
+                }
+                if (!pending) {
+                    if (operation_value) {
+                        snprintf(condition, OS_SIZE_1024, "%s %s", operation, operation_value);
+                        cJSON_AddStringToObject(jPackage, "condition", condition);
+                    } else {
+                        cJSON_AddStringToObject(jPackage, "condition", operation);
+                    }
+                }
             } else {
                 cJSON_Delete(alert);
                 return OS_INVALID;
@@ -537,7 +649,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
 }
 
 
-int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_trig, unsigned long ignore_time) {
+int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents, OSHash *agents_triag, unsigned long ignore_time) {
     agent_software *agents_it;
     sqlite3 *db;
     sqlite3_stmt *stmt = NULL;
@@ -554,8 +666,9 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
         return wm_vulnerability_detector_sql_error(db);
     }
 
-    if (sqlite3_prepare_v2(db, vu_queries[VU_AGENTS_TABLE], -1, &stmt, NULL) != SQLITE_OK) {
-            return wm_vulnerability_detector_sql_error(db);
+    if (sqlite3_prepare_v2(db, vu_queries[VU_REMOVE_AGENTS_TABLE], -1, &stmt, NULL) != SQLITE_OK) {
+        sqlite3_finalize(stmt);
+        return wm_vulnerability_detector_sql_error(db);
     }
     if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
         sqlite3_finalize(stmt);
@@ -564,18 +677,17 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     sqlite3_finalize(stmt);
 
     for (i = 1, agents_it = agents;; i++) {
-        if (result = wm_vulnerability_detector_get_software_info(agents_it, db, agents_trig, ignore_time), result == OS_INVALID) {
-            mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR);
-            return OS_INVALID;
+        if (result = wm_vulnerability_detector_get_software_info(agents_it, db, agents_triag, ignore_time), result == OS_INVALID) {
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR, agents_it->agent_id);
         }
 
         if (result != 2) {
             if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
                 wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
                 i = 0;
-                if (sqlite3_prepare_v2(db, vu_queries[VU_AGENTS_TABLE], -1, &stmt, NULL) != SQLITE_OK) {
-                        sqlite3_finalize(stmt);
-                        return wm_vulnerability_detector_sql_error(db);
+                if (sqlite3_prepare_v2(db, vu_queries[VU_REMOVE_AGENTS_TABLE], -1, &stmt, NULL) != SQLITE_OK) {
+                    sqlite3_finalize(stmt);
+                    return wm_vulnerability_detector_sql_error(db);
                 }
                 if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
                     sqlite3_finalize(stmt);
@@ -605,29 +717,6 @@ int wm_vulnerability_detector_sql_error(sqlite3 *db) {
     return OS_INVALID;
 }
 
-int wm_vulnerability_detector_sql_prepare(sqlite3 *db, char *sql, size_t size, sqlite3_stmt **stmt) {
-    if (sql[size - 1] != ';') {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_QUERY_ERROR);
-        return OS_INVALID;
-    }
-    if (sqlite3_prepare_v2(db, sql, size, stmt, NULL) != SQLITE_OK) {
-        return wm_vulnerability_detector_sql_error(db);
-    }
-    return 0;
-}
-
-int wm_vulnerability_detector_sql_exec(sqlite3 *db, char *sql, size_t size, int allows_constr) {
-    int result;
-    if (sql[size - 1] != ';') {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_QUERY_ERROR);
-        return OS_INVALID;
-    }
-    if (result = sqlite3_exec(db, sql, NULL, NULL, NULL), result != SQLITE_OK && !(allows_constr && result == SQLITE_CONSTRAINT)) {
-        return wm_vulnerability_detector_sql_error(db);
-    }
-    return 0;
-}
-
 int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS) {
     sqlite3_stmt *stmt = NULL;
     char sql[MAX_QUERY_SIZE];
@@ -638,6 +727,7 @@ int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS
     }
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        sqlite3_finalize(stmt);
         return wm_vulnerability_detector_sql_error(db);
     }
 
@@ -651,25 +741,30 @@ int wm_vulnerability_detector_remove_OS_table(sqlite3 *db, char *TABLE, char *OS
     return 0;
 }
 
-int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval, distribution dist) {
+int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) {
     sqlite3 *db;
     sqlite3_stmt *stmt = NULL;
     int result;
     const char *query;
+    char *id;
+    char *replace;
+    char *second_replace;
     char operation_n;
+    char p_query[MAX_QUERY_SIZE];
     oval_metadata *met_it = &parsed_oval->metadata;
     vulnerability *vul_it = parsed_oval->vulnerabilities;
     info_state *state_it = parsed_oval->info_states;
     info_test *test_it = parsed_oval->info_tests;
-    file_test *file_it = parsed_oval->file_tests;
     info_cve *info_it = parsed_oval->info_cves;
+    patch *patch_it = parsed_oval->patches;
 
     if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
         return wm_vulnerability_detector_sql_error(db);
     }
     if (wm_vulnerability_detector_remove_OS_table(db, CVE_TABLE, parsed_oval->OS)        ||
         wm_vulnerability_detector_remove_OS_table(db, METADATA_TABLE, parsed_oval->OS)   ||
-        wm_vulnerability_detector_remove_OS_table(db, CVE_INFO_TABLE, parsed_oval->OS)) {
+        wm_vulnerability_detector_remove_OS_table(db, CVE_INFO_TABLE, parsed_oval->OS)   ||
+        wm_vulnerability_detector_remove_OS_table(db, PATCHES_TABLE, parsed_oval->OS)) {
         return wm_vulnerability_detector_sql_error(db);
     }
 
@@ -682,6 +777,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval, 
         // If you do not have this field, it has been discarded by the preparser and the OS is not affected
         if (vul_it->state_id) {
             if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CVE], -1, &stmt, NULL) != SQLITE_OK) {
+                sqlite3_finalize(stmt);
                 return wm_vulnerability_detector_sql_error(db);
             }
 
@@ -710,41 +806,146 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval, 
         free(vul_aux);
     }
 
-    // Links vulnerabilities to their conditions
-    while (test_it) {
-        query = vu_queries[VU_UPDATE_CVE];
-        operation_n = 0;
-set_op:
-        if (test_it->state) {
-            if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+    if (patch_it) {
+        mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_SOL_PATCHES);
+    }
+
+    while (patch_it) {
+        info_cve *cve_it;
+        for (cve_it = patch_it->cve_ref; cve_it;) {
+            // Insert the CVEs solved by the patch to vulnerability table
+            snprintf(p_query, MAX_QUERY_SIZE, vu_queries[VU_INSERT_CVE_PATCH], cve_it->cveid);
+            if (sqlite3_prepare_v2(db, p_query, -1, &stmt, NULL) != SQLITE_OK) {
                 return wm_vulnerability_detector_sql_error(db);
             }
-            sqlite3_bind_text(stmt, 1, test_it->state, -1, NULL);
-            sqlite3_bind_text(stmt, 2, test_it->second_state, -1, NULL);
-            sqlite3_bind_text(stmt, 3, test_it->id, -1, NULL);
+            sqlite3_bind_text(stmt, 1, *patch_it->patch_id, -1, NULL);
+
+            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE) {
+                sqlite3_finalize(stmt);
+                return wm_vulnerability_detector_sql_error(db);
+            }
+            sqlite3_finalize(stmt);
+
+            // Inserts patch-CVE relationship to patches table
+            if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CORR_PATCH], -1, &stmt, NULL) != SQLITE_OK) {
+                return wm_vulnerability_detector_sql_error(db);
+            }
+
+            sqlite3_bind_text(stmt, 1, *patch_it->patch_id, -1, NULL);
+            sqlite3_bind_text(stmt, 2, cve_it->cveid, -1, NULL);
+            sqlite3_bind_text(stmt, 3, parsed_oval->OS, -1, NULL);
+
+            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE) {
+                sqlite3_finalize(stmt);
+                return wm_vulnerability_detector_sql_error(db);
+            }
+            sqlite3_finalize(stmt);
+
+            // Insert the CVE info to vulnerability info table
+            if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CVE_INFO], -1, &stmt, NULL) != SQLITE_OK) {
+                return wm_vulnerability_detector_sql_error(db);
+            }
+
+            sqlite3_bind_text(stmt, 1, cve_it->cveid, -1, NULL);
+            sqlite3_bind_text(stmt, 2, NULL, -1, NULL);
+            sqlite3_bind_text(stmt, 3, cve_it->severity, -1, NULL);
+            sqlite3_bind_text(stmt, 4, cve_it->published, -1, NULL);
+            sqlite3_bind_text(stmt, 5, NULL, -1, NULL);
+            sqlite3_bind_text(stmt, 6, cve_it->reference, -1, NULL);
+            sqlite3_bind_text(stmt, 7, parsed_oval->OS, -1, NULL);
+            sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
+            sqlite3_bind_text(stmt, 9, cve_it->cvss2, -1, NULL);
+            sqlite3_bind_text(stmt, 10, cve_it->cvss3, -1, NULL);
+            sqlite3_bind_int(stmt, 11, 1);
+
             if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 sqlite3_finalize(stmt);
                 return wm_vulnerability_detector_sql_error(db);
             }
-        } else {
-            if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-                sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
-            }
-            sqlite3_bind_text(stmt, 1, "exists", -1, NULL);
-            sqlite3_bind_text(stmt, 2, test_it->second_state, -1, NULL);
-            sqlite3_bind_text(stmt, 3, test_it->id, -1, NULL);
-            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-                sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
-            }
+            sqlite3_finalize(stmt);
+
+            info_cve *cve_aux = cve_it;
+            cve_it = cve_it->prev;
+            free(cve_aux->cveid);
+            free(cve_aux->title);
+            free(cve_aux->severity);
+            free(cve_aux->published);
+            free(cve_aux->reference);
+            free(cve_aux->description);
+            free(cve_aux->cvss2);
+            free(cve_aux->cvss3);
+            free(cve_aux);
+        }
+
+        // Remove the patch entry from vulnerability table
+        if (sqlite3_prepare_v2(db, vu_queries[VU_REMOVE_PATCH], -1, &stmt, NULL) != SQLITE_OK) {
+            return wm_vulnerability_detector_sql_error(db);
+        }
+        sqlite3_bind_text(stmt, 1, *patch_it->patch_id, -1, NULL);
+
+        if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            return wm_vulnerability_detector_sql_error(db);
         }
         sqlite3_finalize(stmt);
 
-        if (dist == DIS_WINDOWS && !operation_n) {
-            operation_n = 1;
-            query = vu_queries[VU_UPDATE_CVE_SEC];
-            goto set_op;
+        patch *patch_aux = patch_it;
+        patch_it = patch_it->prev;
+        free(patch_aux);
+    }
+
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_INS_TEST_SEC);
+
+    // Links vulnerabilities to their conditions
+    while (test_it) {
+        id = test_it->id;
+        replace = test_it->state;
+        second_replace = test_it->second_state;
+        if (second_replace || !replace) {
+            // 1 test -> 1 or 2 states
+            query = vu_queries[VU_UPDATE_DOUBLE_CVE];
+            if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+                sqlite3_finalize(stmt);
+                return wm_vulnerability_detector_sql_error(db);
+            }
+            if (replace) {
+                sqlite3_bind_text(stmt, 1, replace, -1, NULL);
+                sqlite3_bind_text(stmt, 2, second_replace, -1, NULL);
+                sqlite3_bind_text(stmt, 3, id, -1, NULL);
+            } else {
+                sqlite3_bind_text(stmt, 1, "exists", -1, NULL);
+                sqlite3_bind_text(stmt, 2, NULL, -1, NULL);
+                sqlite3_bind_text(stmt, 3, id, -1, NULL);
+            }
+
+            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+                sqlite3_finalize(stmt);
+                return wm_vulnerability_detector_sql_error(db);
+            }
+
+            sqlite3_finalize(stmt);
+        } else {
+            // Only Windows uses dual conditions
+            query = vu_queries[VU_UPDATE_CVE];
+            operation_n = 0;
+
+set_op:
+            if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+                sqlite3_finalize(stmt);
+                return wm_vulnerability_detector_sql_error(db);
+            }
+            sqlite3_bind_text(stmt, 1, replace, -1, NULL);
+            sqlite3_bind_text(stmt, 2, id, -1, NULL);
+            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+                sqlite3_finalize(stmt);
+                return wm_vulnerability_detector_sql_error(db);
+            }
+
+            if (!operation_n) {
+                operation_n = 1;
+                query = vu_queries[VU_UPDATE_CVE_SEC];
+                goto set_op;
+            }
         }
 
         info_test *test_aux = test_it;
@@ -755,37 +956,14 @@ set_op:
         free(test_aux);
     }
 
-    // Sets the Windows file checks (unused yet)
-    if (dist == DIS_WINDOWS) {
-        while (file_it) {
-            if (sqlite3_prepare_v2(db, vu_queries[VU_UPDATE_CVE], -1, &stmt, NULL) != SQLITE_OK) {
-                return wm_vulnerability_detector_sql_error(db);
-            }
-            sqlite3_bind_text(stmt, 1, "FILE CHECK", -1, NULL);
-            sqlite3_bind_text(stmt, 2, NULL, -1, NULL);
-            sqlite3_bind_text(stmt, 3, file_it->id, -1, NULL);
-            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-                sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
-            }
-
-            sqlite3_finalize(stmt);
-            file_test *file_aux = file_it;
-            file_it = file_it->prev;
-            free(file_aux->id);
-            free(file_aux->state);
-            free(file_aux);
-        }
-    }
-
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_VU_CO);
 
     // Sets the operators and values
     while (state_it) {
         query = vu_queries[VU_UPDATE_CVE_VAL];
         operation_n = 0;
-set_op_val:
         if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+            sqlite3_finalize(stmt);
             return wm_vulnerability_detector_sql_error(db);
         }
         sqlite3_bind_text(stmt, 1, state_it->operation, -1, NULL);
@@ -796,12 +974,6 @@ set_op_val:
             return wm_vulnerability_detector_sql_error(db);
         }
         sqlite3_finalize(stmt);
-
-        if (dist == DIS_WINDOWS && !operation_n) {
-            operation_n = 1;
-            query = vu_queries[VU_UPDATE_CVE_VAL_SEC];
-            goto set_op_val;
-        }
 
         info_state *state_aux = state_it;
         state_it = state_it->prev;
@@ -823,6 +995,7 @@ set_op_val:
         }
 
         if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CVE_INFO], -1, &stmt, NULL) != SQLITE_OK) {
+            sqlite3_finalize(stmt);
             return wm_vulnerability_detector_sql_error(db);
         }
 
@@ -834,6 +1007,10 @@ set_op_val:
         sqlite3_bind_text(stmt, 6, info_it->reference, -1, NULL);
         sqlite3_bind_text(stmt, 7, parsed_oval->OS, -1, NULL);
         sqlite3_bind_text(stmt, 8, info_it->description, -1, NULL);
+        sqlite3_bind_text(stmt, 9, info_it->cvss2, -1, NULL);
+        sqlite3_bind_text(stmt, 10, info_it->cvss3, -1, NULL);
+        sqlite3_bind_int(stmt, 11, 0);
+
         if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
             sqlite3_finalize(stmt);
             return wm_vulnerability_detector_sql_error(db);
@@ -850,10 +1027,13 @@ set_op_val:
         }
         free(info_aux->reference);
         free(info_aux->description);
+        free(info_aux->cvss2);
+        free(info_aux->cvss3);
         free(info_aux);
     }
 
     if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_METADATA], -1, &stmt, NULL) != SQLITE_OK) {
+        sqlite3_finalize(stmt);
         return wm_vulnerability_detector_sql_error(db);
     }
     sqlite3_bind_text(stmt, 1, parsed_oval->OS, -1, NULL);
@@ -1021,36 +1201,6 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                       state = V_TESTS;
                     }
             }
-        } else if (dist == DIS_WINDOWS || dist == DIS_MACOS) { //5.11.2
-            switch (state) {
-                case V_OVALDEFINITIONS:
-                    if (found = strstr(buffer, "?>"), found) {
-                        state = V_STATES;
-                    }
-                    goto free_buffer;
-                break;
-                case V_OBJECTS:
-                    if (found = strstr(buffer, "</objects>"), found) {
-                        state = V_STATES;
-                    }
-                    goto free_buffer;
-                break;
-                case V_VARIABLES:
-                    if (found = strstr(buffer, "</variables>"), found) {
-                        state = V_STATES;
-                    }
-                    goto free_buffer;
-                break;
-                default:
-                if (strstr(buffer, "<objects>")) {
-                    state = V_OBJECTS;
-                    goto free_buffer;
-                } else if (strstr(buffer, "<variables>")) {
-                    state = V_VARIABLES;
-                    goto free_buffer;
-                }
-            }
-
         } else {
             free(tmp_file);
             tmp_file = NULL;
@@ -1077,31 +1227,24 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     int i, j;
     int retval = 0;
     int check = 0;
-    int and_condition = 0;
+    char double_condition = 0;
+    vulnerability *vuln;
     char *found;
     XML_NODE chld_node;
     distribution dist = update->dist_ref;
-    const char *dist_name = update->dist_ext;
-    static OSRegex *reg_packages = NULL;
     static const char *install_check = "is installed";
-    static const char *check_if = "Check if ";
-    static const char *check_that = "Check that ";
     static const char *XML_OVAL_DEFINITIONS = "oval_definitions";
     static const char *XML_GENERATOR = "generator";
     static const char *XML_DEFINITIONS = "definitions";
     static const char *XML_DEFINITION = "definition";
-    static const char *XML_OVAL_DEF_DEFINITION = "oval-def:definition";
     static const char *XML_TITLE = "title";
-    static const char *XML_OVAL_DEF_TITLE = "oval-def:title";
     static const char *XML_CLASS = "class";
     static const char *XML_VULNERABILITY = "vulnerability"; //ub 15.11.1
     static const char *XML_PATH = "patch"; //rh 15.10
     static const char *XML_METADATA = "metadata";
     static const char *XML_OVAL_DEF_METADATA = "oval-def:metadata";
     static const char *XML_CRITERIA = "criteria";
-    static const char *XML_OVAL_DEF_CRITERIA = "oval-def:criteria";
     static const char *XML_REFERENCE = "reference";
-    static const char *XML_OVAL_DEF_REFERENCE = "oval-def:reference";
     static const char *XML_REF_ID = "ref_id";
     static const char *XML_REF_URL = "ref_url";
     static const char *XML_OPERATOR = "operator";
@@ -1109,26 +1252,16 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_AND = "AND";
     static const char *XML_COMMENT = "comment";
     static const char *XML_CRITERION = "criterion";
-    static const char *XML_OVAL_DEF_CRITERION = "oval-def:criterion";
     static const char *XML_TEST_REF = "test_ref";
     static const char *XML_TESTS = "tests";
     static const char *XML_DPKG_LINUX_INFO_TEST = "linux-def:dpkginfo_test";
     static const char *XML_DPKG_INFO_TEST = "dpkginfo_test";
-    static const char *XML_MACOS_INFO_TEST = "plist510_test";
     static const char *XML_RPM_INFO_TEST = "red-def:rpminfo_test";
-    static const char *XML_FILE_TEST = "file_test";
-    static const char *XML_REGISTRY_TEST = "registry_test";
-    static const char *XML_PLIST_TEST = "plist_test";
-    static const char *XML_UNAME_TEST = "uname_test";
-    static const char *XML_FAMILY_TEST = "family_test";
     static const char *XML_ID = "id";
     static const char *XML_LINUX_STATE = "linux-def:state";
-    static const char *XML_MACOS_STATE = "plist510_state";
-    static const char *XML_UNAME_STATE = "uname_state";
     static const char *XML_STATE = "state";
     static const char *XML_RPM_STATE = "red-def:state";
     static const char *XML_STATE_REF = "state_ref";
-    static const char *XML_REGISTRY_STATE = "registry_state";
     static const char *XML_STATES = "states";
     static const char *XML_DPKG_LINUX_INFO_STATE = "linux-def:dpkginfo_state";
     static const char *XML_DPKG_INFO_STATE = "dpkginfo_state";
@@ -1137,7 +1270,6 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_EVR = "evr";
     static const char *XML_RPM_DEF_EVR = "red-def:evr";
     static const char *XML_RPM_DEF_VERSION = "red-def:version";
-    static const char *XML_VALUE = "value";
     static const char *XML_RPM_DEF_SIGN = "red-def:signature_keyid";
     static const char *XML_OPERATION = "operation";
     static const char *XML_DATATYPE = "datatype";
@@ -1146,25 +1278,25 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_OVAL_SCHEMA_VERSION = "oval:schema_version";
     static const char *XML_OVAL_TIMESTAMP = "oval:timestamp";
     static const char *XML_ADVIDSORY = "advisory";
+    static const char *XML_CVE = "cve";
+    static const char *XML_CVSS2 = "cvss2";
+    static const char *XML_CVSS3 = "cvss3";
+    static const char *XML_HREF = "href";
+    static const char *XML_IMPACT = "impact";
+    static const char *XML_PUBLIC = "public";
     static const char *XML_SEVERITY = "severity";
     static const char *XML_PUBLIC_DATE = "public_date";
     static const char *XML_ISSUED = "issued";
     static const char *XML_UPDATED = "updated";
+    static const char *XML_CWE = "cwe";
     static const char *XML_DESCRIPTION = "description";
-    static const char *XML_OVAL_DEF_DESCRIPTION = "oval-def:description";
     static const char *XML_DATE = "date";
     static const char *XML_DATES = "dates";
     static const char *XML_OVAL_DEF_DATES = "oval-def:dates";
     static const char *XML_RHEL_CHECK = "Red Hat Enterprise Linux ";
     static const char *XML_DEBIAN = "debian";
-    static const char *XML_EXTENDED_DEFINITION = "extend_definition";
     static const char *XML_OVAL_REPOSITORY = "oval_repository";
     static const char *XML_OVAL_DEF_OV_REPO = "oval-def:oval_repository";
-    static const char *XML_SUBMITTED = "submitted";
-    static const char *XML_OVAL_DEF_SUBMITTED = "oval-def:submitted";
-    static const char *XML_STATUS_CHANGE = "status_change";
-    static const char *XML_OVAL_DEF_STATUS_CHANGE = "oval-def:status_change";
-    static const char *XML_ACCEPTED = "ACCEPTED";
 
     for (i = 0; node[i]; i++) {
         chld_node = NULL;
@@ -1175,10 +1307,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
 
         if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_STATE)) ||
             (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_DPKG_INFO_STATE))       ||
-            (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_STATE))        ||
-            (dist == DIS_MACOS && (!strcmp(node[i]->element, XML_MACOS_STATE)            ||
-                                   !strcmp(node[i]->element, XML_UNAME_STATE)))          ||
-            (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_REGISTRY_STATE))) {
+            (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_STATE))) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -1197,12 +1326,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             }
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_TEST)) ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_DPKG_INFO_TEST))       ||
-                   (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_TEST))        ||
-                   (dist == DIS_MACOS && (!strcmp(node[i]->element, XML_MACOS_INFO_TEST)       ||
-                                          !strcmp(node[i]->element, XML_PLIST_TEST)            ||
-                                          !strcmp(node[i]->element, XML_FAMILY_TEST)           ||
-                                          !strcmp(node[i]->element, XML_UNAME_TEST)))          ||
-                   (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_REGISTRY_TEST))) {
+                   (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_INFO_TEST))) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -1221,28 +1345,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, update, VU_PACKG) == OS_INVALID) {
                 goto end;
             }
-        } else if ((dist == DIS_WINDOWS || dist == DIS_MACOS) && !strcmp(node[i]->element, XML_FILE_TEST)) {
-            if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
-                goto invalid_elem;
-            }
-            file_test *filet;
-            os_calloc(1, sizeof(file_test), filet);
-            filet->state = NULL;
-            filet->second_state = NULL;
-            filet->prev = parsed_oval->file_tests;
-            parsed_oval->file_tests = filet;
-
-            for (j = 0; node[i]->attributes[j]; j++) {
-                if (!strcmp(node[i]->attributes[j], XML_ID)) {
-                    os_strdup(node[i]->values[j], parsed_oval->file_tests->id);
-                }
-            }
-            if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, update, VU_FILE_TEST) == OS_INVALID) {
-                goto end;
-            }
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR))                        ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_EVR))                                  ||
-                   ((dist == DIS_WINDOWS || dist == DIS_MACOS) && !strcmp(node[i]->element, XML_VALUE))        ||
                    (dist == DIS_REDHAT && (!strcmp(node[i]->element, XML_RPM_DEF_EVR)                          ||
                    !strcmp(node[i]->element, XML_RPM_DEF_VERSION)                                              ||
                    !strcmp(node[i]->element, XML_RPM_DEF_SIGN)))) {
@@ -1261,7 +1365,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             }
         } else if ((condition == VU_PACKG) &&
                    ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_STATE))                                        ||
-                   ((dist == DIS_DEBIAN || dist == DIS_WINDOWS || dist == DIS_MACOS) && !strcmp(node[i]->element, XML_STATE)) ||
+                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_STATE)) ||
                    (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_STATE)))) {
             // Windows oval has multi-state tests
             for (j = 0; node[i]->attributes[j]; j++) {
@@ -1271,26 +1375,16 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     } else if (!parsed_oval->info_tests->second_state) {
                         os_strdup(node[i]->values[j], parsed_oval->info_tests->second_state);
                     }
-
                 }
             }
-        } else if (condition == VU_FILE_TEST && dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_STATE)) {
-            for (j = 0; node[i]->attributes[j]; j++) {
-                if (!strcmp(node[i]->attributes[j], XML_STATE_REF)) {
-                    if (!parsed_oval->file_tests->state) {
-                        os_strdup(node[i]->values[j], parsed_oval->file_tests->state);
-                    } else if (!parsed_oval->file_tests->second_state) {
-                        os_strdup(node[i]->values[j], parsed_oval->file_tests->second_state);
-                    }
-                }
-            }
-        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_DEFINITION)) || !strcmp(node[i]->element, XML_DEFINITION)) {
+        } else if (!strcmp(node[i]->element, XML_DEFINITION)) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_CLASS)) {
-                    if (!strcmp(node[i]->values[j], XML_VULNERABILITY) || !strcmp(node[i]->values[j], XML_PATH)) {
+                    char is_patch = !strcmp(node[i]->values[j], XML_PATH);
+                    if (!strcmp(node[i]->values[j], XML_VULNERABILITY) || is_patch) {
                         vulnerability *vuln;
                         info_cve *cves;
                         os_calloc(1, sizeof(vulnerability), vuln);
@@ -1308,6 +1402,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         cves->published = NULL;
                         cves->updated = NULL;
                         cves->reference = NULL;
+                        cves->cvss2 = NULL;
+                        cves->cvss3 = NULL;
                         cves->prev = parsed_oval->info_cves;
 
                         parsed_oval->vulnerabilities = vuln;
@@ -1316,10 +1412,19 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                             retval = OS_INVALID;
                             goto end;
                         }
+
+                        if (is_patch) {
+                            patch *p;
+                            os_calloc(1, sizeof(patch), p);
+                            p->patch_id = &cves->cveid;
+                            p->cve_ref = NULL;
+                            p->prev = parsed_oval->patches;
+                            parsed_oval->patches = p;
+                        }
                     }
                 }
             }
-        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_REFERENCE)) || !strcmp(node[i]->element, XML_REFERENCE)) {
+        } else if (!strcmp(node[i]->element, XML_REFERENCE)) {
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!parsed_oval->info_cves->reference && !strcmp(node[i]->attributes[j], XML_REF_URL)) {
                     os_strdup(node[i]->values[j], parsed_oval->info_cves->reference);
@@ -1332,28 +1437,9 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
             }
-        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_TITLE)) || !strcmp(node[i]->element, XML_TITLE)) {
-                char *found, *end;
+        } else if (!strcmp(node[i]->element, XML_TITLE)) {
                 os_strdup(node[i]->content, parsed_oval->info_cves->title);
-                if (dist != DIS_MACOS) {
-                    if ((dist != DIS_REDHAT && (found = strstr(node[i]->content, "CVE-"))) ||
-                        (dist == DIS_REDHAT && (found = strstr(node[i]->content, "RHSA-")))) {
-
-                        if (end = strchr(found, ' '), end) {
-                            if (*(end - 1) == ':') {
-                                end--;
-                            }
-                            *end = '\0';
-                        }
-                        os_strdup(found, parsed_oval->info_cves->cveid);
-                        os_strdup(found, parsed_oval->vulnerabilities->cve_id);
-
-                        continue;
-                    }
-                    mterror(WM_VULNDETECTOR_LOGTAG, VU_CVE_ID_FETCH_ERROR, node[i]->content);
-                    goto end;
-                }
-        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_CRITERIA)) || !strcmp(node[i]->element, XML_CRITERIA)) {
+        } else if (!strcmp(node[i]->element, XML_CRITERIA)) {
             if (!node[i]->attributes) {
                 if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                     goto invalid_elem;
@@ -1415,49 +1501,32 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
             }
-        } else if (!strcmp(node[i]->element, XML_EXTENDED_DEFINITION)) {
-            if (dist == DIS_WINDOWS) {
-                for (j = 0; node[i]->attributes[j]; j++) {
-                    if (!strcmp(node[i]->attributes[j], XML_COMMENT)) {
-                        if (strstr(node[i]->values[j], install_check) &&
-                            strstr(node[i]->values[j], vu_dist_ext[DIS_WINDOWS])) {
-                            if (strstr(node[i]->values[j], dist_name)) {
-                                check = 1;
-                                retval = VU_TRUE;
-                                break;
-                            } else {
-                                if (condition == VU_AND) {
-                                    retval = VU_FALSE;
-                                    goto end;
-                                } else if (condition == VU_OR && !check) {
-                                    retval = VU_FALSE;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_CRITERION)) || !strcmp(node[i]->element, XML_CRITERION)) {
+        } else if (!strcmp(node[i]->element, XML_CRITERION)) {
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_TEST_REF)) {
                     static const char pending_state[] = "tst:10\0";
-                    vulnerability *vuln;
 
                     if (parsed_oval->vulnerabilities->state_id) {
-                        os_calloc(1, sizeof(vulnerability), vuln);
-                        os_strdup(parsed_oval->vulnerabilities->cve_id, vuln->cve_id);
-                        vuln->prev = parsed_oval->vulnerabilities;
-                        vuln->state_id = NULL;
-                        vuln->second_state_id = NULL;
-                        vuln->package_name = NULL;
-                        parsed_oval->vulnerabilities = vuln;
+                        if (double_condition != 2) {
+                            os_calloc(1, sizeof(vulnerability), vuln);
+                            os_strdup(parsed_oval->vulnerabilities->cve_id, vuln->cve_id);
+                            vuln->prev = parsed_oval->vulnerabilities;
+                            vuln->state_id = NULL;
+                            vuln->second_state_id = NULL;
+                            vuln->package_name = NULL;
+                            parsed_oval->vulnerabilities = vuln;
 
-                        if (strstr(node[i]->values[j], pending_state)) {
-                            vuln->pending = 1;
+                            if (strstr(node[i]->values[j], pending_state)) {
+                                vuln->pending = 1;
+                            } else {
+                                vuln->pending = 0;
+                            }
+                            os_strdup(node[i]->values[j], vuln->state_id);
                         } else {
-                            vuln->pending = 0;
+                            // It is a double condition
+                            os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->second_state_id);
+                            double_condition = 0;
                         }
-                        os_strdup(node[i]->values[j], vuln->state_id);
                     } else {
                         if (strstr(node[i]->values[j], pending_state)) {
                             parsed_oval->vulnerabilities->pending = 1;
@@ -1466,20 +1535,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         }
                         os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->state_id);
                     }
-
-                    // Check if it is a double condition
-                    if (and_condition == 1 && (vuln = parsed_oval->vulnerabilities)  &&
-                        vuln->prev && !strcmp(vuln->cve_id, vuln->prev->cve_id)      &&
-                        vuln->prev->package_name && vuln->package_name               &&
-                        !strcmp(vuln->package_name, vuln->prev->package_name)) {
-                        vuln->prev->second_state_id = vuln->state_id;
-                        parsed_oval->vulnerabilities = vuln->prev;
-                        free(vuln->cve_id);
-                        free(vuln->package_name);
-                        free(vuln);
-                        and_condition = 0;
-                    }
                 } else if (!strcmp(node[i]->attributes[j], XML_COMMENT)) {
+                    char success = 0;
                     if (dist == DIS_REDHAT && (strstr(node[i]->values[j], install_check)) &&
                         (found = strstr(node[i]->values[j], XML_RHEL_CHECK))) {
                         int ver;
@@ -1495,8 +1552,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         }
                     }
 
+                    // If the package of the condition has been extracted, we are checking another condition
                     if (parsed_oval->vulnerabilities->package_name) {
-                        vulnerability *vuln;
                         os_calloc(1, sizeof(vulnerability), vuln);
                         os_strdup(parsed_oval->vulnerabilities->cve_id, vuln->cve_id);
                         vuln->prev = parsed_oval->vulnerabilities;
@@ -1506,79 +1563,42 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         parsed_oval->vulnerabilities = vuln;
                     }
 
-                    if (dist == DIS_UBUNTU && (found = strstr(node[i]->values[j], "'"))) {
-                        char *base = ++found;
-                        if (found = strstr(found, "'"), found) {
-                            *found = '\0';
-                            os_strdup(base, parsed_oval->vulnerabilities->package_name);
-                        }
-                    } else if (dist == DIS_DEBIAN && (found = strstr(node[i]->values[j], " DPKG is earlier than"))) {
-                        *found = '\0';
-                        os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
-                    } else if (dist == DIS_REDHAT && (found = strstr(node[i]->values[j], " "))) {
-                        *found = '\0';
-                        os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
-                    } else if (dist == DIS_WINDOWS || dist == DIS_MACOS) {
-                        char match;
-                        int k;
-                        int size;
-                        vulnerability *vuln;
-
-                        if (found = strstr(node[i]->values[j], check_if), found) {
-                            size = strlen(check_if);
-                            found += size;
-                        } else if (found = strstr(node[i]->values[j], check_that), found) {
-                            size = strlen(check_that);
-                            found += size;
-                        } else {
-                            found = node[i]->values[j];
-                        }
-
-                        if (!reg_packages) {
-                            if (reg_packages = wm_vulnerability_set_packages_patterns(), !reg_packages) {
-                                return OS_INVALID;
-                            }
-                        }
-
-                        for (k = 0, match = 0; reg_packages[k].patterns; k++) {
-                            if (OSRegex_Execute(found, &reg_packages[k])) {
-                                match = 1;
-                                break;
-                            }
-                        }
-                        if (!match) {
-                            mterror(WM_VULNDETECTOR_LOGTAG, VU_PACKAGE_RECOG_ERROR, node[i]->values[j]);
-                            return OS_INVALID;
-                        } else if (*reg_packages[k].sub_strings) {
-                            os_strdup(*reg_packages[k].sub_strings, parsed_oval->vulnerabilities->package_name);
-                            OSRegex_FreeSubStrings(&reg_packages[k]);
-
-                            // Check if it is a double condition
-                            if (!and_condition && (vuln = parsed_oval->vulnerabilities) && vuln->prev &&
-                                !strcmp(vuln->cve_id, vuln->prev->cve_id) &&
-                                !strcmp(vuln->package_name, vuln->prev->package_name)) {
-                                if (vuln->state_id) {
-                                    vuln->prev->second_state_id = vuln->state_id;
-                                    parsed_oval->vulnerabilities = vuln->prev;
-                                    free(vuln->cve_id);
-                                    free(vuln->package_name);
-                                    free(vuln);
-                                    and_condition = 0;
+                    switch (dist) {
+                        case DIS_UBUNTU:
+                            if (found = strstr(node[i]->values[j], "'"), found) {
+                                char *base = ++found;
+                                if (found = strstr(found, "'"), found) {
+                                    *found = '\0';
+                                    os_strdup(base, parsed_oval->vulnerabilities->package_name);
+                                    success = 1;
                                 }
                             }
-                        } else {
-                            // Firmware check skipped
-                        }
-                    } else {
+                        break;
+                        case DIS_DEBIAN:
+                            if (found = strstr(node[i]->values[j], " DPKG is earlier than"), found) {
+                               *found = '\0';
+                               os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
+                               success = 1;
+                            }
+                        break;
+                        case DIS_REDHAT:
+                            if (found = strstr(node[i]->values[j], " "), found) {
+                                *found = '\0';
+                                os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
+                                success = 1;
+                            }
+                        break;
+                        default:
+                        break;
+                    }
+
+                    if (!success) {
                         mterror(WM_VULNDETECTOR_LOGTAG, VU_PACKAGE_NAME_ERROR);
                         goto end;
                     }
                 }
-                if (parsed_oval->vulnerabilities->package_name && condition == VU_AND) {
-                    and_condition = 1;
-                }
             }
-        } else if ((dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_DESCRIPTION)) || !strcmp(node[i]->element, XML_DESCRIPTION)) {
+        } else if (!strcmp(node[i]->element, XML_DESCRIPTION)) {
             os_strdup(node[i]->content, parsed_oval->info_cves->description);
         } else if (!strcmp(node[i]->element, XML_OVAL_PRODUCT_VERSION)) {
             os_strdup(node[i]->content, parsed_oval->metadata.product_version);
@@ -1593,6 +1613,54 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             }
         } else if (!strcmp(node[i]->element, XML_OVAL_SCHEMA_VERSION)) {
             os_strdup(node[i]->content, parsed_oval->metadata.schema_version);
+        } else if (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_CVE)) {
+            if (parsed_oval->patches) {
+                patch *pat = parsed_oval->patches;
+                info_cve *inf;
+                os_calloc(1, sizeof(info_cve), inf);
+                inf->prev = pat->cve_ref;
+                pat->cve_ref = inf;
+                os_strdup(node[i]->content, inf->cveid);
+                inf->title = NULL;
+                inf->severity = NULL;
+                inf->published = NULL;
+                inf->updated = NULL;
+                inf->reference = NULL;
+                inf->cvss2 = NULL;
+                inf->cvss3 = NULL;
+                inf->description = NULL;
+                if (node[i]->attributes) {
+                    for (j = 0; node[i]->attributes[j]; j++) {
+                        if (!strcmp(node[i]->attributes[j], XML_CVSS2)) {
+                            os_strdup(node[i]->values[j], inf->cvss2);
+                        } else if (!strcmp(node[i]->attributes[j], XML_CVSS3)) {
+                            os_strdup(node[i]->values[j], inf->cvss3);
+                        } else if (!strcmp(node[i]->attributes[j], XML_HREF)) {
+                            os_strdup(node[i]->values[j], inf->reference);
+                        } else if (!strcmp(node[i]->attributes[j], XML_IMPACT)) {
+                            *node[i]->values[j] = toupper(*node[i]->values[j]);
+                            if (!strcmp(node[i]->values[j], VU_MODERATE)) {
+                                os_strdup(VU_MEDIUM, inf->severity);
+                            } else if (!strcmp(node[i]->values[j], VU_IMPORTANT)) {
+                                os_strdup(VU_HIGH, inf->severity);
+                            } else {
+                                os_strdup(node[i]->values[j], inf->severity);
+                            }
+                        } else if (!strcmp(node[i]->attributes[j], XML_PUBLIC)) {
+                            if (strlen(node[i]->values[j]) > 7) {
+                                os_calloc(1, 11, inf->published);
+                                snprintf(inf->published, 11, "%.4s-%.2s-%.2s", node[i]->values[j], node[i]->values[j] + 4, node[i]->values[j] + 6);
+                            }
+                        } else if (strcmp(node[i]->attributes[j], XML_CWE)) {
+                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNEXP_VALUE, node[i]->attributes[j]);
+                        }
+                    }
+                }
+
+                if (!inf->severity) {
+                    os_strdup("Unknow", inf->severity);
+                }
+            }
         } else if (!strcmp(node[i]->element, XML_SEVERITY)) {
             if (*node[i]->content != '\0') {
                 if (!strcmp(node[i]->content, VU_MODERATE)) {
@@ -1613,20 +1681,9 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
             }
-        } else if ((dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_STATUS_CHANGE)) ||
-                   (dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_STATUS_CHANGE))) {
-            if (node[i]->attributes && !strcmp(node[i]->content, XML_ACCEPTED)) {
-                for (j = 0; node[i]->attributes[j]; j++) {
-                    if (!strcmp(node[i]->attributes[j], XML_DATE)) {
-                        os_strdup(node[i]->values[j], parsed_oval->info_cves->updated);
-                    }
-                }
-            }
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_PUBLIC_DATE)) ||
-                   (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_ISSUED))      ||
-                   (dist == DIS_WINDOWS && !strcmp(node[i]->element, XML_SUBMITTED))  ||
-                   (dist == DIS_MACOS && !strcmp(node[i]->element, XML_OVAL_DEF_SUBMITTED))) {
-                       if (dist == DIS_REDHAT || dist == DIS_WINDOWS || dist == DIS_MACOS) {
+                   (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_ISSUED))) {
+                       if (dist == DIS_REDHAT) {
                            if (node[i]->attributes) {
                                for (j = 0; node[i]->attributes[j]; j++) {
                                    if (!strcmp(node[i]->attributes[j], XML_DATE)) {
@@ -1634,7 +1691,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                                    }
                                }
                            }
-                       } else if (dist == DIS_UBUNTU) {
+                       } else {
                            os_strdup(node[i]->content, parsed_oval->info_cves->published);
                        }
         } else if (!strcmp(node[i]->element, XML_OVAL_DEFINITIONS)  ||
@@ -1710,10 +1767,11 @@ int wm_vulnerability_update_oval(update_node *update) {
     parsed_oval.metadata.product_version = NULL;
     parsed_oval.metadata.schema_version = NULL;
     parsed_oval.metadata.timestamp = NULL;
+    parsed_oval.patches = NULL;
     os_strdup(OS_VERSION, parsed_oval.OS);
 
     // Reduces a level of recurrence
-    if (chld_node = OS_GetElementsbyNode(&xml, *node), !node) {
+    if (chld_node = OS_GetElementsbyNode(&xml, *node), !chld_node) {
         goto free_mem;
     }
 
@@ -1728,7 +1786,7 @@ int wm_vulnerability_update_oval(update_node *update) {
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_START_REFRESH_DB, OS_VERSION);
 
-    if (wm_vulnerability_detector_insert(&parsed_oval, update->dist_ref)) {
+    if (wm_vulnerability_detector_insert(&parsed_oval)) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_REFRESH_DB_ERROR, OS_VERSION);
         goto free_mem;
     }
@@ -1772,6 +1830,7 @@ int wm_vulnerability_detector_socketconnect(char *url, in_port_t port) {
 		addr_it = (struct sockaddr_in *) hinfo_it->ai_addr;
 		if (addr_it->sin_addr.s_addr) {
 			strncpy(ip_addr , inet_ntoa(addr_it->sin_addr), sizeof(ip_addr));
+            ip_addr[sizeof(ip_addr) - 1] = '\0';
 		}
 	}
 
@@ -1785,7 +1844,6 @@ int wm_vulnerability_detector_socketconnect(char *url, in_port_t port) {
 	addr.sin_port = htons(port);
 	addr.sin_family = AF_INET;
 	sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof(int));
 
 	if(sock < 0 || connect(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
         mterror(WM_VULNDETECTOR_LOGTAG, "Cannot connect to %s:%i.", url, (int)port);
@@ -1793,6 +1851,7 @@ int wm_vulnerability_detector_socketconnect(char *url, in_port_t port) {
         return OS_INVALID;
 	}
 
+    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof(int));
 	return sock;
 }
 
@@ -1844,12 +1903,6 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
         } else if (!strcmp(update->dist, vu_dist_tag[DIS_REDHAT])) {
             snprintf(repo_file, OS_SIZE_2048, REDHAT_OVAL, update->version);
             snprintf(repo, OS_SIZE_2048, "%s", REDHAT_REPO);
-        } else if (!strcmp(update->dist, vu_dist_tag[DIS_WINDOWS])) {
-            snprintf(repo_file, OS_SIZE_2048, WINDOWS_OVAL, update->version);
-            snprintf(repo, OS_SIZE_2048, "%s", CISECURITY_REPO);
-        } else if (!strcmp(update->dist, vu_dist_tag[DIS_MACOS])) {
-            snprintf(repo_file, OS_SIZE_2048, MACOSX_OVAL, update->version);
-            snprintf(repo, OS_SIZE_2048, "%s", CISECURITY_REPO);
         } else {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
             return OS_INVALID;
@@ -2030,7 +2083,7 @@ free_mem:
     if (fp) {
         fclose(fp);
     }
-    if (sock) {
+    if (sock >= 0) {
         close(sock);
     }
     if (ssl) {
@@ -2063,24 +2116,25 @@ int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *
 
 
 int wm_vulnerability_detector_updatedb(update_node **updates) {
+        // Ubuntu
     if (wm_vulnerability_run_update(updates[CVE_XENIAL],   vu_dist_tag[DIS_XENIAL],   vu_dist_ext[DIS_XENIAL])   ||
         wm_vulnerability_run_update(updates[CVE_TRUSTY],   vu_dist_tag[DIS_TRUSTY],   vu_dist_ext[DIS_TRUSTY])   ||
         wm_vulnerability_run_update(updates[CVE_XENIAL],   vu_dist_tag[DIS_PRECISE],  vu_dist_ext[DIS_PRECISE])  ||
+        // Debian
         wm_vulnerability_run_update(updates[CVE_STRETCH],  vu_dist_tag[DIS_STRETCH],  vu_dist_ext[DIS_STRETCH])  ||
         wm_vulnerability_run_update(updates[CVE_JESSIE],   vu_dist_tag[DIS_JESSIE],   vu_dist_ext[DIS_JESSIE])   ||
         wm_vulnerability_run_update(updates[CVE_WHEEZY],   vu_dist_tag[DIS_WHEEZY],   vu_dist_ext[DIS_WHEEZY])   ||
+        // RedHat
         wm_vulnerability_run_update(updates[CVE_RHEL5],    vu_dist_tag[DIS_RHEL5],    vu_dist_ext[DIS_RHEL5])    ||
         wm_vulnerability_run_update(updates[CVE_RHEL6],    vu_dist_tag[DIS_RHEL6],    vu_dist_ext[DIS_RHEL6])    ||
-        wm_vulnerability_run_update(updates[CVE_RHEL7],    vu_dist_tag[DIS_RHEL7],    vu_dist_ext[DIS_RHEL7])    ||
-        wm_vulnerability_run_update(updates[CVE_WS2016],   vu_dist_tag[DIS_WS2016],   vu_dist_ext[DIS_WS2016])   ||
-        wm_vulnerability_run_update(updates[CVE_MACOSX],   vu_dist_tag[DIS_MACOSX],   vu_dist_ext[DIS_MACOSX])) {
+        wm_vulnerability_run_update(updates[CVE_RHEL7],    vu_dist_tag[DIS_RHEL7],    vu_dist_ext[DIS_RHEL7])) {
         return OS_INVALID;
     }
 
     return 0;
 }
 
-int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_trig, unsigned long ignore_time) {
+int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agents_triag, unsigned long ignore_time) {
     int sock = 0;
     unsigned int i;
     int size;
@@ -2096,7 +2150,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     last_scan *scan;
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
-    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 1; i++) {
+    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 0; i++) {
         mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK_PATH, i);
         sleep(i);
     }
@@ -2143,7 +2197,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     obj = NULL;
 
     // Check to see if the scan has already been reported
-    if (scan = OSHash_Get(agents_trig, agent->agent_id), scan) {
+    if (scan = OSHash_Get(agents_triag, agent->agent_id), scan) {
             if ((scan->last_scan_time + (time_t) ignore_time) < time(NULL)) {
                 scan->last_scan_time = time(NULL);
                 request = VU_SOFTWARE_FULL_REQ;
@@ -2160,7 +2214,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
         os_calloc(1, sizeof(last_scan), scan);
         os_strdup(scan_id, scan->last_scan_id);
         scan->last_scan_time = time(NULL);
-        OSHash_Add(agents_trig, strdup(agent->agent_id), scan);
+        OSHash_Add(agents_triag, strdup(agent->agent_id), scan);
         request = VU_SOFTWARE_FULL_REQ; // Check all at the first time
     }
 
@@ -2190,17 +2244,21 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
             if (obj) {
                 cJSON *new_obj;
                 cJSON *data;
-                if (new_obj = cJSON_Parse(json_str), !new_obj || !cJSON_IsObject(new_obj)) {
+                if (new_obj = cJSON_Parse(json_str), !new_obj) {
+                    retval = OS_INVALID;
+                    goto end;
+                } else if (!cJSON_IsObject(new_obj)) {
+                    free(new_obj);
                     retval = OS_INVALID;
                     goto end;
                 }
                 data = cJSON_GetObjectItem(new_obj, "data");
                 if (data) {
                     cJSON_AddItemToArray(package_list, data->child);
+                    free(data->string);
+                    free(data);
                 }
                 free(new_obj);
-                free(data->string);
-                free(data);
             } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
                 package_list = cJSON_GetObjectItem(obj, "data");
                 if (!package_list) {
@@ -2237,21 +2295,32 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     sock = 0;
 
     if (package_list) {
+        cJSON *name;
+        cJSON *version;
+        cJSON *architecture;
         sqlite3_exec(db, vu_queries[BEGIN_T], NULL, NULL, NULL);
         for (package_list = package_list->child; package_list; package_list = package_list->next) {
             if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_AGENTS], -1, &stmt, NULL) != SQLITE_OK) {
-                return wm_vulnerability_detector_sql_error(db);
-            }
-
-            sqlite3_bind_text(stmt, 1, agent->agent_id, -1, NULL);
-            sqlite3_bind_text(stmt, 2, cJSON_GetObjectItem(package_list, "name")->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 3, cJSON_GetObjectItem(package_list, "version")->valuestring, -1, NULL);
-            sqlite3_bind_text(stmt, 4, cJSON_GetObjectItem(package_list, "architecture")->valuestring, -1, NULL);
-
-            if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
                 sqlite3_finalize(stmt);
+                close(sock);
                 return wm_vulnerability_detector_sql_error(db);
             }
+            if ((name = cJSON_GetObjectItem(package_list, "name")) &&
+                (version = cJSON_GetObjectItem(package_list, "version")) &&
+                (architecture = cJSON_GetObjectItem(package_list, "architecture"))) {
+
+                sqlite3_bind_text(stmt, 1, agent->agent_id, -1, NULL);
+                sqlite3_bind_text(stmt, 2, name->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 3, version->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 4, architecture->valuestring, -1, NULL);
+
+                if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+                    sqlite3_finalize(stmt);
+                    close(sock);
+                    return wm_vulnerability_detector_sql_error(db);
+                }
+            }
+
             sqlite3_finalize(stmt);
         }
         sqlite3_exec(db, vu_queries[END_T], NULL, NULL, NULL);
@@ -2323,7 +2392,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
         }
     }
 
-    if (vulnerability_detector->agents_trig = OSHash_Create(), !vulnerability_detector->agents_trig) {
+    if (vulnerability_detector->agents_triag = OSHash_Create(), !vulnerability_detector->agents_triag) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_CREATE_HASH_ERRO);
         pthread_exit(NULL);
     }
@@ -2341,7 +2410,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
             if (wm_vunlnerability_detector_set_agents_info(&vulnerability_detector->agents_software, updates)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
             } else {
-                if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_trig, vulnerability_detector->ignore_time)) {
+                if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_triag, vulnerability_detector->ignore_time)) {
                     mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_CHECK_ERR);
                 } else {
                     mtinfo(WM_VULNDETECTOR_LOGTAG, VU_END_SCAN);
@@ -2432,8 +2501,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
     *agents_software = agents;
     agents->prev = NULL;
     size = snprintf(agent_info, OS_MAXSTR, "%s", uname);
-    if (buffer = strchr(agent_info, '|'), buffer) {
-        uname_p = strchr(++buffer, '|');
+    if (buffer = strchr(agent_info, '|'), buffer && (uname_p = strchr(++buffer, '|'), uname_p)) {
         *uname_p = '\0';
     } else {
         free(uname);
@@ -2484,7 +2552,6 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
             // Agent connected or disconnected
             if ((manager_found && ((size = snprintf(agent_info, OS_MAXSTR, "%s", m_uname)) > 0)) ||
                 ((size = getline(&buffer, &max, fp)) > 0)) {
-                char *base = buffer;
                 buffer[size] = '\0';
                 if (buffer = strchr(buffer, '['), buffer) {
                     char *end;
@@ -2492,14 +2559,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
 
                     if (end = strchr(agent_info, ']'), end) {
                         int dist_error = -1;
-                        if (strstr(base, vu_dist_ext[DIS_WINDOWS])) {
-                            if (strstr(base, vu_dist_ext[DIS_WS2016])) {
-                                agents->OS = vu_dist_tag[DIS_WS2016];
-                            } else {
-                                buffer = base;
-                                dist_error = DIS_WINDOWS;
-                            }
-                        } else if (strcasestr(buffer, vu_dist_tag[DIS_UBUNTU])) {
+                        if (strcasestr(buffer, vu_dist_tag[DIS_UBUNTU])) {
                             if (strstr(buffer, " 16")) {
                                 agents->OS = vu_dist_tag[DIS_XENIAL];
                             } else if (strstr(buffer, " 14")) {
@@ -2509,6 +2569,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                             } else {
                                 dist_error = DIS_UBUNTU;
                             }
+                            agents->dist = DIS_UBUNTU;
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_DEBIAN])) {
                             if (strstr(buffer, " 7")) {
                                 agents->OS = vu_dist_tag[DIS_WHEEZY];
@@ -2519,6 +2580,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                             } else {
                                 dist_error = DIS_DEBIAN;
                             }
+                            agents->dist = DIS_DEBIAN;
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_REDHAT])) {
                             if (strstr(buffer, " 7")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL7];
@@ -2529,6 +2591,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                             } else {
                                 dist_error = DIS_REDHAT;
                             }
+                            agents->dist = DIS_REDHAT;
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_CENTOS])) {
                             if (strstr(buffer, " 7")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL7];
@@ -2539,6 +2602,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                             } else {
                                 dist_error = DIS_CENTOS;
                             }
+                            agents->dist = DIS_REDHAT;
                         } else { // Operating system not supported in any of its versions
                             dist_error = -2;
                         }
@@ -2561,8 +2625,6 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                                         continue;
                                     }
                                 }
-                            } else {
-
                             }
                         }
                     } else {
@@ -2607,8 +2669,8 @@ void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerabili
     update_node **update;
     int i, j;
 
-    if (vulnerability_detector->agents_trig) {
-        OSHash_Free(vulnerability_detector->agents_trig);
+    if (vulnerability_detector->agents_triag) {
+        OSHash_Free(vulnerability_detector->agents_triag);
     }
 
     for (i = 0, update = vulnerability_detector->updates; i < OS_SUPP_SIZE; i++) {

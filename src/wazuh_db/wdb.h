@@ -37,6 +37,7 @@
 #define WDB_AGENTINFO 3
 #define WDB_GROUPS 4
 #define WDB_SYSCOLLECTOR 5
+#define WDB_NETADDR_IPV4 0
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
@@ -54,6 +55,13 @@ typedef enum wdb_stmt {
     WDB_STMT_PORT_DEL,
     WDB_STMT_PROC_INSERT,
     WDB_STMT_PROC_DEL,
+    WDB_STMT_NETINFO_INSERT,
+    WDB_STMT_ADDR_INSERT,
+    WDB_STMT_ADDR_IPV4_UPDATE,
+    WDB_STMT_ADDR_IPV6_UPDATE,
+    WDB_STMT_NETINFO_DEL,
+    WDB_STMT_ADDR_DEL,
+    WDB_STMT_RESET_COUNT,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -150,7 +158,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
 int wdb_update_agent_name(int id, const char *name);
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name);
+int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_keepalive(int id, long keepalive);
@@ -172,7 +180,7 @@ int wdb_create_agent_db2(const char * agent_id);
 int wdb_fill_metadata(sqlite3 * db);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
-int wdb_remove_agent_db(int id);
+int wdb_remove_agent_db(int id, const char * name);
 
 /* Prepare SQL query with availability waiting */
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
@@ -221,6 +229,21 @@ int wdb_vacuum(sqlite3 *db);
 /* Insert key-value pair into info table */
 int wdb_insert_info(const char *key, const char *value);
 
+// Insert network info tuple. Return 0 on success or -1 on error.
+int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes);
+
+// Save Network info into DB.
+int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes);
+
+// Delete Network info from DB.
+int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
+
+// Insert IPv4/IPv6 interface info tuple. Return 0 on success or -1 on error.
+int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int type, const char * name, const char * address, const char * netmask, const char * broadcast, const char * gateway, const char * dhcp);
+
+// Save IPv4/IPv6 interface info into DB.
+int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int type, const char * name, const char * address, const char * netmask, const char * broadcast, const char * gateway, const char * dhcp);
+
 // Insert OS info tuple. Return 0 on success or -1 on error.
 int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
 
@@ -233,25 +256,25 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 // Save HW info into DB.
 int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free);
 
-// Insert program info tuple. Return 0 on success or -1 on error.
-int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description, const char triggered);
+// Insert package info tuple. Return 0 on success or -1 on error.
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged);
 
-// Save Program info into DB.
-int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description);
+// Save Packages info into DB.
+int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location);
 
-// Update the new Program info with the previous scan.
-int wdb_program_update(wdb_t * wdb, const char * scan_id);
+// Update the new Package info with the previous scan.
+int wdb_package_update(wdb_t * wdb, const char * scan_id);
 
-// Delete Program info about previous scan from DB.
-int wdb_program_delete(wdb_t * wdb, const char * scan_id);
+// Delete Packages info about previous scan from DB.
+int wdb_package_delete(wdb_t * wdb, const char * scan_id);
 
-// Insert program info tuple. Return 0 on success or -1 on error.
+// Insert process info tuple. Return 0 on success or -1 on error.
 int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
 
-// Save Program info into DB.
+// Save Process info into DB.
 int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
 
-// Delete Program info about previous scan from DB.
+// Delete Process info about previous scan from DB.
 int wdb_process_delete(wdb_t * wdb, const char * scan_id);
 
 // Insert port info tuple. Return 0 on success or -1 on error.
@@ -291,11 +314,15 @@ int wdb_parse(char * input, char * output);
 
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
 
+int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output);
+
 int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
-int wdb_parse_programs(wdb_t * wdb, char * input, char * output);
+int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
 

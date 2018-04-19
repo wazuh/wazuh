@@ -16,7 +16,9 @@
 #include "syscheck.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
+#include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
 
 /* Prototypes */
@@ -321,14 +323,16 @@ void start_daemon()
 /* Read file information and return a pointer to the checksum */
 int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 {
-    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, mtime = 0, inode = 0;
+    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
     os_md5 mf_sum;
     os_sha1 sf_sum;
+    os_sha256 sf256_sum;
 
     /* Clean sums */
     strncpy(mf_sum, "xxx", 4);
     strncpy(sf_sum, "xxx", 4);
+    strncpy(sf256_sum, "xxx", 4);
 
     /* Stat the file */
 #ifdef WIN32
@@ -382,6 +386,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
         sha1sum = 0;
     }
 
+
     /* Modification time */
     if (oldsum[6] == '+')
         mtime = 1;
@@ -390,14 +395,24 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
     if (oldsum[7] == '+')
         inode = 1;
 
+    /* sha256 sum */
+    if (oldsum[8] == '+') {
+        sha256sum = 1;
+    } else if (oldsum[8] == 's') {
+        sha256sum = 1;
+    } else if (oldsum[8] == 'n') {
+        sha256sum = 0;
+    }
+
     /* Generate new checksum */
     if (S_ISREG(statbuf.st_mode))
     {
-        if (sha1sum || md5sum) {
+        if (sha1sum || md5sum || sha256sum) {
             /* Generate checksums of the file */
-            if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_BINARY) < 0) {
+            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
                 strncpy(sf_sum, "xxx", 4);
                 strncpy(mf_sum, "xxx", 4);
+                strncpy(sf256_sum, "xxx", 4);
             }
         }
     }
@@ -407,11 +422,12 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
         struct stat statbuf_lnk;
         if (stat(file_name, &statbuf_lnk) == 0) {
             if (S_ISREG(statbuf_lnk.st_mode)) {
-                if (sha1sum || md5sum) {
+                if (sha1sum || md5sum || sha256sum) {
                     /* Generate checksums of the file */
-                    if (OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, OS_BINARY) < 0) {
+                    if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
                         strncpy(sf_sum, "xxx", 4);
                         strncpy(mf_sum, "xxx", 4);
+                        strncpy(sf256_sum, "xxx", 4);
                     }
                 }
             }
@@ -420,18 +436,19 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 #endif
 
     newsum[0] = '\0';
-    newsum[255] = '\0';
-    snprintf(newsum, 255, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld",
-             size == 0 ? 0 : (long)statbuf.st_size,
-             perm == 0 ? 0 : (int)statbuf.st_mode,
-             owner == 0 ? 0 : (int)statbuf.st_uid,
-             group == 0 ? 0 : (int)statbuf.st_gid,
-             md5sum   == 0 ? "xxx" : mf_sum,
-             sha1sum  == 0 ? "xxx" : sf_sum,
-             owner == 0 ? "" : get_user(file_name, statbuf.st_uid),
-             group == 0 ? "" : get_group(statbuf.st_gid),
-             mtime ? (long)statbuf.st_mtime : 0,
-             inode ? (long)statbuf.st_ino : 0);
+    newsum[511] = '\0';
+    snprintf(newsum, 511, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+        size == 0 ? 0 : (long)statbuf.st_size,
+        perm == 0 ? 0 : (int)statbuf.st_mode,
+        owner == 0 ? 0 : (int)statbuf.st_uid,
+        group == 0 ? 0 : (int)statbuf.st_gid,
+        md5sum   == 0 ? "xxx" : mf_sum,
+        sha1sum  == 0 ? "xxx" : sf_sum,
+        owner == 0 ? "" : get_user(file_name, statbuf.st_uid),
+        group == 0 ? "" : get_group(statbuf.st_gid),
+        mtime ? (long)statbuf.st_mtime : 0,
+        inode ? (long)statbuf.st_ino : 0,
+        sha256sum  == 0 ? "xxx" : sf256_sum);
 
     return (0);
 }

@@ -36,7 +36,6 @@
 <rule id="9704" level="2">
   <if_sid>9700</if_sid>
   <match>^Fatal: </match>
-  <options>alert_by_email</options>
   <description>Dovecot Fatal Failure.</description>
 </rule>
 

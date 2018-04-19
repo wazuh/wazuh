@@ -13,6 +13,8 @@
 
 static char * msgsubst(const char * pattern, const char * logmsg, const char * location, time_t timestamp);
 
+int sock_fail_time;
+
 #ifndef WIN32
 
 /* Start the Message Queue. type: WRITE||READ */
@@ -149,7 +151,6 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
     int i;
-    static time_t last_attempt = 0;
     time_t mtime = time(NULL);
     char * _message = msgsubst(pattern, message, locmsg, mtime);
 
@@ -187,14 +188,16 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
             // Connect to socket if disconnected
             if (sockets[i]->socket < 0) {
-                if (mtime = time(NULL), mtime > last_attempt + 300) {
+                if (mtime = time(NULL), mtime > sockets[i]->last_attempt + sock_fail_time) {
                     if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
-                        last_attempt = mtime;
+                        sockets[i]->last_attempt = mtime;
                         merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
                         continue;
                     }
+
+                    mdebug1("Connected to socket '%s' (%s)", sockets[i]->name, sockets[i]->location);
                 } else {
-                    // Return silently
+                    mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, sockets[i]->name);
                     continue;
                 }
             }
@@ -203,23 +206,25 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
             if (__mq_rcode = OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
                 if (__mq_rcode == OS_SOCKTERR) {
-                    if (mtime = time(NULL), mtime > last_attempt + 300) {
+                    if (mtime = time(NULL), mtime > sockets[i]->last_attempt + sock_fail_time) {
                         close(sockets[i]->socket);
 
                         if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
                             merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
-                            last_attempt = mtime;
+                            sockets[i]->last_attempt = mtime;
                             continue;
                         }
+
+                        mdebug1("Connected to socket '%s' (%s)", sockets[i]->name, sockets[i]->location);
 
                         if (OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
                             merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
                             SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
-                            last_attempt = mtime;
+                            sockets[i]->last_attempt = mtime;
                             continue;
                         }
                     } else {
-                        // Return silently
+                        mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, sockets[i]->name);
                         continue;
                     }
 

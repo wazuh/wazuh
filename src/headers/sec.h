@@ -13,6 +13,10 @@
 #include <time.h>
 #include <pthread.h>
 
+typedef enum _crypt_method{
+    W_METH_BLOWFISH,W_METH_AES
+} crypt_method;
+
 typedef struct keystore_flags_t {
     unsigned int rehash_keys:1;     // Flag: rehash keys on adding
     unsigned int save_removed:1;    // Save removed keys into list
@@ -29,11 +33,14 @@ typedef struct _keyentry {
     char *key;
     char *name;
 
+    ino_t inode;
+
     os_ip *ip;
     int sock;
     pthread_mutex_t mutex;
     struct sockaddr_in peer_info;
     FILE *fp;
+    crypt_method crypto_method;
 } keyentry;
 
 /* Key storage */
@@ -131,6 +138,9 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock);
 
 // Delete socket number from keystore
 int OS_DeleteSocket(keystore * keys, int sock);
+
+/* Set the agent crypto method readed from the ossec.conf file */
+void os_set_agent_crypto_method(keystore * keys,const int method);
 
 /** Remote IDs directories and internal definitions */
 #ifndef WIN32

@@ -10,7 +10,7 @@ from wazuh.InputValidator import InputValidator
 from wazuh.database import Connection
 from wazuh.agent import Agent
 from wazuh.configuration import get_file_conf_path, get_agent_conf_from_path
-from os import path, listdir, chmod
+from os import path, listdir, chmod, chown
 from shutil import move, copytree
 from time import time
 from glob import glob
@@ -329,23 +329,7 @@ def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, 
 
     # Data query
     conn.execute(query.format(','.join(db_select_fields)), request)
-
-    non_nested = [{field:tuple_elem for field,tuple_elem \
-            in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
-
-    if 'id' in select_fields:
-        map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
-
-    if 'status' in select_fields:
-        try:
-            map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
-        except KeyError:
-            pass
-
-    # return only the fields requested by the user (saved in select_fields) and not the dependent ones
-    non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
-
-    data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
+    data['items'] = Agent.get_agents_dict(conn, db_select_fields, select_fields)
 
     return data
 
