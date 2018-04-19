@@ -342,6 +342,10 @@ def clean_up(node_name=""):
     :param node_name: Name of the node to clean up
     """
     def remove_directory_contents(rm_path):
+        if not path.exists(rm_path):
+            logging.debug("Nothing to remove in {}.".format(rm_path))
+            return
+
         for f in listdir(rm_path):
             if f == "c-internal.sock":
                 continue
@@ -355,9 +359,12 @@ def clean_up(node_name=""):
                 logging.error("Error removing {}: {}".format(f_path, str(e)))
                 continue
 
-    rm_path = "{}/queue/cluster/{}".format(common.ossec_path, node_name)
-    logging.debug("Removing {}.".format(rm_path))
-    remove_directory_contents(rm_path)
+    try:
+        rm_path = "{}/queue/cluster/{}".format(common.ossec_path, node_name)
+        logging.debug("Removing {}.".format(rm_path))
+        remove_directory_contents(rm_path)
+    except:
+        logging.error("Error cleaning.")
 
 #
 # Agents

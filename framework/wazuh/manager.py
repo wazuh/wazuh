@@ -19,19 +19,27 @@ def status():
     :return: Array of dictionaries (keys: status, daemon).
     """
 
-    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted', 
-                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild', 
-                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd', 
+    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted',
+                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild',
+                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd',
                  'wazuh-clusterd']
 
     data = {}
     for process in processes:
-        process_path = glob("{0}/var/run/{1}-*.pid".format(common.ossec_path, process))
+        data[process] = 'stopped'
 
-        if process_path and exists(process_path[0]):
-            data[process] = 'running'
-        else:
-            data[process] = 'stopped'
+        process_pid_files = glob("{0}/var/run/{1}-*.pid".format(common.ossec_path, process))
+
+        for pid_file in process_pid_files:
+            m = re.match(r'.+\-(\d+)\.pid$', pid_file)
+
+            pid = "NA"
+            if m and m.group(1):
+                pid = m.group(1)
+
+            if exists(pid_file) and exists('/proc/{0}'.format(pid)):
+                data[process] = 'running'
+                break
 
     return data
 

@@ -38,6 +38,7 @@ try:
         from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
         from wazuh.cluster.communication import InternalSocketThread
         from wazuh import configuration as config
+        from wazuh.manager import status
 
     except Exception as e:
         print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -175,6 +176,10 @@ if __name__ == '__main__':
     debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',1,0) or args.d
     set_logging(foreground_mode=args.f, debug_mode=debug_mode)
 
+    # Check if it is already running
+    if status()['wazuh-clusterd'] == 'running':
+        clean_exit(reason="wazuh_clusterd is already running", error=True)
+
     # Foreground/Daemon
     if not args.f:
         res_code = pyDaemon()
@@ -208,7 +213,15 @@ if __name__ == '__main__':
     try:
 
         if cluster_config['node_type'] == "master":
-            master_main(cluster_config)
+
+            try:
+                master_main(cluster_config)
+            except socket.error as e:
+                if e.args[0] == socket.errno.EADDRINUSE:
+                    logging.error("There is another wazuh-clusterd instance running. Please, close it. '{0}'.".format(str(e)))
+                else:
+                    logging.error("{0}".format(str(e)))
+
         elif cluster_config['node_type'] == "client":
             client_main(cluster_config)
         else:
@@ -217,4 +230,4 @@ if __name__ == '__main__':
     except Exception as e:
         if args.d:
             raise
-        clean_exit(reason="Unkown exception: '{0}'".format(str(e)), error=True)
+        clean_exit(reason="Unknown exception: '{0}'".format(str(e)), error=True)

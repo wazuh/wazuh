@@ -219,7 +219,7 @@ class Handler(asyncore.dispatcher_with_send):
 
         with self.lock:
             self.box[counter] = response
-            
+
         self.push(counter, command, payload)
         response = response.read()
 
@@ -264,7 +264,7 @@ class Handler(asyncore.dispatcher_with_send):
 
         self.handle_close()
         logging.error("[Transport] err {}".format(v))
-        
+
 
 
     def handle_close(self):
@@ -438,7 +438,13 @@ class Server(asyncore.dispatcher):
         pair = self.accept()
         if pair is not None:
             sock, addr = pair
-            logging.debug("[Transport-S] Incoming connection from {0}.".format(repr(addr)))
+            logging.info("[Transport-S] Incoming connection from {0}.".format(repr(addr)))
+
+            if self.find_client_by_ip(addr[0]):
+                sock.close()
+                logging.error("[Transport-S] Incoming connection from {0} rejected: Client already connected.".format(repr(addr)))
+                return
+
             # addr is a tuple of form (ip, port)
             handler = self.handle_type(sock, self, self.map, addr[0])
 
@@ -453,6 +459,16 @@ class Server(asyncore.dispatcher):
 
         self.handle_close()
         logging.error("[Transport-S] err {}".format(v))
+
+
+    def find_client_by_ip(self, client_ip):
+
+        with self._clients_lock:
+            for client in self._clients:
+                if self._clients[client]['info']['ip'] == client_ip:
+                    return client
+
+        return None
 
 
     def add_client(self, data, ip, handler):
