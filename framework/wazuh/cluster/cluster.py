@@ -264,7 +264,10 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
     if is_agent_info or is_agent_groups:
         if whoami =='master':
-            mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
+            try:
+                mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
+            except ValueError as e:
+                mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S')
 
             if path.isfile(fullpath):
 
