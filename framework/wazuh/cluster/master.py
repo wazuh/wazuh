@@ -43,7 +43,7 @@ class MasterManagerHandler(ServerHandler):
         elif command == 'sync_ai_c_mp':
             return 'ack', str(self.manager.get_client_status(client_id=self.name, key='sync_agentinfo_free'))
         elif command == 'sync_i_c_m':  # Client syncs integrity
-            pci_thread = ProcessClientIntegrity(manager_handler=self, filename=data, stopper=self.stopper)
+            pci_thread = ProcessClientIntegrity(manager=self.manager, manager_handler=self, filename=data, stopper=self.stopper)
             pci_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker(command, pci_thread, data)
@@ -162,7 +162,8 @@ class MasterManagerHandler(ServerHandler):
 
 
     def process_integrity_from_client(self, client_name, data_received, tag=None):
-        sync_result = False
+        ko_files = False
+        data_for_client = None
 
         if not tag:
             tag = "[Master] [Sync process m->c]"
@@ -197,7 +198,9 @@ class MasterManagerHandler(ServerHandler):
         # Step 3: KO files
         if not client_files_ko['shared'] and not client_files_ko['missing'] and not client_files_ko['extra']:
             logging.info("{0} [{1}] [STEP 2]: There are no KO files for client.".format(tag, client_name))
-            processed_response = self.process_response(self.manager.send_request(client_name, 'sync_m_c_ok'))
+
+            ko_files = False
+            data_for_client = None
 
         else:
             # Compress data: master files (only KO shared and missing)
@@ -210,18 +213,10 @@ class MasterManagerHandler(ServerHandler):
 
             logging.info("{0} [{1}] [STEP 2]: Sending KO files to client.".format(tag, client_name))
 
-            response = self.manager.send_file(client_name, 'sync_m_c', compressed_data, True)
+            ko_files = True
+            data_for_client = compressed_data
 
-            processed_response = self.process_response(response)
-
-        if processed_response:
-            sync_result = True
-            logging.info("{0} [{1}] [STEP 2]: Client received the sync properly".format(tag, client_name))
-        else:
-            logging.error("{0} [{1}] [STEP 2]: Client reported an error receiving the sync.".format(tag, client_name))
-
-        # Send KO files
-        return sync_result
+        return ko_files, data_for_client
 
 
 #
@@ -235,7 +230,6 @@ class ProcessClient(ProcessFiles):
         ProcessFiles.__init__(self, manager_handler, filename,
                               manager_handler.get_client(),
                               stopper)
-
 
     def check_connection(self):
         return True
@@ -253,11 +247,44 @@ class ProcessClient(ProcessFiles):
 
 class ProcessClientIntegrity(ProcessClient):
 
-    def __init__(self, manager_handler, filename, stopper):
+    def __init__(self, manager, manager_handler, filename, stopper):
         ProcessClient.__init__(self, manager_handler, filename, stopper)
+        self.manager = manager
         self.thread_tag = "[Master] [ProcessIntegrityThread] [Sync process m->c]"
         self.status_type = "sync_integrity_free"
         self.function = self.manager_handler.process_integrity_from_client
+
+    # Overridden methods
+    def process_file(self):
+        sync_result = False
+
+        ko_files, data_for_client = self.function(self.name, self.filename, self.thread_tag)
+
+        if ko_files:
+            response = self.manager.send_file(self.name, 'sync_m_c', data_for_client, True)
+        else:
+            response = self.manager.send_request(self.name, 'sync_m_c_ok')
+
+        processed_response = self.manager_handler.process_response(response)
+
+        if processed_response:
+            sync_result = True
+            logging.info("{0} [{1}] [STEP 2]: Client received the sync properly".format(self.thread_tag, self.name))
+        else:
+            logging.error("{0} [{1}] [STEP 2]: Client reported an error receiving the sync.".format(self.thread_tag, self.name))
+
+        return sync_result
+
+
+    def unlock_clean_and_stop(self, reason, clean=True, send_err_request=True):
+
+        # Send Err
+        if send_err_request:
+            response = self.manager.send_request(self.name, 'sync_m_c_err')
+            processed_response = self.manager_handler.process_response(response)
+
+        # Unlock, clean and stop
+        ProcessClient.unlock_clean_and_stop(self, reason, clean)
 
 
 class ProcessClientFiles(ProcessClient):
@@ -427,7 +454,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                         response.update({node:json.loads(node_file.split(' ',1)[1])})
             else: # Broadcast
                 get_my_files = True
-                
+
                 node_file = list(self.manager.send_request_broadcast(command = 'file_status'))
 
                 for node,data in node_file:

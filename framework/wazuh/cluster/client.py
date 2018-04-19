@@ -492,7 +492,7 @@ class SyncIntegrityThread(ClusterThread):
                         if self.stopper.is_set() or not self.running:
                             break  # it doesnt go to the else
                     else:
-                        logging.info("{0}: Unlocked: Master files processed.".format(self.thread_tag))
+                        logging.info("{0}: Unlocked: Master files processed or error from master.".format(self.thread_tag))
                         new_interval = max(0, self.client.config['interval'] - n_seconds)
 
                 # Master reported an error receiving files
@@ -583,7 +583,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
     def process_request(self, command, data):
         logging.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
         serialized_response = ""
-        
+
 
         if command == "get_files":
             split_data = data.split(' ', 1)
@@ -597,7 +597,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
                 # Filter files
                 if file_list and len(response):
                     response = {file:content for file,content in response.iteritems() if file in file_list}
-            
+
             response =  json.dumps(response)
 
             serialized_response = ['ok', response]

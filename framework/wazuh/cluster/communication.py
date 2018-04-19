@@ -772,41 +772,35 @@ class ProcessFiles(ClusterThread):
                         logging.info("{0}: Result: Successfully.".format(self.thread_tag))
                     else:
                         logging.error("{0}: Result: Error.".format(self.thread_tag))
+
+                    self.unlock_clean_and_stop(reason="task performed", clean=False, send_err_request=False)
                 except Exception as e:
                     logging.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, str(e)))
-                    logging.info("{0}: Unlocking thread.".format(self.thread_tag))
-                    self.lock_status(False)
-                    clean_up(self.name)
-
-                logging.info("{0}: Unlocking thread".format(self.thread_tag))
-                self.lock_status(False)
-
-                self.stop()
+                    self.unlock_clean_and_stop(reason="error")
 
             elif self.received_error:
                 logging.debug("{0}: An error took place during file reception.".format(self.thread_tag))
-                logging.info("{0}: Unlocking thread".format(self.thread_tag))
-                self.lock_status(False)
-                clean_up(self.name)
-                self.stop()
+                self.unlock_clean_and_stop(reason="error")
 
             else:  # receiving file
                 try:
                     self.process_file_cmd()
                 except Exception as e:
                     logging.error("{0}: Unknown error in process_file_cmd: {1}".format(self.thread_tag, str(e)))
-                    logging.info("{0}: Unlocking thread".format(self.thread_tag))
-                    self.lock_status(False)
-                    clean_up(self.name)
-                    self.stop()
+                    self.unlock_clean_and_stop(reason="error")
 
             time.sleep(0.1)
 
-        # logging.info("{0}: Unlocking thread".format(self.thread_tag))
-        # self.lock_status(False)
-
 
     # New methods
+    def unlock_clean_and_stop(self, reason, clean=True, send_err_request=None):
+        logging.info("{0}: Unlocking '{1}' due to {2}.".format(self.thread_tag, self.status_type, reason))
+        self.lock_status(False)
+        if clean:
+            clean_up(self.name)
+        self.stop()
+
+
     def check_connection(self):
         raise NotImplementedError
 
