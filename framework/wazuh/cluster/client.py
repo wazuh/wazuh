@@ -189,7 +189,6 @@ class ClientManagerHandler(ClientHandler):
         if processed_response:
             sync_result = True
             logging.info("{0} [Step 3]: Master received the sync properly.".format(tag))
-            self.set_lock_interval_thread(True)
         else:
             logging.error("{0} [Step 3]: Master reported an error receiving files.".format(tag))
 
@@ -332,6 +331,8 @@ class ClientProcessMasterFiles(ProcessFiles):
                     self.stop()
 
             time.sleep(0.1)
+
+        self.manager_handler.set_lock_interval_thread(False)
 
 
 
@@ -501,6 +502,7 @@ class SyncIntegrityThread(ClusterThread):
                     #  - Master sends error: sync_m_c_err
                     #  - Client is disconnected and connected again
                     logging.info("{0}: Locking: Wait for master files.".format(self.thread_tag))
+                    self.client.set_lock_interval_thread(True)
                     n_seconds = 0
                     while self.client.get_lock_interval_thread():
                         # Print each 5 seconds
