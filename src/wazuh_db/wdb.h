@@ -56,10 +56,10 @@ typedef enum wdb_stmt {
     WDB_STMT_PROC_INSERT,
     WDB_STMT_PROC_DEL,
     WDB_STMT_NETINFO_INSERT,
+    WDB_STMT_PROTO_INSERT,
     WDB_STMT_ADDR_INSERT,
-    WDB_STMT_ADDR_IPV4_UPDATE,
-    WDB_STMT_ADDR_IPV6_UPDATE,
     WDB_STMT_NETINFO_DEL,
+    WDB_STMT_PROTO_DEL,
     WDB_STMT_ADDR_DEL,
     WDB_STMT_SIZE
 } wdb_stmt;
@@ -237,11 +237,17 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 // Delete Network info from DB.
 int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
 
-// Insert IPv4/IPv6 interface info tuple. Return 0 on success or -1 on error.
-int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int type, const char * name, const char * address, const char * netmask, const char * broadcast, const char * gateway, const char * dhcp);
+// Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
+int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp);
 
-// Save IPv4/IPv6 interface info into DB.
-int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int type, const char * name, const char * address, const char * netmask, const char * broadcast, const char * gateway, const char * dhcp);
+// Save IPv4/IPv6 protocol info into DB.
+int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp);
+
+// Insert IPv4/IPv6 address info tuple. Return 0 on success or -1 on error.
+int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast);
+
+// Save IPv4/IPv6 address info into DB.
+int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
 int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
@@ -314,6 +320,8 @@ int wdb_parse(char * input, char * output);
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_netproto(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output);
 
