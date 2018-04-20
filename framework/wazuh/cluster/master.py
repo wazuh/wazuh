@@ -535,7 +535,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_health':
-            response = self.manager.get_healtcheck()
+            response = self.manager.get_healthcheck()
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 
