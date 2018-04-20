@@ -987,6 +987,23 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 
 #if defined(__linux__)
 
+/* Get broadcast address from IPv4 address and netmask */
+char* get_broadcast_addr(char* ip, char* netmask){
+
+    struct in_addr host, mask, broadcast;
+    char* broadcast_addr = calloc(NI_MAXHOST, sizeof(char));
+
+    if (inet_pton(AF_INET, ip, &host) == 1 && inet_pton(AF_INET, netmask, &mask) == 1){
+        broadcast.s_addr = host.s_addr | ~mask.s_addr;
+    }
+
+    if (inet_ntop(AF_INET, &broadcast, broadcast_addr, NI_MAXHOST) != NULL){
+        return broadcast_addr;
+    }
+
+    return "unknown";
+}
+
 // Get network inventory
 
 void sys_network_linux(int queue_fd, const char* LOCATION){
@@ -1107,7 +1124,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             if (family == AF_INET) {
 
                 /* Get IPv4 address */
-                char host[NI_MAXHOST];
+                char host[NI_MAXHOST] = "";
                 int result = getnameinfo(ifa->ifa_addr,
                         sizeof(struct sockaddr_in),
                         host, NI_MAXHOST,
@@ -1119,7 +1136,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                 }
 
                 /* Get Netmask for IPv4 address */
-                char netmask[NI_MAXHOST];
+                char netmask[NI_MAXHOST] = "";
                 result = getnameinfo(ifa->ifa_netmask,
                     sizeof(struct sockaddr_in),
                     netmask, NI_MAXHOST,
@@ -1132,7 +1149,16 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                 }
 
                 /* Get broadcast address (or destination address in a Point to Point connection) */
-                if (ifa->ifa_ifu.ifu_broadaddr != NULL){
+                if ((host[0] != '\0') && (netmask[0] != '\0')) {
+                    char * broadaddr;
+                    broadaddr = get_broadcast_addr(host, netmask);
+                    if (strncmp(broadaddr, "unknown", 7)) {
+                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                        free(broadaddr);
+                    } else {
+                        mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
+                    }
+                } else if (ifa->ifa_ifu.ifu_broadaddr != NULL){
                     char broadaddr[NI_MAXHOST];
                     result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
                         sizeof(struct sockaddr_in),
