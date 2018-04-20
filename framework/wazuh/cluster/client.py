@@ -470,6 +470,7 @@ class SyncIntegrityThread(ClusterThread):
                 logging.info("{0}: Permission granted.".format(self.thread_tag))
 
                 # Send files
+                self.client.set_lock_interval_thread(True)
                 result = self.client.send_integrity_to_master(reason="Interval", tag=self.thread_tag)
 
                 # Master received the file properly
@@ -481,7 +482,7 @@ class SyncIntegrityThread(ClusterThread):
                     #  - Master sends error: sync_m_c_err
                     #  - Client is disconnected and connected again
                     logging.info("{0}: Locking: Wait for master files.".format(self.thread_tag))
-                    self.client.set_lock_interval_thread(True)
+
                     n_seconds = 0
                     while self.client.get_lock_interval_thread():
                         # Print each 5 seconds
@@ -498,6 +499,9 @@ class SyncIntegrityThread(ClusterThread):
 
                 # Master reported an error receiving files
                 else:
+                    logging.info("{0}: Unlocked: Master reported an error receiving files.".format(self.thread_tag))
+                    self.client.set_lock_interval_thread(False)
+
                     logging.error("{0}: Result: Error.".format(self.thread_tag))
             except Exception as e:
                 logging.error("{0}: Unknown Error: '{1}'.".format(self.thread_tag, str(e)))
