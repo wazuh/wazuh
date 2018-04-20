@@ -25,6 +25,7 @@ os_info *get_win_version()
     DWORD dwCount = vsize;
     char arch[64] = "";
     char nodename[1024] = "";
+    char version[64] = "";
     const DWORD size = 30;
 
     size_t ver_length = 60;
@@ -51,7 +52,12 @@ os_info *get_win_version()
         }
     }
 
+    // Release version
+    snprintf(version, 63, "%i.%i", (int)osvi.dwMajorVersion, (int)osvi.dwMinorVersion);
+    info->version = strdup(version);
+
     if (osvi.dwMajorVersion == 6) {
+
         // Read Windows Version from registry
 
         snprintf(subkey, vsize - 1, "%s", "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
@@ -140,6 +146,9 @@ os_info *get_win_version()
                 RegCloseKey(RegistryKey);
             }
         }
+
+        snprintf(version, 63, "%s.%s.%s", info->os_major, info->os_minor, info->os_build);
+        info->os_version = strdup(version);
     }
     else {
         if (osvi.dwMajorVersion == 5) {
