@@ -288,6 +288,7 @@ class ClientProcessMasterFiles(ProcessFiles):
     def __init__(self, manager_handler, filename, stopper):
         ProcessFiles.__init__(self, manager_handler, filename, manager_handler.name, stopper)
         self.thread_tag = "[Client] [ProcessFilesThread] [Sync process m->c]"
+        self.status_type = "sync_agent"
 
 
     def check_connection(self):
