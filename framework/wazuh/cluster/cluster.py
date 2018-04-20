@@ -71,8 +71,6 @@ def check_cluster_config(config):
 
     if config['node_type'] != 'master' and config['node_type'] != 'client':
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
-    if not re.compile("\d+[m|s]").match(config['interval']):
-        raise WazuhException(3004, 'Invalid interval specification. Please, specify it with format <number>s or <number>m')
 
     if len(config['nodes']) == 0:
         raise WazuhException(3004, 'No nodes defined in cluster configuration.')
@@ -98,6 +96,21 @@ def read_config():
             config_cluster['socket_timeout'] = 5
         if not config_cluster.get('connection_timeout'):
             config_cluster['connection_timeout'] = 1
+
+        # ToDo: Add it in ossec.conf
+        config_cluster['ka_interval'] = 60  # seconds
+
+        # ToDo: Add it in ossec.conf
+        config_cluster['reconnect_time'] = 10  # seconds
+
+        # Check interval is properly written
+        i_match = re.match(r"^(\d+)([s|m])$", config_cluster['interval'])
+        if not i_match:
+            raise WazuhException(3004, "Cluster interval is not correct.")
+
+        config_cluster['interval'] =  int(i_match.group(1)) * (1 if i_match.group(2) == 's' else 60)
+
+
     except WazuhException as e:
         if e.code == 1102:
             raise WazuhException(3006, "Cluster configuration not present in ossec.conf")

@@ -123,15 +123,6 @@ def master_main(cluster_configuration):
 def client_main(cluster_configuration):
     global manager
 
-    # ToDo: Add it in ossec.conf
-    cluster_configuration['ka_interval'] = 60  # seconds
-
-    # ToDo: Add it in ossec.conf
-    cluster_configuration['reconnect_time'] = 10  # seconds
-    # ToDo: Get in the proper way
-    cluster_configuration['interval'] = 20  # seconds
-
-
     # Internal socket
     internal_socket_thread = InternalSocketThread("c-internal")
     internal_socket_thread.start()
@@ -188,7 +179,7 @@ if __name__ == '__main__':
     try:
         cluster_config = read_config()
     except WazuhException as e:
-        cluster_config = None
+        clean_exit(reason=str(e), error=True)
 
     if not cluster_config or cluster_config['disabled'] == 'yes':
         clean_exit(reason="Cluster disabled", error=True)
