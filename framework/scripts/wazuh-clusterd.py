@@ -169,8 +169,11 @@ if __name__ == '__main__':
         debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',1,0) or args.d
     except NameError:
         debug_mode = False
+    except Exception as e:
+        debug_mode = False
 
     set_logging(foreground_mode=args.f, debug_mode=debug_mode)
+    logging.error("{}".format(str(e)))
 
     if error_msg:
         logging.error(error_msg)
