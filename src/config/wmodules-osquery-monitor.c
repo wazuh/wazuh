@@ -14,7 +14,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     os_calloc(1, sizeof(wm_osquery_monitor_t), osquery_monitor);
     osquery_monitor->bin_path = NULL;
     osquery_monitor->log_path = NULL;
-    int disable = 1;
+    osquery_monitor->disable  = 1;
     module->context = &WM_OSQUERYMONITOR_CONTEXT;
     module->data = osquery_monitor;
 

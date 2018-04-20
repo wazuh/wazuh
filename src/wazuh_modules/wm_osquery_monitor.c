@@ -131,7 +131,8 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
     char * arg2 = strdup("/tmp/osquery.conf.tmp");
     char * arg1 = strdup(DEFAULTDIR);
     char * arg0 = strdup("--config_path=");
-    char * arg = malloc(((strlen(arg0)+strlen(arg1)+strlen(arg2)+2)*sizeof(char)));
+    char * arg; 
+    os_malloc(((strlen(arg0)+strlen(arg1)+strlen(arg2)+2)*sizeof(char)),arg);
     snprintf(arg,strlen(arg0)+strlen(arg1)+strlen(arg2)+2,"%s%s%s",arg0,arg1,arg2);
     //We check that the osquery demon is not down, in which case we run it again.
     while(1)
@@ -197,7 +198,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
 
 void wm_osquery_decorators()
 {
-    char * LINE = strdup("");
+    char * line = strdup("");
     char * select=strdup("SELECT ");
     char * as = strdup(" AS ");
     char * key = NULL;
@@ -218,7 +219,8 @@ void wm_osquery_decorators()
     //PATH CREATION
     
     osquery_config_temp = strdup("/var/ossec/tmp/osquery.conf.tmp");
-    configPath = malloc(strlen(firstPath)+strlen(lastpath));
+    os_malloc(strlen(firstPath)+strlen(lastpath),configPath);
+
     strcpy(configPath,firstPath);
     strcat(configPath,lastpath);
     
@@ -236,41 +238,34 @@ void wm_osquery_decorators()
     osquery_conf = fopen(osq_conf_file,"r");
     stat(osq_conf_file, &stp);
     int filesize = stp.st_size;
-    content = (char *) malloc(sizeof(char) * filesize);
-    json_block = cJSON_PrintUnformatted(root);
-    
-    if (fread(content, 1, filesize - 1, osquery_conf) == 0) {
+
+    os_malloc(filesize+1,content);
+
+    if (fread(content, 1, filesize, osquery_conf) == 0) {
         mterror(WM_OSQUERYMONITOR_LOGTAG,"error in reading");
         /**close the read file*/
         fclose(osquery_conf);
         //free input string
         free(content);
     }
-        
+    content[filesize+1]='\0';
     //CHECK IF CONF HAVE DECORATORS
     int decorated=0;
     if(strstr(content, "decorators")!=NULL)
         decorated = 1;
     else
         decorated = 0;
-
+        
     //ADD DECORATORS FROM AGENT LABELS
     if(!decorated){
         
         for(i=0;labels[i].key!=NULL;i++){  
             key = strdup(labels[i].key);
             value = strdup(labels[i].value); 
-            LINE = strdup(select);
-            int newlen = sizeof(char)*(strlen(LINE)+strlen(key)+strlen(as)+strlen(value)+(6*sizeof(char)));
-            LINE = (char*)realloc(LINE, newlen);
-            strcat(LINE,"'");  
-            strcat(LINE,value);
-            strcat(LINE,"'");
-            strcat(LINE,as);
-            strcat(LINE,"'");
-            strcat(LINE,key);
-            strcat(LINE,"';");
-            cJSON_AddStringToObject(always,"line",LINE);
+            int newlen = sizeof(char)*(strlen("select")+strlen(line)+strlen(key)+strlen(as)+strlen(value)+(6*sizeof(char)));
+            line = (char*)realloc(line, newlen);
+            snprintf(line,newlen,"select '%s' as '%s';",value,key);
+            cJSON_AddStringToObject(always,"line",line);
         }
         
         json_block = cJSON_PrintUnformatted(root);
@@ -282,14 +277,14 @@ void wm_osquery_decorators()
 
         fclose(osquery_conf);
 
-        //Escribir contenido en el fichero
+        //Write content to File
         osquery_conf = fopen(osquery_config_temp,"w");
         fprintf(osquery_conf,"%s",content);
         fclose(osquery_conf);
     }
 
         //FREE MEMORY
-         free(LINE);
+         free(line);
          free(select);
          free(as);
          free(key);
@@ -298,7 +293,6 @@ void wm_osquery_decorators()
          free(firstPath);
          free(lastpath);
          free(configPath);
-        free(root);
         free(json_block);
         cJSON_Delete(root);
 }
@@ -315,7 +309,11 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor)
 }
 void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
 {
-    free(osquery_monitor);
+    if(!osquery_monitor){
+        free(osquery_monitor->bin_path);
+        free(osquery_monitor->log_path);
+        free(osquery_monitor);
+    }
 }
 
 
