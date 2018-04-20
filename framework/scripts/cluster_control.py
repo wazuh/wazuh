@@ -263,10 +263,59 @@ def print_agents_master(filter_status):
 ### Get healthchech
 def print_healthcheck():
     node_response = __execute("get_health")
+    '''
+     "node02": {
+            "info": {
+                "ip": "192.168.56.102",
+                "name": "node02",
+                "type": "client"
+            },
+            "status": {
+                "last_sync_agentinfo": {
+                    "date_end_master": "2018-04-20 11:06:01",
+                    "date_start_master": "2018-04-20 11:05:54",
+                    "total_agentinfo": 10000
+                },
+                "last_sync_integrity": {
+                    "date_end_master": "2018-04-20 11:06:20",
+                    "date_start_master": "2018-04-20 11:06:20",
+                    "total_files": {
+                        "extra": 0,
+                        "missing": 0,
+                        "shared": 0
+                    }
+                },
+                "sync_agentinfo_free": false,
+                "sync_integrity_free": true
+            }
+        }
+    '''
 
-    print json.dumps(node_response, sort_keys=True, indent=4)
 
-    
+    print ("General information")
+    print (" - Connected nodes: {}".format(node_response["n_connected_nodes"]))
+    print ("")
+
+    print ("Nodes information")
+
+    for node, node_info in node_response["nodes"].iteritems():
+        print (" - {}".format(node))
+        print ("   - Address: {}".format(node_info['info']['ip']))
+        print ("   - Type: {}".format(node_info['info']['type']))
+        if node_info['info']['type'] != "master":
+            print ("   - Status:")
+            print ("      - Last synchronization of agents-info: ")
+            print ("         - Date start: {}".format(node_info['status']['last_sync_agentinfo']['date_start_master']))
+            print ("         - Date end: {}".format(node_info['status']['last_sync_agentinfo']['date_end_master']))
+            print ("         - Total number of synchronized: {}".format(str(node_info['status']['last_sync_agentinfo']['total_agentinfo'])))
+            print ("         - Agent-info free: {}".format(str(node_info['status']['sync_agentinfo_free'])))
+            print ("      - Last synchronization of integrity: ")
+            print ("         - Date start: {}".format(node_info['status']['last_sync_integrity']['date_start_master']))
+            print ("         - Date end: {}".format(node_info['status']['last_sync_integrity']['date_end_master']))
+            print ("         - Total number of shared files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["shared"])))
+            print ("         - Total number of missing files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["missing"])))
+            print ("         - Total number of extra files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["extra"])))
+            print ("         - Integrity free: {}".format(str(node_info['status']['sync_integrity_free'])))
 
 
 #
