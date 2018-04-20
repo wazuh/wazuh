@@ -398,10 +398,11 @@ def get_agents_status(filter_status=""):
             continue
         if filter_status and agent['status'] != filter_status:
             continue
-        if agent.get('node_name') is None or agent['node_name'] == '':
+
+        if not agent.get('node_name'):
             agent['node_name'] = "Unknown"
 
-        agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "Unknown"])
+        agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
 
     return agent_list
 
