@@ -67,10 +67,10 @@ class MasterManagerHandler(ServerHandler):
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
-    @staticmethod
-    def process_response(response):
+
+    def process_response(self, response):
         # FixMe: Move this line to communications
-        answer, payload = Handler.split_data(response)
+        answer, payload = self.split_data(response)
 
         logging.debug("[Master] Response received: '{0}'.".format(answer))
 
@@ -79,7 +79,7 @@ class MasterManagerHandler(ServerHandler):
         if answer == 'ok-m':  # test
             response_data = '[response_only_for_master] Client answered: {}.'.format(payload)
         else:
-            response_data = ServerHandler.process_response(response)
+            response_data = ServerHandler.process_response(self, response)
 
         return response_data
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from wazuh import common
-from wazuh.cluster.cluster import clean_up
+from wazuh.cluster.cluster import clean_up, check_cluster_status
 import asyncore
 import threading
 import random
@@ -12,16 +12,28 @@ import os
 import time
 import logging
 import json
+
 try:
     from Queue import Queue
 except ImportError:
     from queue import Queue
 
+
+if check_cluster_status():
+    try:
+        from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
+    except ImportError as e:
+        raise ImportError("Could not import cryptography module. Install it using:\n\
+                        - pip install cryptography\n\
+                        - yum install python-cryptography python-setuptools\n\
+                        - apt install python-cryptography")
+
+
 max_msg_size = 1000000
 cmd_size = 12
 
 
-def msgbuild(counter, command, payload=None):
+def msgbuild(counter, command, my_fernet, payload=None):
     try:
         if payload:
             payload = payload.encode()
@@ -40,17 +52,22 @@ def msgbuild(counter, command, payload=None):
     if payload_len > max_msg_size:
         raise Exception("Data of length {} exceeds maximum allowed {}".format(payload_len, max_msg_size))
 
+    if my_fernet:
+        payload = my_fernet.encrypt(payload) if payload_len > 0 else payload
+
     header = struct.pack('!2I{}s'.format(cmd_size), counter, len(payload), padding_command)
     return header + payload
 
 
-def msgparse(buf):
+def msgparse(buf, my_fernet):
     header_size = 8 + cmd_size
     if len(buf) >= header_size:
         counter, size, command = struct.unpack('!2I{}s'.format(cmd_size), buf[:header_size])
         command = command.split(' ',1)[0]
         if len(buf) >= size + header_size:
             payload = buf[header_size:size + header_size]
+            if payload and my_fernet:
+                payload = my_fernet.decrypt(payload)
             return size + header_size, counter, command, payload
     return None
 
@@ -108,7 +125,7 @@ class ClusterThread(threading.Thread):
 
 class Handler(asyncore.dispatcher_with_send):
 
-    def __init__(self, sock=None, map=None):
+    def __init__(self, key, sock=None, map=None):
         asyncore.dispatcher_with_send.__init__(self, sock=sock, map=map)
         self.box = {}
         self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
@@ -117,6 +134,7 @@ class Handler(asyncore.dispatcher_with_send):
         self.workers_lock = threading.Lock()
         self.workers = {}
         self.stopper = threading.Event()
+        self.my_fernet = Fernet(key.encode('base64','strict')) if key else None
 
 
     def exit(self):
@@ -283,21 +301,21 @@ class Handler(asyncore.dispatcher_with_send):
 
 
     def get_messages(self):
-        parsed = msgparse(self.inbuffer)
+        parsed = msgparse(self.inbuffer, self.my_fernet)
 
         while parsed:
             offset, counter, command, payload = parsed
             self.inbuffer = self.inbuffer[offset:]
             yield counter, command, payload
-            parsed = msgparse(self.inbuffer)
+            parsed = msgparse(self.inbuffer, self.my_fernet)
 
 
     def push(self, counter, command, payload):
         try:
-            message = msgbuild(counter, command, payload)
+            message = msgbuild(counter, command, self.my_fernet, payload)
         except Exception as e:
-            logging.error("[Transport] Error sending a request/response due to '{}'.".format(str(e)))
-            message = msgbuild(counter, "err", str(e))
+            logging.error("[Transport] Error sending a request/response (command: {}) due to '{}'.".format(command, str(e)))
+            message = msgbuild(counter, "err", self.my_fernet, str(e))
 
         with self.lock:
             self.send(message)
@@ -311,13 +329,13 @@ class Handler(asyncore.dispatcher_with_send):
         return counter
 
 
-    @staticmethod
-    def split_data(data):
+    def split_data(self, data):
         try:
             pair = data.split(' ', 1)
             cmd = pair[0]
             payload = pair[1] if len(pair) > 1 else None
-        except:
+        except Exception as e:
+            logging.error("Error splitting data: {}".format(str(e)))
             cmd = "err"
             payload = "Error splitting data"
 
@@ -361,9 +379,8 @@ class Handler(asyncore.dispatcher_with_send):
             return "err", message
 
 
-    @staticmethod
-    def process_response(response):
-        answer, payload = Handler.split_data(response)
+    def process_response(self, response):
+        answer, payload = self.split_data(response)
 
         final_response = None
 
@@ -386,7 +403,7 @@ class Handler(asyncore.dispatcher_with_send):
 class ServerHandler(Handler):
 
     def __init__(self, sock, server, map, addr=None):
-        Handler.__init__(self, sock, map)
+        Handler.__init__(self, server.config['key'], sock, map)
         self.map = map
         self.name = None
         self.server = server
@@ -411,9 +428,13 @@ class ServerHandler(Handler):
 
 
     def hello(self, data):
-        id = self.server.add_client(data, self.addr, self)
-        self.name = id  # TO DO: change self.name to self.id
-        logging.info("[Transport-S] Node '{0}' connected.".format(id))
+        try:
+            id = self.server.add_client(data, self.addr, self)
+            self.name = id  # TO DO: change self.name to self.id
+            logging.info("[Transport-S] Node '{0}' connected.".format(id))
+        except Exception as e:
+            logging.error("[Transport-S] Error accepting connection from {}: {}".\
+                            format(self.addr, str(e)))
         return None
 
 
@@ -560,8 +581,8 @@ class Server(asyncore.dispatcher):
 
 class ClientHandler(Handler):
 
-    def __init__(self, host, port, name, map = {}):
-        Handler.__init__(self, map=map)
+    def __init__(self, key, host, port, name, map = {}):
+        Handler.__init__(self, key=key, map=map)
         self.map = map
         self.host = host
         self.port = port
@@ -574,7 +595,7 @@ class ClientHandler(Handler):
     def handle_connect(self):
         logging.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
-        payload = msgbuild(counter, 'hello', '{} {}'.format(self.name, 'client'))
+        payload = msgbuild(counter, 'hello', self.my_fernet, '{} {}'.format(self.name, 'client'))
         self.send(payload)
         self.my_connected = True
         logging.info("[Client] Connected.")
@@ -607,8 +628,9 @@ class ClientHandler(Handler):
 class InternalSocketHandler(Handler):
 
     def __init__(self, sock, manager, map):
-        Handler.__init__(self, sock=sock, map=map)
+        Handler.__init__(self, key=None, sock=sock, map=map)
         self.manager = manager
+
 
     def process_request(self, command, data):
         raise NotImplementedError
@@ -715,7 +737,7 @@ def send_to_internal_socket(socket_name, message):
     message = message.split(" ", 1)
     cmd = message[0]
     data = message[1] if len(message) > 1 else None
-    message_built = msgbuild(random.SystemRandom().randint(0, 2 ** 32 - 1), cmd, data)
+    message_built = msgbuild(random.SystemRandom().randint(0, 2 ** 32 - 1), cmd, None, data)
     sock.sendall(message_built)
     logging.debug("[Transport-I] Sent")
 
@@ -725,7 +747,7 @@ def send_to_internal_socket(socket_name, message):
     try:
         while not response:
             buf += sock.recv(buf_size)
-            parse = msgparse(buf)
+            parse = msgparse(buf, None)
             if parse:
                 offset, counter, command, response = parse
 

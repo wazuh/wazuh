@@ -25,7 +25,7 @@ from wazuh.cluster.communication import ClientHandler, Handler, ProcessFiles, Cl
 class ClientManagerHandler(ClientHandler):
 
     def __init__(self, cluster_config):
-        ClientHandler.__init__(self, cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'])
+        ClientHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'])
 
         self.config = cluster_config
         self.set_lock_interval_thread(False)
@@ -69,10 +69,9 @@ class ClientManagerHandler(ClientHandler):
             return ClientHandler.process_request(self, command, data)
 
 
-    @staticmethod
-    def process_response(response):
+    def process_response(self, response):
         # FixMe: Move this line to communications
-        answer, payload = Handler.split_data(response)
+        answer, payload = self.split_data(response)
 
         logging.debug("[Client] Response received: '{0}'.".format(answer))
 
@@ -81,7 +80,7 @@ class ClientManagerHandler(ClientHandler):
         if answer == 'ok-c':  # test
             response_data = '[response_only_for_client] Master answered: {}.'.format(payload)
         else:
-            response_data = ClientHandler.process_response(response)
+            response_data = ClientHandler.process_response(self, response)
 
         return response_data
 
