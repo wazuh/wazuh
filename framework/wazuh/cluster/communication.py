@@ -555,11 +555,7 @@ class ClientHandler(Handler):
         self.host = host
         self.port = port
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            ok = self.connect( (host, port) )
-        except socket.gaierror as e:
-            error_msg = "[Client] Could not connect to master: {}. Review if the master's hostname or IP is correct.".format(str(e))
-            raise Exception(error_msg)  # TO DO: Raise a Cluster Exception
+        ok = self.connect( (host, port) )
         self.name = name
         self.my_connected = False
 
