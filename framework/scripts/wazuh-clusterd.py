@@ -6,6 +6,7 @@
 #
 # Imports
 #
+error_msg = ""
 try:
     import asyncore
     import threading
@@ -41,8 +42,8 @@ try:
         from wazuh.manager import status
 
     except Exception as e:
-        print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-        exit()
+        # print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+        error_msg = str(e)
 except Exception as e:
     print("wazuh-clusterd: Python 2.7 required. Exiting. {0}".format(str(e)))
     exit()
@@ -164,8 +165,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Set logger
-    debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',1,0) or args.d
+    try:
+        debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',1,0) or args.d
+    except NameError:
+        debug_mode = False
+
     set_logging(foreground_mode=args.f, debug_mode=debug_mode)
+
+    if error_msg:
+        logging.error(error_msg)
+        exit()
 
     # Check if it is already running
     if status()['wazuh-clusterd'] == 'running':
