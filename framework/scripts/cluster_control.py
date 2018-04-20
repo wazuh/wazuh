@@ -85,6 +85,7 @@ Syntax: {0} --help | --list-files [-f File1 FileN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
+\t-s, --healthcheck                           # Show healthcheck
 \t-n, --list-nodes                            # List nodes
 
 Filters:
@@ -114,6 +115,7 @@ Others:
         #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
         exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
         exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
+        exclusive.add_argument('-s', '--healthcheck', const='healthcheck', action='store_const', help="Show healthcheck")
         return parser
 
 def signal_handler(n_signal, frame):
@@ -312,7 +314,7 @@ if __name__ == '__main__':
             
         elif args.list_nodes:
             print_nodes_status(args.filter_node)
-        elif is_master and args.healthcheck:
+        elif args.healthcheck:
             print_healthcheck()
         else:
             parser.print_help()

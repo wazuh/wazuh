@@ -11,12 +11,14 @@ import json
 import os
 import fcntl
 import ast
+from datetime import datetime
 
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files, compare_files, get_agents_status, clean_up, read_config
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, Handler, InternalSocketHandler, ClusterThread
 from wazuh.utils import mkdir_with_mode
+
 
 
 
@@ -52,10 +54,14 @@ class MasterManagerHandler(ServerHandler):
             mcf_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker(command, mcf_thread, data)
-        elif command == 'get_nodes':  # Get nodes
+        elif command == 'get_nodes':
             response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
+            serialized_response = ['ok', json.dumps(response)]
+            return serialized_response
+        elif command == 'get_health':
+            response = self.manager.get_healthcheck()
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         else:  # Non-master requests
@@ -123,6 +129,9 @@ class MasterManagerHandler(ServerHandler):
     def process_files_from_client(self, client_name, data_received, tag=None):
         sync_result = False
 
+        # Save info for healtcheck
+        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
         if not tag:
             tag = "[Master] [Sync process m->c]"
 
@@ -145,7 +154,8 @@ class MasterManagerHandler(ServerHandler):
 
         logging.debug("{0} Received {1} client files to update".format(tag, len(client_files_json)))
 
-
+        # Save info for healtcheck
+        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=len(client_files_json))
 
         logging.info("{0} [{1}] [STEP 2]: Updating manager files.".format(tag, client_name))
 
@@ -156,6 +166,9 @@ class MasterManagerHandler(ServerHandler):
         shutil.rmtree(zip_dir_path)
 
         sync_result = True
+
+        # Save info for healthcheck
+        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
         # Send KO files
         return sync_result
@@ -191,6 +204,11 @@ class MasterManagerHandler(ServerHandler):
 
         # Compare
         client_files_ko = compare_files(master_files, master_files_from_client)
+
+        # Save info for healthcheck
+        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="missing", status=len(client_files_ko['missing']))
+        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="shared", status=len(client_files_ko['shared']))
+        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="extra", status=len(client_files_ko['extra']))
 
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)
@@ -256,6 +274,9 @@ class ProcessClientIntegrity(ProcessClient):
 
     # Overridden methods
     def process_file(self):
+        # Save info for healthcheck
+        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
         sync_result = False
 
         ko_files, data_for_client = self.function(self.name, self.filename, self.thread_tag)
@@ -273,6 +294,8 @@ class ProcessClientIntegrity(ProcessClient):
         else:
             logging.error("{0} [{1}] [STEP 2]: Client reported an error receiving the sync.".format(self.thread_tag, self.name))
 
+        # Save info for healthcheck
+        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         return sync_result
 
 
@@ -341,11 +364,16 @@ class MasterManager(Server):
         self.threads[MasterManager.Integrity_T].start()
 
     # New methods
-    def set_client_status(self, client_id, key, status):
+    def set_client_status(self, client_id, key, status, subkey=None, subsubkey=None):
         result = False
         with self._clients_lock:
             if client_id in self._clients:
-                self._clients[client_id]['status'][key] = status
+                if subsubkey:
+                    self._clients[client_id]['status'][key][subkey][subsubkey] = status
+                elif subkey:
+                    self._clients[client_id]['status'][key][subkey] = status
+                else:
+                    self._clients[client_id]['status'][key] = status
                 result = True
 
         return result
@@ -377,15 +405,14 @@ class MasterManager(Server):
             self._integrity_control = new_integrity_control
 
 
-    def get_healtcheck(self):
+    def get_healthcheck(self):
         clients_info = {name:{"info":data['info'], "status":data['status']} for name,data in self.get_connected_clients().iteritems()}
 
         cluster_config = read_config()
         clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}}})
 
-        healtcheck = {"n_connected_nodes":len(clients_info), "nodes_info": clients_info}
+        healtcheck = {"n_connected_nodes":len(clients_info), "nodes": clients_info}
         return healtcheck
-
 
 
     def exit(self):
@@ -509,7 +536,6 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
         elif command == 'get_health':
             response = self.manager.get_healtcheck()
-
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 

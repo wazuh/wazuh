@@ -266,6 +266,7 @@ class Handler(asyncore.dispatcher_with_send):
 
         self.handle_close()
         logging.error("[Transport] err {}".format(v))
+        logging.debug("{}".format(tbinfo))
 
 
 
@@ -295,7 +296,7 @@ class Handler(asyncore.dispatcher_with_send):
         try:
             message = msgbuild(counter, command, payload)
         except Exception as e:
-            logger.error("[Transport] Error sending a request/response due to '{}'.".format(str(e)))
+            logging.error("[Transport] Error sending a request/response due to '{}'.".format(str(e)))
             message = msgbuild(counter, "err", str(e))
 
         with self.lock:
@@ -487,10 +488,20 @@ class Server(asyncore.dispatcher):
                 'status': {
                     'sync_integrity_free': True,
                     'sync_agentinfo_free': True,
-                    'timestamp_last_sync_keys_start': "Unknown",
-                    'timestamp_last_sync_keys_end': "Unknown",
-                    'timestamp_last_sync_integrity_start': "Unknown",
-                    'timestamp_last_sync_integrity_end': "Unknown"
+                    'last_sync_integrity': {
+                        'date_start_master':'n/a',
+                        'date_end_master':'n/a',
+                        'total_files':{
+                            'missing':0,
+                            'shared':0,
+                            'extra':0
+                        }
+                    },
+                    'last_sync_agentinfo': {
+                        'date_start_master':'n/a',
+                        'date_end_master':'n/a',
+                        'total_agentinfo':0
+                    }
                 }
             }
         return id

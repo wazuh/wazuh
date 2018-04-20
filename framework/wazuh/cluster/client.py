@@ -626,6 +626,10 @@ class ClientInternalSocketHandler(InternalSocketHandler):
 
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
+        elif command == "get_health":
+            response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)[1]
+            serialized_response = ['ok',  response]
+            return serialized_response
         else:
             response = self.manager.send_request(command=command, data=data)
             if response:
