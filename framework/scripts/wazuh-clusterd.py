@@ -165,6 +165,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Set logger
+    e = None
     try:
         debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',1,0) or args.d
     except NameError:
@@ -173,7 +174,8 @@ if __name__ == '__main__':
         debug_mode = False
 
     set_logging(foreground_mode=args.f, debug_mode=debug_mode)
-    logging.error("{}".format(str(e)))
+    if e:
+        logging.error("{}".format(str(e)))
 
     if error_msg:
         logging.error(error_msg)
