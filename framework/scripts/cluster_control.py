@@ -36,17 +36,17 @@ def get_parser(type):
             def format_help(self):
                 msg = """Wazuh cluster control - Master node
 
-Syntax: {0} --help | --sync [-t Node1 NodeN] [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [--debug] | --list-agents [-c Status] [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
-\t-s, --healthcheck                           # Show healthcheck
+\t-i, --health                                # Show cluster health
 \t-a, --list-agents                           # List agents
 \t-n, --list-nodes                            # List nodes
 
 Filters:
 \t-t, --filter-node                          # Filter by node
-\t-c, --filter-agents-status                 # Filter by agent status
+\t-c, --filter-agents-status                 # Filter by agent status (Active, Disconnected, NeverConnected, Pending)
 
 Others:
 \t-d, --debug                                # Show debug information
@@ -74,18 +74,18 @@ Others:
         #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
         exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
         exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
-        exclusive.add_argument('-s', '--healthcheck', const='healthcheck', action='store_const', help="Show healthcheck")
+        exclusive.add_argument('-i', '--health', const='health', action='store_const', help="Show cluster health")
         return parser
     else:
         class WazuhHelpFormatter(argparse.ArgumentParser):
             def format_help(self):
                 msg = """Wazuh cluster control - Client node
 
-Syntax: {0} --help | --list-files [-f File1 FileN] [--debug]
+Syntax: {0} --help | --health [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
-\t-s, --healthcheck                           # Show healthcheck
+\t-i, --health                                # Show cluster health
 \t-n, --list-nodes                            # List nodes
 
 Filters:
@@ -115,7 +115,7 @@ Others:
         #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
         exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
         exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
-        exclusive.add_argument('-s', '--healthcheck', const='healthcheck', action='store_const', help="Show healthcheck")
+        exclusive.add_argument('-i', '--health', const='health', action='store_const', help="Show cluster health")
         return parser
 
 def signal_handler(n_signal, frame):
@@ -219,7 +219,7 @@ def print_file_status_client(filter_file_list, node_name):
             data.append(file)
             
     __print_table(data, headers, True)
-    print "(*) Clients only show their own files"
+    print "(*) Clients only show their own files."
 
 
 ### Get nodes
@@ -245,19 +245,27 @@ def sync_master(filter_node):
 
 ### Get agents
 def print_agents_master(filter_status):
+    filter_status_f = None
     if filter_status:
-        filter_status = filter_status[0].lower().replace(" ", "")
-        if filter_status == "neverconnected":
-            filter_status = "Never connected"
-        elif filter_status == "active":
-            filter_status = "Active"
-        elif filter_status == "disconnected":
-            filter_status = "Disconnected"
-        elif filter_status == "pending":
-            filter_status = "Pending"
-    agents = __execute("get_agents {}".format(filter_status))
+        filter_status_f = filter_status[0].lower().replace(" ", "").replace("-", "")
+        if filter_status_f == "neverconnected":
+            filter_status_f = "Never connected"
+        elif filter_status_f == "active":
+            filter_status_f = "Active"
+        elif filter_status_f == "disconnected":
+            filter_status_f = "Disconnected"
+        elif filter_status_f == "pending":
+            filter_status_f = "Pending"
+        else:
+            print ("Error: '{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(filter_status[0].lower().replace(" ", "")))
+            exit(0)
+    agents = __execute("get_agents {}".format(filter_status_f))
     headers = ["ID", "Address", "Name", "Status", "Node"]
     __print_table(agents, headers, True)
+    if filter_status_f:
+        print ("Found {} agent(s) with status '{}'.".format(len(agents), filter_status_f))
+    else:
+        print ("Listing {} agent(s).".format(len(agents)))
 
 
 ### Get healthchech
@@ -363,7 +371,7 @@ if __name__ == '__main__':
             
         elif args.list_nodes:
             print_nodes_status(args.filter_node)
-        elif args.healthcheck:
+        elif args.health:
             print_healthcheck()
         else:
             parser.print_help()
