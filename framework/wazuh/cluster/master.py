@@ -455,8 +455,12 @@ class FileStatusUpdateThread(ClusterThread):
     def run(self):
         while not self.stopper.is_set() and self.running:
             logging.debug("[Master] Recalculating integrity control file.")
-            tmp_integrity_control = get_files_status('master')
-            self.master.set_integrity_control(tmp_integrity_control)
+            try:
+                tmp_integrity_control = get_files_status('master')
+                self.master.set_integrity_control(tmp_integrity_control)
+            except Exception as e:
+                logging.error("[Master] Error calculating integrity control file: {}".format(str(e)))
+
             #time.sleep(self.interval)
             self.sleep(self.interval)
 
