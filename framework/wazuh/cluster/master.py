@@ -129,7 +129,7 @@ class MasterManagerHandler(ServerHandler):
     def process_files_from_client(self, client_name, data_received, tag=None):
         sync_result = False
 
-        # Save info for healtcheck
+        # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
         if not tag:
@@ -154,7 +154,7 @@ class MasterManagerHandler(ServerHandler):
 
         logging.debug("{0} Received {1} client files to update".format(tag, len(client_files_json)))
 
-        # Save info for healtcheck
+        # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=len(client_files_json))
 
         logging.info("{0} [{1}] [STEP 2]: Updating manager files.".format(tag, client_name))
@@ -411,8 +411,8 @@ class MasterManager(Server):
         cluster_config = read_config()
         clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}}})
 
-        healtcheck = {"n_connected_nodes":len(clients_info), "nodes": clients_info}
-        return healtcheck
+        health_info = {"n_connected_nodes":len(clients_info), "nodes": clients_info}
+        return health_info
 
 
     def exit(self):
