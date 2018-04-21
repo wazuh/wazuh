@@ -15,8 +15,12 @@ from datetime import datetime
 
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.cluster.cluster import get_cluster_items, _update_file, decompress_files, get_files_status, compress_files, compare_files, get_agents_status, clean_up, read_config
-from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, Handler, InternalSocketHandler, ClusterThread
+from wazuh.cluster.cluster import get_cluster_items, _update_file, \
+                                  decompress_files, get_files_status, \
+                                  compress_files, compare_files, get_agents_status, \
+                                  read_config
+from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
+                                        Handler, InternalSocketHandler, ClusterThread
 from wazuh.utils import mkdir_with_mode
 
 
@@ -299,15 +303,15 @@ class ProcessClientIntegrity(ProcessClient):
         return sync_result
 
 
-    def unlock_clean_and_stop(self, reason, clean=True, send_err_request=True):
+    def unlock_and_stop(self, reason, send_err_request=True):
 
         # Send Err
         if send_err_request:
             response = self.manager.send_request(self.name, 'sync_m_c_err')
             processed_response = self.manager_handler.process_response(response)
 
-        # Unlock, clean and stop
-        ProcessClient.unlock_clean_and_stop(self, reason, clean)
+        # Unlock and stop
+        ProcessClient.unlock_and_stop(self, reason)
 
 
 class ProcessClientFiles(ProcessClient):
@@ -436,8 +440,6 @@ class MasterManager(Server):
         for client in clients:
             self.remove_client(id=client)
 
-        logging.debug("[Master] Cleaning generated temporary files.")
-        clean_up()
 
         logging.info("[Master] Cleaning end.")
 

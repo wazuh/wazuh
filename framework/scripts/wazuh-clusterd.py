@@ -34,7 +34,7 @@ try:
         from wazuh import common
         from wazuh.exception import WazuhException
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
-        from wazuh.cluster.cluster import read_config, check_cluster_config
+        from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up
         from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
         from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
         from wazuh.cluster.communication import InternalSocketThread
@@ -213,6 +213,9 @@ if __name__ == '__main__':
         check_cluster_config(cluster_config)
     except WazuhException as e:
         clean_exit(reason="Invalid configuration: '{0}'".format(str(e)), error=True)
+
+    # Clean all temporary files before starting
+    clean_up()
 
     # Main
     try:

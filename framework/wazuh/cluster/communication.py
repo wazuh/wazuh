@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from wazuh import common
-from wazuh.cluster.cluster import clean_up, check_cluster_status
+from wazuh.cluster.cluster import check_cluster_status
 import asyncore
 import threading
 import random
@@ -213,26 +213,32 @@ class Handler(asyncore.dispatcher_with_send):
         # response will be of form 'ack id'
         _, id = self.execute(reason, os.path.basename(file)).split(' ',1)
 
+        try:
+            res, data = self.execute("file_open", "{}".format(id)).split(' ', 1)
+            if res == "err":
+                raise Exception(data)
 
-        response = self.execute("file_open", "{}".format(id))
-        #logging.debug("RESPONSE: {0}".format(response))
-        # TO-DO remove ossec_path from sent filepath
-        base_msg = "{} ".format(id).encode()
-        chunk_size = max_msg_size - len(base_msg)
+            # TO-DO remove ossec_path from sent filepath
+            base_msg = "{} ".format(id).encode()
+            chunk_size = max_msg_size - len(base_msg)
 
-        with open(file, 'rb') as f:
-            for chunk in iter(lambda: f.read(chunk_size), ''):
-                response = self.execute("file_update", base_msg + chunk)
-                #logging.debug("RESPONSE: {0}".format(response))
-                # for every chunk sent, sleep 0.1 s to prevent network from collapsing
-                #time.sleep(0.1)
+            with open(file, 'rb') as f:
+                for chunk in iter(lambda: f.read(chunk_size), ''):
+                    res, data = self.execute("file_update", base_msg + chunk).split(' ', 1)
+                    if res == "err":
+                        raise Exception(data)
 
-        response = self.execute("file_close", "{} {}".format(id, self.compute_md5(file)))
+            res, data = self.execute("file_close", "{} {}".format(id, self.compute_md5(file))).split(' ', 1)
+            if res == "err":
+                raise Exception(data)
+
+        except Exception as e:
+            logging.error("[Transport] Error during file sending: {}".format(str(e)))
 
         if remove:
             os.remove(file)
 
-        return response
+        return res + ' ' + data
 
 
     def execute(self, command, payload):
@@ -754,30 +760,35 @@ class ProcessFiles(ClusterThread):
 
     def __init__(self, manager_handler, filename, client_name, stopper):
         """
-
+        Abstract class which defines the necessary methods to receive a file
         """
         ClusterThread.__init__(self, stopper)
 
-        self.manager_handler = manager_handler
-        self.filename = filename
-        self.name = client_name
-        self.data = None
-        self.command_queue = Queue()
-        self.received_all_information = False
-        self.received_error = False
-        self.f = None
-        self.id = None
-        self.thread_tag = "[FileThread]"
+        self.manager_handler = manager_handler  # handler object
+        self.filename = filename                # filename of the file to receive
+        self.name = client_name                 # name of the sender
+        self.command_queue = Queue()            # queue to store received file commands
+        self.received_all_information = False   # flag to indicate whether all file has been received
+        self.received_error = False             # flag to indicate there has been an error in receiving process
+        self.f = None                           # file object that is being received
+        self.id = None                          # id of the thread doing the receiving process
+        self.thread_tag = "[FileThread]"        # logging tag of the thread
 
 
     # Overridden methods
     def stop(self):
+        """
+        Stops the thread
+        """
         if self.id:
             self.manager_handler.del_worker(self.id)
         ClusterThread.stop(self)
 
 
     def run(self):
+        """
+        Receives the file and processes it.
+        """
         while not self.stopper.is_set() and self.running:
             self.lock_status(True)
 
@@ -793,86 +804,101 @@ class ProcessFiles(ClusterThread):
                     else:
                         logging.error("{0}: Result: Error.".format(self.thread_tag))
 
-                    self.unlock_clean_and_stop(reason="task performed", clean=False, send_err_request=False)
+                    self.unlock_and_stop(reason="task performed", send_err_request=False)
                 except Exception as e:
                     logging.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, str(e)))
-                    self.unlock_clean_and_stop(reason="error")
+                    self.unlock_and_stop(reason="error")
 
             elif self.received_error:
                 logging.debug("{0}: An error took place during file reception.".format(self.thread_tag))
-                self.unlock_clean_and_stop(reason="error")
+                self.unlock_and_stop(reason="error")
 
             else:  # receiving file
                 try:
                     self.process_file_cmd()
                 except Exception as e:
                     logging.error("{0}: Unknown error in process_file_cmd: {1}".format(self.thread_tag, str(e)))
-                    self.unlock_clean_and_stop(reason="error")
+                    self.unlock_and_stop(reason="error")
 
             time.sleep(0.1)
 
 
     # New methods
-    def unlock_clean_and_stop(self, reason, clean=True, send_err_request=None):
+    def unlock_and_stop(self, reason, send_err_request=None):
+        """
+        Releases a lock before stopping the thread
+
+        :param reason: Reason why this function was called. Only for logging purposes.
+        :param send_err_request: Whether to send an error request. Only used in master nodes.
+        """
         logging.info("{0}: Unlocking '{1}' due to {2}.".format(self.thread_tag, self.status_type, reason))
         self.lock_status(False)
-        if clean:
-            clean_up(self.name)
         self.stop()
 
 
     def check_connection(self):
+        """
+        Check if the node is connected. Only defined in client nodes.
+        """
         raise NotImplementedError
 
 
     def lock_status(self, status):
+        """
+        Acquires / Releases a lock.
+
+        :param status: flag to indicate whether release or acquire the lock.
+        """
         raise NotImplementedError
 
 
     def process_file(self):
+        """
+        Method which defines how to process a file once it's been received.
+        """
         raise NotImplementedError
 
 
     def set_command(self, command, data):
+        """
+        Adds a received command to the command queue
+
+        :param command: received command
+        :param data: received data (filename, file chunk, file md5...)
+        """
         split_data = data.split(' ',1)
         local_data = split_data[1] if len(split_data) > 1 else None
         self.command_queue.put((command, local_data))
 
 
     def process_file_cmd(self):
+        """
+        Process the commands received in the command queue
+        """
         command, data = self.command_queue.get(block=True)
-        if command == "file_open":
-            logging.debug("{0}: Opening file".format(self.thread_tag))
-            command = ""
-            self.file_open()
-        elif command == "file_update":
-            logging.debug("{0}: Updating file".format(self.thread_tag))
-            command = ""
-            self.file_update(data)
-        elif command == "file_close":
-            logging.debug("{0}: Closing file".format(self.thread_tag))
-
-            try:
+        try:
+            if command == "file_open":
+                logging.debug("{0}: Opening file".format(self.thread_tag))
+                command = ""
+                self.file_open()
+            elif command == "file_update":
+                logging.debug("{0}: Updating file".format(self.thread_tag))
+                command = ""
+                self.file_update(data)
+            elif command == "file_close":
+                logging.debug("{0}: Closing file".format(self.thread_tag))
                 self.file_close(data)
                 logging.debug("{0}: File closed".format(self.thread_tag))
                 self.received_all_information = True
-            except Exception as e:
-                logging.error("{0}: {1}".format(self.thread_tag, str(e)))
-                self.received_error = True
-
-            command = ""
+                command = ""
+        except Exception as e:
+            logging.error("{0}: {1}".format(self.thread_tag, str(e)))
+            self.received_error = True
 
 
     def file_open(self):
         """
         Start the protocol of receiving a file. Create a new file
-
-        :parm data: data received from socket
-
-        This data must be:
-            - thread id
-
-        and must be separated by a white space
         """
         # Create the file
         self.filename = "{}/queue/cluster/{}/{}.tmp".format(common.ossec_path, self.name, self.id)
@@ -888,11 +914,7 @@ class ProcessFiles(ClusterThread):
         :parm data: data received from socket
 
         This data must be:
-            - thread id
-            - filename
             - chunk
-
-        and must be separated by a white space
         """
         # Open the file
         self.f.write(chunk)
@@ -905,11 +927,7 @@ class ProcessFiles(ClusterThread):
         :parm data: data received from socket
 
         This data must be:
-            - thread id
-            - filename
             - MD5 sum
-
-        and must be separated by a white space
         """
         # compare local file's sum with received sum
         self.f.close()
@@ -922,4 +940,3 @@ class ProcessFiles(ClusterThread):
             raise Exception(error_msg)
 
         logging.debug("File {} received successfully".format(self.filename))
-

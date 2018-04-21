@@ -11,7 +11,7 @@ import os
 import shutil
 import ast
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, clean_up
+from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
@@ -341,8 +341,6 @@ class ClientManager():
         logging.debug("[Client] Cleaning handler threads.")
         self.handler.exit()
 
-        logging.debug("[Client] Cleaning generated temporary files.")
-        clean_up()
 
         logging.info("[Client] Cleaning end.")
 
@@ -387,7 +385,7 @@ class ClientThread(ClusterThread):
                     logging.info("{0}: Result: Successfully.".format(self.thread_tag))
                     self.process_result()
                 else:
-                    logging.error("{0}: Result: Error: '{1}'".format(self.thread_tag, str(e)))
+                    logging.error("{0}: Result: Error".format(self.thread_tag))
                     self.clean()
             except Exception as e:
                 logging.error("{0}: Unknown Error: '{1}'.".format(self.thread_tag, str(e)))
