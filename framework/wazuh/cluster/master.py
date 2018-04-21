@@ -34,7 +34,7 @@ class MasterManagerHandler(ServerHandler):
 
     # Overridden methods
     def process_request(self, command, data):
-        logging.debug("[Master] Request received: '{0}'.".format(command))
+        logging.debug("[Master] [{0}] Request received: '{1}'.".format(self.name, command))
 
 
         if command == 'echo-c':  # Echo
@@ -72,7 +72,7 @@ class MasterManagerHandler(ServerHandler):
         # FixMe: Move this line to communications
         answer, payload = self.split_data(response)
 
-        logging.debug("[Master] Response received: '{0}'.".format(answer))
+        logging.debug("[Master] [{0}] Response received: '{1}'.".format(self.name, answer))
 
         response_data = None
 
@@ -135,16 +135,16 @@ class MasterManagerHandler(ServerHandler):
         if not tag:
             tag = "[Master] [Sync process m->c]"
 
-        logging.info("{0} [{1}]: Start.".format(tag, client_name))
+        logging.info("{0}: Start.".format(tag))
 
 
         # Extract received data
-        logging.info("{0} [{1}] [STEP 1]: Analyzing received files.".format(tag, client_name))
+        logging.info("{0} [STEP 1]: Analyzing received files.".format(tag))
 
         try:
             json_file, zip_dir_path = decompress_files(data_received)
         except Exception as e:
-            logging.error("{}: Error decompressing data from client {}: {}".format(tag, client_name, str(e)))
+            logging.error("{0}: Error decompressing data: {1}.".format(tag, str(e)))
             raise e
 
         if json_file:
@@ -152,12 +152,12 @@ class MasterManagerHandler(ServerHandler):
         else:
             raise Exception("cluster_control.json not included in received zip file")
 
-        logging.debug("{0} Received {1} client files to update".format(tag, len(client_files_json)))
+        logging.debug("{0}: Received {1} client files to update.".format(tag, len(client_files_json)))
 
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=len(client_files_json))
 
-        logging.info("{0} [{1}] [STEP 2]: Updating manager files.".format(tag, client_name))
+        logging.info("{0} [STEP 2]: Updating manager files.".format(tag))
 
         # Update files
         self._update_client_files_in_master(client_files_json, client_files_json, zip_dir_path)
@@ -181,12 +181,12 @@ class MasterManagerHandler(ServerHandler):
         if not tag:
             tag = "[Master] [Sync process m->c]"
 
-        logging.info("{0} [{1}]: Start.".format(tag, client_name))
+        logging.info("{0}: Start.".format(tag))
 
         try:
             json_file, zip_dir_path = decompress_files(data_received)
         except Exception as e:
-            logging.error("{}: Error decompressing data from client {}: {}".format(tag, client_name, str(e)))
+            logging.error("{0}: Error decompressing data: {1}".format(tag, str(e)))
             raise e
 
         if json_file:
@@ -195,9 +195,9 @@ class MasterManagerHandler(ServerHandler):
             raise Exception("cluster_control.json not included in received zip file")
 
         # Extract recevied data
-        logging.info("{0} [{1}] [STEP 1]: Analyzing received files.".format(tag, client_name))
+        logging.info("{0} [STEP 1]: Analyzing received files.".format(tag))
 
-        logging.debug("{0} Received {1} master files to check".format(tag, len(master_files_from_client)))
+        logging.debug("{0}: Received {1} master files to check".format(tag, len(master_files_from_client)))
 
         # Get master files
         master_files = self.server.get_integrity_control()
@@ -215,21 +215,21 @@ class MasterManagerHandler(ServerHandler):
 
         # Step 3: KO files
         if not client_files_ko['shared'] and not client_files_ko['missing'] and not client_files_ko['extra']:
-            logging.info("{0} [{1}] [STEP 2]: There are no KO files for client.".format(tag, client_name))
+            logging.info("{0} [STEP 2]: There are no KO files for client.".format(tag))
 
             ko_files = False
             data_for_client = None
 
         else:
             # Compress data: master files (only KO shared and missing)
-            logging.info("{0} [{1}] [STEP 2]: Compressing KO files for client.".format(tag, client_name))
+            logging.info("{0} [STEP 2]: Compressing KO files for client.".format(tag))
 
             master_files_paths = [item for item in client_files_ko['shared']]
             master_files_paths.extend([item for item in client_files_ko['missing']])
 
             compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
 
-            logging.info("{0} [{1}] [STEP 2]: Sending KO files to client.".format(tag, client_name))
+            logging.info("{0} [STEP 2]: Sending KO files to client.".format(tag))
 
             ko_files = True
             data_for_client = compressed_data
@@ -268,7 +268,7 @@ class ProcessClientIntegrity(ProcessClient):
     def __init__(self, manager, manager_handler, filename, stopper):
         ProcessClient.__init__(self, manager_handler, filename, stopper)
         self.manager = manager
-        self.thread_tag = "[Master] [ProcessIntegrityThread] [{0}] [Sync process m->c]".format(self.manager_handler.name)
+        self.thread_tag = "[Master] [ProcessClientIntegrityThread] [{0}]".format(self.manager_handler.name)
         self.status_type = "sync_integrity_free"
         self.function = self.manager_handler.process_integrity_from_client
 
@@ -314,7 +314,7 @@ class ProcessClientFiles(ProcessClient):
 
    def __init__(self, manager_handler, filename, stopper):
         ProcessClient.__init__(self, manager_handler, filename, stopper)
-        self.thread_tag = "[Master] [ProcessClientFilesThread] [Sync process m->c]"
+        self.thread_tag = "[Master] [ProcessClientFilesThread] [{0}]".format(self.manager_handler.name)
         self.status_type = "sync_agentinfo_free"
         self.function = self.manager_handler.process_files_from_client
 

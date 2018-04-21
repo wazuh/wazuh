@@ -49,11 +49,11 @@ class ClientManagerHandler(ClientHandler):
             cmf_thread.start()
             return 'ack', self.set_worker(command, cmf_thread, data)
         elif command == 'sync_m_c_ok':
-            logging.info("[Client] The master says that everything is right. Unlocking.")
+            logging.info("[Client] The master has verified that the integrity is right. Unlocking SyncIntegrityThread.")
             self.integrity_received_and_processed.set()
             return 'ack', "Thanks2!"
         elif command == 'sync_m_c_err':
-            logging.info("[Client] The master was not able to send me the files. Unlocking.")
+            logging.info("[Client] The master was not able to verify the integrity. Unlocking SyncIntegrityThread.")
             self.integrity_received_and_processed.set()
             return 'ack', "Thanks!"
         elif command == 'req_sync_m_c':
@@ -417,7 +417,7 @@ class KeepAliveThread(ClientThread):
 
     def __init__(self, client_handler, stopper):
         ClientThread.__init__(self, client_handler, stopper)
-        self.thread_tag = "[Client] [KeepAliveThread] [Sync process c->m]"
+        self.thread_tag = "[Client] [KeepAliveThread]"
 
 
     def ask_for_permission(self):
@@ -446,6 +446,7 @@ class SyncClientThread(ClientThread):
         n_seconds = 0
 
         logging.info("{0}: Asking permission to sync.".format(self.thread_tag))
+        waiting_count = 0
         while wait_for_permission and not self.stopper.is_set() and self.running:
             response = self.client_handler.send_request(self.request_type)
             processed_response = self.client_handler.process_response(response)
@@ -457,8 +458,9 @@ class SyncClientThread(ClientThread):
 
             sleeped = self.sleep(5)
             n_seconds += sleeped
-            if n_seconds != 0 and n_seconds % 5 == 0:
-                logging.info("{0}: Waiting for Master permission to sync.".format(self.thread_tag))
+            if n_seconds >= 5 and n_seconds % 5 == 0:
+                waiting_count += 1
+                logging.info("{0}: Waiting for Master permission to sync [{1}].".format(self.thread_tag, waiting_count))
 
 
     def clean(self):
@@ -490,7 +492,7 @@ class SyncIntegrityThread(SyncClientThread):
         self.request_type = "sync_i_c_m_p"
         self.reason = "sync_i_c_m"
         self.function = self.client_handler.send_integrity_to_master
-        self.thread_tag = "[Client] [SyncIntegrityThread [Sync process c->m]"
+        self.thread_tag = "[Client] [SyncIntegrityThread]"
 
 
     def job(self):
@@ -532,7 +534,7 @@ class SyncAgentInfoThread(SyncClientThread):
 
     def __init__(self, client_handler, stopper):
         SyncClientThread.__init__(self, client_handler, stopper)
-        self.thread_tag = "[Client] [SyncAgentInfoThread] [Sync process c->m]"
+        self.thread_tag = "[Client] [SyncAgentInfoThread]"
         self.request_type = "sync_ai_c_mp"
         self.reason = "sync_ai_c_m"
         self.function = self.client_handler.send_client_files_to_master
