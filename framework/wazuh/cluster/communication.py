@@ -122,6 +122,8 @@ class ClusterThread(threading.Thread):
             else:
                 count += 1
 
+        return count
+
 
 class Handler(asyncore.dispatcher_with_send):
 
@@ -130,7 +132,7 @@ class Handler(asyncore.dispatcher_with_send):
         self.box = {}
         self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
         self.inbuffer = b''
-        self.lock = threading.Lock()
+        self.lock = threading.Lock()  # Box lock
         self.workers_lock = threading.Lock()
         self.workers = {}
         self.stopper = threading.Event()
@@ -287,7 +289,6 @@ class Handler(asyncore.dispatcher_with_send):
         logging.debug("{}".format(tbinfo))
 
 
-
     def handle_close(self):
         self.close()
 
@@ -355,23 +356,11 @@ class Handler(asyncore.dispatcher_with_send):
     def process_request(self, command, data):
         if command == 'echo':
             return 'ok ', data.decode()
-        elif command == "file_open" or command == "file_update":
+        elif command == "file_open" or command == "file_update" or command == "file_close":
+            # At this moment, the thread should exists
             worker, cmd, message = self.get_worker(data)
             if worker:
                 worker.set_command(command, data)
-            return cmd, message
-        elif command == "file_close":
-            worker, cmd, message = self.get_worker(data)
-            if worker:
-                worker.set_command(command, data)
-                logging.debug("[Transport] Acquiring lock...")
-                worker.close_lock.acquire()
-                worker.close_lock.wait()
-                worker.close_lock.release()
-                logging.debug("[Transport] Releasing lock... ({})".format(worker.result))
-
-                return worker.result
-
             return cmd, message
         else:
             logging.error("[Transport] Unknown command received: '{0}'.".format(command))
@@ -440,7 +429,6 @@ class ServerHandler(Handler):
 
     def get_client(self):
         return self.name
-
 
 
 class Server(asyncore.dispatcher):
@@ -777,7 +765,6 @@ class ProcessFiles(ClusterThread):
         self.command_queue = Queue()
         self.received_all_information = False
         self.received_error = False
-        self.close_lock = threading.Condition()
         self.f = None
         self.id = None
         self.thread_tag = "[FileThread]"
@@ -863,20 +850,17 @@ class ProcessFiles(ClusterThread):
             command = ""
             self.file_update(data)
         elif command == "file_close":
-            self.close_lock.acquire()
             logging.debug("{0}: Closing file".format(self.thread_tag))
+
             try:
-                self.result = self.file_close(data)
+                self.file_close(data)
                 logging.debug("{0}: File closed".format(self.thread_tag))
                 self.received_all_information = True
             except Exception as e:
                 logging.error("{0}: {1}".format(self.thread_tag, str(e)))
                 self.received_error = True
-                self.result = "err", str(e)
-            finally:
-                command = ""
-                self.close_lock.notify()
-                self.close_lock.release()
+
+            command = ""
 
 
     def file_open(self):
@@ -894,7 +878,7 @@ class ProcessFiles(ClusterThread):
         self.filename = "{}/queue/cluster/{}/{}.tmp".format(common.ossec_path, self.name, self.id)
         logging.debug("{0}: Creating file {1}".format(self.thread_tag, self.filename))
         self.f = open(self.filename, 'w')
-        return "ok", "File {} created successfully".format(self.filename)
+        logging.debug("File {} created successfully".format(self.filename))
 
 
     def file_update(self, chunk):
@@ -912,7 +896,6 @@ class ProcessFiles(ClusterThread):
         """
         # Open the file
         self.f.write(chunk)
-        return "ok", "Chunk wrote to {} successfully".format(self.filename)
 
 
     def file_close(self, md5_sum):
@@ -938,4 +921,5 @@ class ProcessFiles(ClusterThread):
             os.remove(self.filename)
             raise Exception(error_msg)
 
-        return "ok", "File {} received successfully".format(self.filename)
+        logging.debug("File {} received successfully".format(self.filename))
+

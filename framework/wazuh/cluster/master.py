@@ -268,7 +268,7 @@ class ProcessClientIntegrity(ProcessClient):
     def __init__(self, manager, manager_handler, filename, stopper):
         ProcessClient.__init__(self, manager_handler, filename, stopper)
         self.manager = manager
-        self.thread_tag = "[Master] [ProcessIntegrityThread] [Sync process m->c]"
+        self.thread_tag = "[Master] [ProcessIntegrityThread] [{0}] [Sync process m->c]".format(self.manager_handler.name)
         self.status_type = "sync_integrity_free"
         self.function = self.manager_handler.process_integrity_from_client
 
