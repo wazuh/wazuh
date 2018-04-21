@@ -193,7 +193,8 @@ class ClientManagerHandler(ClientHandler):
 
         # Step 2
         logging.info("{0} [Step 2]: Gathering files.".format(tag))
-        # Get master files (path, md5, mtime): client.keys, ossec.conf, groups, ...
+
+
         client_files = get_files_status('client', get_md5=False)
         cluster_control_json = {'master_files': {}, 'client_files': client_files}
 

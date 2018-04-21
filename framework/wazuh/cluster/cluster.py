@@ -32,6 +32,7 @@ import asynchat
 import errno
 import logging
 import re
+import os
 from calendar import timegm
 from random import random
 
@@ -214,13 +215,14 @@ def get_files_status(node_type, get_md5=True):
     for file_path, item in cluster_items.items():
         if file_path == "excluded_files":
             continue
+        if item.get("files") and "agent-info.merged" in item["files"]:
+            merge_agent_info()
         if item['source'] == node_type or item['source'] == 'all':
             fullpath = common.ossec_path + file_path
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
                 logging.warning("get_files_status: {}".format(e))
-
     return final_items
 
 
@@ -256,7 +258,8 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
                 ko_files = json.loads(zipf.open(name).read())
             else:
                 with open("{}/{}".format(zip_dir, name.replace('rootpath','').replace('/','_')), 'w') as f:
-                    f.write(zipf.open(name).read())
+                    content = zipf.open(name).read()
+                    f.write(content)
 
     # once read all files, remove the zipfile
     remove(zip_path)
@@ -453,3 +456,67 @@ def run_logtest(synchronized=False):
     except CalledProcessError as e:
         logging.warning("{}ules are not correct.".format(log_msg_start, str(e)))
         return False
+
+
+
+#
+# Agents-info
+#
+
+def merge_agent_info():
+    agent_info_path = "{}/queue/agent-info".format(common.ossec_path)
+    output_file = "{}/queue/cluster/agent-info.merged".format(common.ossec_path)
+    o_f = open(output_file, 'w')
+
+    for agentinfo in os.listdir(agent_info_path):
+        full_path = "{0}/{1}".format(agent_info_path, agentinfo)
+        data = None
+        with open(full_path, 'r') as f:
+            data = f.read()
+        o_f.write("! {0} {1} {2}\n".format(len(data), agentinfo, os.path.getmtime(agent_info_path)))
+        o_f.write(data)
+
+    o_f.close()
+
+    return output_file
+
+
+def unmerge_agent_info(path_file):
+    src_agent_info_path = "{0}/{1}".format(path_file, '_agent-info.merged')
+    dst_agent_info_path = "{}/queue/agent-info".format(common.ossec_path)
+
+    data = ""
+    size_file = 0
+    name_file = "NA"
+    line = True
+    with open(src_agent_info_path, "r") as src_f:
+        while line:
+            line = src_f.readline()
+
+            m = re.match(r'^! (\d+) (\S+)', line)
+
+            if m:
+                size_file = int(m.group(1))
+                name_file = m.group(2)
+                mtime = m.group(3)
+
+                if data or size_file == 0:
+                    
+
+                    """
+                    _update_file(fullpath="{}/{}".format(dst_agent_info_path, name_file), new_content=data,
+                                 umask_int=umask, mtime=mtime, w_mode=w_mode,
+                                 whoami='master')
+                    """
+                    new_agentinfo = "{0}/{1}".format(dst_agent_info_path, name_file)
+                    with open(new_agentinfo, "w") as dst_f:
+                        dst_f.write(data)
+                    data = ""
+                    size_file = 0
+                    name_file = "NA"
+                else:
+                    continue
+            else:
+                data += line
+
+    return True
