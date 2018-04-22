@@ -216,7 +216,9 @@ def get_files_status(node_type, get_md5=True):
         if file_path == "excluded_files":
             continue
         if item.get("files") and "agent-info.merged" in item["files"]:
-            merge_agent_info()
+            agents_to_send, path = merge_agent_info()
+            if agents_to_send == 0 and node_type == 'client':
+                return {}
         if item['source'] == node_type or item['source'] == 'all':
             fullpath = common.ossec_path + file_path
             try:
@@ -287,10 +289,10 @@ def _update_file(dst_path, new_content, umask_int=None, mtime=None, w_mode=None,
 
             if path.isfile(dst_path):
 
-                local_mtime = datetime.utcfromtimestamp(int(stat(fullpath).st_mtime))
+                local_mtime = datetime.utcfromtimestamp(int(stat(dst_path).st_mtime))
                 # check if the date is older than the manager's date
                 if local_mtime > mtime:
-                    #logging.debug("Receiving an old file ({})".format(fullpath))
+                    #logging.debug("Receiving an old file ({})".format(dst_path))
                     return
         else:
             logging.warning("Agent-info received in a client node.")
@@ -465,19 +467,23 @@ def run_logtest(synchronized=False):
 # Agents-info
 #
 
-def merge_agent_info(time_limit_minutes=30):
-    min_mtime = mktime(datetime.now().timetuple()) - 1800 # Floating now - 30 min (30 min = 1800 sec)
-    #start = time()
+def merge_agent_info(time_limit_seconds=1800):
+    min_mtime = time() - time_limit_seconds
     agent_info_path = "{}/queue/agent-info".format(common.ossec_path)
     output_file = "{}/queue/cluster/agent-info.merged".format(common.ossec_path)
-    o_f = open(output_file, 'wb')
+    o_f = None
+    agents_to_send = 0
 
     for agentinfo in os.listdir(agent_info_path):
         full_path = "{0}/{1}".format(agent_info_path, agentinfo)
         stat_data = stat(full_path)
-        #sec_extra = time() - start
-        if not stat_data.st_mtime > min_mtime: 
+
+        if stat_data.st_mtime < min_mtime:
             continue
+
+        agents_to_send += 1
+        if not o_f:
+            o_f = open(output_file, 'wb')
 
         header = "{} {} {}".format(stat_data.st_size, agentinfo,
                 datetime.utcfromtimestamp(stat_data.st_mtime))
@@ -486,9 +492,10 @@ def merge_agent_info(time_limit_minutes=30):
 
         o_f.write(header + '\n' + data)
 
-    o_f.close()
+    if o_f:
+        o_f.close()
 
-    return output_file
+    return agents_to_send, output_file
 
 
 def unmerge_agent_info(path_file):
