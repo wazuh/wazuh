@@ -102,7 +102,7 @@ class ClientManagerHandler(ClientHandler):
             with open(zip_path, 'rb') as f:
                 file_data = f.read()
 
-            _update_file(fullpath=file_path, new_content=file_data,
+            _update_file(dst_path=file_path, new_content=file_data,
                          umask_int=umask, w_mode=w_mode, whoami='client')
 
         if not tag:
