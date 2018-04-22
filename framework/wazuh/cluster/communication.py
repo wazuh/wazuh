@@ -153,7 +153,11 @@ class Handler(asyncore.dispatcher_with_send):
             with self.workers_lock:
                 my_worker = self.workers[worker_id]
 
-            my_worker.join(timeout=5)
+            try:
+                my_worker.join(timeout=2)
+            except Exception as e:
+                logging.error("[Client] Cleaning thread. Error for: '{0}' - '{1}'.".format(worker_id, str(e)))
+
             if my_worker.isAlive():
                 logging.warning("[Transport] Cleaning thread. Timeout for: '{0}'.".format(worker_id))
             else:

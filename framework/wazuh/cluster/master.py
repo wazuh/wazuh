@@ -428,7 +428,12 @@ class MasterManager(Server):
 
         for thread in self.threads:
             logging.debug("[Master] Cleaning main threads: '{0}'.".format(thread))
-            self.threads[thread].join(timeout=5)
+
+            try:
+                self.threads[thread].join(timeout=2)
+            except Exception as e:
+                logging.error("[Client] Cleaning main threads. Error for: '{0}' - '{1}'.".format(thread, str(e)))
+
             if self.threads[thread].isAlive():
                 logging.warning("[Master] Cleaning main threads. Timeout for: '{0}'.".format(thread))
             else:
