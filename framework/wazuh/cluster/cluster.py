@@ -466,6 +466,8 @@ def run_logtest(synchronized=False):
 #
 
 def merge_agent_info(time_limit_minutes=30):
+    min_mtime = mktime(datetime.now().timetuple()) - 1800 # Floating now - 30 min (30 min = 1800 sec)
+    #start = time()
     agent_info_path = "{}/queue/agent-info".format(common.ossec_path)
     output_file = "{}/queue/cluster/agent-info.merged".format(common.ossec_path)
     o_f = open(output_file, 'wb')
@@ -473,7 +475,10 @@ def merge_agent_info(time_limit_minutes=30):
     for agentinfo in os.listdir(agent_info_path):
         full_path = "{0}/{1}".format(agent_info_path, agentinfo)
         stat_data = stat(full_path)
-        # TO DO: only store those whose timestamp is < time_limit_minutes do comparison as fast as possible
+        #sec_extra = time() - start
+        if not stat_data.st_mtime > min_mtime: 
+            continue
+
         header = "{} {} {}".format(stat_data.st_size, agentinfo,
                 datetime.utcfromtimestamp(stat_data.st_mtime))
         with open(full_path, 'rb') as f:
