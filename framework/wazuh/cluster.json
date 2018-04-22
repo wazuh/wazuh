@@ -49,11 +49,13 @@
         "description": "user CDB lists"
     },
 
-    "/queue/agent-info/": {
+    "/queue/cluster": {
         "umask": "0o117",
         "source": "client",
         "write_mode": "atomic",
-        "files": ["all"],
+        "files": [
+            "agent-info.merged"
+        ],
         "recursive": false,
         "restart": false,
         "description": "agent status"

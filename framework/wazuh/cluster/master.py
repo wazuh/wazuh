@@ -18,7 +18,7 @@ from wazuh import common
 from wazuh.cluster.cluster import get_cluster_items, _update_file, \
                                   decompress_files, get_files_status, \
                                   compress_files, compare_files, get_agents_status, \
-                                  read_config
+                                  read_config, unmerge_agent_info
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
                                         Handler, InternalSocketHandler, ClusterThread
 from wazuh.utils import mkdir_with_mode
@@ -93,26 +93,26 @@ class MasterManagerHandler(ServerHandler):
 
         try:
 
-            for file_name, data in json_file.items():
+            for file_name, file_data, file_time in unmerge_agent_info(zip_dir_path):
                 # Full path
                 file_path = common.ossec_path + file_name
-                zip_path  = "{}/{}".format(zip_dir_path, file_name.replace('/','_'))
+                # zip_path  = "{}/{}".format(zip_dir_path, file_name.replace('/','_'))
 
                 # Cluster items information: write mode and umask
-                cluster_item_key = data['cluster_item_key']
-                w_mode = cluster_items[cluster_item_key]['write_mode']
-                umask = int(cluster_items[cluster_item_key]['umask'], base=0)
+                # cluster_item_key = data['cluster_item_key']
+                w_mode = cluster_items['/queue/cluster']['write_mode']
+                umask = int(cluster_items['/queue/cluster']['umask'], base=0)
 
                 # File content and time
-                with open(zip_path, 'rb') as f:
-                    file_data = f.read()
-                file_time = files_to_update_json[file_name]['mod_time']
+                # with open(zip_path, 'rb') as f:
+                #     file_data = f.read()
+                # file_time = files_to_update_json[file_name]['mod_time']
 
                 lock_file_path = "{}.lock".format(file_path)
                 lock_file = open(lock_file_path, 'a+')
                 try:
                     fcntl.lockf(lock_file, fcntl.LOCK_EX)
-                    _update_file(fullpath=file_path, new_content=file_data,
+                    _update_file(dst_path=file_path, new_content=file_data,
                                  umask_int=umask, mtime=file_time, w_mode=w_mode,
                                  whoami='master')
                 except:

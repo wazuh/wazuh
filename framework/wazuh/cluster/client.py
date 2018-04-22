@@ -102,7 +102,7 @@ class ClientManagerHandler(ClientHandler):
             with open(zip_path, 'rb') as f:
                 file_data = f.read()
 
-            _update_file(fullpath=file_path, new_content=file_data,
+            _update_file(dst_path=file_path, new_content=file_data,
                          umask_int=umask, w_mode=w_mode, whoami='client')
 
         if not tag:
@@ -193,7 +193,8 @@ class ClientManagerHandler(ClientHandler):
 
         # Step 2
         logging.info("{0} [Step 2]: Gathering files.".format(tag))
-        # Get master files (path, md5, mtime): client.keys, ossec.conf, groups, ...
+
+
         client_files = get_files_status('client', get_md5=False)
         cluster_control_json = {'master_files': {}, 'client_files': client_files}
 

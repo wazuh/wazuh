@@ -32,6 +32,7 @@ import asynchat
 import errno
 import logging
 import re
+import os
 from calendar import timegm
 from random import random
 
@@ -214,13 +215,16 @@ def get_files_status(node_type, get_md5=True):
     for file_path, item in cluster_items.items():
         if file_path == "excluded_files":
             continue
+        if item.get("files") and "agent-info.merged" in item["files"]:
+            agents_to_send, path = merge_agent_info()
+            if agents_to_send == 0 and node_type == 'client':
+                return {}
         if item['source'] == node_type or item['source'] == 'all':
             fullpath = common.ossec_path + file_path
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
                 logging.warning("get_files_status: {}".format(e))
-
     return final_items
 
 
@@ -248,6 +252,7 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     zip_json = {}
     ko_files = ""
     # create a directory to store zip's files
+    # TO DO: create expected directory structure
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
     with zipfile.ZipFile(zip_path) as zipf:
@@ -256,15 +261,18 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
                 ko_files = json.loads(zipf.open(name).read())
             else:
                 with open("{}/{}".format(zip_dir, name.replace('rootpath','').replace('/','_')), 'w') as f:
-                    f.write(zipf.open(name).read())
+                    content = zipf.open(name).read()
+                    f.write(content)
 
     # once read all files, remove the zipfile
     remove(zip_path)
     return ko_files, zip_dir
 
 
-def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None, whoami='master'):
-    if path.basename(fullpath) == 'client.keys':
+def _update_file(dst_path, new_content, umask_int=None, mtime=None, w_mode=None,
+                 tmp_dir='/queue/cluster',whoami='master'):
+
+    if path.basename(dst_path) == 'client.keys':
         if whoami =='client':
             logging.info("ToDo: _check_removed_agents***********************************************")
             #_check_removed_agents(new_content.split('\n'))
@@ -272,32 +280,31 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
             logging.warning("Client.keys file received in a master node.")
             raise WazuhException(3007)
 
-    is_agent_info   = 'agent-info' in fullpath
-    is_agent_groups = 'agent-groups' in fullpath
-
-    if is_agent_info or is_agent_groups:
+    if 'agent-info' in dst_path:
         if whoami =='master':
             try:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
             except ValueError as e:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S')
 
-            if path.isfile(fullpath):
+            if path.isfile(dst_path):
 
-                local_mtime = datetime.utcfromtimestamp(int(stat(fullpath).st_mtime))
+                local_mtime = datetime.utcfromtimestamp(int(stat(dst_path).st_mtime))
                 # check if the date is older than the manager's date
                 if local_mtime > mtime:
-                    #logging.debug("Receiving an old file ({})".format(fullpath))
+                    #logging.debug("Receiving an old file ({})".format(dst_path))
                     return
-        elif is_agent_info:
+        else:
             logging.warning("Agent-info received in a client node.")
             raise WazuhException(3011)
 
     # Write
+    # TO DO: write temporary files in cluster directory
+    # tmp_path = "{}/{}/{}".format(common.ossec_path, tmp_dir, )
     if w_mode == "atomic":
-        f_temp = '{0}.tmp.cluster'.format(fullpath)
+        f_temp = '{0}.cluster.tmp'.format(dst_path)
     else:
-        f_temp = '{0}'.format(fullpath)
+        f_temp = '{0}'.format(dst_path)
 
     if umask_int:
         oldumask = umask(umask_int)
@@ -306,7 +313,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
         dest_file = open(f_temp, "w")
     except IOError as e:
         if e.errno == errno.ENOENT:
-            dirpath = path.dirname(fullpath)
+            dirpath = path.dirname(dst_path)
             mkdir_with_mode(dirpath)
             chmod(dirpath, S_IRWXU | S_IRWXG)
             dest_file = open(f_temp, "a+")
@@ -326,7 +333,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
 
     # Atomic
     if w_mode == "atomic":
-        rename(f_temp, fullpath)
+        rename(f_temp, dst_path)
 
 
 def compare_files(good_files, check_files):
@@ -453,3 +460,66 @@ def run_logtest(synchronized=False):
     except CalledProcessError as e:
         logging.warning("{}ules are not correct.".format(log_msg_start, str(e)))
         return False
+
+
+
+#
+# Agents-info
+#
+
+def merge_agent_info(time_limit_seconds=1800):
+    min_mtime = time() - time_limit_seconds
+    agent_info_path = "{}/queue/agent-info".format(common.ossec_path)
+    output_file = "{}/queue/cluster/agent-info.merged".format(common.ossec_path)
+    o_f = None
+    agents_to_send = 0
+
+    for agentinfo in os.listdir(agent_info_path):
+        full_path = "{0}/{1}".format(agent_info_path, agentinfo)
+        stat_data = stat(full_path)
+
+        if stat_data.st_mtime < min_mtime:
+            continue
+
+        agents_to_send += 1
+        if not o_f:
+            o_f = open(output_file, 'wb')
+
+        header = "{} {} {}".format(stat_data.st_size, agentinfo,
+                datetime.utcfromtimestamp(stat_data.st_mtime))
+        with open(full_path, 'rb') as f:
+            data = f.read()
+
+        o_f.write(header + '\n' + data)
+
+    if o_f:
+        o_f.close()
+
+    return agents_to_send, output_file
+
+
+def unmerge_agent_info(path_file):
+    src_agent_info_path = "{0}/{1}".format(path_file, '_queue_cluster_agent-info.merged')
+    dst_agent_info_path = "/queue/agent-info/".format(common.ossec_path)
+
+    bytes_read = 0
+    total_bytes = os.stat(src_agent_info_path).st_size
+    src_f = open(src_agent_info_path, 'rb')
+
+    while bytes_read < total_bytes:
+        # read header
+        header = src_f.readline()
+        bytes_read += len(header)
+        try:
+            st_size, name, st_mtime = header[:-1].split(' ',2)
+            st_size = int(st_size)
+        except ValueError as e:
+            raise Exception("Malformed agent-info.merged file")
+
+        # read data
+        data = src_f.read(st_size)
+        bytes_read += st_size
+
+        yield dst_agent_info_path + name, data, st_mtime
+
+    src_f.close()
