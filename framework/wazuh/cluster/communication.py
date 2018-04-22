@@ -14,9 +14,9 @@ import logging
 import json
 
 try:
-    from Queue import Queue
+    from Queue import Queue, Empty
 except ImportError:
-    from queue import Queue
+    from queue import Queue, Empty
 
 
 if check_cluster_status():
@@ -777,6 +777,7 @@ class ProcessFiles(ClusterThread):
         self.f = None                           # file object that is being received
         self.id = None                          # id of the thread doing the receiving process
         self.thread_tag = "[FileThread]"        # logging tag of the thread
+        self.n_get_timeouts = 0                 # number of times Empty exception is raised
 
 
     # Overridden methods
@@ -819,7 +820,21 @@ class ProcessFiles(ClusterThread):
 
             else:  # receiving file
                 try:
-                    self.process_file_cmd()
+                    try:
+                        command, data = self.command_queue.get(block=True, timeout=1)
+                        self.n_get_timeouts = 0
+                    except Empty as e:
+                        self.n_get_timeouts += 1
+                        # wait 30 seconds before raising the exception but
+                        # check while conditions every second
+                        # to stop the thread if a Ctrl+C is received
+                        # TO DO: remove hardcoded timeout
+                        if self.n_get_timeouts > 30:
+                            raise Exception("No file command was received")
+                        else:
+                            continue
+
+                    self.process_file_cmd(command, data)
                 except Exception as e:
                     logging.error("{0}: Unknown error in process_file_cmd: {1}".format(self.thread_tag, str(e)))
                     self.unlock_and_stop(reason="error")
@@ -875,11 +890,10 @@ class ProcessFiles(ClusterThread):
         self.command_queue.put((command, local_data))
 
 
-    def process_file_cmd(self):
+    def process_file_cmd(self, command, data):
         """
         Process the commands received in the command queue
         """
-        command, data = self.command_queue.get(block=True)
         try:
             if command == "file_open":
                 logging.debug("{0}: Opening file".format(self.thread_tag))
