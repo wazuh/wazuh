@@ -115,11 +115,12 @@ class MasterManagerHandler(ServerHandler):
                     _update_file(dst_path=file_path, new_content=file_data,
                                  umask_int=umask, mtime=file_time, w_mode=w_mode,
                                  whoami='master')
-                except:
+                except Exception as e:
                     fcntl.lockf(lock_file, fcntl.LOCK_UN)
                     lock_file.close()
                     os.remove(lock_file_path)
-                    raise
+                    logging.error("Error updating client file '{}' - '{}'.".format(lock_file_path, str(e)))
+                    continue
 
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
