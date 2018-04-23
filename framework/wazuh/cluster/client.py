@@ -11,7 +11,7 @@ import os
 import shutil
 import ast
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status
+from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
@@ -254,9 +254,6 @@ class ClientManagerHandler(ClientHandler):
         return sync_result
 
 
-def get_client_intervals():
-    return get_cluster_items()['intervals']['client']
-
 #
 # Threads (workers) created by ClientManagerHandler
 #
@@ -361,7 +358,8 @@ class ClientThread(ClusterThread):
         self.client_handler = client_handler
 
         # Intervals
-        self.interval_sync = 30 # It's set in specific threads
+        self.init_interval = 30 
+        self.interval = self.init_interval # It's set in specific threads
 
 
     def run(self):
@@ -375,6 +373,7 @@ class ClientThread(ClusterThread):
                 continue
 
             try:
+                self.interval = self.init_interval
                 self.ask_for_permission()
 
                 result = self.job()
@@ -389,8 +388,8 @@ class ClientThread(ClusterThread):
                 logging.error("{0}: Unknown Error: '{1}'.".format(self.thread_tag, str(e)))
                 self.clean()
 
-            logging.info("{0}: Sleeping: {1}s.".format(self.thread_tag, self.interval_sync))
-            self.sleep(self.interval_sync)
+            logging.info("{0}: Sleeping: {1}s.".format(self.thread_tag, self.interval))
+            self.sleep(self.interval)
 
 
     def ask_for_permission(self):
@@ -414,6 +413,10 @@ class KeepAliveThread(ClientThread):
     def __init__(self, client_handler, stopper):
         ClientThread.__init__(self, client_handler, stopper)
         self.thread_tag = "[Client] [KeepAliveThread]"
+        # Intervals
+        self.init_interval = get_cluster_items_client_intervals()['keep_alive']
+        self.interval = self.init_interval
+
 
 
     def ask_for_permission(self):
@@ -437,8 +440,10 @@ class SyncClientThread(ClientThread):
         ClientThread.__init__(self, client_handler, stopper)
 
         #Intervals
-        self.interval_sync = get_client_intervals()['sync_files']
-        self.interval_ask_for_permission = get_client_intervals()['ask_for_permission']
+        self.init_interval = get_cluster_items_client_intervals()['sync_files']
+        self.interval = self.init_interval
+
+        self.interval_ask_for_permission = get_cluster_items_client_intervals()['ask_for_permission']
 
 
     def ask_for_permission(self):
@@ -489,7 +494,9 @@ class SyncIntegrityThread(SyncClientThread):
 
     def __init__(self, client_handler, stopper):
         SyncClientThread.__init__(self, client_handler, stopper)
-        self.interval_sync = get_client_intervals()['sync_integrity']
+        self.init_interval = get_cluster_items_client_intervals()['sync_integrity']
+        self.interval = self.init_interval
+
         self.request_type = "sync_i_c_m_p"
         self.reason = "sync_i_c_m"
         self.function = self.client_handler.send_integrity_to_master
@@ -519,7 +526,7 @@ class SyncIntegrityThread(SyncClientThread):
 
             if event_is_set:  # No timeout -> Free
                 logging.info("{0}: Unlocking: Master sent the response and the integrity was processed if necessary.".format(self.thread_tag))
-                self.interval_sync = max(0, self.interval_sync - n_seconds)
+                self.interval = max(0, self.init_interval - n_seconds)
             else:  # Timeout
                 # Print each 5 seconds
                 if n_seconds != 0 and n_seconds % 5 == 0:

@@ -4,7 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.cluster.cluster import check_cluster_status, get_cluster_items, get_cluster_options
+from wazuh.cluster.cluster import check_cluster_status, get_cluster_items, get_cluster_items_communication_intervals
 import asyncore
 import threading
 import random
@@ -31,9 +31,6 @@ if check_cluster_status():
                         - yum install python-cryptography python-setuptools\n\
                         - apt install python-cryptography")
 
-
-def get_communication_intervals():
-    return get_cluster_items()['intervals']['communication']
 
 max_msg_size = 1000000
 cmd_size = 12
@@ -464,7 +461,7 @@ class Server(asyncore.dispatcher):
         self.bind((host, port))
         self.listen(5)
         self.handle_type = handle_type
-        self.interval_file_transfer_send = get_communication_intervals()['file_transfer_send']
+        self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
 
 
     def handle_accept(self):
@@ -564,7 +561,7 @@ class Server(asyncore.dispatcher):
 
 
     def send_file(self, client_name, reason, file, remove = False):
-        return self.get_client_info(client_name)['handler'].send_file(reason, file, remove, self.file_transfer_send)
+        return self.get_client_info(client_name)['handler'].send_file(reason, file, remove, self.interval_file_transfer_send)
 
 
     def send_request(self, client_name, command, data=None):
@@ -793,8 +790,8 @@ class ProcessFiles(ClusterThread):
         self.n_get_timeouts = 0                 # number of times Empty exception is raised
 
         #Intervals
-        self.interval_file_transfer_receive = get_communication_intervals()['file_transfer_receive']
-        self.max_time_receiving_file = get_communication_intervals()['max_time_receiving_file']
+        self.interval_file_transfer_receive = get_cluster_items_communication_intervals()['file_transfer_receive']
+        self.max_time_receiving_file = get_cluster_items_communication_intervals()['max_time_receiving_file']
 
 
     # Overridden methods

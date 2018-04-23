@@ -83,6 +83,7 @@
         "client": {
             "sync_integrity": 10,
             "sync_files": 15,
+            "keep_alive": 10,
             "connection_retry": 10,
             "ask_for_permission": 5
         },

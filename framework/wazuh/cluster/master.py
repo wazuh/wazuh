@@ -18,7 +18,7 @@ from wazuh import common
 from wazuh.cluster.cluster import get_cluster_items, _update_file, \
                                   decompress_files, get_files_status, \
                                   compress_files, compare_files, get_agents_status, \
-                                  read_config, unmerge_agent_info
+                                  read_config, unmerge_agent_info, get_cluster_items_master_intervals
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
                                         Handler, InternalSocketHandler, ClusterThread
 from wazuh.utils import mkdir_with_mode
@@ -324,10 +324,6 @@ class ProcessClientFiles(ProcessClient):
         self.function = self.manager_handler.process_files_from_client
 
 
-def get_master_intervals():
-    return get_cluster_items()['intervals']['master']
-
-
 #
 # Master
 #
@@ -340,7 +336,7 @@ class MasterManager(Server):
         logging.info("[Master] Listening.")
         
         # Intervals
-        self.interval_recalculate_integrity = get_master_intervals()['recalculate_integrity']
+        self.interval_recalculate_integrity = get_cluster_items_master_intervals()['recalculate_integrity']
 
         self.config = cluster_config
         self.handler = MasterManagerHandler

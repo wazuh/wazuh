@@ -88,8 +88,14 @@ def get_cluster_items():
     except Exception as e:
         raise WazuhException(3005, str(e))
 
-def get_cluster_options():
-    return get_cluster_items()['sync_options']
+def get_cluster_items_master_intervals():
+    return get_cluster_items()['intervals']['master']
+
+def get_cluster_items_communication_intervals():
+    return get_cluster_items()['intervals']['communication']
+
+def get_cluster_items_client_intervals():
+    return get_cluster_items()['intervals']['client']
 
 def read_config():
     # Get api/configuration/config.js content
@@ -211,7 +217,7 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
 
 def get_files_status(node_type, get_md5=True):
 
-    cluster_items_files = get_cluster_items().get('files')
+    cluster_items_files = get_cluster_items()['files']
 
     final_items = {}
     for file_path, item in cluster_items_files.items():
