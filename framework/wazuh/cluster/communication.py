@@ -67,7 +67,10 @@ def msgparse(buf, my_fernet):
         if len(buf) >= size + header_size:
             payload = buf[header_size:size + header_size]
             if payload and my_fernet:
-                payload = my_fernet.decrypt(payload)
+                try:
+                    payload = my_fernet.decrypt(payload)
+                except InvalidToken as e:
+                    raise Exception("Could not decrypt message. Check the key is correct.")
             return size + header_size, counter, command, payload
     return None
 
@@ -296,7 +299,7 @@ class Handler(asyncore.dispatcher_with_send):
 
         self.handle_close()
         logging.error("[Transport] err {}".format(v))
-        logging.debug("{}".format(tbinfo))
+        logging.debug("{} {}".format(t, tbinfo))
 
 
     def handle_close(self):
