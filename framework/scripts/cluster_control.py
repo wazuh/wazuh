@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 from os.path import dirname, basename
 from sys import argv, exit, path
 from itertools import chain
@@ -186,7 +189,7 @@ def print_file_status_master(filter_file_list, filter_node_list):
     data = []
     # Convert JSON data to table format
     for node_name in sorted(files.iterkeys()):
-        
+
         if not files[node_name]:
             continue
         if not isinstance(files[node_name], dict):
@@ -194,11 +197,11 @@ def print_file_status_master(filter_file_list, filter_node_list):
             continue
 
         for file_name in sorted(files[node_name].iterkeys()):
-            file = [node_name, file_name, files[node_name][file_name]['mod_time'].split('.', 1)[0], files[node_name][file_name]['md5']] 
+            file = [node_name, file_name, files[node_name][file_name]['mod_time'].split('.', 1)[0], files[node_name][file_name]['md5']]
             data.append(file)
 
     __print_table(data, headers, True)
-    
+
     if len(node_error) > 0:
         print "Error:"
         for node, error in node_error.iteritems():
@@ -207,17 +210,17 @@ def print_file_status_master(filter_file_list, filter_node_list):
 
 def print_file_status_client(filter_file_list, node_name):
     my_files = __execute("get_files {}".format(filter_file_list))
-    
+
     if my_files.get("err"):
         print "Err {}"
         exit(1)
-    
+
     headers = ["Node", "File name", "Modification time", "MD5"]
     data = []
     for file_name in sorted(my_files.iterkeys()):
-            file = [node_name, file_name, my_files[file_name]['mod_time'].split('.', 1)[0], my_files[file_name]['md5']] 
+            file = [node_name, file_name, my_files[file_name]['mod_time'].split('.', 1)[0], my_files[file_name]['md5']]
             data.append(file)
-            
+
     __print_table(data, headers, True)
     print "(*) Clients only show their own files."
 
@@ -368,7 +371,7 @@ if __name__ == '__main__':
             else:
                 print ("Wrong arguments. To use this command you need to be a master node.")
                 parser.print_help()
-            
+
         elif args.list_nodes:
             print_nodes_status(args.filter_node)
         elif args.health:
