@@ -81,6 +81,7 @@ def check_cluster_config(config):
     if len(invalid_elements) != 0:
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
+
 def get_cluster_items():
     try:
         cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
@@ -88,14 +89,18 @@ def get_cluster_items():
     except Exception as e:
         raise WazuhException(3005, str(e))
 
+
 def get_cluster_items_master_intervals():
     return get_cluster_items()['intervals']['master']
+
 
 def get_cluster_items_communication_intervals():
     return get_cluster_items()['intervals']['communication']
 
+
 def get_cluster_items_client_intervals():
     return get_cluster_items()['intervals']['client']
+
 
 def read_config():
     # Get api/configuration/config.js content
@@ -226,7 +231,7 @@ def get_files_status(node_type, get_md5=True):
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items_files['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
-                logging.warning("get_files_status: {}".format(e))
+                logging.warning("[Cluster] get_files_status: {}.".format(e))
     return final_items
 
 
@@ -236,11 +241,11 @@ def compress_files(source, name, list_path, cluster_control_json=None):
         # write files
         if list_path:
             for f in list_path:
-                #logging.debug("Adding {} to zip file".format(f))
+                #logging.debug("[Cluster] Adding {} to zip file".format(f))  # debug2
                 try:
                     zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
                 except Exception as e:
-                    logging.error(str(WazuhException(3001, str(e))))
+                    logging.error("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
 
         try:
             zf.writestr("cluster_control.json", json.dumps(cluster_control_json), compression)
@@ -280,7 +285,7 @@ def _update_file(dst_path, new_content, umask_int=None, mtime=None, w_mode=None,
             logging.info("ToDo: _check_removed_agents***********************************************")
             #_check_removed_agents(new_content.split('\n'))
         else:
-            logging.warning("Client.keys file received in a master node.")
+            logging.warning("[Cluster] Client.keys file received in a master node.")
             raise WazuhException(3007)
 
     if 'agent-info' in dst_path:
@@ -295,10 +300,10 @@ def _update_file(dst_path, new_content, umask_int=None, mtime=None, w_mode=None,
                 local_mtime = datetime.utcfromtimestamp(int(stat(dst_path).st_mtime))
                 # check if the date is older than the manager's date
                 if local_mtime > mtime:
-                    #logging.debug("Receiving an old file ({})".format(dst_path))
+                    #logging.debug("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
                     return
         else:
-            logging.warning("Agent-info received in a client node.")
+            logging.warning("[Cluster] Agent-info received in a client node.")
             raise WazuhException(3011)
 
     # Write
@@ -359,7 +364,6 @@ def compare_files(good_files, check_files):
     return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
 
 
-
 def clean_up(node_name=""):
     """
     Cleans all temporary files generated in the cluster. Optionally, it cleans
@@ -369,7 +373,7 @@ def clean_up(node_name=""):
     """
     def remove_directory_contents(rm_path):
         if not path.exists(rm_path):
-            logging.debug("Nothing to remove in {}.".format(rm_path))
+            logging.debug("[Cluster] Nothing to remove in '{}'.".format(rm_path))
             return
 
         for f in listdir(rm_path):
@@ -382,21 +386,21 @@ def clean_up(node_name=""):
                 else:
                     remove(f_path)
             except Exception as e:
-                logging.error("Error removing {}: {}".format(f_path, str(e)))
+                logging.error("[Cluster] Error removing '{}': '{}'.".format(f_path, str(e)))
                 continue
 
     try:
         rm_path = "{}/queue/cluster/{}".format(common.ossec_path, node_name)
-        logging.debug("Removing {}.".format(rm_path))
+        logging.debug("[Cluster] Removing '{}'.".format(rm_path))
         remove_directory_contents(rm_path)
-    except:
-        logging.error("Error cleaning.")
+        logging.debug("[Cluster] Removed '{}'.".format(rm_path))
+    except Exception as e:
+        logging.error("[Cluster] Error cleaning up: {0}.".format(str(e)))
+
 
 #
 # Agents
 #
-
-
 def get_agents_status(filter_status=""):
     """
     Return a nested list where each element has the following structure
@@ -415,7 +419,6 @@ def get_agents_status(filter_status=""):
         agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
 
     return agent_list
-
 
 
 def _check_removed_agents(new_client_keys):
@@ -440,9 +443,9 @@ def _check_removed_agents(new_client_keys):
 
             try:
                 Agent(agent_id).remove()
-                logging.info("Agent {0} deleted successfully".format(agent_id))
+                logging.info("[Cluster] Agent '{0}': Deleted successfully.".format(agent_id))
             except WazuhException as e:
-                logging.error("Error deleting agent {0}: {1}".format(agent_id, str(e)))
+                logging.error("[Cluster] Agent '{0}': Error - '{1}'.".format(agent_id, str(e)))
 
 
 
@@ -458,10 +461,10 @@ def run_logtest(synchronized=False):
     try:
         # check synchronized rules are correct before restarting the manager
         check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
-        logging.debug("{}ules are correct.".format(log_msg_start))
+        logging.debug("[Cluster] {}ules are correct.".format(log_msg_start))
         return True
     except CalledProcessError as e:
-        logging.warning("{}ules are not correct.".format(log_msg_start, str(e)))
+        logging.warning("[Cluster] {}ules are not correct.".format(log_msg_start, str(e)))
         return False
 
 

@@ -36,7 +36,7 @@ max_msg_size = 1000000
 cmd_size = 12
 
 def msgbuild(counter, command, my_fernet, payload=None):
-    
+
     try:
         if payload:
             payload = payload.encode()
@@ -146,15 +146,15 @@ class Handler(asyncore.dispatcher_with_send):
 
 
     def exit(self):
-        logging.debug("[Transport] Cleaning connection")
+        logging.debug("[Transport-Handler] Cleaning handler threads. Start.")
+
         self.stopper.set()
 
         with self.workers_lock:
             worker_ids = self.workers.keys()
 
-
         for worker_id in worker_ids:
-            logging.debug("[Transport] Cleaning thread: '{0}'".format(worker_id))
+            logging.debug("[Transport-Handler] Cleaning handler thread: '{0}'.".format(worker_id))  # debug2
 
             with self.workers_lock:
                 my_worker = self.workers[worker_id]
@@ -162,12 +162,14 @@ class Handler(asyncore.dispatcher_with_send):
             try:
                 my_worker.join(timeout=2)
             except Exception as e:
-                logging.error("[Client] Cleaning thread. Error for: '{0}' - '{1}'.".format(worker_id, str(e)))
+                logging.error("[Transport-Handler] Cleaning '{0}' thread. Error: '{1}'.".format(worker_id, str(e)))
 
             if my_worker.isAlive():
-                logging.warning("[Transport] Cleaning thread. Timeout for: '{0}'.".format(worker_id))
+                logging.warning("[Transport-Handler] Cleaning '{0}' thread. Timeout.".format(worker_id))
             else:
-                logging.debug("[Transport] Cleaning main threads. Terminated: '{0}'.".format(worker_id))
+                logging.debug("[Transport-Handler] Cleaning '{0}' thread. Terminated.".format(worker_id))  # debug2
+
+        logging.debug("[Transport-Handler] Cleaning handler threads. End.")
 
 
     def set_worker(self, command, worker, filename):
@@ -244,7 +246,7 @@ class Handler(asyncore.dispatcher_with_send):
                 raise Exception(data)
 
         except Exception as e:
-            logging.error("[Transport] Error during file sending: {}".format(str(e)))
+            logging.error("[Transport-Handler] Error sending file: '{}'.".format(str(e)))
 
         if remove:
             os.remove(file)
@@ -302,8 +304,8 @@ class Handler(asyncore.dispatcher_with_send):
             self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
 
         self.handle_close()
-        logging.error("[Transport] err {}".format(v))
-        logging.debug("{} {}".format(t, tbinfo))
+        logging.error("[Transport-Handler] Error: '{}'.".format(v))
+        logging.debug("[Transport-Handler] Error: '{}' - '{}'.".format(t, tbinfo))
 
 
     def handle_close(self):
@@ -332,7 +334,7 @@ class Handler(asyncore.dispatcher_with_send):
         try:
             message = msgbuild(counter, command, self.my_fernet, payload)
         except Exception as e:
-            logging.error("[Transport] Error sending a request/response (command: {}) due to '{}'.".format(command, str(e)))
+            logging.error("[Transport-Handler] Error sending a request/response (command: '{}') due to '{}'.".format(command, str(e)))
             message = msgbuild(counter, "err", self.my_fernet, str(e))
 
         with self.lock:
@@ -353,7 +355,7 @@ class Handler(asyncore.dispatcher_with_send):
             cmd = pair[0]
             payload = pair[1] if len(pair) > 1 else None
         except Exception as e:
-            logging.error("Error splitting data: {}".format(str(e)))
+            logging.error("[Transport-Handler] Error splitting data: '{}'.".format(str(e)))
             cmd = "err"
             payload = "Error splitting data"
 
@@ -364,9 +366,9 @@ class Handler(asyncore.dispatcher_with_send):
         try:
             return self.process_request(command, payload)
         except Exception as e:
-            error_msg = "Error processing command '{0}': {1}".format(command, str(e))
+            error_msg = "Error processing command '{0}': '{1}'.".format(command, str(e))
 
-            logging.debug("[Transport] {0}.".format(error_msg))
+            logging.debug("[Transport-Handler] {0}".format(error_msg))
             return 'err ', error_msg
 
 
@@ -380,8 +382,8 @@ class Handler(asyncore.dispatcher_with_send):
                 worker.set_command(command, data)
             return cmd, message
         else:
-            logging.error("[Transport] Unknown command received: '{0}'.".format(command))
-            message = "'{0}': Unknown command '{1}'".format(self.name, command)
+            message = "'{0}' - Unknown command received '{1}'.".format(self.name, command)
+            logging.error("[Transport-Handler] {}".format(message))
             return "err", message
 
 
@@ -398,10 +400,10 @@ class Handler(asyncore.dispatcher_with_send):
             final_response = json.loads(payload)
         elif answer == 'err':
             final_response = None
-            logging.debug("[Transport] Error received: {0}.".format(payload.decode()))
+            logging.debug("[Transport-Handler] Error received: '{0}'.".format(payload.decode()))
         else:
             final_response = None
-            logging.error("ERROR: Unknown answer: '{}'. Payload: '{}'.".format(answer, payload))
+            logging.error("[Transport-Handler] Error - Unknown answer: '{}'. Payload: '{}'.".format(answer, payload))
 
         return final_response
 
@@ -419,9 +421,9 @@ class ServerHandler(Handler):
     def handle_close(self):
         if self.name:
             self.server.remove_client(self.name)
-            logging.info("[Transport-S] Node '{0}' disconnected.".format(self.name))
+            logging.info("[Transport-ServerHandler] Node '{0}' disconnected.".format(self.name))
         else:
-            logging.info("Connection with {} closed.".format(self.name))
+            logging.info("[Transport-ServerHandler] Connection with {} closed.".format(self.name))
 
         Handler.handle_close(self)
 
@@ -437,10 +439,9 @@ class ServerHandler(Handler):
         try:
             id = self.server.add_client(data, self.addr, self)
             self.name = id  # TO DO: change self.name to self.id
-            logging.info("[Transport-S] Node '{0}' connected.".format(id))
+            logging.info("[Transport-ServerHandler] Node '{0}' connected.".format(id))
         except Exception as e:
-            logging.error("[Transport-S] Error accepting connection from {}: {}".\
-                            format(self.addr, str(e)))
+            logging.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, str(e)))
         return None
 
 
@@ -468,11 +469,11 @@ class Server(asyncore.dispatcher):
         pair = self.accept()
         if pair is not None:
             sock, addr = pair
-            logging.info("[Transport-S] Incoming connection from {0}.".format(repr(addr)))
+            logging.debug("[Transport-Server] Incoming connection.")
 
             if self.find_client_by_ip(addr[0]):
                 sock.close()
-                logging.error("[Transport-S] Incoming connection from {0} rejected: Client already connected.".format(repr(addr)))
+                logging.warning("[Transport-Server] Incoming connection from '{0}' rejected: Client is already connected.".format(repr(addr)))
                 return
 
             # addr is a tuple of form (ip, port)
@@ -488,7 +489,9 @@ class Server(asyncore.dispatcher):
             self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
 
         self.handle_close()
-        logging.error("[Transport-S] err {}".format(v))
+
+        logging.error("[Transport-Server] Error: '{}'.".format(v))
+        logging.debug("[Transport-Server] Error: '{}' - '{}'.".format(t, tbinfo))
 
 
     def find_client_by_ip(self, client_ip):
@@ -542,7 +545,7 @@ class Server(asyncore.dispatcher):
 
                 del self._clients[id]
             except KeyError:
-                logging.error("Client {} is already disconnected.".format(id))
+                logging.error("[Transport-Server] Client '{}'' is already disconnected.".format(id))
 
 
     def get_connected_clients(self):
@@ -556,7 +559,7 @@ class Server(asyncore.dispatcher):
                 return self._clients[client_name]
             except KeyError:
                 error_msg = "Client {} is disconnected.".format(client_name)
-                logging.error(error_msg)
+                logging.error("[Transport-Server] {}".format(error_msg))
                 raise Exception(error_msg)
 
 
@@ -571,7 +574,7 @@ class Server(asyncore.dispatcher):
             response = self.get_client_info(client_name)['handler'].execute(command, data)
         else:
             error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
-            logging.error("[Transport-S] {0}.".format(error_msg))
+            logging.error("[Transport-Server] {0}.".format(error_msg))
             response = "err " + error_msg
 
         return response
@@ -599,18 +602,18 @@ class ClientHandler(Handler):
 
 
     def handle_connect(self):
-        logging.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
+        logging.info("[Transport-ClientHandler] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
         payload = msgbuild(counter, 'hello', self.my_fernet, '{} {}'.format(self.name, 'client'))
         self.send(payload)
         self.my_connected = True
-        logging.info("[Client] Connected.")
+        logging.info("[Transport-ClientHandler] Client connected.")
 
 
     def handle_close(self):
         Handler.handle_close(self)
         self.my_connected = False
-        logging.info("Client disconnected")
+        logging.info("[Transport-ClientHandler] Client disconnected.")
 
 
     def send_request(self, command, data=None):
@@ -620,7 +623,7 @@ class ClientHandler(Handler):
             response = self.execute(command, data)
         else:
             error_msg = "Trying to send and there is no connection with the server"
-            logging.error("[Transport-C] {0}.".format(error_msg))
+            logging.error("[Transport-ClientHandler] {0}.".format(error_msg))
             response = "err " + error_msg
 
         return response
@@ -655,32 +658,33 @@ class InternalSocket(asyncore.dispatcher):
 
 
     def __create_socket(self):
-        logging.info("[Transport-I] Creating UDS socket...")
+        logging.debug("[Transport-InternalSocket] Creating.")
 
         # Make sure the socket does not already exist
         try:
             os.unlink(self.socket_address)
         except OSError:
             if os.path.exists(self.socket_address):
-                logging.error('[Transport-I] err {} already exits'.format(self.socket_address))
+                logging.error("[Transport-InternalSocket] Error: '{}' already exits".format(self.socket_address))
                 raise
 
         self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.set_reuse_addr()
         try:
             self.bind(self.socket_address)
-            logging.info("[Transport-I] Starting up on {}. Listening...".format(self.socket_address))
             self.listen(5)
+            logging.info("[Transport-InternalSocket] Listening.")
         except Exception as e:
-            error_msg = "Cannot create UDS socket {}".format(e)
-            logging.error('err ' + error_msg)
+            logging.error("[Transport-InternalSocket] Cannot create the socket: '{}'.".format(str(e)))
+
+        logging.debug("[Transport-InternalSocket] Created.")
 
 
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
             sock, addr = pair
-            logging.debug("[Transport-I] New connection in internal socket")
+            logging.debug("[Transport-InternalSocket] Incoming connection from '{0}'.".format(repr(addr)))
             handler = self.handle_type(sock=sock, manager=self.manager, map=self.map)
 
 
@@ -693,7 +697,10 @@ class InternalSocket(asyncore.dispatcher):
             self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
 
         self.handle_close()
-        logging.error("[Transport-I] err {}".format(v))
+
+        logging.error("[Transport-InternalSocket] Error: '{}'.".format(v))
+        logging.debug("[Transport-InternalSocket] Error: '{}' - '{}'.".format(t, tbinfo))
+
 
 #
 # Internal Socket thread
@@ -713,24 +720,27 @@ class InternalSocketThread(threading.Thread):
         try:
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
         except Exception as e:
-            logging.error("[Transport-I] err initializing internal socket {}".format(e))
+            logging.error("[InternalSocketThread] Error initializing: '{}'.".format(e))
             self.internal_socket = None
 
     def run(self):
         while self.running:
             if self.internal_socket:
-                logging.debug("[Transport-I] Ready")
+                logging.info("[InternalSocketThread] Ready.")
+
                 asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
-                logging.info("[Transport-I] Disconnected")
+
+                logging.info("[InternalSocketThread] Disconnected. Trying to connect again in {}s.".format(self.interval_connection_retry))
+
                 time.sleep(self.interval_connection_retry)
-            time.sleep(1)
+            time.sleep(2)
 
 
 def send_to_internal_socket(socket_name, message):
     # Create a UDS socket
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    socket_address = "{}/{}.sock".format("/var/ossec/queue/cluster", socket_name)
-    logging.debug("[Transport-I] Starting up on {}".format(socket_address))
+    socket_address = "{}/{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
+    logging.debug("[Transport-InternalSocketSend] Starting: {}.".format(socket_address))
     response = ""
 
     # Connect to UDS socket
@@ -741,13 +751,15 @@ def send_to_internal_socket(socket_name, message):
         return response
 
     # Send message
-    logging.debug("[Transport-I] Sending request to SI: '{0}'.".format(message))
+    logging.debug("[Transport-InternalSocketSend] Sending request: '{0}'.".format(message))
+
     message = message.split(" ", 1)
     cmd = message[0]
     data = message[1] if len(message) > 1 else None
     message_built = msgbuild(random.SystemRandom().randint(0, 2 ** 32 - 1), cmd, None, data)
     sock.sendall(message_built)
-    logging.debug("[Transport-I] Sent")
+
+    logging.debug("[Transport-InternalSocketSend] Request sent.")
 
     # Receive response
     buf = ""
@@ -759,13 +771,14 @@ def send_to_internal_socket(socket_name, message):
             if parse:
                 offset, counter, command, response = parse
 
-        logging.debug("[Transport-I] Received: answer: '{0}'. Data: '{1}'.".format(command, response))
+        logging.debug("[Transport-InternalSocketSend] Answer received: '{0}'.".format(command))
 
     except Exception as e:
-        logging.error("[Transport-I] err {}".format(e))
+        logging.error("[Transport-InternalSocketSend] Error: {}.".format(str(e)))
     finally:
-        logging.debug("[Transport-I] Closing socket...")
+        logging.debug("[Transport-InternalSocketSend] Closing socket.")
         sock.close()
+        logging.debug("[Transport-InternalSocketSend] Socket closed.")
 
     return response
 
@@ -815,7 +828,7 @@ class ProcessFiles(ClusterThread):
                 continue
 
             if self.received_all_information:
-                logging.debug("{0}: File reception completed.".format(self.thread_tag))
+                logging.info("{0}: Reception completed. Processing files.".format(self.thread_tag))
                 try:
                     result = self.process_file()
                     if result:
@@ -829,7 +842,7 @@ class ProcessFiles(ClusterThread):
                     self.unlock_and_stop(reason="error")
 
             elif self.received_error:
-                logging.debug("{0}: An error took place during file reception.".format(self.thread_tag))
+                logging.error("{0}: An error took place during file reception.".format(self.thread_tag))
                 self.unlock_and_stop(reason="error")
 
             else:  # receiving file
@@ -849,7 +862,7 @@ class ProcessFiles(ClusterThread):
 
                     self.process_file_cmd(command, data)
                 except Exception as e:
-                    logging.error("{0}: Unknown error in process_file_cmd: {1}".format(self.thread_tag, str(e)))
+                    logging.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, str(e)))
                     self.unlock_and_stop(reason="error")
 
             time.sleep(self.interval_file_transfer_receive)
@@ -909,21 +922,21 @@ class ProcessFiles(ClusterThread):
         """
         try:
             if command == "file_open":
-                logging.debug("{0}: Opening file".format(self.thread_tag))
+                logging.debug("{0}: Opening file.".format(self.thread_tag))
                 command = ""
                 self.file_open()
             elif command == "file_update":
-                logging.debug("{0}: Updating file".format(self.thread_tag))
+                logging.debug("{0}: Updating file.".format(self.thread_tag))
                 command = ""
                 self.file_update(data)
             elif command == "file_close":
-                logging.debug("{0}: Closing file".format(self.thread_tag))
+                logging.debug("{0}: Closing file.".format(self.thread_tag))
                 self.file_close(data)
-                logging.debug("{0}: File closed".format(self.thread_tag))
+                logging.debug("{0}: File closed.".format(self.thread_tag))
                 self.received_all_information = True
                 command = ""
         except Exception as e:
-            logging.error("{0}: {1}".format(self.thread_tag, str(e)))
+            logging.error("{0}: '{1}'.".format(self.thread_tag, str(e)))
             self.received_error = True
 
 
@@ -933,9 +946,9 @@ class ProcessFiles(ClusterThread):
         """
         # Create the file
         self.filename = "{}/queue/cluster/{}/{}.tmp".format(common.ossec_path, self.name, self.id)
-        logging.debug("{0}: Creating file {1}".format(self.thread_tag, self.filename))
+        logging.debug("{0}: Creating file {1}".format(self.thread_tag, self.filename))  # debug2
         self.f = open(self.filename, 'w')
-        logging.debug("File {} created successfully".format(self.filename))
+        logging.debug("{}: File {} created successfully.".format(self.thread_tag, self.filename))  # debug2
 
 
     def file_update(self, chunk):
@@ -970,4 +983,3 @@ class ProcessFiles(ClusterThread):
             os.remove(self.filename)
             raise Exception(error_msg)
 
-        logging.debug("File {} received successfully".format(self.filename))
