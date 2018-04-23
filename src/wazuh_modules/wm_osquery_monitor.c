@@ -1,3 +1,15 @@
+/*
+ * Wazuh Integration with Osquery
+ * Copyright (C) 2018 Wazuh Inc.
+ * April 5, 2018.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+
 #include "wmodules.h"
 #include <sys/stat.h>
 #include <pthread.h>
