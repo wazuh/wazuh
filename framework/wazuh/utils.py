@@ -7,7 +7,7 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close, makedirs
+from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
 from datetime import datetime, timedelta
 import hashlib
 import json
@@ -330,16 +330,27 @@ def chown_r(filepath, uid, gid):
                 chown_r(itempath, uid, gid)
 
 
-def mkdir_with_mode(directory, mode=0o770):
+def mkdir_with_mode(name, mode=0o770):
     """
     Creates a directory with specified permissions.
 
     :param directory: directory path
     :param mode: permissions to set to the directory
     """
-    if not path.exists(directory):
-        makedirs(directory)
-        chmod(directory, mode)
+    head, tail = path.split(name)
+    if not tail:
+        head, tail = path.split(head)
+    if head and tail and not path.exists(head):
+        try:
+            mkdir_with_mode(head, mode)
+        except OSError, e:
+            # be happy if someone already created the path
+            if e.errno != errno.EEXIST:
+                raise
+        if tail == curdir:           # xxx/newdir/. exists if xxx/newdir exists
+            return
+    mkdir(name, mode)
+    chmod(name, mode)
 
 
 def md5(fname):
