@@ -9,6 +9,7 @@
 */
 
 #include "../plugin_decoders.h"
+#include "../decoder.h"
 
 #include "shared.h"
 #include "eventinfo.h"
@@ -194,6 +195,11 @@ static void fillData(Eventinfo *lf, const char *key, const char *value)
     lf->fields[lf->nfields].key = strdup(key);
     lf->fields[lf->nfields].value = strdup(value);
     lf->nfields++;
+
+    // If is a CIS-CAT event, save information into the agent DB
+    if (!strcmp(lf->location, "wodle_cis-cat") && !strcmp(key, "type") && !strcmp(value, "scan_info")) {
+        DecodeCiscat(lf);
+    }
 }
 
 static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)

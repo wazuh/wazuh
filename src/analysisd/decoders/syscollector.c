@@ -23,7 +23,6 @@
 
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
-static int sc_send_db(char * msg);
 static int decode_netinfo(char *agent_id, cJSON * logJSON);
 static int decode_osinfo(char *agent_id, cJSON * logJSON);
 static int decode_hardware(char *agent_id, cJSON * logJSON);
