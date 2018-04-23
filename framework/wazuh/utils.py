@@ -7,7 +7,7 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close, mkdir
+from os import remove, chmod, chown, path, listdir, close, makedirs
 from datetime import datetime, timedelta
 import hashlib
 import json
@@ -338,7 +338,7 @@ def mkdir_with_mode(directory, mode=0o770):
     :param mode: permissions to set to the directory
     """
     if not path.exists(directory):
-        mkdir(directory)
+        makedirs(directory)
         chmod(directory, mode)
 
 

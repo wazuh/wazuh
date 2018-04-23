@@ -236,7 +236,7 @@ def compress_files(source, name, list_path, cluster_control_json=None):
             for f in list_path:
                 #logging.debug("Adding {} to zip file".format(f))
                 try:
-                    zf.write(filename = common.ossec_path + f, arcname = 'rootpath/' + f, compress_type=compression)
+                    zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
                 except Exception as e:
                     logging.error(str(WazuhException(3001, str(e))))
 
@@ -251,8 +251,6 @@ def compress_files(source, name, list_path, cluster_control_json=None):
 def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     zip_json = {}
     ko_files = ""
-    # create a directory to store zip's files
-    # TO DO: create expected directory structure
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
     with zipfile.ZipFile(zip_path) as zipf:
@@ -260,7 +258,10 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
             if name == ko_files_name:
                 ko_files = json.loads(zipf.open(name).read())
             else:
-                with open("{}/{}".format(zip_dir, name.replace('rootpath','').replace('/','_')), 'w') as f:
+                filename = "{}/{}".format(zip_dir, path.dirname(name))
+                if not path.exists(filename):
+                    mkdir_with_mode(filename)
+                with open("{}/{}".format(filename, path.basename(name)), 'w') as f:
                     content = zipf.open(name).read()
                     f.write(content)
 
@@ -499,7 +500,7 @@ def merge_agent_info(time_limit_seconds=1800):
 
 
 def unmerge_agent_info(path_file):
-    src_agent_info_path = "{0}/{1}".format(path_file, '_queue_cluster_agent-info.merged')
+    src_agent_info_path = "{0}/{1}".format(path_file, 'queue/cluster/agent-info.merged')
     dst_agent_info_path = "/queue/agent-info/".format(common.ossec_path)
 
     bytes_read = 0

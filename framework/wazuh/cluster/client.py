@@ -91,7 +91,7 @@ class ClientManagerHandler(ClientHandler):
         def overwrite_or_create_files(filename, data):
             # Full path
             file_path = common.ossec_path + filename
-            zip_path = "{}/{}".format(zip_path_dir, filename.replace('/','_'))
+            zip_path = "{}/{}".format(zip_path_dir, filename)
 
             # Cluster items information: write mode and umask
             cluster_item_key = data['cluster_item_key']
