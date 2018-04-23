@@ -254,6 +254,8 @@ class ClientManagerHandler(ClientHandler):
         return sync_result
 
 
+def get_client_intervals():
+    return get_cluster_items()['intervals']['client']
 
 #
 # Threads (workers) created by ClientManagerHandler
@@ -272,9 +274,8 @@ class ClientProcessMasterFiles(ProcessFiles):
         #     return False
 
         if not self.manager_handler.is_connected():
-            check_seconds = 2
-            logging.info("{0}: Client is not connected. Waiting {1}s".format(self.thread_tag, check_seconds))
-            self.sleep(check_seconds)
+            logging.info("{0}: Client is not connected. Waiting {1}s".format(self.thread_tag, 2))
+            self.sleep(2)
             return False
 
         return True
@@ -358,30 +359,22 @@ class ClientThread(ClusterThread):
     def __init__(self, client_handler, stopper):
         ClusterThread.__init__(self, stopper)
         self.client_handler = client_handler
-        self.interval = self.client_handler.config['interval']
+
+        # Intervals
+        self.interval_sync = 30 # It's set in specific threads
 
 
     def run(self):
 
         while not self.stopper.is_set() and self.running:
 
-            # Waint until client is set
-            if not self.client_handler:
-                # time.sleep(2)
+            # Wait until client is set and connected
+            if not self.client_handler or not self.client_handler.is_connected():
+                logging.debug("{0}: Client is not set or connected. Waiting: {1}s.".format(self.thread_tag, 2))
                 self.sleep(2)
                 continue
 
-            # Waint until client is connected
-            if not self.client_handler.is_connected():
-                check_seconds = 2
-                logging.info("{0}: Client is not connected. Waiting: {1}s.".format(self.thread_tag, check_seconds))
-                #time.sleep(check_seconds)
-                self.sleep(check_seconds)
-                continue
-
             try:
-                self.interval = self.client_handler.config['interval']
-
                 self.ask_for_permission()
 
                 result = self.job()
@@ -396,8 +389,8 @@ class ClientThread(ClusterThread):
                 logging.error("{0}: Unknown Error: '{1}'.".format(self.thread_tag, str(e)))
                 self.clean()
 
-            logging.info("{0}: Sleeping: {1}s.".format(self.thread_tag, self.interval))
-            self.sleep(self.interval)
+            logging.info("{0}: Sleeping: {1}s.".format(self.thread_tag, self.interval_sync))
+            self.sleep(self.interval_sync)
 
 
     def ask_for_permission(self):
@@ -443,6 +436,10 @@ class SyncClientThread(ClientThread):
     def __init__(self, client_handler, stopper):
         ClientThread.__init__(self, client_handler, stopper)
 
+        #Intervals
+        self.interval_sync = get_client_intervals()['sync_files']
+        self.interval_ask_for_permission = get_client_intervals()['ask_for_permission']
+
 
     def ask_for_permission(self):
         wait_for_permission = True
@@ -459,9 +456,9 @@ class SyncClientThread(ClientThread):
                     logging.info("{0}: Permission granted.".format(self.thread_tag))
                     wait_for_permission = False
 
-            sleeped = self.sleep(5)
+            sleeped = self.sleep(self.interval_ask_for_permission)
             n_seconds += sleeped
-            if n_seconds >= 5 and n_seconds % 5 == 0:
+            if n_seconds >= self.interval_ask_for_permission and n_seconds % self.interval_ask_for_permission == 0:
                 waiting_count += 1
                 logging.info("{0}: Waiting for Master permission to sync [{1}].".format(self.thread_tag, waiting_count))
 
@@ -492,6 +489,7 @@ class SyncIntegrityThread(SyncClientThread):
 
     def __init__(self, client_handler, stopper):
         SyncClientThread.__init__(self, client_handler, stopper)
+        self.interval_sync = get_client_intervals()['sync_integrity']
         self.request_type = "sync_i_c_m_p"
         self.reason = "sync_i_c_m"
         self.function = self.client_handler.send_integrity_to_master
@@ -521,7 +519,7 @@ class SyncIntegrityThread(SyncClientThread):
 
             if event_is_set:  # No timeout -> Free
                 logging.info("{0}: Unlocking: Master sent the response and the integrity was processed if necessary.".format(self.thread_tag))
-                self.interval = max(0, self.client_handler.config['interval'] - n_seconds)
+                self.interval_sync = max(0, self.interval_sync - n_seconds)
             else:  # Timeout
                 # Print each 5 seconds
                 if n_seconds != 0 and n_seconds % 5 == 0:

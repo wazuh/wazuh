@@ -88,6 +88,8 @@ def get_cluster_items():
     except Exception as e:
         raise WazuhException(3005, str(e))
 
+def get_cluster_options():
+    return get_cluster_items()['sync_options']
 
 def read_config():
     # Get api/configuration/config.js content
@@ -209,20 +211,20 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
 
 def get_files_status(node_type, get_md5=True):
 
-    cluster_items = get_cluster_items()
+    cluster_items_files = get_cluster_items().get('files')
 
     final_items = {}
-    for file_path, item in cluster_items.items():
+    for file_path, item in cluster_items_files.items():
         if file_path == "excluded_files":
             continue
         if item.get("files") and "agent-info.merged" in item["files"]:
-            agents_to_send, path = merge_agent_info()
+            agents_to_send, path = merge_agent_info(get_cluster_items()['sync_options']['get_agentinfo_newer_than'])
             if agents_to_send == 0 and node_type == 'client':
                 return {}
         if item['source'] == node_type or item['source'] == 'all':
             fullpath = common.ossec_path + file_path
             try:
-                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['excluded_files'], file_path, get_md5, node_type))
+                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items_files['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
                 logging.warning("get_files_status: {}".format(e))
     return final_items

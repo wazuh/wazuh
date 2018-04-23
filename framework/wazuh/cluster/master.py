@@ -89,7 +89,7 @@ class MasterManagerHandler(ServerHandler):
 
     # Private methods
     def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path):
-        cluster_items = get_cluster_items()
+        cluster_items = get_cluster_items()['files']
 
         try:
 
@@ -324,6 +324,10 @@ class ProcessClientFiles(ProcessClient):
         self.function = self.manager_handler.process_files_from_client
 
 
+def get_master_intervals():
+    return get_cluster_items()['intervals']['master']
+
+
 #
 # Master
 #
@@ -334,6 +338,9 @@ class MasterManager(Server):
         Server.__init__(self, cluster_config['bind_addr'], cluster_config['port'], MasterManagerHandler)
 
         logging.info("[Master] Listening.")
+        
+        # Intervals
+        self.interval_recalculate_integrity = get_master_intervals()['recalculate_integrity']
 
         self.config = cluster_config
         self.handler = MasterManagerHandler
@@ -344,6 +351,7 @@ class MasterManager(Server):
         self.stopper = threading.Event()  # Event to stop threads
         self.threads = {}
         self._initiate_master_threads()
+    
 
     # Overridden methods
     def add_client(self, data, ip, handler):
@@ -365,7 +373,7 @@ class MasterManager(Server):
     # Private methods
     def _initiate_master_threads(self):
         logging.debug("[Master] Creating threads.")
-        self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=30, stopper=self.stopper)
+        self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=self.interval_recalculate_integrity, stopper=self.stopper)
         self.threads[MasterManager.Integrity_T].start()
 
     # New methods

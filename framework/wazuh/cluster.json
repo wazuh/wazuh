@@ -1,79 +1,104 @@
 {
-    "/etc/": {
-        "umask": "0o117",
-        "source": "master",
-        "write_mode": "atomic",
-        "files": ["client.keys"],
-        "recursive": false,
-        "restart": false,
-        "description": "client keys file database"
+    "files":{
+        "/etc/": {
+            "umask": "0o117",
+            "source": "master",
+            "write_mode": "atomic",
+            "files": ["client.keys"],
+            "recursive": false,
+            "restart": false,
+            "description": "client keys file database"
+        },
+
+        "/etc/shared/": {
+            "umask": "0o117",
+            "source": "master",
+            "write_mode": "atomic",
+            "files": ["all"],
+            "recursive": true,
+            "restart": false,
+            "description": "shared configuration files"
+        },
+
+        "/etc/rules/": {
+            "umask": "0o137",
+            "source": "master",
+            "write_mode": "atomic",
+            "files": ["all"],
+            "recursive": false,
+            "restart": true,
+            "description": "user rules"
+        },
+
+        "/etc/decoders/": {
+            "umask": "0o137",
+            "source": "master",
+            "write_mode": "atomic",
+            "files": ["all"],
+            "recursive": false,
+            "restart": true,
+            "description": "user decoders"
+        },
+
+        "/etc/lists/": {
+            "umask": "0o137",
+            "source": "master",
+            "write_mode": "atomic",
+            "files": ["all"],
+            "recursive": true,
+            "restart": true,
+            "description": "user CDB lists"
+        },
+
+        "/queue/cluster": {
+            "umask": "0o117",
+            "source": "client",
+            "write_mode": "atomic",
+            "files": [
+                "agent-info.merged"
+            ],
+            "recursive": false,
+            "restart": false,
+            "description": "agent status"
+        },
+
+        "/queue/agent-groups/": {
+            "umask": "0o117",
+            "source": "master",
+            "write_mode": "atomic",
+            "files": ["all"],
+            "recursive": false,
+            "restart": false,
+            "description": "agents group configuration"
+        },
+
+        "excluded_files": [
+            "ar.conf",
+            "merged.mg",
+            "ossec.conf"
+        ]
     },
 
-    "/etc/shared/": {
-        "umask": "0o117",
-        "source": "master",
-        "write_mode": "atomic",
-        "files": ["all"],
-        "recursive": true,
-        "restart": false,
-        "description": "shared configuration files"
+    "intervals":{
+        "client": {
+            "sync_integrity": 10,
+            "sync_files": 15,
+            "connection_retry": 10,
+            "ask_for_permission": 5
+        },
+
+        "master": {
+            "recalculate_integrity": 30
+        },
+
+        "communication":{
+            "max_time_receiving_file": 30,
+            "file_transfer_receive": 0.1,
+            "file_transfer_send": 0.1
+        }
     },
 
-    "/etc/rules/": {
-        "umask": "0o137",
-        "source": "master",
-        "write_mode": "atomic",
-        "files": ["all"],
-        "recursive": false,
-        "restart": true,
-        "description": "user rules"
-    },
-
-    "/etc/decoders/": {
-        "umask": "0o137",
-        "source": "master",
-        "write_mode": "atomic",
-        "files": ["all"],
-        "recursive": false,
-        "restart": true,
-        "description": "user decoders"
-    },
-
-    "/etc/lists/": {
-        "umask": "0o137",
-        "source": "master",
-        "write_mode": "atomic",
-        "files": ["all"],
-        "recursive": true,
-        "restart": true,
-        "description": "user CDB lists"
-    },
-
-    "/queue/cluster": {
-        "umask": "0o117",
-        "source": "client",
-        "write_mode": "atomic",
-        "files": [
-            "agent-info.merged"
-        ],
-        "recursive": false,
-        "restart": false,
-        "description": "agent status"
-    },
-
-    "/queue/agent-groups/": {
-        "umask": "0o117",
-        "source": "master",
-        "write_mode": "atomic",
-        "files": ["all"],
-        "recursive": false,
-        "restart": false,
-        "description": "agents group configuration"
-    },
-
-    "excluded_files": [
-        "ar.conf",
-        "merged.mg",
-        "ossec.conf"
-    ]
+    "sync_options": {
+        "get_agentinfo_newer_than": 1800
+    }
 }

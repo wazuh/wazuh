@@ -4,7 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.cluster.cluster import check_cluster_status
+from wazuh.cluster.cluster import check_cluster_status, get_cluster_items, get_cluster_options
 import asyncore
 import threading
 import random
@@ -32,11 +32,14 @@ if check_cluster_status():
                         - apt install python-cryptography")
 
 
+def get_communication_intervals():
+    return get_cluster_items()['intervals']['communication']
+
 max_msg_size = 1000000
 cmd_size = 12
 
-
 def msgbuild(counter, command, my_fernet, payload=None):
+    
     try:
         if payload:
             payload = payload.encode()
@@ -203,7 +206,7 @@ class Handler(asyncore.dispatcher_with_send):
         return hash_algorithm.hexdigest()
 
 
-    def send_file(self, reason, file, remove = False):
+    def send_file(self, reason, file, remove=False, interval_file_transfer_send=0.1):
         """
         To send a file without collapsing the network, two special commands
         are defined:
@@ -237,6 +240,7 @@ class Handler(asyncore.dispatcher_with_send):
                     res, data = self.execute("file_update", base_msg + chunk).split(' ', 1)
                     if res == "err":
                         raise Exception(data)
+                    time.sleep(interval_file_transfer_send)
 
             res, data = self.execute("file_close", "{} {}".format(id, self.compute_md5(file))).split(' ', 1)
             if res == "err":
@@ -460,6 +464,7 @@ class Server(asyncore.dispatcher):
         self.bind((host, port))
         self.listen(5)
         self.handle_type = handle_type
+        self.interval_file_transfer_send = get_communication_intervals()['file_transfer_send']
 
 
     def handle_accept(self):
@@ -559,7 +564,7 @@ class Server(asyncore.dispatcher):
 
 
     def send_file(self, client_name, reason, file, remove = False):
-        return self.get_client_info(client_name)['handler'].send_file(reason, file, remove)
+        return self.get_client_info(client_name)['handler'].send_file(reason, file, remove, self.file_transfer_send)
 
 
     def send_request(self, client_name, command, data=None):
@@ -705,6 +710,8 @@ class InternalSocketThread(threading.Thread):
         self.internal_socket = None
         self.socket_name = socket_name
 
+        self.interval_connection_retry = 5
+
     def setmanager(self, manager, handle_type):
         try:
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
@@ -718,7 +725,7 @@ class InternalSocketThread(threading.Thread):
                 logging.debug("[Transport-I] Ready")
                 asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
                 logging.info("[Transport-I] Disconnected")
-                time.sleep(5)
+                time.sleep(self.interval_connection_retry)
             time.sleep(1)
 
 
@@ -785,6 +792,10 @@ class ProcessFiles(ClusterThread):
         self.thread_tag = "[FileThread]"        # logging tag of the thread
         self.n_get_timeouts = 0                 # number of times Empty exception is raised
 
+        #Intervals
+        self.interval_file_transfer_receive = get_communication_intervals()['file_transfer_receive']
+        self.max_time_receiving_file = get_communication_intervals()['max_time_receiving_file']
+
 
     # Overridden methods
     def stop(self):
@@ -831,11 +842,10 @@ class ProcessFiles(ClusterThread):
                         self.n_get_timeouts = 0
                     except Empty as e:
                         self.n_get_timeouts += 1
-                        # wait 30 seconds before raising the exception but
+                        # wait before raising the exception but
                         # check while conditions every second
                         # to stop the thread if a Ctrl+C is received
-                        # TO DO: remove hardcoded timeout
-                        if self.n_get_timeouts > 30:
+                        if self.n_get_timeouts > self.max_time_receiving_file:
                             raise Exception("No file command was received")
                         else:
                             continue
@@ -845,7 +855,7 @@ class ProcessFiles(ClusterThread):
                     logging.error("{0}: Unknown error in process_file_cmd: {1}".format(self.thread_tag, str(e)))
                     self.unlock_and_stop(reason="error")
 
-            time.sleep(0.1)
+            time.sleep(self.interval_file_transfer_receive)
 
 
     # New methods

@@ -34,7 +34,7 @@ try:
         from wazuh import common
         from wazuh.exception import WazuhException
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
-        from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up
+        from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
         from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
         from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
         from wazuh.cluster.communication import InternalSocketThread
@@ -123,6 +123,7 @@ def master_main(cluster_configuration):
 #
 def client_main(cluster_configuration):
     global manager
+    connection_retry_interval = get_cluster_items()['intervals']['client']['connection_retry']
 
     # Internal socket
     internal_socket_thread = InternalSocketThread("c-internal")
@@ -143,7 +144,7 @@ def client_main(cluster_configuration):
         except socket.gaierror as e:
             logging.error("[Client] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(str(e), cluster_configuration['reconnect_time']))
 
-        time.sleep(cluster_configuration['reconnect_time'])
+        time.sleep(connection_retry_interval)
 
 
 #
