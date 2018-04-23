@@ -458,7 +458,7 @@ class SyncClientThread(ClientThread):
 
             sleeped = self.sleep(self.interval_ask_for_permission)
             n_seconds += sleeped
-            if n_seconds >= self.interval_ask_for_permission and n_seconds % self.interval_ask_for_permission == 0:
+            if n_seconds >= 5 and n_seconds % 5 == 0:
                 waiting_count += 1
                 logging.info("{0}: Waiting for Master permission to sync [{1}].".format(self.thread_tag, waiting_count))
 

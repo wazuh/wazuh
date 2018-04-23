@@ -138,11 +138,11 @@ def client_main(cluster_configuration):
 
             asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 
-            logging.error("[wazuh-clusterd] Client disconnected. Trying to connect again in {0}s.".format(cluster_configuration['reconnect_time']))
+            logging.error("[wazuh-clusterd] Client disconnected. Trying to connect again in {0}s.".format(connection_retry_interval))
 
             manager.exit()
         except socket.gaierror as e:
-            logging.error("[Client] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(str(e), cluster_configuration['reconnect_time']))
+            logging.error("[Client] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(str(e), connection_retry_interval))
 
         time.sleep(connection_retry_interval)
 
