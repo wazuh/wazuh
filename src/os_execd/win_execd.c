@@ -26,7 +26,7 @@ OSList *timeout_list;
 OSListNode *timeout_node;
 
 /* Shut down win-execd properly */
-static void WinExecd_Shutdown(int signal)
+static void WinExecd_Shutdown()
 {
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
@@ -78,6 +78,9 @@ int WinExecd_Start()
     if (!timeout_list) {
         merror_exit(LIST_ERROR);
     }
+
+    /* Delete pending AR at succesfull exit */
+    atexit(WinExecd_Shutdown);
 
     /* Start up message */
     minfo(STARTUP_MSG, getpid());
@@ -133,9 +136,6 @@ void WinExecdRun(char *exec_msg)
     char buffer[OS_MAXSTR + 1];
 
     timeout_data *timeout_entry;
-
-    /* Delete pending AR at succesfull exit */
-    atexit(WinExecd_Shutdown);
 
     /* Current time */
     curr_time = time(0);
