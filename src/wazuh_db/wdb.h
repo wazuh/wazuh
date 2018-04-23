@@ -36,7 +36,6 @@
 #define WDB_ROOTCHECK 2
 #define WDB_AGENTINFO 3
 #define WDB_GROUPS 4
-#define WDB_SYSCOLLECTOR 5
 #define WDB_NETADDR_IPV4 0
 
 typedef enum wdb_stmt {
@@ -61,6 +60,7 @@ typedef enum wdb_stmt {
     WDB_STMT_NETINFO_DEL,
     WDB_STMT_PROTO_DEL,
     WDB_STMT_ADDR_DEL,
+    WDB_STMT_CISCAT_INSERT,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -291,6 +291,12 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 // Delete port info about previous scan from DB.
 int wdb_port_delete(wdb_t * wdb, const char * scan_id);
 
+// Save CIS-CAT scan results.
+int wdb_ciscat_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, int pass, int fail, int error, int notchecked, int unknown, int score);
+
+// Insert CIS-CAT results tuple. Return 0 on success or -1 on error.
+int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, int pass, int fail, int error, int notchecked, int unknown, int score);
+
 wdb_t * wdb_init(sqlite3 * db, const char * agent_id);
 
 void wdb_destroy(wdb_t * wdb);
@@ -334,5 +340,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 #endif
