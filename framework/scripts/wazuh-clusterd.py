@@ -32,6 +32,11 @@ try:
         myWazuh = Wazuh(get_init=True)
 
         from wazuh import common
+    except Exception as e:
+        print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+        exit()
+
+    try:
         from wazuh.exception import WazuhException
         from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
         from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
@@ -40,10 +45,10 @@ try:
         from wazuh.cluster.communication import InternalSocketThread
         from wazuh import configuration as config
         from wazuh.manager import status
-
     except Exception as e:
-        # print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
         error_msg = str(e)
+
+
 except Exception as e:
     print("wazuh-clusterd: Python 2.7 required. Exiting. {0}".format(str(e)))
     exit()
