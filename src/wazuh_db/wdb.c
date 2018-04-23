@@ -45,7 +45,8 @@ static const char * SQL_STMT[] = {
     "INSERT INTO sys_netaddr (id, scan_id, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
     "DELETE FROM sys_netproto WHERE scan_id != ?;",
-    "DELETE FROM sys_netaddr WHERE scan_id != ?;"
+    "DELETE FROM sys_netaddr WHERE scan_id != ?;",
+    "INSERT INTO ciscat_results (scan_id, scan_time, benchmark, pass, fail, error, notchecked, unknown, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
 };
 
 sqlite3 *wdb_global = NULL;
