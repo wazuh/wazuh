@@ -44,8 +44,6 @@ static void WinExecd_Shutdown()
         OSList_DeleteCurrentlyNode(timeout_list);
         timeout_node = OSList_GetCurrentlyNode(timeout_list);
 
-        /* Continue with the next entry in timeout list */
-        timeout_node = OSList_GetNextNode(timeout_list);
         /* Clear the memory */
         FreeTimeoutEntry(list_entry);
     }
