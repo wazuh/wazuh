@@ -106,12 +106,6 @@ def read_config():
         if not config_cluster.get('connection_timeout'):
             config_cluster['connection_timeout'] = 1
 
-        # ToDo: Add it in ossec.conf
-        config_cluster['ka_interval'] = 60  # seconds
-
-        # ToDo: Add it in ossec.conf
-        config_cluster['reconnect_time'] = 10  # seconds
-
         # Check interval is properly written
         i_match = re.match(r"^(\d+)([s|m])$", config_cluster['interval'])
         if not i_match:

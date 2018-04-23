@@ -56,10 +56,6 @@ class ClientManagerHandler(ClientHandler):
             logging.info("[Client] The master was not able to verify the integrity. Unlocking SyncIntegrityThread.")
             self.integrity_received_and_processed.set()
             return 'ack', "Thanks!"
-        elif command == 'req_sync_m_c':
-            return 'ack', 'Starting sync from master on demand'  # TO DO
-        elif command == 'getintegrity':
-            return 'json', json.dumps({'/etc/client.keys':'pending'})  # TO DO
         elif command == 'file_status':
             master_files = get_files_status('master', get_md5=True)
             client_files = get_files_status('client', get_md5=True)
@@ -249,8 +245,6 @@ class ClientManagerHandler(ClientHandler):
         # remove temporal zip file directory
         shutil.rmtree(zip_path)
 
-        # ToDo: Send ACK
-
         return sync_result
 
 
@@ -358,7 +352,7 @@ class ClientThread(ClusterThread):
         self.client_handler = client_handler
 
         # Intervals
-        self.init_interval = 30 
+        self.init_interval = 30
         self.interval = self.init_interval # It's set in specific threads
 
 
