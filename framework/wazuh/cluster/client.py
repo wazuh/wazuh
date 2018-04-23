@@ -104,7 +104,7 @@ class ClientManagerHandler(ClientHandler):
         if not tag:
             tag = "[Client] [Sync process]"
 
-        cluster_items = get_cluster_items()
+        cluster_items = get_cluster_items()['files']
 
         if not wrong_files['shared'] and not wrong_files['missing'] and not wrong_files['extra']:
             logging.info("{0} [Step 3]: Client meets integrity checks. No actions.".format(tag))
