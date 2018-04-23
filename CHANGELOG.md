@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Fixed registry_ignore problem on syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
 - Silenced Vuls integration starting and ending alerts. ([#541](https://github.com/wazuh/wazuh/pull/541))
 - Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
+- Fix bug in Rootcheck for Windows that searches for keys in 32-bit mode only. ([#566](https://github.com/wazuh/wazuh/pull/566))
 
 ### Removed
 
