@@ -622,7 +622,8 @@ endif
 #### External dependencies  ####
 ################################
 
-TAR := tar -zxf
+TAR := tar -xvf
+GUNZIP := gunzip
 CURL := curl -so
 space =
 space +=
@@ -638,8 +639,9 @@ deps: $(EXTERNAL_TAR)
 
 external/%.tar.gz:
 	$(CURL) $@ $(RESOURCES_URL)/$(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%,%,$@)
-	rm $(@)
+    cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+    cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
 
 ####################
 #### OSSEC Libs ####
