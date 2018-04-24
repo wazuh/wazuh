@@ -92,31 +92,34 @@ class MasterManagerHandler(ServerHandler):
 
         try:
 
-            for file_name, file_data, file_time in unmerge_agent_info(zip_dir_path):
+            for file_path, file_data, file_time in unmerge_agent_info(zip_dir_path):
                 # Full path
-                file_path = common.ossec_path + file_name
+                full_path = common.ossec_path + file_path
+
+                # tmp path
+                tmp_path = "/queue/cluster/{}/tmp_files".format(client_name)
 
                 # Cluster items information: write mode and umask
                 w_mode = cluster_items['/queue/cluster']['write_mode']
                 umask = int(cluster_items['/queue/cluster']['umask'], base=0)
 
-                lock_file_path = "{}.lock".format(file_path)
-                lock_file = open(lock_file_path, 'a+')
+                lock_full_path = "{}.lock".format(full_path)
+                lock_file = open(lock_full_path, 'a+')
                 try:
                     fcntl.lockf(lock_file, fcntl.LOCK_EX)
-                    _update_file(file_name=file_name, new_content=file_data,
+                    _update_file(file_path=file_path, new_content=file_data,
                                  umask_int=umask, mtime=file_time, w_mode=w_mode,
-                                 whoami='master', client_name=client_name)
+                                 tmp_dir=tmp_path, whoami='master')
                 except Exception as e:
                     fcntl.lockf(lock_file, fcntl.LOCK_UN)
                     lock_file.close()
-                    os.remove(lock_file_path)
-                    logger.error("Error updating client file '{}' - '{}'.".format(lock_file_path, str(e)))
+                    os.remove(lock_full_path)
+                    logger.error("Error updating client file '{}' - '{}'.".format(lock_full_path, str(e)))
                     continue
 
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
-                os.remove(lock_file_path)
+                os.remove(lock_full_path)
 
         except Exception as e:
             logger.error("Error updating client files: {}".format(str(e)))

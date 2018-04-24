@@ -282,10 +282,10 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     return ko_files, zip_dir
 
 
-def _update_file(file_name, new_content, umask_int=None, mtime=None, w_mode=None,
-                 tmp_dir='/queue/cluster',whoami='master', client_name=None):
+def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None,
+                 tmp_dir='/queue/cluster',whoami='master'):
 
-    dst_path = common.ossec_path + file_name
+    dst_path = common.ossec_path + file_path
     if path.basename(dst_path) == 'client.keys':
         if whoami =='client':
             logging.info("ToDo: _check_removed_agents***********************************************")
@@ -314,7 +314,7 @@ def _update_file(file_name, new_content, umask_int=None, mtime=None, w_mode=None
 
     # Write
     if w_mode == "atomic":
-        f_temp = "{}{}/{}/tmp_files{}.cluster.tmp".format(common.ossec_path, tmp_dir, client_name, file_name)
+        f_temp = "{}{}{}.cluster.tmp".format(common.ossec_path, tmp_dir, file_path)
     else:
         f_temp = '{0}'.format(dst_path)
 
