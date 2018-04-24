@@ -309,9 +309,72 @@ void wm_osquery_decorators()
         cJSON_Delete(root);
 }
 
+
+void wm_osquery_packs(){
+    //LEER ARCHIVO AGENT.CONF
+    char* agent_conf_path = NULL;
+    FILE *agent_conf_file = NULL;
+    FILE *osquery_config_temp_file = NULL;
+    char * packs_line = NULL;
+    char* content = NULL;
+    char *line = NULL;
+    int line_size = OS_MAXSTR;
+    int num_chars = NULL;
+    struct stat stp = { 0 };  
+
+    os_malloc(strlen(DEFAULTDIR)+strlen("/etc/shared/default/agent.conf"),agent_conf_path);
+    os_malloc(OS_MAXSTR,line);
+
+    snprintf(agent_conf_path,strlen(DEFAULTDIR)+strlen("/etc/shared/default/agent.conf"),"%s%s",DEFAULTDIR,"/etc/shared/default/agent.conf");
+    packs_line = strdup(",\"packs\": {");
+    agent_conf_file = fopen("/var/ossec/etc/shared/default/agent.conf","r");
+    
+    
+
+
+        osquery_config_temp = strdup("/var/ossec/tmp/osquery.conf.tmp");
+        osquery_config_temp_file = fopen(osquery_config_temp,"r");            
+        mdebug2("TEMP FILE: %s", osquery_config_temp);
+            stat(osquery_config_temp, &stp);
+            int filesize = stp.st_size;
+
+            os_malloc(filesize+1,content);
+
+            if (fread(content, 1, filesize, osquery_config_temp_file) == 0) {
+                mterror(WM_OSQUERYMONITOR_LOGTAG,"error in reading");
+                /**close the read file*/
+                fclose(osquery_config_temp_file);
+                //free input string
+                free(content);
+              }
+            //content[filesize+1]='\0'; 
+          //  mdebug2("LLEGO:");
+
+   while((num_chars = getline(&line, &line_size, agent_conf_file)) && num_chars!=-1){
+        mdebug2("LLEGO: %d", num_chars);
+        if(strstr(line,",packs")){
+            //FORMAR LINEA DE PACK
+                int newlen = strlen(packs_line)+strlen(line)+strlen(",");
+                packs_line = (char*)realloc(packs_line, newlen);
+                strcat(packs_line,line);
+                strcat(packs_line,",");
+                mdebug2("LLEGO: %s",packs_line);
+        }
+    }
+    content =(char*) realloc(content,strlen(content)+strlen(packs_line));
+    strcat(content,packs_line);
+    mdebug2("CONTENT: %s",content);
+
+
+
+
+
+}
+
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor)
 {
-    wm_osquery_decorators();
+    //wm_osquery_decorators();
+    wm_osquery_packs();
     pthread_t thread1, thread2;
     pthread_create( &thread1, NULL, (void*)&Read_Log, osquery_monitor);
     pthread_create( &thread2, NULL, (void*)&Execute_Osquery, osquery_monitor);
