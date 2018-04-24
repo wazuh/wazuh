@@ -13,6 +13,7 @@ try:
     import time
     import argparse
     import logging
+    import logging.handlers
     import ctypes
     import ctypes.util
     import socket
@@ -53,37 +54,47 @@ except Exception as e:
     print("wazuh-clusterd: Python 2.7 required. Exiting. {0}".format(str(e)))
     exit()
 
+logger = logging.getLogger()
 
 #
 # Aux functions
 #
 
-def set_logging(foreground_mode=False, debug_mode=False):
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
-                        filename="{0}/logs/cluster.log".format(common.ossec_path))
-
-    if not debug_mode:
-        logging.getLogger('').setLevel(logging.INFO)
+def set_logging(foreground_mode=False, debug_mode=0):
+    # configure logger
+    fh = logging.handlers.TimedRotatingFileHandler(filename="{}/logs/cluster.log"\
+                                    .format(common.ossec_path), when='midnight')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
     if foreground_mode:
-        # define a Handler which writes INFO messages or higher to the sys.stderr
-        console = logging.StreamHandler()
-        console.setLevel(logging.DEBUG)
-        # set a format which is simpler for console use
-        formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
-        # tell the handler to use this format
-        console.setFormatter(formatter)
-        # add the handler to the root logger
-        logging.getLogger('').addHandler(console)
+        ch = logging.StreamHandler()
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+
+    # add a new debug level
+    logging.DEBUG2 = 5
+    def debug2(self, message, *args, **kws):
+        if self.isEnabledFor(logging.DEBUG2):
+            self._log(logging.DEBUG2, message, args, **kws)
+
+    logging.addLevelName(logging.DEBUG2, "DEBUG2")
+    logging.Logger.debug2 = debug2
+
+    debug_level = logging.DEBUG2 if debug_mode == 2 else logging.DEBUG if \
+                  debug_mode == 1 else logging.INFO
+
+    logger.setLevel(debug_level)
 
 
 def clean_exit(reason, error=False):
     msg = "[wazuh-clusterd] Exiting. Reason: '{0}'.".format(reason)
 
     if error:
-        logging.error(msg)
+        logger.error(msg)
     else:
-        logging.info(msg)
+        logger.info(msg)
 
     delete_pid("wazuh-clusterd", getpid())
 
@@ -143,11 +154,11 @@ def client_main(cluster_configuration):
 
             asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 
-            logging.error("[wazuh-clusterd] Client disconnected. Trying to connect again in {0}s.".format(connection_retry_interval))
+            logger.error("[wazuh-clusterd] Client disconnected. Trying to connect again in {0}s.".format(connection_retry_interval))
 
             manager.exit()
         except socket.gaierror as e:
-            logging.error("[Client] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(str(e), connection_retry_interval))
+            logger.error("[Client] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(str(e), connection_retry_interval))
 
         time.sleep(connection_retry_interval)
 
@@ -165,7 +176,7 @@ if __name__ == '__main__':
     # Parse args
     parser =argparse.ArgumentParser()
     parser.add_argument('-f', help="Run in foreground", action='store_true')
-    parser.add_argument('-d', help="Enable debug messages", action='store_true')
+    parser.add_argument('-d', help="Enable debug messages", action='count')
     parser.add_argument('-V', help="Print version", action='store_true')
     parser.add_argument('-r', help="Run as root", action='store_true')
     args = parser.parse_args()
@@ -173,19 +184,21 @@ if __name__ == '__main__':
     # Set logger
     e = None
     try:
-        debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',1,0) or args.d
+        debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',2,0) or args.d
     except NameError:
         debug_mode = False
     except Exception as e:
         debug_mode = False
 
     set_logging(foreground_mode=args.f, debug_mode=debug_mode)
+
     if e:
-        logging.error("{}".format(str(e)))
+        logger.error("{}".format(str(e)))
 
     if error_msg:
-        logging.error(error_msg)
+        logger.error(error_msg)
         exit()
+
 
     # Check if it is already running
     if status()['wazuh-clusterd'] == 'running':
@@ -212,7 +225,7 @@ if __name__ == '__main__':
 
     # Creating pid file
     create_pid("wazuh-clusterd", getpid())
-    logging.info("[wazuh-clusterd] PID: {0}".format(getpid()))
+    logger.info("[wazuh-clusterd] PID: {0}".format(getpid()))
 
     # Validate config
     try:
@@ -232,9 +245,9 @@ if __name__ == '__main__':
                 master_main(cluster_config)
             except socket.error as e:
                 if e.args[0] == socket.errno.EADDRINUSE:
-                    logging.error("There is another wazuh-clusterd instance running. Please, close it. '{0}'.".format(str(e)))
+                    logger.error("There is another wazuh-clusterd instance running. Please, close it. '{0}'.".format(str(e)))
                 else:
-                    logging.error("{0}".format(str(e)))
+                    logger.error("{0}".format(str(e)))
 
         elif cluster_config['node_type'] == "client":
             client_main(cluster_config)

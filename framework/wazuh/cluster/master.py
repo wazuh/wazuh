@@ -23,8 +23,7 @@ from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
                                         Handler, InternalSocketHandler, ClusterThread
 from wazuh.utils import mkdir_with_mode
 
-
-
+logger = logging.getLogger(__name__)
 
 #
 # Master Handler
@@ -38,7 +37,7 @@ class MasterManagerHandler(ServerHandler):
 
     # Overridden methods
     def process_request(self, command, data):
-        logging.debug("[Master] [{0}] Request received: '{1}'.".format(self.name, command))
+        logger.debug("[Master] [{0}] Request received: '{1}'.".format(self.name, command))
 
 
         if command == 'echo-c':  # Echo
@@ -76,7 +75,7 @@ class MasterManagerHandler(ServerHandler):
         # FixMe: Move this line to communications
         answer, payload = self.split_data(response)
 
-        logging.debug("[Master] [{0}] Response received: '{1}'.".format(self.name, answer))
+        logger.debug("[Master] [{0}] Response received: '{1}'.".format(self.name, answer))
 
         response_data = None
 
@@ -96,17 +95,10 @@ class MasterManagerHandler(ServerHandler):
             for file_name, file_data, file_time in unmerge_agent_info(zip_dir_path):
                 # Full path
                 file_path = common.ossec_path + file_name
-                # zip_path  = "{}/{}".format(zip_dir_path, file_name.replace('/','_'))
 
                 # Cluster items information: write mode and umask
-                # cluster_item_key = data['cluster_item_key']
                 w_mode = cluster_items['/queue/cluster']['write_mode']
                 umask = int(cluster_items['/queue/cluster']['umask'], base=0)
-
-                # File content and time
-                # with open(zip_path, 'rb') as f:
-                #     file_data = f.read()
-                # file_time = files_to_update_json[file_name]['mod_time']
 
                 lock_file_path = "{}.lock".format(file_path)
                 lock_file = open(lock_file_path, 'a+')
@@ -119,7 +111,7 @@ class MasterManagerHandler(ServerHandler):
                     fcntl.lockf(lock_file, fcntl.LOCK_UN)
                     lock_file.close()
                     os.remove(lock_file_path)
-                    logging.error("Error updating client file '{}' - '{}'.".format(lock_file_path, str(e)))
+                    logger.error("Error updating client file '{}' - '{}'.".format(lock_file_path, str(e)))
                     continue
 
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
@@ -127,7 +119,7 @@ class MasterManagerHandler(ServerHandler):
                 os.remove(lock_file_path)
 
         except Exception as e:
-            logging.error("Error updating client files: {}".format(str(e)))
+            logger.error("Error updating client files: {}".format(str(e)))
             raise e
 
     # New methods
@@ -140,16 +132,16 @@ class MasterManagerHandler(ServerHandler):
         if not tag:
             tag = "[Master] [Sync process m->c]"
 
-        logging.info("{0}: Start.".format(tag))
+        logger.info("{0}: Start.".format(tag))
 
 
         # Extract received data
-        logging.info("{0} [STEP 1]: Analyzing received files.".format(tag))
+        logger.info("{0} [STEP 1]: Analyzing received files.".format(tag))
 
         try:
             json_file, zip_dir_path = decompress_files(data_received)
         except Exception as e:
-            logging.error("{0}: Error decompressing data: {1}.".format(tag, str(e)))
+            logger.error("{0}: Error decompressing data: {1}.".format(tag, str(e)))
             raise e
 
         if json_file:
@@ -157,12 +149,12 @@ class MasterManagerHandler(ServerHandler):
         else:
             raise Exception("cluster_control.json not included in received zip file")
 
-        logging.debug("{0}: Received {1} client files to update.".format(tag, len(client_files_json)))
+        logger.debug("{0}: Received {1} client files to update.".format(tag, len(client_files_json)))
 
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=len(client_files_json))
 
-        logging.info("{0} [STEP 2]: Updating manager files.".format(tag))
+        logger.info("{0} [STEP 2]: Updating manager files.".format(tag))
 
         # Update files
         self._update_client_files_in_master(client_files_json, client_files_json, zip_dir_path)
@@ -186,12 +178,12 @@ class MasterManagerHandler(ServerHandler):
         if not tag:
             tag = "[Master] [Sync process m->c]"
 
-        logging.info("{0}: Start.".format(tag))
+        logger.info("{0}: Start.".format(tag))
 
         try:
             json_file, zip_dir_path = decompress_files(data_received)
         except Exception as e:
-            logging.error("{0}: Error decompressing data: {1}".format(tag, str(e)))
+            logger.error("{0}: Error decompressing data: {1}".format(tag, str(e)))
             raise e
 
         if json_file:
@@ -200,9 +192,9 @@ class MasterManagerHandler(ServerHandler):
             raise Exception("cluster_control.json not included in received zip file")
 
         # Extract recevied data
-        logging.info("{0} [STEP 1]: Analyzing received files.".format(tag))
+        logger.info("{0} [STEP 1]: Analyzing received files.".format(tag))
 
-        logging.debug("{0}: Received {1} master files to check".format(tag, len(master_files_from_client)))
+        logger.debug("{0}: Received {1} master files to check".format(tag, len(master_files_from_client)))
 
         # Get master files
         master_files = self.server.get_integrity_control()
@@ -220,21 +212,21 @@ class MasterManagerHandler(ServerHandler):
 
         # Step 3: KO files
         if not client_files_ko['shared'] and not client_files_ko['missing'] and not client_files_ko['extra']:
-            logging.info("{0} [STEP 2]: There are no KO files for client.".format(tag))
+            logger.info("{0} [STEP 2]: There are no KO files for client.".format(tag))
 
             ko_files = False
             data_for_client = None
 
         else:
             # Compress data: master files (only KO shared and missing)
-            logging.info("{0} [STEP 2]: Compressing KO files for client.".format(tag))
+            logger.info("{0} [STEP 2]: Compressing KO files for client.".format(tag))
 
             master_files_paths = [item for item in client_files_ko['shared']]
             master_files_paths.extend([item for item in client_files_ko['missing']])
 
             compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
 
-            logging.info("{0} [STEP 2]: Sending KO files to client.".format(tag))
+            logger.info("{0} [STEP 2]: Sending KO files to client.".format(tag))
 
             ko_files = True
             data_for_client = compressed_data
@@ -295,9 +287,9 @@ class ProcessClientIntegrity(ProcessClient):
 
         if processed_response:
             sync_result = True
-            logging.info("{0} [{1}] [STEP 2]: Client received the sync properly".format(self.thread_tag, self.name))
+            logger.info("{0} [{1}] [STEP 2]: Client received the sync properly".format(self.thread_tag, self.name))
         else:
-            logging.error("{0} [{1}] [STEP 2]: Client reported an error receiving the sync.".format(self.thread_tag, self.name))
+            logger.error("{0} [{1}] [STEP 2]: Client reported an error receiving the sync.".format(self.thread_tag, self.name))
 
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -333,8 +325,8 @@ class MasterManager(Server):
     def __init__(self, cluster_config):
         Server.__init__(self, cluster_config['bind_addr'], cluster_config['port'], MasterManagerHandler)
 
-        logging.info("[Master] Listening.")
-        
+        logger.info("[Master] Listening.")
+
         # Intervals
         self.interval_recalculate_integrity = get_cluster_items_master_intervals()['recalculate_integrity']
 
@@ -347,7 +339,7 @@ class MasterManager(Server):
         self.stopper = threading.Event()  # Event to stop threads
         self.threads = {}
         self._initiate_master_threads()
-    
+
 
     # Overridden methods
     def add_client(self, data, ip, handler):
@@ -368,7 +360,7 @@ class MasterManager(Server):
 
     # Private methods
     def _initiate_master_threads(self):
-        logging.debug("[Master] Creating threads.")
+        logger.debug("[Master] Creating threads.")
         self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=self.interval_recalculate_integrity, stopper=self.stopper)
         self.threads[MasterManager.Integrity_T].start()
 
@@ -425,33 +417,33 @@ class MasterManager(Server):
 
 
     def exit(self):
-        logging.info("[Master] Cleaning...")
+        logger.info("[Master] Cleaning...")
 
         # Cleaning master threads
-        logging.debug("[Master] Cleaning main threads")
+        logger.debug("[Master] Cleaning main threads")
         self.stopper.set()
 
         for thread in self.threads:
-            logging.debug("[Master] Cleaning main threads: '{0}'.".format(thread))
+            logger.debug("[Master] Cleaning main threads: '{0}'.".format(thread))
 
             try:
                 self.threads[thread].join(timeout=2)
             except Exception as e:
-                logging.error("[Client] Cleaning main threads. Error for: '{0}' - '{1}'.".format(thread, str(e)))
+                logger.error("[Client] Cleaning main threads. Error for: '{0}' - '{1}'.".format(thread, str(e)))
 
             if self.threads[thread].isAlive():
-                logging.warning("[Master] Cleaning main threads. Timeout for: '{0}'.".format(thread))
+                logger.warning("[Master] Cleaning main threads. Timeout for: '{0}'.".format(thread))
             else:
-                logging.debug("[Master] Cleaning main threads. Terminated: '{0}'.".format(thread))
+                logger.debug("[Master] Cleaning main threads. Terminated: '{0}'.".format(thread))
 
         # Cleaning handler threads
-        logging.debug("[Master] Cleaning threads of clients.")
+        logger.debug("[Master] Cleaning threads of clients.")
         clients = self.get_connected_clients().keys()
         for client in clients:
             self.remove_client(id=client)
 
 
-        logging.info("[Master] Cleaning end.")
+        logger.info("[Master] Cleaning end.")
 
 
 #
@@ -466,12 +458,12 @@ class FileStatusUpdateThread(ClusterThread):
 
     def run(self):
         while not self.stopper.is_set() and self.running:
-            logging.debug("[Master] Recalculating integrity control file.")
+            logger.debug("[Master] Recalculating integrity control file.")
             try:
                 tmp_integrity_control = get_files_status('master')
                 self.master.set_integrity_control(tmp_integrity_control)
             except Exception as e:
-                logging.error("[Master] Error calculating integrity control file: {}".format(str(e)))
+                logger.error("[Master] Error calculating integrity control file: {}".format(str(e)))
 
             #time.sleep(self.interval)
             self.sleep(self.interval)
@@ -485,7 +477,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
 
     def process_request(self, command, data):
-        logging.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
+        logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
         serialized_response = ""
 
         if command == 'get_files':

@@ -61,6 +61,9 @@ except:
 # Cluster
 #
 
+logger = logging.getLogger(__name__)
+
+
 def check_cluster_config(config):
     iv = InputValidator()
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
@@ -244,7 +247,7 @@ def compress_files(source, name, list_path, cluster_control_json=None):
         # write files
         if list_path:
             for f in list_path:
-                #logging.debug("[Cluster] Adding {} to zip file".format(f))  # debug2
+                logger.debug2("[Cluster] Adding {} to zip file".format(f))  # debug2
                 try:
                     zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
                 except Exception as e:
@@ -303,7 +306,7 @@ def _update_file(dst_path, new_content, umask_int=None, mtime=None, w_mode=None,
                 local_mtime = datetime.utcfromtimestamp(int(stat(dst_path).st_mtime))
                 # check if the date is older than the manager's date
                 if local_mtime > mtime:
-                    #logging.debug("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
+                    logger.debug2("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
                     return
         else:
             logging.warning("[Cluster] Agent-info received in a client node.")
