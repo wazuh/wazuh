@@ -345,6 +345,10 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
 
     # Atomic
     if w_mode == "atomic":
+        dirpath = path.dirname(dst_path)
+        if not os.path.exists(dirpath):
+            mkdir_with_mode(dirpath)
+            chmod(path.dirname(f_temp), S_IRWXU | S_IRWXG)
         rename(f_temp, dst_path)
 
 
