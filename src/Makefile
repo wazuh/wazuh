@@ -639,8 +639,8 @@ deps: $(EXTERNAL_TAR)
 
 external/%.tar.gz:
 	$(CURL) $@ $(RESOURCES_URL)/$(patsubst external/%,%,$@)
-    cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-    cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 
 ####################
