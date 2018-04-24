@@ -282,9 +282,10 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     return ko_files, zip_dir
 
 
-def _update_file(dst_path, new_content, umask_int=None, mtime=None, w_mode=None,
-                 tmp_dir='/queue/cluster',whoami='master'):
+def _update_file(file_name, new_content, umask_int=None, mtime=None, w_mode=None,
+                 tmp_dir='/queue/cluster',whoami='master', client_name=None):
 
+    dst_path = common.ossec_path + file_name
     if path.basename(dst_path) == 'client.keys':
         if whoami =='client':
             logging.info("ToDo: _check_removed_agents***********************************************")
@@ -312,10 +313,8 @@ def _update_file(dst_path, new_content, umask_int=None, mtime=None, w_mode=None,
             raise WazuhException(3011)
 
     # Write
-    # TO DO: write temporary files in cluster directory
-    # tmp_path = "{}/{}/{}".format(common.ossec_path, tmp_dir, )
     if w_mode == "atomic":
-        f_temp = '{0}.cluster.tmp'.format(dst_path)
+        f_temp = "{}{}/{}/tmp_files{}.cluster.tmp".format(common.ossec_path, tmp_dir, client_name, file_name)
     else:
         f_temp = '{0}'.format(dst_path)
 
@@ -326,10 +325,10 @@ def _update_file(dst_path, new_content, umask_int=None, mtime=None, w_mode=None,
         dest_file = open(f_temp, "w")
     except IOError as e:
         if e.errno == errno.ENOENT:
-            dirpath = path.dirname(dst_path)
+            dirpath = path.dirname(f_temp)
             mkdir_with_mode(dirpath)
             chmod(dirpath, S_IRWXU | S_IRWXG)
-            dest_file = open(f_temp, "a+")
+            dest_file = open(f_temp, "w")
         else:
             raise e
 

@@ -99,8 +99,8 @@ class ClientManagerHandler(ClientHandler):
             with open(zip_path, 'rb') as f:
                 file_data = f.read()
 
-            _update_file(dst_path=file_path, new_content=file_data,
-                         umask_int=umask, w_mode=w_mode, whoami='client')
+            _update_file(file_name=filename, new_content=file_data,
+                         umask_int=umask, w_mode=w_mode, whoami='client', client_name="master")
 
         if not tag:
             tag = "[Client] [Sync process]"
