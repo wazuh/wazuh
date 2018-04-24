@@ -89,6 +89,7 @@ class MasterManagerHandler(ServerHandler):
     # Private methods
     def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path, client_name):
         cluster_items = get_cluster_items()['files']
+        n_agentsinfo = 0
 
         try:
 
@@ -110,6 +111,7 @@ class MasterManagerHandler(ServerHandler):
                     _update_file(file_path=file_path, new_content=file_data,
                                  umask_int=umask, mtime=file_time, w_mode=w_mode,
                                  tmp_dir=tmp_path, whoami='master')
+                    n_agentsinfo += 1
                 except Exception as e:
                     fcntl.lockf(lock_file, fcntl.LOCK_UN)
                     lock_file.close()
@@ -125,12 +127,18 @@ class MasterManagerHandler(ServerHandler):
             logger.error("Error updating client files: {}".format(str(e)))
             raise e
 
+        # Save info for healthcheck
+        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=n_agentsinfo)
+
     # New methods
     def process_files_from_client(self, client_name, data_received, tag=None):
         sync_result = False
 
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="date_end_master", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status="In progress")
+        # ---
 
         if not tag:
             tag = "[Master] [Sync process m->c]"
@@ -153,9 +161,6 @@ class MasterManagerHandler(ServerHandler):
             raise Exception("cluster_control.json not included in received zip file")
 
         logger.debug("{0}: Received {1} client files to update.".format(tag, len(client_files_json)))
-
-        # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=len(client_files_json))
 
         logger.info("{0} [STEP 2]: Updating manager files.".format(tag))
 
@@ -209,6 +214,7 @@ class MasterManagerHandler(ServerHandler):
         self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="missing", status=len(client_files_ko['missing']))
         self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="shared", status=len(client_files_ko['shared']))
         self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="extra", status=len(client_files_ko['extra']))
+        # ---
 
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)
@@ -276,6 +282,11 @@ class ProcessClientIntegrity(ProcessClient):
     def process_file(self):
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_end_master", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="missing", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="shared", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="extra", status="In progress")
+        # ---
 
         sync_result = False
 
@@ -296,6 +307,7 @@ class ProcessClientIntegrity(ProcessClient):
 
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        
         return sync_result
 
 
