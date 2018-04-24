@@ -79,7 +79,13 @@ def set_logging(foreground_mode=False, debug_mode=0):
         if self.isEnabledFor(logging.DEBUG2):
             self._log(logging.DEBUG2, message, args, **kws)
 
-    logging.addLevelName(logging.DEBUG2, "DEBUG2")
+    logging.addLevelName(logging.INFO, "INFO    ")
+    logging.addLevelName(logging.WARNING, "WARNING ")
+    logging.addLevelName(logging.ERROR, "ERROR   ")
+    # logging.addLevelName(logging.CRITICAL, "CRITICAL")
+    logging.addLevelName(logging.DEBUG, "DEBUG   ")
+    logging.addLevelName(logging.DEBUG2, "DEBUG2  ")
+
     logging.Logger.debug2 = debug2
 
     debug_level = logging.DEBUG2 if debug_mode == 2 else logging.DEBUG if \
@@ -89,7 +95,7 @@ def set_logging(foreground_mode=False, debug_mode=0):
 
 
 def clean_exit(reason, error=False):
-    msg = "[wazuh-clusterd] Exiting. Reason: '{0}'.".format(reason)
+    msg = "[{0}] Exiting. Reason: '{1}'.".format(manager_tag, reason)
 
     if error:
         logger.error(msg)
@@ -126,7 +132,7 @@ def master_main(cluster_configuration):
     manager = MasterManager(cluster_config=cluster_configuration)
 
     # Internal socket
-    internal_socket_thread = InternalSocketThread("c-internal")
+    internal_socket_thread = InternalSocketThread("c-internal", tag="[Master]")
     internal_socket_thread.start()
     internal_socket_thread.setmanager(manager, MasterInternalSocketHandler)
 
@@ -142,7 +148,7 @@ def client_main(cluster_configuration):
     connection_retry_interval = get_cluster_items()['intervals']['client']['connection_retry']
 
     # Internal socket
-    internal_socket_thread = InternalSocketThread("c-internal")
+    internal_socket_thread = InternalSocketThread("c-internal", tag="[Client]")
     internal_socket_thread.start()
 
     # Loop
@@ -154,7 +160,7 @@ def client_main(cluster_configuration):
 
             asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 
-            logger.error("[wazuh-clusterd] Client disconnected. Trying to connect again in {0}s.".format(connection_retry_interval))
+            logger.error("[{0}] Client disconnected. Trying to connect again in {1}s.".format(manager_tag, connection_retry_interval))
 
             manager.exit()
         except socket.gaierror as e:
@@ -168,6 +174,7 @@ def client_main(cluster_configuration):
 #
 if __name__ == '__main__':
     manager = None
+    manager_tag = "wazuh-clusterd"
 
     # Signals
     signal(SIGINT, signal_handler)
@@ -225,7 +232,6 @@ if __name__ == '__main__':
 
     # Creating pid file
     create_pid("wazuh-clusterd", getpid())
-    logger.info("[wazuh-clusterd] PID: {0}".format(getpid()))
 
     # Validate config
     try:
@@ -240,6 +246,8 @@ if __name__ == '__main__':
     try:
 
         if cluster_config['node_type'] == "master":
+            manager_tag = "Master"
+            logger.info("[{0}] PID: {1}".format(manager_tag, getpid()))
 
             try:
                 master_main(cluster_config)
@@ -250,6 +258,9 @@ if __name__ == '__main__':
                     logger.error("{0}".format(str(e)))
 
         elif cluster_config['node_type'] == "client":
+            manager_tag = "Client"
+            logger.info("[{0}] PID: {1}".format(manager_tag, getpid()))
+
             client_main(cluster_config)
         else:
             clean_exit(reason="Node type '{0}' not valid.".format(cluster_config['node_type']), error=True)

@@ -154,7 +154,7 @@ class Handler(asyncore.dispatcher_with_send):
             worker_ids = self.workers.keys()
 
         for worker_id in worker_ids:
-            logger.debug2("[Transport-Handler] Cleaning handler thread: '{0}'.".format(worker_id))  # debug2
+            logger.debug2("[Transport-Handler] Cleaning handler thread: '{0}'.".format(worker_id))
 
             with self.workers_lock:
                 my_worker = self.workers[worker_id]
@@ -167,7 +167,7 @@ class Handler(asyncore.dispatcher_with_send):
             if my_worker.isAlive():
                 logger.warning("[Transport-Handler] Cleaning '{0}' thread. Timeout.".format(worker_id))
             else:
-                logger.debug2("[Transport-Handler] Cleaning '{0}' thread. Terminated.".format(worker_id))  # debug2
+                logger.debug2("[Transport-Handler] Cleaning '{0}' thread. Terminated.".format(worker_id))
 
         logger.debug("[Transport-Handler] Cleaning handler threads. End.")
 
@@ -421,7 +421,7 @@ class ServerHandler(Handler):
     def handle_close(self):
         if self.name:
             self.server.remove_client(self.name)
-            logger.info("[Transport-ServerHandler] Node '{0}' disconnected.".format(self.name))
+            logger.info("[Master] [{0}]: Disconnected.".format(self.name))
         else:
             logger.info("[Transport-ServerHandler] Connection with {} closed.".format(self.name))
 
@@ -439,7 +439,7 @@ class ServerHandler(Handler):
         try:
             id = self.server.add_client(data, self.addr, self)
             self.name = id  # TO DO: change self.name to self.id
-            logger.info("[Transport-ServerHandler] Node '{0}' connected.".format(id))
+            logger.info("[Master] [{0}]: Connected.".format(id))
         except Exception as e:
             logger.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, str(e)))
         return None
@@ -602,12 +602,12 @@ class ClientHandler(Handler):
 
 
     def handle_connect(self):
-        logger.info("[Transport-ClientHandler] Connecting to {0}:{1}.".format(self.host, self.port))
+        logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
         payload = msgbuild(counter, 'hello', self.my_fernet, '{} {}'.format(self.name, 'client'))
         self.send(payload)
         self.my_connected = True
-        logger.info("[Transport-ClientHandler] Client connected.")
+        logger.info("[Client] Connected.")
 
 
     def handle_close(self):
@@ -658,7 +658,7 @@ class InternalSocket(asyncore.dispatcher):
 
 
     def __create_socket(self):
-        logger.debug("[Transport-InternalSocket] Creating.")
+        logger.debug2("[Transport-InternalSocket] Creating.")
 
         # Make sure the socket does not already exist
         try:
@@ -673,11 +673,11 @@ class InternalSocket(asyncore.dispatcher):
         try:
             self.bind(self.socket_address)
             self.listen(5)
-            logger.info("[Transport-InternalSocket] Listening.")
+            logger.debug2("[Transport-InternalSocket] Listening.")
         except Exception as e:
             logger.error("[Transport-InternalSocket] Cannot create the socket: '{}'.".format(str(e)))
 
-        logger.debug("[Transport-InternalSocket] Created.")
+        logger.debug2("[Transport-InternalSocket] Created.")
 
 
     def handle_accept(self):
@@ -706,31 +706,31 @@ class InternalSocket(asyncore.dispatcher):
 # Internal Socket thread
 #
 class InternalSocketThread(threading.Thread):
-    def __init__(self, socket_name):
+    def __init__(self, socket_name, tag="[InternalSocketThread]"):
         threading.Thread.__init__(self)
         self.daemon = True
         self.manager = None
         self.running = True
         self.internal_socket = None
         self.socket_name = socket_name
-
+        self.thread_tag = tag
         self.interval_connection_retry = 5
 
     def setmanager(self, manager, handle_type):
         try:
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
         except Exception as e:
-            logger.error("[InternalSocketThread] Error initializing: '{}'.".format(e))
+            logger.error("{0} [Internal-S ]: Error initializing: '{1}'.".format(self.thread_tag, str(e)))
             self.internal_socket = None
 
     def run(self):
         while self.running:
             if self.internal_socket:
-                logger.info("[InternalSocketThread] Ready.")
+                logger.info("{0} [Internal-S ]: Ready.".format(self.thread_tag))
 
                 asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
 
-                logger.info("[InternalSocketThread] Disconnected. Trying to connect again in {}s.".format(self.interval_connection_retry))
+                logger.info("{0} [Internal-S ]: Disconnected. Trying to connect again in {}s.".format(self.thread_tag, self.interval_connection_retry))
 
                 time.sleep(self.interval_connection_retry)
             time.sleep(2)
@@ -821,6 +821,8 @@ class ProcessFiles(ClusterThread):
         """
         Receives the file and processes it.
         """
+        logger.info("{0}: Start.".format(self.thread_tag))
+
         while not self.stopper.is_set() and self.running:
             self.lock_status(True)
 
@@ -828,7 +830,7 @@ class ProcessFiles(ClusterThread):
                 continue
 
             if self.received_all_information:
-                logger.info("{0}: Reception completed. Processing files.".format(self.thread_tag))
+                logger.info("{0}: Reception completed.".format(self.thread_tag))
                 try:
                     result = self.process_file()
                     if result:
@@ -866,6 +868,8 @@ class ProcessFiles(ClusterThread):
                     self.unlock_and_stop(reason="error")
 
             time.sleep(self.interval_file_transfer_receive)
+
+        logger.info("{0}: End.".format(self.thread_tag))
 
 
     # New methods
@@ -983,4 +987,4 @@ class ProcessFiles(ClusterThread):
             os.remove(self.filename)
             raise Exception(error_msg)
 
-        logger.debug("File {} received successfully".format(self.filename))
+        logger.debug2("{0}: File {1} received successfully".format(self.thread_tag, self.filename))
