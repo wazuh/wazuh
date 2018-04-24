@@ -11,6 +11,7 @@
 #include "localfile-config.h"
 #include "config.h"
 
+static void Free_Logreader(logreader * logf);
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -183,19 +184,23 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     glob_set = pl + 1;
                 }
 
-                if (glob(node[i]->content, 0, NULL, &g) != 0) {
+                switch (glob(node[i]->content, 0, NULL, &g)) {
+                case 0:
+                    break;
+                case GLOB_NOMATCH:
+                    mwarn(GLOB_NFOUND, node[i]->content);
+                    goto clean;
+                default:
                     merror(GLOB_ERROR, node[i]->content);
-                    os_strdup(node[i]->content, logf[pl].file);
-                    i++;
-                    continue;
+                    goto clean;
                 }
 
                 /* Check for the last entry */
                 if ((g.gl_pathv[glob_offset]) == NULL) {
                     /* Check when nothing is found */
                     if (glob_offset == 0) {
-                        merror(GLOB_NFOUND, node[i]->content);
-                        return (OS_INVALID);
+                        mwarn(GLOB_NFOUND, node[i]->content);
+                        goto clean;
                     }
                     i++;
                     continue;
@@ -485,6 +490,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
 
     return (0);
+
+clean:
+    Free_Logreader(logf + pl);
+    memset(logf + pl, 0, sizeof(logreader));
+    return 0;
 }
 
 int Test_Localfile(const char * path){
@@ -506,34 +516,12 @@ int Test_Localfile(const char * path){
 }
 
 void Free_Localfile(logreader_config * config){
-    int i, j;
+    int i;
 
     if (config) {
         if (config->config) {
             for (i = 0; config->config[i].file; i++) {
-                free(config->config[i].ffile);
-                free(config->config[i].file);
-                free(config->config[i].logformat);
-                free(config->config[i].djb_program_name);
-                free(config->config[i].alias);
-                free(config->config[i].query);
-
-                if (config->config[i].target) {
-                    for (j = 0; config->config[i].target[j]; j++) {
-                        free(config->config[i].target[j]);
-                    }
-
-                    free(config->config[i].target);
-                }
-
-                labels_free(config->config[i].labels);
-
-                if (config->config[i].fp) {
-                    fclose(config->config[i].fp);
-                }
-
-                free(config->config[i].target_socket);
-                free(config->config[i].outformat);
+                Free_Logreader(&config->config[i]);
             }
 
             free(config->config);
@@ -548,5 +536,35 @@ void Free_Localfile(logreader_config * config){
 
             free(config->socket_list);
         }
+    }
+}
+
+void Free_Logreader(logreader * logf) {
+    int i;
+
+    if (logf) {
+        free(logf->ffile);
+        free(logf->file);
+        free(logf->logformat);
+        free(logf->djb_program_name);
+        free(logf->alias);
+        free(logf->query);
+
+        if (logf->target) {
+            for (i = 0; logf->target[i]; i++) {
+                free(logf->target[i]);
+            }
+
+            free(logf->target);
+        }
+
+        labels_free(logf->labels);
+
+        if (logf->fp) {
+            fclose(logf->fp);
+        }
+
+        free(logf->target_socket);
+        free(logf->outformat);
     }
 }
