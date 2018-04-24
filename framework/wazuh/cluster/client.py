@@ -11,7 +11,7 @@ import os
 import shutil
 import ast
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals
+from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
@@ -85,19 +85,21 @@ class ClientManagerHandler(ClientHandler):
     # Private methods
     @staticmethod
     def _update_master_files_in_client(wrong_files, zip_path_dir, tag=None):
-        def overwrite_or_create_files(filename, data):
-            # Full path
-            file_path = common.ossec_path + filename
-            zip_path = "{}/{}".format(zip_path_dir, filename)
-
+        def overwrite_or_create_files(filename, data, content=None):
             # Cluster items information: write mode and umask
             cluster_item_key = data['cluster_item_key']
             w_mode = cluster_items[cluster_item_key]['write_mode']
             umask = int(cluster_items[cluster_item_key]['umask'], base=0)
 
-            # File content and time
-            with open(zip_path, 'rb') as f:
-                file_data = f.read()
+            if content is None:
+                # Full path
+                file_path = common.ossec_path + filename
+                zip_path = "{}/{}".format(zip_path_dir, filename)
+                # File content and time
+                with open(zip_path, 'rb') as f:
+                    file_data = f.read()
+            else:
+                file_data = content
 
             tmp_path='/queue/cluster/tmp_files'
 
@@ -120,7 +122,11 @@ class ClientManagerHandler(ClientHandler):
             try:
                 for file_to_overwrite, data in wrong_files['shared'].items():
                     logger.debug("{0} Overwrite file: '{1}'".format(tag, file_to_overwrite))
-                    overwrite_or_create_files(file_to_overwrite, data)
+                    if data['merged']:
+                        for name, content, _ in unmerge_agent_info('agent-groups', zip_path_dir, file_to_overwrite):
+                            overwrite_or_create_files(name, data, content)
+                    else:
+                        overwrite_or_create_files(file_to_overwrite, data)
 
             except Exception as e:
                 print(str(e))
@@ -130,7 +136,11 @@ class ClientManagerHandler(ClientHandler):
             logger.info("{0} [Step 3]: Received {1} missing files from master. Action: Create files.".format(tag, len(wrong_files['missing'])))
             for file_to_create, data in wrong_files['missing'].items():
                 logger.debug("{0} Create file: '{1}'".format(tag, file_to_create))
-                overwrite_or_create_files(file_to_create, data)
+                if data['merged']:
+                    for name, content, _ in unmerge_agent_info('agent-groups', zip_path_dir, file_to_create):
+                        overwrite_or_create_files(name, data, content)
+                else:
+                    overwrite_or_create_files(file_to_create, data)
 
         if wrong_files['extra']:
             logger.info("{0} [Step 3]: Received {1} extra files from master. Action: Remove files.".format(tag, len(wrong_files['extra'])))

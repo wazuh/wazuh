@@ -219,21 +219,23 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
 
 def get_files_status(node_type, get_md5=True):
 
-    cluster_items_files = get_cluster_items()['files']
+    cluster_items = get_cluster_items()
 
     final_items = {}
-    for file_path, item in cluster_items_files.items():
+    for file_path, item in cluster_items['files'].items():
         if file_path == "excluded_files":
             continue
 
         if item['source'] == node_type or item['source'] == 'all':
             if item.get("files") and "agent-info.merged" in item["files"]:
-                agents_to_send, path = merge_agent_info(get_cluster_items()['sync_options']['get_agentinfo_newer_than'])
+                agents_to_send, path = merge_agent_info(merge_type="agent-info",
+                                                time_limit_seconds=cluster_items\
+                                                ['sync_options']['get_agentinfo_newer_than'])
                 if agents_to_send == 0:
                     return {}
             fullpath = common.ossec_path + file_path
             try:
-                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items_files['excluded_files'], file_path, get_md5, node_type))
+                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
                 logging.warning("[Cluster] get_files_status: {}.".format(e))
 
@@ -357,17 +359,17 @@ def compare_files(good_files, check_files):
     missing_files = set(good_files.keys()) - set(check_files.keys())
     extra_files = set(check_files.keys()) - set(good_files.keys())
 
-    shared_files = {name: {'cluster_item_key': data['cluster_item_key']} for name, data in good_files.iteritems() if name in check_files and data['md5'] != check_files[name]['md5']}
+    shared_files = {name: {'cluster_item_key': data['cluster_item_key'], 'merged':False} for name, data in good_files.iteritems() if name in check_files and data['md5'] != check_files[name]['md5']}
 
     if not missing_files:
         missing_files = {}
     else:
-        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key']} for missing_file in missing_files }
+        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key'], 'merged': False} for missing_file in missing_files }
 
     if not extra_files:
         extra_files = {}
     else:
-        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key']} for extra_file in extra_files }
+        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key'], 'merged': False} for extra_file in extra_files }
 
     return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
 
@@ -481,25 +483,30 @@ def run_logtest(synchronized=False):
 # Agents-info
 #
 
-def merge_agent_info(time_limit_seconds=1800):
-    min_mtime = time() - time_limit_seconds
-    agent_info_path = "{}/queue/agent-info".format(common.ossec_path)
-    output_file = "{}/queue/cluster/agent-info.merged".format(common.ossec_path)
+def merge_agent_info(merge_type, files="all", file_type="", time_limit_seconds=1800):
+    if time_limit_seconds:
+        min_mtime = time() - time_limit_seconds
+    merge_path = "{}/queue/{}".format(common.ossec_path, merge_type)
+    output_file = "/queue/cluster/{}{}.merged".format(merge_type, file_type)
     o_f = None
-    agents_to_send = 0
+    files_to_send = 0
+    files = "all" if files == "all" else {path.basename(f) for f in files}
 
-    for agentinfo in os.listdir(agent_info_path):
-        full_path = "{0}/{1}".format(agent_info_path, agentinfo)
-        stat_data = stat(full_path)
-
-        if stat_data.st_mtime < min_mtime:
+    for filename in os.listdir(merge_path):
+        if files != "all" and filename not in files:
             continue
 
-        agents_to_send += 1
-        if not o_f:
-            o_f = open(output_file, 'wb')
+        full_path = "{0}/{1}".format(merge_path, filename)
+        stat_data = stat(full_path)
 
-        header = "{} {} {}".format(stat_data.st_size, agentinfo,
+        if time_limit_seconds and stat_data.st_mtime < min_mtime:
+            continue
+
+        files_to_send += 1
+        if not o_f:
+            o_f = open(common.ossec_path + output_file, 'wb')
+
+        header = "{} {} {}".format(stat_data.st_size, filename.replace(common.ossec_path,''),
                 datetime.utcfromtimestamp(stat_data.st_mtime))
         with open(full_path, 'rb') as f:
             data = f.read()
@@ -509,12 +516,12 @@ def merge_agent_info(time_limit_seconds=1800):
     if o_f:
         o_f.close()
 
-    return agents_to_send, output_file
+    return files_to_send, output_file
 
 
-def unmerge_agent_info(path_file):
-    src_agent_info_path = "{0}/{1}".format(path_file, 'queue/cluster/agent-info.merged')
-    dst_agent_info_path = "/queue/agent-info/".format(common.ossec_path)
+def unmerge_agent_info(merge_type, path_file, filename):
+    src_agent_info_path = "{0}/{1}".format(path_file, filename)
+    dst_agent_info_path = "/queue/{}".format(merge_type)
 
     bytes_read = 0
     total_bytes = os.stat(src_agent_info_path).st_size
@@ -534,6 +541,6 @@ def unmerge_agent_info(path_file):
         data = src_f.read(st_size)
         bytes_read += st_size
 
-        yield dst_agent_info_path + name, data, st_mtime
+        yield dst_agent_info_path + '/' + name, data, st_mtime
 
     src_f.close()

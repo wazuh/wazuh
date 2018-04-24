@@ -12,13 +12,14 @@ import os
 import fcntl
 import ast
 from datetime import datetime
+import fnmatch
 
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.cluster.cluster import get_cluster_items, _update_file, \
                                   decompress_files, get_files_status, \
                                   compress_files, compare_files, get_agents_status, \
-                                  read_config, unmerge_agent_info, get_cluster_items_master_intervals
+                                  read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
                                         Handler, InternalSocketHandler, ClusterThread
 from wazuh.utils import mkdir_with_mode
@@ -93,7 +94,7 @@ class MasterManagerHandler(ServerHandler):
 
         try:
 
-            for file_path, file_data, file_time in unmerge_agent_info(zip_dir_path):
+            for file_path, file_data, file_time in unmerge_agent_info("agent-info", zip_dir_path, "agent-info.merged"):
                 # Full path
                 full_path = common.ossec_path + file_path
 
@@ -210,6 +211,23 @@ class MasterManagerHandler(ServerHandler):
         # Compare
         client_files_ko = compare_files(master_files, master_files_from_client)
 
+        agent_groups_to_merge = {key:fnmatch.filter(values.keys(), '*/agent-groups/*')
+                                 for key,values in client_files_ko.items() if key != "extra"}
+        merged_files = {key:merge_agent_info(merge_type="agent-groups", files=values,
+                                         file_type="-"+key, time_limit_seconds=0)
+                        for key,values in agent_groups_to_merge.items()}
+        agent_groups_to_merge.update({'extra':[]})
+        for ko, merged in zip(client_files_ko.items(), agent_groups_to_merge.items()):
+            ko_type, ko_files = ko
+            if ko_type == "extra":
+                continue
+            _, merged_filenames = merged
+            for m in merged_filenames:
+                del ko_files[m]
+            n_files, merged_file = merged_files[ko_type]
+            if n_files > 0:
+                ko_files[merged_file] = {'cluster_item_key': '/queue/agent-groups/', 'merged': True}
+
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="missing", status=len(client_files_ko['missing']))
         self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="shared", status=len(client_files_ko['shared']))
@@ -307,7 +325,7 @@ class ProcessClientIntegrity(ProcessClient):
 
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        
+
         return sync_result
 
 
