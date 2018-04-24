@@ -21,11 +21,11 @@ static int queue_fd;                                // Output queue file descrip
 static void* wm_ciscat_main(wm_ciscat *ciscat);        // Module main function. It won't return
 static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_check();                       // Check configuration, disable flag
-static void wm_ciscat_run(wm_ciscat_eval *eval, char *path);      // Run a CIS-CAT policy
+static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int ID);      // Run a CIS-CAT policy
 static void wm_ciscat_preparser();                   // Prepare report for the xml parser
 static wm_scan_data* wm_ciscat_txt_parser();        // Parse CIS-CAT csv reports
 static void wm_ciscat_xml_parser();                 // Parse CIS-CAT xml reports
-static void wm_ciscat_send_scan(wm_scan_data *info);      // Write scan result into JSON events and send them
+static void wm_ciscat_send_scan(wm_scan_data *info, int ID);      // Write scan result into JSON events and send them
 static char* wm_ciscat_remove_tags(char* string);    // Remove xml and html tags from a string
 static wm_rule_data* read_group(const OS_XML *xml, XML_NODE node, wm_rule_data *rule_info, char *group);    // Read groups information from the XML report
 static wm_rule_data* read_rule_info(XML_NODE node, wm_rule_data *rule, char *group);      // Read rule information from XML report
@@ -190,6 +190,24 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         if (!ciscat->flags.error) {
             mtinfo(WM_CISCAT_LOGTAG, "Starting evaluation.");
 
+            // Set unique ID for each scan
+
+        #ifndef WIN32
+            int ID = os_random();
+            if (ID < 0)
+                ID = -ID;
+        #else
+            unsigned int ID1 = os_random();
+            unsigned int ID2 = os_random();
+
+            char random_id[OS_MAXSTR];
+            snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
+
+            int ID = atoi(random_id);
+            if (ID < 0)
+                ID = -ID;
+        #endif
+
             for (eval = ciscat->evals; eval; eval = eval->next) {
                 if (!eval->flags.error) {
 
@@ -211,7 +229,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     if (IsFile(eval->path) < 0) {
                         mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
                     } else {
-                        wm_ciscat_run(eval, cis_path);
+                        wm_ciscat_run(eval, cis_path, ID);
                         ciscat->flags.error = 0;
                     }
                 }
@@ -295,7 +313,7 @@ void wm_ciscat_cleanup() {
 
 #ifdef WIN32
 
-void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int ID) {
     char *command = NULL;
     int status;
     char *output = NULL;
@@ -405,7 +423,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
-                wm_ciscat_send_scan(scan_info);
+                wm_ciscat_send_scan(scan_info, ID);
             }
         }
     }
@@ -421,7 +439,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
 // Run a CIS-CAT policy for UNIX systems
 
-void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int ID) {
 
     char *command = NULL;
     int status, child_status;
@@ -565,7 +583,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
-                wm_ciscat_send_scan(scan_info);
+                wm_ciscat_send_scan(scan_info, ID);
             }
         }
     }
@@ -1238,7 +1256,7 @@ wm_rule_data* read_rule_info(XML_NODE node, wm_rule_data *rule, char *group) {
 }
 
 
-void wm_ciscat_send_scan(wm_scan_data *info){
+void wm_ciscat_send_scan(wm_scan_data *info, int ID){
 
     wm_rule_data *rule;
     wm_rule_data *next_rule;
@@ -1251,24 +1269,6 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     // Set pointer to the head of the linked list
 
     rule = head;
-
-    // Set unique ID for each scan
-
-#ifndef WIN32
-    int ID = os_random();
-    if (ID < 0)
-        ID = -ID;
-#else
-    unsigned int ID1 = os_random();
-    unsigned int ID2 = os_random();
-
-    char random_id[OS_MAXSTR];
-    snprintf(random_id, OS_MAXSTR - 1, "%u%u", ID1, ID2);
-
-    int ID = atoi(random_id);
-    if (ID < 0)
-        ID = -ID;
-#endif
 
     // Send global scan information
 
