@@ -41,7 +41,7 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/cluster
 
 	$(INSTALL_FILE) wazuh/*.py ${PREFIX}/framework/wazuh
-	$(INSTALL_FILE) wazuh/*.json ${PREFIX}/framework/wazuh
+	$(INSTALL_FILE) wazuh/cluster/*.json ${PREFIX}/framework/wazuh/cluster
 	$(INSTALL_FILE) wazuh/cluster/*.py ${PREFIX}/framework/wazuh/cluster
 	$(INSTALL_FILE) libsqlite3.so.0 ${PREFIX}/framework/lib/
 

@@ -87,7 +87,7 @@ def check_cluster_config(config):
 
 def get_cluster_items():
     try:
-        cluster_items = json.load(open('{0}/framework/wazuh/cluster.json'.format(common.ossec_path)))
+        cluster_items = json.load(open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)))
         return cluster_items
     except Exception as e:
         raise WazuhException(3005, str(e))
@@ -348,7 +348,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
         dirpath = path.dirname(dst_path)
         if not os.path.exists(dirpath):
             mkdir_with_mode(dirpath)
-            chmod(path.dirname(f_temp), S_IRWXU | S_IRWXG)
+            chmod(path.dirname(dst_path), S_IRWXU | S_IRWXG)
         rename(f_temp, dst_path)
 
 
