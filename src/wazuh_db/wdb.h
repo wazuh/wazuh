@@ -61,6 +61,7 @@ typedef enum wdb_stmt {
     WDB_STMT_PROTO_DEL,
     WDB_STMT_ADDR_DEL,
     WDB_STMT_CISCAT_INSERT,
+    WDB_STMT_CISCAT_DEL,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -296,6 +297,9 @@ int wdb_ciscat_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 
 // Insert CIS-CAT results tuple. Return 0 on success or -1 on error.
 int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, int pass, int fail, int error, int notchecked, int unknown, int score);
+
+// Delete old information from the 'ciscat_results' table
+int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
 wdb_t * wdb_init(sqlite3 * db, const char * agent_id);
 

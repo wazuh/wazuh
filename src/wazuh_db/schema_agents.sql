@@ -234,6 +234,8 @@ CREATE TABLE IF NOT EXISTS ciscat_results (
     score INTEGER
 );
 
+CREATE INDEX IF NOT EXISTS ciscat_id ON ciscat_results (scan_id);
+
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
     value TEXT
