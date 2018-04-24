@@ -231,12 +231,11 @@ def get_files_status(node_type, get_md5=True):
                 agents_to_send, path = merge_agent_info(get_cluster_items()['sync_options']['get_agentinfo_newer_than'])
                 if agents_to_send == 0:
                     return {}
-            else:
-                fullpath = common.ossec_path + file_path
-                try:
-                    final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items_files['excluded_files'], file_path, get_md5, node_type))
-                except WazuhException as e:
-                    logging.warning("[Cluster] get_files_status: {}.".format(e))
+            fullpath = common.ossec_path + file_path
+            try:
+                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items_files['excluded_files'], file_path, get_md5, node_type))
+            except WazuhException as e:
+                logging.warning("[Cluster] get_files_status: {}.".format(e))
 
     return final_items
 

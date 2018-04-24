@@ -46,13 +46,11 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!strcmp(node[i]->element, cluster_name)) {
             os_strdup(node[i]->content, Config->cluster_name);
         } else if (!strcmp(node[i]->element, node_name)) {
-            unsigned j;
-            static const char *c_invalid = "/;";
-            for (j = 0; j < strlen(c_invalid); j++){
-               if (strchr(node[i]->content, c_invalid[j])) {
-                    merror("Detected a not allowed character in node name: \"%s\". Characters not allowed: \"%s\".", node[i]->content, c_invalid);
-                    return OS_INVALID;
-                }
+            static const char *C_VALID = " !\"#$%&'-.0123456789:<=>?ABCDEFGHIJKLMNOPQRESTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";
+            if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content))
+            {
+                merror("Detected a not allowed character in node name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
+                return OS_INVALID;
             }
             os_strdup(node[i]->content, Config->node_name);
         } else if (!strcmp(node[i]->element, node_type)) {
