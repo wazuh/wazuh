@@ -50,6 +50,8 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
     switch (event.type) {
     case YAML_MAPPING_START_EVENT:
         do {
+            yaml_event_delete(&event);
+
             if (w_move_next(parser, &event)) {
                 goto error;
             }
@@ -59,6 +61,7 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
                 os_realloc(agents, sizeof(agent_group) * (index + 2), agents);
                 memset(agents + index + 1, 0, sizeof(agent_group));
                 os_strdup(w_read_scalar_value(&event), agents[index].name);
+                yaml_event_delete(&event);
 
                 if (!(yaml_parser_parse(parser, &event) && event.type == YAML_SCALAR_EVENT)) {
                     merror(W_PARSER_ERROR_EXPECTED_VALUE, agents[index].name);
@@ -77,6 +80,7 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
             }
         } while (event.type != YAML_MAPPING_END_EVENT);
 
+        yaml_event_delete(&event);
         return agents;
 
     default:
@@ -84,6 +88,7 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
     }
 
 error:
+    yaml_event_delete(&event);
     return NULL;
 }
 
@@ -102,6 +107,8 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
     switch (event.type) {
     case YAML_MAPPING_START_EVENT:
         do {
+            yaml_event_delete(&event);
+
             if (w_move_next(parser, &event)) {
                 goto error;
             }
@@ -123,6 +130,8 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
                     }
 
                 } else if (!strcmp(w_read_scalar_value(&event), "poll")){
+                    yaml_event_delete(&event);
+
                     // Read group poll
                     if (w_move_next(parser,&event)) {
                         goto error;
@@ -134,11 +143,9 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
                         goto error;
                     }
 
-                    group->poll = strtol(w_read_scalar_value(&event), NULL, 10);
-
-                    if(group->poll == 0)
-                    {
-                        merror(W_PARSER_ZERO_POLL);
+                    char * end;
+                    if (group->poll = strtol(w_read_scalar_value(&event), &end, 10), *end || group->poll < 0) {
+                        merror(W_PARSER_POLL, w_read_scalar_value(&event));
                         goto error;
                     }
                 }
@@ -153,7 +160,8 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
             }
 
         } while (event.type != YAML_MAPPING_END_EVENT);
-        
+
+        yaml_event_delete(&event);
         return 0;
 
     default:
@@ -161,6 +169,7 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
     }
 
 error:
+    yaml_event_delete(&event);
     return -1;
 }
 
@@ -178,6 +187,8 @@ remote_files_group * w_read_groups(yaml_parser_t * parser) {
     switch (event.type) {
     case YAML_MAPPING_START_EVENT:
         do {
+            yaml_event_delete(&event);
+
             if (w_move_next(parser, &event)) {
                 goto error;
             }
@@ -204,7 +215,8 @@ remote_files_group * w_read_groups(yaml_parser_t * parser) {
             }
 
         } while (event.type != YAML_MAPPING_END_EVENT);
-        
+
+        yaml_event_delete(&event);
         return groups;
 
     default:
@@ -212,6 +224,7 @@ remote_files_group * w_read_groups(yaml_parser_t * parser) {
     }
 
 error:
+    yaml_event_delete(&event);
     return NULL;
 }
 
@@ -229,6 +242,8 @@ file * w_read_group_files(yaml_parser_t * parser) {
     switch (event.type) {
     case YAML_MAPPING_START_EVENT:
         do {
+            yaml_event_delete(&event);
+
             if (w_move_next(parser, &event)) {
                 goto error;
             }
@@ -238,6 +253,8 @@ file * w_read_group_files(yaml_parser_t * parser) {
                 os_realloc(files, sizeof(file) * (index + 2), files);
                 memset(files + index + 1, 0, sizeof(file));
                 os_strdup(w_read_scalar_value(&event), files[index].name);
+
+                yaml_event_delete(&event);
 
                 if (!(yaml_parser_parse(parser, &event) && event.type == YAML_SCALAR_EVENT)) {
                     merror(W_PARSER_ERROR_EXPECTED_VALUE, files[index].name);
@@ -256,6 +273,7 @@ file * w_read_group_files(yaml_parser_t * parser) {
             }
         } while (event.type != YAML_MAPPING_END_EVENT);
 
+        yaml_event_delete(&event);
         return files;
 
     default:
@@ -263,6 +281,7 @@ file * w_read_group_files(yaml_parser_t * parser) {
     }
 
 error:
+    yaml_event_delete(&event);
     return NULL;
 }
 
@@ -295,6 +314,8 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
         goto end;
     }
 
+    yaml_event_delete(&event);
+
     if (!yaml_parser_parse(&parser, &event)) {
         merror("Parser error %d", parser.error);
         goto end;
@@ -302,6 +323,8 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
 
     switch (event.type) {
     case YAML_DOCUMENT_START_EVENT:
+        yaml_event_delete(&event);
+
         if (w_move_next(&parser, &event)) {
             goto end;
         }
@@ -309,6 +332,8 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
         switch (event.type) {
         case YAML_MAPPING_START_EVENT:
             do {
+                yaml_event_delete(&event);
+
                 if (w_move_next(&parser, &event)) {
                     goto end;
                 }
@@ -361,10 +386,14 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
         mwarn("Parsing '%s': file empty", yaml_file);
     }
 
+    yaml_event_delete(&event);
+
     if (!(yaml_parser_parse(&parser, &event) && event.type == YAML_DOCUMENT_END_EVENT)) {
         merror("Parser error %d: expecting document end", parser.error);
         goto end;
     }
+
+    yaml_event_delete(&event);
 
     if (!(yaml_parser_parse(&parser, &event) && event.type == YAML_STREAM_END_EVENT)) {
         merror("Parser error %d: expecting file end", parser.error);
@@ -436,7 +465,7 @@ int w_init_shared_download()
                 OSHash_Add(ptable, agents_group[i].name, &agents_group[i]);
             }
         }
-        
+
     }
     else{
         minfo(W_PARSER_FAILED,yaml_file);
