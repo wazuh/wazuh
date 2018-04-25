@@ -113,53 +113,75 @@ class ClientManagerHandler(ClientHandler):
         cluster_items = get_cluster_items()['files']
 
 
+        error_shared_files = 0
         if wrong_files['shared']:
             logger.debug("{0}: Received {1} wrong files to fix from master. Action: Overwrite files.".format(tag, len(wrong_files['shared'])))
-            try:
-                for file_to_overwrite, data in wrong_files['shared'].items():
+            for file_to_overwrite, data in wrong_files['shared'].items():
+                try:
                     logger.debug2("{0}: Overwrite file: '{1}'".format(tag, file_to_overwrite))
                     if data['merged']:
                         for name, content, _ in unmerge_agent_info('agent-groups', zip_path_dir, file_to_overwrite):
                             overwrite_or_create_files(name, data, content)
                     else:
                         overwrite_or_create_files(file_to_overwrite, data)
+                except Exception as e:
+                    error_shared_files += 1
+                    logger.debug2("Error overwriting file '{}': {}".format(file_to_overwrite, str(e)))
+                    continue
 
-            except Exception as e:
-                print(str(e))
-                raise e
-
+        error_missing_files = 0
         if wrong_files['missing']:
             logger.debug("{0}: Received {1} missing files from master. Action: Create files.".format(tag, len(wrong_files['missing'])))
             for file_to_create, data in wrong_files['missing'].items():
-                logger.debug2("{0}: Create file: '{1}'".format(tag, file_to_create))
-                if data['merged']:
-                    for name, content, _ in unmerge_agent_info('agent-groups', zip_path_dir, file_to_create):
-                        overwrite_or_create_files(name, data, content)
-                else:
-                    overwrite_or_create_files(file_to_create, data)
+                try:
+                    logger.debug2("{0}: Create file: '{1}'".format(tag, file_to_create))
+                    if data['merged']:
+                        for name, content, _ in unmerge_agent_info('agent-groups', zip_path_dir, file_to_create):
+                            overwrite_or_create_files(name, data, content)
+                    else:
+                        overwrite_or_create_files(file_to_create, data)
+                except Exception as e:
+                    error_missing_files += 1
+                    logger.debug2("Error creating file '{}': {}".format(file_to_create, str(e)))
+                    continue
 
+        error_extra_files = 0
         if wrong_files['extra']:
             logger.debug("{0}: Received {1} extra files from master. Action: Remove files.".format(tag, len(wrong_files['extra'])))
             for file_to_remove in wrong_files['extra']:
-                logger.debug2("{0}: Remove file: '{1}'".format(tag, file_to_remove))
-                file_path = common.ossec_path + file_to_remove
                 try:
-                    os.remove(file_path)
-                except OSError as e:
-                    if e.errno == errno.ENOENT and '/queue/agent-groups/' in file_path:
-                        logger.debug2("File {} doesn't exists.".format(file_to_remove))
-                        continue
-                    else:
-                        raise e
+                    logger.debug2("{0}: Remove file: '{1}'".format(tag, file_to_remove))
+                    file_path = common.ossec_path + file_to_remove
+                    try:
+                        os.remove(file_path)
+                    except OSError as e:
+                        if e.errno == errno.ENOENT and '/queue/agent-groups/' in file_path:
+                            logger.debug2("File {} doesn't exists.".format(file_to_remove))
+                            continue
+                        else:
+                            raise e
+                except Exception as e:
+                    error_extra_files += 1
+                    logger.debug2("Error removing file '{}': {}".format(file_to_remove, str(e)))
+                    continue
 
             directories_to_check = {os.path.dirname(f): cluster_items[data\
                                     ['cluster_item_key']]['remove_subdirs_if_empty']
                                     for f, data in wrong_files['extra'].items()}
             for directory in map(itemgetter(0), filter(lambda x: x[1], directories_to_check.items())):
-                full_path = common.ossec_path + directory
-                dir_files = set(os.listdir(full_path))
-                if not dir_files or dir_files.issubset(set(cluster_items['excluded_files'])):
-                    shutil.rmtree(full_path)
+                try:
+                    full_path = common.ossec_path + directory
+                    dir_files = set(os.listdir(full_path))
+                    if not dir_files or dir_files.issubset(set(cluster_items['excluded_files'])):
+                        shutil.rmtree(full_path)
+                except Exception as e:
+                    error_extra_files += 1
+                    logger.debug2("Error removing directory '{}': {}".format(directory, str(e)))
+                    continue
+
+        if error_extra_files or error_shared_files or error_missing_files:
+            logger.error("Found errors: {} overwriting, {} creating and {} removing".format(
+                        error_shared_files, error_missing_files, error_extra_files))
 
         return True
 
