@@ -10,6 +10,7 @@ import time
 import os
 import shutil
 import ast
+from operator import itemgetter
 
 from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info
 from wazuh.exception import WazuhException
@@ -143,6 +144,14 @@ class ClientManagerHandler(ClientHandler):
                 file_path = common.ossec_path + file_to_remove
                 os.remove(file_path)
 
+            directories_to_check = {os.path.dirname(f): cluster_items[data\
+                                    ['cluster_item_key']]['remove_subdirs_if_empty']
+                                    for f, data in wrong_files['extra'].items()}
+            for directory in map(itemgetter(0), filter(lambda x: x[1], directories_to_check.items())):
+                full_path = common.ossec_path + directory
+                dir_files = set(os.listdir(full_path))
+                if not dir_files or dir_files.issubset(set(cluster_items['excluded_files'])):
+                    shutil.rmtree(full_path)
 
         return True
 

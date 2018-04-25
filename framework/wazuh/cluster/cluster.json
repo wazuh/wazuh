@@ -7,6 +7,7 @@
             "files": ["client.keys"],
             "recursive": false,
             "restart": false,
+            "remove_subdirs_if_empty": false,
             "description": "client keys file database"
         },
 
@@ -17,6 +18,7 @@
             "files": ["all"],
             "recursive": true,
             "restart": false,
+            "remove_subdirs_if_empty": true,
             "description": "shared configuration files"
         },
 
@@ -27,6 +29,7 @@
             "files": ["all"],
             "recursive": false,
             "restart": true,
+            "remove_subdirs_if_empty": false,
             "description": "user rules"
         },
 
@@ -37,6 +40,7 @@
             "files": ["all"],
             "recursive": false,
             "restart": true,
+            "remove_subdirs_if_empty": false,
             "description": "user decoders"
         },
 
@@ -47,10 +51,11 @@
             "files": ["all"],
             "recursive": true,
             "restart": true,
+            "remove_subdirs_if_empty": false,
             "description": "user CDB lists"
         },
 
-        "/queue/cluster": {
+        "/queue/cluster/": {
             "umask": "0o117",
             "source": "client",
             "write_mode": "atomic",
@@ -59,6 +64,7 @@
             ],
             "recursive": false,
             "restart": false,
+            "remove_subdirs_if_empty": false,
             "description": "agent status"
         },
 
@@ -69,6 +75,7 @@
             "files": ["all"],
             "recursive": false,
             "restart": false,
+            "remove_subdirs_if_empty": false,
             "description": "agents group configuration"
         },
 

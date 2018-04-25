@@ -102,8 +102,8 @@ class MasterManagerHandler(ServerHandler):
                 tmp_path = "/queue/cluster/{}/tmp_files".format(client_name)
 
                 # Cluster items information: write mode and umask
-                w_mode = cluster_items['/queue/cluster']['write_mode']
-                umask = int(cluster_items['/queue/cluster']['umask'], base=0)
+                w_mode = cluster_items['/queue/cluster/']['write_mode']
+                umask = int(cluster_items['/queue/cluster/']['umask'], base=0)
 
                 lock_full_path = "{}.lock".format(full_path)
                 lock_file = open(lock_full_path, 'a+')
