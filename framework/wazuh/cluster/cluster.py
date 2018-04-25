@@ -109,18 +109,6 @@ def read_config():
     # Get api/configuration/config.js content
     try:
         config_cluster = get_ossec_conf('cluster')
-        if not config_cluster.get('socket_timeout'):
-            config_cluster['socket_timeout'] = 5
-        if not config_cluster.get('connection_timeout'):
-            config_cluster['connection_timeout'] = 1
-
-        # Check interval is properly written
-        i_match = re.match(r"^(\d+)([s|m])$", config_cluster['interval'])
-        if not i_match:
-            raise WazuhException(3004, "Cluster interval is not correct.")
-
-        config_cluster['interval'] =  int(i_match.group(1)) * (1 if i_match.group(2) == 's' else 60)
-
 
     except WazuhException as e:
         if e.code == 1102:
