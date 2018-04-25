@@ -102,10 +102,10 @@ def clean_exit(reason, error=False):
     else:
         logger.info(msg)
 
-    delete_pid("wazuh-clusterd", getpid())
-
     if manager:
         manager.exit()
+
+    delete_pid("wazuh-clusterd", getpid())
 
     exit(1)
 
