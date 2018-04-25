@@ -156,7 +156,7 @@ class ClientManagerHandler(ClientHandler):
                         os.remove(file_path)
                     except OSError as e:
                         if e.errno == errno.ENOENT and '/queue/agent-groups/' in file_path:
-                            logger.debug2("File {} doesn't exists.".format(file_to_remove))
+                            logger.debug2("File {} doesn't exist.".format(file_to_remove))
                             continue
                         else:
                             raise e
