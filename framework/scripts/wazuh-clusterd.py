@@ -160,7 +160,7 @@ def client_main(cluster_configuration):
 
             asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 
-            logger.error("[{0}] Client disconnected. Trying to connect again in {1}s.".format(manager_tag, connection_retry_interval))
+            logger.error("[{0}] Disconnected. Trying to connect again in {1}s.".format(manager_tag, connection_retry_interval))
 
             manager.exit()
         except socket.gaierror as e:

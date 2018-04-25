@@ -613,7 +613,7 @@ class ClientHandler(Handler):
     def handle_close(self):
         Handler.handle_close(self)
         self.my_connected = False
-        logger.info("[Transport-ClientHandler] Client disconnected.")
+        logger.info("[Client] Disconnected.")
 
 
     def send_request(self, command, data=None):
