@@ -1556,9 +1556,9 @@ class Agent:
 
         # add dependent select fields to the database select query
         db_select_fields = set()
-        for dependent, fields in dependent_select_fields.items():
+        for dependent, dependent_fields in dependent_select_fields.items():
             if dependent in select_fields:
-                db_select_fields |= fields
+                db_select_fields |= dependent_fields
         db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
 
         # Search

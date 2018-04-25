@@ -438,7 +438,9 @@ void wm_clean_dangling_db() {
 
                     if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
                         mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
-                        remove(path);
+                        if (remove(path) < 0) {
+                            mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
+                        }
                     }
                 }
             } else {

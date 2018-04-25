@@ -15,6 +15,7 @@
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     unsigned int pl = 0;
+    unsigned int pl_base = 0;
     unsigned int i = 0;
     unsigned int glob_set = 0;
 #ifndef WIN32
@@ -58,6 +59,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         while (logf[pl].file != NULL) {
             pl++;
         }
+
+        pl_base = pl;
 
         /* Allocate more memory */
         os_realloc(logf, (pl + 2)*sizeof(logreader), log_config->config);
@@ -116,7 +119,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             }
 
-            logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, 0, 1);
+            logf[pl_base].labels = labels_add(logf[pl_base].labels, &labels_z, key_value, node[i]->content, 0, 1);
         } else if (strcmp(node[i]->element, xml_localfile_command) == 0) {
             /* We don't accept remote commands from the manager - just in case */
             if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {
@@ -244,18 +247,18 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     logf[pl].logformat = NULL;
                     logf[pl].fp = NULL;
                     logf[pl].ffile = NULL;
-		            logf[pl].djb_program_name = NULL;
-		            logf[pl].labels = NULL;
-		            logf[pl].query = NULL;
+                    logf[pl].djb_program_name = NULL;
+                    logf[pl].labels = NULL;
+                    logf[pl].query = NULL;
 
                     logf[pl +1].file = NULL;
                     logf[pl +1].alias = NULL;
                     logf[pl +1].logformat = NULL;
-		            logf[pl +1].fp = NULL;
-		            logf[pl +1].ffile = NULL;
+                    logf[pl +1].fp = NULL;
+                    logf[pl +1].ffile = NULL;
                     logf[pl +1].djb_program_name = NULL;
                     logf[pl +1].labels = NULL;
-		            logf[pl +1].query = NULL;
+                    logf[pl +1].query = NULL;
                 }
 
 
@@ -360,12 +363,23 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     /* Validate glob entries */
     if (glob_set) {
         char *format;
+        wlabel_t *labels;
 
         /* Get log format */
         if (logf[pl].logformat) {
-           format = logf[0].logformat;
+            format = logf[pl].logformat;
         } else if (logf[glob_set - 1].logformat) {
-            format = logf[0].logformat;
+            format = logf[glob_set - 1].logformat;
+        } else {
+            merror(MISS_LOG_FORMAT);
+            return (OS_INVALID);
+        }
+
+        /* Get labels */
+        if (logf[pl_base].labels) {
+            labels = logf[pl_base].labels;
+        } else if (logf[glob_set - 1].labels) {
+            labels = logf[glob_set - 1].labels;
         } else {
             merror(MISS_LOG_FORMAT);
             return (OS_INVALID);
@@ -383,8 +397,12 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
 
             if (logf[i].logformat == NULL) {
-		        os_strdup(format,logf[i].logformat);
+                logf[i].logformat = format;
             }
+            if (logf[i].labels == NULL) {
+                logf[i].labels = labels;
+            }
+
         }
     }
 
@@ -444,14 +462,23 @@ void Free_Localfile(logreader_config * config){
     if (config) {
         if (config->config) {
             int i;
+            char *last_logformat = NULL;
+            wlabel_t *last_labels = NULL;
+
             for (i = 0; config->config[i].file; i++) {
                 free(config->config[i].ffile);
                 free(config->config[i].file);
-		        free(config->config[i].logformat);
+                if (config->config[i].logformat != last_logformat) {
+                    last_logformat = config->config[i].logformat;
+                    free(config->config[i].logformat);
+                }
                 free(config->config[i].djb_program_name);
                 free(config->config[i].alias);
                 free(config->config[i].query);
-                labels_free(config->config[i].labels);
+                if (config->config[i].labels != last_labels) {
+                    last_labels = config->config[i].labels;
+                    labels_free(config->config[i].labels);
+                }
                 if (config->config[i].fp) {
                     fclose(config->config[i].fp);
                 }

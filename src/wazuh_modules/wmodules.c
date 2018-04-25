@@ -28,6 +28,10 @@ int wm_config() {
     wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 100, 1000);
     wm_kill_timeout = getDefine_Int("wazuh_modules", "kill_timeout", 0, 3600);
 
+#ifdef CLIENT
+    agent_cfg = 1;
+#endif
+
     // Read configuration: ossec.conf
 
     if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0) {
@@ -36,7 +40,6 @@ int wm_config() {
 
 #ifdef CLIENT
     // Read configuration: agent.conf
-    agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
     wmodule *database;

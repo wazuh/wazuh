@@ -52,6 +52,10 @@ void mterror_exit(const char *tag, const char *msg, ...) __attribute__((format(p
 /* Function to read the logging format configuration */
 void os_logging_config(void);
 
+#ifdef WIN32
+char * win_strerror(unsigned long error);
+#endif
+
 /* Use these three functions to set when you
  * enter in debug, chroot or daemon mode
  */

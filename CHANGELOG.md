@@ -3,10 +3,16 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.2]
 
+### Added
+
+- Created an input queue for Remoted to prevent agent connection starvation. ([#509](https://github.com/wazuh/wazuh/pull/509))
+
 ### Changed
 
 - Updated Slack integration. ([#443](https://github.com/wazuh/wazuh/pull/443))
 - Increased connection timeout for remote upgrades. ([#480](https://github.com/wazuh/wazuh/pull/480))
+- Vulnerability-detector does not stop agents detection if it fails to find the software for one of them.
+- Improve the version comparator algorithm in vulnerability-detector. ([#508](https://github.com/wazuh/wazuh/pull/508/files))
 
 ### Fixed
 
@@ -24,6 +30,8 @@ All notable changes to this project will be documented in this file.
 - Fixed memory corruption in Wazuh DB autoclosing procedure.
 - Fixed dangling db files at DB Sync module folder. ([#489](https://github.com/wazuh/wazuh/pull/489))
 - Fixed agent group file deletion when using Authd.
+- Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
+- Fixed remote command switch option. ([#504](https://github.com/wazuh/wazuh/pull/504))
 
 ## [v3.2.1]
 

@@ -30,7 +30,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     stmt = wdb->stmt[WDB_STMT_OSINFO_DEL];
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_osinfo' table.");
+        merror("Deleting old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -50,7 +50,6 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         release,
         version) < 0) {
 
-        mdebug1("at wdb_osinfo_save(): cannot insert osinfo tuple.");
         return -1;
     }
 
@@ -87,7 +86,7 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
         return 0;
     }
     else {
-        mdebug1("at wdb_osinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_osinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -111,7 +110,6 @@ int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         architecture,
         description) < 0) {
 
-        mdebug1("at wdb_program_save(): cannot insert program tuple.");
         return -1;
     }
 
@@ -168,7 +166,7 @@ int wdb_program_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_programs' table.");
+        merror("Deleting old information from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -194,7 +192,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
     stmt = wdb->stmt[WDB_STMT_HWINFO_DEL];
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_hwinfo' table.");
+        merror("Deleting old information from 'sys_hwinfo' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -208,7 +206,6 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
         ram_total,
         ram_free) < 0) {
 
-        mdebug1("at wdb_hardware_save(): cannot insert hardware tuple.");
         return -1;
     }
 
@@ -255,7 +252,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
         return 0;
     }
     else {
-        mdebug1("at wdb_hardware_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_hardware_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -283,7 +280,6 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
         pid,
         process) < 0) {
 
-        mdebug1("at wdb_port_save(): cannot insert port tuple.");
         return -1;
     }
 
@@ -350,7 +346,7 @@ int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         return 0;
     }
     else {
-        mdebug1("at wdb_port_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_port_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -375,7 +371,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_ports' table.");
+        merror("Deleting old information from 'sys_ports' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -422,7 +418,6 @@ int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         tty,
         processor) < 0) {
 
-        mdebug1("at wdb_process_save(): cannot insert process tuple.");
         return -1;
     }
 
@@ -526,7 +521,7 @@ int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
         return 0;
     }
     else {
-        mdebug1("at wdb_process_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_process_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -551,7 +546,7 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_processes' table.");
+        merror("Deleting old information from 'sys_processes' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
