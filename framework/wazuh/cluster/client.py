@@ -277,7 +277,6 @@ class ClientProcessMasterFiles(ProcessFiles):
     def __init__(self, manager_handler, filename, stopper):
         ProcessFiles.__init__(self, manager_handler, filename, manager_handler.name, stopper)
         self.thread_tag = "[Client] [Integrity-R]"
-        self.status_type = "sync_agent"
 
 
     def check_connection(self):
@@ -302,6 +301,12 @@ class ClientProcessMasterFiles(ProcessFiles):
 
     def process_file(self):
         return self.manager_handler.process_files_from_master(self.filename, self.thread_tag)
+
+
+    def unlock_and_stop(self, reason, send_err_request=None):
+        logger.info("{0}: Unlocking due to {1}.".format(self.thread_tag, reason))
+        ProcessFiles.unlock_and_stop(self, reason, send_err_request)
+
 
 #
 # Client

@@ -162,9 +162,6 @@ class MasterManagerHandler(ServerHandler):
 
         logger.info("{0}: Analyzing received files: End.".format(tag))
 
-        # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=len(client_files_json))
-
         logger.info("{0}: Updating master files: Start.".format(tag))
 
         # Update files
@@ -292,6 +289,11 @@ class ProcessClient(ProcessFiles):
 
     def process_file(self):
         return self.function(self.name, self.filename, self.thread_tag)
+
+
+    def unlock_and_stop(self, reason, send_err_request=None):
+        logger.info("{0}: Unlocking '{1}' due to {2}.".format(self.thread_tag, self.status_type, reason))
+        ProcessFiles.unlock_and_stop(self, reason, send_err_request)
 
 
 class ProcessClientIntegrity(ProcessClient):

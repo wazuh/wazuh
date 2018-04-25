@@ -880,7 +880,6 @@ class ProcessFiles(ClusterThread):
         :param reason: Reason why this function was called. Only for logger purposes.
         :param send_err_request: Whether to send an error request. Only used in master nodes.
         """
-        logger.info("{0}: Unlocking '{1}' due to {2}.".format(self.thread_tag, self.status_type, reason))
         self.lock_status(False)
         self.stop()
 
