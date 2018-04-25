@@ -88,15 +88,15 @@
 
     "intervals":{
         "client": {
-            "sync_integrity": 10,
-            "sync_files": 15,
-            "keep_alive": 10,
+            "sync_integrity": 20,
+            "sync_files": 60,
+            "keep_alive": 60,
             "connection_retry": 10,
             "ask_for_permission": 5
         },
 
         "master": {
-            "recalculate_integrity": 30
+            "recalculate_integrity": 15
         },
 
         "communication":{
