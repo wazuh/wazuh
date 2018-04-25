@@ -71,6 +71,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, interval)) {
+            mwarn("Detected a deprecated configuration for cluster. Interval must be defined in 'cluster.json'.");
         } else if (!strcmp(node[i]->element, nodes)) {
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
