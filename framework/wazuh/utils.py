@@ -13,6 +13,7 @@ import hashlib
 import json
 import stat
 import re
+import errno
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 
