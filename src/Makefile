@@ -622,7 +622,7 @@ endif
 #### External dependencies  ####
 ################################
 
-TAR := tar -xvf
+TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
 space =
