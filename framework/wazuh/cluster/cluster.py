@@ -290,8 +290,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
     dst_path = common.ossec_path + file_path
     if path.basename(dst_path) == 'client.keys':
         if whoami =='client':
-            logging.info("ToDo: _check_removed_agents***********************************************")
-            #_check_removed_agents(new_content.split('\n'))
+            _check_removed_agents(new_content.split('\n'))
         else:
             logger.warning("[Cluster] Client.keys file received in a master node.")
             raise WazuhException(3007)
@@ -446,7 +445,7 @@ def _check_removed_agents(new_client_keys):
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
 
-    regex = re.compile('-\d{3} \w+ (any|\d+.\d+.\d+.\d+|\d+.\d+.\d+.\d+\/\d+) \w+')
+    regex = re.compile('-\d+ \w+ (any|\d+\.\d+\.\d+\.\d+|\d+\.\d+\.\d+\.\d+\/\d+) \w+')
     for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
         if regex.match(removed_line):
             agent_id, _, _, _, = removed_line[1:].split(" ")
