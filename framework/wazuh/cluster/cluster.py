@@ -237,7 +237,7 @@ def get_files_status(node_type, get_md5=True):
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
-                logging.warning("[Cluster] get_files_status: {}.".format(e))
+                logger.warning("[Cluster] get_files_status: {}.".format(e))
 
     return final_items
 
@@ -252,7 +252,7 @@ def compress_files(source, name, list_path, cluster_control_json=None):
                 try:
                     zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
                 except Exception as e:
-                    logging.error("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
+                    logger.error("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
 
         try:
             zf.writestr("cluster_control.json", json.dumps(cluster_control_json), compression)
@@ -293,7 +293,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
             logging.info("ToDo: _check_removed_agents***********************************************")
             #_check_removed_agents(new_content.split('\n'))
         else:
-            logging.warning("[Cluster] Client.keys file received in a master node.")
+            logger.warning("[Cluster] Client.keys file received in a master node.")
             raise WazuhException(3007)
 
     if 'agent-info' in dst_path:
@@ -311,7 +311,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
                     logger.debug2("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
                     return
         else:
-            logging.warning("[Cluster] Agent-info received in a client node.")
+            logger.warning("[Cluster] Agent-info received in a client node.")
             raise WazuhException(3011)
 
     # Write
@@ -383,7 +383,7 @@ def clean_up(node_name=""):
     """
     def remove_directory_contents(rm_path):
         if not path.exists(rm_path):
-            logging.debug("[Cluster] Nothing to remove in '{}'.".format(rm_path))
+            logger.debug("[Cluster] Nothing to remove in '{}'.".format(rm_path))
             return
 
         for f in listdir(rm_path):
@@ -396,16 +396,16 @@ def clean_up(node_name=""):
                 else:
                     remove(f_path)
             except Exception as e:
-                logging.error("[Cluster] Error removing '{}': '{}'.".format(f_path, str(e)))
+                logger.error("[Cluster] Error removing '{}': '{}'.".format(f_path, str(e)))
                 continue
 
     try:
         rm_path = "{}/queue/cluster/{}".format(common.ossec_path, node_name)
-        logging.debug("[Cluster] Removing '{}'.".format(rm_path))
+        logger.debug("[Cluster] Removing '{}'.".format(rm_path))
         remove_directory_contents(rm_path)
-        logging.debug("[Cluster] Removed '{}'.".format(rm_path))
+        logger.debug("[Cluster] Removed '{}'.".format(rm_path))
     except Exception as e:
-        logging.error("[Cluster] Error cleaning up: {0}.".format(str(e)))
+        logger.error("[Cluster] Error cleaning up: {0}.".format(str(e)))
 
 
 #
@@ -453,10 +453,9 @@ def _check_removed_agents(new_client_keys):
 
             try:
                 Agent(agent_id).remove()
-                logging.info("[Cluster] Agent '{0}': Deleted successfully.".format(agent_id))
+                logger.info("[Cluster] Agent '{0}': Deleted successfully.".format(agent_id))
             except WazuhException as e:
-                logging.error("[Cluster] Agent '{0}': Error - '{1}'.".format(agent_id, str(e)))
-
+                logger.error("[Cluster] Agent '{0}': Error - '{1}'.".format(agent_id, str(e)))
 
 
 #
@@ -471,10 +470,10 @@ def run_logtest(synchronized=False):
     try:
         # check synchronized rules are correct before restarting the manager
         check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
-        logging.debug("[Cluster] {}ules are correct.".format(log_msg_start))
+        logger.debug("[Cluster] {}ules are correct.".format(log_msg_start))
         return True
     except CalledProcessError as e:
-        logging.warning("[Cluster] {}ules are not correct.".format(log_msg_start, str(e)))
+        logger.warning("[Cluster] {}ules are not correct.".format(log_msg_start, str(e)))
         return False
 
 
