@@ -33,7 +33,6 @@ int w_move_next(yaml_parser_t * parser, yaml_event_t * event){
         merror("Parser error %d", parser->error);
         return W_PARSER_ERROR;
     }
-
     return 0;
 }
 
@@ -93,7 +92,6 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
     int i;
 
     // Load default values
-
     group->merge_file_index = -1;
     group->poll = 1800;
 
@@ -117,7 +115,6 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
                     }
 
                     // Check if the file name is merged.mg
-
                     for (i = 0; group->files[i].name; i++) {
                         if (!strcmp(group->files[i].name, SHAREDCFG_FILENAME)) {
                             group->merge_file_index = i;
@@ -138,6 +135,12 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
                     }
 
                     group->poll = strtol(w_read_scalar_value(&event), NULL, 10);
+
+                    if(group->poll == 0)
+                    {
+                        merror(W_PARSER_ZERO_POLL);
+                        goto error;
+                    }
                 }
                 break;
 
@@ -148,8 +151,9 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
                 merror("Parsing error: unexpected token %d", event.type);
                 goto error;
             }
-        } while (event.type != YAML_MAPPING_END_EVENT);
 
+        } while (event.type != YAML_MAPPING_END_EVENT);
+        
         return 0;
 
     default:
@@ -198,8 +202,9 @@ remote_files_group * w_read_groups(yaml_parser_t * parser) {
                 merror("Parsing error: unexpected token %d", event.type);
                 goto error;
             }
-        } while (event.type != YAML_MAPPING_END_EVENT);
 
+        } while (event.type != YAML_MAPPING_END_EVENT);
+        
         return groups;
 
     default:
@@ -321,8 +326,13 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
                         }
                     } else if (!strcmp(w_read_scalar_value(&event), "agents")){
                         //Read agents
-                        if (*agents_group = w_read_agents(&parser), !*agents_group) {
-                            goto end;
+                        if (*agents_group) {
+                            mwarn("Parsing '%s': redefinition of 'agent'. Ignoring repeated sections", yaml_file);
+                        }
+                        else {
+                            if(*agents_group = w_read_agents(&parser), !*agents_group) {
+                                goto end;
+                            }
                         }
                     } else {
                         merror("Parsing file '%s': unexpected identifier: '%s'", yaml_file, w_read_scalar_value(&event));
@@ -336,8 +346,8 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
                     merror("Parsing '%s': unexpected token %d", yaml_file, event.type);
                     goto end;
                 }
-            } while (event.type != YAML_MAPPING_END_EVENT);
 
+            } while (event.type != YAML_MAPPING_END_EVENT);
             break;
 
         default:
@@ -414,14 +424,19 @@ int w_init_shared_download()
         minfo(W_PARSER_SUCCESS,yaml_file);
 
         // Add the groups
-        for(i = 0; agent_remote_group[i].name; i++){
-            OSHash_Add(ptable, agent_remote_group[i].name, &agent_remote_group[i]);
+        if(agent_remote_group){
+            for(i = 0; agent_remote_group[i].name; i++){
+                OSHash_Add(ptable, agent_remote_group[i].name, &agent_remote_group[i]);
+            }
         }
 
-        //Add the agents
-        for(i = 0; agents_group[i].name; i++){
-            OSHash_Add(ptable, agents_group[i].name, &agents_group[i]);
+        // Add the agents
+        if(agents_group){
+            for(i = 0; agents_group[i].name; i++){
+                OSHash_Add(ptable, agents_group[i].name, &agents_group[i]);
+            }
         }
+        
     }
     else{
         minfo(W_PARSER_FAILED,yaml_file);

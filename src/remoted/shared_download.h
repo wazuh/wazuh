@@ -25,6 +25,7 @@
 #define W_PARSER_HASH_TABLE_ERROR "Creating OSHash"
 #define W_PARSER_EXPECTED_GROUP_NAME "Expected group name after agent ID %s"
 #define W_PARSER_EXPECTED_AGENT_ID "Expected agent ID"
+#define W_PARSER_ZERO_POLL "Wrong poll value: 0. Cannot be 0 seconds"
 
 typedef struct _file{
     char *name;
