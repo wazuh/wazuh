@@ -820,8 +820,8 @@ InstallLocal(){
 
 TransferShared() {
     rm -f ${PREFIX}/etc/shared/merged.mg
-    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec cp -pf {} ${PREFIX}/backup/shared \;
-    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec mv -f {} ${PREFIX}/etc/shared/default \;
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${PREFIX}/backup/shared \;
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${PREFIX}/etc/shared/default \;
 }
 
 InstallServer(){
@@ -867,7 +867,7 @@ InstallServer(){
     ${INSTALL} -m 0770 -o root -g root ${var_get_dir}libnss_files.so.2 ${PREFIX}/${var_get_libnss_file}libnss_files.so.2
     ${INSTALL} -m 0770 -o root -g root ${var_get_dir}libnss_dns.so.2 ${PREFIX}/${var_get_libnss_file}libnss_dns.so.2
     ${INSTALL} -m 0770 -o root -g root ${var_get_dir}libresolv.so.2 ${PREFIX}/${var_get_libnss_file}libresolv.so.2
-    
+
     #Check if resolv.conf is a regular file or symb link
     if [ -L "/etc/resolv.conf" ]; then
         cp /etc/resolv.conf ${PREFIX}/etc/resolv.conf > /dev/null 2>&1
@@ -900,7 +900,7 @@ InstallServer(){
         mkdir -p ${PREFIX}/etc/ssl/certs
         ln /etc/ssl/certs/ca-certificates.crt ${PREFIX}/etc/ssl/certs/
     fi
-   
+
 
     GenerateAuthCert
 }
