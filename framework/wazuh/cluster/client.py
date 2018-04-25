@@ -11,6 +11,7 @@ import os
 import shutil
 import ast
 from operator import itemgetter
+import errno
 
 from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info
 from wazuh.exception import WazuhException
@@ -142,7 +143,14 @@ class ClientManagerHandler(ClientHandler):
             for file_to_remove in wrong_files['extra']:
                 logger.debug2("{0}: Remove file: '{1}'".format(tag, file_to_remove))
                 file_path = common.ossec_path + file_to_remove
-                os.remove(file_path)
+                try:
+                    os.remove(file_path)
+                except OSError as e:
+                    if e.errno == errno.ENOENT and '/queue/agent-groups/' in file_path:
+                        logger.debug2("File {} doesn't exists.".format(file_to_remove))
+                        continue
+                    else:
+                        raise e
 
             directories_to_check = {os.path.dirname(f): cluster_items[data\
                                     ['cluster_item_key']]['remove_subdirs_if_empty']
