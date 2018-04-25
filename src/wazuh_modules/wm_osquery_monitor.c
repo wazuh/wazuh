@@ -330,6 +330,11 @@ void wm_osquery_packs()
     char *content = NULL;
     char *osquery_config_temp = NULL;
     char *line = NULL;
+    char *firstIndex = NULL;
+    char *lastIndex = NULL;
+    char *namepath = NULL;
+    char *aux = NULL;
+    char *auxLine = NULL;
     int line_size = OS_MAXSTR;
     int num_chars = NULL;
     struct stat stp = { 0 };
@@ -364,12 +369,11 @@ void wm_osquery_packs()
     {
         if(strstr(line, "<pack>"))
         {
-            char *auxLine = NULL;
+
             os_malloc(strlen(line), auxLine);
-            char *firstIndex = strstr(line, ">") + 1;
-            char *lastIndex = strstr(firstIndex, "<");
-            char *namepath = NULL;
-            char *aux = NULL;
+            firstIndex = strstr(line, ">") + 1;
+            lastIndex = strstr(firstIndex, "<");
+
             namepath = strdup("\"Pack\": ");
             auxLine = (char *) realloc(auxLine, (strlen(firstIndex) - strlen(lastIndex)));
             memcpy(auxLine, firstIndex, strlen(firstIndex) - strlen(lastIndex));
@@ -390,6 +394,15 @@ void wm_osquery_packs()
     osquery_config_temp_file = fopen(osquery_config_temp, "w");
     fprintf(osquery_config_temp_file, "%s", finalAux);
     fclose(osquery_config_temp_file);
+    
+    free(agent_conf_path);
+    free(packs_line);
+    free(osquery_config);
+    free(content);
+    free(line);
+    free(finalAux);
+    free(namepath);
+    free(aux);
 }
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor)
