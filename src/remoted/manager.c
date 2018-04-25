@@ -254,9 +254,10 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
 
             // Check if we have merged.mg file in this group
             if(r_group->merge_file_index >= 0){
-                file_url = r_group->files_group->file[r_group->merge_file_index].url;
+                file_url = r_group->files[r_group->merge_file_index].url;
                 file_name = "merged.mg";
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
                 downloaded = wurl_get(file_url,destination_path);
                 w_download_status(downloaded,file_url,destination_path);
 
@@ -282,11 +283,12 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
             else{ // Download all files
                 int i;
 
-                for(i = 0; i < r_group->files_group->num_files; i++)
+                for(i = 0; r_group->files[i].name; i++)
                 {
-                    file_url = r_group->files_group->file[i].url;
-                    file_name = r_group->files_group->file[i].name;
+                    file_url = r_group->files[i].url;
+                    file_name = r_group->files[i].name;
                     snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                    mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
                     downloaded = wurl_get(file_url,destination_path);
                     w_download_status(downloaded,file_url,destination_path);
                 }
@@ -297,7 +299,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         }
     }
     if(r_group && r_group->merged_is_downloaded){
-        
+
         // Validate the file
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
             f_sum[0]->sum[0] = '\0';
@@ -654,7 +656,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         //Check if the group is set in the yaml file
         agent_group *agt_group = w_parser_get_agent(agent_id);
-        
+
         // Check if the group we want to set is "default", apply yaml configuration
         if(agt_group && !strncmp(group,"default",7)){
             if(set_agent_group(agent_id, agt_group->group) == -1){

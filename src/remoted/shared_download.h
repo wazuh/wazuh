@@ -30,16 +30,10 @@ typedef struct _file{
     char *name;
     char *url;
 } file;
-  
-typedef struct _files_group{
-    char *name;
-    file *file;
-    int num_files;
-} files_group;
 
 typedef struct _remote_files_group{
     char *name;
-    files_group *files_group;
+    file *files;
     int poll;
     int current_polling_time;
     int merge_file_index;
@@ -49,16 +43,17 @@ typedef struct _remote_files_group{
 typedef struct _agent_group{
     char *name;
     char *group;
-    char *url;
-} agent_group;  
+} agent_group;
 
 void *w_parser_get_group(const char *name);
 void *w_parser_get_agent(const char *name);
 const char *w_read_scalar_value(yaml_event_t * event);
-int w_move_next(yaml_parser_t * parser,yaml_event_t * event);
-int w_read_agents(yaml_parser_t * parser,yaml_event_t * event,agent_group **agents_group,int *num_agents_readed);
-int w_read_group_files(yaml_parser_t * parser,yaml_event_t * event,remote_files_group *agent_remote_group);
-int w_do_parsing(remote_files_group **agent_remote_group,int *num_groups_readed,const char *yaml_file,agent_group **agents_group,int *num_agents_readed);
+int w_move_next(yaml_parser_t * parser, yaml_event_t * event);
+agent_group * w_read_agents(yaml_parser_t * parser);
+remote_files_group * w_read_groups(yaml_parser_t * parser);
+int w_read_group(yaml_parser_t * parser, remote_files_group * group);
+file * w_read_group_files(yaml_parser_t * parser);
+int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_group, agent_group ** agents_group);
 void w_free_groups();
 int w_init_shared_download();
 
