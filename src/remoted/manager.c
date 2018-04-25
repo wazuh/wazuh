@@ -232,14 +232,6 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
 
-    if (!logr.nocmerged) {
-        snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
-        // First call, truncate merged file
-        MergeAppendFile(merged_tmp, NULL, group);
-    }
-
-    f_size++;
-
     // Merge ar.conf always
     remote_files_group *r_group = w_parser_get_group(group);
 
@@ -255,30 +247,11 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
             // Check if we have merged.mg file in this group
             if(r_group->merge_file_index >= 0){
                 file_url = r_group->files[r_group->merge_file_index].url;
-                file_name = "merged.mg";
+                file_name = SHAREDCFG_FILENAME;
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
                 mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                downloaded = wurl_get(file_url,destination_path);
-                w_download_status(downloaded,file_url,destination_path);
-
-                if(!downloaded){
-                    r_group->merged_is_downloaded = 0;
-
-                    // Create file #group\n
-                    FILE *merged_fp;
-                    merged_fp = fopen(destination_path,"w");
-
-                    if(!merged_fp){
-                        merror("Error creating merged.mg file");
-                    }else{
-                        fprintf(merged_fp, "#%s\n", group);
-                    }
-
-                    fclose(merged_fp);
-                }
-                else{
-                    r_group->merged_is_downloaded = 1;
-                }
+                r_group->merged_is_downloaded = wurl_get(file_url,destination_path);
+                w_download_status(r_group->merged_is_downloaded,file_url,destination_path);
             }
             else{ // Download all files
                 int i;
@@ -298,6 +271,9 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
             r_group->current_polling_time -= poll_interval_time;
         }
     }
+
+    f_size++;
+
     if(r_group && r_group->merged_is_downloaded){
 
         // Validate the file
@@ -313,6 +289,12 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         f_sum[f_size] = NULL;
     }
     else{
+
+        if (!logr.nocmerged) {
+            snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
+            // First call, truncate merged file
+            MergeAppendFile(merged_tmp, NULL, group);
+        }
 
         if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
             os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
