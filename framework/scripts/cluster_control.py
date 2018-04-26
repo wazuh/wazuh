@@ -315,20 +315,21 @@ def print_healthcheck():
         print ("   - Type: {}".format(node_info['info']['type']))
         if node_info['info']['type'] != "master":
             print ("   - Status:")
-            print ("      - Last synchronization of agents-info: ")
-            print ("         - Date start in master: {}".format(node_info['status']['last_sync_agentinfo']['date_start_master']))
-            print ("         - Date end in master: {}".format(node_info['status']['last_sync_agentinfo']['date_end_master']))
-            print ("         - Total number of synchronized agents-info: {}".format(str(node_info['status']['last_sync_agentinfo']['total_agentinfo'])))
-            print ("         - Agent-info free: {}".format(str(node_info['status']['sync_agentinfo_free'])))
             print ("      - Last synchronization of integrity: ")
             print ("         - Date start in master: {}".format(node_info['status']['last_sync_integrity']['date_start_master']))
             print ("         - Date end in master: {}".format(node_info['status']['last_sync_integrity']['date_end_master']))
             print ("         - Total number of shared files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["shared"])))
             print ("         - Total number of missing files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["missing"])))
             print ("         - Total number of extra files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["extra"])))
-            print ("         - Integrity free: {}".format(str(node_info['status']['sync_integrity_free'])))
+            print ("         - Permission to synchronize: {}".format(str(node_info['status']['sync_integrity_free'])))
+            print ("      - Last synchronization of agents-info: ")
+            print ("         - Date start in master: {}".format(node_info['status']['last_sync_agentinfo']['date_start_master']))
+            print ("         - Date end in master: {}".format(node_info['status']['last_sync_agentinfo']['date_end_master']))
+            print ("         - Total number of synchronized agents-info: {}".format(str(node_info['status']['last_sync_agentinfo']['total_agentinfo'])))
+            print ("         - Permission to synchronize: {}".format(str(node_info['status']['sync_agentinfo_free'])))
 
-
+            print ("      - Last synchronization of agents-group: ")
+            print ("         - Permission to synchronize: {}".format(str(node_info['status']['sync_extravalid_free'])))
 #
 # Main
 #
