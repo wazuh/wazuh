@@ -79,6 +79,11 @@ def set_logging(foreground_mode=False, debug_mode=0):
         if self.isEnabledFor(logging.DEBUG2):
             self._log(logging.DEBUG2, message, args, **kws)
 
+    def error(self, msg, *args, **kws):
+        if self.isEnabledFor(logging.ERROR):
+            kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
+            self._log(logging.ERROR, msg, args, **kws)
+
     logging.addLevelName(logging.INFO, "INFO    ")
     logging.addLevelName(logging.WARNING, "WARNING ")
     logging.addLevelName(logging.ERROR, "ERROR   ")
@@ -87,6 +92,7 @@ def set_logging(foreground_mode=False, debug_mode=0):
     logging.addLevelName(logging.DEBUG2, "DEBUG2  ")
 
     logging.Logger.debug2 = debug2
+    logging.Logger.error = error
 
     debug_level = logging.DEBUG2 if debug_mode == 2 else logging.DEBUG if \
                   debug_mode == 1 else logging.INFO
