@@ -1192,7 +1192,6 @@ class Agent:
 
         return remove_agent
 
-
     @staticmethod
     def get_outdated_agents(offset=0, limit=common.database_limit, sort=None):
         """

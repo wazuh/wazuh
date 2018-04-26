@@ -67,6 +67,8 @@ void os_set_agent_crypto_method(keystore * keys,const int method){
     keys->keyentries[0]->crypto_method = method;
 }
 
+static time_t saved_time = 0;
+
 /* Read counters for each agent */
 void OS_StartCounter(keystore *keys)
 {
@@ -500,10 +502,16 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     unsigned long crypto_length = 0;
     int crypto_method = 0;
     os_md5 md5sum;
+    time_t curr_time;
 
     /* Check for invalid msg sizes */
     if ((msg_length > (OS_MAXSTR - OS_HEADER_SIZE)) || (msg_length < 1)) {
-        merror(ENCSIZE_ERROR, msg);
+        curr_time = time(0);
+        if (curr_time - saved_time > 3600) {
+            merror("Incorrect message size: %lu", (unsigned long)msg_length);
+            saved_time = curr_time;
+        }
+        mdebug2(ENCSIZE_ERROR, msg);
         return (0);
     }
 
