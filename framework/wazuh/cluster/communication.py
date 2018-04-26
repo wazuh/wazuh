@@ -653,7 +653,7 @@ class InternalSocket(asyncore.dispatcher):
         self.map = map
         self.socket_name = socket_name
         self.manager = manager
-        self.socket_address = "{}/{}.sock".format("/var/ossec/queue/cluster", self.socket_name)
+        self.socket_address = "{}/{}/{}.sock".format(common.ossec_path, "/queue/cluster", self.socket_name)
         self.__create_socket()
 
 
