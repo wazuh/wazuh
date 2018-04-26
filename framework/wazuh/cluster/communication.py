@@ -423,7 +423,7 @@ class ServerHandler(Handler):
             self.server.remove_client(self.name)
             logger.info("[Master] [{0}]: Disconnected.".format(self.name))
         else:
-            logger.info("[Transport-ServerHandler] Connection with {} closed.".format(self.name))
+            logger.info("[Master] Connection with {} closed.".format(self.addr))
 
         Handler.handle_close(self)
 
@@ -721,17 +721,17 @@ class InternalSocketThread(threading.Thread):
         try:
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
         except Exception as e:
-            logger.error("{0} [Internal-S ]: Error initializing: '{1}'.".format(self.thread_tag, str(e)))
+            logger.error("{0} [Internal-COM ]: Error initializing: '{1}'.".format(self.thread_tag, str(e)))
             self.internal_socket = None
 
     def run(self):
         while self.running:
             if self.internal_socket:
-                logger.info("{0} [Internal-S ]: Ready.".format(self.thread_tag))
+                logger.info("{0} [Internal-COM ]: Ready.".format(self.thread_tag))
 
                 asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
 
-                logger.info("{0} [Internal-S ]: Disconnected. Trying to connect again in {}s.".format(self.thread_tag, self.interval_connection_retry))
+                logger.info("{0} [Internal-COM ]: Disconnected. Trying to connect again in {}s.".format(self.thread_tag, self.interval_connection_retry))
 
                 time.sleep(self.interval_connection_retry)
             time.sleep(2)

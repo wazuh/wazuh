@@ -322,7 +322,7 @@ class ProcessClientIntegrity(ProcessClient):
     def __init__(self, manager, manager_handler, filename, stopper):
         ProcessClient.__init__(self, manager_handler, filename, stopper)
         self.manager = manager
-        self.thread_tag = "[Master] [{0}] [Integrity]".format(self.manager_handler.name)
+        self.thread_tag = "[Master] [{0}] [Integrity-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_integrity_free"
         self.function = self.manager_handler.process_integrity_from_client
 
@@ -383,7 +383,7 @@ class ProcessClientFiles(ProcessClient):
 
    def __init__(self, manager_handler, filename, stopper):
         ProcessClient.__init__(self, manager_handler, filename, stopper)
-        self.thread_tag = "[Master] [{0}] [Files    ]".format(self.manager_handler.name)
+        self.thread_tag = "[Master] [{0}] [AgentInfo-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_agentinfo_free"
         self.function = self.manager_handler.process_files_from_client
 
@@ -392,7 +392,7 @@ class ProcessExtraValidFiles(ProcessClient):
 
     def __init__(self, manager_handler, filename, stopper):
         ProcessClient.__init__(self, manager_handler, filename, stopper)
-        self.thread_tag = "[Master] [{0}] [ReqFiles ]".format(self.manager_handler.name)
+        self.thread_tag = "[Master] [{0}] [AgentGroup-R ]".format(self.manager_handler.name)
         self.status_type = "sync_extravalid_free"
         self.function = self.manager_handler.process_files_from_client
 

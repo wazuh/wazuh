@@ -53,11 +53,11 @@ class ClientManagerHandler(ClientHandler):
             cmf_thread.start()
             return 'ack', self.set_worker(command, cmf_thread, data)
         elif command == 'sync_m_c_ok':
-            logger.info("[Client] [Integrity  ]: The master has verified that the integrity is right.")
+            logger.info("[Client] [Integrity    ]: The master has verified that the integrity is right.")
             self.integrity_received_and_processed.set()
             return 'ack', "Thanks2!"
         elif command == 'sync_m_c_err':
-            logger.info("[Client] [Integrity  ]: The master was not able to verify the integrity.")
+            logger.info("[Client] [Integrity    ]: The master was not able to verify the integrity.")
             self.integrity_received_and_processed.set()
             return 'ack', "Thanks!"
         elif command == 'file_status':
@@ -314,7 +314,7 @@ class ClientManagerHandler(ClientHandler):
             logger.info("{0}: Client meets integrity checks. No actions.".format(tag))
             sync_result = True
         else:
-            logger.info("{0}: Client does not meet integrity checks. Actions extra_valid.".format(tag))
+            logger.info("{0}: Client does not meet integrity checks. Actions required.".format(tag))
 
             logger.info("{0}: Updating files: Start.".format(tag))
             sync_result = ClientManagerHandler._update_master_files_in_client(ko_files, zip_path, tag)
@@ -333,7 +333,7 @@ class ClientProcessMasterFiles(ProcessFiles):
 
     def __init__(self, manager_handler, filename, stopper):
         ProcessFiles.__init__(self, manager_handler, filename, manager_handler.name, stopper)
-        self.thread_tag = "[Client] [Integrity-R]"
+        self.thread_tag = "[Client] [Integrity-R  ]"
 
 
     def check_connection(self):
@@ -491,7 +491,7 @@ class KeepAliveThread(ClientThread):
 
     def __init__(self, client_handler, stopper):
         ClientThread.__init__(self, client_handler, stopper)
-        self.thread_tag = "[Client] [KeepAlive  ]"
+        self.thread_tag = "[Client] [KeepAlive-S  ]"
         # Intervals
         self.init_interval = get_cluster_items_client_intervals()['keep_alive']
         self.interval = self.init_interval
@@ -584,7 +584,7 @@ class SyncIntegrityThread(SyncClientThread):
         self.request_type = "sync_i_c_m_p"
         self.reason = "sync_i_c_m"
         self.function = self.client_handler.send_integrity_to_master
-        self.thread_tag = "[Client] [Integrity  ]"
+        self.thread_tag = "[Client] [Integrity-S  ]"
 
 
     def job(self):
@@ -626,7 +626,7 @@ class SyncAgentInfoThread(SyncClientThread):
 
     def __init__(self, client_handler, stopper):
         SyncClientThread.__init__(self, client_handler, stopper)
-        self.thread_tag = "[Client] [AgentInfo  ]"
+        self.thread_tag = "[Client] [AgentInfo-S  ]"
         self.request_type = "sync_ai_c_mp"
         self.reason = "sync_ai_c_m"
         self.function = self.client_handler.send_client_files_to_master
@@ -636,7 +636,7 @@ class SyncExtraValidFilesThread(SyncClientThread):
 
     def __init__(self, client_handler, stopper, files):
         SyncClientThread.__init__(self, client_handler, stopper)
-        self.thread_tag = "[Client] [ReqFiles   ]"
+        self.thread_tag = "[Client] [AgentGroup-S ]"
         self.request_type = "sync_ev_c_mp"
         self.reason = "sync_ev_c_m"
         self.function = self.client_handler.send_extra_valid_files_to_master
