@@ -27,7 +27,7 @@
             "source": "master",
             "write_mode": "atomic",
             "files": ["all"],
-            "recursive": false,
+            "recursive": true,
             "restart": true,
             "remove_subdirs_if_empty": false,
             "description": "user rules"
@@ -38,7 +38,7 @@
             "source": "master",
             "write_mode": "atomic",
             "files": ["all"],
-            "recursive": false,
+            "recursive": true,
             "restart": true,
             "remove_subdirs_if_empty": false,
             "description": "user decoders"
@@ -73,7 +73,7 @@
             "source": "master",
             "write_mode": "atomic",
             "files": ["all"],
-            "recursive": false,
+            "recursive": true,
             "restart": false,
             "remove_subdirs_if_empty": false,
             "description": "agents group configuration"
