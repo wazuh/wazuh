@@ -264,13 +264,17 @@ class ClientManagerHandler(ClientHandler):
 
         agent_groups_to_merge = set(fnmatch.filter(files.keys(), '*/agent-groups/*'))
         if agent_groups_to_merge:
-            _, merged_file = merge_agent_info(merge_type='agent-groups',
+            n_files, merged_file = merge_agent_info(merge_type='agent-groups',
                                               files=agent_groups_to_merge,
                                               time_limit_seconds=0)
             for ag in agent_groups_to_merge:
                 del files[ag]
 
-            files.update({merged_file: {'merged': True, 'merge_name': merged_file, 'merge_type': 'agent-groups', 'cluster_item_key': '/queue/agent-groups/'}})
+            if n_files:
+                files.update({merged_file: {'merged': True,
+                                            'merge_name': merged_file,
+                                            'merge_type': 'agent-groups',
+                                            'cluster_item_key': '/queue/agent-groups/'}})
 
         compressed_data_path = compress_files('client', self.name, files, {'client_files': files})
 

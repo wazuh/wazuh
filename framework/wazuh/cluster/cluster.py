@@ -294,6 +294,24 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
     if is_agent_info or is_agent_group:
         if whoami =='master':
             try:
+                agents = Agent.get_agents_overview(select={'fields':['name']}, limit=None)['items']
+                agent_names = set(map(itemgetter('name'), agents))
+                agent_ids = set(map(itemgetter('id'), agents))
+                agents = None
+            except Exception as e:
+                logger.debug2("Error getting agent ids and names: {}".format(e))
+                agent_names, agent_ids = {}, {}
+
+            if is_agent_info:
+                agent_name = path.basename(file_path).split('-',1)[0]
+                if agent_name not in agent_names:
+                    raise Exception("Received an unexistent agent status file: {}".format(agent_name))
+            elif is_agent_group:
+                agent_id = path.basename(file_path)
+                if agent_id not in agent_ids:
+                    raise Exception("Received the group of an unexistent agent: {}".format(agent_id))
+
+            try:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
             except ValueError as e:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S')
@@ -529,7 +547,7 @@ def merge_agent_info(merge_type, files="all", file_type="", time_limit_seconds=1
 
 
 def unmerge_agent_info(merge_type, path_file, filename):
-    src_agent_info_path = "{0}/{1}".format(path_file, filename)
+    src_agent_info_path = path.abspath("{0}/{1}".format(path_file, filename))
     dst_agent_info_path = "/queue/{}".format(merge_type)
 
     bytes_read = 0
