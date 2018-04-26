@@ -130,6 +130,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_LOCAL_SOCK_PATH DEFAULTDIR WDB_LOCAL_SOCK
 #endif
 
+#define WM_DOWNLOAD_SOCK "/queue/ossec/download"
+#define WM_DOWNLOAD_SOCK_PATH DEFAULTDIR WM_DOWNLOAD_SOCK
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 

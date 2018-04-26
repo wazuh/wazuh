@@ -8,6 +8,7 @@
 
 int wurl_get(const char * url, const char * dest);
 int w_download_status(int status,const char *url,const char *dest);
+// Request download
+int wurl_request(const char * url, const char * dest);
 
 #endif /* CUSTOM_OUTPUT_SEARCH_H_ */
-

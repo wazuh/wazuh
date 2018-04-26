@@ -248,10 +248,11 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
             if(r_group->merge_file_index >= 0){
                 file_url = r_group->files[r_group->merge_file_index].url;
                 file_name = SHAREDCFG_FILENAME;
-                snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", DEFAULTDIR SHAREDCFG_DIR, group, file_name);
                 mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                r_group->merged_is_downloaded = wurl_get(file_url,destination_path);
-                w_download_status(r_group->merged_is_downloaded,file_url,destination_path);
+                downloaded = wurl_request(file_url,destination_path);
+                w_download_status(downloaded,file_url,destination_path);
+                r_group->merged_is_downloaded = !downloaded;
             }
             else{ // Download all files
                 int i;
@@ -260,9 +261,9 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
                 {
                     file_url = r_group->files[i].url;
                     file_name = r_group->files[i].name;
-                    snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                    snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", DEFAULTDIR SHAREDCFG_DIR, group, file_name);
                     mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                    downloaded = wurl_get(file_url,destination_path);
+                    downloaded = wurl_request(file_url,destination_path);
                     w_download_status(downloaded,file_url,destination_path);
                 }
             }
