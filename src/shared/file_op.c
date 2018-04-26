@@ -635,6 +635,96 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
     return (ret);
 }
 
+int TestUnmergeFiles(const char *finalpath, int mode)
+{
+    int ret = 1;
+    size_t files_size = 0;
+    char *files;
+    char buf[2048 + 1];
+	char *buf_readed_bytes;
+	char *bad_format;
+    FILE *finalfp;
+
+    finalfp = fopen(finalpath, mode == 0 ? "rb" : "r");
+    if (!finalfp) {
+        fclose(finalfp);
+        merror("Unable to read merged file: '%s'.", finalpath);
+        return (0);
+    }
+
+	/* Read the header */
+	if (fgets(buf, sizeof(buf) - 1, finalfp) == NULL) {
+		ret = 0;
+        goto end;
+    }
+
+	/* Check if the header begins with # */
+	if (buf[0] != '#') {
+		ret = 0;
+        goto end;
+    }
+
+    while (1) {
+        /* Read header portion */
+        if (fgets(buf, sizeof(buf) - 1, finalfp) == NULL) {
+            break;
+        }
+
+        /* Initiator */
+        if (buf[0] != '!') {
+            continue;
+        }
+
+        /* Get file size and name */
+        files_size = (size_t) atol(buf + 1);
+
+		files = strchr(buf, '\n');
+        if (files) {
+            *files = '\0';
+        }
+		
+        files = strchr(buf, ' ');
+        if (!files) {
+            ret = 0;
+            goto end;
+        }
+        files++;
+
+		/* Check for file name */
+		if(*files == '\0')
+		{
+			ret = 0;
+            goto end;
+		}
+
+		os_malloc(files_size * sizeof(char),buf_readed_bytes);
+		/* Read files_size bytes ony by one and count them */
+		size_t readed_bytes = fread(buf_readed_bytes,1,files_size,finalfp);
+
+		/* Readed bytes and files_size must be equal */
+		if((readed_bytes != files_size) && (readed_bytes != files_size - 1)){
+			os_free(buf_readed_bytes);
+			ret = 0;
+			goto end;
+		}
+
+		/*Check if the format is right */
+		bad_format = strstr(buf_readed_bytes,"\n!");
+		
+		if(bad_format)
+		{
+			os_free(buf_readed_bytes);
+			ret = 0;
+			goto end;
+		}
+		os_free(buf_readed_bytes);
+    }
+
+end:
+    fclose(finalfp);
+    return (ret);
+}
+
 int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
 {
     size_t n = 0;
@@ -763,6 +853,89 @@ int MergeFiles(const char *finalpath, char **files, const char *tag)
 
     fclose(finalfp);
     return (ret);
+}
+
+int w_backup_file(File *file, const char *source) {
+    FILE *fp_src;
+    int fd;
+    char template[OS_FLSIZE + 1];
+    mode_t old_mask;
+
+	/* Check if source file exists */
+	FILE *fsource;
+	fsource = fopen(source,"r");
+
+	if(!fsource)
+	{
+        merror(FOPEN_ERROR, source, errno, strerror(errno));
+		return -1;
+	}
+
+    snprintf(template, OS_FLSIZE, "%s.backup", source);
+    old_mask = umask(0177);
+
+    fd = open(template,O_WRONLY | O_CREAT,old_mask);
+    umask(old_mask);
+
+    if (fd < 0) {
+        return -1;
+    }
+
+#ifndef WIN32
+    struct stat buf;
+
+    if (stat(source, &buf) == 0) {
+        if (fchmod(fd, buf.st_mode) < 0) {
+            close(fd);
+            unlink(template);
+            return -1;
+        }
+    } else {
+        mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
+    }
+
+#endif
+
+    file->fp = fdopen(fd, "w");
+
+    if (!file->fp) {
+        close(fd);
+        unlink(template);
+        return -1;
+    }
+
+    
+    size_t count_r;
+    size_t count_w;
+    char buffer[4096];
+
+    if (fp_src = fopen(source, "r"), fp_src) {
+        while (!feof(fp_src)) {
+            count_r = fread(buffer, 1, 4096, fp_src);
+
+            if (ferror(fp_src)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+
+            count_w = fwrite(buffer, 1, count_r, file->fp);
+
+            if (count_w != count_r || ferror(file->fp)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+        }
+
+        fclose(fp_src);
+    }
+    
+
+    file->name = strdup(template);
+    return 0;
 }
 
 

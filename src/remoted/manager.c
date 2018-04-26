@@ -217,6 +217,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     os_md5 md5sum;
     unsigned int f_size = 0;
     file_sum **f_sum;
+    File fmerged_backup;
     char merged_tmp[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
     char file[PATH_MAX + 1];
@@ -232,9 +233,15 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
 
-    // Merge ar.conf always
-    remote_files_group *r_group = w_parser_get_group(group);
+    // Backup merged file if exists
+    w_backup_file(&fmerged_backup,merged);
 
+    // Check if the yaml file has changed and reload it
+    if(w_yaml_file_has_changed()){
+        w_yaml_file_update_structs();
+    }
+
+    remote_files_group *r_group = w_parser_get_group(group);
     if(r_group){
         if(r_group->current_polling_time <= 0){
             r_group->current_polling_time = r_group->poll;
@@ -277,6 +284,19 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
 
     if(r_group && r_group->merged_is_downloaded){
 
+        // Check if the merged file is OK
+        // If is not, delete the file and restore backup
+        if(!TestUnmergeFiles(merged,OS_TEXT))
+        {
+            /* Restore the backup */
+            char merged_backup[PATH_MAX + 1];
+            snprintf(merged_backup, PATH_MAX + 1, "%s/%s/%s.backup", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
+            
+            OS_MoveFile(merged_backup,merged);
+            merror("The downloaded file '%s' is corrupted. Previous merged.mg is restored",merged);
+            return;
+        } 
+        
         // Validate the file
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
             f_sum[0]->sum[0] = '\0';
@@ -290,7 +310,8 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         f_sum[f_size] = NULL;
     }
     else{
-
+        // Merge ar.conf always
+        
         if (!logr.nocmerged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
             // First call, truncate merged file
@@ -637,7 +658,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
         }
 
-        //Check if the group is set in the yaml file
+        // Check if the group is set in the yaml file
         agent_group *agt_group = w_parser_get_agent(agent_id);
 
         // Check if the group we want to set is "default", apply yaml configuration

@@ -15,6 +15,12 @@
 #include "shared_download.h"
 
 OSHash *ptable;
+static remote_files_group *agent_remote_group;
+static agent_group *agents_group;
+static char yaml_file[OS_SIZE_1024 + 1];
+static time_t yaml_file_date;
+static ino_t yaml_file_inode;
+
 
 void *w_parser_get_group(const char *name){
     return OSHash_Get(ptable,name);
@@ -69,6 +75,7 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
                 }
 
                 os_strdup(w_read_scalar_value(&event), agents[index].group);
+
                 index++;
                 break;
             case YAML_MAPPING_END_EVENT:
@@ -78,8 +85,9 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
                 merror("Parsing error: unexpected token %d", event.type);
                 goto error;
             }
-        } while (event.type != YAML_MAPPING_END_EVENT);
 
+        } while (event.type != YAML_MAPPING_END_EVENT);
+        
         yaml_event_delete(&event);
         return agents;
 
@@ -158,7 +166,6 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
                 merror("Parsing error: unexpected token %d", event.type);
                 goto error;
             }
-
         } while (event.type != YAML_MAPPING_END_EVENT);
 
         yaml_event_delete(&event);
@@ -270,7 +277,8 @@ file * w_read_group_files(yaml_parser_t * parser) {
             default:
                 merror("Parsing error: unexpected token %d", event.type);
                 goto error;
-            }
+            }   
+
         } while (event.type != YAML_MAPPING_END_EVENT);
 
         yaml_event_delete(&event);
@@ -410,42 +418,68 @@ end:
 }
 
 void w_free_groups(){
-    /*for(i = 0;i < num_groups;i++){
-        if(agent_remote_group[i].files_group != NULL){
-            j = 0;
+    int i = 0;
 
-            for(j=0;j<agent_remote_group[i].files_group->num_files;j++){
-                free(agent_remote_group[i].files_group->file[j].name);
-                free(agent_remote_group[i].files_group->file[j].url);
+    if(agent_remote_group)
+    {
+        for(i = 0; agent_remote_group[i].name; i++){
+            int j = 0;
+            if(agent_remote_group[i].files){
+                for(j=0;agent_remote_group[i].files[j].name;j++){
+                    free(agent_remote_group[i].files[j].url);
+                    free(agent_remote_group[i].files[j].name);
+                }
+                free(agent_remote_group[i].files);
             }
-
-            free(agent_remote_group[i].files_group->file);
-            free(agent_remote_group[i].files_group->name);
+            free(agent_remote_group[i].name);
         }
-        free(agent_remote_group[i].name);
-        free(agent_remote_group[i].files_group);
+
+        free(agent_remote_group);
     }
 
-    free(agent_remote_group);
-    agent_remote_group = NULL;*/
+    if(agents_group)
+    {
+        for(i = 0; agents_group[i].name; i++){
+            free(agents_group[i].name);
+            free(agents_group[i].group);
+        }
+
+        free(agents_group);
+    }
+
     OSHash_Free(ptable);
+    agent_remote_group = NULL;
+    agents_group = NULL;
 }
 
-int w_init_shared_download()
+int w_yaml_file_has_changed()
 {
-    remote_files_group *agent_remote_group = NULL;
-    agent_group *agents_group = NULL;
+    return yaml_file_date != File_DateofChange(yaml_file) || yaml_file_inode != File_Inode(yaml_file);
+}
 
-    char yaml_file[OS_SIZE_1024 + 1];
-    int parse_ok = 0;
+int w_yaml_file_update_structs(){
+
+    minfo(W_PARSER_FILE_CHANGED,yaml_file);
+    w_free_groups();
 
     if (ptable = OSHash_Create(), !ptable){
         merror(W_PARSER_HASH_TABLE_ERROR);
         return OS_INVALID;
     }
 
-    snprintf(yaml_file, OS_SIZE_1024, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, SHAREDCFG_DIR, W_SHARED_YAML_FILE);
-    parse_ok = w_do_parsing(yaml_file, &agent_remote_group, &agents_group);
+    w_prepare_parsing();
+
+    return 0;
+}
+
+int w_prepare_parsing()
+{
+    
+    int parse_ok = w_do_parsing(yaml_file, &agent_remote_group, &agents_group);
+
+    // Save date and inode of the yaml file
+    yaml_file_inode = File_Inode(yaml_file);
+    yaml_file_date = File_DateofChange(yaml_file);
 
     if(parse_ok == 1){
         int i = 0;
@@ -465,11 +499,26 @@ int w_init_shared_download()
                 OSHash_Add(ptable, agents_group[i].name, &agents_group[i]);
             }
         }
-
     }
     else{
         minfo(W_PARSER_FAILED,yaml_file);
     }
+
+    return 0;
+}
+
+int w_init_shared_download()
+{
+    agent_remote_group = NULL;
+    agents_group = NULL;
+
+    if (ptable = OSHash_Create(), !ptable){
+        merror(W_PARSER_HASH_TABLE_ERROR);
+        return OS_INVALID;
+    }
+
+    snprintf(yaml_file, OS_SIZE_1024, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, SHAREDCFG_DIR, W_SHARED_YAML_FILE);
+    w_prepare_parsing();
 
     return 0;
 }

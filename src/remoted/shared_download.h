@@ -26,6 +26,7 @@
 #define W_PARSER_EXPECTED_GROUP_NAME "Expected group name after agent ID %s"
 #define W_PARSER_EXPECTED_AGENT_ID "Expected agent ID"
 #define W_PARSER_POLL "Wrong poll value: %s."
+#define W_PARSER_FILE_CHANGED "File '%s' changed. Reloading data"
 
 typedef struct _file{
     char *name;
@@ -46,6 +47,8 @@ typedef struct _agent_group{
     char *group;
 } agent_group;
 
+int w_yaml_file_has_changed();
+int w_yaml_file_update_structs();
 void *w_parser_get_group(const char *name);
 void *w_parser_get_agent(const char *name);
 const char *w_read_scalar_value(yaml_event_t * event);
@@ -57,5 +60,6 @@ file * w_read_group_files(yaml_parser_t * parser);
 int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_group, agent_group ** agents_group);
 void w_free_groups();
 int w_init_shared_download();
+int w_prepare_parsing();
 
 #endif /* __SHARED_DOWNLOAD_H */
