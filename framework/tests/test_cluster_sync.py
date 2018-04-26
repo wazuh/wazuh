@@ -24,9 +24,9 @@ Master
     --clean: Recover the initial directory structure.
 
     Flow:
-        - Run 'python test_cluster_sync.py -w' on the client node.
-        - Execute 'python test_cluster_sync.py -c 'worker' on the client node to check the result of synchronization with the master node. If nothing has failed everything should have an 'OK', otherwise an 'X'.
-        - To recover the initial structure: 'python tests.py --clean'
+        - Run 'python test_cluster_sync.py -m' on the master node.
+        - Execute 'python test_cluster_sync.py -c 'master' in a worker node to check the result of synchronization with the master node. If nothing has failed everything should have an 'OK', otherwise an 'X'.
+        - To recover the initial structure: 'python test_cluster_sync.py --clean'
 
 
 Worker
@@ -37,8 +37,8 @@ Worker
     --clean: Recover the initial directory structure.
 
     Flow:
-        - Run 'python test_cluster_sync.py -w' on the master node.
-        - Execute 'python test_cluster_sync.py -c 'master'' in a worker node, to check the result of the synchronization with the test of the master node (agents-info will not be checked). If nothing has failed everything should have an 'OK', otherwise an 'X'.
+        - Run 'python test_cluster_sync.py -w' on a worker node.
+        - Execute 'python test_cluster_sync.py -c 'worker' in a worker node to check the result of the synchronization (note: agents-info will not be checked). If nothing has failed everything should have an 'OK', otherwise an 'X'.
         - To recover the initial structure: 'python test_cluster_sync.py --clean'
 """
         return msg
