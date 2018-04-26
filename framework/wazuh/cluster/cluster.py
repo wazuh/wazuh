@@ -195,6 +195,12 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
 
                 new_key = full_path.replace(common.ossec_path, "")
                 walk_files[new_key] = {"mod_time" : str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
+                if 'merged' in entry:
+                    walk_files[new_key]['merged'] = True
+                    walk_files[new_key]['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
+                    walk_files[new_key]['merge_name'] = '/queue/cluster/' + entry
+                else:
+                    walk_files[new_key]['merged'] = False
 
                 if get_md5:
                     walk_files[new_key]['md5'] = md5(full_path)
@@ -283,7 +289,9 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
             logger.warning("[Cluster] Client.keys file received in a master node.")
             raise WazuhException(3007)
 
-    if 'agent-info' in dst_path:
+    is_agent_info  = 'agent-info' in dst_path
+    is_agent_group = 'agent-groups' in dst_path
+    if is_agent_info or is_agent_group:
         if whoami =='master':
             try:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
@@ -297,7 +305,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
                 if local_mtime > mtime:
                     logger.debug2("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
                     return
-        else:
+        elif is_agent_info:
             logger.warning("[Cluster] Agent-info received in a client node.")
             raise WazuhException(3011)
 
@@ -342,23 +350,38 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
 
 
 def compare_files(good_files, check_files):
+    cluster_items = get_cluster_items()['files']
 
     missing_files = set(good_files.keys()) - set(check_files.keys())
-    extra_files = set(check_files.keys()) - set(good_files.keys())
 
-    shared_files = {name: {'cluster_item_key': data['cluster_item_key'], 'merged':False} for name, data in good_files.iteritems() if name in check_files and data['md5'] != check_files[name]['md5']}
+    extra_files, extra_valid_files = [], []
+    for file in set(check_files.keys()) - set(good_files.keys()):
+        (extra_files, extra_valid_files)[cluster_items[check_files[file]['cluster_item_key']]['extra_valid']].append(file)
+
+    shared_files = {name: {'cluster_item_key': data['cluster_item_key'],
+                          'merged':False} for name, data in good_files.iteritems()
+                          if name in check_files and data['md5'] != check_files[name]['md5']}
 
     if not missing_files:
         missing_files = {}
     else:
-        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key'], 'merged': False} for missing_file in missing_files }
+        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key'],
+                                        'merged': False} for missing_file in missing_files }
 
     if not extra_files:
         extra_files = {}
     else:
-        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key'], 'merged': False} for extra_file in extra_files }
+        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key'],
+                                    'merged': False} for extra_file in extra_files }
 
-    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
+    if not extra_valid_files:
+        extra_valid_files = {}
+    else:
+        extra_valid_files = {req_file: {'cluster_item_key': check_files[req_file]['cluster_item_key'],
+                                     'merged': False} for req_file in extra_valid_files }
+
+    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files,
+            'extra_valid': extra_valid_files}
 
 
 def clean_up(node_name=""):

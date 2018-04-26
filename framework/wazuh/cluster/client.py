@@ -12,8 +12,9 @@ import shutil
 import ast
 from operator import itemgetter
 import errno
+import fnmatch
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info
+from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info, merge_agent_info
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
@@ -251,6 +252,31 @@ class ClientManagerHandler(ClientHandler):
         return data_for_master
 
 
+    def send_extra_valid_files_to_master(self, files, reason=None, tag=None):
+        if not tag:
+            tag = "[Client] [ReqFiles   ]"
+
+        logger.info("{}: Start. Reason: '{}'.".format(tag, reason))
+
+        master_node = self.config['nodes'][0]  # Now, we only have 1 node: the master
+
+        logger.info("{0}: Master found: {1}.".format(tag, master_node))
+
+        agent_groups_to_merge = set(fnmatch.filter(files.keys(), '*/agent-groups/*'))
+        if agent_groups_to_merge:
+            _, merged_file = merge_agent_info(merge_type='agent-groups',
+                                              files=agent_groups_to_merge,
+                                              time_limit_seconds=0)
+            for ag in agent_groups_to_merge:
+                del files[ag]
+
+            files.update({merged_file: {'merged': True, 'merge_name': merged_file, 'merge_type': 'agent-groups', 'cluster_item_key': '/queue/agent-groups/'}})
+
+        compressed_data_path = compress_files('client', self.name, files, {'client_files': files})
+
+        return compressed_data_path
+
+
     def process_files_from_master(self, data_received, tag=None):
         sync_result = False
 
@@ -267,7 +293,7 @@ class ClientManagerHandler(ClientHandler):
             raise e
 
         if ko_files:
-            logger.info("{0}: Analyzing received files: Missing: {1}. Shared: {2}. Extra: {3}.".format(tag, len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra'])))
+            logger.info("{0}: Analyzing received files: Missing: {1}. Shared: {2}. Extra: {3}. ExtraValid: {4}".format(tag, len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
             logger.debug2("{0}: Received cluster_control.json: {1}".format(tag, ko_files))
         else:
             raise Exception("cluster_control.json not included in received zip file.")
@@ -275,11 +301,16 @@ class ClientManagerHandler(ClientHandler):
         logger.info("{0}: Analyzing received files: End.".format(tag))
 
         # Update files
+        if ko_files['extra_valid']:
+            logger.info("{0}: Master requires some client files. Sending.".format(tag))
+            req_files_thread = SyncExtraValidFilesThread(self, self.stopper, ko_files['extra_valid'])
+            req_files_thread.start()
 
         if not ko_files['shared'] and not ko_files['missing'] and not ko_files['extra']:
             logger.info("{0}: Client meets integrity checks. No actions.".format(tag))
+            sync_result = True
         else:
-            logger.info("{0}: Client does not meet integrity checks. Actions required.".format(tag))
+            logger.info("{0}: Client does not meet integrity checks. Actions extra_valid.".format(tag))
 
             logger.info("{0}: Updating files: Start.".format(tag))
             sync_result = ClientManagerHandler._update_master_files_in_client(ko_files, zip_path, tag)
@@ -595,6 +626,37 @@ class SyncAgentInfoThread(SyncClientThread):
         self.request_type = "sync_ai_c_mp"
         self.reason = "sync_ai_c_m"
         self.function = self.client_handler.send_client_files_to_master
+
+
+class SyncExtraValidFilesThread(SyncClientThread):
+
+    def __init__(self, client_handler, stopper, files):
+        SyncClientThread.__init__(self, client_handler, stopper)
+        self.thread_tag = "[Client] [ReqFiles   ]"
+        self.request_type = "sync_ev_c_mp"
+        self.reason = "sync_ev_c_m"
+        self.function = self.client_handler.send_extra_valid_files_to_master
+        self.files = files
+
+    def job(self):
+        result = False
+        compressed_data_path = self.function(reason="ExtraValid files", tag=self.thread_tag,
+                                             files=self.files)
+
+        logger.info("{0}: Sending files to master.".format(self.thread_tag))
+
+        response = self.client_handler.send_file(reason = self.reason,
+                                    file = compressed_data_path, remove = True)
+
+        processed_response = self.client_handler.process_response(response)
+        if processed_response:
+            logger.info("{0}: ExtraValid files accepted by the master.".format(self.thread_tag))
+            result = True
+        else:
+            logger.error("{0}: ExtraValid files error reported by the master.".format(self.thread_tag))
+
+        self.stop()
+        return result
 
 
 #

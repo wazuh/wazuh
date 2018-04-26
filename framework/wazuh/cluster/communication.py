@@ -518,6 +518,7 @@ class Server(asyncore.dispatcher):
                 'status': {
                     'sync_integrity_free': True,
                     'sync_agentinfo_free': True,
+                    'sync_extravalid_free': True,
                     'last_sync_integrity': {
                         'date_start_master':'n/a',
                         'date_end_master':'n/a',

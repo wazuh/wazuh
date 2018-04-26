@@ -48,6 +48,8 @@ class MasterManagerHandler(ServerHandler):
             return 'ack', str(result)
         elif command == 'sync_ai_c_mp':
             return 'ack', str(self.manager.get_client_status(client_id=self.name, key='sync_agentinfo_free'))
+        elif command == 'sync_ev_c_mp':
+            return 'ack', str(self.manager.get_client_status(client_id=self.name, key='sync_extravalid_free'))
         elif command == 'sync_i_c_m':  # Client syncs integrity
             pci_thread = ProcessClientIntegrity(manager=self.manager, manager_handler=self, filename=data, stopper=self.stopper)
             pci_thread.start()
@@ -57,6 +59,10 @@ class MasterManagerHandler(ServerHandler):
             mcf_thread = ProcessClientFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
             # data will contain the filename
+            return 'ack', self.set_worker(command, mcf_thread, data)
+        elif command == 'sync_ev_c_m':
+            mcf_thread = ProcessExtraValidFiles(manager_handler=self, filename=data, stopper=self.stopper)
+            mcf_thread.start()
             return 'ack', self.set_worker(command, mcf_thread, data)
         elif command == 'get_nodes':
             response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
@@ -87,51 +93,66 @@ class MasterManagerHandler(ServerHandler):
 
         return response_data
 
+
     # Private methods
     def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path, client_name):
+        def update_file(n_errors, name, data, file_time=None, content=None):
+            # Full path
+            full_path = common.ossec_path + name
+
+            # Cluster items information: write mode and umask
+            w_mode = cluster_items[data['cluster_item_key']]['write_mode']
+            umask = int(cluster_items[data['cluster_item_key']]['umask'], base=0)
+
+            if content is None:
+                zip_path = "{}/{}".format(zip_dir_path, name)
+                with open(zip_path, 'rb') as f:
+                    content = f.read()
+
+            lock_full_path = "{}.lock".format(full_path)
+            lock_file = open(lock_full_path, 'a+')
+            try:
+                fcntl.lockf(lock_file, fcntl.LOCK_EX)
+                _update_file(file_path=name, new_content=content,
+                umask_int=umask, mtime=file_time, w_mode=w_mode,
+                tmp_dir=tmp_path, whoami='master')
+
+            except Exception as e:
+                logger.debug2("Error updating file '{}': {}".format(name, e))
+                n_errors += 1
+
+            fcntl.lockf(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
+            os.remove(lock_full_path)
+
+            return n_errors
+
+
+        # tmp path
+        tmp_path = "/queue/cluster/{}/tmp_files".format(client_name)
         cluster_items = get_cluster_items()['files']
         n_agentsinfo = 0
+        n_errors = 0
 
         try:
-
-            for file_path, file_data, file_time in unmerge_agent_info("agent-info", zip_dir_path, "/queue/cluster/agent-info.merged"):
-                # Full path
-                full_path = common.ossec_path + file_path
-
-                # tmp path
-                tmp_path = "/queue/cluster/{}/tmp_files".format(client_name)
-
-                # Cluster items information: write mode and umask
-                w_mode = cluster_items['/queue/cluster/']['write_mode']
-                umask = int(cluster_items['/queue/cluster/']['umask'], base=0)
-
-                lock_full_path = "{}.lock".format(full_path)
-                lock_file = open(lock_full_path, 'a+')
-                try:
-                    fcntl.lockf(lock_file, fcntl.LOCK_EX)
-                    _update_file(file_path=file_path, new_content=file_data,
-                                 umask_int=umask, mtime=file_time, w_mode=w_mode,
-                                 tmp_dir=tmp_path, whoami='master')
-                    n_agentsinfo += 1
-                except Exception as e:
-                    fcntl.lockf(lock_file, fcntl.LOCK_UN)
-                    lock_file.close()
-
-                    os.remove(lock_full_path)
-                    logger.error("[Master] Error updating client file '{}' - '{}'.".format(lock_full_path, str(e)))
-
-                    continue
-
-                fcntl.lockf(lock_file, fcntl.LOCK_UN)
-                lock_file.close()
-                os.remove(lock_full_path)
+            for filename, data in json_file.items():
+                if data['merged']:
+                    for file_path, file_data, file_time in unmerge_agent_info(data['merge_type'], zip_dir_path, data['merge_name']):
+                        n_errors = update_file(n_errors, file_path, data, file_time, file_data)
+                        n_agentsinfo += 1
+                else:
+                    n_errors = update_file(n_errors, filename, data)
 
         except Exception as e:
             logger.error("[Master] Error updating client files: '{}'.".format(str(e)))
             raise e
 
+        if n_errors:
+            logging.error("Errors updating client files: {}".format(n_errors))
+
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=n_agentsinfo)
+
 
     # New methods
     def process_files_from_client(self, client_name, data_received, tag=None):
@@ -212,14 +233,14 @@ class MasterManagerHandler(ServerHandler):
         client_files_ko = compare_files(master_files, master_files_from_client)
 
         agent_groups_to_merge = {key:fnmatch.filter(values.keys(), '*/agent-groups/*')
-                                 for key,values in client_files_ko.items() if key != "extra"}
+                                 for key,values in client_files_ko.items()}
         merged_files = {key:merge_agent_info(merge_type="agent-groups", files=values,
                                          file_type="-"+key, time_limit_seconds=0)
                         for key,values in agent_groups_to_merge.items()}
-        agent_groups_to_merge.update({'extra':[]})
+
         for ko, merged in zip(client_files_ko.items(), agent_groups_to_merge.items()):
             ko_type, ko_files = ko
-            if ko_type == "extra":
+            if ko_type == "extra" or "extra_valid":
                 continue
             _, merged_filenames = merged
             for m in merged_filenames:
@@ -238,7 +259,7 @@ class MasterManagerHandler(ServerHandler):
         shutil.rmtree(zip_dir_path)
 
         # Step 3: KO files
-        if not client_files_ko['shared'] and not client_files_ko['missing'] and not client_files_ko['extra']:
+        if len(filter(lambda x: x == {}, client_files_ko.values())) == len(client_files_ko):
             logger.info("{0}: Analyzing client integrity: Files checked. There are no KO files.".format(tag))
 
             ko_files = False
@@ -364,6 +385,15 @@ class ProcessClientFiles(ProcessClient):
         ProcessClient.__init__(self, manager_handler, filename, stopper)
         self.thread_tag = "[Master] [{0}] [Files    ]".format(self.manager_handler.name)
         self.status_type = "sync_agentinfo_free"
+        self.function = self.manager_handler.process_files_from_client
+
+
+class ProcessExtraValidFiles(ProcessClient):
+
+    def __init__(self, manager_handler, filename, stopper):
+        ProcessClient.__init__(self, manager_handler, filename, stopper)
+        self.thread_tag = "[Master] [{0}] [ReqFiles ]".format(self.manager_handler.name)
+        self.status_type = "sync_extravalid_free"
         self.function = self.manager_handler.process_files_from_client
 
 
