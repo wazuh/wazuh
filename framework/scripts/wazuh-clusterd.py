@@ -19,7 +19,7 @@ try:
     import socket
     from signal import signal, SIGINT, SIGTERM
     from pwd import getpwnam
-    from sys import argv, exit, path
+    from sys import argv, exit, path, version_info
     from os.path import dirname
     from os import seteuid, setgid, getpid, kill, unlink
 
@@ -34,8 +34,11 @@ try:
 
         from wazuh import common
     except Exception as e:
-        print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-        exit()
+        if version_info[0] == 2 and version_info[1] < 7:
+            error_msg = "Python 2.7 required. Exiting."
+        else:
+            error_msg = str(e)
+        raise ValueError(error_msg)
 
     try:
         from wazuh.exception import WazuhException
@@ -48,10 +51,10 @@ try:
         from wazuh.manager import status
     except Exception as e:
         error_msg = str(e)
-
+        raise ValueError(error_msg)
 
 except Exception as e:
-    print("wazuh-clusterd: Python 2.7 required. Exiting. {0}".format(str(e)))
+    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
 
 logger = logging.getLogger()

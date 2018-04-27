@@ -52,7 +52,7 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     database_path_global = database_path + '/global.db'
 
     global wdb_socket_path
-    wdb_socket_path = '{}/queue/db/wdb'.format(ossec_path)
+    wdb_socket_path = '{0}/queue/db/wdb'.format(ossec_path)
 
     global api_config_path
     api_config_path = "{0}/api/configuration/config.js".format(ossec_path)
