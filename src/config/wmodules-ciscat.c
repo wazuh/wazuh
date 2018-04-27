@@ -18,6 +18,9 @@ static const char *XML_OVAL = "oval";
 static const char *XML_PATH = "path";
 static const char *XML_TIMEOUT = "timeout";
 static const char *XML_INTERVAL = "interval";
+static const char *XML_SCAN_DAY = "day";
+static const char *XML_SCAN_WDAY = "wday";
+static const char *XML_SCAN_TIME = "time";
 static const char *XML_SCAN_ON_START = "scan-on-start";
 static const char *XML_PROFILE = "profile";
 static const char *XML_JAVA_PATH = "java_path";
@@ -33,12 +36,15 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     xml_node **children = NULL;
     wm_ciscat *ciscat;
     wm_ciscat_eval *cur_eval = NULL;
+    int month_interval = 0;
 
     // Create module
 
     os_calloc(1, sizeof(wm_ciscat), ciscat);
     ciscat->flags.enabled = 1;
     ciscat->flags.scan_on_start = 1;
+    ciscat->scan_wday = -1;
+    ciscat->scan_time = NULL;
     module->context = &WM_CISCAT_CONTEXT;
     module->data = ciscat;
 
@@ -154,6 +160,13 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             switch (*endptr) {
+            case 'M':
+                month_interval = 1;
+                ciscat->interval *= 60; // We can`t calculate seconds of a month
+                break;
+            case 'w':
+                ciscat->interval *= 604800;
+                break;
             case 'd':
                 ciscat->interval *= 86400;
                 break;
@@ -174,6 +187,29 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             if (ciscat->interval < 60) {
                 merror("At module '%s': Interval must be greater than 60 seconds.", WM_CISCAT_CONTEXT.name);
                 return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_SCAN_DAY)) {
+            if (!OS_StrIsNum(nodes[i]->content)) {
+                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                return (OS_INVALID);
+            } else {
+                ciscat->scan_day = atoi(nodes[i]->content);
+                if (ciscat->scan_day < 1 || ciscat->scan_day > 31) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                    return (OS_INVALID);
+                }
+            }
+        } else if (!strcmp(nodes[i]->element, XML_SCAN_WDAY)) {
+            ciscat->scan_wday = w_validate_wday(nodes[i]->content);
+            if (ciscat->scan_wday < 0 || ciscat->scan_wday > 6) {
+                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                return (OS_INVALID);
+            }
+        } else if (!strcmp(nodes[i]->element, XML_SCAN_TIME)) {
+            ciscat->scan_time = w_validate_time(nodes[i]->content);
+            if (!ciscat->scan_time) {
+                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                return (OS_INVALID);
             }
         } else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START)) {
             if (!strcmp(nodes[i]->content, "yes"))
@@ -203,6 +239,33 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         }
     }
 
+    // Validate scheduled scan parameters and interval value
+
+    if (ciscat->scan_day && (ciscat->scan_wday >= 0)) {
+        merror("At module '%s': 'day' is not compatible with 'wday'.", WM_CISCAT_CONTEXT.name);
+        return OS_INVALID;
+    } else if (ciscat->scan_day) {
+        if (!month_interval) {
+            mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_CISCAT_CONTEXT.name);
+            ciscat->interval = 60; // 1 month
+        }
+        if (!ciscat->scan_time)
+            ciscat->scan_time = strdup("00:00");
+    } else if (ciscat->scan_wday >= 0) {
+        if (w_validate_interval(ciscat->interval, 1) != 0) {
+            ciscat->interval = 604800;  // 1 week
+            mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_CISCAT_CONTEXT.name);
+        }
+        if (ciscat->interval == 0)
+            ciscat->interval = 604800;
+        if (!ciscat->scan_time)
+            ciscat->scan_time = strdup("00:00");
+    } else if (ciscat->scan_time) {
+        if (w_validate_interval(ciscat->interval, 0) != 0) {
+            ciscat->interval = WM_DEF_INTERVAL;  // 1 day
+            mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_CISCAT_CONTEXT.name);
+        }
+    }
     if (!ciscat->interval)
         ciscat->interval = WM_DEF_INTERVAL;
 

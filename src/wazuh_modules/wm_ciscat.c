@@ -53,6 +53,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     time_t time_start = 0;
     time_t time_sleep = 0;
     int skip_java = 0;
+    int status = 0;
     char *cis_path = NULL;
     char *jre_path = NULL;
     char java_fullpath[OS_MAXSTR];
@@ -174,9 +175,40 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     if (!ciscat->flags.scan_on_start) {
         time_start = time(NULL);
 
-        if (ciscat->state.next_time > time_start) {
+        if (ciscat->scan_day) {
+            do {
+                status = check_day_to_scan(ciscat->scan_day, ciscat->scan_time);
+                if (status == 0) {
+                    time_sleep = get_time_to_hour(ciscat->scan_time);
+                } else {
+                    time_sleep = get_time_to_hour("00:00");
+                }
+
+                mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+                delay(1000 * time_sleep);
+
+            } while (status < 0);
+
+        } else if (ciscat->state.next_time > time_start) {
+
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
             delay(1000 * ciscat->state.next_time - time_start);
+
+        } else if (ciscat->scan_wday >= 0) {
+
+            time_sleep = get_time_to_day(ciscat->scan_wday, ciscat->scan_time);
+            mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            delay(1000 * time_sleep);
+
+        } else if (ciscat->scan_time) {
+
+            time_sleep = get_time_to_hour(ciscat->scan_time);
+            mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            delay (1000 * time_sleep);
+
         }
     }
 
@@ -240,19 +272,48 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
         mtinfo(WM_CISCAT_LOGTAG, "Evaluation finished.");
 
-        if ((time_t)ciscat->interval >= time_sleep) {
-            time_sleep = ciscat->interval - time_sleep;
-            ciscat->state.next_time = ciscat->interval + time_start;
+        if (ciscat->scan_day) {
+            int interval = 0, i = 0;
+            status = 0;
+            interval = ciscat->interval / 60;   // interval in num of months
+
+            do {
+                status = check_day_to_scan(ciscat->scan_day, ciscat->scan_time);
+                if (status == 0) {
+                    time_sleep = get_time_to_hour(ciscat->scan_time);
+                    i++;
+                } else {
+                    time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
+                }
+
+                delay(1000 * time_sleep);
+
+            } while ((status < 0) && (i < interval));
+
         } else {
-            mterror(WM_CISCAT_LOGTAG, "Interval overtaken.");
-            time_sleep = ciscat->state.next_time = 0;
+
+            if (ciscat->scan_wday >= 0) {
+                time_sleep = get_time_to_day(ciscat->scan_wday, ciscat->scan_time);
+                time_sleep += WEEK_SEC * ((ciscat->interval / WEEK_SEC) - 1);
+                ciscat->state.next_time = (time_t)time_sleep + time_start;
+            } else if (ciscat->scan_time) {
+                time_sleep = get_time_to_hour(ciscat->scan_time);
+                time_sleep += DAY_SEC * ((ciscat->interval / DAY_SEC) - 1);
+                ciscat->state.next_time = (time_t)time_sleep + time_start;
+            } else if ((time_t)ciscat->interval >= time_sleep) {
+                time_sleep = ciscat->interval - time_sleep;
+                ciscat->state.next_time = ciscat->interval + time_start;
+            } else {
+                mterror(WM_CISCAT_LOGTAG, "Interval overtaken.");
+                time_sleep = ciscat->state.next_time = 0;
+            }
+
+            if (wm_state_io(WM_CISCAT_CONTEXT.name, WM_IO_WRITE, &ciscat->state, sizeof(ciscat->state)) < 0)
+                mterror(WM_CISCAT_LOGTAG, "Couldn't save running state.");
+
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            delay(1000 * time_sleep);
         }
-
-        if (wm_state_io(WM_CISCAT_CONTEXT.name, WM_IO_WRITE, &ciscat->state, sizeof(ciscat->state)) < 0)
-            mterror(WM_CISCAT_LOGTAG, "Couldn't save running state.");
-
-        // If time_sleep=0, yield CPU
-        delay(1000 * time_sleep);
     }
 
     free(cis_path);
