@@ -17,6 +17,7 @@ int wurl_get(const char * url, const char * dest){
     curl = curl_easy_init();
     char errbuf[CURL_ERROR_SIZE];
     char destination[PATH_MAX + 1];
+    int old_mask;
 
     if(w_ref_parent_folder(dest)){
         return OS_FILERR;
@@ -25,7 +26,9 @@ int wurl_get(const char * url, const char * dest){
     snprintf(destination, PATH_MAX + 1, "%s%s", DEFAULTDIR, dest);
 
     if (curl){
+        old_mask = umask(0006);
         fp = fopen(destination,"wb");
+        umask(old_mask);
         if(!fp){
           curl_easy_cleanup(curl);
           return OS_FILERR;
