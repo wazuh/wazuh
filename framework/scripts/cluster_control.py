@@ -39,7 +39,7 @@ def get_parser(type):
             def format_help(self):
                 msg = """Wazuh cluster control - Master node
 
-Syntax: {0} --help | --health [more] [--debug] | --list-agents [-c Status] [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [--debug] | --list-agents [-fs Status] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -85,7 +85,7 @@ Others:
             def format_help(self):
                 msg = """Wazuh cluster control - Client node
 
-Syntax: {0} --help | --health [more] [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
