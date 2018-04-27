@@ -269,7 +269,7 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
                 filename = "{}/{}".format(zip_dir, path.dirname(name))
                 if not path.exists(filename):
                     mkdir_with_mode(filename)
-                with open("{}/{}".format(filename, path.basename(name)), 'w') as f:
+                with open("{}/{}".format(filename, path.basename(name)), 'wb') as f:
                     content = zipf.open(name).read()
                     f.write(content)
 
@@ -377,7 +377,7 @@ def compare_files(good_files, check_files):
         (extra_files, extra_valid_files)[cluster_items[check_files[file]['cluster_item_key']]['extra_valid']].append(file)
 
     shared_files = {name: {'cluster_item_key': data['cluster_item_key'],
-                          'merged':False} for name, data in good_files.iteritems()
+                          'merged':False} for name, data in good_files.items()
                           if name in check_files and data['md5'] != check_files[name]['md5']}
 
     if not missing_files:
@@ -531,11 +531,11 @@ def merge_agent_info(merge_type, files="all", file_type="", time_limit_seconds=1
 
         files_to_send += 1
         if not o_f:
-            o_f = open(common.ossec_path + output_file, 'wb')
+            o_f = open(common.ossec_path + output_file, 'w')
 
         header = "{} {} {}".format(stat_data.st_size, filename.replace(common.ossec_path,''),
                 datetime.utcfromtimestamp(stat_data.st_mtime))
-        with open(full_path, 'rb') as f:
+        with open(full_path, 'r') as f:
             data = f.read()
 
         o_f.write(header + '\n' + data)
@@ -552,7 +552,7 @@ def unmerge_agent_info(merge_type, path_file, filename):
 
     bytes_read = 0
     total_bytes = os.stat(src_agent_info_path).st_size
-    src_f = open(src_agent_info_path, 'rb')
+    src_f = open(src_agent_info_path, 'r')
 
     while bytes_read < total_bytes:
         # read header

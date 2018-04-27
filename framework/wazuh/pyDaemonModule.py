@@ -57,7 +57,7 @@ def create_pid(name, pid):
     with open(filename, 'a') as fp:
         try:
             fp.write("{0}\n".format(pid))
-            os.chmod(filename, 0640)
+            os.chmod(filename, 0o640)
         except OSError as e:
             raise WazuhException(3002, str(e))
 

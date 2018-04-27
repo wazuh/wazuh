@@ -98,7 +98,7 @@ class ClientManagerHandler(ClientHandler):
                 file_path = common.ossec_path + filename
                 zip_path = "{}/{}".format(zip_path_dir, filename)
                 # File content and time
-                with open(zip_path, 'rb') as f:
+                with open(zip_path, 'r') as f:
                     file_data = f.read()
             else:
                 file_data = content

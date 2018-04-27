@@ -51,16 +51,19 @@ class MasterManagerHandler(ServerHandler):
         elif command == 'sync_ev_c_mp':
             return 'ack', str(self.manager.get_client_status(client_id=self.name, key='sync_extravalid_free'))
         elif command == 'sync_i_c_m':  # Client syncs integrity
+            data = data.decode()
             pci_thread = ProcessClientIntegrity(manager=self.manager, manager_handler=self, filename=data, stopper=self.stopper)
             pci_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker(command, pci_thread, data)
         elif command == 'sync_ai_c_m':
+            data = data.decode()
             mcf_thread = ProcessClientFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker(command, mcf_thread, data)
         elif command == 'sync_ev_c_m':
+            data = data.decode()
             mcf_thread = ProcessExtraValidFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
             return 'ack', self.set_worker(command, mcf_thread, data)
@@ -265,7 +268,7 @@ class MasterManagerHandler(ServerHandler):
         shutil.rmtree(zip_dir_path)
 
         # Step 3: KO files
-        if len(filter(lambda x: x == {}, client_files_ko.values())) == len(client_files_ko):
+        if len(list(filter(lambda x: x == {}, client_files_ko.values()))) == len(client_files_ko):
             logger.info("{0}: Analyzing client integrity: Files checked. There are no KO files.".format(tag))
 
             ko_files = False
@@ -527,7 +530,7 @@ class MasterManager(Server):
 
         # Cleaning handler threads
         logger.debug("[Master] Cleaning threads generated to handle clients.")
-        clients = self.get_connected_clients().keys()
+        clients = self.get_connected_clients().copy().keys()
         for client in clients:
             self.remove_client(id=client)
 

@@ -9,8 +9,13 @@ from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array, load_wazuh_xml
-from ConfigParser import RawConfigParser, NoOptionError
-from StringIO import StringIO
+# Python 2/3 compability
+try:
+    from ConfigParser import RawConfigParser, NoOptionError
+    from StringIO import StringIO
+except ImportError:
+    from configparser import RawConfigParser, NoOptionError
+    from io import StringIO
 
 # Aux functions
 

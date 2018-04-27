@@ -15,11 +15,21 @@ import os
 import time
 import logging
 import json
+import sys
 
-try:
+# Python 2/3 compability
+if sys.version_info[0] == 2:
     from Queue import Queue, Empty
-except ImportError:
+
+    def base64_encoding(msg):
+        return msg.encode('base64', 'strict')
+else:
     from queue import Queue, Empty
+    import base64
+    unicode = str
+
+    def base64_encoding(msg):
+        return base64.b64encode(msg.encode())
 
 
 if check_cluster_status():
@@ -40,9 +50,11 @@ def msgbuild(counter, command, my_fernet, payload=None):
 
     try:
         if payload:
-            payload = payload.encode()
+            payload_type = type(payload)
+            if payload_type is str or payload_type is unicode:
+                payload = payload.encode()
         else:
-            payload = b''.encode()
+            payload = b''
     except UnicodeDecodeError:
         pass
 
@@ -50,7 +62,7 @@ def msgbuild(counter, command, my_fernet, payload=None):
     if cmd_len > cmd_size:
         raise Exception("Command of length {} exceeds maximum allowed {}".format(cmd_len, cmd_size))
 
-    padding_command = command + ' ' + '-' * (cmd_size - cmd_len - 1)
+    padding_command = (command + ' ' + '-' * (cmd_size - cmd_len - 1)).encode()
 
     payload_len = len(payload)
     if payload_len > max_msg_size:
@@ -67,7 +79,7 @@ def msgparse(buf, my_fernet):
     header_size = 8 + cmd_size
     if len(buf) >= header_size:
         counter, size, command = struct.unpack('!2I{}s'.format(cmd_size), buf[:header_size])
-        command = command.split(' ',1)[0]
+        command = command.decode().split(' ',1)[0]
         if len(buf) >= size + header_size:
             payload = buf[header_size:size + header_size]
             if payload and my_fernet:
@@ -143,7 +155,7 @@ class Handler(asyncore.dispatcher_with_send):
         self.workers_lock = threading.Lock()
         self.workers = {}
         self.stopper = threading.Event()
-        self.my_fernet = Fernet(key.encode('base64','strict')) if key else None
+        self.my_fernet = Fernet(base64_encoding(key)) if key else None
 
 
     def exit(self):
@@ -188,7 +200,7 @@ class Handler(asyncore.dispatcher_with_send):
 
     def get_worker(self, data):
         # the worker id will be the first element spliting the data by spaces
-        id = data.split(' ', 1)[0]
+        id = data.split(b' ', 1)[0].decode()
         with self.workers_lock:
             if id in self.workers:
                 return self.workers[id], 'ack', 'Command received for {}'.format(id)
@@ -199,7 +211,7 @@ class Handler(asyncore.dispatcher_with_send):
     def compute_md5(self, file, blocksize=2**20):
         hash_algorithm = hashlib.md5()
         with open(file, 'rb') as f:
-            for chunk in iter(lambda: f.read(blocksize), ''):
+            for chunk in iter(lambda: f.read(blocksize), b''):
                 hash_algorithm.update(chunk)
 
         return hash_algorithm.hexdigest()
@@ -235,7 +247,7 @@ class Handler(asyncore.dispatcher_with_send):
             chunk_size = max_msg_size - len(base_msg)
 
             with open(file, 'rb') as f:
-                for chunk in iter(lambda: f.read(chunk_size), ''):
+                for chunk in iter(lambda: f.read(chunk_size), b''):
                     res, data = self.execute("file_update", base_msg + chunk).split(' ', 1)
                     if res == "err":
                         raise Exception(data)
@@ -285,7 +297,7 @@ class Handler(asyncore.dispatcher_with_send):
                         response = None
 
                 if response:
-                    response.write(command + ' ' + payload)
+                    response.write(command + ' ' + payload.decode())
                 else:
                     res_data = self.dispatch(command, payload)
 
@@ -367,8 +379,7 @@ class Handler(asyncore.dispatcher_with_send):
             return self.process_request(command, payload)
         except Exception as e:
             error_msg = "Error processing command '{0}': '{1}'.".format(command, str(e))
-
-            logger.debug("[Transport-Handler] {0}".format(error_msg))
+            logger.error("[Transport-Handler] {0}".format(error_msg))
             return 'err ', error_msg
 
 
@@ -400,7 +411,7 @@ class Handler(asyncore.dispatcher_with_send):
             final_response = json.loads(payload)
         elif answer == 'err':
             final_response = None
-            logger.debug("[Transport-Handler] Error received: '{0}'.".format(payload.decode()))
+            logger.debug("[Transport-Handler] Error received: '{0}'.".format(payload))
         else:
             final_response = None
             logger.error("[Transport-Handler] Error - Unknown answer: '{}'. Payload: '{}'.".format(answer, payload))
@@ -921,7 +932,7 @@ class ProcessFiles(ClusterThread):
         :param command: received command
         :param data: received data (filename, file chunk, file md5...)
         """
-        split_data = data.split(' ',1)
+        split_data = data.split(b' ',1)
         local_data = split_data[1] if len(split_data) > 1 else None
         self.command_queue.put((command, local_data))
 
@@ -957,7 +968,7 @@ class ProcessFiles(ClusterThread):
         # Create the file
         self.filename = "{}/queue/cluster/{}/{}.tmp".format(common.ossec_path, self.name, self.id)
         logger.debug2("{0}: Creating file {1}".format(self.thread_tag, self.filename))  # debug2
-        self.f = open(self.filename, 'w')
+        self.f = open(self.filename, 'wb')
         logger.debug2("{}: File {} created successfully.".format(self.thread_tag, self.filename))  # debug2
 
 
@@ -986,7 +997,7 @@ class ProcessFiles(ClusterThread):
         # compare local file's sum with received sum
         self.f.close()
         local_md5_sum = self.manager_handler.compute_md5(self.filename)
-        if local_md5_sum != md5_sum:
+        if local_md5_sum != md5_sum.decode():
             error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
                             format(self.filename, md5_sum, local_md5_sum)
             #return 'err', error_msg

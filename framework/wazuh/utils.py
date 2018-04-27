@@ -344,7 +344,7 @@ def mkdir_with_mode(name, mode=0o770):
     if head and tail and not path.exists(head):
         try:
             mkdir_with_mode(head, mode)
-        except OSError, e:
+        except OSError as e:
             # be happy if someone already created the path
             if e.errno != errno.EEXIST:
                 raise
