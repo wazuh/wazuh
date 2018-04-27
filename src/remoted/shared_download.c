@@ -21,11 +21,15 @@ static ino_t yaml_file_inode;
 
 
 void *w_parser_get_group(const char *name){
-    return OSHash_Get(ptable,name);
+     if(ptable)
+        return OSHash_Get(ptable,name);
+    return NULL;
 }
 
 void *w_parser_get_agent(const char *name){
-    return OSHash_Get(ptable,name);
+    if(ptable)
+        return OSHash_Get(ptable,name);
+    return NULL;
 }
 
 const char *w_read_scalar_value(yaml_event_t * event){
@@ -475,9 +479,12 @@ void w_free_groups(){
         free(agents_group);
     }
 
-    OSHash_Free(ptable);
+    if(ptable){
+        OSHash_Free(ptable);
+    }
     agent_remote_group = NULL;
     agents_group = NULL;
+    ptable = NULL;
 }
 
 int w_yaml_file_has_changed()
@@ -531,6 +538,7 @@ int w_prepare_parsing()
         }
     } else {
         mdebug1("Shared configuration file not found.");
+        w_free_groups();
     }
 
     return 0;

@@ -251,7 +251,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
             if(r_group->merge_file_index >= 0){
                 file_url = r_group->files[r_group->merge_file_index].url;
                 file_name = SHAREDCFG_FILENAME;
-                snprintf(destination_path, PATH_MAX + 1, "/%s/%s", DOWNLOAD_DIR, file_name);
+                snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                 mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
                 downloaded = wurl_request(file_url,destination_path);
                 w_download_status(downloaded,file_url,destination_path);
@@ -279,14 +279,16 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
             else{ // Download all files
                 int i;
 
-                for(i = 0; r_group->files[i].name; i++)
-                {
-                    file_url = r_group->files[i].url;
-                    file_name = r_group->files[i].name;
-                    snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
-                    mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                    downloaded = wurl_request(file_url,destination_path);
-                    w_download_status(downloaded,file_url,destination_path);
+                if(r_group->files){
+                    for(i = 0; r_group->files[i].name; i++)
+                    {
+                        file_url = r_group->files[i].url;
+                        file_name = r_group->files[i].name;
+                        snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                        mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
+                        downloaded = wurl_request(file_url,destination_path);
+                        w_download_status(downloaded,file_url,destination_path);
+                    }
                 }
             }
         }
