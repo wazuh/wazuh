@@ -59,7 +59,7 @@ static void execd_shutdown(int sig)
 
         list_entry = (timeout_data *)timeout_node->data;
 
-        mdebug2("Delete pending AR: %s", list_entry->command);
+        mdebug2("Delete pending AR: %s", list_entry->command[0]);
         ExecCmd(list_entry->command);
 
         /* Delete current node - already sets the pointer to next */
