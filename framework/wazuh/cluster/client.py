@@ -311,7 +311,7 @@ class ClientManagerHandler(ClientHandler):
                 req_files_thread = SyncExtraValidFilesThread(self, self.stopper, ko_files['extra_valid'])
                 req_files_thread.start()
             else:
-                logger.warning("{}: The last master's file request is in progress. Rejecting this request.")
+                logger.warning("{}: The last master's file request is in progress. Rejecting this request.".format(tag))
 
         if not ko_files['shared'] and not ko_files['missing'] and not ko_files['extra']:
             logger.info("{0}: Client meets integrity checks. No actions.".format(tag))

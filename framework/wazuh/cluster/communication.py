@@ -525,13 +525,19 @@ class Server(asyncore.dispatcher):
                         'total_files':{
                             'missing':0,
                             'shared':0,
-                            'extra':0
+                            'extra':0,
+                            'extra_valid': 0
                         }
                     },
                     'last_sync_agentinfo': {
                         'date_start_master':'n/a',
                         'date_end_master':'n/a',
                         'total_agentinfo':0
+                    },
+                    'last_sync_agentgroups': {
+                        'date_start_master':'n/a',
+                        'date_end_master':'n/a',
+                        'total_agentgroups':0
                     }
                 }
             }

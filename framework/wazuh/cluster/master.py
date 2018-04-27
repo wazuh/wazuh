@@ -95,7 +95,7 @@ class MasterManagerHandler(ServerHandler):
 
 
     # Private methods
-    def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path, client_name):
+    def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path, client_name, cluster_control_key, cluster_control_subkey):
         def update_file(n_errors, name, data, file_time=None, content=None):
             # Full path
             full_path = common.ossec_path + name
@@ -154,17 +154,17 @@ class MasterManagerHandler(ServerHandler):
             ))
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=n_agentsinfo)
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status=n_agentsinfo)
 
 
     # New methods
-    def process_files_from_client(self, client_name, data_received, tag=None):
+    def process_files_from_client(self, client_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
         sync_result = False
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="date_end_master", status="In progress")
-        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status="In progress")
         # ---
 
         if not tag:
@@ -189,7 +189,9 @@ class MasterManagerHandler(ServerHandler):
         logger.info("{0}: Updating master files: Start.".format(tag))
 
         # Update files
-        self._update_client_files_in_master(client_files_json, client_files_json, zip_dir_path, client_name)
+        self._update_client_files_in_master(client_files_json, client_files_json,
+                                            zip_dir_path, client_name,
+                                            cluster_control_key, cluster_control_subkey)
 
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)
@@ -199,12 +201,12 @@ class MasterManagerHandler(ServerHandler):
         sync_result = True
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
         return sync_result
 
 
-    def process_integrity_from_client(self, client_name, data_received, tag=None):
+    def process_integrity_from_client(self, client_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
         ko_files = False
         data_for_client = None
 
@@ -253,9 +255,10 @@ class MasterManagerHandler(ServerHandler):
                 ko_files[merged_file] = {'cluster_item_key': '/queue/agent-groups/', 'merged': True}
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="missing", status=len(client_files_ko['missing']))
-        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="shared", status=len(client_files_ko['shared']))
-        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="extra", status=len(client_files_ko['extra']))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="missing", status=len(client_files_ko['missing']))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="shared", status=len(client_files_ko['shared']))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="extra", status=len(client_files_ko['extra']))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="extra_valid", status=len(client_files_ko['extra_valid']))
         # ---
 
         # Remove tmp directory created when zip file was received
@@ -312,7 +315,7 @@ class ProcessClient(ProcessFiles):
 
 
     def process_file(self):
-        return self.function(self.name, self.filename, self.thread_tag)
+        return self.function(self.name, self.filename, self.cluster_control_key, self.cluster_control_subkey, self.thread_tag)
 
 
     def unlock_and_stop(self, reason, send_err_request=None):
@@ -328,20 +331,23 @@ class ProcessClientIntegrity(ProcessClient):
         self.thread_tag = "[Master] [{0}] [Integrity-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_integrity_free"
         self.function = self.manager_handler.process_integrity_from_client
+        self.cluster_control_key = "last_sync_integrity"
+        self.cluster_control_subkey = "total_files"
 
     # Overridden methods
     def process_file(self):
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_end_master", status="In progress")
-        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="missing", status="In progress")
-        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="shared", status="In progress")
-        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="total_files", subsubkey="extra", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="missing", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="shared", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="extra", status="In progress")
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="extra_valid", status="In progress")
         # ---
 
         sync_result = False
 
-        ko_files, data_for_client = self.function(self.name, self.filename, self.thread_tag)
+        ko_files, data_for_client = self.function(self.name, self.filename, self.cluster_control_key, self.cluster_control_subkey, self.thread_tag)
 
         if ko_files:
             logger.info("{0}: Sending Sync-KO to client.".format(self.thread_tag))
@@ -359,7 +365,7 @@ class ProcessClientIntegrity(ProcessClient):
             logger.error("{0}: Sync error reported by the client.".format(self.thread_tag))
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key="last_sync_integrity", subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
         return sync_result
 
@@ -389,6 +395,8 @@ class ProcessClientFiles(ProcessClient):
         self.thread_tag = "[Master] [{0}] [AgentInfo-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_agentinfo_free"
         self.function = self.manager_handler.process_files_from_client
+        self.cluster_control_key = "last_sync_agentinfo"
+        self.cluster_control_subkey = "total_agentinfo"
 
 
 class ProcessExtraValidFiles(ProcessClient):
@@ -398,6 +406,8 @@ class ProcessExtraValidFiles(ProcessClient):
         self.thread_tag = "[Master] [{0}] [AgentGroup-R ]".format(self.manager_handler.name)
         self.status_type = "sync_extravalid_free"
         self.function = self.manager_handler.process_files_from_client
+        self.cluster_control_key = "last_sync_agentgroups"
+        self.cluster_control_subkey = "total_agentgroups"
 
 
 #
