@@ -21,6 +21,9 @@
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
 
+// Key reloader thread
+void * rem_keyupdate_main(__attribute__((unused)) void * args);
+
 /* Handle each message received */
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
 
@@ -95,6 +98,9 @@ void HandleSecure()
     minfo(ENC_READ);
     OS_ReadKeys(&keys, 1, 0, 0);
     OS_StartCounter(&keys);
+
+    // Key reloader thread
+    w_create_thread(rem_keyupdate_main, NULL);
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -278,6 +284,20 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
     return NULL;
 }
 
+// Key reloader thread
+void * rem_keyupdate_main(__attribute__((unused)) void * args) {
+    int seconds;
+
+    mdebug1("Key reloader thread started.");
+    seconds = getDefine_Int("remoted", "keyupdate_interval", 1, 3600);
+
+    while (1) {
+        mdebug2("Checking for keys file changes.");
+        check_keyupdate();
+        sleep(seconds);
+    }
+}
+
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client) {
     int agentid;
     int protocol = logr.proto[logr.position];
@@ -296,8 +316,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
     memset(srcmsg, '\0', OS_FLSIZE + 1);
     tmp_msg = NULL;
-
-    check_keyupdate();
 
     /* Get a valid agent id */
     if (buffer[0] == '!') {
@@ -368,31 +386,36 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        /* We need to save the peerinfo if it is a control msg */
-        memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
+        int r = 2;
 
-        if (protocol == TCP_PROTO) {
-            switch (OS_AddSocket(&keys, agentid, sock_client)) {
-            case 0:
-                merror("Couldn't add TCP socket to keystore.");
-                break;
-            case 1:
-                mdebug2("TCP socket already in keystore.");
-                break;
-            default:
-                ;
-            }
+        /* We need to save the peerinfo if it is a control msg */
+        key_lock_write();
+        memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
+        r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        keys.keyentries[agentid]->rcvd = time(0);
+        key_unlock();
+
+        switch (r) {
+        case 0:
+            merror("Couldn't add TCP socket to keystore.");
+            break;
+        case 1:
+            mdebug2("TCP socket already in keystore.");
+            break;
+        default:
+            ;
         }
 
-        keys.keyentries[agentid]->rcvd = time(0);
         save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
 
         return;
     }
 
     /* Generate srcmsg */
+    key_lock_read();
     snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
+    key_unlock();
 
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
