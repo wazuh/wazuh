@@ -45,11 +45,11 @@ Usage:
 \t-h, --help                                  # Show this help message
 \t-i, --health [more]                         # Show cluster health
 \t-a, --list-agents                           # List agents
-\t-n, --list-nodes                            # List nodes
+\t-l, --list-nodes                            # List nodes
 
 Filters:
-\t-t, --filter-node                          # Filter by node
-\t-c, --filter-agents-status                 # Filter by agent status (Active, Disconnected, NeverConnected, Pending)
+\t-fn, --filter-node                          # Filter by node
+\t-fs, --filter-agent-status                  # Filter by agent status (Active, Disconnected, NeverConnected, Pending)
 
 Others:
 \t-d, --debug                                # Show debug information
@@ -67,16 +67,16 @@ Others:
         parser=WazuhHelpFormatter(usage='custom usage')
         parser._positionals.title = 'Wazuh Cluster control interface'
 
-        parser.add_argument('-t', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
+        parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-c', '--filter-agents-status', dest='filter_status', nargs='*', type=str, help="Agents status")
+        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
         parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
         #exclusive.add_argument('-s', '--sync', const='sync', action='store_const', help="Force the nodes to initiate the synchronization process")
         #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
         exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
-        exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
+        exclusive.add_argument('-l', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
         exclusive.add_argument('-i', '--health', const='health', action='store', nargs='?', help="Show cluster health")
 
         return parser
@@ -90,10 +90,10 @@ Syntax: {0} --help | --health [more] [--debug] | --list-nodes [-t Node1 NodeN] [
 Usage:
 \t-h, --help                                  # Show this help message
 \t-i, --health [more]                         # Show cluster health
-\t-n, --list-nodes                            # List nodes
+\t-l, --list-nodes                            # List nodes
 
 Filters:
-\t-t, --filter-node                          # Filter by node
+\t-fn, --filter-node                          # Filter by node
 
 Others:
 \t-d, --debug                                # Show debug information
@@ -110,15 +110,15 @@ Others:
         parser=WazuhHelpFormatter(usage='custom usage')
         parser._positionals.title = 'Wazuh Cluster control interface'
 
-        parser.add_argument('-t', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
+        parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-c', '--filter-agents-status', dest='filter_status', nargs='*', type=str, help="Agents status")
+        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
         parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
         #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
         exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
-        exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
+        exclusive.add_argument('-l', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
         exclusive.add_argument('-i', '--health', const='health', action='store', nargs='?', help="Show cluster health")
         return parser
 
