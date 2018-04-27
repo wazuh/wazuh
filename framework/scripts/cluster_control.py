@@ -39,11 +39,11 @@ def get_parser(type):
             def format_help(self):
                 msg = """Wazuh cluster control - Master node
 
-Syntax: {0} --help | --health [--debug] | --list-agents [-c Status] [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [--debug] | --list-agents [-c Status] [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
-\t-i, --health                                # Show cluster health
+\t-i, --health [more]                         # Show cluster health
 \t-a, --list-agents                           # List agents
 \t-n, --list-nodes                            # List nodes
 
@@ -77,18 +77,19 @@ Others:
         #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
         exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
         exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
-        exclusive.add_argument('-i', '--health', const='health', action='store_const', help="Show cluster health")
+        exclusive.add_argument('-i', '--health', const='health', action='store', nargs='?', help="Show cluster health")
+
         return parser
     else:
         class WazuhHelpFormatter(argparse.ArgumentParser):
             def format_help(self):
                 msg = """Wazuh cluster control - Client node
 
-Syntax: {0} --help | --health [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [--debug] | --list-nodes [-t Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
-\t-i, --health                                # Show cluster health
+\t-i, --health [more]                         # Show cluster health
 \t-n, --list-nodes                            # List nodes
 
 Filters:
@@ -118,7 +119,7 @@ Others:
         #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
         exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
         exclusive.add_argument('-n', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
-        exclusive.add_argument('-i', '--health', const='health', action='store_const', help="Show cluster health")
+        exclusive.add_argument('-i', '--health', const='health', action='store', nargs='?', help="Show cluster health")
         return parser
 
 def signal_handler(n_signal, frame):
@@ -272,40 +273,66 @@ def print_agents_master(filter_status):
 
 
 ### Get healthchech
-def print_healthcheck():
+def print_healthcheck(conf, more=False, filter_node=None):
     node_response = __execute("get_health")
 
-    print ("General information")
-    print (" - Connected nodes: {}".format(node_response["n_connected_nodes"]))
-    print ("")
+    msg1 = ""
+    msg2 = ""
 
-    print ("Nodes information")
+    msg1 += "Cluster name: {}\n\n".format(conf['name'])
 
-    for node, node_info in node_response["nodes"].iteritems():
-        print (" - {}".format(node))
-        print ("   - Address: {}".format(node_info['info']['ip']))
-        print ("   - Type: {}".format(node_info['info']['type']))
+    if not more:
+        msg1 += "Last completed synchronization for connected nodes ({}):\n".format(node_response["n_connected_nodes"])
+    else:
+        msg1 += "Connected nodes ({}):".format(node_response["n_connected_nodes"])
+
+    for node, node_info in sorted(node_response["nodes"].items()):
+
+        if filter_node and node not in filter_node:
+            continue
+
+        msg2 += "\n    {} ({})\n".format(node, node_info['info']['ip'])
+        msg2 += "        Type: {}\n".format(node_info['info']['type'])
+
         if node_info['info']['type'] != "master":
-            print ("   - Status:")
-            print ("      - Last synchronization of integrity: ")
-            print ("         - Date start in master: {}".format(node_info['status']['last_sync_integrity']['date_start_master']))
-            print ("         - Date end in master: {}".format(node_info['status']['last_sync_integrity']['date_end_master']))
-            print ("         - Total number of shared files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["shared"])))
-            print ("         - Total number of missing files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["missing"])))
-            print ("         - Total number of extra files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["extra"])))
-            print ("         - Total number of extra valid files: {}".format(str(node_info['status']['last_sync_integrity']['total_files']["extra_valid"])))
-            print ("         - Permission to synchronize: {}".format(str(node_info['status']['sync_integrity_free'])))
-            print ("      - Last synchronization of agents-info: ")
-            print ("         - Date start in master: {}".format(node_info['status']['last_sync_agentinfo']['date_start_master']))
-            print ("         - Date end in master: {}".format(node_info['status']['last_sync_agentinfo']['date_end_master']))
-            print ("         - Total number of synchronized agents-info: {}".format(str(node_info['status']['last_sync_agentinfo']['total_agentinfo'])))
-            print ("         - Permission to synchronize: {}".format(str(node_info['status']['sync_agentinfo_free'])))
 
-            print ("      - Last synchronization of agents-group: ")
-            print ("         - Date start in master: {}".format(node_info['status']['last_sync_agentgroups']['date_start_master']))
-            print ("         - Date end in master: {}".format(node_info['status']['last_sync_agentgroups']['date_end_master']))
-            print ("         - Total number of synchronized agents-info: {}".format(str(node_info['status']['last_sync_agentgroups']['total_agentgroups'])))
-            print ("         - Permission to synchronize: {}".format(str(node_info['status']['sync_extravalid_free'])))
+            if not more:
+                msg1 += "    {} ({}): Integrity: {} | Agents-info: {} | Agent-groups: {}.\n".format(node, node_info['info']['ip'], node_info['status']['last_sync_integrity']['date_end_master'], node_info['status']['last_sync_agentinfo']['date_end_master'], node_info['status']['last_sync_agentgroups']['date_end_master']
+                    )
+
+            msg2 += "        Status:\n"
+
+            # Integrity
+            msg2 += "            Integrity\n"
+            msg2 += "                Last synchronization: {0} - {1}.\n".format(node_info['status']['last_sync_integrity']['date_start_master'], node_info['status']['last_sync_integrity']['date_end_master'])
+
+
+            n_shared = str(node_info['status']['last_sync_integrity']['total_files']["shared"])
+            n_missing = str(node_info['status']['last_sync_integrity']['total_files']["missing"])
+            n_extra = str(node_info['status']['last_sync_integrity']['total_files']["extra"])
+            n_extra_valid = str(node_info['status']['last_sync_integrity']['total_files']["extra_valid"])
+
+            msg2 += "                Synchronized files: Shared: {} | Missing: {} | Extra: {} | Extra valid: {}.\n".format(n_shared, n_missing, n_extra, n_extra_valid)
+            msg2 += "                Permission to synchronize: {}.\n".format(str(node_info['status']['sync_integrity_free']))
+
+            # Agent info
+            msg2 += "            Agents-info\n"
+            msg2 += "                Last synchronization: {0} - {1}.\n".format(node_info['status']['last_sync_agentinfo']['date_start_master'], node_info['status']['last_sync_agentinfo']['date_end_master'])
+            msg2 += "                Synchronized files: {}.\n".format(str(node_info['status']['last_sync_agentinfo']['total_agentinfo']))
+            msg2 += "                Permission to synchronize: {}.\n".format(str(node_info['status']['sync_agentinfo_free']))
+
+            # Agent groups
+            msg2 += "            Agents-group\n"
+            msg2 += "                Last synchronization: {0} - {1}.\n".format(node_info['status']['last_sync_agentgroups']['date_start_master'], node_info['status']['last_sync_agentgroups']['date_end_master'])
+            msg2 += "                Synchronized files: {}.\n".format(str(node_info['status']['last_sync_agentgroups']['total_agentgroups']))
+            msg2 += "                Permission to synchronize: {}.\n".format(str(node_info['status']['sync_extravalid_free']))
+
+
+    print(msg1)
+
+    if more:
+        print(msg2)
+
 #
 # Main
 #
@@ -352,7 +379,10 @@ if __name__ == '__main__':
         elif args.list_nodes:
             print_nodes_status(args.filter_node)
         elif args.health:
-            print_healthcheck()
+            more = False
+            if args.health.lower() == 'more':
+                more = True
+            print_healthcheck(conf=cluster_config, more=more, filter_node=args.filter_node)
         else:
             parser.print_help()
             exit()
