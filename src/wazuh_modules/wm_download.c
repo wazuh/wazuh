@@ -102,6 +102,7 @@ void wm_download_dispatch(char * buffer) {
     char * command;
     char * url;
     char * fpath;
+    char jpath[PATH_MAX];
 
     // Get command
 
@@ -135,8 +136,22 @@ void wm_download_dispatch(char * buffer) {
         return;
     }
 
+    // Jail path
+
+    if (snprintf(jpath, sizeof(jpath), "%s/%s", DEFAULTDIR, fpath) >= (int)sizeof(jpath)) {
+        mdebug1("Path too long: %s", fpath);
+        snprintf(buffer, OS_MAXSTR, "err path too long");
+        return;
+    }
+
+    if (w_ref_parent_folder(jpath)) {
+        mdebug1("Path references parent folder: %s", fpath);
+        snprintf(buffer, OS_MAXSTR, "err parent folder reference");
+        return;
+    }
+
     // Run download
-    mdebug1("Downloading '%s' to '%s'", url, fpath);
+    mdebug1("Downloading '%s' to '%s'", url, jpath);
 
     switch (wurl_get(url, fpath)) {
     case OS_CONNERR:
@@ -151,7 +166,7 @@ void wm_download_dispatch(char * buffer) {
 
     default:
         snprintf(buffer, OS_MAXSTR, "ok");
-        mtdebug2("Download of '%s' finished", url);
+        mdebug2("Download of '%s' finished", url);
     }
 }
 
