@@ -119,7 +119,8 @@ class MasterManagerHandler(ServerHandler):
 
             except Exception as e:
                 logger.debug2("Error updating file '{}': {}".format(name, e))
-                n_errors += 1
+                n_errors[data['cluster_item_key']] = 1 if not n_errors.get(data['cluster_item_key']) \
+                                                          else n_errors[data['cluster_item_key']] + 1
 
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
             lock_file.close()
@@ -132,7 +133,7 @@ class MasterManagerHandler(ServerHandler):
         tmp_path = "/queue/cluster/{}/tmp_files".format(client_name)
         cluster_items = get_cluster_items()['files']
         n_agentsinfo = 0
-        n_errors = 0
+        n_errors = {}
 
         try:
             for filename, data in json_file.items():
@@ -147,8 +148,10 @@ class MasterManagerHandler(ServerHandler):
             logger.error("[Master] Error updating client files: '{}'.".format(str(e)))
             raise e
 
-        if n_errors:
-            logging.error("Errors updating client files: {}".format(n_errors))
+        if sum(n_errors.values()) > 0:
+            logging.error("Errors updating client files: {}".format(
+                ' | '.join(['{}: {}'.format(key, value) for key, value in n_errors.items()])
+            ))
 
         # Save info for healthcheck
         self.manager.set_client_status(client_id=self.name, key="last_sync_agentinfo", subkey="total_agentinfo", status=n_agentsinfo)
