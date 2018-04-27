@@ -1,14 +1,12 @@
-/* Copyright (C) 2009 Trend Micro Inc.
- * All rights reserved.
+/*
+ * Wazuh Shared Configuration Manager
+ * Copyright (C) 2018 Wazuh Inc.
+ * April 3, 2018.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- */
-
-/* remote daemon
- * Listen to remote packets and forward them to the analysis system
  */
 
 #include "shared.h"
@@ -87,7 +85,7 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
             }
 
         } while (event.type != YAML_MAPPING_END_EVENT);
-        
+
         yaml_event_delete(&event);
         return agents;
 
@@ -97,7 +95,7 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
 
 error:
     if(agents)
-    {   
+    {
         int i;
         for(i = 0; agents[i].name; i++){
             free(agents[i].name);
@@ -295,7 +293,7 @@ file * w_read_group_files(yaml_parser_t * parser) {
             default:
                 merror("Parsing error: unexpected token %d", event.type);
                 goto error;
-            }   
+            }
 
         } while (event.type != YAML_MAPPING_END_EVENT);
 
@@ -314,7 +312,7 @@ error:
          for(i=0;files[i].name;i++){
             free(files[i].url);
             free(files[i].name);
-        } 
+        }
 
         free(files);
         files = NULL;
@@ -504,34 +502,35 @@ int w_yaml_file_update_structs(){
 
 int w_prepare_parsing()
 {
-    
-    int parse_ok = w_do_parsing(yaml_file, &agent_remote_group, &agents_group);
+
+    int parse_ok;
 
     // Save date and inode of the yaml file
     yaml_file_inode = File_Inode(yaml_file);
     yaml_file_date = File_DateofChange(yaml_file);
 
-    if(parse_ok == 1){
-        int i = 0;
+    if (yaml_file_inode != (ino_t)-1 && yaml_file_date != -1) {
+        if (parse_ok = w_do_parsing(yaml_file, &agent_remote_group, &agents_group), parse_ok == 1) {
+            int i = 0;
 
-        minfo(W_PARSER_SUCCESS,yaml_file);
+            minfo(W_PARSER_SUCCESS,yaml_file);
 
-        // Add the groups
-        if(agent_remote_group){
-            for(i = 0; agent_remote_group[i].name; i++){
-                OSHash_Add(ptable, agent_remote_group[i].name, &agent_remote_group[i]);
+            // Add the groups
+            if (agent_remote_group) {
+                for(i = 0; agent_remote_group[i].name; i++) {
+                    OSHash_Add(ptable, agent_remote_group[i].name, &agent_remote_group[i]);
+                }
+            }
+
+            // Add the agents
+            if (agents_group) {
+                for(i = 0; agents_group[i].name; i++) {
+                    OSHash_Add(ptable, agents_group[i].name, &agents_group[i]);
+                }
             }
         }
-
-        // Add the agents
-        if(agents_group){
-            for(i = 0; agents_group[i].name; i++){
-                OSHash_Add(ptable, agents_group[i].name, &agents_group[i]);
-            }
-        }
-    }
-    else{
-        minfo(W_PARSER_FAILED,yaml_file);
+    } else {
+        mdebug1("Shared configuration file not found.");
     }
 
     return 0;
