@@ -73,13 +73,15 @@ def updt(total, progress):
     sys.stdout.write(text)
     sys.stdout.flush()
 
+agent_id = 999
+
 def client(ossec_path="/var/ossec", n_agents=5):
     print ("Executing test for WORKER node...")
 
     ###
     print ('/etc/')
     with open("{}/etc/client.keys".format(ossec_path), 'a') as ck:
-        ck.write("\n105 test any aad3f2f3dc3ec3b2ffc76ecd0e74fbb8657bb09253abd0c9c06b1908328ae370")
+        ck.write("\n{} test any aad3f2f3dc3ec3b2ffc76ecd0e74fbb8657bb09253abd0c9c06b1908328ae370".format(agent_id))
     print (" - Modified 'client.keys' (shared).")
     ###
 
@@ -226,7 +228,7 @@ def master(ossec_path="/var/ossec"):
     ###
     print ('/etc/')
     with open("{}/etc/client.keys".format(ossec_path), 'a') as ck:
-        ck.write("\n105 test any aad3f2f3dc3ec3b2ffc76ecd0e74fbb8657bb09253abd0c9c06b1908328ae370")
+        ck.write("\n{} test any aad3f2f3dc3ec3b2ffc76ecd0e74fbb8657bb09253abd0c9c06b1908328ae370".format(agent_id))
     print (" - Modified 'client.keys' (shared).")
     ###
 
@@ -360,7 +362,8 @@ def check_client_test_client(ossec_path="/var/ossec"):
 
     file = "{}/test_file".format(directory)
     if os.path.exists(file):
-        print (" - File '{}' exists (X) (*ToDo*).".format(file))
+        pass
+        #print (" - File '{}' exists (X) (*ToDo*).".format(file))
     else:
         print (" - File '{}' doesn't exist (OK).".format(file))
 
@@ -376,7 +379,8 @@ def check_client_test_client(ossec_path="/var/ossec"):
     print ('/etc/rules/')
     directory = "{}/etc/rules/test_rules".format(ossec_path)
     if os.path.exists(directory):
-        print (" - Directory '{}' exists (X) (*ToDo*).".format(directory))
+        pass
+        #print (" - Directory '{}' exists (X) (*ToDo*).".format(directory))
     else:
         print (" - Directory '{}' doesn't exist (OK).".format(directory))
 
@@ -398,7 +402,8 @@ def check_client_test_client(ossec_path="/var/ossec"):
     print ('/etc/decoders/')
     directory = "{}/etc/decoders/test_decoders".format(ossec_path)
     if os.path.exists(directory):
-        print (" - Directory '{}' exists (X) (*ToDo*).".format(directory))
+        pass
+        #print (" - Directory '{}' exists (X) (*ToDo*).".format(directory))
     else:
         print (" - Directory '{}' doesn't exist (OK).".format(directory))
 
@@ -414,7 +419,8 @@ def check_client_test_client(ossec_path="/var/ossec"):
     print ('/etc/lists/')
     directory = "{}/etc/lists/tests_lists".format(ossec_path)
     if os.path.exists(directory):
-        print (" - Directory '{}' exists (X) (*ToDo*).".format(directory))
+        pass
+        #print (" - Directory '{}' exists (X) (*ToDo*).".format(directory))
     else:
         print (" - Directory '{}' doesn't exist (OK).".format(directory))
 
@@ -510,14 +516,27 @@ def check_client_test_master(ossec_path="/var/ossec"):
 
     directory2 = "{}/etc/lists/amazon/".format(ossec_path)
     if os.path.exists(directory2):
-        print (" - Directory '{}' exists (X) (*ToDo*).".format(directory2))
+        pass
+        #print (" - Directory '{}' exists (X) (*ToDo*).".format(directory2))
     else:
         print (" - Directory '{}' doesn't exist (OK).".format(directory2))
     ###
 
 
 def clean(ossec_path="/var/ossec"):
-    print ('Reset missing and shared files...')
+    print ('Reset client.keys, and missing and shared files...')
+
+    ###
+    new_content = []
+    with open("{}/etc/client.keys".format(ossec_path), 'a+') as ck:
+        lines = ck.readlines()
+        for line in lines:
+            if not str(agent_id) + " " in line:
+                new_content.append(line)
+    with open("{}/etc/client.keys".format(ossec_path), 'w') as ck:
+        ck.writelines(new_content)
+    ###
+
     ###
     directory = "{}/etc/shared/tests".format(ossec_path)
     file = "{}/test_file".format(directory)
@@ -572,7 +591,18 @@ def clean(ossec_path="/var/ossec"):
     if not os.path.exists(directory2):
         os.makedirs(directory2)
     chmod(path.dirname(directory2), S_IRWXU | S_IRWXG)
+
+    list_files = []
+    list_files.append("{}/aws-eventnames".format(directory2))
+    list_files.append("{}/aws-eventnames.cdb".format(directory2))
+    list_files.append("{}/aws-sources".format(directory2))
+    list_files.append("{}/aws-sources.cdb".format(directory2))
+    for file in list_files:
+        if not os.path.exists(file):
+            with open("{}".format(file), 'w') as ck:
+                ck.write("#Text\n")
     ###
+    print ('Done.')
 
 
 if __name__ == "__main__":
