@@ -16,9 +16,16 @@ int wurl_get(const char * url, const char * dest){
     CURLcode res;
     curl = curl_easy_init();
     char errbuf[CURL_ERROR_SIZE];
+    char destination[PATH_MAX + 1];
+
+    if(w_ref_parent_folder(dest)){
+        return OS_FILERR;
+    }
+
+    snprintf(destination, PATH_MAX + 1, "%s%s", DEFAULTDIR, dest);
 
     if (curl){
-        fp = fopen(dest,"wb");
+        fp = fopen(destination,"wb");
         if(!fp){
           curl_easy_cleanup(curl);
           return OS_FILERR;
@@ -40,7 +47,7 @@ int wurl_get(const char * url, const char * dest){
             merror("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             fclose(fp);
-            unlink(dest);
+            unlink(destination);
             return OS_CONNERR;
         }
         curl_easy_cleanup(curl);

@@ -638,30 +638,15 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 int TestUnmergeFiles(const char *finalpath, int mode)
 {
     int ret = 1;
-    size_t files_size = 0;
+    size_t i = 0, n = 0, files_size = 0, readed_bytes = 0,data_size = 0;
     char *files;
     char buf[2048 + 1];
-	char *buf_readed_bytes;
-	char *bad_format;
     FILE *finalfp;
 
-    finalfp = fopen(finalpath, mode == 0 ? "rb" : "r");
+    finalfp = fopen(finalpath, mode == OS_BINARY ? "rb" : "r");
     if (!finalfp) {
-        fclose(finalfp);
         merror("Unable to read merged file: '%s'.", finalpath);
         return (0);
-    }
-
-	/* Read the header */
-	if (fgets(buf, sizeof(buf) - 1, finalfp) == NULL) {
-		ret = 0;
-        goto end;
-    }
-
-	/* Check if the header begins with # */
-	if (buf[0] != '#') {
-		ret = 0;
-        goto end;
     }
 
     while (1) {
@@ -671,55 +656,72 @@ int TestUnmergeFiles(const char *finalpath, int mode)
         }
 
         /* Initiator */
-        if (buf[0] != '!') {
-            continue;
+        switch(buf[0]){
+            case '#':
+                continue;
+            case '!':
+                goto parse;
+            default:
+                ret = 0;
+                goto end;
         }
 
+parse:
         /* Get file size and name */
         files_size = (size_t) atol(buf + 1);
+        data_size = files_size;
 
-		files = strchr(buf, '\n');
+        files = strchr(buf, '\n');
         if (files) {
             *files = '\0';
         }
-		
+
         files = strchr(buf, ' ');
         if (!files) {
             ret = 0;
-            goto end;
+            continue;
         }
         files++;
 
-		/* Check for file name */
+        /* Check for file name */
 		if(*files == '\0')
 		{
 			ret = 0;
             goto end;
 		}
 
-		os_malloc(files_size * sizeof(char),buf_readed_bytes);
-		/* Read files_size bytes ony by one and count them */
-		size_t readed_bytes = fread(buf_readed_bytes,1,files_size,finalfp);
+        if (files_size < sizeof(buf) - 1) {
+            i = files_size;
+            files_size = 0;
+        } else {
+            i = sizeof(buf) - 1;
+            files_size -= sizeof(buf) - 1;
+        }
 
-		/* Readed bytes and files_size must be equal */
-		if((readed_bytes != files_size) && (readed_bytes != files_size - 1)){
-			os_free(buf_readed_bytes);
-			ret = 0;
-			goto end;
-		}
+        readed_bytes = 0;
+        while ((n = fread(buf, 1, i, finalfp)) > 0) {
+            buf[n] = '\0';
+            readed_bytes += n;
 
-		/*Check if the format is right */
-		bad_format = strstr(buf_readed_bytes,"\n!");
-		
-		if(bad_format)
-		{
-			os_free(buf_readed_bytes);
-			ret = 0;
-			goto end;
-		}
-		os_free(buf_readed_bytes);
+            if (files_size == 0) {
+                break;
+            } else {
+                if (files_size < sizeof(buf) - 1) {
+                    i = files_size;
+                    files_size = 0;
+                } else {
+                    i = sizeof(buf) - 1;
+                    files_size -= sizeof(buf) - 1;
+                }
+            }
+        }
+
+        if(readed_bytes != data_size){
+            ret = 0;
+            goto end;
+        }
+            
     }
-
 end:
     fclose(finalfp);
     return (ret);

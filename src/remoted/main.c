@@ -142,12 +142,6 @@ int main(int argc, char **argv)
         OS_PassEmptyKeyfile();
     }
 
-    /* If we have not change the default user, run this as root. This allows libcurl to work inside chrooted environment*/
-    if(strcmp(user,REMUSER) == 0)
-    {
-        user = ROOTUSER;
-    }
-
     /* Check if the user and group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);

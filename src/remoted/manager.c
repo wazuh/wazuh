@@ -217,7 +217,6 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     os_md5 md5sum;
     unsigned int f_size = 0;
     file_sum **f_sum;
-    File fmerged_backup;
     char merged_tmp[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
     char file[PATH_MAX + 1];
@@ -232,9 +231,6 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     f_sum[f_size]->sum[0] = '\0';
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
-
-    // Backup merged file if exists
-    w_backup_file(&fmerged_backup,merged);
 
     // Check if the yaml file has changed and reload it
     if(w_yaml_file_has_changed()){
@@ -255,11 +251,30 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
             if(r_group->merge_file_index >= 0){
                 file_url = r_group->files[r_group->merge_file_index].url;
                 file_name = SHAREDCFG_FILENAME;
-                snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", DEFAULTDIR SHAREDCFG_DIR, group, file_name);
+                snprintf(destination_path, PATH_MAX + 1, "/%s/%s", TMP_DIR, file_name);
                 mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
                 downloaded = wurl_request(file_url,destination_path);
                 w_download_status(downloaded,file_url,destination_path);
                 r_group->merged_is_downloaded = !downloaded;
+
+                // Validate the file
+                if(r_group->merged_is_downloaded){
+                    
+                    // File is invalid
+                    if(!TestUnmergeFiles(destination_path,OS_TEXT))
+                    {
+                        int fd = unlink(destination_path);
+
+                        merror("The downloaded file '%s' is corrupted.",destination_path);
+
+                        if(fd == -1){
+                            merror("Failed to delete file '%s'",destination_path);
+                        }
+                        return;
+                    }
+
+                    OS_MoveFile(destination_path,merged);
+                }
             }
             else{ // Download all files
                 int i;
@@ -268,7 +283,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
                 {
                     file_url = r_group->files[i].url;
                     file_name = r_group->files[i].name;
-                    snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", DEFAULTDIR SHAREDCFG_DIR, group, file_name);
+                    snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
                     mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
                     downloaded = wurl_request(file_url,destination_path);
                     w_download_status(downloaded,file_url,destination_path);
@@ -283,19 +298,6 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     f_size++;
 
     if(r_group && r_group->merged_is_downloaded){
-
-        // Check if the merged file is OK
-        // If is not, delete the file and restore backup
-        if(!TestUnmergeFiles(merged,OS_TEXT))
-        {
-            /* Restore the backup */
-            char merged_backup[PATH_MAX + 1];
-            snprintf(merged_backup, PATH_MAX + 1, "%s/%s/%s.backup", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
-            
-            OS_MoveFile(merged_backup,merged);
-            merror("The downloaded file '%s' is corrupted. Previous merged.mg is restored",merged);
-            return;
-        } 
         
         // Validate the file
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {

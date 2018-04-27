@@ -96,6 +96,16 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
     }
 
 error:
+    if(agents)
+    {   
+        int i;
+        for(i = 0; agents[i].name; i++){
+            free(agents[i].name);
+            free(agents[i].group);
+        }
+        free(agents);
+        agents = NULL;
+    }
     yaml_event_delete(&event);
     return NULL;
 }
@@ -130,10 +140,13 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
                     }
 
                     // Check if the file name is merged.mg
-                    for (i = 0; group->files[i].name; i++) {
-                        if (!strcmp(group->files[i].name, SHAREDCFG_FILENAME)) {
-                            group->merge_file_index = i;
-                            break;
+                    if(group->files)
+                    {
+                        for (i = 0; group->files[i].name; i++) {
+                            if (!strcmp(group->files[i].name, SHAREDCFG_FILENAME)) {
+                                group->merge_file_index = i;
+                                break;
+                            }
                         }
                     }
 
@@ -231,6 +244,11 @@ remote_files_group * w_read_groups(yaml_parser_t * parser) {
     }
 
 error:
+    if(groups)
+    {
+        free(groups);
+        groups = NULL;
+    }
     yaml_event_delete(&event);
     return NULL;
 }
@@ -286,9 +304,21 @@ file * w_read_group_files(yaml_parser_t * parser) {
 
     default:
         merror("Parsing error: unexpected token %d", event.type);
+        goto error;
     }
 
 error:
+    if(files)
+    {
+         int i;
+         for(i=0;files[i].name;i++){
+            free(files[i].url);
+            free(files[i].name);
+        } 
+
+        free(files);
+        files = NULL;
+    }
     yaml_event_delete(&event);
     return NULL;
 }
