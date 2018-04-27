@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - External libraries moved to an external repository.
 - Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
 - Ignore OverlayFS directories on Rootcheck system scan.
+- Compiling external libraries as shared objects in order to shrink space. ([#483](https://github.com/wazuh/wazuh/pull/483))
 
 ### Fixed
 
