@@ -251,7 +251,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
             if(r_group->merge_file_index >= 0){
                 file_url = r_group->files[r_group->merge_file_index].url;
                 file_name = SHAREDCFG_FILENAME;
-                snprintf(destination_path, PATH_MAX + 1, "/%s/%s", TMP_DIR, file_name);
+                snprintf(destination_path, PATH_MAX + 1, "/%s/%s", DOWNLOAD_DIR, file_name);
                 mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
                 downloaded = wurl_request(file_url,destination_path);
                 w_download_status(downloaded,file_url,destination_path);
@@ -259,7 +259,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
 
                 // Validate the file
                 if(r_group->merged_is_downloaded){
-                    
+
                     // File is invalid
                     if(!TestUnmergeFiles(destination_path,OS_TEXT))
                     {
@@ -298,7 +298,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     f_size++;
 
     if(r_group && r_group->merged_is_downloaded){
-        
+
         // Validate the file
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
             f_sum[0]->sum[0] = '\0';
@@ -313,7 +313,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
     }
     else{
         // Merge ar.conf always
-        
+
         if (!logr.nocmerged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
             // First call, truncate merged file

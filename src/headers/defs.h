@@ -305,6 +305,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define UPGRADE_DIR   "upgrade"
 #endif
 
+// Download directory
+#define DOWNLOAD_DIR  "/var/download"
+
 /* Built-in defines */
 #define DEFAULTQPATH    DEFAULTDIR DEFAULTQUEUE
 
