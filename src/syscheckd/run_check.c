@@ -410,9 +410,9 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
         if (sha1sum || md5sum || sha256sum) {
             /* Generate checksums of the file */
             if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
-                strncpy(sf_sum, "xxx", 4);
-                strncpy(mf_sum, "xxx", 4);
-                strncpy(sf256_sum, "xxx", 4);
+                strncpy(sf_sum, "n/a", 4);
+                strncpy(mf_sum, "n/a", 4);
+                strncpy(sf256_sum, "n/a", 4);
             }
         }
     }
@@ -425,9 +425,9 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
                 if (sha1sum || md5sum || sha256sum) {
                     /* Generate checksums of the file */
                     if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
-                        strncpy(sf_sum, "xxx", 4);
-                        strncpy(mf_sum, "xxx", 4);
-                        strncpy(sf256_sum, "xxx", 4);
+                        strncpy(sf_sum, "n/a", 4);
+                        strncpy(mf_sum, "n/a", 4);
+                        strncpy(sf256_sum, "n/a", 4);
                     }
                 }
             }

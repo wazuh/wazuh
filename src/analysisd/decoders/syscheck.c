@@ -204,12 +204,15 @@ static FILE *DB_File(const char *agent, int *agent_id)
 /* Search the DB for any entry related to the file being received */
 static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 {
-    int p = 0;
     size_t sn_size;
     int agent_id;
+    unsigned int st;
+    unsigned int sf;
 
     char *saved_sum;
     char *saved_name;
+    char *saved_time;
+    char *saved_frec;
 
     FILE *fp;
 
@@ -251,13 +254,25 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
         /* New format - with a timestamp */
         if (*saved_name == '!') {
+            /* Get time */
+            saved_time = saved_name;
+            saved_time++;
+
             saved_name = strchr(saved_name, ' ');
             if (saved_name == NULL) {
                 merror("Invalid integrity message in the database");
                 fgetpos(fp, &sdb.init_pos); /* Get next location */
                 continue;
             }
+            *saved_name = '\0';
             saved_name++;
+            st = atoi(saved_time);
+        }
+
+        if (saved_time == NULL) {
+            merror("Invalid integrity message in the database");
+            fgetpos(fp, &sdb.init_pos); /* Get next location */
+            continue;
         }
 
         /* Remove newline from saved_name */
@@ -284,43 +299,44 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             lf->data = NULL;
             return (0);
         }
+        /* Get frec */
+        saved_frec = sdb.buf;
+        saved_frec[2] = '\0';
+        sf = atoi(saved_frec);
+
+        if (sf > 99) {
+            sf = 0;
+        }
+
+        if (saved_frec == NULL) {
+            merror("Invalid integrity message in the database");
+            fgetpos(fp, &sdb.init_pos); /* Get next location */
+            continue;
+        }
 
         mdebug2("Agent: %d, location: <%s>, file: <%s>, sum: <%s>, saved: <%s>", agent_id, lf->location, f_name, c_sum, saved_sum);
 
-        /* If we reached here, the checksum of the file has changed */
-        if (saved_sum[-3] == '!') {
-            p++;
-            if (saved_sum[-2] == '!') {
-                p++;
-                if (saved_sum[-1] == '!') {
-                    p++;
-                } else if (saved_sum[-1] == '?') {
-                    p += 2;
-                }
-            }
-        }
-
-        /* Check the number of changes */
         if (!Config.syscheck_auto_ignore) {
             sdb.syscheck_dec->id = sdb.id1;
         } else {
-            switch (p) {
-                case 0:
-                    sdb.syscheck_dec->id = sdb.id1;
-                    break;
-
-                case 1:
-                    sdb.syscheck_dec->id = sdb.id2;
-                    break;
-
-                case 2:
-                    sdb.syscheck_dec->id = sdb.id3;
-                    break;
-
-                default:
+            if (lf->time.tv_sec - st < Config.syscheck_ignore_time) {
+                if (sf >= Config.syscheck_ignore_frecuency) {
+                    /* No send alert */
                     lf->data = NULL;
                     return (0);
-                    break;
+                }
+                else {
+                    sdb.syscheck_dec->id = sdb.id1;
+                    sf++;
+                    if (sf > 99) {
+                        sf = 99;
+                    }
+                }
+            }
+            else {
+                sdb.syscheck_dec->id = sdb.id1;
+                sf = 1;
+                st = lf->time.tv_sec;
             }
         }
 
@@ -334,12 +350,10 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
         /* Add the new entry at the end of the file */
         fseek(fp, 0, SEEK_END);
-        fprintf(fp, "%c%c%c%s !%ld %s\n",
-                '!',
-                p >= 1 ? '!' : '+',
-                p == 2 ? '!' : (p > 2) ? '?' : '+',
+        fprintf(fp, "%02u:%s !%ld %s\n",
+                sf,
                 c_sum,
-                (long int)lf->time.tv_sec,
+                (long int)st,
                 f_name);
         fflush(fp);
 
@@ -538,7 +552,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
     /* If we reach here, this file is not present in our database */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time.tv_sec, f_name);
+    fprintf(fp, "00:%s !%ld %s\n", c_sum, (long int)lf->time.tv_sec, f_name);
     fflush(fp);
 
     /* Insert row in SQLite DB*/
