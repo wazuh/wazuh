@@ -98,7 +98,7 @@ class MasterManagerHandler(ServerHandler):
 
 
     # Private methods
-    def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path, client_name, cluster_control_key, cluster_control_subkey):
+    def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path, client_name, cluster_control_key, cluster_control_subkey, tag):
         def update_file(n_errors, name, data, file_time=None, content=None):
             # Full path
             full_path = common.ossec_path + name
@@ -121,7 +121,7 @@ class MasterManagerHandler(ServerHandler):
                 tmp_dir=tmp_path, whoami='master')
 
             except Exception as e:
-                logger.debug2("Error updating file '{}': {}".format(name, e))
+                logger.debug2("{}: Error updating file '{}': {}".format(tag, name, e))
                 n_errors[data['cluster_item_key']] = 1 if not n_errors.get(data['cluster_item_key']) \
                                                           else n_errors[data['cluster_item_key']] + 1
 
@@ -148,7 +148,7 @@ class MasterManagerHandler(ServerHandler):
                     n_errors = update_file(n_errors, filename, data)
 
         except Exception as e:
-            logger.error("[Master] Error updating client files: '{}'.".format(str(e)))
+            logger.error("{}: Error updating client files: '{}'.".format(tag, e))
             raise e
 
         if sum(n_errors.values()) > 0:
@@ -194,7 +194,8 @@ class MasterManagerHandler(ServerHandler):
         # Update files
         self._update_client_files_in_master(client_files_json, client_files_json,
                                             zip_dir_path, client_name,
-                                            cluster_control_key, cluster_control_subkey)
+                                            cluster_control_key, cluster_control_subkey,
+                                            tag)
 
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)

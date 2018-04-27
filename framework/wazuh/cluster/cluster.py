@@ -303,7 +303,8 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
                 agent_names, agent_ids = {}, {}
 
             if is_agent_info:
-                agent_name = path.basename(file_path).split('-',1)[0]
+                agent_name_re = re.match(r'(^.+)-(.+)$', path.basename(file_path))
+                agent_name = agent_name_re.group(1) if agent_name_re else path.basename(file_path)
                 if agent_name not in agent_names:
                     raise Exception("Received an unexistent agent status file: {}".format(agent_name))
             elif is_agent_group:
