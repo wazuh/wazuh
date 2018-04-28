@@ -53,7 +53,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl 
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 		OSSEC_LDFLAGS+=-L${EXTERNAL_LIBDB}.libs -ldb-6.2
 		OSSEC_LDFLAGS+=-Wl,-rpath,${PREFIX}/lib
 #		OSSEC_LDFLAGS+=-L/usr/local/lib
@@ -599,15 +599,15 @@ libcJSON.a: ${cjson_o}
 LIBYAML_LIB=${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2
 
 ${LIBYAML_LIB}:
-	cd ${EXTERNAL_LIBYAML} && ./bootstrap && ./configure && ${MAKE}
+	cd ${EXTERNAL_LIBYAML} && ./configure && ${MAKE}
 
 #### curl ##########
 LIBCURL_LIB=${EXTERNAL_CURL}lib/.libs/libcurl.so
 
 ${LIBCURL_LIB}:
-	cd ${EXTERNAL_CURL} && ./buildconf && CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LIBS="-lssl -lcrypto" LD_LIBRARY_PATH="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure && ${MAKE}
-	
- 
+	cd ${EXTERNAL_CURL} && CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LIBS="-lssl -lcrypto" LD_LIBRARY_PATH="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure && ${MAKE}
+
+
 #### procps #########
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
