@@ -2,7 +2,7 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
-ROUTE_PATH := $(shell sh -c 'pwd')
+ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
@@ -626,13 +626,30 @@ ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
 
 #### libyaml ##########
 
-${LIBYAML_LIB}:
-	cd ${EXTERNAL_LIBYAML} && ./configure && ${MAKE}
+${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
+	$(MAKE) -C $(EXTERNAL_LIBYAML)
+ifeq (${uname_S},Darwin)
+	install_name_tool -id "@rpath/libyaml-0.2.dylib" $@
+endif
+
+$(EXTERNAL_LIBYAML)Makefile:
+	cd $(EXTERNAL_LIBYAML) && ./configure
 
 #### curl ##########
 
-${LIBCURL_LIB}: $(OPENSSL_LIB)
-	cd ${EXTERNAL_CURL} && CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LIBS="-lssl -lcrypto" LD_LIBRARY_PATH="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure && ${MAKE}
+${LIBCURL_LIB}: $(EXTERNAL_CURL)Makefile
+	${MAKE} -C $(EXTERNAL_CURL)lib
+ifeq (${uname_S},Darwin)
+	install_name_tool -id "@rpath/libcurl.4.dylib" $@
+endif
+
+ifeq (${uname_S},Darwin)
+$(EXTERNAL_CURL)Makefile:
+	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl
+else
+$(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LD_LIBRARY_PATH="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure
+endif
 
 
 #### procps #########
