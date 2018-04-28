@@ -309,7 +309,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     }
 
     /* Add pending key to write */
-    add_insert(keys.keyentries[index]);
+    add_insert(keys.keyentries[index],NULL);
     write_pending = 1;
     pthread_cond_signal(&cond_pending);
 

@@ -108,6 +108,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
     send_to_socket(cluster_socket, count_query)
     n_files = int(filter(lambda x: x != '\x00', cluster_socket.recv(10000)))
     removed = False
+    removed_files = 0
 
     if n_files == 0:
         logging.info("New manager found: {0}".format(node))
@@ -148,6 +149,7 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
                                     and all_files[x] != 'deleted', files_in_db)):
             delete_sql = "update2"
             removed = True
+            removed_files += len(missing)
             for m in missing:
                 delete_sql += " tobedeleted {} {}".format(node, m)
 
@@ -162,6 +164,11 @@ def scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_soc
                 send_to_socket(cluster_socket, delete_sql)
                 data = receive_data_from_db_socket(cluster_socket)
 
+    logging.info("{}: Found {} files. {} synchronized, {} pending, {} deleted and {} to be deleted in the next sync.".format(
+                node, len(all_files),
+                len(filter(lambda x: x == 'synchronized', all_files.values())),
+                len(filter(lambda x: x == 'pending', all_files.values())),
+                len(filter(lambda x: x == 'deleted', all_files.values())), removed_files))
     return all_files, removed
 
 
@@ -173,6 +180,7 @@ def scan_for_new_files():
     own_items = list_files_from_filesystem(cluster_config['node_type'], cluster_items)
 
     for node in get_remote_nodes():
+        logging.info("Scanning new files for node {}.".format(node))
         scan_for_new_files_one_node(node, cluster_items, cluster_config, cluster_socket, own_items)
 
     cluster_socket.close()
@@ -344,7 +352,7 @@ def _update_file(fullpath, new_content, umask_int=None, mtime=None, w_mode=None,
         if node_type=='master':
             # check if the date is older than the manager's date
             if path.isfile(fullpath) and datetime.fromtimestamp(int(stat(fullpath).st_mtime)) > mtime:
-                logging.warning("Receiving an old file ({})".format(fullpath))
+                logging.debug("Receiving an old file ({})".format(fullpath))
                 raise WazuhException(3012)
         elif is_agent_info:
             logging.warning("Agent-info received in a client node.")
@@ -470,8 +478,14 @@ def receive_zip(zip_file):
                             w_mode=remote_write_mode,
                             node_type=config['node_type'])
 
+        except WazuhException as e:
+            if e.code != 3012:
+                logging.error("Error extracting zip file: {0}".format(str(e)))
+            final_dict['error'].append({'item': name, 'reason': str(e)})
+            continue
+
         except Exception as e:
-            logging.error("Error extracting zip file: {0}".format(str(e)))
+            logging.error("Error processing file {} from received zip file: {0}".format(name, str(e)))
             final_dict['error'].append({'item': name, 'reason': str(e)})
             continue
 
@@ -482,8 +496,15 @@ def receive_zip(zip_file):
     return final_dict
 
 
-def get_remote_nodes(connected=True, updateDBname=False):
-    all_nodes = get_nodes(updateDBname)['items']
+def divide_list(l, size=1000):
+    return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
+
+def get_remote_nodes(connected=True, updateDBname=False, config=None):
+    try:
+        all_nodes = get_nodes(updateDBname, config)['items']
+    except Exception as e:
+        logging.error("Could not get remote nodes' information: {}".format(str(e)))
+        raise #WazuhException(3017, str(e))
 
     # Get connected nodes in the cluster
     if connected:
@@ -523,51 +544,58 @@ def check_files_to_restart(pending_files, cluster_items):
         return set()
 
 
-def push_updates_single_node(all_files, node_dest, config_cluster, removed, cluster_items, result_queue):
-    # filter to send only pending files
-    pending_files = set(filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items()))
-    tobedeleted_files = filter(lambda x: x[1] == 'tobedeleted', all_files.items())
-    restart_files = check_files_to_restart(pending_files, cluster_items)
-    pending_files -= restart_files
+def push_updates_single_node(all_files, node_dest, config_cluster, removed, cluster_items, result_queue, debug=False):
+    try:
+        # filter to send only pending files
+        pending_files = set(filter(lambda x: x[1] != 'synchronized' and x[1] != 'tobedeleted' and x[1] != 'deleted', all_files.items()))
+        tobedeleted_files = filter(lambda x: x[1] == 'tobedeleted', all_files.items())
+        restart_files = check_files_to_restart(pending_files, cluster_items)
+        pending_files -= restart_files
 
-    if len(pending_files) > 0 or removed or len(tobedeleted_files) > 0:
-        logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
-        zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
-                                  node_type=config_cluster['node_type'],
-                                  tobedeleted_files=map(itemgetter(0), tobedeleted_files))
+        if len(pending_files) > 0 or removed or len(tobedeleted_files) > 0:
+            logging.info("Sending {0} {1} files".format(node_dest, len(pending_files)))
+            zip_file = compress_files(list_path=set(map(itemgetter(0), pending_files)),
+                                      node_type=config_cluster['node_type'],
+                                      tobedeleted_files=map(itemgetter(0), tobedeleted_files))
 
-        error, response = send_request(host=node_dest, port=config_cluster['port'],
-                                       data="zip {0}".format(str(len(zip_file)).
-                                        zfill(common.cluster_protocol_plain_size - len("zip "))),
-                                       file=zip_file, key=config_cluster['key'])
+            error, response = send_request(host=node_dest, port=config_cluster['port'],
+                                           data="zip {0}".format(str(len(zip_file)).
+                                            zfill(common.cluster_protocol_plain_size - len("zip "))),
+                                           file=zip_file, key=config_cluster['key'],
+                                           connection_timeout=int(config_cluster['connection_timeout']),
+                                           socket_timeout=int(config_cluster['socket_timeout']))
 
-        try:
-            res = literal_eval(response)
-        except Exception as e:
-            res = response
+            try:
+                res = literal_eval(response)
+            except Exception as e:
+                res = response
 
-    else:
-        logging.info("No pending files to send to {0} ".format(node_dest))
-        res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[], 'restart': False}}
-        error = 0
+        else:
+            logging.info("No pending files to send to {0} ".format(node_dest))
+            res = {'error': 0, 'data':{'updated':[], 'error':[], 'deleted':[], 'restart': False}}
+            error = 0
 
 
-    if error != 0:
-        logging.error(res)
-        result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                          'error': 1, 'files':{'updated':[], 'deleted':[],
-                                        'error':list(map(itemgetter(0), pending_files))}})
+        if error != 0:
+            logging.error("Error response received from {}: {}".format(node_dest, response))
+            result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
+                              'error': 1, 'files':{'updated':[], 'deleted':[],
+                                            'error':list(map(itemgetter(0), pending_files))}})
 
-    elif res['error'] != 0:
-        logging.debug(res)
-        result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
-                          'error': 1, 'files':{'updated':[], 'deleted':[],
-                                        'error':list(map(itemgetter(0), pending_files)), 'restart': False}})
-    else:
-        logging.debug({'updated': len(res['data']['updated']),
-                      'error': res['data']['error'],
-                      'deleted': len(res['data']['deleted'])})
-        result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
+        elif res['error'] != 0:
+            logging.debug(res)
+            result_queue.put({'node': node_dest, 'reason': "{0} - {1}".format(error, response),
+                              'error': 1, 'files':{'updated':[], 'deleted':[],
+                                            'error':list(map(itemgetter(0), pending_files)), 'restart': False}})
+        else:
+            logging.debug({'updated': len(res['data']['updated']),
+                          'error': res['data']['error'],
+                          'deleted': len(res['data']['deleted'])})
+            result_queue.put({'node': node_dest, 'files': res['data'], 'error': 0, 'reason': ""})
+    except Exception as e:
+        logging.error("Error sending/receiving updates from {}: {}".format(node_dest, str(e)))
+        if debug:
+            raise
 
 
 def update_node_db_after_sync(data, node, cluster_socket):
@@ -585,12 +613,8 @@ def update_node_db_after_sync(data, node, cluster_socket):
         for f in failed:
             if isinstance(f, dict):
                 if f['reason'].startswith('Error 3012'):
-                    if 'agent-info' in f['item']:
-                        pass
-                        #delete_sql += " /{0}".format(f['item'])
-                    else:
-                        # set old files as synchronized so the node doesn't send them anymore
-                        update_sql += " synchronized {} /{}".format(node, f['item'])
+                    # set old files as synchronized so the node doesn't send them anymore
+                    update_sql += " synchronized {} /{}".format(node, f['item'])
                 else:
                     update_sql += " failed {0} /{1}".format(node, f['item'])
             else:
@@ -630,45 +654,49 @@ def sync_one_node(debug, node, force=False, config_cluster=None, cluster_items=N
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
-    cluster_socket = connect_to_db_socket()
-    logging.debug("Connected to cluster database socket")
+    try:
+        cluster_socket = connect_to_db_socket()
+        logging.debug("Connected to cluster database socket")
 
-    if force:
-        clear_file_status_one_node(node, cluster_socket)
-    all_files, removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
+        if force:
+            clear_file_status_one_node(node, cluster_socket)
+        all_files, removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
 
-    after = time()
-    synchronization_duration += after-before
-    logging.debug("Time retrieving info from DB: {0}".format(after-before))
+        after = time()
+        synchronization_duration += after-before
+        logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
-    before = time()
-    result_queue = queue()
-    push_updates_single_node(all_files, node, config_cluster, removed, cluster_items, result_queue)
+        before = time()
+        result_queue = queue()
+        push_updates_single_node(all_files, node, config_cluster, removed, cluster_items, result_queue, debug)
 
-    after = time()
-    synchronization_duration += after-before
-    logging.debug("Time sending info: {0}".format(after-before))
-    before = time()
+        after = time()
+        synchronization_duration += after-before
+        logging.debug("Time sending info: {0}".format(after-before))
+        before = time()
 
-    result = result_queue.get()
-    update_node_db_after_sync(result, node, cluster_socket)
-    after = time()
-    synchronization_duration += after-before
+        result = result_queue.get()
+        update_node_db_after_sync(result, node, cluster_socket)
+        after = time()
+        synchronization_duration += after-before
 
-    send_recv_and_check(cluster_socket, "clearlast")
-    send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
+        send_recv_and_check(cluster_socket, "clearlast")
+        send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
 
-    cluster_socket.close()
-    logging.debug("Time updating DB: {0}".format(after-before))
+        cluster_socket.close()
+        logging.debug("Time updating DB: {0}".format(after-before))
 
-    if debug:
-        return result
-    else:
-        return {'updated': len(result['files']['updated']),
-                  'error': result['files']['error'],
-                  'deleted': result['files']['deleted'],
-                  'error': result['error'],
-                  'reason': result['reason']}
+        if debug:
+            return result
+        else:
+            return {'updated': len(result['files']['updated']),
+                      'error': result['files']['error'],
+                      'deleted': result['files']['deleted'],
+                      'error': result['error'],
+                      'reason': result['reason']}
+    except Exception as e:
+        cluster_socket.close()
+        raise e
 
 
 def sync(debug, force=False, config_cluster=None, cluster_items=None):
@@ -692,68 +720,72 @@ def sync(debug, force=False, config_cluster=None, cluster_items=None):
     own_items = list_files_from_filesystem(config_cluster['node_type'], cluster_items)
     own_items_names = own_items.keys()
 
-    remote_nodes = get_remote_nodes(True, True)
+    remote_nodes = get_remote_nodes(True, True, config_cluster)
     local_node = get_node()['node']
     logging.info("Starting to sync {0}'s files".format(local_node))
 
-    cluster_socket = connect_to_db_socket()
-    logging.debug("Connected to cluster database socket")
+    try:
+        cluster_socket = connect_to_db_socket()
+        logging.debug("Connected to cluster database socket")
 
-    # for each connected manager, check its files. If the manager is not on database add it
-    # with all files marked as pending
-    all_nodes_files = {}
+        # for each connected manager, check its files. If the manager is not on database add it
+        # with all files marked as pending
+        all_nodes_files = {}
 
-    logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
-    logging.info("Found {0} connected nodes".format(len(remote_nodes)))
+        logging.debug("Nodes to sync: {0}".format(str(remote_nodes)))
+        logging.info("Found {0} connected nodes".format(len(remote_nodes)))
 
-    for node in remote_nodes:
-        if force:
-            clear_file_status_one_node(node, cluster_socket)
-        all_nodes_files[node], removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
+        for node in remote_nodes:
+            if force:
+                clear_file_status_one_node(node, cluster_socket)
+            all_nodes_files[node], removed = scan_for_new_files_one_node(node, cluster_items, config_cluster, cluster_socket, own_items, True)
 
-    after = time()
-    synchronization_duration += after-before
-    logging.debug("Time retrieving info from DB: {0}".format(after-before))
+        after = time()
+        synchronization_duration += after-before
+        logging.debug("Time retrieving info from DB: {0}".format(after-before))
 
-    before = time()
-    result_queue = queue()
-    threads = []
-    thread_results = {}
-    for node in remote_nodes:
-        t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
-                                                                    config_cluster, removed,
-                                                                    cluster_items, result_queue))
-        threads.append(t)
-        t.start()
-        result = result_queue.get()
-        thread_results[result['node']] = {'files': result['files'], 'error': result['error'],
-                                          'reason': result['reason']}
+        before = time()
+        result_queue = queue()
+        threads = []
+        thread_results = {}
+        for node in remote_nodes:
+            t = threading.Thread(target=push_updates_single_node, args=(all_nodes_files[node],node,
+                                                                        config_cluster, removed,
+                                                                        cluster_items, result_queue, debug))
+            threads.append(t)
+            t.start()
+            result = result_queue.get()
+            thread_results[result['node']] = {'files': result['files'], 'error': result['error'],
+                                              'reason': result['reason']}
 
-    for t in threads:
-        t.join()
-    after = time()
-    synchronization_duration += after-before
-    logging.debug("Time sending info: {0}".format(after-before))
+        for t in threads:
+            t.join()
+        after = time()
+        synchronization_duration += after-before
+        logging.debug("Time sending info: {0}".format(after-before))
 
-    before = time()
-    for node,data in thread_results.items():
-        update_node_db_after_sync(data, node, cluster_socket)
+        before = time()
+        for node,data in thread_results.items():
+            update_node_db_after_sync(data, node, cluster_socket)
 
-    after = time()
-    synchronization_duration += after-before
+        after = time()
+        synchronization_duration += after-before
 
-    send_recv_and_check(cluster_socket, "clearlast")
-    send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
+        send_recv_and_check(cluster_socket, "clearlast")
+        send_recv_and_check(cluster_socket, "updatelast {:d} {:f}".format(int(synchronization_date), synchronization_duration))
 
-    cluster_socket.close()
-    logging.debug("Time updating DB: {0}".format(after-before))
+        cluster_socket.close()
+        logging.debug("Time updating DB: {0}".format(after-before))
 
-    if debug:
-        return thread_results
-    else:
-        return {node:{'updated': len(data['files']['updated']),
-                      'error': data['files']['error'],
-                      'deleted': data['files']['deleted'],
-                      'error': data['error'],
-                      'reason': data['reason']}
-                      for node,data in thread_results.items()}
+        if debug:
+            return thread_results
+        else:
+            return {node:{'updated': len(data['files']['updated']),
+                          'error': data['files']['error'],
+                          'deleted': data['files']['deleted'],
+                          'error': data['error'],
+                          'reason': data['reason']}
+                          for node,data in thread_results.items()}
+    except Exception as e:
+        cluster_socket.close()
+        raise e

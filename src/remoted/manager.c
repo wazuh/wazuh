@@ -14,7 +14,7 @@
 #include "shared_download.h"
 #include <pthread.h>
 
-#if defined(__FreeBSD__) || defined(__MACH__)
+#if defined(__FreeBSD__) || defined(__MACH__) || defined(__sun__)
 #define HOST_NAME_MAX 64
 #endif
 

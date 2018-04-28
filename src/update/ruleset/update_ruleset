@@ -298,7 +298,13 @@ def get_new_ruleset(source, url, branch_name=None):
 
     # Update main directory
     copy("{0}/VERSION".format(update_ruleset), ossec_ruleset_version_path)
-    copy("{0}/update_ruleset".format(update_ruleset), ossec_update_script, 0o750)
+    try:
+        if os.path.isfile("{0}/update_ruleset".format(update_ruleset)):
+            copy("{0}/update_ruleset".format(update_ruleset), ossec_update_script, 0o750)
+        else:
+            copy("{0}/update_ruleset.py".format(update_ruleset), ossec_update_script, 0o750)
+    except Exception as e:
+        exit(2,"Upgrade aborted: Update ruleset not found.")
 
 
     return get_ruleset_version()

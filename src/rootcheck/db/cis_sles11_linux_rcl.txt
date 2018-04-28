@@ -550,9 +550,7 @@ f:/etc/ssh/sshd_config -> !r:^# && !r:LogLevel\.+INFO;
 
 # 9.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
 [ CIS - SLES11 - 9.2.5 - SSH Configuration - Set SSH MaxAuthTries to 4 or Less  {CIS - SLES11 - 9.2.5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_SUSE_Linux_Enterprise_Server_11_Benchmark_v1.1.0.pdf]
-f:/etc/ssh/sshd_config -> !r:^# && r:MaxAuthTries && !r:3\s*$;
-f:/etc/ssh/sshd_config -> r:^#\s*MaxAuthTries;
-f:/etc/ssh/sshd_config -> !r:MaxAuthTries;
+f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;
 
 # 9.2.6 Set SSH IgnoreRhosts to Yes (Scored)
 [CIS - SLES11 - 9.2.6 - SSH Configuration - IgnoreRHosts disabled {CIS: 9.2.6 SLES11} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_SUSE_Linux_Enterprise_Server_11_Benchmark_v1.1.0.pdf]
@@ -564,13 +562,11 @@ f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;
 
 # 9.2.8 Disable SSH Root Login (Scored)
 [CIS - SLES11 - 9.2.8 - SSH Configuration - Root login allowed {CIS: 9.2.8 SLES11} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_SUSE_Linux_Enterprise_Server_11_Benchmark_v1.1.0.pdf]
-f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
-f:/etc/ssh/sshd_config -> r:^#\s*PermitRootLogin;
+f:$sshd_file -> !r:^\s*PermitRootLogin\.+no;
 
 # 9.2.9 Set SSH PermitEmptyPasswords to No (Scored)
 [CIS - SLES11 - 9.2.9 - SSH Configuration - Empty passwords permitted {CIS: 9.2.9 SLES11} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_SUSE_Linux_Enterprise_Server_11_Benchmark_v1.1.0.pdf]
-f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
-f:/etc/ssh/sshd_config -> r:^#\s*PermitEmptyPasswords;
+f:$sshd_file -> !r:^\s*PermitEmptyPasswords\.+no;
 
 # 9.2.10 Do Not Allow Users to Set Environment Options (Scored)
 

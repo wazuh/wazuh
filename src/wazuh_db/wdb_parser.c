@@ -18,6 +18,7 @@ int wdb_parse(char * input, char * output) {
     char * sql;
     char * next;
     int agent_id;
+    char sagent_id[64];
     wdb_t * wdb;
     cJSON * data;
     char * out;
@@ -63,8 +64,10 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
 
+        snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
+
         if (wdb = wdb_open_agent2(agent_id), !wdb) {
-            merror("Couldn't open DB for agent '%d'", agent_id);
+            merror("Couldn't open DB for agent '%s'", sagent_id);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB for agent %d", agent_id);
             return -1;
         }
@@ -114,7 +117,9 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 if (wdb_parse_osinfo(wdb, next, output) == 0){
-                    mdebug2("Stored OS information in DB for agent '%d'", agent_id);
+                    mdebug2("Updated 'sys_osinfo' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'sys_osinfo' table for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "hardware") == 0) {
@@ -125,7 +130,9 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 if (wdb_parse_hardware(wdb, next, output) == 0){
-                    mdebug2("Stored HW information in DB for agent '%d'", agent_id);
+                    mdebug2("Updated 'sys_hwinfo' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'sys_hwinfo' table for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "port") == 0) {
@@ -136,7 +143,9 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 if (wdb_parse_ports(wdb, next, output) == 0){
-                    mdebug2("Stored Port information in DB for agent '%d'", agent_id);
+                    mdebug2("Updated 'sys_ports' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'sys_ports' table for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "package") == 0) {
@@ -147,7 +156,9 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 if (wdb_parse_packages(wdb, next, output) == 0){
-                    mdebug2("Stored package information in DB for agent '%d'", agent_id);
+                    mdebug2("Updated 'sys_programs' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'sys_programs' table for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "process") == 0) {
@@ -158,7 +169,9 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 if (wdb_parse_processes(wdb, next, output) == 0){
-                    mdebug2("Stored process information in DB for agent '%d'", agent_id);
+                    mdebug2("Updated 'sys_processes' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'sys_processes' table for agent '%s'", sagent_id);
                 }
             }
         } else if (strcmp(query, "sql") == 0) {

@@ -602,7 +602,11 @@ InstallCommon(){
     EXTERNAL_BERKELEY='external/libdb/build_unix/'
     EXTERNAL_LIBYAML='external/libyaml/'
     EXTERNAL_CURL='external/curl/'
-    EXTERNAL_SSL='external/openssl/'
+    EXTERNAL_JSON="external/cJSON/"
+    EXTERNAL_SQLITE="external/sqlite/"
+    EXTERNAL_SSL="external/openssl/"
+    EXTERNAL_PROCPS="external/procps/"
+    EXTERNAL_ZLIB="external/zlib/"
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -644,11 +648,32 @@ InstallCommon(){
     fi
 
   ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lib
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_BERKELEY}.libs/libdb-6.2.so ${PREFIX}/lib
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2 ${PREFIX}/lib
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_CURL}lib/.libs/libcurl.so ${PREFIX}/lib
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl.so.1.1 ${PREFIX}/lib
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto.so.1.1 ${PREFIX}/lib
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_JSON}libcjson.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SQLITE}libsqlite3.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl.1.1.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto.1.1.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_ZLIB}libz.1.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.2.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_CURL}lib/.libs/libcurl.4.dylib ${PREFIX}/lib
+    else
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_JSON}libcjson.so ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SQLITE}libsqlite3.so ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl.so.1.1 ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto.so.1.1 ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_ZLIB}libz.so.1 ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2 ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_CURL}lib/.libs/libcurl.so.4 ${PREFIX}/lib
+
+        if [ ${NUNAME} = 'Linux' ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_BERKELEY}.libs/libdb-6.2.so ${PREFIX}/lib
+            ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_PROCPS}libproc.so ${PREFIX}/lib
+        fi
+    fi
+
   ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin

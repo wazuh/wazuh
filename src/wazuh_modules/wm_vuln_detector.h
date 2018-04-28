@@ -65,6 +65,13 @@ typedef enum distribution{
     DIS_UNKNOW
 } distribution;
 
+typedef enum vu_logic {
+    VU_VULNERABLE,
+    VU_NOT_VULNERABLE,
+    VU_EQUAL,
+    VU_NOT_FIXED
+} vu_logic;
+
 typedef struct update_flags {
     unsigned int update:1;
     unsigned int update_ubuntu:1;
@@ -188,7 +195,6 @@ typedef struct last_scan {
 } last_scan;
 
 int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
-int get_interval(char *source, unsigned long *interval);
 int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software);
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list);
 
