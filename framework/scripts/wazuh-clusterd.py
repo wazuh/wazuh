@@ -104,19 +104,26 @@ def set_logging(foreground_mode=False, debug_mode=0):
 
 
 def clean_exit(reason, error=False):
-    msg = "[{0}] Exiting. Reason: '{1}'.".format(manager_tag, reason)
+    global processing_exit
 
-    if error:
-        logger.error(msg)
+    if not processing_exit:
+        processing_exit = True
+
+        msg = "[{0}] Exiting. Reason: '{1}'.".format(manager_tag, reason)
+
+        if error:
+            logger.error(msg)
+        else:
+            logger.info(msg)
+
+        if manager:
+            manager.exit()
+
+        delete_pid("wazuh-clusterd", getpid())
+
+        exit(1)
     else:
-        logger.info(msg)
-
-    if manager:
-        manager.exit()
-
-    delete_pid("wazuh-clusterd", getpid())
-
-    exit(1)
+        logger.debug2("[{0}] clean_exit was already executed. Skipping.".format(manager_tag))
 
 
 def signal_handler(n_signal, frame):
@@ -184,6 +191,7 @@ def client_main(cluster_configuration):
 if __name__ == '__main__':
     manager = None
     manager_tag = "wazuh-clusterd"
+    processing_exit = False
 
     # Signals
     signal(SIGINT, signal_handler)
