@@ -144,6 +144,8 @@ class MasterManagerHandler(ServerHandler):
                     for file_path, file_data, file_time in unmerge_agent_info(data['merge_type'], zip_dir_path, data['merge_name']):
                         n_errors = update_file(n_errors, file_path, data, file_time, file_data)
                         n_agentsinfo += 1
+                        if self.stopper.is_set():
+                            break
                 else:
                     n_errors = update_file(n_errors, filename, data)
 
@@ -152,7 +154,7 @@ class MasterManagerHandler(ServerHandler):
             raise e
 
         if sum(n_errors.values()) > 0:
-            logging.error("Errors updating client files: {}".format(
+            logging.error("{}: Errors updating client files: {}".format(tag, 
                 ' | '.join(['{}: {}'.format(key, value) for key, value in n_errors.items()])
             ))
 

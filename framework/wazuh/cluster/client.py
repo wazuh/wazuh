@@ -123,8 +123,12 @@ class ClientManagerHandler(ClientHandler):
                     if data['merged']:
                         for name, content, _ in unmerge_agent_info('agent-groups', zip_path_dir, file_to_overwrite):
                             overwrite_or_create_files(name, data, content)
+                            if self.stopper.is_set():
+                                break
                     else:
                         overwrite_or_create_files(file_to_overwrite, data)
+                        if self.stopper.is_set():
+                            break
                 except Exception as e:
                     error_shared_files += 1
                     logger.debug2("Error overwriting file '{}': {}".format(file_to_overwrite, str(e)))
@@ -139,8 +143,12 @@ class ClientManagerHandler(ClientHandler):
                     if data['merged']:
                         for name, content, _ in unmerge_agent_info('agent-groups', zip_path_dir, file_to_create):
                             overwrite_or_create_files(name, data, content)
+                            if self.stopper.is_set():
+                                break
                     else:
                         overwrite_or_create_files(file_to_create, data)
+                        if self.stopper.is_set():
+                            break
                 except Exception as e:
                     error_missing_files += 1
                     logger.debug2("Error creating file '{}': {}".format(file_to_create, str(e)))
@@ -166,6 +174,9 @@ class ClientManagerHandler(ClientHandler):
                     logger.debug2("Error removing file '{}': {}".format(file_to_remove, str(e)))
                     continue
 
+                if self.stopper.is_set():
+                    break
+
             directories_to_check = {os.path.dirname(f): cluster_items[data\
                                     ['cluster_item_key']]['remove_subdirs_if_empty']
                                     for f, data in wrong_files['extra'].items()}
@@ -179,6 +190,9 @@ class ClientManagerHandler(ClientHandler):
                     error_extra_files += 1
                     logger.debug2("Error removing directory '{}': {}".format(directory, str(e)))
                     continue
+
+                if self.stopper.is_set():
+                    break
 
         if error_extra_files or error_shared_files or error_missing_files:
             logger.error("Found errors: {} overwriting, {} creating and {} removing".format(
