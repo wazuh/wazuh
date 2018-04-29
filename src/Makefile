@@ -2,10 +2,13 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
+ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
+EXTERNAL_LIBYAML=external/libyaml/
+EXTERNAL_CURL=external/curl/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -49,8 +52,10 @@ OSSEC_LDFLAGS = -pthread -L${EXTERNAL_OPENSSL} -L$(EXTERNAL_JSON) -L$(EXTERNAL_Z
 OSSEC_LIBS = -lcjson -lm -lssl -lcrypto -lz $(LIBS)
 
 ifneq (${TARGET},winagent)
-		OSSEC_LDFLAGS+=-L$(EXTERNAL_SQLITE)
-		OSSEC_LIBS+=-lsqlite3
+ifneq (${TARGET},agent)
+		OSSEC_LDFLAGS += -L$(EXTERNAL_SQLITE) -L${EXTERNAL_CURL}lib/.libs -L${EXTERNAL_LIBYAML}src/.libs
+		OSSEC_LIBS += -lsqlite3 -lcurl -lyaml
+endif
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
@@ -77,6 +82,8 @@ ifeq (${uname_S},SunOS)
 		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
+#		This is necessary in order to compile libcurl
+		NM=gnm
 		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 else
 ifeq (${uname_S},Darwin)
@@ -157,7 +164,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON)
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include
 
 
 
@@ -520,14 +527,18 @@ endif
 SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.$(SHARED)
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.$(SHARED)
 PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.$(SHARED)
+DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.$(SHARED)
+LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.$(SHARED)
+LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.$(SHARED)
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB)
 
 ifneq (${TARGET},winagent)
-EXTERNAL_LIBS += $(SQLITE_LIB)
-
+ifneq (${TARGET},agent)
+EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB)
+endif
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += $(PROCPS_LIB) ${EXTERNAL_LIBDB}.libs/libdb-6.2.so
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
 endif
 endif
 
@@ -619,6 +630,34 @@ $(JSON_LIB): ${cjson_o}
 ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
+#### libyaml ##########
+
+${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
+	$(MAKE) -C $(EXTERNAL_LIBYAML)
+ifeq (${uname_S},Darwin)
+	install_name_tool -id "@rpath/libyaml-0.2.dylib" $@
+endif
+
+$(EXTERNAL_LIBYAML)Makefile:
+	cd $(EXTERNAL_LIBYAML) && ./configure
+
+#### curl ##########
+
+${LIBCURL_LIB}: $(EXTERNAL_CURL)Makefile
+	${MAKE} -C $(EXTERNAL_CURL)lib
+ifeq (${uname_S},Darwin)
+	install_name_tool -id "@rpath/libcurl.4.dylib" $@
+endif
+
+ifeq (${uname_S},Darwin)
+$(EXTERNAL_CURL)Makefile:
+	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl
+else
+$(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LD_LIBRARY_PATH="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure
+endif
+
+
 #### procps #########
 
 PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
@@ -633,8 +672,6 @@ $(PROCPS_LIB): ${procps_o}
 	${OSSEC_SHARED} ${OSSEC_CFLAGS} -o $@ $^
 
 #### Berkeley DB ######
-
-DB_LIB=${EXTERNAL_LIBDB}.libs/libdb-6.2.so
 
 ${DB_LIB}:
 ifeq (${uname_S},Linux)
@@ -653,7 +690,7 @@ space +=
 VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 
-EXTERNAL_RES := cJSON libdb openssl procps sqlite zlib
+EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -1344,6 +1381,8 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f win32/Makefile.gcc clean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
+	-cd ${EXTERNAL_LIBYAML} && ${MAKE} clean
+	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
 

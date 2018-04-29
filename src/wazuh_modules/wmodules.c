@@ -42,10 +42,18 @@ int wm_config() {
     // Read configuration: agent.conf
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
-    wmodule *database;
+    wmodule *module;
+
     // The database module won't be available on agents
-    if ((database = wm_database_read()))
-        wm_add(database);
+
+    if ((module = wm_database_read()))
+        wm_add(module);
+
+    // Downloading module
+
+    if ((module = wm_download_read()))
+        wm_add(module);
+
 #endif
 
     return 0;
