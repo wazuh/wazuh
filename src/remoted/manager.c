@@ -232,11 +232,6 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
 
-    // Check if the yaml file has changed and reload it
-    if(w_yaml_file_has_changed()){
-        w_yaml_file_update_structs();
-    }
-
     remote_files_group *r_group = w_parser_get_group(group);
     if(r_group){
         if(r_group->current_polling_time <= 0){
@@ -795,6 +790,11 @@ void *update_shared_files(__attribute__((unused)) void *none) {
          */
 
         if ((_ctime - _stime) >= INTERVAL) {
+            // Check if the yaml file has changed and reload it
+            if(w_yaml_file_has_changed()){
+                w_yaml_file_update_structs();
+            }
+
             c_files();
             _stime = _ctime;
         }

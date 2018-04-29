@@ -153,7 +153,7 @@ void wm_download_dispatch(char * buffer) {
     // Run download
     mdebug1("Downloading '%s' to '%s'", url, jpath);
 
-    switch (wurl_get(url, fpath)) {
+    switch (wurl_get(url, jpath)) {
     case OS_CONNERR:
         mdebug1(WURL_DOWNLOAD_FILE_ERROR, url);
         snprintf(buffer, OS_MAXSTR, "err connecting to url");
