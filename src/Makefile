@@ -52,8 +52,10 @@ OSSEC_LDFLAGS = -pthread -L${EXTERNAL_OPENSSL} -L$(EXTERNAL_JSON) -L$(EXTERNAL_Z
 OSSEC_LIBS = -lcjson -lm -lssl -lcrypto -lz $(LIBS)
 
 ifneq (${TARGET},winagent)
-		OSSEC_LDFLAGS+=-L$(EXTERNAL_SQLITE) -L${EXTERNAL_CURL}lib/.libs -L${EXTERNAL_LIBYAML}src/.libs
-		OSSEC_LIBS+=-lsqlite3 -lcurl -lyaml
+ifneq (${TARGET},agent)
+		OSSEC_LDFLAGS += -L$(EXTERNAL_SQLITE) -L${EXTERNAL_CURL}lib/.libs -L${EXTERNAL_LIBYAML}src/.libs
+		OSSEC_LIBS += -lsqlite3 -lcurl -lyaml
+endif
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
@@ -532,7 +534,9 @@ LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.$(SHARED)
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB)
 
 ifneq (${TARGET},winagent)
+ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB)
+endif
 ifeq (${uname_S},Linux)
 EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
 endif
