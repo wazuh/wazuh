@@ -135,11 +135,11 @@ class ClusterThread(threading.Thread):
         exit = False
         count = 0
         while not exit and not self.stopper.is_set() and self.running:
-            time.sleep(1)
             if count == delay:
                 exit = True
             else:
                 count += 1
+                time.sleep(1)
 
         return count
 
