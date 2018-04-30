@@ -115,6 +115,7 @@ def remove_group(group_id, quiet=False):
 
 def set_group(agent_id, group_id, quiet=False):
     ans = 'n'
+    agent_id = "{}".format(int(agent_id)).zfill(3)
     if not quiet:
          ans = get_stdin("Do you want to set the group '{0}' to the agent '{1}'? [y/N]: ".format(group_id, agent_id))
     else:
