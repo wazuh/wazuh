@@ -819,6 +819,10 @@ class ProcessFiles(ClusterThread):
         self.id = None                          # id of the thread doing the receiving process
         self.thread_tag = "[FileThread]"        # logger tag of the thread
         self.n_get_timeouts = 0                 # number of times Empty exception is raised
+        self.start_time = 0                     # debug: start receiving time
+        self.end_time = 0                       # debug: end time
+        self.total_time = 0                     # debug: total time receiving
+        self.size_received = 0                  # debug: total bytes received
 
         #Intervals
         self.interval_file_transfer_receive = get_cluster_items_communication_intervals()['file_transfer_receive']
@@ -848,7 +852,8 @@ class ProcessFiles(ClusterThread):
                 continue
 
             if self.received_all_information:
-                logger.info("{0}: Reception completed.".format(self.thread_tag))
+                logger.info("{0}: Reception completed: Time: {1:.2f}s.".format(self.thread_tag, self.total_time))
+                logger.debug("{0}: Reception completed: Size: {2}B.".format(self.thread_tag, self.total_time, self.size_received))
                 try:
                     result = self.process_file()
                     if result:
@@ -943,7 +948,9 @@ class ProcessFiles(ClusterThread):
         """
         try:
             if command == "file_open":
+                self.size_received = 0
                 logger.debug("{0}: Opening file.".format(self.thread_tag))
+                self.start_time = time.time()
                 command = ""
                 self.file_open()
             elif command == "file_update":
@@ -954,6 +961,8 @@ class ProcessFiles(ClusterThread):
                 logger.debug("{0}: Closing file.".format(self.thread_tag))
                 self.file_close(data)
                 logger.debug("{0}: File closed.".format(self.thread_tag))
+                self.end_time = time.time()
+                self.total_time = self.end_time - self.start_time
                 self.received_all_information = True
                 command = ""
         except Exception as e:
@@ -983,6 +992,7 @@ class ProcessFiles(ClusterThread):
         """
         # Open the file
         self.f.write(chunk)
+        self.size_received += len(chunk)
 
 
     def file_close(self, md5_sum):

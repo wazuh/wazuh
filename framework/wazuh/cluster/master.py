@@ -175,7 +175,7 @@ class MasterManagerHandler(ServerHandler):
             raise e
 
         after = time.time()
-        logger.debug2("{}: Time updating client files: {}s".format(tag, after - before))
+        logger.debug("{0}: Time updating client files: {1:.2f}s. Agents-info updated total: {2}. Agent-groups updated total: {3}.".format(tag, after - before, n_agentsinfo, n_agentgroups))
 
         if sum(n_errors.values()) > 0:
             logging.error("{}: Errors updating client files: {}".format(tag,
