@@ -114,7 +114,7 @@ class MasterManagerHandler(ServerHandler):
                 with open(zip_path, 'rb') as f:
                     content = f.read()
 
-            lock_full_path = "{}.lock".format(full_path)
+            lock_full_path = "{}/queue/cluster/lockdir/{}.lock".format(common.ossec_path, os.path.basename(full_path))
             lock_file = open(lock_full_path, 'a+')
             try:
                 fcntl.lockf(lock_file, fcntl.LOCK_EX)
@@ -129,7 +129,6 @@ class MasterManagerHandler(ServerHandler):
 
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
             lock_file.close()
-            os.remove(lock_full_path)
 
             return n_errors
 
@@ -140,6 +139,11 @@ class MasterManagerHandler(ServerHandler):
         n_agentsinfo = 0
         n_agentgroups = 0
         n_errors = {}
+
+        # create temporary directory for lock files
+        lock_directory = "{}/queue/cluster/lockdir".format(common.ossec_path)
+        if not os.path.exists(lock_directory):
+            mkdir_with_mode(lock_directory)
 
         try:
             agents = Agent.get_agents_overview(select={'fields':['name']}, limit=None)['items']
