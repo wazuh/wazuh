@@ -227,7 +227,8 @@ OSSEC_WINDRES =${QUIET_CCBIN}${MING_BASE}windres
 ifneq (,$(filter ${USE_INOTIFY},auto yes y Y 1))
 	DEFINES+=-DINOTIFY_ENABLED
 	ifeq (${uname_S},FreeBSD)
-		OSSEC_LDFLAGS+=-linotify -L/usr/local/lib -I/usr/local/include
+		OSSEC_LDFLAGS+=-L/usr/local/lib -I/usr/local/include
+		OSSEC_LIBS+=-linotify
 		OSSEC_CFLAGS+=-I/usr/local/include
 	endif
 endif
@@ -238,20 +239,20 @@ endif
 
 ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
 	DEFINES+=-DPRELUDE_OUTPUT_ENABLED
-	OSSEC_LDFLAGS+=-lprelude
+	OSSEC_LIBS+=-lprelude
 	OSSEC_LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
-	OSSEC_LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
+	OSSEC_LIBS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
 endif # USE_PRELUDE
 
 ifneq (,$(filter ${USE_ZEROMQ},auto yes y Y 1))
 	DEFINES+=-DZEROMQ_OUTPUT_ENABLED
 	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
-	OSSEC_LDFLAGS+=-lzmq -lczmq
+	OSSEC_LIBS+=-lzmq -lczmq
 endif # USE_ZEROMQ
 
 ifneq (,$(filter ${USE_GEOIP},auto yes y Y 1))
 	DEFINES+=-DLIBGEOIP_ENABLED
-	OSSEC_LDFLAGS+=-lGeoIP
+	OSSEC_LIBS+=-lGeoIP
 endif # USE_GEOIP
 
 
@@ -286,16 +287,16 @@ ifdef DATABASE
 
 			ifeq (${ML},)
 				ifneq (,$(wildcard /usr/lib/mysql/*))
-					ML="-L/usr/lib/mysql -lmysqlclient"
+					ML="-L/usr/lib/mysql"
 				else
 					ifneq (,$(wildcard /usr/lib64/mysql/*))
-						ML="-L/usr/lib64/mysql -lmysqlclient"
+						ML="-L/usr/lib64/mysql"
 					else
 						ifneq (,$(wildcard /usr/local/lib/mysql/*))
-							ML="-L/usr/local/lib/mysql -lmysqlclient"
+							ML="-L/usr/local/lib/mysql"
 						else
 							ifneq (,$(wildcard /usr/local/lib64/mysql/*))
-								ML="-L/usr/local/lib64/mysql -lmysqlclient"
+								ML="-L/usr/local/lib64/mysql"
 							endif # local/lib64
 						endif # local/lib
 					endif # lib54
@@ -304,6 +305,7 @@ ifdef DATABASE
 		endif # MYSQL_LIBS
 
 		OSSEC_LDFLAGS+=${ML}
+		OSSEC_LIBS+=-lmysqlclient
 
 	else # DATABASE
 
@@ -325,7 +327,7 @@ ifdef DATABASE
 			# XXX need some basic autodetech stuff here.
 
 			OSSEC_LDFLAGS+=${PL}
-			OSSEC_LDFLAGS+=-lpq
+			OSSEC_LIBS+=-lpq
 
 		endif # pgsql
 	endif # mysql
