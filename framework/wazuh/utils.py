@@ -16,6 +16,7 @@ import re
 import errno
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
+from operator import itemgetter
 
 try:
     from subprocess import check_output
@@ -361,13 +362,22 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def plain_dict_to_nested_dict(data, force_fields=[]):
+def get_fields_to_nest(fields, force_fields=[]):
+    nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
+             for k,g in groupby(map(lambda x: x.split('_'), sorted(fields)),
+             key=lambda x:x[0])}
+    nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
+    nested = [(field,{(subfield, '_'.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
+    non_nested = set(filter(lambda x: x.split('_')[0] not in map(itemgetter(0), nested), fields))
+    return nested, non_nested
+
+
+def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[]):
     """
     Turns an input dictionary with "nested" fields in form
                 field_subfield
     into a real nested dictionary in form
                 field {subfield}
-
     For example, the following input dictionary
     data = {
        "ram_free": "1669524",
@@ -390,8 +400,8 @@ def plain_dict_to_nested_dict(data, force_fields=[]):
       },
       "board_serial": "BSS-0123456789"
     }
-
     :param data: dictionary to nest
+    :param nested: fields to nest
     :param force_fields: fields to force nesting in
     """
     # separate fields and subfields:
