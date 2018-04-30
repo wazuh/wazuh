@@ -147,7 +147,7 @@ class MasterManagerHandler(ServerHandler):
             agent_ids = set(map(itemgetter('id'), agents))
             agents = None
         except Exception as e:
-            logger.debug2("Error getting agent ids and names: {}".format(e))
+            logger.debug2("{}: Error getting agent ids and names: {}".format(tag, e))
             agent_names, agent_ids = {}, {}
 
         before = time.time()
@@ -171,7 +171,7 @@ class MasterManagerHandler(ServerHandler):
             raise e
 
         after = time.time()
-        logger.debug2("Time updating client files: {}s".format(after - before))
+        logger.debug2("{}: Time updating client files: {}s".format(tag, after - before))
 
         if sum(n_errors.values()) > 0:
             logging.error("{}: Errors updating client files: {}".format(tag,

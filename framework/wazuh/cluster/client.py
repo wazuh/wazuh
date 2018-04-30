@@ -130,7 +130,7 @@ class ClientManagerHandler(ClientHandler):
                             break
                 except Exception as e:
                     error_shared_files += 1
-                    logger.debug2("Error overwriting file '{}': {}".format(file_to_overwrite, str(e)))
+                    logger.debug2("{}: Error overwriting file '{}': {}".format(tag, file_to_overwrite, str(e)))
                     continue
 
         error_missing_files = 0
@@ -150,7 +150,7 @@ class ClientManagerHandler(ClientHandler):
                             break
                 except Exception as e:
                     error_missing_files += 1
-                    logger.debug2("Error creating file '{}': {}".format(file_to_create, str(e)))
+                    logger.debug2("{}: Error creating file '{}': {}".format(tag, file_to_create, str(e)))
                     continue
 
         error_extra_files = 0
@@ -164,13 +164,13 @@ class ClientManagerHandler(ClientHandler):
                         os.remove(file_path)
                     except OSError as e:
                         if e.errno == errno.ENOENT and '/queue/agent-groups/' in file_path:
-                            logger.debug2("File {} doesn't exist.".format(file_to_remove))
+                            logger.debug2("{}: File {} doesn't exist.".format(tag, file_to_remove))
                             continue
                         else:
                             raise e
                 except Exception as e:
                     error_extra_files += 1
-                    logger.debug2("Error removing file '{}': {}".format(file_to_remove, str(e)))
+                    logger.debug2("{}: Error removing file '{}': {}".format(tag, file_to_remove, str(e)))
                     continue
 
                 if self.stopper.is_set():
@@ -187,18 +187,18 @@ class ClientManagerHandler(ClientHandler):
                         shutil.rmtree(full_path)
                 except Exception as e:
                     error_extra_files += 1
-                    logger.debug2("Error removing directory '{}': {}".format(directory, str(e)))
+                    logger.debug2("{}: Error removing directory '{}': {}".format(tag, directory, str(e)))
                     continue
 
                 if self.stopper.is_set():
                     break
 
         if error_extra_files or error_shared_files or error_missing_files:
-            logger.error("Found errors: {} overwriting, {} creating and {} removing".format(
+            logger.error("{}: Found errors: {} overwriting, {} creating and {} removing".format(tag,
                         error_shared_files, error_missing_files, error_extra_files))
 
         after = time.time()
-        logger.debug2("Time updating integrity from master: {}s".format(after - before))
+        logger.debug2("{}: Time updating integrity from master: {}s".format(tag, after - before))
 
         return True
 
