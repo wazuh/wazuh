@@ -433,7 +433,7 @@ def clean_up(node_name=""):
 #
 # Agents
 #
-def get_agents_status(filter_status=""):
+def get_agents_status(filter_status="", filter_nodes=""):
     """
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
@@ -447,6 +447,9 @@ def get_agents_status(filter_status=""):
 
         if not agent.get('node_name'):
             agent['node_name'] = "Unknown"
+        
+        if filter_nodes and agent['node_name'] not in filter_nodes:
+            continue
 
         agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
 

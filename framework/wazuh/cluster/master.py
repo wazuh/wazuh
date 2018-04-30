@@ -653,8 +653,10 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_agents':
-            filter_status = data if data != 'None' else None
-            response = get_agents_status(filter_status)
+            split_data = data.split('%--%', 1)
+            filter_status = split_data[0] if split_data[0] != 'None' else None
+            filter_nodes = split_data[1] if split_data[1] != 'None' else None
+            response = get_agents_status(filter_status, filter_nodes)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 
