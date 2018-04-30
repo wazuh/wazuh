@@ -47,7 +47,7 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
     }
 }
 
-void *read_audit(int pos, int *rc, int drop_it) {
+void *read_audit(logreader *lf, int *rc, int drop_it) {
     char *cache[MAX_CACHE];
     char header[MAX_HEADER] = { '\0' };
     int icache = 0;
@@ -55,17 +55,17 @@ void *read_audit(int pos, int *rc, int drop_it) {
     char *id;
     char *p;
     size_t z;
-    long offset = ftell(logff[pos].fp);
+    long offset = ftell(lf->fp);
     int lines = 0;
 
     if (offset < 0) {
-        merror(FTELL_ERROR, logff[pos].file, errno, strerror(errno));
+        merror(FTELL_ERROR, lf->file, errno, strerror(errno));
         return NULL;
     }
 
     *rc = 0;
 
-    while (fgets(buffer, OS_MAXSTR, logff[pos].fp) && (!maximum_lines || lines < maximum_lines)) {
+    while (fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         if ((p = strchr(buffer, '\n')))
@@ -73,12 +73,12 @@ void *read_audit(int pos, int *rc, int drop_it) {
         else {
             if (strlen(buffer) == OS_MAXSTR - 1) {
                 // Message too large, discard line
-                while (fgets(buffer, OS_MAXSTR, logff[pos].fp) && !strchr(buffer, '\n'));
+                while (fgets(buffer, OS_MAXSTR, lf->fp) && !strchr(buffer, '\n'));
             } else {
                 mdebug1("Message not complete. Trying again: '%s'", buffer);
 
-                if (fseek(logff[pos].fp, offset, SEEK_SET) < 0) {
-                    merror(FSEEK_ERROR, logff[pos].file, errno, strerror(errno));
+                if (fseek(lf->fp, offset, SEEK_SET) < 0) {
+                    merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
                     break;
                 }
             }
@@ -98,7 +98,7 @@ void *read_audit(int pos, int *rc, int drop_it) {
         if (strncmp(id, header, z)) {
             // Current message belongs to another event: send cached messages
             if (icache > 0)
-                audit_send_msg(cache, icache, logff[pos].file, drop_it, logff[pos].target_socket, logff[pos].outformat);
+                audit_send_msg(cache, icache, lf->file, drop_it, lf->target_socket, lf->outformat);
 
             // Store current event
             *cache = strdup(buffer);
@@ -114,8 +114,8 @@ void *read_audit(int pos, int *rc, int drop_it) {
     }
 
     if (icache > 0)
-        audit_send_msg(cache, icache, logff[pos].file, drop_it, logff[pos].target_socket, logff[pos].outformat);
+        audit_send_msg(cache, icache, lf->file, drop_it, lf->target_socket, lf->outformat);
 
-    mdebug2("Read %d lines from %s", lines, logff[pos].file);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return NULL;
 }

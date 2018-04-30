@@ -27,46 +27,46 @@ int LogCollectorConfig(const char *cfgfile);
 void LogCollectorStart(void) __attribute__((noreturn));
 
 /* Handle files */
-int handle_file(int i, int do_fseek, int do_log);
+int handle_file(int i, int j, int do_fseek, int do_log);
 
 /* Read syslog file */
-void *read_syslog(int pos, int *rc, int drop_it);
+void *read_syslog(logreader *lf, int *rc, int drop_it);
 
 /* Read snort full file */
-void *read_snortfull(int pos, int *rc, int drop_it);
+void *read_snortfull(logreader *lf, int *rc, int drop_it);
 
 /* Read ossec alert file */
-void *read_ossecalert(int pos, int *rc, int drop_it);
+void *read_ossecalert(logreader *lf, int *rc, int drop_it);
 
 /* Read nmap grepable format */
-void *read_nmapg(int pos, int *rc, int drop_it);
+void *read_nmapg(logreader *lf, int *rc, int drop_it);
 
 /* Read mysql log format */
-void *read_mysql_log(int pos, int *rc, int drop_it);
+void *read_mysql_log(logreader *lf, int *rc, int drop_it);
 
 /* Read mysql log format */
-void *read_mssql_log(int pos, int *rc, int drop_it);
+void *read_mssql_log(logreader *lf, int *rc, int drop_it);
 
 /* Read postgresql log format */
-void *read_postgresql_log(int pos, int *rc, int drop_it);
+void *read_postgresql_log(logreader *lf, int *rc, int drop_it);
 
 /* read multi line logs */
-void *read_multiline(int pos, int *rc, int drop_it);
+void *read_multiline(logreader *lf, int *rc, int drop_it);
 
 /* Read DJB multilog format */
 /* Initializes multilog */
-int init_djbmultilog(int pos);
-void *read_djbmultilog(int pos, int *rc, int drop_it);
+int init_djbmultilog(logreader *lf);
+void *read_djbmultilog(logreader *lf, int *rc, int drop_it);
 
 /* Read events from output of command */
-void *read_command(int pos, int *rc, int drop_it);
-void *read_fullcommand(int pos, int *rc, int drop_it);
+void *read_command(logreader *lf, int *rc, int drop_it);
+void *read_fullcommand(logreader *lf, int *rc, int drop_it);
 
 /* Read auditd events */
-void *read_audit(int pos, int *rc, int drop_it);
+void *read_audit(logreader *lf, int *rc, int drop_it);
 
 /* Read json events */
-void *read_json(int pos, int *rc, int drop_it);
+void *read_json(logreader *lf, int *rc, int drop_it);
 
 #ifdef WIN32
 void win_startel();
@@ -81,9 +81,18 @@ extern int loop_timeout;
 extern int logr_queue;
 extern int open_file_attempts;
 extern logreader *logff;
+extern logreader_glob *globs;
 extern logsocket *logsk;
 extern int vcheck_files;
 extern int maximum_lines;
 extern logsocket default_agent;
+extern int maximum_files;
+extern int current_files;
+
+typedef enum {
+    CONTINUE_IT,
+    NEXT_IT,
+    LEAVE_IT
+} IT_control;
 
 #endif /* __LOGREADER_H */

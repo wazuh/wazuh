@@ -57,19 +57,31 @@ typedef struct _logreader {
     int duplicated;
     wlabel_t *labels;
 
-    void *(*read)(int i, int *rc, int drop_it);
+    void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 
     FILE *fp;
 } logreader;
 
+typedef struct _logreader_glob {
+    char *gpath;
+    logreader *gfiles;
+} logreader_glob;
+
 typedef struct _logreader_config {
     int agent_cfg;
     int accept_remote;
+    logreader_glob *globs;
     logreader *config;
     logsocket *socket_list;
 } logreader_config;
 
-/* Frees the Localfile struct  */
+/* Frees the Logcollector config struct  */
 void Free_Localfile(logreader_config * config);
+
+/* Frees a localfile  */
+void Free_Logreader(logreader * config);
+
+/* Removes a specific localfile of an array */
+int Remove_Localfile(logreader **logf, int i, int gl, int fr);
 
 #endif /* __CLOGREADER_H */

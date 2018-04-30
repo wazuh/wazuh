@@ -14,8 +14,7 @@
 
 
 /* Read json files */
-void *read_json(int pos, int *rc, int drop_it)
-{
+void *read_json(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
     int i;
     char *p, *jsonParsed;
@@ -28,9 +27,9 @@ void *read_json(int pos, int *rc, int drop_it)
     *rc = 0;
 
     /* Get initial file location */
-    fgetpos(logff[pos].fp, &fp_pos);
+    fgetpos(lf->fp, &fp_pos);
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Get the last occurrence of \n */
@@ -47,7 +46,7 @@ void *read_json(int pos, int *rc, int drop_it)
         } else {
             /* Message not complete. Return. */
             mdebug1("Message not complete. Trying again: '%s'", str);
-            fsetpos(logff[pos].fp, &fp_pos);
+            fsetpos(lf->fp, &fp_pos);
             break;
         }
 
@@ -58,27 +57,27 @@ void *read_json(int pos, int *rc, int drop_it)
 
         /* Look for empty string (only on Windows) */
         if (strlen(str) <= 2) {
-            fgetpos(logff[pos].fp, &fp_pos);
+            fgetpos(lf->fp, &fp_pos);
             continue;
         }
         /* Windows can have comment on their logs */
 
         if (str[0] == '#') {
-            fgetpos(logff[pos].fp, &fp_pos);
+            fgetpos(lf->fp, &fp_pos);
             continue;
         }
 #endif
 
         if (obj = cJSON_Parse(str), obj && cJSON_IsObject(obj)) {
-          for (i = 0; logff[pos].labels[i].key; i++) {
-              W_JSON_AddField(obj, logff[pos].labels[i].key, logff[pos].labels[i].value);
+          for (i = 0; lf->labels[i].key; i++) {
+              W_JSON_AddField(obj, lf->labels[i].key, lf->labels[i].value);
           }
 
           jsonParsed = cJSON_PrintUnformatted(obj);
           cJSON_Delete(obj);
         } else {
           cJSON_Delete(obj);
-          mdebug1("Line '%s' read from '%s' is not a JSON object.", str, logff[pos].file);
+          mdebug1("Line '%s' read from '%s' is not a JSON object.", str, lf->file);
           continue;
         }
 
@@ -86,8 +85,8 @@ void *read_json(int pos, int *rc, int drop_it)
 
         /* Send message to queue */
         if (drop_it == 0) {
-            if (SendMSGtoSCK(logr_queue, jsonParsed, logff[pos].file,
-                        LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
+            if (SendMSGtoSCK(logr_queue, jsonParsed, lf->file,
+                        LOCALFILE_MQ, lf->target_socket, lf->outformat) < 0) {
                 merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                     merror_exit(QUEUE_FATAL, DEFAULTQPATH);
@@ -104,7 +103,7 @@ void *read_json(int pos, int *rc, int drop_it)
             buf[OUTSIZE] = '\0';
             snprintf(buf, OUTSIZE, "%s", str);
             merror("Large message size(length=%d): '%s...'", (int)strlen(str), buf);
-            while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
+            while (fgets(str, OS_MAXSTR - 2, lf->fp) != NULL) {
                 /* Get the last occurrence of \n */
                 if (strrchr(str, '\n') != NULL) {
                     break;
@@ -112,10 +111,10 @@ void *read_json(int pos, int *rc, int drop_it)
             }
             __ms = 0;
         }
-        fgetpos(logff[pos].fp, &fp_pos);
+        fgetpos(lf->fp, &fp_pos);
         continue;
     }
 
-    mdebug2("Read %d lines from %s", lines, logff[pos].file);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }
