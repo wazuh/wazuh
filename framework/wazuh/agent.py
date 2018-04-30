@@ -792,23 +792,27 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_dict(conn, min_select_fields, user_select_fields):
-        db_api_name = {name:name for name in min_select_fields}
-        min_select_fields = map(lambda x: x.replace('`',''), min_select_fields)
+    def get_agents_dict(conn, select_fields, user_select_fields):
+        select_fields = map(lambda x: x.replace('`',''), select_fields)
+        db_api_name = {name:name for name in select_fields}
         db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
         fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
 
-        items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field in user_select_fields} for tuple in conn]
-        items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested) for d in items]
+        agent_items = [{field:value for field,value in zip(select_fields, tuple) if value is not None} for tuple in conn]
 
         if 'status' in user_select_fields:
             today = date.today()
-            items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('lastKeepAlive'), item.get('version') is None, today)) for item in items]
+            agent_items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('last_keepalive'), item.get('version') is None, today)) for item in agent_items]
+        else:
+            agent_items = [dict(item, id=str(item['id']).zfill(3)) for item in agent_items]
 
-        if len(items) > 0 and items[0]['id'] == '000' and 'ip' in user_select_fields:
-            items[0]['ip'] = '127.0.0.1'
+        if len(agent_items) > 0 and agent_items[0]['id'] == '000' and 'ip' in user_select_fields:
+            agent_items[0]['ip'] = '127.0.0.1'
 
-        return items
+        agent_items = [{db_api_name[key]:value for key,value in agent.items() if key in user_select_fields} for agent in agent_items]
+        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os']) for d in agent_items]
+
+        return agent_items
 
 
     @staticmethod
@@ -843,7 +847,6 @@ class Agent:
                    'os.arch': 'os_arch', 'node_name': 'node_name'}
         valid_select_fields = set(fields.values()) | {'status'}
         # at least, we should retrieve those fields since other fields dependend on those
-        min_select_fields = {'id', 'version', 'last_keepalive'}
         search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
         request = {}
         if select:
@@ -851,7 +854,9 @@ class Agent:
                 incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                                     format(valid_select_fields, incorrect_fields))
-            min_select_fields |= set(select['fields'])
+            select_fields_set = set(select['fields'])
+            min_select_fields = {'id'} | select_fields_set if 'status' not in select_fields_set\
+                                        else select_fields_set | {'id', 'last_keepalive', 'version'}
         else:
             valid_select_fields.remove('node_name') # only return node_type if asked
             min_select_fields = valid_select_fields
@@ -940,10 +945,6 @@ class Agent:
             min_select_fields.add('`group`')
 
         conn.execute(query.format(','.join(min_select_fields)), request)
-
-        if '`group`' in min_select_fields:
-            min_select_fields.remove('`group`')
-            min_select_fields.add('group')
 
         data['items'] = Agent.get_agents_dict(conn, min_select_fields, user_select_fields)
 
