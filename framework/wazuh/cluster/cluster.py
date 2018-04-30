@@ -19,7 +19,7 @@ from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
 from io import BytesIO
 from itertools import compress, chain
-from operator import itemgetter, eq, or_
+from operator import eq 
 from ast import literal_eval
 import socket
 import json
@@ -279,7 +279,7 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
 
 
 def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None,
-                 tmp_dir='/queue/cluster',whoami='master'):
+                 tmp_dir='/queue/cluster',whoami='master', agents=None):
 
     dst_path = common.ossec_path + file_path
     if path.basename(dst_path) == 'client.keys':
@@ -293,14 +293,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
     is_agent_group = 'agent-groups' in dst_path
     if is_agent_info or is_agent_group:
         if whoami =='master':
-            try:
-                agents = Agent.get_agents_overview(select={'fields':['name']}, limit=None)['items']
-                agent_names = set(map(itemgetter('name'), agents))
-                agent_ids = set(map(itemgetter('id'), agents))
-                agents = None
-            except Exception as e:
-                logger.debug2("Error getting agent ids and names: {}".format(e))
-                agent_names, agent_ids = {}, {}
+            agent_names, agent_ids = agents
 
             if is_agent_info:
                 agent_name_re = re.match(r'(^.+)-(.+)$', path.basename(file_path))

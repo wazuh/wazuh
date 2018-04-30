@@ -13,6 +13,7 @@ import fcntl
 import ast
 from datetime import datetime
 import fnmatch
+from operator import itemgetter
 
 from wazuh.exception import WazuhException
 from wazuh import common
@@ -23,6 +24,7 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, \
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
                                         Handler, InternalSocketHandler, ClusterThread
 from wazuh.utils import mkdir_with_mode
+from wazuh.agent import Agent
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +101,7 @@ class MasterManagerHandler(ServerHandler):
 
     # Private methods
     def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path, client_name, cluster_control_key, cluster_control_subkey, tag):
-        def update_file(n_errors, name, data, file_time=None, content=None):
+        def update_file(n_errors, name, data, file_time=None, content=None, agents=None):
             # Full path
             full_path = common.ossec_path + name
 
@@ -118,7 +120,7 @@ class MasterManagerHandler(ServerHandler):
                 fcntl.lockf(lock_file, fcntl.LOCK_EX)
                 _update_file(file_path=name, new_content=content,
                 umask_int=umask, mtime=file_time, w_mode=w_mode,
-                tmp_dir=tmp_path, whoami='master')
+                tmp_dir=tmp_path, whoami='master', agents=agents)
 
             except Exception as e:
                 logger.debug2("{}: Error updating file '{}': {}".format(tag, name, e))
@@ -136,14 +138,29 @@ class MasterManagerHandler(ServerHandler):
         tmp_path = "/queue/cluster/{}/tmp_files".format(client_name)
         cluster_items = get_cluster_items()['files']
         n_agentsinfo = 0
+        n_agentgroups = 0
         n_errors = {}
 
+        try:
+            agents = Agent.get_agents_overview(select={'fields':['name']}, limit=None)['items']
+            agent_names = set(map(itemgetter('name'), agents))
+            agent_ids = set(map(itemgetter('id'), agents))
+            agents = None
+        except Exception as e:
+            logger.debug2("Error getting agent ids and names: {}".format(e))
+            agent_names, agent_ids = {}, {}
+
+        before = time.time()
         try:
             for filename, data in json_file.items():
                 if data['merged']:
                     for file_path, file_data, file_time in unmerge_agent_info(data['merge_type'], zip_dir_path, data['merge_name']):
-                        n_errors = update_file(n_errors, file_path, data, file_time, file_data)
-                        n_agentsinfo += 1
+                        n_errors = update_file(n_errors, file_path, data, file_time, file_data, (agent_names, agent_ids))
+                        if data['merge_type'] == 'agent-info':
+                            n_agentsinfo += 1
+                        else:
+                            n_agentgroups += 1
+
                         if self.stopper.is_set():
                             break
                 else:
@@ -153,13 +170,17 @@ class MasterManagerHandler(ServerHandler):
             logger.error("{}: Error updating client files: '{}'.".format(tag, e))
             raise e
 
+        after = time.time()
+        logger.debug2("Time updating client files: {}s".format(after - before))
+
         if sum(n_errors.values()) > 0:
-            logging.error("{}: Errors updating client files: {}".format(tag, 
+            logging.error("{}: Errors updating client files: {}".format(tag,
                 ' | '.join(['{}: {}'.format(key, value) for key, value in n_errors.items()])
             ))
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status=n_agentsinfo)
+        status_number = n_agentsinfo if cluster_control_key == 'last_sync_agentinfo' else n_agentgroups
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status=status_number)
 
 
     # New methods

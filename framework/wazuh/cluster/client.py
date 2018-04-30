@@ -85,8 +85,7 @@ class ClientManagerHandler(ClientHandler):
         return response_data
 
     # Private methods
-    @staticmethod
-    def _update_master_files_in_client(wrong_files, zip_path_dir, tag=None):
+    def _update_master_files_in_client(self, wrong_files, zip_path_dir, tag=None):
         def overwrite_or_create_files(filename, data, content=None):
             # Cluster items information: write mode and umask
             cluster_item_key = data['cluster_item_key']
@@ -113,7 +112,7 @@ class ClientManagerHandler(ClientHandler):
 
         cluster_items = get_cluster_items()['files']
 
-
+        before = time.time()
         error_shared_files = 0
         if wrong_files['shared']:
             logger.debug("{0}: Received {1} wrong files to fix from master. Action: Overwrite files.".format(tag, len(wrong_files['shared'])))
@@ -197,6 +196,9 @@ class ClientManagerHandler(ClientHandler):
         if error_extra_files or error_shared_files or error_missing_files:
             logger.error("Found errors: {} overwriting, {} creating and {} removing".format(
                         error_shared_files, error_missing_files, error_extra_files))
+
+        after = time.time()
+        logger.debug2("Time updating integrity from master: {}s".format(after - before))
 
         return True
 
@@ -334,7 +336,7 @@ class ClientManagerHandler(ClientHandler):
             logger.info("{0}: Client does not meet integrity checks. Actions required.".format(tag))
 
             logger.info("{0}: Updating files: Start.".format(tag))
-            sync_result = ClientManagerHandler._update_master_files_in_client(ko_files, zip_path, tag)
+            sync_result = self._update_master_files_in_client(ko_files, zip_path, tag)
             logger.info("{0}: Updating files: End.".format(tag))
 
         # remove temporal zip file directory
