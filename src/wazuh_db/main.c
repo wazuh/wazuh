@@ -302,7 +302,8 @@ void * run_worker(__attribute__((unused)) void * args) {
                 if (errno == EINTR) {
                     minfo("at run_worker(): select(): %s", strerror(EINTR));
                 } else {
-                    merror_exit("at run_worker(): select(): %s", strerror(errno));
+                    merror("at run_worker(): select(%d): %s", *peer, strerror(errno));
+                    status = 1;
                 }
 
                 continue;
@@ -343,7 +344,10 @@ void * run_worker(__attribute__((unused)) void * args) {
             }
         }
 
-        close(*peer);
+        if (*peer >= 0) {
+            close(*peer);
+        }
+
         free(peer);
     }
 
