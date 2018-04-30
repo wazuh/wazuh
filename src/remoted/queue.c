@@ -26,8 +26,14 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * ad
     int result;
     static int reported = 0;
 
+    if(size > OS_MAXSTR)
+    {
+        mwarn("Message size received: %lu bytes is larger than OS_MAXSTR: %d bytes. Message is not pushed into the queue", size,OS_MAXSTR);
+        return OS_INVALID;
+    }
+
     os_malloc(sizeof(message_t), message);
-    os_malloc(size, message->buffer);
+    os_malloc(OS_MAXSTR+1, message->buffer); // Allocate OS_MAXSTR size because uncompression is saved here
     memcpy(message->buffer, buffer, size);
     message->size = size;
     memcpy(&message->addr, addr, sizeof(struct sockaddr_in));
