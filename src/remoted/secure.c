@@ -82,8 +82,15 @@ void HandleSecure()
         }
     }
 
-    // Create message handler thread
-    w_create_thread(rem_handler_main, NULL);
+    // Create message handler thread pool
+    {
+        int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
+
+        while (worker_pool > 0) {
+            w_create_thread(rem_handler_main, NULL);
+            worker_pool--;
+        }
+    }
 
     /* Connect to the message queue
      * Exit if it fails.
@@ -376,11 +383,14 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     }
 
     /* Decrypt the message */
+
+    key_lock_read();
     tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip);
 
     if (tmp_msg == NULL) {
 
         /* If duplicated, a warning was already generated */
+        key_unlock();
         return;
     }
 
@@ -389,11 +399,10 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         int r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
-        key_lock_write();
+
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
-        key_unlock();
 
         switch (r) {
         case 0:
@@ -407,12 +416,12 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
 
         save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
-
+        key_unlock();
         return;
     }
 
     /* Generate srcmsg */
-    key_lock_read();
+
     snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
     key_unlock();
@@ -432,6 +441,12 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
+    int retval;
+
     close(sock);
-    return OS_DeleteSocket(keys, sock);
+    key_lock_read();
+    retval = OS_DeleteSocket(keys, sock);
+    key_unlock();
+
+    return retval;
 }
