@@ -302,13 +302,13 @@ int __os_winreg_querykey(HKEY hKey,
 }
 
 /* Open the registry key */
-int __os_winreg_open_key(char *subkey, char *full_key_name,
+int __os_winreg_open_key(char *subkey, char *full_key_name, unsigned long arch,
                          char *reg_option, char *reg_value)
 {
     int ret = 1;
     HKEY oshkey;
 
-    if (RegOpenKeyEx(rk_sub_tree, subkey, 0, KEY_READ, &oshkey) != ERROR_SUCCESS) {
+    if (RegOpenKeyEx(rk_sub_tree, subkey, 0, KEY_READ | arch, &oshkey) != ERROR_SUCCESS) {
         return (0);
     }
 
@@ -333,11 +333,7 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
         return (0);
     }
 
-    if (__os_winreg_open_key(rk, entry_name, reg_option, reg_value) == 0) {
-        return (0);
-    }
-
-    return (1);
+    return __os_winreg_open_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value) || __os_winreg_open_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value);
 }
 
 #else
@@ -355,4 +351,3 @@ int is_registry(__attribute__((unused)) char *entry_name,
 }
 
 #endif /* !WIN32 */
-

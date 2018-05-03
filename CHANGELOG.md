@@ -15,20 +15,30 @@ All notable changes to this project will be documented in this file.
 - Get Windows packages inventory natively. ([#471](https://github.com/wazuh/wazuh/pull/471))
 - Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
 - Added Rids Synchronization. ([#459](https://github.com/wazuh/wazuh/pull/459))
+- Added option for setting the group that the agent belongs to when registering it with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
+- Added option for setting the source IP when the agent registers with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
 - Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
 - Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
+- Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
 
 ### Changed
 
 - Add default value for option -x in agent_control tool.
 - Syscheck RT process granularized to make frequency option more accurate.
 - External libraries moved to an external repository.
+- Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
+- Ignore OverlayFS directories on Rootcheck system scan.
+- Compiling external libraries as shared objects in order to shrink space. ([#483](https://github.com/wazuh/wazuh/pull/483))
 
 ### Fixed
 
 - Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
 - Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
 - Fixed invalid alerts reported by Syscollector when the event contains the word "error". ([#461](https://github.com/wazuh/wazuh/pull/461))
+- Fixed registry_ignore problem on syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
+- Silenced Vuls integration starting and ending alerts. ([#541](https://github.com/wazuh/wazuh/pull/541))
+- Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
+- Fix bug in Rootcheck for Windows that searches for keys in 32-bit mode only. ([#566](https://github.com/wazuh/wazuh/pull/566))
 
 ### Removed
 
@@ -65,6 +75,9 @@ All notable changes to this project will be documented in this file.
 - Fixed agent group file deletion when using Authd.
 - Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
 - Fixed remote command switch option. ([#504](https://github.com/wazuh/wazuh/pull/504))
+- Fixed agent wait condition and improve logging messages. ([#550](https://github.com/wazuh/wazuh/pull/550))
+- Fix race condition in settings load time by Windows agent. ([#551](https://github.com/wazuh/wazuh/pull/551))
+- Fix bug in Authd that prevented it from deleting agent-info files when removing agents.
 
 ## [v3.2.1] 2018-03-03
 

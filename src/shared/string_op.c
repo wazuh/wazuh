@@ -208,3 +208,41 @@ char* filter_special_chars(const char *string) {
 
     return filtered;
 }
+
+// Replace substrings
+
+char * wstr_replace(const char * string, const char * search, const char * replace) {
+    char * result;
+    const char * scur;
+    const char * snext;
+    size_t wi = 0;
+    size_t zcur;
+
+    if (!(string && search && replace)) {
+        return NULL;
+    }
+
+    const size_t ZSEARCH = strlen(search);
+    const size_t ZREPLACE = strlen(replace);
+
+    os_malloc(sizeof(char), result);
+
+    for (scur = string; snext = strstr(scur, search), snext; scur = snext + ZSEARCH) {
+        zcur = snext - scur;
+        os_realloc(result, wi + zcur + ZREPLACE + 1, result);
+        memcpy(result + wi, scur, zcur);
+        wi += zcur;
+        memcpy(result + wi, replace, ZREPLACE);
+        wi += ZREPLACE;
+    }
+
+    // Copy last chunk
+
+    zcur = strlen(scur);
+    os_realloc(result, wi + zcur + 1, result);
+    memcpy(result + wi, scur, zcur);
+    wi += zcur;
+
+    result[wi] = '\0';
+    return result;
+}

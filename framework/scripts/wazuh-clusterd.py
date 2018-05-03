@@ -65,7 +65,7 @@ try:
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s: %(message)s',
                         filename="{0}/logs/cluster.log".format(common.ossec_path))
 except Exception as e:
-    print("wazuh-clusterd: Python 2.7 required. Exiting. {}".format(str(e)))
+    print("wazuh-clusterd: Python 2.7 required. Exiting. {0}".format(str(e)))
     exit()
 
 class WazuhClusterHandler(asynchat.async_chat):

@@ -289,9 +289,9 @@ def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, 
 
     # add dependent select fields to the database select query
     db_select_fields = set()
-    for dependent, fields in dependent_select_fields.items():
+    for dependent, dependent_fields in dependent_select_fields.items():
         if dependent in select_fields:
-            db_select_fields |= fields
+            db_select_fields |= dependent_fields
     db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
 
     # Search
@@ -329,7 +329,23 @@ def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, 
 
     # Data query
     conn.execute(query.format(','.join(db_select_fields)), request)
-    data['items'] = Agent.get_agents_dict(conn, db_select_fields, select_fields)
+
+    non_nested = [{field:tuple_elem for field,tuple_elem \
+            in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
+
+    if 'id' in select_fields:
+        map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+
+    if 'status' in select_fields:
+        try:
+            map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+        except KeyError:
+            pass
+
+    # return only the fields requested by the user (saved in select_fields) and not the dependent ones
+    non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
+
+    data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
 
     return data
 
@@ -448,10 +464,8 @@ def remove_group(group_id):
                 removed = _remove_single_group(id)
                 ids.append(id)
                 affected_agents += removed['affected_agents']
-            except WazuhException as e:
-                failed_ids.append(create_exception_dic(id, e))
             except Exception as e:
-                raise WazuhException(1728, str(e))
+                failed_ids.append(create_exception_dic(id, e))
     else:
         if group_id.lower() == "default":
             raise WazuhException(1712)
@@ -460,10 +474,8 @@ def remove_group(group_id):
             removed = _remove_single_group(group_id)
             ids.append(group_id)
             affected_agents += removed['affected_agents']
-        except WazuhException as e:
-            failed_ids.append(create_exception_dic(group_id, e))
         except Exception as e:
-            raise WazuhException(1728, str(e))
+            failed_ids.append(create_exception_dic(group_id, e))
 
     final_dict = {}
     if not failed_ids:
