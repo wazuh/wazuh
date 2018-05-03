@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Fixed agent wait condition and improve logging messages. ([#550](https://github.com/wazuh/wazuh/pull/550))
 - Fix race condition in settings load time by Windows agent. ([#551](https://github.com/wazuh/wazuh/pull/551))
 - Fix bug in Authd that prevented it from deleting agent-info files when removing agents.
+- Fix bug in ruleset that did not overwrite the `<info>` option.
 
 ## [v3.2.1]
 
