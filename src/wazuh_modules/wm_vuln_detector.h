@@ -172,6 +172,7 @@ typedef struct update_node {
     char *url;
     in_port_t port;
     char *path;
+    char **allowed_list;
 } update_node;
 
 typedef struct wm_vulnerability_detector_t {
@@ -272,7 +273,6 @@ typedef struct last_scan {
 
 int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 int get_interval(char *source, unsigned long *interval);
-int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software);
 agent_software * skip_agent(agent_software *agents, agent_software **agents_list);
 
 #endif

@@ -46,6 +46,8 @@ static int wm_vulnerability_check_update(update_node *upd, const char *dist);
 static int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed);
 static int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *tag);
 static int wm_vulnerability_detector_compare(char *version_it, char *cversion_it);
+static const char *wm_vulnerability_set_oval(char *uname, update_node **updates);
+static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
@@ -113,6 +115,27 @@ const char *vu_dist_ext[] = {
     "Mac OS X",
     "Unknow OS"
 };
+
+const char *wm_vulnerability_set_oval(char *uname, update_node **updates) {
+    const char *retval = NULL;
+    int i;
+
+    for (i = 0; i < OS_SUPP_SIZE; i++) {
+        if (updates[i] && updates[i]->allowed_list) {
+            int j;
+            char *allowed;
+            for (allowed = *updates[i]->allowed_list, j = 0; allowed; allowed = updates[i]->allowed_list[++j]) {
+                if (strcasestr(uname, allowed)) {
+                    retval = updates[i]->dist_tag;
+                    i = OS_SUPP_SIZE;
+                    break;
+                }
+            }
+        }
+    }
+
+    return retval;
+}
 
 int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed) {
     char buffer[VU_SSL_BUFFER];
@@ -2390,7 +2413,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
         if ((vulnerability_detector->last_detection + (time_t) vulnerability_detector->detection_interval) < time(NULL)) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_START_SCAN);
 
-            if (wm_vunlnerability_detector_set_agents_info(&vulnerability_detector->agents_software)) {
+            if (wm_vunlnerability_detector_set_agents_info(&vulnerability_detector->agents_software, updates)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
             } else {
                 if (wm_vulnerability_detector_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_triag, vulnerability_detector->ignore_time)) {
@@ -2434,7 +2457,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
 
 }
 
-int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software) {
+int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates) {
     agent_software *agents;
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
@@ -2541,6 +2564,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                     buffer++;
 
                     if (end = strchr(agent_info, ']'), end) {
+                        int dist_error = -1;
                         if (strcasestr(buffer, vu_dist_tag[DIS_UBUNTU])) {
                             if (strstr(buffer, " 16")) {
                                 agents->OS = vu_dist_tag[DIS_XENIAL];
@@ -2549,12 +2573,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                             } else if (strstr(buffer, " 12")) {
                                 agents->OS = vu_dist_tag[DIS_PRECISE];
                             } else {
-                                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[DIS_UBUNTU], agents->agent_name);
-                                if (agents = skip_agent(agents, agents_software), !agents) {
-                                    break;
-                                } else {
-                                    continue;
-                                }
+                                dist_error = DIS_UBUNTU;
                             }
                             agents->dist = DIS_UBUNTU;
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_DEBIAN])) {
@@ -2565,12 +2584,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                             } else if (strstr(buffer, " 9")) {
                                 agents->OS = vu_dist_tag[DIS_STRETCH];
                             } else {
-                                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[DIS_DEBIAN], agents->agent_name);
-                                if (agents = skip_agent(agents, agents_software), !agents) {
-                                    break;
-                                } else {
-                                    continue;
-                                }
+                                dist_error = DIS_DEBIAN;
                             }
                             agents->dist = DIS_DEBIAN;
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_REDHAT])) {
@@ -2581,12 +2595,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                             } else if (strstr(buffer, " 5")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL5];
                             } else {
-                                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[DIS_REDHAT], agents->agent_name);
-                                if (agents = skip_agent(agents, agents_software), !agents) {
-                                    break;
-                                } else {
-                                    continue;
-                                }
+                                dist_error = DIS_REDHAT;
                             }
                             agents->dist = DIS_REDHAT;
                         } else if (strcasestr(buffer, vu_dist_tag[DIS_CENTOS])) {
@@ -2597,20 +2606,31 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                             } else if (strstr(buffer, " 5")) {
                                 agents->OS = vu_dist_tag[DIS_RHEL5];
                             } else {
-                                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[DIS_CENTOS], agents->agent_name);
-                                if (agents = skip_agent(agents, agents_software), !agents) {
-                                    break;
-                                } else {
-                                    continue;
-                                }
+                                dist_error = DIS_CENTOS;
                             }
                             agents->dist = DIS_REDHAT;
                         } else { // Operating system not supported in any of its versions
-                            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, agents->agent_name);
-                            if (agents = skip_agent(agents, agents_software), !agents) {
-                                break;
-                            } else {
-                                continue;
+                            dist_error = -2;
+                        }
+
+                        if (dist_error != -1) {
+                            // Check if the agent OS can be matched with a OVAL
+                            if (agents->OS = wm_vulnerability_set_oval(buffer, updates), !agents->OS) {
+                                if (dist_error == -2) {
+                                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, agents->agent_name);
+                                    if (agents = skip_agent(agents, agents_software), !agents) {
+                                        break;
+                                    } else {
+                                        continue;
+                                    }
+                                } else {
+                                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[dist_error], agents->agent_name);
+                                    if (agents = skip_agent(agents, agents_software), !agents) {
+                                        break;
+                                    } else {
+                                        continue;
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -2653,7 +2673,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
 void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector) {
     agent_software *agent;
     update_node **update;
-    int i;
+    int i, j;
 
     if (vulnerability_detector->agents_triag) {
         OSHash_Free(vulnerability_detector->agents_triag);
@@ -2665,6 +2685,12 @@ void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerabili
             free(update[i]->version);
             free(update[i]->url);
             free(update[i]->path);
+            if (update[i]->allowed_list) {
+                for (j = 0; update[i]->allowed_list[j]; j++) {
+                    free(update[i]->allowed_list[j]);
+                }
+                free(update[i]->allowed_list);
+            }
             free(update[i]);
         }
     }
