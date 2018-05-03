@@ -266,6 +266,7 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
     char command[OS_SIZE_1024 + 1];
     FILE *fp;
     FILE *fp_store = NULL;
+    wfd_t * wfd;
 
     buf[0] = '\0';
     command[0] = '\0';
@@ -281,10 +282,11 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
         /* We only test for the first server entry */
         else if (test_it) {
             int ret_code = 0;
-            snprintf(command, OS_SIZE_1024,
-                     "%s/%s test test >/dev/null 2>&1",
-                     AGENTLESSDIRPATH, entry->type);
-            ret_code = system(command);
+            snprintf(command, OS_SIZE_1024, "%s/%s", AGENTLESSDIRPATH, entry->type);
+
+            if (wfd = wpopenl(command, 0, command, "test", "test", NULL), wfd) {
+                ret_code = wpclose(wfd);
+            }
 
             /* Check if the test worked */
             if (ret_code != 0) {
