@@ -66,7 +66,7 @@ void * wm_download_main(wm_download_t * data) {
         // Wait and accept a new connection
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if ((errno == EINTR)) {
+            if (errno == EINTR) {
                 minfo("accept(): %s", strerror(errno));
             } else {
                 merror("accept(): %s", strerror(errno));
