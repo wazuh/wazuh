@@ -19,7 +19,7 @@ static const char *XML_NETWORK = "network";
 static const char *XML_OS_SCAN = "os";
 static const char *XML_HARDWARE = "hardware";
 static const char *XML_PACKAGES = "packages";
-//static const char *XML_PORTS = "ports";
+static const char *XML_PORTS = "ports";
 static const char *XML_PROCS = "processes";
 
 // Parse XML configuration
@@ -34,9 +34,9 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     syscollector->flags.osinfo = 1;
     syscollector->flags.hwinfo = 1;
     syscollector->flags.programinfo = 1;
-    syscollector->flags.portsinfo = 0;
+    syscollector->flags.portsinfo = 1;
     syscollector->flags.allports = 0;
-    syscollector->flags.procinfo = 0;
+    syscollector->flags.procinfo = 1;
     module->context = &WM_SYS_CONTEXT;
     module->data = syscollector;
 
@@ -135,7 +135,6 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PROCS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
-/*
         } else if (!strcmp(node[i]->element, XML_PORTS)) {
             if (node[i]->attributes) {
                 if (!strcmp(node[i]->attributes[0], "all")) {
@@ -160,7 +159,6 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
-*/
         } else {
             merror("No such tag '%s' at module '%s'.", node[i]->element, WM_SYS_CONTEXT.name);
             return OS_INVALID;

@@ -116,6 +116,18 @@ typedef struct wm_sys_t {
     wm_sys_state_t state;                   // Running state
 } wm_sys_t;
 
+struct link_stats
+{
+    unsigned int rx_packets;    /* total packets received */
+    unsigned int tx_packets;    /* total packets transmitted */
+    unsigned int rx_bytes;      /* total bytes received */
+    unsigned int tx_bytes;      /* total bytes transmitted */
+    unsigned int rx_errors;     /* bad packets received */
+    unsigned int tx_errors;     /* packet transmit problems */
+    unsigned int rx_dropped;    /* no space in linux buffers */
+    unsigned int tx_dropped;    /* no space available in linux */
+};
+
 extern const wm_context WM_SYS_CONTEXT;     // Context
 
 // Parse XML configuration

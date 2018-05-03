@@ -33,6 +33,7 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
+SYSC_TEMPLATE="./etc/templates/config/generic/wodle-syscollector.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 ##########
@@ -323,6 +324,9 @@ WriteAgent()
     # CIS-CAT configuration
     WriteCISCAT "agent"
 
+    # Syscollector configuration
+    WriteSyscollector "manager"
+
     # Syscheck
     WriteSyscheck "agent"
 
@@ -419,6 +423,9 @@ WriteManager()
 
     # CIS-CAT configuration
     WriteCISCAT "manager"
+
+    # Syscollector configuration
+    WriteSyscollector "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
