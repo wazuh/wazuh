@@ -245,6 +245,8 @@ def compress_files(source, name, list_path, cluster_control_json=None):
                 logger.debug2("[Cluster] Adding {} to zip file".format(f))  # debug2
                 try:
                     zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
+                except zipfile.LargeZipFile as e:
+                    raise WazuhException(3001, str(e))
                 except Exception as e:
                     logger.error("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
 
