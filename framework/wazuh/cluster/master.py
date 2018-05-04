@@ -519,6 +519,8 @@ class MasterManager(Server):
 
     def get_integrity_control(self):
         with self._integrity_control_lock:
+            if len(self._integrity_control) == 0:
+                raise Exception("Integrity not calculated yet")
             return self._integrity_control
 
 
