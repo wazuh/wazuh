@@ -257,6 +257,40 @@ static FILE *open_diff_file(const char *host, const char *script)
     return (fp);
 }
 
+static char ** command_args(const char * type, const char * server, const char * options) {
+    char command[1024];
+    char ** argv;
+    char * _options;
+    char * token;
+    int i = 1;
+
+    snprintf(command, sizeof(command), AGENTLESSDIRPATH "/%s", type);
+
+    os_malloc(4 * sizeof(char *), argv);
+    os_strdup(command, argv[0]);
+
+    switch (server[0]) {
+    case 'o':
+        argv[i++] = "use_sudo";
+        break;
+    case 's':
+        argv[i++] = "use_su";
+        break;
+    }
+
+    os_strdup(server + 1, argv[i++]);
+    os_strdup(options, _options);
+
+    for (token = strtok(_options, " "); token; token = strtok(NULL, " ")) {
+        os_strdup(token, argv[i++]);
+        os_realloc(argv, (i + 1) * sizeof(char *), argv);
+    }
+
+    argv[i] = NULL;
+    free(_options);
+    return argv;
+}
+
 /* Run periodic commands */
 static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
 {
@@ -264,7 +298,7 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
     char *tmp_str;
     char buf[OS_SIZE_2048 + 1];
     char command[OS_SIZE_1024 + 1];
-    FILE *fp;
+    char ** argv;
     FILE *fp_store = NULL;
     wfd_t * wfd;
 
@@ -305,23 +339,12 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
             return (0);
         }
 
-        if (entry->server[i][0] == 's') {
-            snprintf(command, OS_SIZE_1024, "%s/%s \"use_su\" \"%s\" %s 2>&1",
-                     AGENTLESSDIRPATH, entry->type, entry->server[i] + 1,
-                     entry->options);
-        } else if (entry->server[i][0] == 'o') {
-            snprintf(command, OS_SIZE_1024, "%s/%s \"use_sudo\" \"%s\" %s 2>&1",
-                     AGENTLESSDIRPATH, entry->type, entry->server[i] + 1,
-                     entry->options);
-        } else {
-            snprintf(command, OS_SIZE_1024, "%s/%s \"%s\" %s 2>&1",
-                     AGENTLESSDIRPATH, entry->type, entry->server[i] + 1,
-                     entry->options);
-        }
+        argv = command_args(entry->type, entry->server[i], entry->options);
+        wfd = wpopenv(argv[0], argv, W_BIND_STDOUT | W_BIND_STDERR);
+        free_strarray(argv);
 
-        fp = popen(command, "r");
-        if (fp) {
-            while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
+        if (wfd) {
+            while (fgets(buf, OS_SIZE_2048, wfd->file) != NULL) {
                 /* Remove newlines and carriage returns */
                 tmp_str = strchr(buf, '\r');
                 if (tmp_str) {
@@ -371,9 +394,9 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 save_agentless_entry(entry->server[i] + 1,
                                      entry->type, "syscheck");
             }
-            pclose(fp);
+            wpclose(wfd);
         } else {
-            merror("Popen failed on '%s' for '%s'.",
+            merror("Subprocess failed on '%s' for '%s'.",
                    entry->type, entry->server[i] + 1);
             entry->error_flag++;
         }
