@@ -46,7 +46,7 @@ static int wm_vulnerability_check_update(update_node *upd, const char *dist);
 static int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed);
 static int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *tag);
 static int wm_vulnerability_detector_compare(char *version_it, char *cversion_it);
-static const char *wm_vulnerability_set_oval(char *uname, update_node **updates);
+static const char *wm_vulnerability_set_oval(const char *os_name, update_node **updates);
 static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
 
 int *vu_queue;
@@ -116,7 +116,7 @@ const char *vu_dist_ext[] = {
     "Unknow OS"
 };
 
-const char *wm_vulnerability_set_oval(char *uname, update_node **updates) {
+const char *wm_vulnerability_set_oval(const char *os_name, update_node **updates) {
     const char *retval = NULL;
     int i;
 
@@ -125,7 +125,7 @@ const char *wm_vulnerability_set_oval(char *uname, update_node **updates) {
             int j;
             char *allowed;
             for (allowed = *updates[i]->allowed_list, j = 0; allowed; allowed = updates[i]->allowed_list[++j]) {
-                if (strcasestr(uname, allowed)) {
+                if (strcasestr(os_name, allowed)) {
                     retval = updates[i]->dist_tag;
                     i = OS_SUPP_SIZE;
                     break;
@@ -822,6 +822,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
             // Insert the CVEs solved by the patch to vulnerability table
             snprintf(p_query, MAX_QUERY_SIZE, vu_queries[VU_INSERT_CVE_PATCH], cve_it->cveid);
             if (sqlite3_prepare_v2(db, p_query, -1, &stmt, NULL) != SQLITE_OK) {
+                sqlite3_finalize(stmt);
                 return wm_vulnerability_detector_sql_error(db);
             }
             sqlite3_bind_text(stmt, 1, *patch_it->patch_id, -1, NULL);
@@ -834,6 +835,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
 
             // Inserts patch-CVE relationship to patches table
             if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CORR_PATCH], -1, &stmt, NULL) != SQLITE_OK) {
+                sqlite3_finalize(stmt);
                 return wm_vulnerability_detector_sql_error(db);
             }
 
@@ -849,6 +851,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
 
             // Insert the CVE info to vulnerability info table
             if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CVE_INFO], -1, &stmt, NULL) != SQLITE_OK) {
+                sqlite3_finalize(stmt);
                 return wm_vulnerability_detector_sql_error(db);
             }
 
@@ -885,6 +888,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
 
         // Remove the patch entry from vulnerability table
         if (sqlite3_prepare_v2(db, vu_queries[VU_REMOVE_PATCH], -1, &stmt, NULL) != SQLITE_OK) {
+            sqlite3_finalize(stmt);
             return wm_vulnerability_detector_sql_error(db);
         }
         sqlite3_bind_text(stmt, 1, *patch_it->patch_id, -1, NULL);
@@ -1756,7 +1760,7 @@ int wm_vulnerability_update_oval(update_node *update) {
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_PAR);
     if (OS_ReadXML(tmp_file, &xml) < 0) {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_LOAD_CVE_ERROR, OS_VERSION);
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_LOAD_CVE_ERROR, OS_VERSION, xml.err);
         goto free_mem;
     }
 
@@ -1790,13 +1794,13 @@ int wm_vulnerability_update_oval(update_node *update) {
         goto free_mem;
     }
 
-    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_START_REFRESH_DB, OS_VERSION);
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_START_REFRESH_DB, update->dist_ext);
 
     if (wm_vulnerability_detector_insert(&parsed_oval)) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_REFRESH_DB_ERROR, OS_VERSION);
         goto free_mem;
     }
-    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_STOP_REFRESH_DB, OS_VERSION);
+    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_STOP_REFRESH_DB, update->dist_ext);
 
 success = 1;
 free_mem:
@@ -2169,6 +2173,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     // Request the ID of the last scan
     size = snprintf(buffer, OS_MAXSTR, vu_queries[VU_SYSC_SCAN_REQUEST], agent->agent_id);
     if (send(sock, buffer, size + 1, 0) < size || (size = recv(sock, buffer, OS_MAXSTR, 0)) < 1) {
+        close(sock);
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SYSC_SCAN_REQUEST_ERROR, agent->agent_id);
         return OS_INVALID;
     }
@@ -2458,215 +2463,129 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
 }
 
 int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates) {
-    agent_software *agents;
-    keystore keys = KEYSTORE_INITIALIZER;
-    keyentry *entry;
-    unsigned int i;
-    size_t size;
-    char agent_info[OS_MAXSTR];
-    char m_uname[OS_MAXSTR] = "";
-    FILE *fp = NULL;
-    char manager_found = 0;
-    char *buffer;
-    char *uname;
-    char *uname_p = NULL;
-    char *sep;
+    agent_software *agents = NULL;
+    agent_software *f_agent = NULL;
+    char global_db[OS_FLSIZE + 1];
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int dist_error;
+    char *id;
+    char *name;
+    char *ip;
+    char *os_name;
+    char *os_version;
+    const char *agent_os;
+    distribution agent_dist;
 
-    os_strdup(getuname(), uname);
+    snprintf(global_db, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB_DIR, WDB_GLOB_NAME);
 
-    OS_PassEmptyKeyfile();
-    OS_ReadKeys(&keys, 0, 0, 0);
-    if (keys.keysize) {
-        agents = NULL;
-        for (i = 0; i < keys.keysize; i++) {
-            entry = keys.keyentries[i];
-            if (agents) {
-                os_calloc(1, sizeof(agent_software), agents->next);
-                agents->next->prev = agents;
-                agents = agents->next;
-            } else {
-                os_calloc(1, sizeof(agent_software), *agents_software);
-                agents = *agents_software;
-                agents->prev = NULL;
-            }
-
-            os_strdup(entry->id, agents->agent_id);
-            os_strdup(entry->name, agents->agent_name);
-            os_strdup(entry->ip->ip, agents->agent_ip);
-            agents->OS = NULL;
-            agents->info = 0;
-            agents->next = NULL;
-        }
+    if (sqlite3_open_v2(global_db, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_GLOBALDB_OPEN_ERROR);
+        return wm_vulnerability_detector_sql_error(db);
     }
-
-    os_calloc(1, sizeof(agent_software), agents);
-    if (*agents_software) {
-        (*agents_software)->prev = agents;
-        agents->next = *agents_software;
-    }
-    *agents_software = agents;
-    agents->prev = NULL;
-    size = snprintf(agent_info, OS_MAXSTR, "%s", uname);
-    if (buffer = strchr(agent_info, '|'), buffer && (uname_p = strchr(++buffer, '|'), uname_p)) {
-        *uname_p = '\0';
-    } else {
-        free(uname);
-        OS_FreeKeys(&keys);
-        return OS_INVALID;
-    }
-
-    if (sep = strchr(buffer, ' '), sep) {
-        *sep = '\0';
-    }
-
-    os_strdup("000", agents->agent_id);
-    os_strdup("", agents->agent_ip);
-    os_strdup(buffer, agents->agent_name);
-
-    ++uname_p;
 
     // Extracts the operating system of the agents
-    for (agents = *agents_software; agents;) {
-        if (fp) {
-            fclose(fp);
-            fp = NULL;
-        }
+    if (sqlite3_prepare_v2(db, vu_queries[VU_GLOBALDB_REQUEST], -1, &stmt, NULL) != SQLITE_OK) {
+        sqlite3_finalize(stmt);
+        return wm_vulnerability_detector_sql_error(db);
+    }
 
-        if (strcmp(agents->agent_id, "000")) {
-            manager_found = 0;
-            size = snprintf(agent_info, OS_MAXSTR, AGENT_INFO_FILEF, agents->agent_name, agents->agent_ip);
-            agent_info[size] = '\0';
-        } else {
-            manager_found = 1;
-        }
-        // The agent has never been connected
-        if (!manager_found && !(fp = fopen(agent_info, "r" ))) {
-            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_INFO_ERROR, agents->agent_name);
-            if (agents = skip_agent(agents, agents_software), !agents) {
-                break;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        dist_error = -1;
+        os_name = (char *) sqlite3_column_text(stmt, 0);
+        os_version = (char *) sqlite3_column_text(stmt,1);
+        name = (char *) sqlite3_column_text(stmt, 2);
+
+        if (strcasestr(os_name, vu_dist_tag[DIS_UBUNTU])) {
+            if (strstr(os_version, "16")) {
+                agent_os = vu_dist_tag[DIS_XENIAL];
+            } else if (strstr(os_version, "14")) {
+                agent_os = vu_dist_tag[DIS_TRUSTY];
+            } else if (strstr(os_version, "12")) {
+                agent_os = vu_dist_tag[DIS_PRECISE];
             } else {
-                continue;
+                dist_error = DIS_UBUNTU;
             }
+            agent_dist = DIS_UBUNTU;
+        } else if (strcasestr(os_name, vu_dist_tag[DIS_DEBIAN])) {
+            if (strstr(os_version, "7")) {
+                agent_os = vu_dist_tag[DIS_WHEEZY];
+            } else if (strstr(os_version, "8")) {
+                agent_os = vu_dist_tag[DIS_JESSIE];
+            } else if (strstr(os_version, "9")) {
+                agent_os = vu_dist_tag[DIS_STRETCH];
+            } else {
+                dist_error = DIS_DEBIAN;
+            }
+            agent_dist = DIS_DEBIAN;
+        } else if (strcasestr(os_name, vu_dist_tag[DIS_REDHAT])) {
+            if (strstr(os_version, "7")) {
+                agent_os = vu_dist_tag[DIS_RHEL7];
+            } else if (strstr(os_version, "6")) {
+                agent_os = vu_dist_tag[DIS_RHEL6];
+            } else if (strstr(os_version, "5")) {
+                agent_os = vu_dist_tag[DIS_RHEL5];
+            } else {
+                dist_error = DIS_REDHAT;
+            }
+            agent_dist = DIS_REDHAT;
+        } else if (strcasestr(os_name, vu_dist_tag[DIS_CENTOS])) {
+            if (strstr(os_version, "7")) {
+                agent_os = vu_dist_tag[DIS_RHEL7];
+            } else if (strstr(os_version, "6")) {
+                agent_os = vu_dist_tag[DIS_RHEL6];
+            } else if (strstr(os_version, "5")) {
+                agent_os = vu_dist_tag[DIS_RHEL5];
+            } else {
+                dist_error = DIS_CENTOS;
+            }
+            agent_dist = DIS_REDHAT;
         } else {
-            if (manager_found) {
-                strncpy(m_uname, uname_p, OS_MAXSTR -1);
-                m_uname[OS_MAXSTR - 1] = '\0';
-            }
-            buffer = agent_info;
-            size_t max = OS_MAXSTR;
+            // Operating system not supported in any of its versions
+            dist_error = -2;
+        }
 
-            // Agent connected or disconnected
-            if ((manager_found && ((size = snprintf(agent_info, OS_MAXSTR, "%s", m_uname)) > 0)) ||
-                ((size = getline(&buffer, &max, fp)) > 0)) {
-                buffer[size] = '\0';
-                if (buffer = strchr(buffer, '['), buffer) {
-                    char *end;
-                    buffer++;
-
-                    if (end = strchr(agent_info, ']'), end) {
-                        int dist_error = -1;
-                        if (strcasestr(buffer, vu_dist_tag[DIS_UBUNTU])) {
-                            if (strstr(buffer, " 16")) {
-                                agents->OS = vu_dist_tag[DIS_XENIAL];
-                            } else if (strstr(buffer, " 14")) {
-                                agents->OS = vu_dist_tag[DIS_TRUSTY];
-                            } else if (strstr(buffer, " 12")) {
-                                agents->OS = vu_dist_tag[DIS_PRECISE];
-                            } else {
-                                dist_error = DIS_UBUNTU;
-                            }
-                            agents->dist = DIS_UBUNTU;
-                        } else if (strcasestr(buffer, vu_dist_tag[DIS_DEBIAN])) {
-                            if (strstr(buffer, " 7")) {
-                                agents->OS = vu_dist_tag[DIS_WHEEZY];
-                            } else if (strstr(buffer, " 8")) {
-                                agents->OS = vu_dist_tag[DIS_JESSIE];
-                            } else if (strstr(buffer, " 9")) {
-                                agents->OS = vu_dist_tag[DIS_STRETCH];
-                            } else {
-                                dist_error = DIS_DEBIAN;
-                            }
-                            agents->dist = DIS_DEBIAN;
-                        } else if (strcasestr(buffer, vu_dist_tag[DIS_REDHAT])) {
-                            if (strstr(buffer, " 7")) {
-                                agents->OS = vu_dist_tag[DIS_RHEL7];
-                            } else if (strstr(buffer, " 6")) {
-                                agents->OS = vu_dist_tag[DIS_RHEL6];
-                            } else if (strstr(buffer, " 5")) {
-                                agents->OS = vu_dist_tag[DIS_RHEL5];
-                            } else {
-                                dist_error = DIS_REDHAT;
-                            }
-                            agents->dist = DIS_REDHAT;
-                        } else if (strcasestr(buffer, vu_dist_tag[DIS_CENTOS])) {
-                            if (strstr(buffer, " 7")) {
-                                agents->OS = vu_dist_tag[DIS_RHEL7];
-                            } else if (strstr(buffer, " 6")) {
-                                agents->OS = vu_dist_tag[DIS_RHEL6];
-                            } else if (strstr(buffer, " 5")) {
-                                agents->OS = vu_dist_tag[DIS_RHEL5];
-                            } else {
-                                dist_error = DIS_CENTOS;
-                            }
-                            agents->dist = DIS_REDHAT;
-                        } else { // Operating system not supported in any of its versions
-                            dist_error = -2;
-                        }
-
-                        if (dist_error != -1) {
-                            // Check if the agent OS can be matched with a OVAL
-                            if (agents->OS = wm_vulnerability_set_oval(buffer, updates), !agents->OS) {
-                                if (dist_error == -2) {
-                                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, agents->agent_name);
-                                    if (agents = skip_agent(agents, agents_software), !agents) {
-                                        break;
-                                    } else {
-                                        continue;
-                                    }
-                                } else {
-                                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[dist_error], agents->agent_name);
-                                    if (agents = skip_agent(agents, agents_software), !agents) {
-                                        break;
-                                    } else {
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS" Error getting version.", agents->agent_name);
-                        if (agents = skip_agent(agents, agents_software), !agents) {
-                            break;
-                        } else {
-                            continue;
-                        }
-                    }
-                } else { // Operating system not supported in any of its versions
-                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, agents->agent_name);
-                    if (agents = skip_agent(agents, agents_software), !agents) {
-                        break;
-                    } else {
-                        continue;
-                    }
-                }
-            } else { // Agent in pending state
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_PENDING, agents->agent_name);
-                if (agents = skip_agent(agents, agents_software), !agents) {
-                    break;
+        if (dist_error != -1) {
+            // Check if the agent OS can be matched with a OVAL
+            if (agent_os = wm_vulnerability_set_oval(os_name, updates), !agent_os) {
+                if (dist_error == -2) {
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, name);
+                    continue;
                 } else {
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[dist_error], name);
                     continue;
                 }
             }
-            agents = agents->next;
         }
-    }
 
-    if (fp) {
-        fclose(fp);
-    }
+        id = (char *) sqlite3_column_text(stmt, 3);
+        ip = (char *) sqlite3_column_text(stmt, 4);
 
-    free(uname);
-    OS_FreeKeys(&keys);
+        if (agents) {
+            os_malloc(sizeof(agent_software), agents->next);
+            agents->next->prev = agents;
+            agents = agents->next;
+        } else {
+            os_malloc(sizeof(agent_software), agents);
+            agents->prev = NULL;
+            f_agent = agents;
+        }
+
+        os_strdup(id, agents->agent_id);
+        if (ip) {
+            os_strdup(ip, agents->agent_ip);
+        } else {
+            agents->agent_ip = NULL;
+        }
+        os_strdup(name, agents->agent_name);
+        os_strdup(agent_os, agents->OS);
+        agents->dist = agent_dist;
+        agents->info = 0;
+        agents->next = NULL;
+    }
+    sqlite3_finalize(stmt);
+    *agents_software = f_agent;
+    sqlite3_close_v2(db);
     return 0;
 }
 

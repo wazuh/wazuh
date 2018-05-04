@@ -53,28 +53,6 @@ char *format_os_version(char *OS) {
     return OS_format;
 }
 
-agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
-    agent_software *next = NULL;
-    if (agents->prev && agents->next) {
-        next = agents->next;
-        agents->prev->next = next;
-        next->prev = agents->prev;
-    } else if (agents->prev) {
-        agents->prev->next = NULL;
-    } else if (agents->next) {
-        *agents_list = next = agents->next;
-        next->prev = NULL;
-    } else {
-        *agents_list = NULL;
-    }
-    free(agents->agent_id);
-    free(agents->agent_name);
-    free(agents->agent_ip);
-    free(agents);
-
-    return next;
-}
-
 int get_interval(char *source, unsigned long *interval) {
     char *endptr;
     *interval = strtoul(source, &endptr, 0);

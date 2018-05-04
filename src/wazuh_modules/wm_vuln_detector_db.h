@@ -51,6 +51,7 @@ typedef enum vu_query {
     VU_SOFTWARE_FULL_REQ,
     VU_SYSC_SCAN_REQUEST,
     VU_SYSC_UPDATE_SCAN,
+    VU_GLOBALDB_REQUEST,
     BEGIN_T,
     END_T
 } vu_query;
@@ -81,6 +82,7 @@ static const char *vu_queries[] = {
     "agent %s sql SELECT DISTINCT NAME, VERSION, ARCHITECTURE FROM SYS_PROGRAMS WHERE SCAN_ID = '%s' LIMIT %i OFFSET %i;",
     "agent %s sql SELECT SCAN_ID FROM SYS_PROGRAMS LIMIT 1;",
     "agent %s sql UPDATE SYS_PROGRAMS SET TRIAGED = 1 WHERE SCAN_ID = '%s';",
+    "SELECT OS_NAME, OS_MAJOR, NAME, ID, IP FROM AGENT;",
     "BEGIN TRANSACTION;",
     "END TRANSACTION;"
 };

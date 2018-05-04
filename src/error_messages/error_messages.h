@@ -278,7 +278,7 @@
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5400): %s database could not be fetched."
 #define VU_OPEN_FILE_ERROR          "(5401): Could not open %s."
-#define VU_LOAD_CVE_ERROR           "(5402): Could not load the CVE OVAL for %s."
+#define VU_LOAD_CVE_ERROR           "(5402): Could not load the CVE OVAL for %s. %s"
 #define VU_INVALID_AT_VALUE         "(5403): Invalid '%s' value for '%s' attribute in node '%s'."
 #define VU_PACKAGE_NAME_ERROR       "(5404): The package name could not be obtained."
 #define VU_SQL_ERROR                "(5405): SQL error: %s"
@@ -309,6 +309,7 @@
 #define VU_HTTP_HEADER_ERROR        "(5432): Invalid HTTP header."
 #define VU_PACKAGE_RECOG_ERROR      "(5433): The package could not be recognized in '%s'."
 #define VU_NO_SYSC_SCANS            "(5434): No Syscollector scans found for agent %s, so their vulnerabilities will not be checked."
+#define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
