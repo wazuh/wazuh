@@ -181,6 +181,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                 if (status == 0) {
                     time_sleep = get_time_to_hour(ciscat->scan_time);
                 } else {
+                    delay(1000); // Sleep one second to avoid an infinite loop
                     time_sleep = get_time_to_hour("00:00");
                 }
 
@@ -192,7 +193,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         } else if (ciscat->state.next_time > time_start) {
 
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", ciscat->state.next_time - time_start);
             delay(1000 * ciscat->state.next_time - time_start);
 
         } else if (ciscat->scan_wday >= 0) {
@@ -207,7 +208,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             time_sleep = get_time_to_hour(ciscat->scan_time);
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            delay (1000 * time_sleep);
+            delay(1000 * time_sleep);
 
         }
     }
@@ -283,9 +284,11 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     time_sleep = get_time_to_hour(ciscat->scan_time);
                     i++;
                 } else {
+                    delay(1000);
                     time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
                 }
 
+                mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
                 delay(1000 * time_sleep);
 
             } while ((status < 0) && (i < interval));
