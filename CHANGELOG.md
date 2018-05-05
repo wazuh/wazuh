@@ -1,6 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.2.3]
+
+### Fixed
+
+- Fixed agent wait condition and improve logging messages. ([#550](https://github.com/wazuh/wazuh/pull/550))
+- Fix race condition in settings load time by Windows agent. ([#551](https://github.com/wazuh/wazuh/pull/551))
+- Fix bug in Authd that prevented it from deleting agent-info files when removing agents.
+- Fix bug in ruleset that did not overwrite the `<info>` option. ([#584](https://github.com/wazuh/wazuh/issues/584))
+
 ## [v3.2.2]
 
 ### Added
@@ -32,10 +41,6 @@ All notable changes to this project will be documented in this file.
 - Fixed agent group file deletion when using Authd.
 - Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
 - Fixed remote command switch option. ([#504](https://github.com/wazuh/wazuh/pull/504))
-- Fixed agent wait condition and improve logging messages. ([#550](https://github.com/wazuh/wazuh/pull/550))
-- Fix race condition in settings load time by Windows agent. ([#551](https://github.com/wazuh/wazuh/pull/551))
-- Fix bug in Authd that prevented it from deleting agent-info files when removing agents.
-- Fix bug in ruleset that did not overwrite the `<info>` option.
 
 ## [v3.2.1]
 
