@@ -278,13 +278,12 @@ void HandleSecure()
 // Message handler thread
 void * rem_handler_main(__attribute__((unused)) void * args) {
     message_t * message;
-    char buffer[OS_MAXSTR + 1] = "";
     mdebug1("Message handler thread started.");
 
     while (1) {
+        // Check if message has original size of decription
         message = rem_msgpop();
-        memcpy(buffer, message->buffer, message->size);
-        HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        HandleSecureMessage(message->buffer, message->size, &message->addr, message->sock);
         rem_msgfree(message);
     }
 

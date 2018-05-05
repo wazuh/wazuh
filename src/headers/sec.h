@@ -17,6 +17,10 @@ typedef enum _crypt_method{
     W_METH_BLOWFISH,W_METH_AES
 } crypt_method;
 
+typedef enum _msg_version{
+    W_VERSION_0,W_VERSION_1
+} msg_ver;
+
 typedef struct keystore_flags_t {
     unsigned int rehash_keys:1;     // Flag: rehash keys on adding
     unsigned int save_removed:1;    // Save removed keys into list
@@ -41,6 +45,8 @@ typedef struct _keyentry {
     struct sockaddr_in peer_info;
     FILE *fp;
     crypt_method crypto_method;
+    msg_ver msg_version;
+
 } keyentry;
 
 /* Key storage */
@@ -141,6 +147,9 @@ int OS_DeleteSocket(keystore * keys, int sock);
 
 /* Set the agent crypto method readed from the ossec.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method);
+
+/* Set the message version for the agent */
+void w_set_agent_msg_version(keystore * keys,const int version);
 
 /** Remote IDs directories and internal definitions */
 #ifndef WIN32

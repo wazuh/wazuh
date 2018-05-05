@@ -208,6 +208,9 @@ int local_start()
     /*Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys, agt->crypto_method);
 
+    /* Set the message version for the agent */
+    w_set_agent_msg_version(&keys, agt->msg_version);
+
     /* Initialize random numbers */
     srandom(time(0));
     os_random();

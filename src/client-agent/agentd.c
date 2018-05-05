@@ -87,6 +87,9 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /*Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys,agt->crypto_method);
 
+    /* Set the message version for the agent */
+    w_set_agent_msg_version(&keys,agt->msg_version);
+
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 

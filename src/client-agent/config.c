@@ -36,6 +36,7 @@ int ClientConf(const char *cfgfile)
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
     agt->crypto_method = W_METH_AES;
+    agt->msg_version = W_VERSION_1;
 
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
