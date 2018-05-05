@@ -43,10 +43,14 @@ static inline int wnotify_get(const wnotify_t * notify, int index) {
 
 #endif /* __linux__ */
 
+#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+
 wnotify_t * wnotify_init(int size);
 int wnotify_add(wnotify_t * notify, int fd);
 int wnotify_delete(wnotify_t * notify, int fd);
 int wnotify_wait(wnotify_t * notify, int timeout);
 void wnotify_close(wnotify_t * notify);
+
+#endif
 
 #endif

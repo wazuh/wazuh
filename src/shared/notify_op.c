@@ -81,6 +81,8 @@ int wnotify_wait(wnotify_t * notify, int timeout) {
 
 #endif /* __linux__ */
 
+#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+
 void wnotify_close(wnotify_t * notify) {
     if (notify) {
         close(notify->fd);
@@ -88,3 +90,5 @@ void wnotify_close(wnotify_t * notify) {
         free(notify);
     }
 }
+
+#endif
