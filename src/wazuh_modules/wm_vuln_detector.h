@@ -83,6 +83,7 @@ typedef enum distribution{
     DIS_PRECISE,
     DIS_TRUSTY,
     DIS_XENIAL,
+    DIS_BIONIC,
     // Debian versions
     DIS_JESSIE,
     DIS_STRETCH,
@@ -141,6 +142,7 @@ typedef enum {
     CVE_PRECISE,
     CVE_TRUSTY,
     CVE_XENIAL,
+    CVE_BIONIC,
     CVE_JESSIE,
     CVE_STRETCH,
     CVE_WHEEZY,

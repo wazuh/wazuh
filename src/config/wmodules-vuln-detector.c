@@ -170,6 +170,12 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     upd->dist_tag = vu_dist_tag[DIS_XENIAL];
                     upd->dist_ext = vu_dist_ext[DIS_XENIAL];
                     upd->dist_ref = DIS_UBUNTU;
+                } else if (!strcmp(version, "18") || !strcmp(version, vu_dist_tag[DIS_BIONIC])) {
+                    os_index = CVE_BIONIC;
+                    os_strdup(vu_dist_tag[DIS_BIONIC], upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_BIONIC];
+                    upd->dist_ext = vu_dist_ext[DIS_BIONIC];
+                    upd->dist_ref = DIS_UBUNTU;
                 } else {
                     merror("Invalid Ubuntu version '%s'.", version);
                     return OS_INVALID;

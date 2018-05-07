@@ -66,6 +66,7 @@ const char *vu_dist_tag[] = {
     "PRECISE",
     "TRUSTY",
     "XENIAL",
+    "BIONIC",
     "JESSIE",
     "STRETCH",
     "WHEEZY",
@@ -96,6 +97,7 @@ const char *vu_dist_ext[] = {
     "Ubuntu Precise",
     "Ubuntu Trusty",
     "Ubuntu Xenial",
+    "Ubuntu Bionic",
     "Debian Jessie",
     "Debian Stretch",
     "Debian Wheezy",
@@ -2127,9 +2129,10 @@ int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *
 
 int wm_vulnerability_detector_updatedb(update_node **updates) {
         // Ubuntu
-    if (wm_vulnerability_run_update(updates[CVE_XENIAL],   vu_dist_tag[DIS_XENIAL],   vu_dist_ext[DIS_XENIAL])   ||
+    if (wm_vulnerability_run_update(updates[CVE_BIONIC],   vu_dist_tag[DIS_BIONIC],   vu_dist_ext[DIS_BIONIC])   ||
+        wm_vulnerability_run_update(updates[CVE_XENIAL],   vu_dist_tag[DIS_XENIAL],   vu_dist_ext[DIS_XENIAL])   ||
         wm_vulnerability_run_update(updates[CVE_TRUSTY],   vu_dist_tag[DIS_TRUSTY],   vu_dist_ext[DIS_TRUSTY])   ||
-        wm_vulnerability_run_update(updates[CVE_XENIAL],   vu_dist_tag[DIS_PRECISE],  vu_dist_ext[DIS_PRECISE])  ||
+        wm_vulnerability_run_update(updates[CVE_PRECISE],   vu_dist_tag[DIS_PRECISE],  vu_dist_ext[DIS_PRECISE]) ||
         // Debian
         wm_vulnerability_run_update(updates[CVE_STRETCH],  vu_dist_tag[DIS_STRETCH],  vu_dist_ext[DIS_STRETCH])  ||
         wm_vulnerability_run_update(updates[CVE_JESSIE],   vu_dist_tag[DIS_JESSIE],   vu_dist_ext[DIS_JESSIE])   ||
@@ -2497,7 +2500,9 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         name = (char *) sqlite3_column_text(stmt, 2);
 
         if (strcasestr(os_name, vu_dist_tag[DIS_UBUNTU])) {
-            if (strstr(os_version, "16")) {
+            if (strstr(os_version, "18")) {
+                agent_os = vu_dist_tag[DIS_BIONIC];
+            } else if (strstr(os_version, "16")) {
                 agent_os = vu_dist_tag[DIS_XENIAL];
             } else if (strstr(os_version, "14")) {
                 agent_os = vu_dist_tag[DIS_TRUSTY];
