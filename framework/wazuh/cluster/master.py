@@ -538,6 +538,10 @@ class MasterManager(Server):
                                                                   "ip": cluster_config['nodes'][0], "version": __version__,
                                                                   "type": "master"}}})
 
+        # Get active agents by node
+        for node_name in clients_info.keys():
+            clients_info[node_name]["info"]["n_active_agents"]=len(get_agents_status(filter_status='Active', filter_nodes=node_name))
+
         health_info = {"n_connected_nodes":len(clients_info), "nodes": clients_info}
         return health_info
 

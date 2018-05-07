@@ -294,6 +294,7 @@ def print_healthcheck(conf, more=False, filter_node=None):
         msg2 += "\n    {} ({})\n".format(node, node_info['info']['ip'])
         msg2 += "        Version: {}\n".format(node_info['info']['version'])
         msg2 += "        Type: {}\n".format(node_info['info']['type'])
+        msg2 += "        Active agents: {}\n".format(node_info['info']['n_active_agents'])
 
         if node_info['info']['type'] != "master":
 
