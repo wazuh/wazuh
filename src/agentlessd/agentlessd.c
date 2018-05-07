@@ -156,7 +156,11 @@ static int check_diff_file(const char *host, const char *script)
     char old_location[1024 + 1];
     char new_location[1024 + 1];
     char tmp_location[1024 + 1];
-    char diff_cmd[2048 + 1];
+    char diff_location[1024 + 1];
+    char buffer[4096];
+    wfd_t * wfd;
+    FILE * fp;
+    size_t zread;
 
     os_md5 md5sum_old;
     os_md5 md5sum_new;
@@ -164,7 +168,7 @@ static int check_diff_file(const char *host, const char *script)
     old_location[1024] = '\0';
     new_location[1024] = '\0';
     tmp_location[1024] = '\0';
-    diff_cmd[2048] = '\0';
+    diff_location[1024] = '\0';
 
     snprintf(new_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
              DIFF_NEW_FILE);
@@ -207,11 +211,30 @@ static int check_diff_file(const char *host, const char *script)
 
     /* Run diff */
     date_of_change = File_DateofChange(old_location);
-    snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/%s->%s/diff.%d\" "
-             "2>/dev/null",
-             tmp_location, old_location,
-             DIFF_DIR_PATH, host, script, (int)date_of_change);
-    if (system(diff_cmd) != 256) {
+
+    if (wfd = wpopenl("diff", W_BIND_STDOUT, "diff", tmp_location, old_location, NULL), !wfd) {
+        merror("Unable to run diff for %s->%s: %s (%d)", host, script, strerror(errno), errno);
+        return 0;
+    }
+
+    snprintf(diff_location, sizeof(diff_location), DIFF_DIR_PATH "/%s->%s/diff.%d", host, script, (int)date_of_change);
+
+    if (fp = fopen(diff_location, "wb"), !fp) {
+        merror("Unable to open diff file '%s': %s (%d)", diff_location, strerror(errno), errno);
+        wpclose(wfd);
+        return 0;
+    }
+
+    while (zread = fread(buffer, 1, sizeof(buffer), wfd->file), zread) {
+        if (fwrite(buffer, 1, zread, fp) != zread) {
+            merror("Unable to write diff file '%s': %s (%d)", diff_location, strerror(errno), errno);
+            break;
+        }
+    }
+
+    fclose(fp);
+
+    if (wpclose(wfd) != 256) {
         merror("Unable to run diff for %s->%s",
                host, script);
         return (0);
