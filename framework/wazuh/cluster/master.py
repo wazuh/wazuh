@@ -193,7 +193,7 @@ class MasterManagerHandler(ServerHandler):
         sync_result = False
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
         self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status="In progress")
         self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status="In progress")
         # ---
@@ -233,7 +233,7 @@ class MasterManagerHandler(ServerHandler):
         sync_result = True
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
 
         return sync_result
 
@@ -369,7 +369,7 @@ class ProcessClientIntegrity(ProcessClient):
     # Overridden methods
     def process_file(self):
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
         self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status="In progress")
         self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="missing", status="In progress")
         self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="shared", status="In progress")
@@ -397,7 +397,7 @@ class ProcessClientIntegrity(ProcessClient):
             logger.error("{0}: Sync error reported by the client.".format(self.thread_tag))
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
 
         return sync_result
 
