@@ -773,6 +773,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
         cJSON * cpu_mhz = cJSON_GetObjectItem(inventory, "cpu_mhz");
         cJSON * ram_total = cJSON_GetObjectItem(inventory, "ram_total");
         cJSON * ram_free = cJSON_GetObjectItem(inventory, "ram_free");
+        cJSON * ram_usage = cJSON_GetObjectItem(inventory, "ram_usage");
 
         char * msg = NULL;
         os_calloc(OS_MAXSTR, sizeof(char), msg);
@@ -834,6 +835,14 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
             char rfree[OS_MAXSTR];
             snprintf(rfree, OS_MAXSTR - 1, "%d", ram_free->valueint);
             wm_strcat(&msg, rfree, '|');
+        } else {
+            wm_strcat(&msg, "NULL", '|');
+        }
+
+        if (ram_usage) {
+            char usage[OS_MAXSTR];
+            snprintf(usage, OS_MAXSTR - 1, "%d", ram_usage->valueint);
+            wm_strcat(&msg, usage, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }

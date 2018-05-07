@@ -34,7 +34,7 @@ static const char * SQL_STMT[] = {
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_programs WHERE scan_id != ?;",
     "UPDATE SYS_PROGRAMS SET TRIAGED = 1 WHERE SCAN_ID = ? AND EXISTS(SELECT OLD.SCAN_ID FROM SYS_PROGRAMS OLD WHERE OLD.SCAN_ID != SYS_PROGRAMS.SCAN_ID AND OLD.TRIAGED = 1 AND OLD.FORMAT = SYS_PROGRAMS.FORMAT AND OLD.NAME = SYS_PROGRAMS.NAME AND OLD.VENDOR = SYS_PROGRAMS.VENDOR AND OLD.VERSION = SYS_PROGRAMS.VERSION AND OLD.ARCHITECTURE = SYS_PROGRAMS.ARCHITECTURE);",
-    "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_hwinfo;",
     "INSERT INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_ports WHERE scan_id != ?;",

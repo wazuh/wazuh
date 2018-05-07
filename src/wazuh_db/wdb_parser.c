@@ -1066,6 +1066,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
     char * cpu_mhz;
     long ram_total;
     long ram_free;
+    int ram_usage;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -1171,9 +1172,20 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
 
         ram_total = strtol(curr,NULL,10);
         *next++ = '\0';
-        ram_free = strtol(next,NULL,10);
+        curr = next;
 
-        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free), result < 0) {
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %ld", ram_total);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        ram_free = strtol(curr,NULL,10);
+        *next++ = '\0';
+        ram_usage = strtol(next,NULL,10);
+
+        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage), result < 0) {
             mdebug1("at wdb_parse_hardware(): Cannot save HW information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save HW information.");
         } else {

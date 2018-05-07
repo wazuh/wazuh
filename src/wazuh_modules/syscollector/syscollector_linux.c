@@ -850,6 +850,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
         cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
         cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
+        cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
         free(sys_info->cpu_name);
         free(sys_info);
@@ -1347,6 +1348,10 @@ hw_info *get_system_linux(){
                 info->ram_free = strtol(aux_string, &end_string, 10);
 
             }
+        }
+
+        if (info->ram_total > 0 && info->ram_free >= 0) {
+            info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
         }
         free(aux_string);
         fclose(fp);
