@@ -6,6 +6,7 @@
 from wazuh import common
 from wazuh.cluster.cluster import check_cluster_status, get_cluster_items, get_cluster_items_communication_intervals
 from wazuh.cluster import __version__
+from wazuh.utils import WazuhVersion
 import asyncore
 import threading
 import random
@@ -448,7 +449,15 @@ class ServerHandler(Handler):
 
 
     def hello(self, data):
+
         try:
+            # Check client version
+            client_version = WazuhVersion(data.split(' ')[2])
+            server_version = WazuhVersion(__version__)
+            if server_version.to_array()[0] != client_version.to_array()[0] or server_version.to_array()[1] != client_version.to_array()[1]:
+                self.handle_close()
+                raise Exception("Incompatible client version ({})".format(client_version))
+
             id = self.server.add_client(data, self.addr, self)
             self.name = id  # TO DO: change self.name to self.id
             logger.info("[Master] [{0}]: Connected.".format(id))
