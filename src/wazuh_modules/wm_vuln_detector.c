@@ -506,6 +506,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char *rationale;
     char *cvss2;
     char *cvss3;
+    char *patch;
     int i;
 
     // Define time to sleep between messages sent
@@ -559,9 +560,12 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             pending = sqlite3_column_int(stmt, 13);
             cvss2 = (char *)sqlite3_column_text(stmt, 14);
             cvss3 = (char *)sqlite3_column_text(stmt, 15);
+            patch = (char *)sqlite3_column_text(stmt, 16);
+
             if (!updated || *updated == '\0') {
                 updated = published;
             }
+
             if (pending) {
                 snprintf(state, 30, "Pending confirmation");
             } else {
@@ -576,7 +580,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                     continue;
                 } else {
                     snprintf(state, 15, "Fixed");
-                    if (!second_operation) {
+                    if (!second_operation || *second_operation == '0') {
                         mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
                     } else {
                         // The first condition is vulnerable, but the second also has to be
@@ -616,6 +620,9 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 }
                 if (cvss3) {
                     cJSON_AddStringToObject(jPackage, "cvss3", cvss3);
+                }
+                if (patch) {
+                    cJSON_AddStringToObject(jPackage, "patch", patch);
                 }
                 if (!pending) {
                     if (operation_value) {
@@ -689,7 +696,9 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
 
         if (result != 2) {
             if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
-                wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
+                if (wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i) == OS_INVALID) {
+                    mterror(WM_VULNDETECTOR_LOGTAG, VU_REPORT_ERROR, agents_it->agent_id);
+                }
                 i = 0;
                 if (sqlite3_prepare_v2(db, vu_queries[VU_REMOVE_AGENTS_TABLE], -1, &stmt, NULL) != SQLITE_OK) {
                     sqlite3_finalize(stmt);
@@ -710,7 +719,9 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     }
 
     if (!VU_AGENT_REQUEST_LIMIT) {
-        wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i);
+        if (wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i) == OS_INVALID) {
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_REPORT_ERROR, agents_it->agent_id);
+        }
     }
 
     sqlite3_close_v2(db);
@@ -769,8 +780,7 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
     }
     if (wm_vulnerability_detector_remove_OS_table(db, CVE_TABLE, parsed_oval->OS)        ||
         wm_vulnerability_detector_remove_OS_table(db, METADATA_TABLE, parsed_oval->OS)   ||
-        wm_vulnerability_detector_remove_OS_table(db, CVE_INFO_TABLE, parsed_oval->OS)   ||
-        wm_vulnerability_detector_remove_OS_table(db, PATCHES_TABLE, parsed_oval->OS)) {
+        wm_vulnerability_detector_remove_OS_table(db, CVE_INFO_TABLE, parsed_oval->OS)) {
         return wm_vulnerability_detector_sql_error(db);
     }
 
@@ -795,6 +805,11 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
             sqlite3_bind_text(stmt, 6, NULL, -1, NULL);
             sqlite3_bind_text(stmt, 7, vul_it->second_state_id, -1, NULL);
             sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
+            if (!patch_it) {
+                sqlite3_bind_text(stmt, 9, NULL, -1, NULL);
+            } else {
+                sqlite3_bind_text(stmt, 9, vul_it->cve_id, -1, NULL);
+            }
 
             if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 sqlite3_finalize(stmt);
@@ -814,14 +829,63 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
 
     if (patch_it) {
         mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_SOL_PATCHES);
-    }
 
-    while (patch_it) {
-        info_cve *cve_it;
-        for (cve_it = patch_it->cve_ref; cve_it;) {
-            // Insert the CVEs solved by the patch to vulnerability table
-            snprintf(p_query, MAX_QUERY_SIZE, vu_queries[VU_INSERT_CVE_PATCH], cve_it->cveid);
-            if (sqlite3_prepare_v2(db, p_query, -1, &stmt, NULL) != SQLITE_OK) {
+        while (patch_it) {
+            info_cve *cve_it;
+            for (cve_it = patch_it->cve_ref; cve_it;) {
+                // Insert the CVEs solved by the patch to vulnerability table
+                snprintf(p_query, MAX_QUERY_SIZE, vu_queries[VU_INSERT_CVE_PATCH], cve_it->cveid);
+                if (sqlite3_prepare_v2(db, p_query, -1, &stmt, NULL) != SQLITE_OK) {
+                    sqlite3_finalize(stmt);
+                    return wm_vulnerability_detector_sql_error(db);
+                }
+                sqlite3_bind_text(stmt, 1, *patch_it->patch_id, -1, NULL);
+
+                if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE) {
+                    sqlite3_finalize(stmt);
+                    return wm_vulnerability_detector_sql_error(db);
+                }
+                sqlite3_finalize(stmt);
+
+                // Insert the CVE info to vulnerability info table
+                if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CVE_INFO], -1, &stmt, NULL) != SQLITE_OK) {
+                    sqlite3_finalize(stmt);
+                    return wm_vulnerability_detector_sql_error(db);
+                }
+
+                sqlite3_bind_text(stmt, 1, cve_it->cveid, -1, NULL);
+                sqlite3_bind_text(stmt, 2, NULL, -1, NULL);
+                sqlite3_bind_text(stmt, 3, cve_it->severity, -1, NULL);
+                sqlite3_bind_text(stmt, 4, cve_it->published, -1, NULL);
+                sqlite3_bind_text(stmt, 5, NULL, -1, NULL);
+                sqlite3_bind_text(stmt, 6, cve_it->reference, -1, NULL);
+                sqlite3_bind_text(stmt, 7, parsed_oval->OS, -1, NULL);
+                sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
+                sqlite3_bind_text(stmt, 9, cve_it->cvss2, -1, NULL);
+                sqlite3_bind_text(stmt, 10, cve_it->cvss3, -1, NULL);
+                sqlite3_bind_int(stmt, 11, 1);
+
+                if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+                    sqlite3_finalize(stmt);
+                    return wm_vulnerability_detector_sql_error(db);
+                }
+                sqlite3_finalize(stmt);
+
+                info_cve *cve_aux = cve_it;
+                cve_it = cve_it->prev;
+                free(cve_aux->cveid);
+                free(cve_aux->title);
+                free(cve_aux->severity);
+                free(cve_aux->published);
+                free(cve_aux->reference);
+                free(cve_aux->description);
+                free(cve_aux->cvss2);
+                free(cve_aux->cvss3);
+                free(cve_aux);
+            }
+
+            // Remove the patch entry from vulnerability table
+            if (sqlite3_prepare_v2(db, vu_queries[VU_REMOVE_PATCH], -1, &stmt, NULL) != SQLITE_OK) {
                 sqlite3_finalize(stmt);
                 return wm_vulnerability_detector_sql_error(db);
             }
@@ -833,75 +897,10 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
             }
             sqlite3_finalize(stmt);
 
-            // Inserts patch-CVE relationship to patches table
-            if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CORR_PATCH], -1, &stmt, NULL) != SQLITE_OK) {
-                sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
-            }
-
-            sqlite3_bind_text(stmt, 1, *patch_it->patch_id, -1, NULL);
-            sqlite3_bind_text(stmt, 2, cve_it->cveid, -1, NULL);
-            sqlite3_bind_text(stmt, 3, parsed_oval->OS, -1, NULL);
-
-            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE) {
-                sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
-            }
-            sqlite3_finalize(stmt);
-
-            // Insert the CVE info to vulnerability info table
-            if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CVE_INFO], -1, &stmt, NULL) != SQLITE_OK) {
-                sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
-            }
-
-            sqlite3_bind_text(stmt, 1, cve_it->cveid, -1, NULL);
-            sqlite3_bind_text(stmt, 2, NULL, -1, NULL);
-            sqlite3_bind_text(stmt, 3, cve_it->severity, -1, NULL);
-            sqlite3_bind_text(stmt, 4, cve_it->published, -1, NULL);
-            sqlite3_bind_text(stmt, 5, NULL, -1, NULL);
-            sqlite3_bind_text(stmt, 6, cve_it->reference, -1, NULL);
-            sqlite3_bind_text(stmt, 7, parsed_oval->OS, -1, NULL);
-            sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
-            sqlite3_bind_text(stmt, 9, cve_it->cvss2, -1, NULL);
-            sqlite3_bind_text(stmt, 10, cve_it->cvss3, -1, NULL);
-            sqlite3_bind_int(stmt, 11, 1);
-
-            if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-                sqlite3_finalize(stmt);
-                return wm_vulnerability_detector_sql_error(db);
-            }
-            sqlite3_finalize(stmt);
-
-            info_cve *cve_aux = cve_it;
-            cve_it = cve_it->prev;
-            free(cve_aux->cveid);
-            free(cve_aux->title);
-            free(cve_aux->severity);
-            free(cve_aux->published);
-            free(cve_aux->reference);
-            free(cve_aux->description);
-            free(cve_aux->cvss2);
-            free(cve_aux->cvss3);
-            free(cve_aux);
+            patch *patch_aux = patch_it;
+            patch_it = patch_it->prev;
+            free(patch_aux);
         }
-
-        // Remove the patch entry from vulnerability table
-        if (sqlite3_prepare_v2(db, vu_queries[VU_REMOVE_PATCH], -1, &stmt, NULL) != SQLITE_OK) {
-            sqlite3_finalize(stmt);
-            return wm_vulnerability_detector_sql_error(db);
-        }
-        sqlite3_bind_text(stmt, 1, *patch_it->patch_id, -1, NULL);
-
-        if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE) {
-            sqlite3_finalize(stmt);
-            return wm_vulnerability_detector_sql_error(db);
-        }
-        sqlite3_finalize(stmt);
-
-        patch *patch_aux = patch_it;
-        patch_it = patch_it->prev;
-        free(patch_aux);
     }
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_INS_TEST_SEC);
@@ -1393,8 +1392,8 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             }
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_CLASS)) {
-                    char is_patch = !strcmp(node[i]->values[j], XML_PATH);
-                    if (!strcmp(node[i]->values[j], XML_VULNERABILITY) || is_patch) {
+                    char is_patch = 0;
+                    if (!strcmp(node[i]->values[j], XML_VULNERABILITY) || (is_patch = !strcmp(node[i]->values[j], XML_PATH))) {
                         vulnerability *vuln;
                         info_cve *cves;
                         os_calloc(1, sizeof(vulnerability), vuln);
@@ -1418,10 +1417,6 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
 
                         parsed_oval->vulnerabilities = vuln;
                         parsed_oval->info_cves = cves;
-                        if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, update, condition) == OS_INVALID) {
-                            retval = OS_INVALID;
-                            goto end;
-                        }
 
                         if (is_patch) {
                             patch *p;
@@ -1430,6 +1425,11 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                             p->cve_ref = NULL;
                             p->prev = parsed_oval->patches;
                             parsed_oval->patches = p;
+                        }
+
+                        if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, update, condition) == OS_INVALID) {
+                            retval = OS_INVALID;
+                            goto end;
                         }
                     }
                 }
