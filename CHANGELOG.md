@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 - External libraries moved to an external repository.
 - Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
 - Extracts agent's OS from the database instead of the agent-info.
+- Increases the maximum size of XML parser to 20KB.
 
 ### Fixed
 
