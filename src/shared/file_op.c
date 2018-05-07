@@ -643,8 +643,8 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
     const char *tmpfile;
     FILE *fp;
     FILE *finalfp;
-
     /* Create a new entry */
+    
     if (files == NULL) {
         finalfp = fopen(finalpath, "w");
         if (!finalfp) {
@@ -665,6 +665,8 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
 
         return (1);
     }
+    
+    
 
     finalfp = fopen(finalpath, "a");
     if (!finalfp) {
@@ -673,11 +675,13 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
     }
 
     fp = fopen(files, "r");
+
     if (!fp) {
         merror("Unable to merge file '%s'.", files);
         fclose(finalfp);
         return (0);
     }
+    
 
     fseek(fp, 0, SEEK_END);
     files_size = ftell(fp);
@@ -689,22 +693,57 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
         tmpfile = files;
     }
 
-    if (tag) {
-        fprintf(finalfp, "#%s\n", tag);
+
+    //CHECK IF DIRECTORY
+            struct stat statbuff;
+
+            stat(files, &statbuff);
+            
+            if(S_ISDIR(statbuff.st_mode)){
+                char buff[OS_MAXSTR];
+                //mdebug1("DIRECTORY: %s",files);
+                 DIR *newDIR = opendir(files);
+                 struct dirent *ent;
+                 
+                 while ((ent = readdir(newDIR)) != NULL) {
+                     if(strcmp(ent->d_name,".")!=0&&strcmp(ent->d_name,"..")!=0){
+                        int newlen = strlen(files)+strlen(ent->d_name);
+                        char* newpath=NULL;
+                        //realpath(f,buff);
+                        os_malloc(strlen(files)+1,newpath);
+                        newpath = strdup(files);
+                        strcat(newpath,"/");
+                        
+                        newpath = (char*)realloc(newpath,newlen);
+                        strcat(newpath,ent->d_name);
+                        MergeAppendFile(finalpath, newpath, tag);
+                     }
+                     /*else if(ent->d_type==DT_DIR){
+                        mdebug1("newpath DIR: %s",files);
+                        MergeAppendFile(finalpath, files, tag);
+                     }*/
+                }
+            }
+            else{
+                mdebug1("FILES: %s",files);
+                if (tag) {
+                    fprintf(finalpath, "#%s\n", tag);
+                    
+                }
+
+                fprintf(finalfp, "!%ld %s\n", files_size, tmpfile);
+                fseek(fp, 0, SEEK_SET);
+                
+                while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
+                    buf[n] = '\0';
+                    fwrite(buf, n, 1, finalfp);
+                }
+                //mdebug1("BUF: %s",buf);
+
+                fclose(fp);
+
+                fclose(finalfp);
     }
-
-    fprintf(finalfp, "!%ld %s\n", files_size, tmpfile);
-
-    fseek(fp, 0, SEEK_SET);
-
-    while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
-        buf[n] = '\0';
-        fwrite(buf, n, 1, finalfp);
-    }
-
-    fclose(fp);
-
-    fclose(finalfp);
     return (1);
 }
 

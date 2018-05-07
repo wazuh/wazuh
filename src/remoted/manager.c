@@ -274,7 +274,10 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         os_strdup(entry->d_name, f_sum[f_size]->name);
 
         if (!logr.nocmerged) {
+            
+            
             MergeAppendFile(merged_tmp, file, NULL);
+            //mdebug1("FILE: %s",file);
         }
 
         f_size++;
