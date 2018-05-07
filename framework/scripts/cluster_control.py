@@ -174,7 +174,7 @@ def __print_table(data, headers, show_header=False):
             table_str += header_str
     table_str += header_str
 
-    print table_str
+    print (table_str)
 
 #
 # Get
@@ -204,16 +204,16 @@ def print_file_status_master(filter_file_list, filter_node_list):
     __print_table(data, headers, True)
 
     if len(node_error) > 0:
-        print "Error:"
+        print ("Error:")
         for node, error in node_error.iteritems():
-            print " - {}: {}".format(node, error)
+            print (" - {}: {}".format(node, error))
 
 
 def print_file_status_client(filter_file_list, node_name):
     my_files = __execute("get_files {}".format(filter_file_list))
 
     if my_files.get("err"):
-        print "Err {}"
+        print ("Err {}")
         exit(1)
 
     headers = ["Node", "File name", "Modification time", "MD5"]
@@ -223,7 +223,7 @@ def print_file_status_client(filter_file_list, node_name):
             data.append(file)
 
     __print_table(data, headers, True)
-    print "(*) Clients only show their own files."
+    print ("(*) Clients only show their own files.")
 
 
 ### Get nodes
@@ -231,7 +231,7 @@ def print_nodes_status(filter_node):
     nodes = __execute("get_nodes {}".format(filter_node) if filter_node else "get_nodes")
 
     if nodes.get("err"):
-        print "Err {}"
+        print ("Err {}")
         exit(1)
 
     headers = ["Name", "Address", "Type"]
@@ -292,6 +292,7 @@ def print_healthcheck(conf, more=False, filter_node=None):
             continue
 
         msg2 += "\n    {} ({})\n".format(node, node_info['info']['ip'])
+        msg2 += "        Version: {}\n".format(node_info['info']['version'])
         msg2 += "        Type: {}\n".format(node_info['info']['type'])
 
         if node_info['info']['type'] != "master":

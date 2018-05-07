@@ -5,6 +5,7 @@
 
 from wazuh import common
 from wazuh.cluster.cluster import check_cluster_status, get_cluster_items, get_cluster_items_communication_intervals
+from wazuh.cluster import __version__
 import asyncore
 import threading
 import random
@@ -516,7 +517,7 @@ class Server(asyncore.dispatcher):
 
 
     def add_client(self, data, ip, handler):
-        name, type = data.split(' ')
+        name, type, version = data.split(' ')
         id = name
         with self._clients_lock:
             self._clients[id] = {
@@ -524,7 +525,8 @@ class Server(asyncore.dispatcher):
                 'info': {
                     'name': name,
                     'ip': ip,
-                    'type': type
+                    'type': type,
+                    'version': version
                 },
                 'status': {
                     'sync_integrity_free': True,
@@ -622,7 +624,7 @@ class ClientHandler(Handler):
     def handle_connect(self):
         logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
-        payload = msgbuild(counter, 'hello', self.my_fernet, '{} {}'.format(self.name, 'client'))
+        payload = msgbuild(counter, 'hello', self.my_fernet, '{} {} {}'.format(self.name, 'client', __version__))
         self.send(payload)
         self.my_connected = True
         logger.info("[Client] Connected.")

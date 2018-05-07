@@ -25,6 +25,7 @@ from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
                                         Handler, InternalSocketHandler, ClusterThread
 from wazuh.utils import mkdir_with_mode
 from wazuh.agent import Agent
+from wazuh.cluster import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -533,7 +534,9 @@ class MasterManager(Server):
         clients_info = {name:{"info":data['info'], "status":data['status']} for name,data in self.get_connected_clients().iteritems()}
 
         cluster_config = read_config()
-        clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}}})
+        clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'],
+                                                                  "ip": cluster_config['nodes'][0], "version": __version__,
+                                                                  "type": "master"}}})
 
         health_info = {"n_connected_nodes":len(clients_info), "nodes": clients_info}
         return health_info
