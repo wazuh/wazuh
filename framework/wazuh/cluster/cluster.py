@@ -195,7 +195,7 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
 
                 new_key = full_path.replace(common.ossec_path, "")
                 walk_files[new_key] = {"mod_time" : str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
-                if 'merged' in entry:
+                if '.merged' in entry:
                     walk_files[new_key]['merged'] = True
                     walk_files[new_key]['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
                     walk_files[new_key]['merge_name'] = '/queue/cluster/' + entry
