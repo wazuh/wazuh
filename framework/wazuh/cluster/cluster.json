@@ -16,7 +16,7 @@
             "umask": "0o117",
             "source": "master",
             "write_mode": "atomic",
-            "files": ["all"],
+            "files": ["merged.mg"],
             "recursive": true,
             "restart": false,
             "remove_subdirs_if_empty": true,
@@ -88,7 +88,6 @@
 
         "excluded_files": [
             "ar.conf",
-            "merged.mg",
             "ossec.conf"
         ]
     },

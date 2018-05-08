@@ -184,8 +184,8 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
         if entry in excluded_files or entry[-1] == '~' or entry[-4:] == ".tmp" or entry[-5:] == ".lock":
             continue
 
+        full_path = path.join(dirname, entry)
         if entry in files or files == ["all"]:
-            full_path = path.join(dirname, entry)
 
             if not path.isdir(full_path):
                 file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
@@ -205,8 +205,8 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
                 if get_md5:
                     walk_files[new_key]['md5'] = md5(full_path)
 
-            elif recursive:
-                walk_files.update(walk_dir(full_path, recursive, files, excluded_files, get_cluster_item_key, get_md5, whoami))
+        if recursive and path.isdir(full_path):
+            walk_files.update(walk_dir(full_path, recursive, files, excluded_files, get_cluster_item_key, get_md5, whoami))
 
     return walk_files
 
