@@ -3,6 +3,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from pwd import getpwnam
+from grp import getgrnam
+
 def set_paths_based_on_ossec(o_path='/var/ossec'):
     """
     Set paths based on ossec location.
@@ -108,6 +111,8 @@ cluster_internal_timeout = 15
 # global dictionary to store and reuse connections among cluster nodes
 global cluster_connections
 cluster_connections = {}
+ossec_uid = getpwnam("ossec").pw_uid
+ossec_gid = getgrnam("ossec").gr_gid
 
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()

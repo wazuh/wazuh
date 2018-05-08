@@ -19,8 +19,6 @@ from shutil import copyfile, move, copytree
 from time import time
 from platform import platform
 from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat
-from pwd import getpwnam
-from grp import getgrnam
 from time import time, sleep
 import socket
 import hashlib
@@ -452,10 +450,8 @@ class Agent:
         f_keys_temp = '{0}.tmp'.format(common.client_keys)
         open(f_keys_temp, 'a').close()
 
-        ossec_uid = getpwnam("ossec").pw_uid
-        ossec_gid = getgrnam("ossec").gr_gid
         f_keys_st = stat(common.client_keys)
-        chown(f_keys_temp, ossec_uid, ossec_gid)
+        chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
         chmod(f_keys_temp, f_keys_st.st_mode)
 
         f_tmp = open(f_keys_temp, 'w')
@@ -709,10 +705,8 @@ class Agent:
                 f_keys_temp = '{0}.tmp'.format(common.client_keys)
                 open(f_keys_temp, 'a').close()
 
-                ossec_uid = getpwnam("ossec").pw_uid
-                ossec_gid = getgrnam("ossec").gr_gid
                 f_keys_st = stat(common.client_keys)
-                chown(f_keys_temp, ossec_uid, ossec_gid)
+                chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
                 chmod(f_keys_temp, f_keys_st.st_mode)
 
                 copyfile(common.client_keys, f_keys_temp)
@@ -1713,14 +1707,11 @@ class Agent:
         if group_id.lower() == "default" or path.exists(group_path):
             raise WazuhException(1711, group_id)
 
-        ossec_uid = getpwnam("ossec").pw_uid
-        ossec_gid = getgrnam("ossec").gr_gid
-
         # Create group in /etc/shared
         group_def_path = "{0}/default".format(common.shared_path)
         try:
             copytree(group_def_path, group_path)
-            chown_r(group_path, ossec_uid, ossec_gid)
+            chown_r(group_path, common.ossec_uid, common.ossec_gid)
             chmod_r(group_path, 0o660)
             chmod(group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
@@ -1811,9 +1802,7 @@ class Agent:
             f_group.close()
 
             if new_file:
-                ossec_uid = getpwnam("ossec").pw_uid
-                ossec_gid = getgrnam("ossec").gr_gid
-                chown(agent_group_path, ossec_uid, ossec_gid)
+                chown(agent_group_path, common.ossec_uid, common.ossec_gid)
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhException(1005, str(e))
