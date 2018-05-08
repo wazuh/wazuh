@@ -42,4 +42,7 @@ char* filter_special_chars(const char *string);
 // Replace substrings
 char * wstr_replace(const char * string, const char * search, const char * replace);
 
+// Free string array
+void free_strarray(char ** array);
+
 #endif

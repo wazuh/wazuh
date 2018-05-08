@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
 - Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
 - Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
+- Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
 
 ### Changed
 
@@ -39,6 +40,7 @@ All notable changes to this project will be documented in this file.
 - Silenced Vuls integration starting and ending alerts. ([#541](https://github.com/wazuh/wazuh/pull/541))
 - Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
 - Fix bug in Rootcheck for Windows that searches for keys in 32-bit mode only. ([#566](https://github.com/wazuh/wazuh/pull/566))
+- Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
 
 ### Removed
 
