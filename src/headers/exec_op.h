@@ -14,6 +14,7 @@
 
 #define W_BIND_STDOUT 1
 #define W_BIND_STDERR 2
+#define W_CHECK_WRITE 4
 
 typedef struct wfd_t {
     FILE * file;

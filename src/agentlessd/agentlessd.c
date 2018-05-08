@@ -212,7 +212,7 @@ static int check_diff_file(const char *host, const char *script)
     /* Run diff */
     date_of_change = File_DateofChange(old_location);
 
-    if (wfd = wpopenl("diff", W_BIND_STDOUT, "diff", tmp_location, old_location, NULL), !wfd) {
+    if (wfd = wpopenl("diff", W_BIND_STDOUT | W_CHECK_WRITE, "diff", tmp_location, old_location, NULL), !wfd) {
         merror("Unable to run diff for %s->%s: %s (%d)", host, script, strerror(errno), errno);
         return 0;
     }
@@ -341,7 +341,7 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
             int ret_code = 0;
             snprintf(command, OS_SIZE_1024, "%s/%s", AGENTLESSDIRPATH, entry->type);
 
-            if (wfd = wpopenl(command, 0, command, "test", "test", NULL), wfd) {
+            if (wfd = wpopenl(command, W_CHECK_WRITE, command, "test", "test", NULL), wfd) {
                 ret_code = wpclose(wfd);
             }
 
@@ -363,7 +363,7 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
         }
 
         argv = command_args(entry->type, entry->server[i], entry->options);
-        wfd = wpopenv(argv[0], argv, W_BIND_STDOUT | W_BIND_STDERR);
+        wfd = wpopenv(argv[0], argv, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
         free_strarray(argv);
 
         if (wfd) {
