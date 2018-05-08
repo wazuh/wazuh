@@ -10,25 +10,15 @@ from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
-
 from datetime import datetime, timedelta
-from hashlib import sha512
-from time import time, mktime, sleep
-from os import path, listdir, rename, utime, environ, umask, stat, chmod, devnull, strerror, remove
+from time import time
+from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
-from io import BytesIO
-from itertools import compress, chain
-from operator import eq 
-from ast import literal_eval
-import socket
+from operator import eq
 import json
-import threading
 from stat import S_IRWXG, S_IRWXU
-from sys import version
 from difflib import unified_diff
-import asyncore
-import asynchat
 import errno
 import logging
 import re
@@ -41,12 +31,6 @@ try:
     import xml.etree.cElementTree as ET
 except ImportError:
     import xml.etree.ElementTree as ET
-
-is_py2 = version[0] == '2'
-if is_py2:
-    from Queue import Queue as queue
-else:
-    from queue import Queue as queue
 
 import zipfile
 
@@ -360,6 +344,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
         if not os.path.exists(dirpath):
             mkdir_with_mode(dirpath)
             chmod(path.dirname(dst_path), S_IRWXU | S_IRWXG)
+        chown(f_temp, common.ossec_uid, common.ossec_gid)
         rename(f_temp, dst_path)
 
 
