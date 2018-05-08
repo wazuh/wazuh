@@ -81,6 +81,10 @@ def msgparse(buf, my_fernet):
     header_size = 8 + cmd_size
     if len(buf) >= header_size:
         counter, size, command = struct.unpack('!2I{}s'.format(cmd_size), buf[:header_size])
+
+        if size > max_msg_size:
+            raise Exception("Received message exceeds max allowed length. Received: {}. Max: {}".format(size, max_msg_size))
+
         command = command.decode().split(' ',1)[0]
         if len(buf) >= size + header_size:
             payload = buf[header_size:size + header_size]
