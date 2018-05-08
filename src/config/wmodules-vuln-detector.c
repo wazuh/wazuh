@@ -29,28 +29,52 @@ static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
 
-char *format_os_version(char *OS) {
-    char *OS_format = NULL;
+int format_os_version(char *OS, char **os_name, char **os_ver) {
+    char OS_cpy[OS_SIZE_1024];
     char distr[OS_SIZE_128];
-    char vers[OS_SIZE_128];
-    char subvers[OS_SIZE_128];
+    char sec_distr[OS_SIZE_128];
+    char thi_distr[OS_SIZE_128];
+    char inv_distr[OS_SIZE_128];
+    char *ver;
+    char *ver_end;
     int size;
     int elements;
 
-    elements = sscanf(OS, "%s %s %s", distr, vers, subvers);
-    size = strlen(distr) + strlen(vers) + strlen(subvers);
-    os_calloc(size, sizeof(char), OS_format);
-    if (strcasestr(distr, vu_dist_tag[DIS_WINDOWS])) {
-        if (elements == 3) {
-            snprintf(OS_format, OS_SIZE_256, "%s %s %s", distr, vers, subvers);
-        } else {
-            snprintf(OS_format, OS_SIZE_256, "%s %s", distr, vers);
-        }
+    snprintf(OS_cpy, OS_SIZE_1024, "%s", OS);
+    if (!(ver = strchr(OS_cpy, '-')) || *(ver + 1) == '\0') {
+        return OS_INVALID;
+    }
+    *(ver++) = '\0';
+
+    // Get distribution
+    elements = sscanf(OS_cpy, "%s %s %s %s", distr, sec_distr, thi_distr, inv_distr);
+    size = strlen(distr) + strlen(sec_distr) + strlen(thi_distr) + 3;
+    os_calloc(size, sizeof(char), *os_name);
+
+    // More than 3 words are considered invalid
+    if (elements == 3) {
+        snprintf(*os_name, size, "%s %s %s", distr, sec_distr, thi_distr);
+    } else if (elements == 2) {
+        snprintf(*os_name, size, "%s %s", distr, sec_distr);
+    } else if (elements == 1) {
+        snprintf(*os_name, size, "%s", distr);
     } else {
-        snprintf(OS_format, OS_SIZE_256, "%s: %s", distr, vers);
+        free(*os_name);
+        return OS_INVALID;
     }
 
-    return OS_format;
+    // Get version
+    for (; *ver == ' '; ver++);
+    if (ver_end = strchr(ver, ' '), ver_end) {
+        *ver_end = '\0';
+    }
+    if (size = strlen(ver), size >= 20) {
+        free(*os_name);
+        return OS_INVALID;
+    }
+    os_strdup(ver, *os_ver);
+
+    return 0;
 }
 
 int get_interval(char *source, unsigned long *interval) {
@@ -148,7 +172,8 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             }
 
             os_calloc(1, sizeof(update_node), upd);
-            upd->allowed_list = NULL;
+            upd->allowed_OS_list = NULL;
+            upd->allowed_ver_list = NULL;
 
             // Check OS
             if (!strcmp(feed, vu_dist_tag[DIS_UBUNTU])) {
@@ -360,18 +385,26 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     char *found;
                     char *OS = chld_node[j]->content;
 
-                    os_calloc(1, sizeof(char *), upd->allowed_list);
+                    os_calloc(1, sizeof(char *), upd->allowed_OS_list);
+                    os_calloc(1, sizeof(char *), upd->allowed_ver_list);
 
                     for (size = 0; (found = strchr(OS, ',')); size++) {
                         *(found++) = '\0';
-                        os_realloc(upd->allowed_list, (size + 2)*sizeof(char *), upd->allowed_list);
-                        upd->allowed_list[size] = format_os_version(OS);
-                        upd->allowed_list[size + 1] = NULL;
+                        os_realloc(upd->allowed_OS_list, (size + 2)*sizeof(char *), upd->allowed_OS_list);
+                        os_realloc(upd->allowed_ver_list, (size + 2)*sizeof(char *), upd->allowed_ver_list);
+                        if (format_os_version(OS, &upd->allowed_OS_list[size], &upd->allowed_ver_list[size])) {
+                            merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
+                            return OS_INVALID;
+                        }
+                        upd->allowed_OS_list[size + 1] = NULL;
                         OS = found;
                     }
-                    os_realloc(upd->allowed_list, (size + 2)*sizeof(char *), upd->allowed_list);
-                    upd->allowed_list[size] = format_os_version(OS);
-                    upd->allowed_list[size + 1] = NULL;
+                    os_realloc(upd->allowed_OS_list, (size + 2)*sizeof(char *), upd->allowed_OS_list);
+                    if (format_os_version(OS, &upd->allowed_OS_list[size], &upd->allowed_ver_list[size])) {
+                        merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
+                        return OS_INVALID;
+                    }
+                    upd->allowed_OS_list[size + 1] = NULL;
                 } else if (!strcmp(chld_node[j]->element, XML_URL)) {
                     os_strdup(chld_node[j]->content, upd->url);
                     if (chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {

@@ -174,7 +174,8 @@ typedef struct update_node {
     char *url;
     in_port_t port;
     char *path;
-    char **allowed_list;
+    char **allowed_OS_list;
+    char **allowed_ver_list;
 } update_node;
 
 typedef struct wm_vulnerability_detector_t {

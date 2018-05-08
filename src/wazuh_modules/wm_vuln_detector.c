@@ -46,7 +46,7 @@ static int wm_vulnerability_check_update(update_node *upd, const char *dist);
 static int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed);
 static int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *tag);
 static int wm_vulnerability_detector_compare(char *version_it, char *cversion_it);
-static const char *wm_vulnerability_set_oval(const char *os_name, update_node **updates);
+static const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vulnerability_set_oval);
 static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
 
 int *vu_queue;
@@ -118,20 +118,24 @@ const char *vu_dist_ext[] = {
     "Unknow OS"
 };
 
-const char *wm_vulnerability_set_oval(const char *os_name, update_node **updates) {
+const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *agent_dist) {
     const char *retval = NULL;
     int i;
 
     for (i = 0; i < OS_SUPP_SIZE; i++) {
-        if (updates[i] && updates[i]->allowed_list) {
+        if (updates[i] && updates[i]->allowed_OS_list) {
             int j;
-            char *allowed;
-            for (allowed = *updates[i]->allowed_list, j = 0; allowed; allowed = updates[i]->allowed_list[++j]) {
-                if (strcasestr(os_name, allowed)) {
+            char *allowed_os;
+            char *allowed_ver;
+            for (allowed_os = *updates[i]->allowed_OS_list, allowed_ver = *updates[i]->allowed_ver_list, j = 0; allowed_os; ++j) {
+                if (strcasestr(os_name, allowed_os) && strcasestr(os_version, allowed_ver)) {
                     retval = updates[i]->dist_tag;
+                    *agent_dist = updates[i]->dist_ref;
                     i = OS_SUPP_SIZE;
                     break;
                 }
+                allowed_os = updates[i]->allowed_OS_list[j];
+                allowed_ver = updates[i]->allowed_ver_list[j];
             }
         }
     }
@@ -2499,7 +2503,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         os_version = (char *) sqlite3_column_text(stmt,1);
         name = (char *) sqlite3_column_text(stmt, 2);
 
-        if (strcasestr(os_name, vu_dist_tag[DIS_UBUNTU])) {
+        if (strcasestr(os_name, vu_dist_ext[DIS_UBUNTU])) {
             if (strstr(os_version, "18")) {
                 agent_os = vu_dist_tag[DIS_BIONIC];
             } else if (strstr(os_version, "16")) {
@@ -2512,7 +2516,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                 dist_error = DIS_UBUNTU;
             }
             agent_dist = DIS_UBUNTU;
-        } else if (strcasestr(os_name, vu_dist_tag[DIS_DEBIAN])) {
+        } else if (strcasestr(os_name, vu_dist_ext[DIS_DEBIAN])) {
             if (strstr(os_version, "7")) {
                 agent_os = vu_dist_tag[DIS_WHEEZY];
             } else if (strstr(os_version, "8")) {
@@ -2523,7 +2527,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                 dist_error = DIS_DEBIAN;
             }
             agent_dist = DIS_DEBIAN;
-        } else if (strcasestr(os_name, vu_dist_tag[DIS_REDHAT])) {
+        } else if (strcasestr(os_name, vu_dist_ext[DIS_REDHAT])) {
             if (strstr(os_version, "7")) {
                 agent_os = vu_dist_tag[DIS_RHEL7];
             } else if (strstr(os_version, "6")) {
@@ -2534,7 +2538,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                 dist_error = DIS_REDHAT;
             }
             agent_dist = DIS_REDHAT;
-        } else if (strcasestr(os_name, vu_dist_tag[DIS_CENTOS])) {
+        } else if (strcasestr(os_name, vu_dist_ext[DIS_CENTOS])) {
             if (strstr(os_version, "7")) {
                 agent_os = vu_dist_tag[DIS_RHEL7];
             } else if (strstr(os_version, "6")) {
@@ -2552,7 +2556,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
 
         if (dist_error != -1) {
             // Check if the agent OS can be matched with a OVAL
-            if (agent_os = wm_vulnerability_set_oval(os_name, updates), !agent_os) {
+            if (agent_os = wm_vulnerability_set_oval(os_name, os_version, updates, &agent_dist), !agent_os) {
                 if (dist_error == -2) {
                     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, name);
                     continue;
@@ -2580,7 +2584,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         if (ip) {
             os_strdup(ip, agents->agent_ip);
         } else {
-            agents->agent_ip = NULL;
+            os_strdup("local", agents->agent_ip);
         }
         os_strdup(name, agents->agent_name);
         os_strdup(agent_os, agents->OS);
@@ -2609,11 +2613,11 @@ void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerabili
             free(update[i]->version);
             free(update[i]->url);
             free(update[i]->path);
-            if (update[i]->allowed_list) {
-                for (j = 0; update[i]->allowed_list[j]; j++) {
-                    free(update[i]->allowed_list[j]);
+            if (update[i]->allowed_OS_list) {
+                for (j = 0; update[i]->allowed_OS_list[j]; j++) {
+                    free(update[i]->allowed_OS_list[j]);
                 }
-                free(update[i]->allowed_list);
+                free(update[i]->allowed_OS_list);
             }
             free(update[i]);
         }
