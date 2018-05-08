@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.3]
 
+### Added
+
+- New internal option to enable merged file creation by Remoted. ([#603](https://github.com/wazuh/wazuh/pull/603))
+
 ### Fixed
 
 - Fixed agent wait condition and improve logging messages. ([#550](https://github.com/wazuh/wazuh/pull/550))

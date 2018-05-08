@@ -124,7 +124,7 @@ int main(int argc, char **argv)
         merror_exit(CONFIG_ERROR, cfg);
     }
 
-    logr.nocmerged = nocmerged;
+    logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
 
     /* Exit if test_config is set */
     if (test_config) {
