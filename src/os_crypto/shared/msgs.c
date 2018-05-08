@@ -301,10 +301,10 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
     // Check if we have uncompressed msg size before hand
     keys->keyentries[id]->msg_version = W_VERSION_0;
     char* usize_end;
-    if(strncmp(buffer,":#USIZE:",8) == 0)
+    if(strncmp(buffer,"#USIZE:",7) == 0)
     {
-        buffer+=8;
-        f_buffer_size+= 8;
+        buffer+=7;
+        f_buffer_size+=7;
         msg_uncompressed_size = strtoll(buffer,&usize_end,10);
         os_calloc(msg_uncompressed_size,sizeof(char *),u_buffer);
         guess_size = 0;
@@ -352,27 +352,14 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
 
         /* Uncompress */
         if(guess_size){ 
+            msg_uncompressed_size = OS_MAXSTR;
+            os_realloc(u_buffer,sizeof(char) * msg_uncompressed_size,u_buffer);
 
-            // Get size by guessing, first time double the size
-            int gsize = 2;
-            int success = 0;
-            while(!success){
-                msg_uncompressed_size = buffer_size * gsize;
-                os_realloc(u_buffer,sizeof(char) * msg_uncompressed_size,u_buffer);
-
-                if(msg_uncompressed_size > OS_MAXSTR){
-                    free(u_buffer);
-                    u_buffer = NULL;
-                    merror(UNCOMPRESS_ERR);
-                    return (NULL);
-                }
-                if (*final_size = os_zlib_uncompress(cleartext, u_buffer, buffer_size, msg_uncompressed_size), !*final_size) {
-                   gsize++;
-                }
-                else
-                {
-                    success = 1;
-                }
+            if (*final_size = os_zlib_uncompress(cleartext, u_buffer, buffer_size, msg_uncompressed_size), !*final_size) {
+                free(u_buffer);
+                u_buffer= NULL;
+                merror(UNCOMPRESS_ERR);
+                return (NULL);
             }
         }
         else
@@ -386,7 +373,6 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
         buffer = u_buffer;
 
         /* Check checksum */
-
         if (f_msg = CheckSum(buffer, *final_size), !f_msg) {
             merror(ENCSUM_ERROR, keys->keyentries[id]->ip->ip);
             return (NULL);
@@ -574,10 +560,10 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     switch(crypto_method)
     {
         case W_METH_BLOWFISH:
-            memcpy(crypto_token,":",1);
+            memcpy(crypto_token,"",1);
             break;
         case W_METH_AES:
-            memcpy(crypto_token,"#AES:",5);
+            memcpy(crypto_token,"#AES",4);
             break;
         default:
             return OS_INVALID;
@@ -665,8 +651,11 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     /* If the message is version 1, add the uncompressed buffer size */
     if(keys->keyentries[id]->msg_version == W_VERSION_1)
     {
-      length += snprintf(msg_encrypted + length , 36, "%s:%lu:",u_size_token,u_size_length);  
+      length += snprintf(msg_encrypted + length , 36, "%s:%lu",u_size_token,u_size_length);  
     }
+
+    /* The message must have ':' before the encrypted data */
+    length += snprintf(msg_encrypted + length , 2, ":");  
 
     /* length is the amount of non-encrypted message appended to the buffer
      * On dynamic IPs, it will include the agent ID
