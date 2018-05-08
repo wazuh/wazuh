@@ -41,6 +41,11 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
     case 0:
         // Child code
 
+        if (flags & W_CHECK_WRITE && !access(path, W_OK)) {
+            merror("At wpopenv(): file '%s' has write permissions.", path);
+            _exit(127);
+        }
+
         if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
             if (flags & W_BIND_STDOUT) {
                 dup2(pipe_fd[1], STDOUT_FILENO);
