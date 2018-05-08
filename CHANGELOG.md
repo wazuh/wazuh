@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.2.3]
 
+### Added
+
+- New internal option to enable merged file creation by Remoted. ([#603](https://github.com/wazuh/wazuh/pull/603))
+
 ### Fixed
 
 - Fixed agent wait condition and improve logging messages. ([#550](https://github.com/wazuh/wazuh/pull/550))
@@ -10,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Fix bug in Authd that prevented it from deleting agent-info files when removing agents.
 - Fix bug in ruleset that did not overwrite the `<info>` option. ([#584](https://github.com/wazuh/wazuh/issues/584))
 - Fixed bad file descriptor error in Wazuh DB ([#588](https://github.com/wazuh/wazuh/issues/588))
+- Fixed unpredictable file sorting when creating merged files. ([#599](https://github.com/wazuh/wazuh/issues/599))
 
 ## [v3.2.2]
 
