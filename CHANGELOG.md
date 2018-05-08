@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
+- Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
 
 ## [v3.2.1]
 
