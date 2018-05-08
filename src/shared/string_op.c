@@ -192,3 +192,17 @@ int w_str_in_array(const char * needle, const char ** haystack) {
 
     return 0;
 }
+
+// Free string array
+
+void w_free_strings(char ** array) {
+    unsigned int i;
+
+    if (array) {
+        for (i = 0; array[i]; ++i) {
+            free(array[i]);
+        }
+
+        free(array);
+    }
+}
