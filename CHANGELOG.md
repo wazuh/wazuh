@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 - Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
 - Extracts agent's OS from the database instead of the agent-info.
 - Increases the maximum size of XML parser to 20KB.
+- Extract CVE instead of RHSA codes into vulnerability-detector. ([#549](https://github.com/wazuh/wazuh/pull/549))
 
 ### Fixed
 
