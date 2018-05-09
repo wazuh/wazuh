@@ -9,7 +9,6 @@ from itertools import chain
 import argparse
 import logging
 import signal
-import sys
 
 def signal_handler(signal, frame):
     print ("Interrupted")

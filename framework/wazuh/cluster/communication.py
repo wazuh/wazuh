@@ -4,7 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.cluster.cluster import check_cluster_status, get_cluster_items, get_cluster_items_communication_intervals
+from wazuh.cluster.cluster import check_cluster_status, get_cluster_items_communication_intervals
 from wazuh.cluster import __version__
 from wazuh.utils import WazuhVersion
 import asyncore

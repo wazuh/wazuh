@@ -3,29 +3,29 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import ast
+import fcntl
+import fnmatch
+import json
 import logging
+import os
+import shutil
 import threading
 import time
-import shutil
-import json
-import os
-import fcntl
-import ast
 from datetime import datetime
-import fnmatch
 from operator import itemgetter
 
-from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.cluster.cluster import get_cluster_items, _update_file, \
-                                  decompress_files, get_files_status, \
-                                  compress_files, compare_files, get_agents_status, \
-                                  read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
-from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
-                                        Handler, InternalSocketHandler, ClusterThread
-from wazuh.utils import mkdir_with_mode
 from wazuh.agent import Agent
 from wazuh.cluster import __version__
+from wazuh.cluster.cluster import get_cluster_items, _update_file, \
+    decompress_files, get_files_status, \
+    compress_files, compare_files, get_agents_status, \
+    read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
+from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
+    InternalSocketHandler, ClusterThread
+from wazuh.utils import mkdir_with_mode
+
 
 logger = logging.getLogger(__name__)
 

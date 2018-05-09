@@ -14,11 +14,10 @@ from operator import itemgetter
 import errno
 import fnmatch
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info, merge_agent_info
-from wazuh.exception import WazuhException
+from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info, merge_agent_info
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
-from wazuh.cluster.communication import ClientHandler, Handler, ProcessFiles, ClusterThread, InternalSocketHandler
+from wazuh.cluster.communication import ClientHandler, ProcessFiles, ClusterThread, InternalSocketHandler
 
 logger = logging.getLogger(__name__)
 
