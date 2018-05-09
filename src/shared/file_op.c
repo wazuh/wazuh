@@ -374,8 +374,8 @@
 
 #define mkstemp(x) 0
 #define mkdir(x, y) mkdir(x)
-
 #endif /* WIN32 */
+#define OFFSET 13
 
 const char *__local_name = "unset";
 
@@ -685,13 +685,14 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
 
     fseek(fp, 0, SEEK_END);
     files_size = ftell(fp);
-
-    tmpfile = strrchr(files, '/');
+    
+    tmpfile = strchr(files+OFFSET, '/');
     if (tmpfile) {
         tmpfile++;
     } else {
         tmpfile = files;
     }
+    mdebug1("TMPFILE:%s",tmpfile);
 
 
     //CHECK IF DIRECTORY
@@ -715,7 +716,9 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
                         strcat(newpath,"/");
                         
                         newpath = (char*)realloc(newpath,newlen);
+
                         strcat(newpath,ent->d_name);
+                        
                         MergeAppendFile(finalpath, newpath, tag);
                      }
                      /*else if(ent->d_type==DT_DIR){
@@ -725,12 +728,12 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
                 }
             }
             else{
-                mdebug1("FILES: %s",files);
+                //mdebug1("FILES: %s",files);
                 if (tag) {
                     fprintf(finalpath, "#%s\n", tag);
                     
                 }
-
+                
                 fprintf(finalfp, "!%ld %s\n", files_size, tmpfile);
                 fseek(fp, 0, SEEK_SET);
                 
