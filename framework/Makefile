@@ -24,10 +24,10 @@ BUILD_TARGET     = libsqlite3.so.0
 
 ifdef DEBUG
 	CFLAGS+=-g -I ../src
-	LFLAGS+=-Wl,-g
+	LFLAGS+=-g
 else
 	CFLAGS+=-O2 -I ../src
-	LFLAGS+=-Wl,-O2
+	LFLAGS+=-O2
 endif
 
 .PHONY: all build install examples clean
