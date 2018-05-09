@@ -652,9 +652,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_nodes':
-            split_data = data.split(' ', 1)
-            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-
+            node_list = data if data != 'None' else None
             response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})

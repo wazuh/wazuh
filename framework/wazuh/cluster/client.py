@@ -715,8 +715,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
 
             return serialized_response
         elif command == "get_nodes":
-            split_data = data.split(' ', 1)
-            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
+            node_list = data if data != 'None' else None
 
             node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
 
