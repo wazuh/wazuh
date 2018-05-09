@@ -24,30 +24,57 @@ static const char *XML_IGNORE_TIME = "ignore_time";
 static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
+static const char *XML_ALLOW = "allow";
 // Deprecated
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
 
-agent_software * skip_agent(agent_software *agents, agent_software **agents_list) {
-    agent_software *next = NULL;
-    if (agents->prev && agents->next) {
-        next = agents->next;
-        agents->prev->next = next;
-        next->prev = agents->prev;
-    } else if (agents->prev) {
-        agents->prev->next = NULL;
-    } else if (agents->next) {
-        *agents_list = next = agents->next;
-        next->prev = NULL;
-    } else {
-        *agents_list = NULL;
-    }
-    free(agents->agent_id);
-    free(agents->agent_name);
-    free(agents->agent_ip);
-    free(agents);
+int format_os_version(char *OS, char **os_name, char **os_ver) {
+    char OS_cpy[OS_SIZE_1024];
+    char distr[OS_SIZE_128];
+    char sec_distr[OS_SIZE_128];
+    char thi_distr[OS_SIZE_128];
+    char inv_distr[OS_SIZE_128];
+    char *ver;
+    char *ver_end;
+    int size;
+    int elements;
 
-    return next;
+    snprintf(OS_cpy, OS_SIZE_1024, "%s", OS);
+    if (!(ver = strchr(OS_cpy, '-')) || *(ver + 1) == '\0') {
+        return OS_INVALID;
+    }
+    *(ver++) = '\0';
+
+    // Get distribution
+    elements = sscanf(OS_cpy, "%s %s %s %s", distr, sec_distr, thi_distr, inv_distr);
+    size = strlen(distr) + strlen(sec_distr) + strlen(thi_distr) + 3;
+    os_calloc(size, sizeof(char), *os_name);
+
+    // More than 3 words are considered invalid
+    if (elements == 3) {
+        snprintf(*os_name, size, "%s %s %s", distr, sec_distr, thi_distr);
+    } else if (elements == 2) {
+        snprintf(*os_name, size, "%s %s", distr, sec_distr);
+    } else if (elements == 1) {
+        snprintf(*os_name, size, "%s", distr);
+    } else {
+        free(*os_name);
+        return OS_INVALID;
+    }
+
+    // Get version
+    for (; *ver == ' '; ver++);
+    if (ver_end = strchr(ver, ' '), ver_end) {
+        *ver_end = '\0';
+    }
+    if (size = strlen(ver), size >= 20) {
+        free(*os_name);
+        return OS_INVALID;
+    }
+    os_strdup(ver, *os_ver);
+
+    return 0;
 }
 
 int get_interval(char *source, unsigned long *interval) {
@@ -88,7 +115,10 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
     vulnerability_detector->flags.enabled = 1;
     vulnerability_detector->flags.u_flags.update = 0;
     vulnerability_detector->flags.u_flags.update_ubuntu = 0;
+    vulnerability_detector->flags.u_flags.update_debian = 0;
     vulnerability_detector->flags.u_flags.update_redhat = 0;
+    vulnerability_detector->flags.u_flags.update_windows = 0;
+    vulnerability_detector->flags.u_flags.update_macos = 0;
     vulnerability_detector->ignore_time = VU_DEF_IGNORE_TIME;
     vulnerability_detector->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vulnerability_detector->agents_software = NULL;
@@ -142,34 +172,159 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             }
 
             os_calloc(1, sizeof(update_node), upd);
+            upd->allowed_OS_list = NULL;
+            upd->allowed_ver_list = NULL;
 
             // Check OS
-            if (!strcmp(feed, vu_dist[DIS_UBUNTU])) {
-                if (!strcmp(version, "12") || strcasestr(version, vu_dist[DIS_PRECISE])) {
+            if (!strcmp(feed, vu_dist_tag[DIS_UBUNTU])) {
+                if (!strcmp(version, "12") || !strcmp(version, vu_dist_tag[DIS_PRECISE])) {
                     os_index = CVE_PRECISE;
-                    os_strdup(vu_dist[DIS_PRECISE], upd->version);
-                } else if (!strcmp(version, "14") || strcasestr(version, vu_dist[DIS_TRUSTY])) {
+                    os_strdup(vu_dist_tag[DIS_PRECISE], upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_PRECISE];
+                    upd->dist_ext = vu_dist_ext[DIS_PRECISE];
+                    upd->dist_ref = DIS_UBUNTU;
+                } else if (!strcmp(version, "14") || !strcmp(version, vu_dist_tag[DIS_TRUSTY])) {
                     os_index = CVE_TRUSTY;
-                    os_strdup(vu_dist[DIS_TRUSTY], upd->version);
-                } else if (!strcmp(version, "16") || strcasestr(version, vu_dist[DIS_XENIAL])) {
+                    os_strdup(vu_dist_tag[DIS_TRUSTY], upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_TRUSTY];
+                    upd->dist_ext = vu_dist_ext[DIS_TRUSTY];
+                    upd->dist_ref = DIS_UBUNTU;
+                } else if (!strcmp(version, "16") || !strcmp(version, vu_dist_tag[DIS_XENIAL])) {
                     os_index = CVE_XENIAL;
-                    os_strdup(vu_dist[DIS_XENIAL], upd->version);
+                    os_strdup(vu_dist_tag[DIS_XENIAL], upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_XENIAL];
+                    upd->dist_ext = vu_dist_ext[DIS_XENIAL];
+                    upd->dist_ref = DIS_UBUNTU;
+                } else if (!strcmp(version, "18") || !strcmp(version, vu_dist_tag[DIS_BIONIC])) {
+                    os_index = CVE_BIONIC;
+                    os_strdup(vu_dist_tag[DIS_BIONIC], upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_BIONIC];
+                    upd->dist_ext = vu_dist_ext[DIS_BIONIC];
+                    upd->dist_ref = DIS_UBUNTU;
                 } else {
                     merror("Invalid Ubuntu version '%s'.", version);
                     return OS_INVALID;
                 }
-            } else if (!strcmp(feed, vu_dist[DIS_REDHAT])) {
+            } else  if (!strcmp(feed, vu_dist_tag[DIS_DEBIAN])) {
+                if (!strcmp(version, "9") || !strcmp(version, vu_dist_tag[DIS_STRETCH])) {
+                    os_index = CVE_STRETCH;
+                    os_strdup(vu_dist_tag[DIS_STRETCH], upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_STRETCH];
+                    upd->dist_ext = vu_dist_ext[DIS_STRETCH];
+                    upd->dist_ref = DIS_DEBIAN;
+                } else if (!strcmp(version, "8") || !strcmp(version, vu_dist_tag[DIS_JESSIE])) {
+                    os_index = CVE_JESSIE;
+                    os_strdup(vu_dist_tag[DIS_JESSIE], upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_JESSIE];
+                    upd->dist_ext = vu_dist_ext[DIS_JESSIE];
+                    upd->dist_ref = DIS_DEBIAN;
+                } else if (!strcmp(version, "7") || !strcmp(version, vu_dist_tag[DIS_WHEEZY])) {
+                    os_index = CVE_WHEEZY;
+                    os_strdup(vu_dist_tag[DIS_WHEEZY], upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WHEEZY];
+                    upd->dist_ext = vu_dist_ext[DIS_WHEEZY];
+                    upd->dist_ref = DIS_DEBIAN;
+                } else {
+                    merror("Invalid Debian version '%s'.", version);
+                    return OS_INVALID;
+                }
+            } else if (!strcmp(feed, vu_dist_tag[DIS_REDHAT])) {
                 if (!strcmp(version, "5")) {
                     os_index = CVE_RHEL5;
+                    upd->dist_tag = vu_dist_tag[DIS_RHEL5];
+                    upd->dist_ext = vu_dist_ext[DIS_RHEL5];
+                    upd->dist_ref = DIS_REDHAT;
                 } else if (!strcmp(version, "6")) {
                     os_index = CVE_RHEL6;
+                    upd->dist_tag = vu_dist_tag[DIS_RHEL6];
+                    upd->dist_ext = vu_dist_ext[DIS_RHEL6];
+                    upd->dist_ref = DIS_REDHAT;
                 } else if (!strcmp(version, "7")) {
                     os_index = CVE_RHEL7;
+                    upd->dist_tag = vu_dist_tag[DIS_RHEL7];
+                    upd->dist_ext = vu_dist_ext[DIS_RHEL7];
+                    upd->dist_ref = DIS_REDHAT;
                 } else {
                     merror("Invalid Redhat version '%s'.", version);
                     return OS_INVALID;
                 }
-            } else {
+            } else if (!strcmp(feed, vu_dist_tag[DIS_WINDOWS])) {
+                if (!strcmp(version, "S2008")) {
+                    os_index = CVE_WS2008;
+                    os_strdup("server_2008", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WS2008];
+                    upd->dist_ext = vu_dist_ext[DIS_WS2008];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "S2008R2")) {
+                    os_index = CVE_WS2008R2;
+                    os_strdup("server_2008_r2", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WS2008R2];
+                    upd->dist_ext = vu_dist_ext[DIS_WS2008R2];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "S2012")) {
+                    os_index = CVE_WS2012;
+                    os_strdup("server_2012", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WS2012];
+                    upd->dist_ext = vu_dist_ext[DIS_WS2012];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "S2012R2")) {
+                    os_index = CVE_WS2012R2;
+                    os_strdup("server_2012_r2", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WS2012R2];
+                    upd->dist_ext = vu_dist_ext[DIS_WS2012R2];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "S2016")) {
+                    os_index = CVE_WS2016;
+                    os_strdup("server_2016", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WS2016];
+                    upd->dist_ext = vu_dist_ext[DIS_WS2016];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "XP")) {
+                    os_index = CVE_WXP;
+                    os_strdup("xp", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_WXP];
+                    upd->dist_ext = vu_dist_ext[DIS_WXP];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "7")) {
+                    os_index = CVE_W7;
+                    os_strdup("7", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_W7];
+                    upd->dist_ext = vu_dist_ext[DIS_W7];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "8")) {
+                    os_index = CVE_W8;
+                    os_strdup("8", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_W8];
+                    upd->dist_ext = vu_dist_ext[DIS_W8];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "8.1")) {
+                    os_index = CVE_W81;
+                    os_strdup("81", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_W81];
+                    upd->dist_ext = vu_dist_ext[DIS_W81];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else if (!strcmp(version, "10")) {
+                    os_index = CVE_W10;
+                    os_strdup("10", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_W10];
+                    upd->dist_ext = vu_dist_ext[DIS_W10];
+                    upd->dist_ref = DIS_WINDOWS;
+                } else {
+                    merror("Invalid Windows version '%s'.", version);
+                    return OS_INVALID;
+                }
+            } /* else if (!strcmp(feed, vu_dist_tag[DIS_MACOS])) {
+                if (!strcmp(version, "X")) {
+                    os_index = CVE_MACOSX;
+                    os_strdup("x", upd->version);
+                    upd->dist_tag = vu_dist_tag[DIS_MACOSX];
+                    upd->dist_ext = vu_dist_ext[DIS_MACOSX];
+                    upd->dist_ref = DIS_MACOS;
+                } else {
+                    merror("Invalid Mac version '%s'.", version);
+                    return OS_INVALID;
+                }
+            } */ else {
                 merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -203,10 +358,16 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         vulnerability_detector->updates[os_index] = NULL;
                         break;
                     } else if (!strcmp(chld_node[j]->content, "no")) {
-                        if (!strcmp(upd->dist, vu_dist[DIS_REDHAT])) {
+                        if (!strcmp(upd->dist, vu_dist_tag[DIS_REDHAT])) {
                             vulnerability_detector->flags.u_flags.update_redhat = 1;
-                        } else if (!strcmp(upd->dist, vu_dist[DIS_UBUNTU])) {
+                        } else if (!strcmp(upd->dist, vu_dist_tag[DIS_UBUNTU])) {
                             vulnerability_detector->flags.u_flags.update_ubuntu = 1;
+                        } else if (!strcmp(upd->dist, vu_dist_tag[DIS_DEBIAN])) {
+                            vulnerability_detector->flags.u_flags.update_debian = 1;
+                        } else if (!strcmp(upd->dist, vu_dist_tag[DIS_WINDOWS])) {
+                            vulnerability_detector->flags.u_flags.update_windows = 1;
+                        } else if (!strcmp(upd->dist, vu_dist_tag[DIS_MACOS])) {
+                            vulnerability_detector->flags.u_flags.update_macos = 1;
                         }
                     } else {
                         merror("Invalid content for '%s' option at module '%s'", XML_DISABLED, WM_VULNDETECTOR_CONTEXT.name);
@@ -219,6 +380,31 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }
+                } else if (!strcmp(chld_node[j]->element, XML_ALLOW)) {
+                    int size;
+                    char *found;
+                    char *OS = chld_node[j]->content;
+
+                    os_calloc(1, sizeof(char *), upd->allowed_OS_list);
+                    os_calloc(1, sizeof(char *), upd->allowed_ver_list);
+
+                    for (size = 0; (found = strchr(OS, ',')); size++) {
+                        *(found++) = '\0';
+                        os_realloc(upd->allowed_OS_list, (size + 2)*sizeof(char *), upd->allowed_OS_list);
+                        os_realloc(upd->allowed_ver_list, (size + 2)*sizeof(char *), upd->allowed_ver_list);
+                        if (format_os_version(OS, &upd->allowed_OS_list[size], &upd->allowed_ver_list[size])) {
+                            merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
+                            return OS_INVALID;
+                        }
+                        upd->allowed_OS_list[size + 1] = NULL;
+                        OS = found;
+                    }
+                    os_realloc(upd->allowed_OS_list, (size + 2)*sizeof(char *), upd->allowed_OS_list);
+                    if (format_os_version(OS, &upd->allowed_OS_list[size], &upd->allowed_ver_list[size])) {
+                        merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
+                        return OS_INVALID;
+                    }
+                    upd->allowed_OS_list[size + 1] = NULL;
                 } else if (!strcmp(chld_node[j]->element, XML_URL)) {
                     os_strdup(chld_node[j]->content, upd->url);
                     if (chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
@@ -257,7 +443,11 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
         }
     }
 
-    if (vulnerability_detector->flags.u_flags.update_ubuntu || vulnerability_detector->flags.u_flags.update_redhat) {
+    if (vulnerability_detector->flags.u_flags.update_ubuntu    ||
+        vulnerability_detector->flags.u_flags.update_debian    ||
+        vulnerability_detector->flags.u_flags.update_redhat    ||
+        vulnerability_detector->flags.u_flags.update_windows   ||
+        vulnerability_detector->flags.u_flags.update_macos) {
         vulnerability_detector->flags.u_flags.update = 1;
     }
 
