@@ -33,6 +33,7 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
+SYSC_TEMPLATE="./etc/templates/config/generic/wodle-syscollector.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 ##########
@@ -323,6 +324,9 @@ WriteAgent()
     # CIS-CAT configuration
     WriteCISCAT "agent"
 
+    # Syscollector configuration
+    WriteSyscollector "manager"
+
     # Syscheck
     WriteSyscheck "agent"
 
@@ -419,6 +423,9 @@ WriteManager()
 
     # CIS-CAT configuration
     WriteCISCAT "manager"
+
+    # Syscollector configuration
+    WriteSyscollector "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -600,6 +607,13 @@ InstallCommon(){
     OSSEC_USER_MAIL='ossecm'
     OSSEC_USER_REM='ossecr'
     EXTERNAL_BERKELEY='external/libdb/build_unix/'
+    EXTERNAL_LIBYAML='external/libyaml/'
+    EXTERNAL_CURL='external/curl/'
+    EXTERNAL_JSON="external/cJSON/"
+    EXTERNAL_SQLITE="external/sqlite/"
+    EXTERNAL_SSL="external/openssl/"
+    EXTERNAL_PROCPS="external/procps/"
+    EXTERNAL_ZLIB="external/zlib/"
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -641,7 +655,26 @@ InstallCommon(){
     fi
 
   ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lib
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_BERKELEY}.libs/libdb-6.2.so ${PREFIX}/lib
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_JSON}libcjson.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl.1.1.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto.1.1.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_ZLIB}libz.1.dylib ${PREFIX}/lib
+    else
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_JSON}libcjson.so ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl.so.1.1 ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto.so.1.1 ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_ZLIB}libz.so.1 ${PREFIX}/lib
+
+        if [ ${NUNAME} = 'Linux' ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_BERKELEY}.libs/libdb-6.2.so ${PREFIX}/lib
+            ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_PROCPS}libproc.so ${PREFIX}/lib
+        fi
+    fi
+
   ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
@@ -727,6 +760,7 @@ InstallCommon(){
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
+  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
 
       ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
@@ -741,7 +775,7 @@ InstallLocal(){
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rules
     ${INSTALL} -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
     ${INSTALL} -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
+    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/download
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
@@ -767,6 +801,17 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset ${PREFIX}/bin/update_ruleset
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SQLITE}libsqlite3.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.2.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_CURL}lib/.libs/libcurl.4.dylib ${PREFIX}/lib
+    else
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SQLITE}libsqlite3.so ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2 ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_CURL}lib/.libs/libcurl.so.4 ${PREFIX}/lib
+    fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
@@ -813,15 +858,18 @@ InstallLocal(){
 
 TransferShared() {
     rm -f ${PREFIX}/etc/shared/merged.mg
-    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec cp -pf {} ${PREFIX}/backup/shared \;
-    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec mv -f {} ${PREFIX}/etc/shared/default \;
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${PREFIX}/backup/shared \;
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${PREFIX}/etc/shared/default \;
 }
 
 InstallServer(){
 
     InstallLocal
 
+    # Install cluster files
     ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
+    ${INSTALL} -d 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/cluster
+
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
 
@@ -858,7 +906,6 @@ InstallAgent(){
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/incoming
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/wpk_root.pem ${PREFIX}/etc/
 

@@ -147,7 +147,37 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
         cJSON_AddNumberToObject(iface_info, "MTU", mtu);
 
     cJSON *ipv4 = cJSON_CreateObject();
+    cJSON *ipv4_addr = cJSON_CreateArray();
+    cJSON *ipv4_netmask = cJSON_CreateArray();
+    cJSON *ipv4_broadcast = cJSON_CreateArray();
+
     cJSON *ipv6 = cJSON_CreateObject();
+    cJSON *ipv6_addr = cJSON_CreateArray();
+    cJSON *ipv6_netmask = cJSON_CreateArray();
+
+    /* Get network stats */
+
+    ULONG retVal = 0;
+
+    MIB_IF_ROW2 ifRow;
+    SecureZeroMemory((PVOID) &ifRow, sizeof(MIB_IF_ROW2));
+
+    ifRow.InterfaceIndex = pCurrAddresses->IfIndex;
+
+    if ((retVal = GetIfEntry2(&ifRow)) == NO_ERROR) {
+
+        int tx_packets = ifRow.OutUcastPkts + ifRow.OutNUcastPkts;
+        int rx_packets = ifRow.InUcastPkts + ifRow.InNUcastPkts;
+
+        cJSON_AddNumberToObject(iface_info, "tx_packets", tx_packets);
+        cJSON_AddNumberToObject(iface_info, "rx_packets", rx_packets);
+        cJSON_AddNumberToObject(iface_info, "tx_bytes", ifRow.OutOctets);
+        cJSON_AddNumberToObject(iface_info, "rx_bytes", ifRow.InOctets);
+        cJSON_AddNumberToObject(iface_info, "tx_errors", ifRow.OutErrors);
+        cJSON_AddNumberToObject(iface_info, "rx_errors", ifRow.InErrors);
+        cJSON_AddNumberToObject(iface_info, "tx_dropped", ifRow.OutDiscards);
+        cJSON_AddNumberToObject(iface_info, "rx_dropped", ifRow.InDiscards);
+    }
 
     /* Extract IPv4 and IPv6 addresses */
     pUnicast = pCurrAddresses->FirstUnicastAddress;
@@ -157,7 +187,7 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
             if (pUnicast->Address.lpSockaddr->sa_family == AF_INET){
                 addr4 = (struct sockaddr_in *) pUnicast->Address.lpSockaddr;
                 inet_ntop(AF_INET, &(addr4->sin_addr), host, NI_MAXHOST);
-                cJSON_AddStringToObject(ipv4, "address", host);
+                cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
 
                 snprintf(ipv4addr, NI_MAXHOST, "%s", host);
 
@@ -166,25 +196,25 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
                 PULONG netmask = &mask;
                 if (!ConvertLengthToIpv4Mask(pUnicast->OnLinkPrefixLength, netmask)){
                     inet_ntop(pUnicast->Address.lpSockaddr->sa_family, netmask, host, NI_MAXHOST);
-                    cJSON_AddStringToObject(ipv4, "netmask", host);
+                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(host));
                 }
 
                 /* Broadcast address */
                 char* broadcast;
                 broadcast = get_broadcast_addr(ipv4addr, host);
                 if (broadcast)
-                    cJSON_AddStringToObject(ipv4, "broadcast", broadcast);
+                    cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadcast));
                 free(broadcast);
 
             } else if (pUnicast->Address.lpSockaddr->sa_family == AF_INET6){
                 addr6 = (struct sockaddr_in6 *) pUnicast->Address.lpSockaddr;
                 inet_ntop(AF_INET6, &(addr6->sin6_addr), host, NI_MAXHOST);
-                cJSON_AddStringToObject(ipv6, "address", host);
+                cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
 
                 /* IPv6 Netmask */
                 char* netmask6;
                 netmask6 = length_to_ipv6_mask(pUnicast->OnLinkPrefixLength);
-                cJSON_AddStringToObject(ipv6, "netmask", netmask6);
+                cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
                 free(netmask6);
 
             }
@@ -228,8 +258,40 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
     }
 
     /* Create structure and send data in JSON format of each interface */
-    cJSON_AddItemToObject(iface_info, "IPv4", ipv4);
-    cJSON_AddItemToObject(iface_info, "IPv6", ipv6);
+
+    if (cJSON_GetArraySize(ipv4_addr) > 0) {
+        cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
+        if (cJSON_GetArraySize(ipv4_netmask) > 0) {
+            cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
+        } else {
+            cJSON_Delete(ipv4_netmask);
+        }
+        if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
+            cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
+        } else {
+            cJSON_Delete(ipv4_broadcast);
+        }
+        cJSON_AddItemToObject(iface_info, "IPv4", ipv4);
+    } else {
+        cJSON_Delete(ipv4_addr);
+        cJSON_Delete(ipv4_netmask);
+        cJSON_Delete(ipv4_broadcast);
+        cJSON_Delete(ipv4);
+    }
+
+    if (cJSON_GetArraySize(ipv6_addr) > 0) {
+        cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
+        if (cJSON_GetArraySize(ipv6_netmask) > 0) {
+            cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
+        } else {
+            cJSON_Delete(ipv6_netmask);
+        }
+        cJSON_AddItemToObject(iface_info, "IPv6", ipv6);
+    } else {
+        cJSON_Delete(ipv6_addr);
+        cJSON_Delete(ipv6_netmask);
+        cJSON_Delete(ipv6);
+    }
 
     string = cJSON_PrintUnformatted(object);
     cJSON_Delete(object);

@@ -35,6 +35,10 @@ class WazuhException(Exception):
         1104: 'Invalid type',
         1105: 'Error reading API configuration',
         1106: 'Requested section not present in configuration',
+        1107: 'Internal options file not found',
+        1108: 'Value not found in internal_options.conf',
+        1109: 'Option must be a digit',
+        1110: 'Option value is out of the limits',
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',

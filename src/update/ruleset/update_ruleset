@@ -30,6 +30,7 @@ try:
     from urllib2 import urlopen, URLError, HTTPError
 except:
     from urllib.request import urlopen  # Python 3
+    from urllib.error import URLError, HTTPError
 
 
 class RulesetLogger:

@@ -190,7 +190,7 @@
 #define NO_AUTHFILE     "(1402): Authentication key file '%s' not found."
 #define ENCFORMAT_ERROR "(1403): Incorrectly formatted message from agent '%s' (host '%s')."
 #define ENCKEY_ERROR    "(1404): Authentication error. Wrong key from '%s'."
-#define ENCSIZE_ERROR   "(1405): Message size not valid: '%s'."
+#define ENCSIZE_ERROR   "(1405): Message size not valid: '%64s'."
 #define ENCSUM_ERROR    "(1406): Checksum mismatch on message from '%s'."
 #define ENCTIME_ERROR   "(1407): Duplicated counter for '%s'."
 #define ENC_IP_ERROR    "(1408): Invalid ID %s for the source ip: '%s' (name '%s')."

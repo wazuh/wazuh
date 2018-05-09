@@ -213,6 +213,8 @@ extern const char *__local_name;
 #include "randombytes.h"
 #include "labels_op.h"
 #include "time_op.h"
+#include "exec_op.h"
+#include "notify_op.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
@@ -220,5 +222,6 @@ extern const char *__local_name;
 #include "error_messages/error_messages.h"
 #include "error_messages/debug_messages.h"
 #include "custom_output_search.h"
+#include "url.h"
 
 #endif /* __SHARED_H */

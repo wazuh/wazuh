@@ -25,6 +25,29 @@
 OSList *timeout_list;
 OSListNode *timeout_node;
 
+/* Shut down win-execd properly */
+static void WinExecd_Shutdown()
+{
+    /* Remove pending active responses */
+    minfo(EXEC_SHUTDOWN);
+
+    timeout_node = OSList_GetFirstNode(timeout_list);
+    while (timeout_node) {
+        timeout_data *list_entry;
+
+        list_entry = (timeout_data *)timeout_node->data;
+
+        mdebug2("Delete pending AR: %s", list_entry->command[0]);
+        ExecCmd_Win32(list_entry->command[0]);
+
+        /* Delete current node - already sets the pointer to next */
+        OSList_DeleteCurrentlyNode(timeout_list);
+        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+
+        /* Clear the memory */
+        FreeTimeoutEntry(list_entry);
+    }
+}
 
 int WinExecd_Start()
 {
@@ -53,6 +76,9 @@ int WinExecd_Start()
     if (!timeout_list) {
         merror_exit(LIST_ERROR);
     }
+
+    /* Delete pending AR at succesfull exit */
+    atexit(WinExecd_Shutdown);
 
     /* Start up message */
     minfo(STARTUP_MSG, getpid());

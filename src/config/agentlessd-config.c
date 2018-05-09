@@ -106,6 +106,11 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
             snprintf(script_path, 1024, "%s/%s", AGENTLESSDIRPATH,
                      node[i]->content);
 
+            if (w_ref_parent_folder(script_path)) {
+                merror("Invalid Agentless type '%s': it contains references to parent folder.", node[i]->content);
+                return OS_INVALID;
+            }
+
             if (File_DateofChange(script_path) <= 0) {
                 merror("Unable to find '%s' at '%s'.",
                        node[i]->content, AGENTLESSDIRPATH);
