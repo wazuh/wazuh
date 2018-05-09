@@ -1,7 +1,7 @@
 {
     "files":{
         "/etc/": {
-            "umask": "0o117",
+            "umask": "0o127",
             "source": "master",
             "write_mode": "atomic",
             "files": ["client.keys"],
