@@ -11,8 +11,8 @@ from wazuh.cluster.communication import send_to_internal_socket
 socket_name = "c-internal"
 
 def __execute(request):
-    cluster_avalaible, msg = check_cluster_status()
-    if not cluster_avalaible:
+    cluster_available, msg = check_cluster_status()
+    if not cluster_available:
         raise Exception(msg)
 
     response = send_to_internal_socket(socket_name=socket_name, message=request)
@@ -40,8 +40,8 @@ def check_cluster_status():
     if status["running"] != "yes":
         msg = "The cluster is not running"
 
-    cluster_avalaible = True if msg is None else False
-    return cluster_avalaible, msg
+    cluster_available = True if msg is None else False
+    return cluster_available, msg
 
 
 ## Requests

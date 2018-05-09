@@ -35,8 +35,8 @@ logger = logging.getLogger(__name__)
 #
 class MasterManagerHandler(ServerHandler):
 
-    def __init__(self, sock, server, map, addr=None):
-        ServerHandler.__init__(self, sock, server, map, addr)
+    def __init__(self, sock, server, asyncore_map, addr=None):
+        ServerHandler.__init__(self, sock, server, asyncore_map, addr)
         self.manager = server
 
     # Overridden methods
@@ -469,12 +469,12 @@ class MasterManager(Server):
 
     # Overridden methods
     def add_client(self, data, ip, handler):
-        id = Server.add_client(self, data, ip, handler)
+        client_id = Server.add_client(self, data, ip, handler)
         # create directory in /queue/cluster to store all node's file there
-        node_path = "{}/queue/cluster/{}".format(common.ossec_path, id)
+        node_path = "{}/queue/cluster/{}".format(common.ossec_path, client_id)
         if not os.path.exists(node_path):
             mkdir_with_mode(node_path)
-        return id
+        return client_id
 
 
     # Private methods
@@ -569,7 +569,7 @@ class MasterManager(Server):
         logger.debug("[Master] Cleaning threads generated to handle clients.")
         clients = self.get_connected_clients().copy().keys()
         for client in clients:
-            self.remove_client(id=client)
+            self.remove_client(client_id=client)
 
         logger.debug("[Master] Cleaning threads. End.")
 
@@ -602,8 +602,8 @@ class FileStatusUpdateThread(ClusterThread):
 # Internal socket
 #
 class MasterInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
+    def __init__(self, sock, manager, asyncore_map):
+        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))

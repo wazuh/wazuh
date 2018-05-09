@@ -138,11 +138,11 @@ class ClusterThread(threading.Thread):
 
 
     def sleep(self, delay):
-        exit = False
+        must_exit = False
         count = 0
-        while not exit and not self.stopper.is_set() and self.running:
+        while not must_exit and not self.stopper.is_set() and self.running:
             if count == delay:
-                exit = True
+                must_exit = True
             else:
                 count += 1
                 time.sleep(1)
@@ -152,8 +152,8 @@ class ClusterThread(threading.Thread):
 
 class Handler(asyncore.dispatcher_with_send):
 
-    def __init__(self, key, sock=None, map=None):
-        asyncore.dispatcher_with_send.__init__(self, sock=sock, map=map)
+    def __init__(self, key, sock=None, asyncore_map=None):
+        asyncore.dispatcher_with_send.__init__(self, sock=sock, map=asyncore_map)
         self.box = {}
         self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
         self.inbuffer = b''
@@ -205,27 +205,27 @@ class Handler(asyncore.dispatcher_with_send):
 
 
     def get_worker(self, data):
-        # the worker id will be the first element spliting the data by spaces
-        id = data.split(b' ', 1)[0].decode()
+        # the worker worker_id will be the first element spliting the data by spaces
+        worker_id = data.split(b' ', 1)[0].decode()
         with self.workers_lock:
-            if id in self.workers:
-                return self.workers[id], 'ack', 'Command received for {}'.format(id)
+            if worker_id in self.workers:
+                return self.workers[worker_id], 'ack', 'Command received for {}'.format(worker_id)
             else:
-                return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(id)
+                return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(worker_id)
 
 
-    def compute_md5(self, file, blocksize=2**20):
+    def compute_md5(self, my_file, blocksize=2 ** 20):
         hash_algorithm = hashlib.md5()
-        with open(file, 'rb') as f:
+        with open(my_file, 'rb') as f:
             for chunk in iter(lambda: f.read(blocksize), b''):
                 hash_algorithm.update(chunk)
 
         return hash_algorithm.hexdigest()
 
 
-    def send_file(self, reason, file, remove=False, interval_file_transfer_send=0.1):
+    def send_file(self, reason, file_to_send, remove=False, interval_file_transfer_send=0.1):
         """
-        To send a file without collapsing the network, two special commands
+        To send a file without collapsing the network, three special commands
         are defined:
             - send_file_open <node_name> <file_name>
             - send_file_update <node_name> <file_name> <file_content>
@@ -236,38 +236,38 @@ class Handler(asyncore.dispatcher_with_send):
         Before sending the file, a request with a "reason" is sent. This way,
         the server will get prepared to receive the file.
 
-        :param file: filename (path)
-        :param reason: command to send before starting to send the file
-        :param remove: whether to remove the file after sending it or not
+        :param interval_file_transfer_send: Time to sleep between each chunk sent
+        :param file_to_send: filename (path)
+        :param reason: command to send before starting to send the file_to_send
+        :param remove: whether to remove the file_to_send after sending it or not
         """
-        # response will be of form 'ack id'
-        _, id = self.execute(reason, os.path.basename(file)).split(' ',1)
+        # response will be of form 'ack worker_id'
+        _, worker_id = self.execute(reason, os.path.basename(file_to_send)).split(' ', 1)
 
         try:
-            res, data = self.execute("file_open", "{}".format(id)).split(' ', 1)
+            res, data = self.execute("file_open", "{}".format(worker_id)).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
-            # TO-DO remove ossec_path from sent filepath
-            base_msg = "{} ".format(id).encode()
+            base_msg = "{} ".format(worker_id).encode()
             chunk_size = max_msg_size - len(base_msg)
 
-            with open(file, 'rb') as f:
+            with open(file_to_send, 'rb') as f:
                 for chunk in iter(lambda: f.read(chunk_size), b''):
                     res, data = self.execute("file_update", base_msg + chunk).split(' ', 1)
                     if res == "err":
                         raise Exception(data)
                     time.sleep(interval_file_transfer_send)
 
-            res, data = self.execute("file_close", "{} {}".format(id, self.compute_md5(file))).split(' ', 1)
+            res, data = self.execute("file_close", "{} {}".format(worker_id, self.compute_md5(file_to_send))).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
         except Exception as e:
-            logger.error("[Transport-Handler] Error sending file: '{}'.".format(str(e)))
+            logger.error("[Transport-Handler] Error sending file_to_send: '{}'.".format(str(e)))
 
         if remove:
-            os.remove(file)
+            os.remove(file_to_send)
 
         return res + ' ' + data
 
@@ -427,9 +427,9 @@ class Handler(asyncore.dispatcher_with_send):
 
 class ServerHandler(Handler):
 
-    def __init__(self, sock, server, map, addr=None):
-        Handler.__init__(self, server.config['key'], sock, map)
-        self.map = map
+    def __init__(self, sock, server, asyncore_map, addr=None):
+        Handler.__init__(self, server.config['key'], sock, asyncore_map)
+        self.map = asyncore_map
         self.name = None
         self.server = server
         self.addr = addr
@@ -462,9 +462,9 @@ class ServerHandler(Handler):
                 self.handle_close()
                 raise Exception("Incompatible client version ({})".format(client_version))
 
-            id = self.server.add_client(data, self.addr, self)
-            self.name = id  # TO DO: change self.name to self.id
-            logger.info("[Master] [{0}]: Connected.".format(id))
+            client_id = self.server.add_client(data, self.addr, self)
+            self.name = client_id  # TO DO: change self.name to self.client_id
+            logger.info("[Master] [{0}]: Connected.".format(client_id))
         except Exception as e:
             logger.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, str(e)))
         return None
@@ -476,12 +476,12 @@ class ServerHandler(Handler):
 
 class Server(asyncore.dispatcher):
 
-    def __init__(self, host, port, handle_type, map = {}):
-        asyncore.dispatcher.__init__(self, map=map)
+    def __init__(self, host, port, handle_type, asyncore_map = {}):
+        asyncore.dispatcher.__init__(self, map=asyncore_map)
         self._clients = {}
         self._clients_lock = threading.Lock()
 
-        self.map = map
+        self.map = asyncore_map
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.bind((host, port))
@@ -530,15 +530,15 @@ class Server(asyncore.dispatcher):
 
 
     def add_client(self, data, ip, handler):
-        name, type, version = data.split(' ')
-        id = name
+        name, node_type, version = data.split(' ')
+        node_id = name
         with self._clients_lock:
-            self._clients[id] = {
+            self._clients[node_id] = {
                 'handler': handler,
                 'info': {
                     'name': name,
                     'ip': ip,
-                    'type': type,
+                    'type': node_type,
                     'version': version
                 },
                 'status': {
@@ -567,18 +567,18 @@ class Server(asyncore.dispatcher):
                     }
                 }
             }
-        return id
+        return node_id
 
 
-    def remove_client(self, id):
+    def remove_client(self, client_id):
         with self._clients_lock:
             try:
                 # Remove threads
-                self._clients[id]['handler'].exit()
+                self._clients[client_id]['handler'].exit()
 
-                del self._clients[id]
+                del self._clients[client_id]
             except KeyError:
-                logger.error("[Transport-Server] Client '{}'' is already disconnected.".format(id))
+                logger.error("[Transport-Server] Client '{}'' is already disconnected.".format(client_id))
 
 
     def get_connected_clients(self):
@@ -596,8 +596,8 @@ class Server(asyncore.dispatcher):
                 raise Exception(error_msg)
 
 
-    def send_file(self, client_name, reason, file, remove = False):
-        return self.get_client_info(client_name)['handler'].send_file(reason, file, remove, self.interval_file_transfer_send)
+    def send_file(self, client_name, reason, file_to_send, remove = False):
+        return self.get_client_info(client_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
 
 
     def send_request(self, client_name, command, data=None):
@@ -623,9 +623,9 @@ class Server(asyncore.dispatcher):
 
 class ClientHandler(Handler):
 
-    def __init__(self, key, host, port, name, map = {}):
-        Handler.__init__(self, key=key, map=map)
-        self.map = map
+    def __init__(self, key, host, port, name, asyncore_map = {}):
+        Handler.__init__(self, key=key, asyncore_map=asyncore_map)
+        self.map = asyncore_map
         self.host = host
         self.port = port
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -669,8 +669,8 @@ class ClientHandler(Handler):
 
 class InternalSocketHandler(Handler):
 
-    def __init__(self, sock, manager, map):
-        Handler.__init__(self, key=None, sock=sock, map=map)
+    def __init__(self, sock, manager, asyncore_map):
+        Handler.__init__(self, key=None, sock=sock, asyncore_map=asyncore_map)
         self.manager = manager
 
 
@@ -680,10 +680,10 @@ class InternalSocketHandler(Handler):
 
 class InternalSocket(asyncore.dispatcher):
 
-    def __init__(self, socket_name, manager, handle_type, map = {}):
-        asyncore.dispatcher.__init__(self, map=map)
+    def __init__(self, socket_name, manager, handle_type, asyncore_map = {}):
+        asyncore.dispatcher.__init__(self, map=asyncore_map)
         self.handle_type = handle_type
-        self.map = map
+        self.map = asyncore_map
         self.socket_name = socket_name
         self.manager = manager
         self.socket_address = "{}/{}/{}.sock".format(common.ossec_path, "/queue/cluster", self.socket_name)

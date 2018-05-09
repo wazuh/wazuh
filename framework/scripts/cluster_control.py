@@ -128,10 +128,10 @@ Others:
 
 
 
-def __execute(function, args=()):
+def __execute(my_function, my_args=()):
     response = {}
     try:
-        response = function(*args)
+        response = my_function(*my_args)
     except Exception as e:
         if response:
             print ("Error: {}".format(response))
@@ -153,7 +153,7 @@ def __print_table(data, headers, show_header=False):
         """
         For each column of the table, return the size of the biggest element
         """
-        return map(lambda x: max(map(lambda x: len(x)+2, x)), map(list, zip(*l)))
+        return map(lambda x: max(map(lambda y: len(y)+2, x)), map(list, zip(*l)))
 
     if show_header:
         table = list(chain.from_iterable([[headers], data]))
@@ -180,7 +180,7 @@ def __print_table(data, headers, show_header=False):
 
 ### Get files
 def print_file_status_master(filter_file_list, filter_node_list):
-    files = __execute(function=get_files, args=(filter_file_list, filter_node_list, ))
+    files = __execute(my_function=get_files, my_args=(filter_file_list, filter_node_list,))
     headers = ["Node", "File name", "Modification time", "MD5"]
 
     node_error = {}
@@ -196,8 +196,8 @@ def print_file_status_master(filter_file_list, filter_node_list):
             continue
 
         for file_name in sorted(files[node_name].iterkeys()):
-            file = [node_name, file_name, files[node_name][file_name]['mod_time'].split('.', 1)[0], files[node_name][file_name]['md5']]
-            data.append(file)
+            my_file = [node_name, file_name, files[node_name][file_name]['mod_time'].split('.', 1)[0], files[node_name][file_name]['md5']]
+            data.append(my_file)
 
     __print_table(data, headers, True)
 
@@ -208,7 +208,7 @@ def print_file_status_master(filter_file_list, filter_node_list):
 
 
 def print_file_status_client(filter_file_list, node_name):
-    my_files = __execute(function=get_files, args=(filter_file_list, node_name, ))
+    my_files = __execute(my_function=get_files, my_args=(filter_file_list, node_name,))
 
     if my_files.get("err"):
         print ("Err {}")
@@ -217,8 +217,8 @@ def print_file_status_client(filter_file_list, node_name):
     headers = ["Node", "File name", "Modification time", "MD5"]
     data = []
     for file_name in sorted(my_files.iterkeys()):
-            file = [node_name, file_name, my_files[file_name]['mod_time'].split('.', 1)[0], my_files[file_name]['md5']]
-            data.append(file)
+            my_file = [node_name, file_name, my_files[file_name]['mod_time'].split('.', 1)[0], my_files[file_name]['md5']]
+            data.append(my_file)
 
     __print_table(data, headers, True)
     print ("(*) Clients only show their own files.")
@@ -226,7 +226,7 @@ def print_file_status_client(filter_file_list, node_name):
 
 ### Get nodes
 def print_nodes_status(filter_node):
-    nodes = __execute(function=get_nodes, args=(filter_node, ))
+    nodes = __execute(my_function=get_nodes, my_args=(filter_node,))
 
     if nodes.get("err"):
         print ("Err {}")
@@ -239,7 +239,7 @@ def print_nodes_status(filter_node):
 
 ### Sync
 def sync_master(filter_node):
-    node_response = __execute(function=sync, args=(filter_node, ))
+    node_response = __execute(my_function=sync, my_args=(filter_node,))
     headers = ["Node", "Response"]
     data = [[node, response] for node, response in node_response.iteritems()]
     __print_table(data, headers, True)
@@ -261,7 +261,7 @@ def print_agents_master(filter_status=None, filter_node=None):
         else:
             print ("Error: '{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(filter_status[0].lower().replace(" ", "")))
             exit(0)
-    agents = __execute(function=get_agents, args=(filter_status_f, filter_node, ))
+    agents = __execute(my_function=get_agents, my_args=(filter_status_f, filter_node,))
     headers = ["ID", "Address", "Name", "Status", "Node"]
     __print_table(agents, headers, True)
     if filter_status_f:
@@ -272,7 +272,7 @@ def print_agents_master(filter_status=None, filter_node=None):
 
 ### Get healthchech
 def print_healthcheck(conf, more=False, filter_node=None):
-    node_response = __execute(function=get_healthcheck)
+    node_response = __execute(my_function=get_healthcheck)
 
     msg1 = ""
     msg2 = ""
@@ -338,8 +338,8 @@ def print_healthcheck(conf, more=False, filter_node=None):
 #
 if __name__ == '__main__':
 
-    cluster_avalaible, msg = check_cluster_status()
-    if not cluster_avalaible:
+    cluster_available, msg = check_cluster_status()
+    if not cluster_available:
         print(msg)
         exit(1)
 

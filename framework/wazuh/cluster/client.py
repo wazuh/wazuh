@@ -578,7 +578,7 @@ class SyncClientThread(ClientThread):
         if compressed_data_path:
             logger.info("{0}: Sending files to master.".format(self.thread_tag))
 
-            response = self.client_handler.send_file(reason = self.reason, file = compressed_data_path, remove = True)
+            response = self.client_handler.send_file(reason = self.reason, file_to_send= compressed_data_path, remove = True)
 
             processed_response = self.client_handler.process_response(response)
             if processed_response:
@@ -670,7 +670,7 @@ class SyncExtraValidFilesThread(SyncClientThread):
         logger.info("{0}: Sending files to master.".format(self.thread_tag))
 
         response = self.client_handler.send_file(reason = self.reason,
-                                    file = compressed_data_path, remove = True)
+                                                 file_to_send= compressed_data_path, remove = True)
 
         processed_response = self.client_handler.process_response(response)
         if processed_response:
@@ -687,8 +687,8 @@ class SyncExtraValidFilesThread(SyncClientThread):
 # Internal socket
 #
 class ClientInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
+    def __init__(self, sock, manager, asyncore_map):
+        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
@@ -706,7 +706,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
                 response = json.loads(node_response[1])
                 # Filter files
                 if file_list and len(response):
-                    response = {file:content for file,content in response.iteritems() if file in file_list}
+                    response = {my_file:content for my_file,content in response.items() if my_file in file_list}
 
             response =  json.dumps(response)
 

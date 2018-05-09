@@ -355,8 +355,8 @@ def compare_files(good_files, check_files):
     missing_files = set(good_files.keys()) - set(check_files.keys())
 
     extra_files, extra_valid_files = [], []
-    for file in set(check_files.keys()) - set(good_files.keys()):
-        (extra_files, extra_valid_files)[cluster_items[check_files[file]['cluster_item_key']]['extra_valid']].append(file)
+    for my_file in set(check_files.keys()) - set(good_files.keys()):
+        (extra_files, extra_valid_files)[cluster_items[check_files[my_file]['cluster_item_key']]['extra_valid']].append(my_file)
 
     shared_files = {name: {'cluster_item_key': data['cluster_item_key'],
                           'merged':False} for name, data in good_files.items()
@@ -391,15 +391,15 @@ def clean_up(node_name=""):
 
     :param node_name: Name of the node to clean up
     """
-    def remove_directory_contents(rm_path):
-        if not path.exists(rm_path):
-            logger.debug("[Cluster] Nothing to remove in '{}'.".format(rm_path))
+    def remove_directory_contents(local_rm_path):
+        if not path.exists(local_rm_path):
+            logger.debug("[Cluster] Nothing to remove in '{}'.".format(local_rm_path))
             return
 
-        for f in listdir(rm_path):
+        for f in listdir(local_rm_path):
             if f == "c-internal.sock":
                 continue
-            f_path = path.join(rm_path, f)
+            f_path = path.join(local_rm_path, f)
             try:
                 if path.isdir(f_path):
                     rmtree(f_path)
