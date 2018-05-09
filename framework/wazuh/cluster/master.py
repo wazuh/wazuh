@@ -685,22 +685,4 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         else:
-            split_data = data.split(' ', 1)
-            host = split_data[0]
-            data = split_data[1] if len(split_data) > 1 else None
-
-            if host == 'all':
-                response = list(self.manager.send_request_broadcast(command=command, data=data))
-                serialized_response = ['ok', json.dumps({node:data for node,data in response})]
-            else:
-                response = self.manager.send_request(client_name=host, command=command, data=data)
-                if response:
-                    type_response = node_response[0]
-                    response = node_response[1]
-
-                    if type_response == "err":
-                        serialized_response = {"err":response}
-                    else:
-                        serialized_response = response
-
-            return serialized_response
+            return ['err', json.dumps({'err': "Received an unknown command '{}'".format(command)})]

@@ -732,8 +732,6 @@ class ClientInternalSocketHandler(InternalSocketHandler):
             serialized_response = ['ok',  response]
             return serialized_response
         else:
-            response = self.manager.send_request(command=command, data=data)
-            if response:
-                serialized_response = response.split(' ', 1)
+            return ['err', json.dumps({'err': "Received an unknown command '{}'".format(command)})]
 
         return serialized_response
