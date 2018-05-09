@@ -455,7 +455,6 @@ BUILD_SERVER+=ossec-dbd -
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
-BUILD_SERVER+=wazuh-framework
 
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
@@ -1228,11 +1227,6 @@ wmodulesd_o := $(wmodulesd_c:.c=.o)
 wazuh-modulesd: ${wmodulesd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-### wazuh-framework ##
-
-wazuh-framework: ${shared_o} ${wdblib_o}
-	${MAKE} -C ../framework build PREFIX=${PREFIX}
-
 
 ####################
 #### test ##########
@@ -1368,7 +1362,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.o addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
+clean: clean-test clean-internals clean-external clean-windows clean-config
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1426,9 +1420,6 @@ clean-internals:
 	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o}
 	rm -f ${wdb_o}
-
-clean-framework:
-	${MAKE} -C ../framework clean
 
 clean-windows:
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll
