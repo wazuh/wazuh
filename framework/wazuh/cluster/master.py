@@ -108,7 +108,7 @@ class MasterManagerHandler(ServerHandler):
 
             # Cluster items information: write mode and umask
             w_mode = cluster_items[data['cluster_item_key']]['write_mode']
-            umask = int(cluster_items[data['cluster_item_key']]['umask'], base=0)
+            umask = cluster_items[data['cluster_item_key']]['umask']
 
             if content is None:
                 zip_path = "{}/{}".format(zip_dir_path, name)

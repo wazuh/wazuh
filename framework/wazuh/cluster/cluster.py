@@ -15,7 +15,7 @@ from time import time
 from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
-from operator import eq
+from operator import eq, setitem
 import json
 from stat import S_IRWXG, S_IRWXU
 from difflib import unified_diff
@@ -72,6 +72,7 @@ def check_cluster_config(config):
 def get_cluster_items():
     try:
         cluster_items = json.load(open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)))
+        map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values()))
         return cluster_items
     except Exception as e:
         raise WazuhException(3005, str(e))
