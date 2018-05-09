@@ -71,6 +71,7 @@ class MasterManagerHandler(ServerHandler):
             mcf_thread.start()
             return 'ack', self.set_worker(command, mcf_thread, data)
         elif command == 'get_nodes':
+            data = data.decode()
             response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
@@ -78,6 +79,14 @@ class MasterManagerHandler(ServerHandler):
             return serialized_response
         elif command == 'get_health':
             response = self.manager.get_healthcheck()
+            serialized_response = ['ok', json.dumps(response)]
+            return serialized_response
+        elif command == 'get_agents':
+            data = data.decode()
+            split_data = data.split('%--%', 1)
+            filter_status = split_data[0] if split_data[0] != 'None' else None
+            filter_nodes = split_data[1] if split_data[1] != 'None' else None
+            response = get_agents_status(filter_status, filter_nodes)
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         else:  # Non-master requests

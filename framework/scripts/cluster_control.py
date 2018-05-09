@@ -88,15 +88,17 @@ Others:
             def format_help(self):
                 msg = """Wazuh cluster control - Client node
 
-Syntax: {0} --help | --health [more] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
 \t-i, --health [more]                         # Show cluster health
+\t-a, --list-agents                           # List agents
 \t-l, --list-nodes                            # List nodes
 
 Filters:
 \t-fn, --filter-node                          # Filter by node
+\t-fs, --filter-agent-status                  # Filter by agent status (Active, Disconnected, NeverConnected, Pending)
 
 Others:
 \t-d, --debug                                # Show debug information
@@ -246,7 +248,7 @@ def sync_master(filter_node):
 
 
 ### Get agents
-def print_agents_master(filter_status=None, filter_node=None):
+def print_agents(filter_status=None, filter_node=None):
     agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
     headers = ["ID", "Address", "Name", "Status", "Node"]
     __print_table(agents, headers, True)
@@ -342,11 +344,7 @@ if __name__ == '__main__':
 
     try:
         if args.list_agents:
-            if is_master:
-                print_agents_master(args.filter_status, args.filter_node)
-            else:
-                print ("Wrong arguments. To use this command you need to be a master node.")
-                parser.print_help()
+            print_agents(args.filter_status, args.filter_node)
 
         elif args.list_nodes:
             print_nodes_status(args.filter_node)

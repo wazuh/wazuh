@@ -689,8 +689,6 @@ class ClientInternalSocketHandler(InternalSocketHandler):
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
-        serialized_response = ""
-
 
         if command == "get_files":
             split_data = data.split(' ', 1)
@@ -731,7 +729,10 @@ class ClientInternalSocketHandler(InternalSocketHandler):
             response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)[1]
             serialized_response = ['ok',  response]
             return serialized_response
+        elif command == "get_agents":
+            response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)[1]
+            serialized_response = ['ok',  response]
+            return serialized_response
         else:
             return ['err', json.dumps({'err': "Received an unknown command '{}'".format(command)})]
 
-        return serialized_response
