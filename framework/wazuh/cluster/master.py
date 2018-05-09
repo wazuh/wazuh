@@ -649,7 +649,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             node_list = data if data != 'None' else None
             response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
             cluster_config = read_config()
-            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
+            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
 
             if node_list:
                 response = {node:info for node, info in response.iteritems() if node in node_list}
