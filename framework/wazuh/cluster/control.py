@@ -28,7 +28,7 @@ def check_cluster_status():
         cluster_config = None
 
     if not cluster_config or cluster_config['disabled'] == 'yes':
-        msg = "Error: The cluster is disabled"
+        msg = "The cluster is disabled"
 
     # Validate cluster config
     try:
@@ -38,7 +38,7 @@ def check_cluster_status():
 
     status = get_status_json()
     if status["running"] != "yes":
-        msg = "Error: The cluster is not running"
+        msg = "The cluster is not running"
 
     cluster_avalaible = True if msg is None else False
     return cluster_avalaible, msg
