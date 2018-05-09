@@ -92,7 +92,7 @@ class ClientManagerHandler(ClientHandler):
             # Cluster items information: write mode and umask
             cluster_item_key = data['cluster_item_key']
             w_mode = cluster_items[cluster_item_key]['write_mode']
-            umask = int(cluster_items[cluster_item_key]['umask'], base=0)
+            umask = cluster_items[cluster_item_key]['umask']
 
             if content is None:
                 # Full path
