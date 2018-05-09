@@ -91,7 +91,6 @@ def get_cluster_items_client_intervals():
 
 
 def read_config():
-    # Get api/configuration/config.js content
     try:
         config_cluster = get_ossec_conf('cluster')
 
@@ -207,7 +206,7 @@ def get_files_status(node_type, get_md5=True):
 
         if item['source'] == node_type or item['source'] == 'all':
             if item.get("files") and "agent-info.merged" in item["files"]:
-                agents_to_send, path = merge_agent_info(merge_type="agent-info",
+                agents_to_send, _ = merge_agent_info(merge_type="agent-info",
                                                 time_limit_seconds=cluster_items\
                                                 ['sync_options']['get_agentinfo_newer_than'])
                 if agents_to_send == 0:
@@ -221,7 +220,7 @@ def get_files_status(node_type, get_md5=True):
     return final_items
 
 
-def compress_files(source, name, list_path, cluster_control_json=None):
+def compress_files(name, list_path, cluster_control_json=None):
     zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}-{3}.zip".format(common.ossec_path, name, time(), str(random())[2:])
     with zipfile.ZipFile(zip_file_path, 'w') as zf:
         # write files
@@ -244,7 +243,6 @@ def compress_files(source, name, list_path, cluster_control_json=None):
 
 
 def decompress_files(zip_path, ko_files_name="cluster_control.json"):
-    zip_json = {}
     ko_files = ""
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
@@ -294,7 +292,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
 
             try:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
-            except ValueError as e:
+            except ValueError:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S')
 
             if path.isfile(dst_path):
@@ -406,7 +404,7 @@ def clean_up(node_name=""):
                 else:
                     remove(f_path)
             except Exception as e:
-                logger.error("[Cluster] Error removing '{}': '{}'.".format(f_path, str(e)))
+                logger.error("[Cluster] Error removing '{}': '{}'.".format(f_path, e))
                 continue
 
     try:
@@ -459,7 +457,7 @@ def _check_removed_agents(new_client_keys):
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
 
-    regex = re.compile('-\d+ \w+ (any|\d+\.\d+\.\d+\.\d+|\d+\.\d+\.\d+\.\d+\/\d+) \w+')
+    regex = re.compile('-\d+ \w+ (any|\d+\.\d+\.\d+\.\d+|\d+\.\d+\.\d+\.\d+/\d+) \w+')
     for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
         if regex.match(removed_line):
             agent_id, _, _, _, = removed_line[1:].split(" ")
@@ -546,7 +544,7 @@ def unmerge_agent_info(merge_type, path_file, filename):
         try:
             st_size, name, st_mtime = header[:-1].split(' ',2)
             st_size = int(st_size)
-        except ValueError as e:
+        except ValueError:
             raise Exception("Malformed agent-info.merged file")
 
         # read data

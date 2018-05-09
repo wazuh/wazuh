@@ -229,7 +229,7 @@ def print_nodes_status(filter_node):
     nodes = __execute(my_function=get_nodes, my_args=(filter_node,))
 
     if nodes.get("err"):
-        print ("Err {}")
+        print ("Err {}".format(nodes['err']))
         exit(1)
 
     headers = ["Name", "Address", "Type"]

@@ -76,8 +76,6 @@ class ClientManagerHandler(ClientHandler):
         answer, payload = self.split_data(response)
         logger.debug("[Client] [Response-R ]: '{0}'.".format(answer))
 
-        response_data = None
-
         if answer == 'ok-c':  # test
             response_data = '[response_only_for_client] Master answered: {}.'.format(payload)
         else:
@@ -224,7 +222,7 @@ class ClientManagerHandler(ClientHandler):
 
         logger.debug("{0}: Compressing files.".format(tag))
         # Compress data: control json
-        compressed_data_path = compress_files('client', self.name, None, cluster_control_json)
+        compressed_data_path = compress_files(self.name, None, cluster_control_json)
 
         logger.debug("{0}: Files compressed.".format(tag))
 
@@ -259,7 +257,7 @@ class ClientManagerHandler(ClientHandler):
             logger.info("{0}: There are agent-info files to send.".format(tag))
 
             # Compress data: client files + control json
-            compressed_data_path = compress_files('client', self.name, client_files_paths, cluster_control_json)
+            compressed_data_path = compress_files(self.name, client_files_paths, cluster_control_json)
 
             data_for_master = compressed_data_path
 
@@ -293,13 +291,12 @@ class ClientManagerHandler(ClientHandler):
                                             'merge_type': 'agent-groups',
                                             'cluster_item_key': '/queue/agent-groups/'}})
 
-        compressed_data_path = compress_files('client', self.name, files, {'client_files': files})
+        compressed_data_path = compress_files(self.name, files, {'client_files': files})
 
         return compressed_data_path
 
 
     def process_files_from_master(self, data_received, tag=None):
-        sync_result = False
 
         if not tag:
             tag = "[Client] [process_files_from_master]"
@@ -388,7 +385,7 @@ class ClientProcessMasterFiles(ProcessFiles):
 #
 # Client
 #
-class ClientManager():
+class ClientManager:
     SYNC_I_T = "Sync_I_Thread"
     SYNC_AI_T = "Sync_AI_Thread"
     KA_T = "KeepAlive_Thread"

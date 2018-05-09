@@ -90,8 +90,6 @@ class MasterManagerHandler(ServerHandler):
 
         logger.debug("[Master] [{0}] [Response-R]: '{1}'.".format(self.name, answer))
 
-        response_data = None
-
         if answer == 'ok-m':  # test
             response_data = '[response_only_for_master] Client answered: {}.'.format(payload)
         else:
@@ -239,9 +237,6 @@ class MasterManagerHandler(ServerHandler):
 
 
     def process_integrity_from_client(self, client_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
-        ko_files = False
-        data_for_client = None
-
         if not tag:
             tag = "[Master] [process_integrity_from_client]"
 
@@ -312,7 +307,7 @@ class MasterManagerHandler(ServerHandler):
             master_files_paths = [item for item in client_files_ko['shared']]
             master_files_paths.extend([item for item in client_files_ko['missing']])
 
-            compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
+            compressed_data = compress_files(client_name, master_files_paths, client_files_ko)
 
             logger.debug("{0} Analyzing client integrity: Files checked. KO files compressed.".format(tag))
 
@@ -611,7 +606,6 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
         if command == 'get_files':
             split_data = data.split('%--%', 2)
-            file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
             node_list = ast.literal_eval(split_data[1]) if split_data[1] else None
             get_my_files = False
 
@@ -636,7 +630,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                 for node,data in node_file:
                     try:
                         response.update({node:json.loads(data.split(' ',1)[1])})
-                    except: # Error response
+                    except ValueError: # json.loads will raise a ValueError
                         response.update({node:data.split(' ',1)[1]})
 
             if get_my_files:

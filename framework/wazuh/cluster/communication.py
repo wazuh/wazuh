@@ -91,7 +91,7 @@ def msgparse(buf, my_fernet):
             if payload and my_fernet:
                 try:
                     payload = my_fernet.decrypt(payload)
-                except InvalidToken as e:
+                except InvalidToken:
                     raise Exception("Could not decrypt message. Check the key is correct.")
             return size + header_size, counter, command, payload
     return None
@@ -367,13 +367,14 @@ class Handler(asyncore.dispatcher_with_send):
         return counter
 
 
-    def split_data(self, data):
+    @staticmethod
+    def split_data(data):
         try:
             pair = data.split(' ', 1)
             cmd = pair[0]
             payload = pair[1] if len(pair) > 1 else None
         except Exception as e:
-            logger.error("[Transport-Handler] Error splitting data: '{}'.".format(str(e)))
+            logger.error("[Transport-Handler] Error splitting data: '{}'.".format(e))
             cmd = "err"
             payload = "Error splitting data"
 
@@ -384,7 +385,7 @@ class Handler(asyncore.dispatcher_with_send):
         try:
             return self.process_request(command, payload)
         except Exception as e:
-            error_msg = "Error processing command '{0}': '{1}'.".format(command, str(e))
+            error_msg = "Error processing command '{0}': '{1}'.".format(command, e)
             logger.error("[Transport-Handler] {0}".format(error_msg))
             return 'err ', error_msg
 
@@ -405,9 +406,7 @@ class Handler(asyncore.dispatcher_with_send):
 
 
     def process_response(self, response):
-        answer, payload = self.split_data(response)
-
-        final_response = None
+        answer, payload = Handler.split_data(response)
 
         if answer == 'ok':
             final_response = 'answered: {}.'.format(payload)
@@ -466,7 +465,7 @@ class ServerHandler(Handler):
             self.name = client_id  # TO DO: change self.name to self.client_id
             logger.info("[Master] [{0}]: Connected.".format(client_id))
         except Exception as e:
-            logger.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, str(e)))
+            logger.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, e))
         return None
 
 
@@ -601,7 +600,6 @@ class Server(asyncore.dispatcher):
 
 
     def send_request(self, client_name, command, data=None):
-        response = None
 
         if client_name in self.get_connected_clients():
             response = self.get_client_info(client_name)['handler'].execute(command, data)
@@ -614,7 +612,6 @@ class Server(asyncore.dispatcher):
 
 
     def send_request_broadcast(self, command, data=None):
-        message = "{0} {1}".format(command, data)
 
         for c_name in self.get_connected_clients():
             response = self.get_client_info(c_name)['handler'].execute(command, data)
@@ -650,7 +647,6 @@ class ClientHandler(Handler):
 
 
     def send_request(self, command, data=None):
-        response = None
 
         if self.my_connected:
             response = self.execute(command, data)
@@ -708,7 +704,7 @@ class InternalSocket(asyncore.dispatcher):
             self.listen(5)
             logger.debug2("[Transport-InternalSocket] Listening.")
         except Exception as e:
-            logger.error("[Transport-InternalSocket] Cannot create the socket: '{}'.".format(str(e)))
+            logger.error("[Transport-InternalSocket] Cannot create the socket: '{}'.".format(e))
 
         logger.debug2("[Transport-InternalSocket] Created.")
 
@@ -718,7 +714,7 @@ class InternalSocket(asyncore.dispatcher):
         if pair is not None:
             sock, addr = pair
             logger.debug("[Transport-InternalSocket] Incoming connection from '{0}'.".format(repr(addr)))
-            handler = self.handle_type(sock=sock, manager=self.manager, map=self.map)
+            handler = self.handle_type(sock=sock, manager=self.manager, asyncore_map=self.map)
 
 
     def handle_error(self):
@@ -753,7 +749,7 @@ class InternalSocketThread(threading.Thread):
         try:
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
         except Exception as e:
-            logger.error("{0} [Internal-COM ]: Error initializing: '{1}'.".format(self.thread_tag, str(e)))
+            logger.error("{0} [Internal-COM ]: Error initializing: '{1}'.".format(self.thread_tag, e))
             self.internal_socket = None
 
     def run(self):
@@ -780,7 +776,7 @@ def send_to_internal_socket(socket_name, message):
     try:
         sock.connect(socket_address)
     except Exception as e:
-        logger.error('{}'.format(e))
+        logger.error('[Transport-InternalSocketSend] Error connecting: {}'.format(e))
         return response
 
     # Send message
@@ -878,7 +874,7 @@ class ProcessFiles(ClusterThread):
 
                     self.unlock_and_stop(reason="task performed", send_err_request=False)
                 except Exception as e:
-                    logger.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, str(e)))
+                    logger.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, e))
                     self.unlock_and_stop(reason="error")
 
             elif self.received_error:
@@ -890,7 +886,7 @@ class ProcessFiles(ClusterThread):
                     try:
                         command, data = self.command_queue.get(block=True, timeout=1)
                         self.n_get_timeouts = 0
-                    except Empty as e:
+                    except Empty:
                         self.n_get_timeouts += 1
                         # wait before raising the exception but
                         # check while conditions every second
@@ -902,7 +898,7 @@ class ProcessFiles(ClusterThread):
 
                     self.process_file_cmd(command, data)
                 except Exception as e:
-                    logger.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, str(e)))
+                    logger.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, e))
                     self.unlock_and_stop(reason="error")
 
             time.sleep(self.interval_file_transfer_receive)
@@ -966,11 +962,9 @@ class ProcessFiles(ClusterThread):
                 self.size_received = 0
                 logger.debug("{0}: Opening file.".format(self.thread_tag))
                 self.start_time = time.time()
-                command = ""
                 self.file_open()
             elif command == "file_update":
                 logger.debug("{0}: Updating file.".format(self.thread_tag))
-                command = ""
                 self.file_update(data)
             elif command == "file_close":
                 logger.debug("{0}: Closing file.".format(self.thread_tag))
@@ -979,9 +973,8 @@ class ProcessFiles(ClusterThread):
                 self.end_time = time.time()
                 self.total_time = self.end_time - self.start_time
                 self.received_all_information = True
-                command = ""
         except Exception as e:
-            logger.error("{0}: '{1}'.".format(self.thread_tag, str(e)))
+            logger.error("{0}: '{1}'.".format(self.thread_tag, e))
             self.received_error = True
 
 
@@ -991,9 +984,9 @@ class ProcessFiles(ClusterThread):
         """
         # Create the file
         self.filename = "{}/queue/cluster/{}/{}.tmp".format(common.ossec_path, self.name, self.id)
-        logger.debug2("{0}: Creating file {1}".format(self.thread_tag, self.filename))  # debug2
+        logger.debug2("{0}: Creating file {1}".format(self.thread_tag, self.filename))
         self.f = open(self.filename, 'wb')
-        logger.debug2("{}: File {} created successfully.".format(self.thread_tag, self.filename))  # debug2
+        logger.debug2("{}: File {} created successfully.".format(self.thread_tag, self.filename))
 
 
     def file_update(self, chunk):
@@ -1025,7 +1018,6 @@ class ProcessFiles(ClusterThread):
         if local_md5_sum != md5_sum.decode():
             error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
                             format(self.filename, md5_sum, local_md5_sum)
-            #return 'err', error_msg
             os.remove(self.filename)
             raise Exception(error_msg)
 

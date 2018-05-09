@@ -24,7 +24,7 @@ def check_cluster_status():
     msg = None
     try:
         cluster_config = read_config()
-    except WazuhException as e:
+    except WazuhException:
         cluster_config = None
 
     if not cluster_config or cluster_config['disabled'] == 'yes':
