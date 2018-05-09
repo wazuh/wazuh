@@ -55,7 +55,24 @@ def get_healthcheck():
     return __execute(request)
 
 def get_agents(filter_status=None, filter_node=None):
-    request="get_agents {}%--%{}".format(filter_status, filter_node)
+    filter_status_f = None
+
+    if filter_status:
+        if isinstance(filter_status, list):
+            filter_status = filter_status[0]
+        filter_status_f = filter_status.lower().replace(" ", "").replace("-", "")
+        if filter_status_f == "neverconnected":
+            filter_status_f = "Never connected"
+        elif filter_status_f == "active":
+            filter_status_f = "Active"
+        elif filter_status_f == "disconnected":
+            filter_status_f = "Disconnected"
+        elif filter_status_f == "pending":
+            filter_status_f = "Pending"
+        else:
+            raise Exception("'{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(''.join(filter_status)))
+
+    request="get_agents {}%--%{}".format(filter_status_f, filter_node)
     return __execute(request)
 
 def sync(filter_node=None):

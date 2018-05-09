@@ -115,7 +115,7 @@ Others:
 
         parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
+        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs=1, type=str, help="Agents status")
         parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
@@ -247,25 +247,11 @@ def sync_master(filter_node):
 
 ### Get agents
 def print_agents_master(filter_status=None, filter_node=None):
-    filter_status_f = None
-    if filter_status:
-        filter_status_f = filter_status[0].lower().replace(" ", "").replace("-", "")
-        if filter_status_f == "neverconnected":
-            filter_status_f = "Never connected"
-        elif filter_status_f == "active":
-            filter_status_f = "Active"
-        elif filter_status_f == "disconnected":
-            filter_status_f = "Disconnected"
-        elif filter_status_f == "pending":
-            filter_status_f = "Pending"
-        else:
-            print ("Error: '{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(filter_status[0].lower().replace(" ", "")))
-            exit(0)
-    agents = __execute(my_function=get_agents, my_args=(filter_status_f, filter_node,))
+    agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
     headers = ["ID", "Address", "Name", "Status", "Node"]
     __print_table(agents, headers, True)
-    if filter_status_f:
-        print ("Found {} agent(s) with status '{}'.".format(len(agents), filter_status_f))
+    if filter_status:
+        print ("Found {} agent(s) with status '{}'.".format(len(agents), "".join(filter_status)))
     else:
         print ("Listing {} agent(s).".format(len(agents)))
 
