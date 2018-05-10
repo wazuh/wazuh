@@ -42,7 +42,7 @@ def get_parser(type):
             def format_help(self):
                 msg = """Wazuh cluster control - Master node
 
-Syntax: {0} --help | --health [more] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -88,7 +88,7 @@ Others:
             def format_help(self):
                 msg = """Wazuh cluster control - Client node
 
-Syntax: {0} --help | --health [more] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -234,8 +234,8 @@ def print_nodes_status(filter_node):
         print ("Err {}".format(nodes['err']))
         exit(1)
 
-    headers = ["Name", "Address", "Type"]
-    data = [[nodes[node_name]['name'], nodes[node_name]['ip'], nodes[node_name]['type']] for node_name in sorted(nodes.iterkeys())]
+    headers = ["Name", "Address", "Type", "Version"]
+    data = [[nodes[node_name]['name'], nodes[node_name]['ip'], nodes[node_name]['type'], nodes[node_name]['version']] for node_name in sorted(nodes.iterkeys())]
     __print_table(data, headers, True)
 
 
@@ -260,7 +260,7 @@ def print_agents(filter_status=None, filter_node=None):
 
 ### Get healthchech
 def print_healthcheck(conf, more=False, filter_node=None):
-    node_response = __execute(my_function=get_healthcheck)
+    node_response = __execute(my_function=get_healthcheck, my_args=(filter_node,))
 
     msg1 = ""
     msg2 = ""
@@ -273,9 +273,6 @@ def print_healthcheck(conf, more=False, filter_node=None):
         msg1 += "Connected nodes ({}):".format(node_response["n_connected_nodes"])
 
     for node, node_info in sorted(node_response["nodes"].items()):
-
-        if filter_node and node not in filter_node:
-            continue
 
         msg2 += "\n    {} ({})\n".format(node, node_info['info']['ip'])
         msg2 += "        Version: {}\n".format(node_info['info']['version'])

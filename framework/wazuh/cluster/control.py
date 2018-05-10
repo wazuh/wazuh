@@ -50,8 +50,8 @@ def get_nodes(filter_node=None):
     request="get_nodes {}".format(filter_node) if filter_node else "get_nodes"
     return __execute(request)
 
-def get_healthcheck():
-    request="get_health"
+def get_healthcheck(filter_node=None):
+    request="get_health {}".format(filter_node)
     return __execute(request)
 
 def get_agents(filter_status=None, filter_node=None):

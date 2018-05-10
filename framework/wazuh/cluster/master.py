@@ -74,11 +74,12 @@ class MasterManagerHandler(ServerHandler):
             data = data.decode()
             response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
             cluster_config = read_config()
-            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
+            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master",  "version": __version__}})
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         elif command == 'get_health':
-            response = self.manager.get_healthcheck()
+            filter_nodes = data.decode()
+            response = self.manager.get_healthcheck(filter_nodes)
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         elif command == 'get_agents':
@@ -534,11 +535,12 @@ class MasterManager(Server):
             self._integrity_control = new_integrity_control
 
 
-    def get_healthcheck(self):
-        clients_info = {name:{"info":data['info'], "status":data['status']} for name,data in self.get_connected_clients().iteritems()}
+    def get_healthcheck(self, filter_nodes=None):
+        clients_info = {name:{"info":data['info'], "status":data['status']} for name,data in self.get_connected_clients().iteritems() if not filter_nodes or name in filter_nodes}
 
         cluster_config = read_config()
-        clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'],
+        if  not filter_nodes or cluster_config['node_name'] in filter_nodes:
+            clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'],
                                                                   "ip": cluster_config['nodes'][0], "version": __version__,
                                                                   "type": "master"}}})
 
@@ -675,7 +677,8 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_health':
-            response = self.manager.get_healthcheck()
+            node_list = data if data != 'None' else None
+            response = self.manager.get_healthcheck(node_list)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 

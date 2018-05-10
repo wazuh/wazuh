@@ -726,7 +726,8 @@ class ClientInternalSocketHandler(InternalSocketHandler):
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         elif command == "get_health":
-            response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)[1]
+            node_list = data if data != 'None' else None
+            response = self.manager.handler.send_request(command=command, data=node_list).split(' ', 1)[1]
             serialized_response = ['ok',  response]
             return serialized_response
         elif command == "get_agents":
