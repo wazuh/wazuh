@@ -19,9 +19,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     unsigned int pl = 0;
     unsigned int gl = 0;
     unsigned int i = 0;
-#ifndef WIN32
-    int glob_offset = 0;
-#endif
 
     /* XML Definitions */
     const char *xml_localfile_location = "location";
@@ -292,8 +289,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             strchr(logf[pl].file, '[')) {
             glob_t g;
             int err;
-            size_t g_files = 0;
-            glob_offset = 0;
             current_files--;
 
             if (err = glob(logf[pl].file, 0, NULL, &g), err && err != GLOB_NOMATCH) {
@@ -301,59 +296,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else {
                 os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
                 os_strdup(logf[pl].file, log_config->globs[gl].gpath);
-                memset(log_config->globs + gl + 1, 0, sizeof(logreader_glob));
-                if (err == GLOB_NOMATCH) {
-                    /* Check when nothing is found */
-                    mwarn(GLOB_NFOUND, logf[pl].file);
-                    os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
-                    memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
-                    log_config->globs[gl].gfiles->file = NULL;
-                } else {
-                    if (log_config->globs[gl].gfiles) {
-                        while (log_config->globs[gl].gfiles[g_files].file) {
-                            g_files++;
-                        }
-                    } else {
-                        g_files = 0;
-                    }
-
-                    while (g.gl_pathv[glob_offset]) {
-                        if (current_files >= maximum_files) {
-                            mwarn(FILE_LIMIT);
-                            break;
-                        }
-
-                        os_realloc(log_config->globs[gl].gfiles, (g_files + glob_offset + 2)*sizeof(logreader), log_config->globs[gl].gfiles);
-                        memset(log_config->globs[gl].gfiles + g_files + glob_offset, 0, sizeof(logreader));
-
-                         /* Check for strftime on globs too */
-                        if (strchr(g.gl_pathv[glob_offset], '%')) {
-                            struct tm *p;
-                            time_t l_time = time(0);
-                            char lfile[OS_FLSIZE + 1];
-                            size_t ret;
-
-                            p = localtime(&l_time);
-
-                            lfile[OS_FLSIZE] = '\0';
-                            ret = strftime(lfile, OS_FLSIZE, g.gl_pathv[glob_offset], p);
-                            if (ret == 0) {
-                                merror(PARSE_ERROR, g.gl_pathv[glob_offset]);
-                                return (OS_INVALID);
-                            }
-
-                            os_strdup(g.gl_pathv[glob_offset], log_config->globs[gl].gfiles[g_files + glob_offset].ffile);
-                        }
-                        memcpy(&log_config->globs[gl].gfiles[g_files + glob_offset], &logf[pl], sizeof(logreader));
-                        os_strdup(g.gl_pathv[glob_offset], log_config->globs[gl].gfiles[g_files + glob_offset].file);
-                        log_config->globs[gl].gfiles[g_files + glob_offset + 1].file = NULL;
-
-                        glob_offset++;
-                        current_files++;
-                    }
-                }
+                memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
+                os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
+                memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
+                log_config->globs[gl].gfiles->file = NULL;
             }
-
             globfree(&g);
             if (Remove_Localfile(&logf, pl, 0, 0)) {
                 merror(REM_ERROR, logf[pl].file);

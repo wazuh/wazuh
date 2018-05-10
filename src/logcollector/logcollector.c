@@ -11,10 +11,12 @@
 #include "logcollector.h"
 
 /* Prototypes */
-int update_fname(int i, int j);
-int update_current(logreader **current, int *i, int *j);
-void set_read(logreader *current, int i, int j);
-
+static int update_fname(int i, int j);
+static int update_current(logreader **current, int *i, int *j);
+static void set_read(logreader *current, int i, int j);
+#ifndef WIN32
+static void check_pattern_expand(logreader *current);
+#endif
 /* Global variables */
 int loop_timeout;
 int logr_queue;
@@ -66,6 +68,8 @@ void LogCollectorStart()
     struct timeval fp_timeout;
     /* To check for inode changes */
     struct stat tmp_stat;
+
+    check_pattern_expand(current);
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
 
@@ -587,62 +591,7 @@ void LogCollectorStart()
 
 #ifndef WIN32
         // Check for new files to be expanded
-        if (globs) {
-            glob_t g;
-            int err;
-            int glob_offset;
-            int found;
-
-            for (j=0; globs[j].gpath; j++) {
-                if (current_files >= maximum_files) {
-                    break;
-                }
-                glob_offset = 0;
-                if (err = glob(globs[j].gpath, 0, NULL, &g), err) {
-                    if (err == GLOB_NOMATCH) {
-                        mdebug1(GLOB_NFOUND, globs[j].gpath);
-                    } else {
-                        mdebug1(GLOB_ERROR, globs[j].gpath);
-                    }
-                    continue;
-                }
-
-                while (g.gl_pathv[glob_offset] != NULL) {
-                    if (current_files >= maximum_files) {
-                        mdebug1(FILE_LIMIT);
-                        break;
-                    }
-                    found = 0;
-                    for (i=0; globs[j].gfiles[i].file; i++) {
-                        if (!strcmp(globs[j].gfiles[i].file, g.gl_pathv[glob_offset])) {
-                            found = 1;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
-                        os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                        memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                        os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
-                        globs[j].gfiles[i].fp = NULL;
-                        globs[j].gfiles[i + 1].file = NULL;
-
-                        if (handle_file(i, j, 0, 0) ) {
-                            current->ign++;
-                        }
-
-                        current_files++;
-                        mdebug2(CURRENT_FILES, current_files, maximum_files);
-                        if  (!i && !globs[j].gfiles[i].read) {
-                            set_read(&globs[j].gfiles[i], i, j);
-                        }
-                    }
-
-                    glob_offset++;
-                }
-                globfree(&g);
-            }
-        }
+        check_pattern_expand(current);
 #endif
     }
 }
@@ -917,5 +866,63 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_audit;
     } else {
         current->read = read_syslog;
+    }
+}
+
+void check_pattern_expand(logreader *current) {
+    glob_t g;
+    int err;
+    int glob_offset;
+    int found;
+    int i, j;
+
+    if (globs) {
+        for (j = 0; globs[j].gpath; j++) {
+            if (current_files >= maximum_files) {
+                break;
+            }
+            glob_offset = 0;
+            if (err = glob(globs[j].gpath, 0, NULL, &g), err) {
+                if (err == GLOB_NOMATCH) {
+                    mdebug1(GLOB_NFOUND, globs[j].gpath);
+                } else {
+                    mdebug1(GLOB_ERROR, globs[j].gpath);
+                }
+                continue;
+            }
+            while (g.gl_pathv[glob_offset] != NULL) {
+                if (current_files >= maximum_files) {
+                    mdebug1(FILE_LIMIT);
+                    break;
+                }
+                found = 0;
+                for (i = 0; globs[j].gfiles[i].file; i++) {
+                    if (!strcmp(globs[j].gfiles[i].file, g.gl_pathv[glob_offset])) {
+                        found = 1;
+                        break;
+                    }
+                }
+                if (!found) {
+                    minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+                    os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                    if (i) {
+                        memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
+                    }
+                    os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
+                    globs[j].gfiles[i].fp = NULL;
+                    globs[j].gfiles[i + 1].file = NULL;
+                    if (handle_file(i, j, 0, 0) ) {
+                        current->ign++;
+                    }
+                    current_files++;
+                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                    if  (!i && !globs[j].gfiles[i].read) {
+                        set_read(&globs[j].gfiles[i], i, j);
+                    }
+                }
+                glob_offset++;
+            }
+            globfree(&g);
+        }
     }
 }
