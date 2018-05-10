@@ -442,11 +442,11 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
     int retval;
-
-    close(sock);
-    key_lock_read();
+    
+    key_lock_write();
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
+    close(sock);
 
     return retval;
 }

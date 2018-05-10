@@ -113,22 +113,20 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
         }
 
         /* Unable to send. Socket busy */
-        mwarn("Socket busy, waiting for 1 second.");
-        sleep(1);
+        mdebug2("Socket busy, waiting for 1 second.");
         if (OS_SendUnix(queue, tmpstr, 0) < 0) {
             /* When the socket is to busy, we may get some
              * error here. Just sleep 2 second and try
              * again.
              */
-             mwarn("Socket busy, waiting for 3 seconds.");
-             sleep(3);
+             mdebug2("Socket busy, waiting for 3 seconds.");
             /* merror("socket busy"); */
             if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-              merror("Socket busy, waiting for 5 seconds.");
-              sleep(5);
+              mdebug2("Socket busy, waiting for 5 seconds.");
+              
               if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-                    merror("socket busy, waiting for 10 seconds.");
-                    sleep(10);
+                    mdebug2("socket busy, waiting for 10 seconds.");
+                   
                     if (OS_SendUnix(queue, tmpstr, 0) < 0) {
                         /* Message is going to be lost
                          * if the application does not care
