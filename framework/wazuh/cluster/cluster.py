@@ -417,15 +417,15 @@ def clean_up(node_name=""):
 #
 # Agents
 #
-def get_agents_status(filter_status="", filter_nodes="",  offset=1, limit=common.database_limit, sort=None, search=None):
+def get_agents_status(filter_status="", filter_nodes="",  offset=0, limit=common.database_limit, sort=None, search=None):
     """
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
     """
+    if not offset:
+        offset = 0
     if not filter_status:
         filter_status=""
-    if not offset:
-        offset = 1
     if not limit:
         limit = common.database_limit
     if sort:
@@ -434,10 +434,9 @@ def get_agents_status(filter_status="", filter_nodes="",  offset=1, limit=common
         sort=ast.literal_eval(search)
 
     agents = Agent.get_agents_overview(status=filter_status, select={'fields':['id','ip','name','status','node_name']}, limit=limit, offset=offset, sort=sort, search=search)
-    agent_list_filtered = {'items':[], 'totalItems':agents['totalItems']-1}
+
+    agent_list_filtered = {'items':[], 'totalItems':agents['totalItems']}
     for agent in agents['items']:
-        if int(agent['id']) == 0:
-            continue
         if not agent.get('node_name'):
             agent['node_name'] = "Unknown"
         if filter_nodes and agent['node_name'] not in filter_nodes:

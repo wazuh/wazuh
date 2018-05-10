@@ -69,7 +69,7 @@ def get_healthcheck(filter_node=None):
     request="get_health {}".format(filter_node)
     return __execute(request)
 
-def get_agents(filter_status=None, filter_node=None, offset=1, limit=common.database_limit, sort=None, search=None):
+def get_agents(filter_status=None, filter_node=None, offset=0, limit=common.database_limit, sort=None, search=None):
     filter_status_f = None
 
     if filter_status:
