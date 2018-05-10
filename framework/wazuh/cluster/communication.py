@@ -682,7 +682,7 @@ class InternalSocket(asyncore.dispatcher):
         self.map = asyncore_map
         self.socket_name = socket_name
         self.manager = manager
-        self.socket_address = "{}/{}/{}.sock".format(common.ossec_path, "/queue/cluster", self.socket_name)
+        self.socket_address = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", self.socket_name)
         self.__create_socket()
 
 
@@ -701,6 +701,7 @@ class InternalSocket(asyncore.dispatcher):
         self.set_reuse_addr()
         try:
             self.bind(self.socket_address)
+            os.chown(self.socket_address, common.ossec_uid, common.ossec_gid)
             self.listen(5)
             logger.debug2("[Transport-InternalSocket] Listening.")
         except Exception as e:
