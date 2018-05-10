@@ -99,7 +99,7 @@ def cut_array(array, offset, limit):
     offset = int(offset)
     limit = int(limit)
 
-    if offset < 0 or offset >= len(array):
+    if offset < 0:
         raise WazuhException(1400)
     elif limit < 1:
         raise WazuhException(1401)
