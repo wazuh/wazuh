@@ -38,6 +38,9 @@ void labels_free(wlabel_t *labels);
 /* Format label array into string. Return 0 on success or -1 on error. */
 int labels_format(const wlabel_t *labels, char *str, size_t size);
 
+// Duplicate label array
+wlabel_t * labels_dup(const wlabel_t * labels);
+
 /*
  * Parse labels from agent-info file.
  * Returns pointer to new null-key terminated array.
