@@ -18,7 +18,11 @@
 
 typedef struct wfd_t {
     FILE * file;
+#ifdef WIN32
+    PROCESS_INFORMATION pinfo;
+#else
     pid_t pid;
+#endif
 } wfd_t;
 
 // Open a stream from a process without shell (execvp form)

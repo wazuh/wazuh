@@ -13,10 +13,92 @@
 
 // Open a stream from a process without shell (execvp form)
 wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
-    pid_t pid;
-    int pipe_fd[2];
     wfd_t * wfd;
     FILE * fp = NULL;
+
+#ifdef WIN32
+    int fd;
+    LPTSTR lpCommandLine = NULL;
+    HANDLE hPipe[2];
+    STARTUPINFO sinfo = { .cb = sizeof(STARTUPINFO), .dwFlags = STARTF_USESTDHANDLES };
+    PROCESS_INFORMATION pinfo = { 0 };
+
+    // Create pipes
+
+    if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+        if (!CreatePipe(&hPipe[0], &hPipe[1], NULL, 0)) {
+            merror("CreatePipe(): %ld", GetLastError());
+            return NULL;
+        }
+
+        if (!SetHandleInformation(hPipe[1], HANDLE_FLAG_INHERIT, 1)) {
+            merror("SetHandleInformation(): %ld", GetLastError());
+            CloseHandle(hPipe[0]);
+            CloseHandle(hPipe[1]);
+            return NULL;
+        }
+
+        if (fd = _open_osfhandle((int)hPipe[0], 0), fd < 0) {
+            merror("_open_osfhandle(): %ld", GetLastError());
+            CloseHandle(hPipe[0]);
+            CloseHandle(hPipe[1]);
+            return NULL;
+        }
+
+        if (fp = _fdopen(fd, "r"), !fp) {
+            merror("_fdopen(): %ld", GetLastError());
+            _close(fd);
+            CloseHandle(hPipe[1]);
+            return NULL;
+        }
+
+        sinfo.hStdOutput = flags & W_BIND_STDOUT ? hPipe[1] : NULL;
+        sinfo.hStdError = flags & W_BIND_STDERR ? hPipe[1] : NULL;
+    }
+
+    // Format command string
+
+    if (argv[0]) {
+        unsigned i;
+        size_t zarg;
+        size_t zcommand = strlen(argv[0]) + 3;
+        os_malloc(zcommand, lpCommandLine);
+        snprintf(lpCommandLine, zcommand, "\"%s\"", argv[0]);
+
+        for (i = 1; argv[i]; ++i) {
+            zarg = strlen(argv[i]) + 1;
+            os_realloc(lpCommandLine, zcommand + zarg, lpCommandLine);
+            snprintf(lpCommandLine + zcommand - 1, zarg + 1, " %s", argv[i]);
+            zcommand += zarg;
+        }
+    }
+
+    if (!CreateProcess(path, lpCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
+        merror("CreateProcess(): %ld", GetLastError());
+
+        if (fp) {
+            fclose(fp);
+            CloseHandle(hPipe[1]);
+        }
+
+        return NULL;
+    }
+
+    free(lpCommandLine);
+    os_calloc(1, sizeof(wfd_t), wfd);
+
+    if (fp) {
+        CloseHandle(hPipe[1]);
+        wfd->file = fp;
+    }
+
+    wfd->pinfo = pinfo;
+    return wfd;
+
+#else
+
+    pid_t pid;
+    int pipe_fd[2];
 
     if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
         if (pipe(pipe_fd) < 0) {
@@ -91,6 +173,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 
     free(wfd);
     return NULL;
+#endif // WIN32
 }
 
 // Open a stream from a process without shell (execlp form)
@@ -123,14 +206,33 @@ wfd_t * wpopenl(const char * path, int flags, ...) {
 
 // Close stream and return exit status
 int wpclose(wfd_t * wfd) {
-    pid_t pid;
     int wstatus;
 
     if (wfd->file) {
         fclose(wfd->file);
     }
 
+#ifdef WIN32
+    DWORD exitcode;
+    switch (WaitForSingleObject(wfd->pinfo.hProcess, INFINITE)) {
+    case WAIT_OBJECT_0:
+        GetExitCodeProcess(wfd->pinfo.hProcess, &exitcode);
+        wstatus = exitcode;
+        break;
+    default:
+        merror("WaitForSingleObject(): %ld", GetLastError());
+        wstatus = -1;
+    }
+
+    CloseHandle(wfd->pinfo.hProcess);
+    CloseHandle(wfd->pinfo.hThread);
+    free(wfd);
+    return wstatus;
+#else
+    pid_t pid;
+
     while (pid = waitpid(wfd->pid, &wstatus, 0), pid == -1 && errno == EINTR);
     free(wfd);
     return pid == -1 ? -1 : wstatus;
+#endif
 }
