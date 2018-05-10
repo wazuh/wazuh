@@ -93,12 +93,10 @@ Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents
 Usage:
 \t-h, --help                                  # Show this help message
 \t-i, --health [more]                         # Show cluster health
-\t-a, --list-agents                           # List agents
 \t-l, --list-nodes                            # List nodes
 
 Filters:
 \t-fn, --filter-node                          # Filter by node
-\t-fs, --filter-agent-status                  # Filter by agent status (Active, Disconnected, NeverConnected, Pending)
 
 Others:
 \t-d, --debug                                # Show debug information
@@ -336,7 +334,11 @@ if __name__ == '__main__':
 
     try:
         if args.list_agents:
-            print_agents(args.filter_status, args.filter_node)
+            if is_master:
+                print_agents(args.filter_status, args.filter_node)
+            else:
+                print ("Wrong arguments. To use this command you need to be a master node.")
+                parser.print_help()
 
         elif args.list_nodes:
             print_nodes_status(args.filter_node)
