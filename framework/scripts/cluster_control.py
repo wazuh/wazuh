@@ -134,6 +134,9 @@ def __execute(my_function, my_args=()):
     response = {}
     try:
         response = my_function(*my_args)
+        if response.get("err"):
+            print("Error: {}".format(response['err']))
+            exit(1)
     except Exception as e:
         if response:
             print ("Error: {}".format(response))
@@ -211,11 +214,6 @@ def print_file_status_master(filter_file_list, filter_node_list):
 
 def print_file_status_client(filter_file_list, node_name):
     my_files = __execute(my_function=get_files, my_args=(filter_file_list, node_name,))
-
-    if my_files.get("err"):
-        print ("Err {}")
-        exit(1)
-
     headers = ["Node", "File name", "Modification time", "MD5"]
     data = []
     for file_name in sorted(my_files.iterkeys()):
@@ -229,11 +227,6 @@ def print_file_status_client(filter_file_list, node_name):
 ### Get nodes
 def print_nodes_status(filter_node):
     nodes = __execute(my_function=get_nodes, my_args=(filter_node,))
-
-    if nodes.get("err"):
-        print ("Err {}".format(nodes['err']))
-        exit(1)
-
     headers = ["Name", "Address", "Type", "Version"]
     data = [[nodes[node_name]['name'], nodes[node_name]['ip'], nodes[node_name]['type'], nodes[node_name]['version']] for node_name in sorted(nodes.iterkeys())]
     __print_table(data, headers, True)
@@ -323,15 +316,17 @@ def print_healthcheck(conf, more=False, filter_node=None):
 #
 if __name__ == '__main__':
 
-    cluster_available, msg = check_cluster_status()
-    if not cluster_available:
-        print(msg)
+    # Validate cluster config
+    cluster_config = None
+    try:
+        cluster_config = read_config()
+        check_cluster_config(cluster_config)
+    except WazuhException as e:
+        print( "Invalid configuration: '{0}'".format(str(e)))
         exit(1)
 
     # Get cluster config
-    cluster_config = read_config()
     is_master = cluster_config['node_type'] == "master"
-
     # get arguments
     parser = get_parser(cluster_config['node_type'])
     args = parser.parse_args()

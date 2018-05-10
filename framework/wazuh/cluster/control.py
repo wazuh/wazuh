@@ -4,9 +4,12 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
+import ast
 from wazuh.exception import WazuhException
+from wazuh import common
 from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
 from wazuh.cluster.communication import send_to_internal_socket
+from wazuh.utils import sort_array, search_array
 
 socket_name = "c-internal"
 
@@ -50,11 +53,29 @@ def get_nodes(filter_node=None):
     request="get_nodes {}".format(filter_node) if filter_node else "get_nodes"
     return __execute(request)
 
+def get_nodes_api(filter_node=None, offset=0, limit=common.database_limit, sort=None, search=None):
+    nodes = get_nodes()
+    response = {"items":[], "totalItems":len(nodes)}
+
+    for node, data in nodes.items():
+        if filter_node and node not in filter_node:
+            continue
+        response["items"].append(data)
+
+    if search:
+        response["items"] = search_array(response['items'], search['value'], search['negation'], fields=['name','type','version','ip'])
+    if sort:
+        response["items"] = sort_array(response['items'], sort['fields'], sort['order'])
+    if limit:
+        response["items"] = response["items"][int(offset):int(limit)]
+
+    return response
+
 def get_healthcheck(filter_node=None):
     request="get_health {}".format(filter_node)
     return __execute(request)
 
-def get_agents(filter_status=None, filter_node=None, offset=None, limit=None, sort=None, search=None):
+def get_agents(filter_status=None, filter_node=None, offset=1, limit=common.database_limit, sort=None, search=None):
     filter_status_f = None
 
     if filter_status:

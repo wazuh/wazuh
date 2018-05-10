@@ -696,44 +696,45 @@ class ClientInternalSocketHandler(InternalSocketHandler):
             node_response = self.manager.handler.process_request(command = 'file_status', data="")
 
             if node_response[0] == 'err': # Error response
-                response = {"err":node_response[1]}
+                response = ["err", json.dumps({"err":node_response[1]})]
             else:
                 response = json.loads(node_response[1])
                 # Filter files
                 if file_list and len(response):
                     response = {my_file:content for my_file,content in response.items() if my_file in file_list}
-
-            response =  json.dumps(response)
-
-            serialized_response = ['ok', response]
-
-            return serialized_response
+                response = ['ok', json.dumps(response)]
         elif command == "get_nodes":
             node_list = data if data != 'None' else None
-
             node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
-
             type_response = node_response[0]
             response = node_response[1]
-
             if type_response == "err":
-                response = {"err":response}
+                response = ["err", json.dumps({"err":response})]
             else:
                 response = json.loads(response)
                 if node_list:
                     response = {node:info for node, info in response.iteritems() if node in node_list}
+                response = ['ok', json.dumps(response)]
 
-            serialized_response = ['ok', json.dumps(response)]
-            return serialized_response
         elif command == "get_health":
             node_list = data if data != 'None' else None
-            response = self.manager.handler.send_request(command=command, data=node_list).split(' ', 1)[1]
-            serialized_response = ['ok',  response]
-            return serialized_response
-        elif command == "get_agents":
-            response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)[1]
-            serialized_response = ['ok',  response]
-            return serialized_response
-        else:
-            return ['err', json.dumps({'err': "Received an unknown command '{}'".format(command)})]
+            node_response = self.manager.handler.send_request(command=command, data=node_list).split(' ', 1)
+            type_response = node_response[0]
+            response = node_response[1]
+            if type_response == "err":
+                response = ["err", json.dumps({"err":response})]
+            else:
+                response = ['ok', response]
 
+        elif command == "get_agents":
+            node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
+            type_response = node_response[0]
+            response = node_response[1]
+            if type_response == "err":
+                response = ["err", json.dumps({"err":response})]
+            else:
+                response = ['ok', response]
+        else:
+            response = json.dumps({'err': "Received an unknown command '{}'".format(command)})
+
+        return response
