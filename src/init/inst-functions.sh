@@ -120,6 +120,19 @@ WriteSyscollector()
     cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
+##########
+# Osquery()
+##########
+WriteOsquery()
+{
+    # Adding to the config file
+    OSQUERY_TEMPLATE=$(GetTemplate "osquery.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+        OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    cat ${OSQUERY_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+}
 
 ##########
 # WriteCISCAT()

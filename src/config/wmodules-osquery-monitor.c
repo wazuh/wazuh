@@ -1,9 +1,20 @@
+
 #include "wazuh_modules/wmodules.h"
+#include <stdio.h>
+
+
+#define OSQUERYPATH "/etc/shared/default/osquery.conf"
+#ifdef CLIENT
+#define OSQUERYPATH "/etc/shared/osquery.conf"
+#endif
+#define DEFAULTPATH DEFAULTDIR OSQUERYPATH
+
 
 
 static const char *XML_DISABLED = "disabled";
 static const char *XML_BINPATH = "binpath";
 static const char *XML_LOGPATH = "logpath";
+static const char *XML_CONFIGPATH = "configpath";
 
 //Función de lectura
 int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
@@ -17,9 +28,21 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     osquery_monitor->disable  = 1;
     module->context = &WM_OSQUERYMONITOR_CONTEXT;
     module->data = osquery_monitor;
+    
+    if(fopen (DEFAULTPATH, "w+"))  //CHECK IF FILE EXISTS
+    {
+        osquery_monitor->config_path = strdup(DEFAULTPATH);
+        mdebug2("configPath Readed: %s", DEFAULTPATH);
+    }
+    else
+    {
+        merror("not found default config file..", XML_LOGPATH, WM_OSQUERYMONITOR_CONTEXT.name);
+        return OS_INVALID;
+    }
 
     for(i = 0; nodes[i]; i++)
     {
+
 
         if(!nodes[i]->element)
         {
@@ -51,7 +74,20 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
             if(fopen (nodes[i]->content, "w+"))  //CHECK IF FILE EXISTS
             {
                 osquery_monitor->log_path = strdup(nodes[i]->content);
-                mdebug2("LOGPATH LEIDO: %s", osquery_monitor->log_path);
+                mdebug2("LogPath Readed: %s", osquery_monitor->log_path);
+            }
+            else
+            {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_LOGPATH, WM_OSQUERYMONITOR_CONTEXT.name);
+                return OS_INVALID;
+            }
+        }
+        else if(!strcmp(nodes[i]->element, XML_CONFIGPATH))
+        {
+            if(fopen (nodes[i]->content, "r+"))  //CHECK IF FILE EXISTS
+            {
+                osquery_monitor->config_path = strdup(nodes[i]->content);
+                mdebug2("configPath Readed: %s", osquery_monitor->config_path);
             }
             else
             {

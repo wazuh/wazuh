@@ -1,0 +1,6 @@
+<wodle name="osquery">
+  <disabled>yes</disabled>
+  <logpath>/var/log/osquery/osqueryd.results.log</logpath>
+  <binpath>/usr/local/bin/osqueryd</binpath>
+  <pack>/var/ossec/etc/shared/default/my-pack</pack>
+</wodle>
