@@ -14,9 +14,11 @@
 static int update_fname(int i, int j);
 static int update_current(logreader **current, int *i, int *j);
 static void set_read(logreader *current, int i, int j);
+static IT_control remove_duplicates(logreader *current, int i, int j);
 #ifndef WIN32
 static void check_pattern_expand(logreader *current);
 #endif
+
 /* Global variables */
 int loop_timeout;
 int logr_queue;
@@ -55,13 +57,12 @@ static char *rand_keepalive_str(char *dst, int size)
 /* Handle file management */
 void LogCollectorStart()
 {
-    int i = 0, r = 0, k = -1, j = -1, tg;
+    int i = 0, r = 0, j = -1, tg;
     int f_check = 0;
     IT_control f_control = 0;
     time_t curr_time = 0;
     char keepalive[1024];
     logreader *current;
-    logreader *dup;
 
 #ifndef WIN32
     int int_error = 0;
@@ -95,41 +96,10 @@ void LogCollectorStart()
         }
 
         /* Remove duplicate entries */
-        if (current->file) {
-            IT_control d_control = CONTINUE_IT;
-            for (r = 0;; r++) {
-                if (f_control = update_current(&dup, &r, &k), f_control) {
-                    if (f_control == NEXT_IT) {
-                        continue;
-                    } else {
-                        break;
-                    }
-                }
-
-                if (current != dup && dup->file && !strcmp(current->file, dup->file)) {
-                    mwarn(DUP_FILE, current->file);
-                    int result;
-                    if (j < 0) {
-                        result = Remove_Localfile(&logff, i, 0, 1);
-                    } else {
-                        result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0);
-                    }
-                    if (result) {
-                        merror_exit(REM_ERROR, current->file);
-                    } else {
-                        current_files--;
-                        mdebug2(CURRENT_FILES, current_files, maximum_files);
-                    }
-                    d_control = NEXT_IT;
-                    break;
-                }
-            }
-            if (d_control) {
-                i--;
-                continue;
-            }
+        if (remove_duplicates(current, i, j) == NEXT_IT) {
+            i--;
+            continue;
         }
-        k = -1;
 
         if (!current->file) {
             /* Do nothing, duplicated entry */
@@ -592,6 +562,11 @@ void LogCollectorStart()
 #ifndef WIN32
         // Check for new files to be expanded
         check_pattern_expand(current);
+        /* Remove duplicate entries */
+        if (remove_duplicates(current, i, j) == NEXT_IT) {
+            i--;
+            continue;
+        }
 #endif
     }
 }
@@ -925,4 +900,42 @@ void check_pattern_expand(logreader *current) {
             globfree(&g);
         }
     }
+}
+
+static IT_control remove_duplicates(logreader *current, int i, int j) {
+    IT_control d_control = CONTINUE_IT;
+    IT_control f_control;
+    int r, k;
+    logreader *dup;
+
+    if (current->file) {
+        for (r = 0, k = -1;; r++) {
+            if (f_control = update_current(&dup, &r, &k), f_control) {
+                if (f_control == NEXT_IT) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
+            if (current != dup && dup->file && !strcmp(current->file, dup->file)) {
+                mwarn(DUP_FILE, current->file);
+                int result;
+                if (j < 0) {
+                    result = Remove_Localfile(&logff, i, 0, 1);
+                } else {
+                    result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0);
+                }
+                if (result) {
+                    merror_exit(REM_ERROR, current->file);
+                } else {
+                    current_files--;
+                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                }
+                break;
+            }
+        }
+    }
+
+    return d_control;
 }
