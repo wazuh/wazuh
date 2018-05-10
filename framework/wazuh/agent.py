@@ -19,8 +19,6 @@ from shutil import copyfile, move, copytree
 from time import time
 from platform import platform
 from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat
-from pwd import getpwnam
-from grp import getgrnam
 from time import time, sleep
 import socket
 import hashlib
@@ -125,7 +123,7 @@ class Agent:
         return dictionary
 
     @staticmethod
-    def calculate_status(last_keep_alive, pending, today=date.today()):
+    def calculate_status(last_keep_alive, pending, today=datetime.today()):
         """
         Calculates state based on last keep alive
         """
@@ -133,7 +131,9 @@ class Agent:
             return "Never connected"
         else:
             limit_seconds = 1830 # 600*3 + 30
-            last_date = date(int(last_keep_alive[:4]), int(last_keep_alive[5:7]), int(last_keep_alive[8:10]))
+            # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
+            last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
+                                hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
             difference = (today - last_date).total_seconds()
 
             return "Disconnected" if difference > limit_seconds else ("Pending" if pending else "Active")
@@ -452,10 +452,8 @@ class Agent:
         f_keys_temp = '{0}.tmp'.format(common.client_keys)
         open(f_keys_temp, 'a').close()
 
-        ossec_uid = getpwnam("ossec").pw_uid
-        ossec_gid = getgrnam("ossec").gr_gid
         f_keys_st = stat(common.client_keys)
-        chown(f_keys_temp, ossec_uid, ossec_gid)
+        chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
         chmod(f_keys_temp, f_keys_st.st_mode)
 
         f_tmp = open(f_keys_temp, 'w')
@@ -709,10 +707,8 @@ class Agent:
                 f_keys_temp = '{0}.tmp'.format(common.client_keys)
                 open(f_keys_temp, 'a').close()
 
-                ossec_uid = getpwnam("ossec").pw_uid
-                ossec_gid = getgrnam("ossec").gr_gid
                 f_keys_st = stat(common.client_keys)
-                chown(f_keys_temp, ossec_uid, ossec_gid)
+                chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
                 chmod(f_keys_temp, f_keys_st.st_mode)
 
                 copyfile(common.client_keys, f_keys_temp)
@@ -798,10 +794,10 @@ class Agent:
         db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
         fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
 
-        agent_items = [{field:value for field,value in zip(select_fields, tuple) if value is not None} for tuple in conn]
+        agent_items = [{field:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in conn]
 
         if 'status' in user_select_fields:
-            today = date.today()
+            today = datetime.today()
             agent_items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('last_keepalive'), item.get('version') is None, today)) for item in agent_items]
         else:
             agent_items = [dict(item, id=str(item['id']).zfill(3)) for item in agent_items]
@@ -846,7 +842,7 @@ class Agent:
                    'os.codename': 'os_codename','os.major': 'os_major','os.uname': 'os_uname',
                    'os.arch': 'os_arch', 'node_name': 'node_name'}
         valid_select_fields = set(fields.values()) | {'status'}
-        # at least, we should retrieve those fields since other fields dependend on those
+        # at least, we should retrieve those fields since other fields depending on those
         search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
         request = {}
         if select:
@@ -1535,7 +1531,7 @@ class Agent:
         return data
 
     @staticmethod
-    def get_agents_unassigned(offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None):
         """
         Gets the agents in a group
 
@@ -1712,14 +1708,11 @@ class Agent:
         if group_id.lower() == "default" or path.exists(group_path):
             raise WazuhException(1711, group_id)
 
-        ossec_uid = getpwnam("ossec").pw_uid
-        ossec_gid = getgrnam("ossec").gr_gid
-
         # Create group in /etc/shared
         group_def_path = "{0}/default".format(common.shared_path)
         try:
             copytree(group_def_path, group_path)
-            chown_r(group_path, ossec_uid, ossec_gid)
+            chown_r(group_path, common.ossec_uid, common.ossec_gid)
             chmod_r(group_path, 0o660)
             chmod(group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
@@ -1810,9 +1803,7 @@ class Agent:
             f_group.close()
 
             if new_file:
-                ossec_uid = getpwnam("ossec").pw_uid
-                ossec_gid = getgrnam("ossec").gr_gid
-                chown(agent_group_path, ossec_uid, ossec_gid)
+                chown(agent_group_path, common.ossec_uid, common.ossec_gid)
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhException(1005, str(e))

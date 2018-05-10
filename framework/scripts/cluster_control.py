@@ -8,9 +8,12 @@ from sys import argv, exit, path
 from itertools import chain
 import argparse
 import logging
-import json
-from signal import signal, SIGINT
-import collections
+import signal
+
+def signal_handler(signal, frame):
+    print ("Interrupted")
+    exit(1)
+signal.signal(signal.SIGINT, signal_handler)
 
 # Import framework
 try:
@@ -25,7 +28,7 @@ try:
 
     # Import cluster
     from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
-    from wazuh.cluster.communication import send_to_internal_socket
+    from wazuh.cluster.control import check_cluster_status, get_nodes, get_healthcheck, get_agents, sync, get_files
 
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -39,7 +42,7 @@ def get_parser(type):
             def format_help(self):
                 msg = """Wazuh cluster control - Master node
 
-Syntax: {0} --help | --health [more] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -69,7 +72,7 @@ Others:
 
         parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
+        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', action = 'store', type=str, help="Agents status")
         parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
@@ -85,7 +88,7 @@ Others:
             def format_help(self):
                 msg = """Wazuh cluster control - Client node
 
-Syntax: {0} --help | --health [more] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -112,7 +115,7 @@ Others:
 
         parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
+        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', action = 'store', type=str, help="Agents status")
         parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
@@ -122,26 +125,24 @@ Others:
         exclusive.add_argument('-i', '--health', const='health', action='store', nargs='?', help="Show cluster health")
         return parser
 
-def signal_handler(n_signal, frame):
-    exit(1)
 
-def __execute(request):
-    response_json = {}
-    response = None
+
+
+def __execute(my_function, my_args=()):
+    response = {}
     try:
-        response = send_to_internal_socket(socket_name="c-internal", message=request)
-        response_json = json.loads(response)
-    except KeyboardInterrupt:
-        print ("Interrupted")
-        exit(1)
+        response = my_function(*my_args)
+        if response.get("err"):
+            print("Error: {}".format(response['err']))
+            exit(1)
     except Exception as e:
         if response:
             print ("Error: {}".format(response))
         else:
-            print ("Error: {}".format(e))
+            print ("{}".format(e))
         exit(1)
 
-    return response_json
+    return response
 
 #
 # Format
@@ -155,7 +156,7 @@ def __print_table(data, headers, show_header=False):
         """
         For each column of the table, return the size of the biggest element
         """
-        return map(lambda x: max(map(lambda x: len(x)+2, x)), map(list, zip(*l)))
+        return map(lambda x: max(map(lambda y: len(y)+2, x)), map(list, zip(*l)))
 
     if show_header:
         table = list(chain.from_iterable([[headers], data]))
@@ -174,7 +175,7 @@ def __print_table(data, headers, show_header=False):
             table_str += header_str
     table_str += header_str
 
-    print table_str
+    print (table_str)
 
 #
 # Get
@@ -182,7 +183,7 @@ def __print_table(data, headers, show_header=False):
 
 ### Get files
 def print_file_status_master(filter_file_list, filter_node_list):
-    files = __execute("get_files {}%--%{}".format(filter_file_list, filter_node_list))
+    files = __execute(my_function=get_files, my_args=(filter_file_list, filter_node_list,))
     headers = ["Node", "File name", "Modification time", "MD5"]
 
     node_error = {}
@@ -198,83 +199,59 @@ def print_file_status_master(filter_file_list, filter_node_list):
             continue
 
         for file_name in sorted(files[node_name].iterkeys()):
-            file = [node_name, file_name, files[node_name][file_name]['mod_time'].split('.', 1)[0], files[node_name][file_name]['md5']]
-            data.append(file)
+            my_file = [node_name, file_name, files[node_name][file_name]['mod_time'].split('.', 1)[0], files[node_name][file_name]['md5']]
+            data.append(my_file)
 
     __print_table(data, headers, True)
 
     if len(node_error) > 0:
-        print "Error:"
+        print ("Error:")
         for node, error in node_error.iteritems():
-            print " - {}: {}".format(node, error)
+            print (" - {}: {}".format(node, error))
 
 
 def print_file_status_client(filter_file_list, node_name):
-    my_files = __execute("get_files {}".format(filter_file_list))
-
-    if my_files.get("err"):
-        print "Err {}"
-        exit(1)
-
+    my_files = __execute(my_function=get_files, my_args=(filter_file_list, node_name,))
     headers = ["Node", "File name", "Modification time", "MD5"]
     data = []
     for file_name in sorted(my_files.iterkeys()):
-            file = [node_name, file_name, my_files[file_name]['mod_time'].split('.', 1)[0], my_files[file_name]['md5']]
-            data.append(file)
+            my_file = [node_name, file_name, my_files[file_name]['mod_time'].split('.', 1)[0], my_files[file_name]['md5']]
+            data.append(my_file)
 
     __print_table(data, headers, True)
-    print "(*) Clients only show their own files."
+    print ("(*) Clients only show their own files.")
 
 
 ### Get nodes
 def print_nodes_status(filter_node):
-    nodes = __execute("get_nodes {}".format(filter_node) if filter_node else "get_nodes")
-
-    if nodes.get("err"):
-        print "Err {}"
-        exit(1)
-
-    headers = ["Name", "Address", "Type"]
-    data = [[nodes[node_name]['name'], nodes[node_name]['ip'], nodes[node_name]['type']] for node_name in sorted(nodes.iterkeys())]
+    nodes = __execute(my_function=get_nodes, my_args=(filter_node,))
+    headers = ["Name", "Address", "Type", "Version"]
+    data = [[nodes[node_name]['name'], nodes[node_name]['ip'], nodes[node_name]['type'], nodes[node_name]['version']] for node_name in sorted(nodes.iterkeys())]
     __print_table(data, headers, True)
 
 
 ### Sync
 def sync_master(filter_node):
-    node_response = __execute("sync {}".format(filter_node) if filter_node else "sync")
+    node_response = __execute(my_function=sync, my_args=(filter_node,))
     headers = ["Node", "Response"]
     data = [[node, response] for node, response in node_response.iteritems()]
     __print_table(data, headers, True)
 
 
 ### Get agents
-def print_agents_master(filter_status=None, filter_node=None):
-    filter_status_f = None
-    if filter_status:
-        filter_status_f = filter_status[0].lower().replace(" ", "").replace("-", "")
-        if filter_status_f == "neverconnected":
-            filter_status_f = "Never connected"
-        elif filter_status_f == "active":
-            filter_status_f = "Active"
-        elif filter_status_f == "disconnected":
-            filter_status_f = "Disconnected"
-        elif filter_status_f == "pending":
-            filter_status_f = "Pending"
-        else:
-            print ("Error: '{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(filter_status[0].lower().replace(" ", "")))
-            exit(0)
-    agents = __execute("get_agents {}%--%{}".format(filter_status_f, filter_node))
+def print_agents(filter_status=None, filter_node=None):
+    agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
+    data = [[agent['id'], agent['ip'], agent['name'], agent['status'],agent['node_name']] for agent in agents['items']]
     headers = ["ID", "Address", "Name", "Status", "Node"]
-    __print_table(agents, headers, True)
-    if filter_status_f:
-        print ("Found {} agent(s) with status '{}'.".format(len(agents), filter_status_f))
+    __print_table(data, headers, True)
+    if filter_status:
+        print ("Found {} agent(s) with status '{}'.".format(len(agents['items']), "".join(filter_status)))
     else:
-        print ("Listing {} agent(s).".format(len(agents)))
-
+        print ("Listing {} agent(s).".format(len(agents['items'])))
 
 ### Get healthchech
 def print_healthcheck(conf, more=False, filter_node=None):
-    node_response = __execute("get_health")
+    node_response = __execute(my_function=get_healthcheck, my_args=(filter_node,))
 
     msg1 = ""
     msg2 = ""
@@ -288,11 +265,10 @@ def print_healthcheck(conf, more=False, filter_node=None):
 
     for node, node_info in sorted(node_response["nodes"].items()):
 
-        if filter_node and node not in filter_node:
-            continue
-
         msg2 += "\n    {} ({})\n".format(node, node_info['info']['ip'])
+        msg2 += "        Version: {}\n".format(node_info['info']['version'])
         msg2 += "        Type: {}\n".format(node_info['info']['type'])
+        msg2 += "        Active agents: {}\n".format(node_info['info']['n_active_agents'])
 
         if node_info['info']['type'] != "master":
 
@@ -338,29 +314,17 @@ def print_healthcheck(conf, more=False, filter_node=None):
 #
 if __name__ == '__main__':
 
-    # Get cluster config
+    # Validate cluster config
+    cluster_config = None
     try:
         cluster_config = read_config()
-    except WazuhException as e:
-        cluster_config = None
-
-    if not cluster_config or cluster_config['disabled'] == 'yes':
-        print ("Error: The cluster is disabled")
-        exit(1)
-
-    # Validate cluster config
-    try:
         check_cluster_config(cluster_config)
     except WazuhException as e:
-        clean_exit(reason="Invalid configuration: '{0}'".format(str(e)), error=True)
-
-    status = get_status_json()
-    if status["running"] != "yes":
-        print ("Error: The cluster is not running")
+        print( "Invalid configuration: '{0}'".format(str(e)))
         exit(1)
 
+    # Get cluster config
     is_master = cluster_config['node_type'] == "master"
-
     # get arguments
     parser = get_parser(cluster_config['node_type'])
     args = parser.parse_args()
@@ -371,7 +335,7 @@ if __name__ == '__main__':
     try:
         if args.list_agents:
             if is_master:
-                print_agents_master(args.filter_status, args.filter_node)
+                print_agents(args.filter_status, args.filter_node)
             else:
                 print ("Wrong arguments. To use this command you need to be a master node.")
                 parser.print_help()

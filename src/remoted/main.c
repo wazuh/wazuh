@@ -46,6 +46,10 @@ int main(int argc, char **argv)
     int test_config = 0, run_foreground = 0;
     int nocmerged = 0;
 
+    OS_XML xml;
+    const char * xmlf[] = {"ossec_config", "cluster", "disabled", NULL};
+    const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
+
     const char *cfg = DEFAULTCPATH;
     const char *dir = DEFAULTDIR;
     const char *user = REMUSER;
@@ -125,6 +129,31 @@ int main(int argc, char **argv)
     }
 
     logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
+
+    // Don`t create the merged file in worker nodes of the cluster
+
+    if (OS_ReadXML(cfg, &xml) < 0) {
+        mdebug1(XML_ERROR, cfg, xml.err, xml.err_line);
+    } else {
+        // Read the cluster status and the node type from the configuration file
+        char * cl_status = OS_GetOneContentforElement(&xml, xmlf);
+        if (cl_status && cl_status[0] != '\0') {
+            if (!strncmp(cl_status, "no", 2)) {
+                char * cl_type = OS_GetOneContentforElement(&xml, xmlf2);
+                if (cl_type && cl_type[0] != '\0') {
+                    if (!strncmp(cl_type, "client", 6) || !strncmp(cl_type, "worker", 6)) {
+                        mdebug1("Cluster client node: Disabling the merged.mg creation");
+                        logr.nocmerged = 1;
+                    }
+                    free(cl_type);
+                }
+            }
+
+            free(cl_status);
+        }
+    }
+    OS_ClearXML(&xml);
+
 
     /* Exit if test_config is set */
     if (test_config) {

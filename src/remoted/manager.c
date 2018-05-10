@@ -287,7 +287,9 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     }
 
     if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-        merror("Accessing file '%s'", merged);
+        if (!logr.nocmerged)
+            merror("Accessing file '%s'", merged);
+
         f_sum[0]->sum[0] = '\0';
     }
 

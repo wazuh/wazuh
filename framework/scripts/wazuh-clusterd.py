@@ -38,7 +38,7 @@ try:
             error_msg = "Python 2.7 required. Exiting."
         else:
             error_msg = str(e)
-        raise ValueError(error_msg)
+        raise Exception(error_msg)
 
     try:
         from wazuh.exception import WazuhException
@@ -50,12 +50,13 @@ try:
         from wazuh import configuration as config
         from wazuh.manager import status
     except Exception as e:
-        error_msg = str(e)
-        raise ValueError(error_msg)
+        raise e
 
 except Exception as e:
-    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-    exit()
+    # print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+    # exit()
+    error_msg = str(e)
+
 
 logger = logging.getLogger()
 
@@ -206,18 +207,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Set logger
-    e = None
     try:
         debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',2,0) or args.d
-    except NameError:
-        debug_mode = False
-    except Exception as e:
-        debug_mode = False
+    except Exception:
+        debug_mode = 0
 
     set_logging(foreground_mode=args.f, debug_mode=debug_mode)
-
-    if e:
-        logger.error("{}".format(str(e)))
 
     if error_msg:
         logger.error(error_msg)

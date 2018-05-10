@@ -3,28 +3,29 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import ast
+import fcntl
+import fnmatch
+import json
 import logging
+import os
+import shutil
 import threading
 import time
-import shutil
-import json
-import os
-import fcntl
-import ast
 from datetime import datetime
-import fnmatch
 from operator import itemgetter
 
-from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.cluster.cluster import get_cluster_items, _update_file, \
-                                  decompress_files, get_files_status, \
-                                  compress_files, compare_files, get_agents_status, \
-                                  read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
-from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
-                                        Handler, InternalSocketHandler, ClusterThread
-from wazuh.utils import mkdir_with_mode
 from wazuh.agent import Agent
+from wazuh.cluster import __version__
+from wazuh.cluster.cluster import get_cluster_items, _update_file, \
+    decompress_files, get_files_status, \
+    compress_files, compare_files, get_agents_status, \
+    read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
+from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
+    InternalSocketHandler, ClusterThread
+from wazuh.utils import mkdir_with_mode
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,8 @@ logger = logging.getLogger(__name__)
 #
 class MasterManagerHandler(ServerHandler):
 
-    def __init__(self, sock, server, map, addr=None):
-        ServerHandler.__init__(self, sock, server, map, addr)
+    def __init__(self, sock, server, asyncore_map, addr=None):
+        ServerHandler.__init__(self, sock, server, asyncore_map, addr)
         self.manager = server
 
     # Overridden methods
@@ -70,13 +71,27 @@ class MasterManagerHandler(ServerHandler):
             mcf_thread.start()
             return 'ack', self.set_worker(command, mcf_thread, data)
         elif command == 'get_nodes':
+            data = data.decode()
             response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
             cluster_config = read_config()
-            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
+            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master",  "version": __version__}})
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         elif command == 'get_health':
-            response = self.manager.get_healthcheck()
+            filter_nodes = data.decode()
+            response = self.manager.get_healthcheck(filter_nodes)
+            serialized_response = ['ok', json.dumps(response)]
+            return serialized_response
+        elif command == 'get_agents':
+            data = data.decode()
+            split_data = data.split('%--%', 5)
+            filter_status = split_data[0] if split_data[0] != 'None' else None
+            filter_nodes = split_data[1] if split_data[1] != 'None' else None
+            offset = split_data[2] if split_data[2] != 'None' else None
+            limit = split_data[3] if split_data[3] != 'None' else None
+            sort = split_data[4] if split_data[4] != 'None' else None
+            search = split_data[5] if split_data[5] != 'None' else None
+            response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         else:  # Non-master requests
@@ -88,8 +103,6 @@ class MasterManagerHandler(ServerHandler):
         answer, payload = self.split_data(response)
 
         logger.debug("[Master] [{0}] [Response-R]: '{1}'.".format(self.name, answer))
-
-        response_data = None
 
         if answer == 'ok-m':  # test
             response_data = '[response_only_for_master] Client answered: {}.'.format(payload)
@@ -107,7 +120,7 @@ class MasterManagerHandler(ServerHandler):
 
             # Cluster items information: write mode and umask
             w_mode = cluster_items[data['cluster_item_key']]['write_mode']
-            umask = int(cluster_items[data['cluster_item_key']]['umask'], base=0)
+            umask = cluster_items[data['cluster_item_key']]['umask']
 
             if content is None:
                 zip_path = "{}/{}".format(zip_dir_path, name)
@@ -192,7 +205,7 @@ class MasterManagerHandler(ServerHandler):
         sync_result = False
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
         self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status="In progress")
         self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status="In progress")
         # ---
@@ -232,15 +245,12 @@ class MasterManagerHandler(ServerHandler):
         sync_result = True
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
 
         return sync_result
 
 
     def process_integrity_from_client(self, client_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
-        ko_files = False
-        data_for_client = None
-
         if not tag:
             tag = "[Master] [process_integrity_from_client]"
 
@@ -311,7 +321,7 @@ class MasterManagerHandler(ServerHandler):
             master_files_paths = [item for item in client_files_ko['shared']]
             master_files_paths.extend([item for item in client_files_ko['missing']])
 
-            compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
+            compressed_data = compress_files(client_name, master_files_paths, client_files_ko)
 
             logger.debug("{0} Analyzing client integrity: Files checked. KO files compressed.".format(tag))
 
@@ -368,7 +378,7 @@ class ProcessClientIntegrity(ProcessClient):
     # Overridden methods
     def process_file(self):
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
         self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status="In progress")
         self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="missing", status="In progress")
         self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="shared", status="In progress")
@@ -396,7 +406,7 @@ class ProcessClientIntegrity(ProcessClient):
             logger.error("{0}: Sync error reported by the client.".format(self.thread_tag))
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
 
         return sync_result
 
@@ -468,12 +478,12 @@ class MasterManager(Server):
 
     # Overridden methods
     def add_client(self, data, ip, handler):
-        id = Server.add_client(self, data, ip, handler)
+        client_id = Server.add_client(self, data, ip, handler)
         # create directory in /queue/cluster to store all node's file there
-        node_path = "{}/queue/cluster/{}".format(common.ossec_path, id)
+        node_path = "{}/queue/cluster/{}".format(common.ossec_path, client_id)
         if not os.path.exists(node_path):
             mkdir_with_mode(node_path)
-        return id
+        return client_id
 
 
     # Private methods
@@ -529,11 +539,18 @@ class MasterManager(Server):
             self._integrity_control = new_integrity_control
 
 
-    def get_healthcheck(self):
-        clients_info = {name:{"info":data['info'], "status":data['status']} for name,data in self.get_connected_clients().iteritems()}
+    def get_healthcheck(self, filter_nodes=None):
+        clients_info = {name:{"info":data['info'], "status":data['status']} for name,data in self.get_connected_clients().iteritems() if not filter_nodes or name in filter_nodes}
 
         cluster_config = read_config()
-        clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}}})
+        if  not filter_nodes or cluster_config['node_name'] in filter_nodes:
+            clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'],
+                                                                  "ip": cluster_config['nodes'][0], "version": __version__,
+                                                                  "type": "master"}}})
+
+        # Get active agents by node
+        for node_name in clients_info.keys():
+            clients_info[node_name]["info"]["n_active_agents"]=len(get_agents_status(filter_status='Active', filter_nodes=node_name))
 
         health_info = {"n_connected_nodes":len(clients_info), "nodes": clients_info}
         return health_info
@@ -562,7 +579,7 @@ class MasterManager(Server):
         logger.debug("[Master] Cleaning threads generated to handle clients.")
         clients = self.get_connected_clients().copy().keys()
         for client in clients:
-            self.remove_client(id=client)
+            self.remove_client(client_id=client)
 
         logger.debug("[Master] Cleaning threads. End.")
 
@@ -595,8 +612,8 @@ class FileStatusUpdateThread(ClusterThread):
 # Internal socket
 #
 class MasterInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
+    def __init__(self, sock, manager, asyncore_map):
+        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
@@ -604,7 +621,6 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
         if command == 'get_files':
             split_data = data.split('%--%', 2)
-            file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
             node_list = ast.literal_eval(split_data[1]) if split_data[1] else None
             get_my_files = False
 
@@ -629,7 +645,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                 for node,data in node_file:
                     try:
                         response.update({node:json.loads(data.split(' ',1)[1])})
-                    except: # Error response
+                    except ValueError: # json.loads will raise a ValueError
                         response.update({node:data.split(' ',1)[1]})
 
             if get_my_files:
@@ -645,12 +661,10 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_nodes':
-            split_data = data.split(' ', 1)
-            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-
+            node_list = data if data != 'None' else None
             response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
             cluster_config = read_config()
-            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
+            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
 
             if node_list:
                 response = {node:info for node, info in response.iteritems() if node in node_list}
@@ -659,15 +673,20 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_agents':
-            split_data = data.split('%--%', 1)
+            split_data = data.split('%--%', 5)
             filter_status = split_data[0] if split_data[0] != 'None' else None
             filter_nodes = split_data[1] if split_data[1] != 'None' else None
-            response = get_agents_status(filter_status, filter_nodes)
+            offset = split_data[2] if split_data[2] != 'None' else None
+            limit = split_data[3] if split_data[3] != 'None' else None
+            sort = split_data[4] if split_data[4] != 'None' else None
+            search = split_data[5] if split_data[5] != 'None' else None
+            response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 
         elif command == 'get_health':
-            response = self.manager.get_healthcheck()
+            node_list = data if data != 'None' else None
+            response = self.manager.get_healthcheck(node_list)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 
@@ -686,22 +705,4 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         else:
-            split_data = data.split(' ', 1)
-            host = split_data[0]
-            data = split_data[1] if len(split_data) > 1 else None
-
-            if host == 'all':
-                response = list(self.manager.send_request_broadcast(command=command, data=data))
-                serialized_response = ['ok', json.dumps({node:data for node,data in response})]
-            else:
-                response = self.manager.send_request(client_name=host, command=command, data=data)
-                if response:
-                    type_response = node_response[0]
-                    response = node_response[1]
-
-                    if type_response == "err":
-                        serialized_response = {"err":response}
-                    else:
-                        serialized_response = response
-
-            return serialized_response
+            return ['err', json.dumps({'err': "Received an unknown command '{}'".format(command)})]
