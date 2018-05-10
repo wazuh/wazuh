@@ -73,8 +73,6 @@ def get_agents(filter_status=None, filter_node=None, offset=1, limit=common.data
     filter_status_f = None
 
     if filter_status:
-        if isinstance(filter_status, list):
-            filter_status = filter_status[0]
         filter_status_f = filter_status.lower().replace(" ", "").replace("-", "")
         if filter_status_f == "neverconnected":
             filter_status_f = "Never connected"
@@ -85,7 +83,7 @@ def get_agents(filter_status=None, filter_node=None, offset=1, limit=common.data
         elif filter_status_f == "pending":
             filter_status_f = "Pending"
         else:
-            raise WazuhException(3008, "'{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(''.join(filter_status)))
+            raise WazuhException(3008, "'{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(filter_status))
 
     request="get_agents {}%--%{}%--%{}%--%{}%--%{}%--%{}".format(filter_status_f, filter_node, offset, limit, sort, search)
     return __execute(request)

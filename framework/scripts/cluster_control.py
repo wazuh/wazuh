@@ -72,7 +72,7 @@ Others:
 
         parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
+        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', action = 'store', type=str, help="Agents status")
         parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
@@ -115,7 +115,7 @@ Others:
 
         parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs=1, type=str, help="Agents status")
+        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', action = 'store', type=str, help="Agents status")
         parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
@@ -139,7 +139,7 @@ def __execute(my_function, my_args=()):
         if response:
             print ("Error: {}".format(response))
         else:
-            print ("Error: {}".format(e))
+            print ("{}".format(e))
         exit(1)
 
     return response
