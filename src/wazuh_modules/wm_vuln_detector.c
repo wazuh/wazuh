@@ -2503,6 +2503,11 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         os_version = (char *) sqlite3_column_text(stmt,1);
         name = (char *) sqlite3_column_text(stmt, 2);
 
+        if (!os_name) {
+            // The agent has never connected
+            continue;
+        }
+
         if (strcasestr(os_name, vu_dist_ext[DIS_UBUNTU])) {
             if (strstr(os_version, "18")) {
                 agent_os = vu_dist_tag[DIS_BIONIC];
