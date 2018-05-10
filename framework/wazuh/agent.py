@@ -1532,7 +1532,7 @@ class Agent:
         return data
 
     @staticmethod
-    def get_agents_unassigned(offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None):
         """
         Gets the agents in a group
 
