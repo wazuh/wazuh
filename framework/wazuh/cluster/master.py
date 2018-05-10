@@ -84,10 +84,14 @@ class MasterManagerHandler(ServerHandler):
             return serialized_response
         elif command == 'get_agents':
             data = data.decode()
-            split_data = data.split('%--%', 1)
+            split_data = data.split('%--%', 5)
             filter_status = split_data[0] if split_data[0] != 'None' else None
             filter_nodes = split_data[1] if split_data[1] != 'None' else None
-            response = get_agents_status(filter_status, filter_nodes)
+            offset = split_data[2] if split_data[2] != 'None' else None
+            limit = split_data[3] if split_data[3] != 'None' else None
+            sort = split_data[4] if split_data[4] != 'None' else None
+            search = split_data[5] if split_data[5] != 'None' else None
+            response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         else:  # Non-master requests
@@ -669,10 +673,14 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_agents':
-            split_data = data.split('%--%', 1)
+            split_data = data.split('%--%', 5)
             filter_status = split_data[0] if split_data[0] != 'None' else None
             filter_nodes = split_data[1] if split_data[1] != 'None' else None
-            response = get_agents_status(filter_status, filter_nodes)
+            offset = split_data[2] if split_data[2] != 'None' else None
+            limit = split_data[3] if split_data[3] != 'None' else None
+            sort = split_data[4] if split_data[4] != 'None' else None
+            search = split_data[5] if split_data[5] != 'None' else None
+            response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 

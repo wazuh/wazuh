@@ -250,13 +250,13 @@ def sync_master(filter_node):
 ### Get agents
 def print_agents(filter_status=None, filter_node=None):
     agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
+    data = [[agent['id'], agent['ip'], agent['name'], agent['status'],agent['node_name']] for agent in agents['items']]
     headers = ["ID", "Address", "Name", "Status", "Node"]
-    __print_table(agents, headers, True)
+    __print_table(data, headers, True)
     if filter_status:
-        print ("Found {} agent(s) with status '{}'.".format(len(agents), "".join(filter_status)))
+        print ("Found {} agent(s) with status '{}'.".format(len(agents['items']), "".join(filter_status)))
     else:
-        print ("Listing {} agent(s).".format(len(agents)))
-
+        print ("Listing {} agent(s).".format(len(agents['items'])))
 
 ### Get healthchech
 def print_healthcheck(conf, more=False, filter_node=None):
