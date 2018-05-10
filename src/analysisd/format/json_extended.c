@@ -148,13 +148,14 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 {
     cJSON* groups;
     cJSON* rule;
-    int firstPCI, firstCIS, foundCIS, foundPCI;
+    int firstPCI, firstCIS, firstGDPR;
+    int foundCIS, foundPCI, foundGDPR;
     char delim[2];
     char buffer[MAX_STRING] = "";
     char* token;
 
-    firstPCI = firstCIS = 1;
-    foundPCI = foundCIS = 0;
+    firstPCI = firstCIS = firstGDPR = 1;
+    foundPCI = foundCIS = foundGDPR = 0;
     delim[0] = ',';
     delim[1] = 0;
 
@@ -170,17 +171,14 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 
     token = strtok(buffer, delim);
     while(token) {
-        foundPCI = foundCIS = 0;
-        foundPCI = add_groupPCI(rule, token, firstPCI);
-        if(!foundPCI)
-            foundCIS = add_groupCIS(rule, token, firstCIS);
-
-        if(foundPCI && firstPCI)
+        foundPCI = foundCIS = foundGDPR = 0;
+        if (foundPCI = add_groupPCI(rule, token, firstPCI), foundPCI) {
             firstPCI = 0;
-        if(foundCIS && firstCIS)
+        } else if (foundCIS = add_groupCIS(rule, token, firstCIS), foundCIS) {
             firstCIS = 0;
-
-        if(!foundPCI && !foundCIS) {
+        } else if (foundGDPR = add_groupGDPR(rule, token, firstGDPR), foundGDPR) {
+            firstGDPR = 0;
+        } else {
             cJSON_AddItemToArray(groups, cJSON_CreateString(token));
         }
         token = strtok(0, delim);
@@ -224,6 +222,27 @@ int add_groupCIS(cJSON* rule, char* group, int firstCIS)
         aux = strdup(group);
         str_cut(aux, 0, 4);
         cJSON_AddItemToArray(cis, cJSON_CreateString(aux));
+        free(aux);
+        return 1;
+    }
+    return 0;
+}
+
+// Parse groups GDPR
+int add_groupGDPR(cJSON* rule, char* group, int firstGDPR)
+{
+    cJSON* gdpr;
+    char *aux;
+    if((startsWith("gdpr_", group)) == 1) {
+        if(firstGDPR == 1) {
+            gdpr = cJSON_CreateArray();
+            cJSON_AddItemToObject(rule, "gdpr", gdpr);
+        } else {
+            gdpr = cJSON_GetObjectItem(rule, "gdpr");
+        }
+        aux = strdup(group);
+        str_cut(aux, 0, 5);
+        cJSON_AddItemToArray(gdpr, cJSON_CreateString(aux));
         free(aux);
         return 1;
     }

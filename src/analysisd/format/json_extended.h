@@ -38,6 +38,8 @@ int W_isRootcheck(cJSON *root);
 int add_groupPCI(cJSON *rule, char * group, int firstPCI);
 // Parsing CIS Compliance groups
 int add_groupCIS(cJSON *rule, char * group, int firstCIS);
+// Parsing GDPR Compliance groups
+int add_groupGDPR(cJSON* rule, char* group, int firstGDPR);
 // Aux functions
 int str_cut(char *str, int begin, int len);
 regex_t * compile_regex (const char * regex_text);
