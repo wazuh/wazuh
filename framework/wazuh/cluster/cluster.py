@@ -209,7 +209,7 @@ def get_files_status(node_type, get_md5=True):
                                                 ['sync_options']['get_agentinfo_newer_than'])
                 if agents_to_send == 0:
                     return {}
-            fullpath = "{}{}".format(common.ossec_path,file_path).replace("//","/")
+            fullpath = common.ossec_path + file_path
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
