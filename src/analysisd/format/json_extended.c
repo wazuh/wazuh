@@ -148,14 +148,12 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 {
     cJSON* groups;
     cJSON* rule;
-    int firstPCI, firstCIS, firstGDPR;
-    int foundCIS, foundPCI, foundGDPR;
+    int firstPCI, firstCIS, firstGDPR, firstGPG13;
     char delim[2];
     char buffer[MAX_STRING] = "";
     char* token;
 
-    firstPCI = firstCIS = firstGDPR = 1;
-    foundPCI = foundCIS = foundGDPR = 0;
+    firstPCI = firstCIS = firstGDPR = firstGPG13 = 1;
     delim[0] = ',';
     delim[1] = 0;
 
@@ -171,13 +169,14 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 
     token = strtok(buffer, delim);
     while(token) {
-        foundPCI = foundCIS = foundGDPR = 0;
-        if (foundPCI = add_groupPCI(rule, token, firstPCI), foundPCI) {
+        if (add_groupPCI(rule, token, firstPCI)) {
             firstPCI = 0;
-        } else if (foundCIS = add_groupCIS(rule, token, firstCIS), foundCIS) {
+        } else if (add_groupCIS(rule, token, firstCIS)) {
             firstCIS = 0;
-        } else if (foundGDPR = add_groupGDPR(rule, token, firstGDPR), foundGDPR) {
+        } else if (add_groupGDPR(rule, token, firstGDPR)) {
             firstGDPR = 0;
+        } else if (add_groupGPG13(rule, token, firstGPG13)) {
+            firstGPG13 = 0;
         } else {
             cJSON_AddItemToArray(groups, cJSON_CreateString(token));
         }
@@ -243,6 +242,27 @@ int add_groupGDPR(cJSON* rule, char* group, int firstGDPR)
         aux = strdup(group);
         str_cut(aux, 0, 5);
         cJSON_AddItemToArray(gdpr, cJSON_CreateString(aux));
+        free(aux);
+        return 1;
+    }
+    return 0;
+}
+
+// Parse groups GPG13
+int add_groupGPG13(cJSON* rule, char* group, int firstGPG13)
+{
+    cJSON* gpg13;
+    char *aux;
+    if((startsWith("gpg13_", group)) == 1) {
+        if(firstGPG13 == 1) {
+            gpg13 = cJSON_CreateArray();
+            cJSON_AddItemToObject(rule, "gpg13", gpg13);
+        } else {
+            gpg13 = cJSON_GetObjectItem(rule, "gpg13");
+        }
+        aux = strdup(group);
+        str_cut(aux, 0, 6);
+        cJSON_AddItemToArray(gpg13, cJSON_CreateString(aux));
         free(aux);
         return 1;
     }
