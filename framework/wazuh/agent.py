@@ -1457,7 +1457,6 @@ class Agent:
 
         # Init query
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
-        fields = {'id': 'id', 'name': 'name'}  # field: db_column
         request = {'group_id': group_id}
 
         # Select
@@ -1500,7 +1499,7 @@ class Agent:
                     raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.\
                         format(allowed_sort_fields, sort['fields']))
 
-                order_str_fields = ['{0} {1}'.format(fields[i], sort['order']) for i in sort['fields']]
+                order_str_fields = ['{0} {1}'.format(i, sort['order']) for i in sort['fields']]
                 query += ' ORDER BY ' + ','.join(order_str_fields)
             else:
                 query += ' ORDER BY id {0}'.format(sort['order'])
