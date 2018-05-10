@@ -162,6 +162,8 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
                 break;
             case -1: //ERROR
                 mterror(WM_OSQUERYMONITOR_LOGTAG, "child has not been created");
+                pthread_exit(NULL);
+
             default:
                 wm_append_sid(pid);
                 switch (waitpid(daemon_pid, &status, WNOHANG))
@@ -211,7 +213,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
     }
 }
 
-void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
+void wm_osquery_decorators()
 {
     char *line = strdup("");
     char *select = strdup("SELECT ");
@@ -219,7 +221,6 @@ void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
     char *key = NULL;
     char *value = NULL;
     char *coma = strdup(", ");
-    char *osq_conf_file = strdup("/var/ossec/tmp/osquery.conf.tmp");
     char *json_block = NULL;
     char *firstPath = strdup(DEFAULTDIR);
     char *lastpath = strdup("/etc/ossec.conf");
@@ -245,12 +246,12 @@ void wm_osquery_decorators(wm_osquery_monitor_t *osquery_monitor)
     os_calloc(1, sizeof(wlabel_t), labels);
 
     if (ReadConfig(CLABELS | CBUFFER, configPath, &labels, NULL) < 0)
-        return (OS_INVALID);
+        return;
 
 #ifdef CLIENT
     if (ReadConfig(CLABELS, AGENTCONFIG, &labels, NULL) < 0)
     {
-        return (OS_INVALID);
+        return;
     }
 
 #endif
@@ -349,10 +350,10 @@ void wm_osquery_packs(wm_osquery_monitor_t *osquery_monitor)
     int num_chars = 0;
     struct stat stp = {0};
     osquery_config_temp = "/var/ossec/tmp/osquery.conf.tmp";
-    os_malloc(strlen(DEFAULTDIR) + strlen("/etc/shared/default/agent.conf"), agent_conf_path);
+    os_malloc(strlen(DEFAULTDIR) + strlen("/etc/shared/default/agent.conf") + 1, agent_conf_path);
     os_malloc(OS_MAXSTR, line);
 
-    snprintf(agent_conf_path, strlen(DEFAULTDIR) + strlen("/etc/shared/default/agent.conf"), "%s%s", DEFAULTDIR, "/etc/shared/default/agent.conf");
+    snprintf(agent_conf_path, strlen(DEFAULTDIR) + strlen("/etc/shared/default/agent.conf") + 1, "%s%s", DEFAULTDIR, "/etc/shared/default/agent.conf");
     packs_line = strdup(",\"packs\": {");
 
     if (agent_conf_file = fopen("/var/ossec/etc/shared/default/agent.conf", "r"), !agent_conf_file)
