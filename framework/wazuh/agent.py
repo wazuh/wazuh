@@ -123,7 +123,7 @@ class Agent:
         return dictionary
 
     @staticmethod
-    def calculate_status(last_keep_alive, pending, today=date.today()):
+    def calculate_status(last_keep_alive, pending, today=datetime.today()):
         """
         Calculates state based on last keep alive
         """
@@ -131,7 +131,9 @@ class Agent:
             return "Never connected"
         else:
             limit_seconds = 1830 # 600*3 + 30
-            last_date = date(int(last_keep_alive[:4]), int(last_keep_alive[5:7]), int(last_keep_alive[8:10]))
+            # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
+            last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
+                                hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
             difference = (today - last_date).total_seconds()
 
             return "Disconnected" if difference > limit_seconds else ("Pending" if pending else "Active")
@@ -792,10 +794,10 @@ class Agent:
         db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
         fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
 
-        agent_items = [{field:value for field,value in zip(select_fields, tuple) if value is not None} for tuple in conn]
+        agent_items = [{field:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in conn]
 
         if 'status' in user_select_fields:
-            today = date.today()
+            today = datetime.today()
             agent_items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('last_keepalive'), item.get('version') is None, today)) for item in agent_items]
         else:
             agent_items = [dict(item, id=str(item['id']).zfill(3)) for item in agent_items]
@@ -840,7 +842,7 @@ class Agent:
                    'os.codename': 'os_codename','os.major': 'os_major','os.uname': 'os_uname',
                    'os.arch': 'os_arch', 'node_name': 'node_name'}
         valid_select_fields = set(fields.values()) | {'status'}
-        # at least, we should retrieve those fields since other fields dependend on those
+        # at least, we should retrieve those fields since other fields depending on those
         search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
         request = {}
         if select:
