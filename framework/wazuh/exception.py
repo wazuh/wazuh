@@ -117,16 +117,13 @@ class WazuhException(Exception):
         3005: 'Error reading cluster JSON file',
         3006: 'Error reading cluster configuration',
         3007: 'Client.keys file received in master node',
-        3008: 'Error importing cryptography module',
-        3009: 'Error connecting to cluster database',
-        3010: 'Error in cluster client',
+        3008: 'Received invalid agent status',
+        3009: 'Error executing request to internal socket',
+
         3011: 'Agent info file received in a client node',
-        3012: 'Received an old file',
+        3012: 'Cluster is not running',
         3013: 'Cluster is disabled',
-        3014: 'Manager name or IP incorrect',
         3015: 'Cannot access directory',
-        3016: "Cluster nodes are not correctly configured at ossec.conf.",
-        3017: "Could not get remote nodes' information"
 
         # > 9000: Authd
     }

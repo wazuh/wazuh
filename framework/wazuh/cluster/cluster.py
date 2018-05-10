@@ -114,9 +114,6 @@ def get_node(name=None):
     if not name:
         config_cluster = read_config()
 
-        if not config_cluster:
-            raise WazuhException(3000, "No config found")
-
         data["node"]    = config_cluster["node_name"]
         data["cluster"] = config_cluster["name"]
         data["type"]    = config_cluster["node_type"]

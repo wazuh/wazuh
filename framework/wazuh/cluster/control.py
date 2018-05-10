@@ -4,7 +4,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
-import ast
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
@@ -14,37 +13,32 @@ from wazuh.utils import sort_array, search_array
 socket_name = "c-internal"
 
 def __execute(request):
-    cluster_available, msg = check_cluster_status()
-    if not cluster_available:
-        raise Exception(msg)
+    try:
+        # if no exception is raised from function check_cluster_status, the cluster is ok.
+        check_cluster_status()
 
-    response = send_to_internal_socket(socket_name=socket_name, message=request)
-    response_json = json.loads(response)
-    return response_json
+        response = send_to_internal_socket(socket_name=socket_name, message=request)
+        response_json = json.loads(response)
+        return response_json
+    except WazuhException as e:
+        raise e
+    except Exception as e:
+        raise WazuhException(3009, str(e))
+
 
 def check_cluster_status():
     # Get cluster config
-    msg = None
-    try:
-        cluster_config = read_config()
-    except WazuhException:
-        cluster_config = None
+    cluster_config = read_config()
 
     if not cluster_config or cluster_config['disabled'] == 'yes':
-        msg = "The cluster is disabled"
+        raise WazuhException(3013)
 
     # Validate cluster config
-    try:
-        check_cluster_config(cluster_config)
-    except WazuhException as e:
-        msg = "Invalid configuration: '{0}'".format(str(e))
+    check_cluster_config(cluster_config)
 
     status = get_status_json()
     if status["running"] != "yes":
-        msg = "The cluster is not running"
-
-    cluster_available = True if msg is None else False
-    return cluster_available, msg
+        raise WazuhException(3012)
 
 
 ## Requests
@@ -91,7 +85,7 @@ def get_agents(filter_status=None, filter_node=None, offset=1, limit=common.data
         elif filter_status_f == "pending":
             filter_status_f = "Pending"
         else:
-            raise Exception("'{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(''.join(filter_status)))
+            raise WazuhException(3008, "'{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(''.join(filter_status)))
 
     request="get_agents {}%--%{}%--%{}%--%{}%--%{}%--%{}".format(filter_status_f, filter_node, offset, limit, sort, search)
     return __execute(request)
