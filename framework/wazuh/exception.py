@@ -46,6 +46,7 @@ class WazuhException(Exception):
         1202: 'Argument \'status\' must be: enabled, disabled or all',
         1203: 'Argument \'level\' must be a number or an interval separated by \'-\'',
         1204: 'Operation not implemented',
+        1205: 'Requirement not valid. Valid ones are pci and gdpr',
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',
