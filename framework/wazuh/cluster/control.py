@@ -50,6 +50,7 @@ def get_nodes(filter_node=None):
 def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
     nodes = get_nodes()
     valid_select_fiels = {"name", "version", "type", "ip"}
+    valid_types = {"client", "master"}
     select_fields_param = {}
     response = {"items":[], "totalItems":0}
 
@@ -59,6 +60,9 @@ def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.dat
             incorrect_fields = select_fields_param - valid_select_fiels
             raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                     format(', '.join(list(valid_select_fiels)), ', '.join(incorrect_fields)))
+    if filter_type:
+        if not filter_type in valid_types:
+            raise WazuhException(1728, "{0} is not valid. Allowed types: {1}.".format(filter_type, ', '.join(list(valid_types))))
 
     for node, data in nodes.items():
         if (filter_node and node not in filter_node) or (filter_type and data['type'] not in filter_type):
