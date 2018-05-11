@@ -240,7 +240,10 @@ def sync_master(filter_node):
 
 ### Get agents
 def print_agents(filter_status=None, filter_node=None):
-    agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
+    filter_node_param = None
+    if filter_node:
+        filter_node_param = filter_node[0]
+    agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node_param,))
     data = [[agent['id'], agent['ip'], agent['name'], agent['status'],agent['node_name']] for agent in agents['items']]
     headers = ["ID", "Address", "Name", "Status", "Node"]
     __print_table(data, headers, True)
@@ -335,7 +338,7 @@ if __name__ == '__main__':
     try:
         if args.list_agents:
             if is_master:
-                print_agents(args.filter_status, args.filter_node[0])
+                print_agents(args.filter_status, args.filter_node)
             else:
                 print ("Wrong arguments. To use this command you need to be a master node.")
                 parser.print_help()
