@@ -130,7 +130,7 @@ WriteOsquery()
     if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    cat ${OSQUERY_TEMPLATE} >> $NEWCONFIG
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
 
@@ -336,6 +336,9 @@ WriteAgent()
     # CIS-CAT configuration
     WriteCISCAT "agent"
 
+    # Write osquery
+    WriteOsquery "agent"
+
     # Syscheck
     WriteSyscheck "agent"
 
@@ -432,6 +435,9 @@ WriteManager()
 
     # CIS-CAT configuration
     WriteCISCAT "manager"
+
+    # Write osquery
+    WriteOsquery "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -542,6 +548,9 @@ WriteLocal()
 
     # CIS-CAT configuration
     WriteCISCAT "agent"
+
+    # Write osquery
+    WriteOsquery "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
