@@ -423,7 +423,6 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
         merror(FOPEN_ERROR, osquery->config_path, errno, strerror(errno));
         goto end;
     }
-    mdebug1("OSQUERY CONFIG FILE: %s",osquery->config_path);
     if (fwrite(content, 1, filesize, osquery_config_file) != (size_t)filesize) {
         merror("Couldn't write JSON content into configuration '%s': %s (%d)", osquery->config_path, strerror(errno), errno);
         goto end;
