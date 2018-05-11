@@ -38,7 +38,8 @@ try:
             error_msg = "Python 2.7 required. Exiting."
         else:
             error_msg = str(e)
-        raise Exception(error_msg)
+        print(error_msg)
+        exit(1)
 
     try:
         from wazuh.exception import WazuhException
