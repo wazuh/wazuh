@@ -8,7 +8,7 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
 from wazuh.cluster.communication import send_to_internal_socket
-from wazuh.utils import sort_array, search_array
+from wazuh.utils import sort_array, search_array, cut_array
 
 socket_name = "c-internal"
 
@@ -83,11 +83,7 @@ def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.dat
     response["totalItems"] = len(response["items"])
 
     if limit:
-        param_offset = int(offset)
-        param_limit = int(limit)
-        if param_offset != 0:
-            param_limit += 1
-        response["items"] = response["items"][param_offset:param_limit]
+        response["items"] = cut_array(response["items"],int(offset),int(limit))
 
     return response
 
@@ -96,7 +92,8 @@ def get_healthcheck(filter_node=None):
     return __execute(request)
 
 def get_agents(filter_status="all", filter_node="all", offset=0, limit=common.database_limit, sort=None, search=None):
-    filter_status_f = None
+    filter_status_f = "all"
+    filter_node_f = "all"
 
     if filter_status and filter_status != "all":
         filter_status_f = filter_status.lower().replace(" ", "").replace("-", "")
@@ -111,7 +108,10 @@ def get_agents(filter_status="all", filter_node="all", offset=0, limit=common.da
         else:
             raise WazuhException(3008, "'{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(filter_status))
 
-    request="get_agents {}%--%{}%--%{}%--%{}%--%{}%--%{}".format(filter_status_f, filter_node, offset, limit, sort, search)
+    if filter_node:
+        filter_node_f = [node_name.lower() for node_name in filter_node]
+
+    request="get_agents {}%--%{}%--%{}%--%{}%--%{}%--%{}".format(filter_status_f, filter_node_f, offset, limit, sort, search)
     return __execute(request)
 
 def sync(filter_node=None):

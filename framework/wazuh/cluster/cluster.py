@@ -422,16 +422,14 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
     """
-    filter_by_unknown = False
     if not offset:
         offset = 0
     if not filter_status:
         filter_status="all"
     if not filter_nodes:
         filter_nodes="all"
-    elif filter_nodes.lower() == "unknown":
-        filter_nodes="all"
-        filter_by_unknown = True
+    elif filter_nodes != 'all':
+        filter_nodes=ast.literal_eval(filter_nodes)
     if not limit:
         limit = common.database_limit
     if sort:
@@ -440,16 +438,7 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
         sort=ast.literal_eval(search)
 
     agents = Agent.get_agents_overview(status=filter_status, node_name=filter_nodes , select={'fields':['id','ip','name','status','node_name']}, limit=limit, offset=offset, sort=sort, search=search)
-
-    agent_list_filtered = {'items':[], 'totalItems':agents['totalItems']}
-    for agent in agents['items']:
-        if not agent.get('node_name'):
-            agent['node_name'] = "Unknown"
-        if filter_by_unknown and agent['node_name'] is not "Unknown":
-            continue
-        agent_list_filtered['items'].append(agent)
-
-    return agent_list_filtered
+    return agents
 
 
 def _check_removed_agents(new_client_keys):

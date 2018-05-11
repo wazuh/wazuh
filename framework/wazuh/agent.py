@@ -886,8 +886,14 @@ class Agent:
             request['version'] = re.sub( r'([a-zA-Z])([v])', r'\1 \2', version )
             query += ' AND version = :version'
         if node_name != "all":
-            request['node_name'] = node_name.lower()
-            query += ' AND node_name = :node_name COLLATE NOCASE'
+            if isinstance(node_name,list):
+                node_list = [name.lower() for name in node_name]
+                query += ' AND node_name IN ({})'.format(','.join([":node_name{}".format(x) for x in range(len(node_list))]))
+                key_list = [":node_name{}".format(x) for x in range(len(node_list))]
+                request.update({x[1:]: y for x, y in zip(key_list, node_list)})
+            else:
+                request['node_name'] = node_name.lower()
+                query += ' AND node_name = :node_name COLLATE NOCASE'
 
         # Search
         if search:

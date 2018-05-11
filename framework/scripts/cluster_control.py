@@ -42,7 +42,7 @@ def get_parser(type):
             def format_help(self):
                 msg = """Wazuh cluster control - Master node
 
-Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -240,10 +240,7 @@ def sync_master(filter_node):
 
 ### Get agents
 def print_agents(filter_status=None, filter_node=None):
-    filter_node_param = None
-    if filter_node:
-        filter_node_param = filter_node[0]
-    agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node_param,))
+    agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
     data = [[agent['id'], agent['ip'], agent['name'], agent['status'],agent['node_name']] for agent in agents['items']]
     headers = ["ID", "Address", "Name", "Status", "Node"]
     __print_table(data, headers, True)
