@@ -606,14 +606,6 @@ InstallCommon(){
     OSSEC_USER='ossec'
     OSSEC_USER_MAIL='ossecm'
     OSSEC_USER_REM='ossecr'
-    EXTERNAL_BERKELEY='external/libdb/build_unix/'
-    EXTERNAL_LIBYAML='external/libyaml/'
-    EXTERNAL_CURL='external/curl/'
-    EXTERNAL_JSON="external/cJSON/"
-    EXTERNAL_SQLITE="external/sqlite/"
-    EXTERNAL_SSL="external/openssl/"
-    EXTERNAL_PROCPS="external/procps/"
-    EXTERNAL_ZLIB="external/zlib/"
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -658,21 +650,9 @@ InstallCommon(){
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_JSON}libcjson.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl.1.1.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto.1.1.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_ZLIB}libz.1.dylib ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g 0 libwazuhext.dylib ${PREFIX}/lib
     else
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_JSON}libcjson.so ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl.so.1.1 ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto.so.1.1 ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_ZLIB}libz.so.1 ${PREFIX}/lib
-
-        if [ ${NUNAME} = 'Linux' ]
-        then
-            ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_BERKELEY}.libs/libdb-6.2.so ${PREFIX}/lib
-            ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_PROCPS}libproc.so ${PREFIX}/lib
-        fi
+        ${INSTALL} -m 0750 -o root -g 0 libwazuhext.so ${PREFIX}/lib
     fi
 
   ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
