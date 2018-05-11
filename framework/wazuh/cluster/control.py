@@ -91,10 +91,10 @@ def get_healthcheck(filter_node=None):
     request="get_health {}".format(filter_node)
     return __execute(request)
 
-def get_agents(filter_status=None, filter_node=None, offset=0, limit=common.database_limit, sort=None, search=None):
+def get_agents(filter_status="all", filter_node="all", offset=0, limit=common.database_limit, sort=None, search=None):
     filter_status_f = None
 
-    if filter_status:
+    if filter_status and filter_status != "all":
         filter_status_f = filter_status.lower().replace(" ", "").replace("-", "")
         if filter_status_f == "neverconnected":
             filter_status_f = "Never connected"

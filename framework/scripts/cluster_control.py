@@ -42,7 +42,7 @@ def get_parser(type):
             def format_help(self):
                 msg = """Wazuh cluster control - Master node
 
-Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -88,7 +88,7 @@ Others:
             def format_help(self):
                 msg = """Wazuh cluster control - Client node
 
-Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
+Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
 Usage:
 \t-h, --help                                  # Show this help message
@@ -335,7 +335,7 @@ if __name__ == '__main__':
     try:
         if args.list_agents:
             if is_master:
-                print_agents(args.filter_status, args.filter_node)
+                print_agents(args.filter_status, args.filter_node[0])
             else:
                 print ("Wrong arguments. To use this command you need to be a master node.")
                 parser.print_help()
