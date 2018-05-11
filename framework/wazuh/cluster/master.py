@@ -540,7 +540,7 @@ class MasterManager(Server):
 
 
     def get_healthcheck(self, filter_nodes=None):
-        clients_info = {name:{"info":data['info'], "status":data['status']} for name,data in self.get_connected_clients().iteritems() if not filter_nodes or name in filter_nodes}
+        clients_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_clients().iteritems() if not filter_nodes or name in filter_nodes}
 
         cluster_config = read_config()
         if  not filter_nodes or cluster_config['node_name'] in filter_nodes:
