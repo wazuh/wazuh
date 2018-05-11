@@ -11,8 +11,10 @@
 
 #include "wdb.h"
 
+static int iface_id = 0;
+
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
-int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes) {
+int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         merror("at wdb_netinfo_save(): cannot begin transaction");
@@ -31,9 +33,12 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         tx_packets,
         rx_packets,
         tx_bytes,
-        rx_bytes) < 0) {
+        rx_bytes,
+        tx_errors,
+        rx_errors,
+        tx_dropped,
+        rx_dropped) < 0) {
 
-        mdebug1("at wdb_netinfo_save(): cannot insert netinfo tuple.");
         return -1;
     }
 
@@ -41,7 +46,7 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Insert Network info tuple. Return 0 on success or -1 on error.
-int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes) {
+int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_NETINFO_INSERT) > 0) {
@@ -86,8 +91,29 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     } else {
         sqlite3_bind_null(stmt, 12);
     }
+    if (tx_errors >= 0) {
+        sqlite3_bind_int64(stmt, 13, tx_errors);
+    } else {
+        sqlite3_bind_null(stmt, 13);
+    }
+    if (rx_errors >= 0) {
+        sqlite3_bind_int64(stmt, 14, rx_errors);
+    } else {
+        sqlite3_bind_null(stmt, 14);
+    }
+    if (tx_dropped >= 0) {
+        sqlite3_bind_int64(stmt, 15, tx_dropped);
+    } else {
+        sqlite3_bind_null(stmt, 15);
+    }
+    if (rx_dropped >= 0) {
+        sqlite3_bind_int64(stmt, 16, rx_dropped);
+    } else {
+        sqlite3_bind_null(stmt, 16);
+    }
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
+        iface_id = (int)sqlite3_last_insert_rowid(wdb->db);
         return 0;
     }
     else {
@@ -96,8 +122,62 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     }
 }
 
-// Save IPv4/IPv6 interface info into DB.
-int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int type, const char * name, const char * address, const char * netmask, const char * broadcast, const char * gateway, const char * dhcp) {
+// Save IPv4/IPv6 protocol info into DB.
+int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        merror("at wdb_netproto_save(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_netproto_insert(wdb,
+        scan_id,
+        iface,
+        type,
+        gateway,
+        dhcp) < 0) {
+
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
+int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROTO_INSERT) > 0) {
+        merror("at wdb_netproto_insert(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PROTO_INSERT];
+
+    sqlite3_bind_int(stmt, 1, iface_id);
+    sqlite3_bind_text(stmt, 2, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 3, iface, -1, NULL);
+
+    if (type == WDB_NETADDR_IPV4)
+        sqlite3_bind_text(stmt, 4, "ipv4", -1, NULL);
+    else
+        sqlite3_bind_text(stmt, 4, "ipv6", -1, NULL);
+
+    sqlite3_bind_text(stmt, 5, gateway, -1, NULL);
+    sqlite3_bind_text(stmt, 6, dhcp, -1, NULL);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE){
+        return 0;
+    }
+    else {
+        mdebug1("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+// Save IPv4/IPv6 address info into DB.
+int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         merror("at wdb_netaddr_save(): cannot begin transaction");
@@ -106,25 +186,21 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int type, const char * n
 
     if (wdb_netaddr_insert(wdb,
         scan_id,
-        type,
-        name,
+        proto,
         address,
         netmask,
-        broadcast,
-        gateway,
-        dhcp) < 0) {
+        broadcast) < 0) {
 
-        mdebug1("at wdb_netaddr_save(): cannot insert netaddr tuple.");
         return -1;
     }
 
     return 0;
 }
 
-// Insert IPv4/IPv6 interface info tuple. Return 0 on success or -1 on error.
-int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int type, const char * name, const char * address, const char * netmask, const char * broadcast, const char * gateway, const char * dhcp) {
+// Insert IPv4/IPv6 address info tuple. Return 0 on success or -1 on error.
+int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast) {
+
     sqlite3_stmt *stmt = NULL;
-    int result;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_ADDR_INSERT) > 0) {
         merror("at wdb_netaddr_insert(): cannot cache statement");
@@ -133,49 +209,22 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int type, const char *
 
     stmt = wdb->stmt[WDB_STMT_ADDR_INSERT];
 
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_int(stmt, 1, iface_id);
+    sqlite3_bind_text(stmt, 2, scan_id, -1, NULL);
 
-    if (type == WDB_NETADDR_IPV4)
-        sqlite3_bind_text(stmt, 2, "ipv4", -1, NULL);
+    if (proto == WDB_NETADDR_IPV4)
+        sqlite3_bind_text(stmt, 3, "ipv4", -1, NULL);
     else
-        sqlite3_bind_text(stmt, 2, "ipv6", -1, NULL);
+        sqlite3_bind_text(stmt, 3, "ipv6", -1, NULL);
 
-    sqlite3_bind_text(stmt, 3, address, -1, NULL);
-    sqlite3_bind_text(stmt, 4, netmask, -1, NULL);
-    sqlite3_bind_text(stmt, 5, broadcast, -1, NULL);
-    sqlite3_bind_text(stmt, 6, gateway, -1, NULL);
-    sqlite3_bind_text(stmt, 7, dhcp, -1, NULL);
-
-    if (sqlite3_step(stmt) == SQLITE_DONE){
-        result = (int)sqlite3_last_insert_rowid(wdb->db);
-    }
-    else {
-        mdebug1("at wdb_netaddr_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    // Update reference at netiface table
-
-    if (type == WDB_NETADDR_IPV4) {
-        if (wdb_stmt_cache(wdb, WDB_STMT_ADDR_IPV4_UPDATE) > 0) {
-            merror("at wdb_netaddr_insert(): cannot cache statement while updating");
-            return -1;
-        }
-        stmt = wdb->stmt[WDB_STMT_ADDR_IPV4_UPDATE];
-    } else {
-        if (wdb_stmt_cache(wdb, WDB_STMT_ADDR_IPV6_UPDATE) > 0) {
-            merror("at wdb_netaddr_insert(): cannot cache statement while updating");
-            return -1;
-        }
-        stmt = wdb->stmt[WDB_STMT_ADDR_IPV6_UPDATE];
-    }
-
-    sqlite3_bind_int(stmt, 1, result);
-    sqlite3_bind_text(stmt, 2, name, -1, NULL);
+    sqlite3_bind_text(stmt, 4, address, -1, NULL);
+    sqlite3_bind_text(stmt, 5, netmask, -1, NULL);
+    sqlite3_bind_text(stmt, 6, broadcast, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
-    } else {
+    }
+    else {
         mdebug1("at wdb_netaddr_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -201,7 +250,21 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_netiface' table.");
+        merror("Unable to delete old information from 'sys_netiface' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    // Delete 'sys_netproto' table
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROTO_DEL) > 0) {
+        merror("at wdb_netinfo_delete(): cannot cache statement");
+        return -1;
+    }
+    stmt = wdb->stmt[WDB_STMT_PROTO_DEL];
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Unable to delete old information from 'sys_netproto' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -215,20 +278,7 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_netaddr' table.");
-        return -1;
-    }
-
-    // Reset autoincrement id for 'sys_netaddr' table
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_RESET_COUNT) > 0) {
-        merror("at wdb_netinfo_delete(): cannot cache statement");
-        return -1;
-    }
-    stmt = wdb->stmt[WDB_STMT_RESET_COUNT];
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to reset id for 'sys_netaddr' table.");
+        merror("Unable to delete old information from 'sys_netaddr' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -246,7 +296,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     }
 
     /* Delete old OS information before insert the new scan */
-    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) < 0) {
         merror("at wdb_osinfo_save(): cannot cache statement");
         return -1;
     }
@@ -284,7 +334,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) < 0) {
         merror("at wdb_osinfo_insert(): cannot cache statement");
         return -1;
     }
@@ -352,7 +402,7 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) < 0) {
         merror("at wdb_package_insert(): cannot cache statement");
         return -1;
     }
@@ -411,7 +461,7 @@ int wdb_package_update(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to update the new information from 'sys_programs' table.");
+        merror("Unable to update the new information from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -428,7 +478,7 @@ int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) < 0) {
         merror("at wdb_package_delete(): cannot cache statement");
         return -1;
     }
@@ -456,7 +506,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
     }
 
     /* Delete old OS information before insert the new scan */
-    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_DEL) < 0) {
         merror("at wdb_hardware_save(): cannot cache statement");
         return -1;
     }
@@ -488,7 +538,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
 int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) < 0) {
         merror("at wdb_hardware_insert(): cannot cache statement");
         return -1;
     }
@@ -562,7 +612,7 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_INSERT) < 0) {
         merror("at wdb_port_insert(): cannot cache statement");
         return -1;
     }
@@ -633,7 +683,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_DEL) < 0) {
         merror("at wdb_port_delete(): cannot cache statement");
         return -1;
     }
@@ -700,7 +750,7 @@ int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROC_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROC_INSERT) < 0) {
         merror("at wdb_process_insert(): cannot cache statement");
         return -1;
     }
@@ -808,7 +858,7 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROC_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROC_DEL) < 0) {
         merror("at wdb_process_delete(): cannot cache statement");
         return -1;
     }

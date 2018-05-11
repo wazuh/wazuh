@@ -7,5 +7,6 @@
     <os>yes</os>
     <network>yes</network>
     <packages>yes</packages>
+    <ports all="no">yes</ports>
     <processes>yes</processes>
   </wodle>

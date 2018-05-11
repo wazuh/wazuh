@@ -141,15 +141,12 @@ void DecodeEvent(Eventinfo *lf)
             return;
         }
 
-        /* If we have an external decoder, execute it */
-        if (nnode->plugindecoder) {
-            nnode->plugindecoder(lf);
-            return;
-        }
-
         /* Get the regex */
         while (child_node) {
-            if (nnode->regex) {
+            /* If we have an external decoder, execute it */
+            if (nnode->plugindecoder) {
+                nnode->plugindecoder(lf);
+            } else if (nnode->regex) {
                 int i;
 
                 /* With regex we have multiple options
@@ -205,18 +202,19 @@ void DecodeEvent(Eventinfo *lf)
                     nnode->regex->sub_strings[i] = NULL;
                 }
 
-                /* If we have a next regex, try getting it */
-                if (nnode->get_next) {
-                    child_node = child_node->next;
-                    nnode = child_node->osdecoder;
-                    continue;
-                }
-
                 break;
+            } else {
+                /* If we don't have a regex, we may leave now */
+                return;
             }
 
-            /* If we don't have a regex, we may leave now */
-            return;
+            /* If we have a next regex, try getting it */
+            if (nnode->get_next) {
+                child_node = child_node->next;
+                nnode = child_node->osdecoder;
+            } else {
+                return;
+            }
         }
 
         /* ok to return  */

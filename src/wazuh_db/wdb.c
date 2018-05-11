@@ -40,13 +40,12 @@ static const char * SQL_STMT[] = {
     "DELETE FROM sys_ports WHERE scan_id != ?;",
     "INSERT INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     "DELETE FROM sys_processes WHERE scan_id != ?;",
-    "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "INSERT INTO sys_netaddr (scan_id, type, address, netmask, broadcast, gateway, dhcp) VALUES (?, ?, ?, ?, ?, ?, ?);",
-    "UPDATE sys_netiface SET id_ipv4 = ? WHERE name = ?;",
-    "UPDATE sys_netiface SET id_ipv6 = ? WHERE name = ?;",
+    "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netproto (id, scan_id, iface, type, gateway, dhcp) VALUES (?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netaddr (id, scan_id, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
-    "DELETE FROM sys_netaddr WHERE scan_id != ?;",
-    "DELETE FROM sqlite_sequence WHERE name = 'sys_netaddr';"
+    "DELETE FROM sys_netproto WHERE scan_id != ?;",
+    "DELETE FROM sys_netaddr WHERE scan_id != ?;"
 };
 
 sqlite3 *wdb_global = NULL;

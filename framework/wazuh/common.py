@@ -16,6 +16,11 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global ossec_conf
     ossec_conf = "{0}/etc/ossec.conf".format(ossec_path)
 
+    global internal_options
+    internal_options = "{0}/etc/internal_options.conf".format(ossec_path)
+    global local_internal_options
+    local_internal_options = "{0}/etc/local_internal_options.conf".format(ossec_path)
+
     global ossec_log
     ossec_log = "{0}/logs/ossec.log".format(ossec_path)
 
@@ -47,7 +52,7 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     database_path_global = database_path + '/global.db'
 
     global wdb_socket_path
-    wdb_socket_path = '{}/queue/db/wdb'.format(ossec_path)
+    wdb_socket_path = '{0}/queue/db/wdb'.format(ossec_path)
 
     global api_config_path
     api_config_path = "{0}/api/configuration/config.js".format(ossec_path)
@@ -85,7 +90,7 @@ database_limit = 500
 
 # Cluster protocol
 global cluster_protocol_plain_size
-cluster_protocol_plain_size = 14
+cluster_protocol_plain_size = 25
 
 def get_encrypted_size(plain_size):
     # Token format: https://github.com/fernet/spec/blob/master/Spec.md
