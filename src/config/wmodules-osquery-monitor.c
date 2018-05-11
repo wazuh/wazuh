@@ -2,15 +2,6 @@
 #include "wazuh_modules/wmodules.h"
 #include <stdio.h>
 
-
-#define OSQUERYPATH "/etc/shared/default/osquery.conf"
-#ifdef CLIENT
-#define OSQUERYPATH "/etc/shared/osquery.conf"
-#endif
-#define DEFAULTPATH DEFAULTDIR OSQUERYPATH
-
-
-
 static const char *XML_DISABLED = "disabled";
 static const char *XML_BINPATH = "binpath";
 static const char *XML_LOGPATH = "logpath";
@@ -23,27 +14,15 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     wm_osquery_monitor_t *osquery_monitor;
 
     os_calloc(1, sizeof(wm_osquery_monitor_t), osquery_monitor);
-    osquery_monitor->bin_path = NULL;
-    osquery_monitor->log_path = NULL;
-    osquery_monitor->disable  = 1;
+    os_strdup("/usr/bin", osquery_monitor->bin_path);
+    os_strdup("/var/log/osquery/osqueryd.results.log", osquery_monitor->log_path);
+    os_strdup("/etc/osquery/osquery.conf", osquery_monitor->config_path);
+    osquery_monitor->disable = 0;
     module->context = &WM_OSQUERYMONITOR_CONTEXT;
     module->data = osquery_monitor;
-    
-    if(fopen (DEFAULTPATH, "w+"))  //CHECK IF FILE EXISTS
-    {
-        osquery_monitor->config_path = strdup(DEFAULTPATH);
-        mdebug2("configPath Readed: %s", DEFAULTPATH);
-    }
-    else
-    {
-        merror("not found default config file..", XML_LOGPATH, WM_OSQUERYMONITOR_CONTEXT.name);
-        return OS_INVALID;
-    }
 
     for(i = 0; nodes[i]; i++)
     {
-
-
         if(!nodes[i]->element)
         {
             merror(XML_ELEMNULL);
@@ -65,35 +44,20 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
         }
         else if(!strcmp(nodes[i]->element, XML_BINPATH))
         {
-         
-           osquery_monitor->bin_path = strdup(nodes[i]->content);
-           
+            free(osquery_monitor->bin_path);
+            osquery_monitor->bin_path = strdup(nodes[i]->content);
         }
         else if(!strcmp(nodes[i]->element, XML_LOGPATH))
         {
-            if(fopen (nodes[i]->content, "w+"))  //CHECK IF FILE EXISTS
-            {
-                osquery_monitor->log_path = strdup(nodes[i]->content);
-                mdebug2("LogPath Readed: %s", osquery_monitor->log_path);
-            }
-            else
-            {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_LOGPATH, WM_OSQUERYMONITOR_CONTEXT.name);
-                return OS_INVALID;
-            }
+            free(osquery_monitor->log_path);
+            osquery_monitor->log_path = strdup(nodes[i]->content);
+            mdebug2("Logpath read: %s", osquery_monitor->log_path);
         }
         else if(!strcmp(nodes[i]->element, XML_CONFIGPATH))
         {
-            if(fopen (nodes[i]->content, "r+"))  //CHECK IF FILE EXISTS
-            {
-                osquery_monitor->config_path = strdup(nodes[i]->content);
-                mdebug2("configPath Readed: %s", osquery_monitor->config_path);
-            }
-            else
-            {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_LOGPATH, WM_OSQUERYMONITOR_CONTEXT.name);
-                return OS_INVALID;
-            }
+            free(osquery_monitor->config_path);
+            osquery_monitor->config_path = strdup(nodes[i]->content);
+            mdebug2("configPath Readed: %s", osquery_monitor->config_path);
         }
 
     }

@@ -2058,3 +2058,8 @@ cJSON* getunameJSON()
     else
         return NULL;
 }
+
+ino_t get_fp_inode(FILE * fp) {
+    struct stat buf;
+    return fstat(fileno(fp), &buf) ? (ino_t)-1 : buf.st_ino;
+}
