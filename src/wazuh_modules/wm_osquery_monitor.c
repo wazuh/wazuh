@@ -17,13 +17,21 @@
 #include <signal.h>
 #include <stdio.h>
 
-void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor);
-void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
-pthread_mutex_t mutex1 = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t active = PTHREAD_COND_INITIALIZER;
-int stopped;
-int unlock = 0;
-char *osquery_config_temp = NULL;
+#define TMP_CONFIG_PATH "tmp/osquery.conf.tmp"
+
+#define minfo(format, ...) mtinfo(WM_OSQUERYMONITOR_LOGTAG, format, ##__VA_ARGS__)
+#define mwarn(format, ...) mtwarn(WM_OSQUERYMONITOR_LOGTAG, format, ##__VA_ARGS__)
+#define merror(format, ...) mterror(WM_OSQUERYMONITOR_LOGTAG, format, ##__VA_ARGS__)
+#define mdebug1(format, ...) mtdebug1(WM_OSQUERYMONITOR_LOGTAG, format, ##__VA_ARGS__)
+#define mdebug2(format, ...) mtdebug2(WM_OSQUERYMONITOR_LOGTAG, format, ##__VA_ARGS__)
+
+static void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor);
+static void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t active = PTHREAD_COND_INITIALIZER;
+static volatile int stopped;
+static volatile int unlock = 0;
+static char *osquery_config_temp = NULL;
 
 const wm_context WM_OSQUERYMONITOR_CONTEXT =
     {
@@ -47,31 +55,20 @@ int get_inode(int fd)
 void *Read_Log(wm_osquery_monitor_t *osquery_monitor)
 {
     int i;
-    int queue_fd;
     int current_inode;
-    int usec = 1000000 / wm_max_eps;
     char line[OS_MAXSTR];
     FILE *result_log = NULL;
 
-    for (i = 0; queue_fd = StartMQ(DEFAULTQPATH, WRITE), queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++)
-    {
-        //Trying to connect to queue
-        sleep(WM_MAX_WAIT);
-    }
-    if (i == WM_MAX_ATTEMPTS)
-    {
-        mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue.");
-        pthread_exit(NULL);
-    }
     //Critical section
     // Lock mutex and then wait for signal to relase mutex
 
-    pthread_mutex_lock(&mutex1);
+    w_mutex_lock(&mutex);
 
-    while (!unlock)
-    {
-        pthread_cond_wait(&active, &mutex1);
+    while (!unlock) {
+        w_cond_wait(&active, &mutex);
     }
+
+    w_mutex_unlock(&mutex);
 
     while (1)
     {
@@ -94,7 +91,7 @@ void *Read_Log(wm_osquery_monitor_t *osquery_monitor)
                 if (fgets(line, OS_MAXSTR, result_log) != NULL)
                 {
                     mdebug2("Sending... '%s'", line);
-                    if (wm_sendmsg(usec, queue_fd, line, "osquery", LOCALFILE_MQ) < 0)
+                    if (wm_sendmsg(osquery_monitor->msg_delay, osquery_monitor->queue_fd, line, "osquery", LOCALFILE_MQ) < 0)
                     {
                         mterror(WM_OSQUERYMONITOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                     }
@@ -120,96 +117,97 @@ void *Read_Log(wm_osquery_monitor_t *osquery_monitor)
 
                     if (stopped)
                     {
-                        pthread_mutex_unlock(&mutex1);
                         pthread_exit(NULL);
                     }
                 }
             }
-            pthread_mutex_unlock(&mutex1);
         }
     }
 }
 
-void *Execute_Osquery(wm_osquery_monitor_t *osquery_monitor)
+void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 {
-    pthread_mutex_lock(&mutex1);
-    int down = 1;
-    int daemon_pid = 0;
-    int status;
-    int pid;
-    char *arg2 = strdup("/tmp/osquery.conf.tmp");
-    char *arg1 = strdup(DEFAULTDIR);
-    char *arg0 = strdup("--config_path=");
-    char *arg;
-    os_malloc(((strlen(arg0) + strlen(arg1) + strlen(arg2) + 2) * sizeof(char)), arg);
-    snprintf(arg, strlen(arg0) + strlen(arg1) + strlen(arg2) + 2, "%s%s%s", arg0, arg1, arg2);
-    //We check that the osquery demon is not down, in which case we run it again.
-    while (1)
-    {
-        if (down)
-        {
-            pid = fork();
-            switch (pid)
-            {
-            case 0: //Child
-                setsid();
-                daemon_pid = getpid();
-                if (execl(osquery_monitor->bin_path, "osqueryd", arg, (char *)NULL))
-                {
-                    mterror(WM_OSQUERYMONITOR_LOGTAG, "cannot execute osquery daemon2");
-                    _exit(127);
-                }
-                break;
-            case -1: //ERROR
-                mterror(WM_OSQUERYMONITOR_LOGTAG, "child has not been created");
-                pthread_exit(NULL);
+    char osqueryd_path[PATH_MAX];
+    char config_path[PATH_MAX];
 
-            default:
-                wm_append_sid(pid);
-                switch (waitpid(daemon_pid, &status, WNOHANG))
-                {
-                case 0:
-                    //OSQUERY IS WORKING, wake up the other thread to read the log file
-                    down = 0;
-                    unlock = 1;
-                    pthread_cond_signal(&active);
-                    pthread_mutex_unlock(&mutex1);
-                    break;
-                case -1:
-                    if (errno == ECHILD)
-                    {
-                        down = 1;
+    snprintf(osqueryd_path, sizeof(osqueryd_path), "%s/osqueryd", osquery->bin_path);
+    snprintf(config_path, sizeof(config_path), "--config_path=%s/%s", DEFAULTDIR, TMP_CONFIG_PATH);
+
+    // We check that the osquery demon is not down, in which case we run it again.
+
+    while (1) {
+        char buffer[4096];
+        time_t time_started;
+        wfd_t * wfd;
+        int wstatus;
+        char * text;
+        char * end;
+
+        if (wfd = wpopenl(osqueryd_path, W_BIND_STDERR | W_APPEND_POOL, osqueryd_path, config_path, NULL), !wfd) {
+            mwarn("Couldn't execute osquery (%s). Sleeping for 10 minutes.", osqueryd_path);
+            sleep(600);
+        }
+
+        time_started = time(NULL);
+
+        // Signal reader thread
+
+        w_mutex_lock(&mutex);
+        unlock = 1;
+        pthread_cond_signal(&active);
+        w_mutex_unlock(&mutex);
+
+        // Get stderr
+
+        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+            // Filter Bash colors: \e[*m
+            text = buffer[0] == '\e' && buffer[1] == '[' && (end = strchr(buffer + 2, 'm'), end) ? end + 1 : buffer;
+
+            // Remove newline
+            if (end = strchr(text, '\n'), end) {
+                *end = '\0';
+            }
+
+            if (strlen(text)) {
+                // Parse most common osquery errors
+
+                if (strstr(text, "[Ref #1382]")) {
+                    mwarn("osqueryd has unsafe permissions.");
+                } else if (strstr(text, "[Ref #1629]")) {
+                    mwarn("osqueryd initialize failed: Could not initialize database.");
+                } else {
+                    switch (text[0]) {
+                    case 'E':
+                    case 'W':
+                        mwarn("%s", text);
+                        break;
+                    default:
+                        mdebug1("%s", text);
                     }
-                    // Finished. Bad Configuration
-                    stopped = 1;
-                    mterror(WM_OSQUERYMONITOR_LOGTAG, "Bad Configuration!");
-                    pthread_exit(NULL);
-                    break;
+                }
+
+                // Report to manager
+
+                if (wm_sendmsg(osquery->msg_delay, osquery->queue_fd, text, "osquery", LOCALFILE_MQ) < 0) {
+                    mterror(WM_OSQUERYMONITOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 }
             }
         }
-        while (down == 0)
-        {
-            //CHECK PERIODICALLY THE DAEMON STATUS
-            int status;
-            pid_t return_pid = waitpid(pid, &status, WNOHANG);
-            if (return_pid == -1)
-            {
-                if (errno == ECHILD)
-                    down = 1;
-            }
-            else if (return_pid == 0)
-            {
-                if (errno == ECHILD)
-                    down = 0;
-            }
-            else if (return_pid == daemon_pid)
-            {
-                down = 0;
-            }
-            sleep(1);
+
+        // If this point is reached, osquery exited
+
+        wstatus = WEXITSTATUS(wpclose(wfd));
+        unlock = 0;
+
+        // If osquery was alive less than 10 seconds, give up
+
+        if (time(NULL) - time_started < 10) {
+            merror("Osquery exited with code %d. Closing module.", wstatus);
+            stopped = 1;
+            pthread_exit(NULL);
+        } else {
+            mwarn("Osquery exited with code %d. Restarting.", wstatus);
         }
-        sleep(1);
     }
 }
 
@@ -424,13 +422,26 @@ void wm_osquery_packs(wm_osquery_monitor_t *osquery_monitor)
     free(aux);
 }
 
-void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor)
+void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 {
-    wm_osquery_packs(osquery_monitor);
-    wm_osquery_decorators(osquery_monitor);
+    int i;
+    osquery->msg_delay = 1000000 / wm_max_eps;
+
+    for (i = 0; osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE), osquery->queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++) {
+        // Trying to connect to queue
+        sleep(WM_MAX_WAIT);
+    }
+
+    if (i == WM_MAX_ATTEMPTS) {
+        mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
+        pthread_exit(NULL);
+    }
+
+    wm_osquery_packs(osquery);
+    wm_osquery_decorators(osquery);
     pthread_t thread1, thread2;
-    pthread_create(&thread1, NULL, (void *)&Read_Log, osquery_monitor);
-    pthread_create(&thread2, NULL, (void *)&Execute_Osquery, osquery_monitor);
+    pthread_create(&thread1, NULL, (void *)&Read_Log, osquery);
+    pthread_create(&thread2, NULL, (void *)&Execute_Osquery, osquery);
     pthread_join(thread2, NULL);
     pthread_join(thread1, NULL);
     return NULL;

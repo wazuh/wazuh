@@ -12,9 +12,10 @@
 #ifndef EXEC_OP_H
 #define EXEC_OP_H
 
-#define W_BIND_STDOUT 1
-#define W_BIND_STDERR 2
-#define W_CHECK_WRITE 4
+#define W_BIND_STDOUT   01
+#define W_BIND_STDERR   02
+#define W_CHECK_WRITE   04
+#define W_APPEND_POOL   10
 
 typedef struct wfd_t {
     FILE * file;
@@ -23,6 +24,7 @@ typedef struct wfd_t {
 #else
     pid_t pid;
 #endif
+    unsigned int append_pool:1;
 } wfd_t;
 
 // Open a stream from a process without shell (execvp form)

@@ -10,6 +10,7 @@
  */
 
 #include <shared.h>
+#include <wazuh_modules/wmodules.h>
 
 // Open a stream from a process without shell (execvp form)
 wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
@@ -149,7 +150,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         }
 
         close(STDIN_FILENO);
-
+        setsid();
         execvp(path, argv);
         _exit(127);
 
@@ -159,6 +160,12 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
             close(pipe_fd[1]);
         }
+
+        if (flags & W_APPEND_POOL) {
+            wm_append_sid(pid);
+            wfd->append_pool = 1;
+        }
+
         wfd->pid = pid;
         return wfd;
     }
@@ -230,6 +237,10 @@ int wpclose(wfd_t * wfd) {
     return wstatus;
 #else
     pid_t pid;
+
+    if (wfd->append_pool) {
+        wm_remove_sid(wfd->pid);
+    }
 
     while (pid = waitpid(wfd->pid, &wstatus, 0), pid == -1 && errno == EINTR);
     free(wfd);

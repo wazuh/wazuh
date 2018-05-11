@@ -12,6 +12,8 @@ typedef struct wm_osquery_monitor_t {
    char* log_path;
    char* config_path;
    int disable;
+   int msg_delay;
+   int queue_fd;
 } wm_osquery_monitor_t;
 
 int wm_osquery_monitor_read(xml_node **nodes, wmodule *module);
