@@ -17,7 +17,7 @@
 #include <signal.h>
 #include <stdio.h>
 
-#define TMP_CONFIG_PATH "tmp/osquery.conf.tmp"
+#define TMP_CONFIG_PATH "/tmp/osquery.conf.tmp"
 
 #define minfo(format, ...) mtinfo(WM_OSQUERYMONITOR_LOGTAG, format, ##__VA_ARGS__)
 #define mwarn(format, ...) mtwarn(WM_OSQUERYMONITOR_LOGTAG, format, ##__VA_ARGS__)
@@ -28,6 +28,7 @@
 static void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor);
 static void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
 static int wm_osquery_check_logfile(const char * path, FILE * fp);
+static int wm_osquery_packs(wm_osquery_monitor_t *osquery);
 
 static volatile int active = 1;
 static char *osquery_config_temp = NULL;
@@ -151,7 +152,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
     char config_path[PATH_MAX];
 
     snprintf(osqueryd_path, sizeof(osqueryd_path), "%s/osqueryd", osquery->bin_path);
-    snprintf(config_path, sizeof(config_path), "--config_path=%s/%s", DEFAULTDIR, TMP_CONFIG_PATH);
+    snprintf(config_path, sizeof(config_path), "--config_path=%s%s", DEFAULTDIR, TMP_CONFIG_PATH);
 
     // We check that the osquery demon is not down, in which case we run it again.
 
@@ -339,99 +340,102 @@ void wm_osquery_decorators()
     cJSON_Delete(root);
 }
 
-void wm_osquery_packs(wm_osquery_monitor_t *osquery_monitor)
+
+
+int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 {
-    //LEER ARCHIVO AGENT.CONF
-    char *agent_conf_path = NULL;
-    FILE *agent_conf_file = NULL;
-    FILE *osquery_config_file = NULL;
-    FILE *osquery_config_temp_file = NULL;
-    char *packs_line = NULL;
-    char *osquery_config = NULL;
+    FILE * osquery_config_file = NULL;
+    long filesize;
     char *content = NULL;
-    char *osquery_config_temp = NULL;
-    char *line = NULL;
-    char *firstIndex = NULL;
-    char *lastIndex = NULL;
-    char *namepath = NULL;
-    char *aux = NULL;
-    char *auxLine = NULL;
-    size_t line_size = OS_MAXSTR;
-    int num_chars = 0;
-    struct stat stp = {0};
-    osquery_config_temp = "/var/ossec/tmp/osquery.conf.tmp";
-    os_malloc(strlen(DEFAULTDIR) + strlen("/etc/shared/default/agent.conf") + 1, agent_conf_path);
-    os_malloc(OS_MAXSTR, line);
+    cJSON * root;
+    cJSON * packs;
+    int i;
+    int retval = -1;
 
-    snprintf(agent_conf_path, strlen(DEFAULTDIR) + strlen("/etc/shared/default/agent.conf") + 1, "%s%s", DEFAULTDIR, "/etc/shared/default/agent.conf");
-    packs_line = strdup(",\"packs\": {");
+    // Do we have packs defined?
 
-    if (agent_conf_file = fopen("/var/ossec/etc/shared/default/agent.conf", "r"), !agent_conf_file)
-    {
-        merror("Error reading angent config, exiting...");
-        pthread_exit(0);
+    for (i = 0; osquery->packs[i]; ++i);
+
+    if (!i) {
+        return 0;
     }
 
-    if (osquery_config_file = fopen(osquery_monitor->config_path, "r"), !osquery_config_file)
-    {
-        merror("Error reading osquery config, exiting...");
-        free(osquery_config);
-        pthread_exit(0);
-    }
-    if (stat(osquery_monitor->config_path, &stp) < 0)
-    {
-        merror("error in file descriptor, exiting..");
-        free(osquery_config);
-        pthread_exit(0);
-    }
-    int filesize = stp.st_size;
+    // Load original osquery configuration
 
-    os_malloc(filesize, content);
-
-    if (fread(content, 1, filesize - 2, osquery_config_file) == 0)
-    {
-        mterror(WM_OSQUERYMONITOR_LOGTAG, "error in reading");
-        //free input string
-        free(content);
+    if (osquery_config_file = fopen(osquery->config_path, "r"), !osquery_config_file) {
+        merror(FOPEN_ERROR, osquery->config_path, errno, strerror(errno));
+        return -1;
     }
 
-    while ((num_chars = getline(&line, &line_size, agent_conf_file)) && num_chars != -1)
-    {
-        if (strstr(line, "<pack>"))
-        {
+    // Get file size and alloc memory
 
-            os_malloc(strlen(line), auxLine);
-            firstIndex = strstr(line, ">") + 1;
-            lastIndex = strstr(firstIndex, "<");
-
-            namepath = strdup("\"Pack\": ");
-            auxLine = (char *)realloc(auxLine, (strlen(firstIndex) - strlen(lastIndex)));
-            memcpy(auxLine, firstIndex, strlen(firstIndex) - strlen(lastIndex));
-            os_malloc(strlen(namepath) + strlen(auxLine) + strlen("\"\0"), aux);
-            snprintf(aux, strlen(namepath) + strlen(auxLine) + 3, " %s\"%s", namepath, auxLine);
-            int newlen = strlen(packs_line) + strlen(aux);
-            packs_line = (char *)realloc(packs_line, newlen + 2);
-            strcat(packs_line, aux);
-            strcat(packs_line, "/*\",");
-        }
+    if (filesize = get_fp_size(osquery_config_file), filesize < 0) {
+        merror(FSEEK_ERROR, osquery->config_path, errno, strerror(errno));
+        goto end;
     }
-    strcat(packs_line, "}");
-    content = (char *)realloc(content, strlen(packs_line) + strlen(content) + 2);
-    char *finalAux = NULL;
-    os_malloc(strlen(packs_line) + strlen(content) + 2, finalAux);
-    snprintf(finalAux, strlen(packs_line) + strlen(content) + 2, "%s%s", content, packs_line);
-    osquery_config_temp_file = fopen(osquery_config_temp, "w");
-    fprintf(osquery_config_temp_file, "%s", finalAux);
-    fclose(osquery_config_temp_file);
 
-    free(agent_conf_path);
-    free(packs_line);
-    free(osquery_config);
+    os_malloc(filesize + 1, content);
+
+    // Get file and parse into JSON
+
+    if (fread(content, 1, filesize, osquery_config_file) == 0)
+    {
+        merror(FREAD_ERROR, osquery->config_path, errno, strerror(errno));
+        goto end;
+    }
+
+    content[filesize] = '\0';
+    fclose(osquery_config_file);
+    osquery_config_file = NULL;
+
+    if (root = cJSON_Parse(content), !root) {
+        mwarn("Couldn't parse JSON file '%s'", osquery->config_path);
+        goto end;
+    }
+
+    // Add packs to JSON
+
+    if (packs = cJSON_GetObjectItem(root, "packs"), !packs) {
+        packs = cJSON_CreateObject();
+        cJSON_AddItemToObject(root, "packs", packs);
+    }
+
+    for (i = 0; osquery->packs[i]; ++i) {
+        cJSON_AddStringToObject(packs, osquery->packs[i]->name, osquery->packs[i]->path);
+    }
+
+    // Print JSON into string
+
+    free(osquery->config_path);
+    os_strdup(DEFAULTDIR TMP_CONFIG_PATH, osquery->config_path);
+
     free(content);
-    free(line);
-    free(finalAux);
-    free(namepath);
-    free(aux);
+    content = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    filesize = strlen(content);
+
+    // Write new configuration
+
+    if (osquery_config_file = fopen(osquery->config_path, "w"), !osquery_config_file) {
+        merror(FOPEN_ERROR, osquery->config_path, errno, strerror(errno));
+        goto end;
+    }
+
+    if (fwrite(content, 1, filesize, osquery_config_file) != (size_t)filesize) {
+        merror("Couldn't write JSON content into configuration '%s': %s (%d)", osquery->config_path, strerror(errno), errno);
+        goto end;
+    }
+
+    retval = 0;
+
+end:
+
+    if (osquery_config_file) {
+        fclose(osquery_config_file);
+    }
+
+    free(content);
+    return retval;
 }
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
@@ -453,9 +457,12 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
         pthread_exit(NULL);
     }
 
-    // Parse configuration
+    // Handle configuration
 
-    wm_osquery_packs(osquery);
+    if (wm_osquery_packs(osquery) < 0) {
+        return NULL;
+    }
+
     wm_osquery_decorators(osquery);
 
     pthread_create(&thread1, NULL, (void *)&Execute_Osquery, osquery);
@@ -465,13 +472,22 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     pthread_join(thread1, NULL);
     return NULL;
 }
+
 void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
 {
-    if (!osquery_monitor)
+    int i;
+
+    if (osquery_monitor)
     {
         free(osquery_monitor->bin_path);
         free(osquery_monitor->log_path);
         free(osquery_monitor->config_path);
+
+        for (i = 0; osquery_monitor->packs[i]; ++i) {
+            free(osquery_monitor->packs[i]->name);
+            free(osquery_monitor->packs[i]->path);
+        }
+
         free(osquery_monitor);
     }
 }

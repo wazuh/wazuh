@@ -95,4 +95,6 @@ int w_ref_parent_folder(const char * path);
 
 ino_t get_fp_inode(FILE * fp);
 
+long get_fp_size(FILE * fp);
+
 #endif /* __FILE_H */

@@ -2063,3 +2063,34 @@ ino_t get_fp_inode(FILE * fp) {
     struct stat buf;
     return fstat(fileno(fp), &buf) ? (ino_t)-1 : buf.st_ino;
 }
+
+long get_fp_size(FILE * fp) {
+    long offset;
+    long size;
+
+    // Get initial position
+
+    if (offset = ftell(fp), offset < 0) {
+        return -1;
+    }
+
+    // Move to end
+
+    if (fseek(fp, 0, SEEK_END) < 0) {
+        return -1;
+    }
+
+    // Get ending position
+
+    if (size = ftell(fp), size < 0) {
+        return -1;
+    }
+
+    // Restore original offset
+
+    if (fseek(fp, offset, SEEK_SET) < 0) {
+        return -1;
+    }
+
+    return size;
+}

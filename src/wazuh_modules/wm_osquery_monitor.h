@@ -7,6 +7,11 @@
 
 extern const wm_context WM_OSQUERYMONITOR_CONTEXT;
 
+typedef struct wm_osquery_pack_t {
+    char * name;
+    char * path;
+} wm_osquery_pack_t;
+
 typedef struct wm_osquery_monitor_t {
    char* bin_path;
    char* log_path;
@@ -14,6 +19,7 @@ typedef struct wm_osquery_monitor_t {
    int disable;
    int msg_delay;
    int queue_fd;
+   wm_osquery_pack_t ** packs;
 } wm_osquery_monitor_t;
 
 int wm_osquery_monitor_read(xml_node **nodes, wmodule *module);
