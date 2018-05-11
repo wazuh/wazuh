@@ -19,8 +19,8 @@ typedef struct __Config {
     u_int8_t stats;
     u_int8_t integrity;
     u_int8_t syscheck_auto_ignore;
-    u_int8_t syscheck_ignore_frecuency;
-    u_int8_t syscheck_ignore_time;
+    int syscheck_ignore_frecuency;
+    int syscheck_ignore_time;
     u_int8_t syscheck_alert_new;
     u_int8_t rootcheck;
     u_int8_t hostinfo;
