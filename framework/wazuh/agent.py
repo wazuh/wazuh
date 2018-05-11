@@ -812,9 +812,11 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", node_name="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
         """
         Gets a list of available agents with basic attributes.
+        :param node_name: Filters by agents connected to the cluster node "node_name"
+        :param version: Filters by agent version.
         :param status: Filters by agent status: Active, Disconnected or Never connected.
         :param os_platform: Filters by OS platform.
         :param os_version: Filters by OS version.
@@ -854,7 +856,6 @@ class Agent:
             min_select_fields = {'id'} | select_fields_set if 'status' not in select_fields_set\
                                         else select_fields_set | {'id', 'last_keepalive', 'version'}
         else:
-            valid_select_fields.remove('node_name') # only return node_type if asked
             min_select_fields = valid_select_fields
 
         # save the fields that the user has selected
@@ -884,6 +885,9 @@ class Agent:
         if version != "all":
             request['version'] = re.sub( r'([a-zA-Z])([v])', r'\1 \2', version )
             query += ' AND version = :version'
+        if node_name != "all":
+            request['node_name'] = node_name.lower()
+            query += ' AND node_name = :node_name COLLATE NOCASE'
 
         # Search
         if search:
