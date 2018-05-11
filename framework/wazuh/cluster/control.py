@@ -47,21 +47,39 @@ def get_nodes(filter_node=None):
     request="get_nodes {}".format(filter_node) if filter_node else "get_nodes"
     return __execute(request)
 
-def get_nodes_api(filter_node=None, offset=0, limit=common.database_limit, sort=None, search=None):
+def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
     nodes = get_nodes()
-    response = {"items":[], "totalItems":len(nodes)}
+    valid_select_fiels = {"name", "version", "type", "ip"}
+    select_fields_param = {}
+    response = {"items":[], "totalItems":0}
+
+    if select:
+        select_fields_param = set(select['fields'])
+        if not select_fields_param.issubset(valid_select_fiels):
+            incorrect_fields = select_fields_param - valid_select_fiels
+            raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                    format(', '.join(list(valid_select_fiels)), ', '.join(incorrect_fields)))
 
     for node, data in nodes.items():
-        if filter_node and node not in filter_node:
+        if (filter_node and node not in filter_node) or (filter_type and data['type'] not in filter_type):
             continue
-        response["items"].append(data)
+        if select:
+            filtered_node = {}
+            for field in select_fields_param:
+                filtered_node.update({field:data[field]})
+        else:
+            filtered_node = data
+        response["items"].append(filtered_node)
 
     if search:
         response["items"] = search_array(response['items'], search['value'], search['negation'], fields=['name','type','version','ip'])
     if sort:
         response["items"] = sort_array(response['items'], sort['fields'], sort['order'])
+
+    response["totalItems"] = len(response["items"])
+
     if limit:
-        response["items"] = response["items"][int(offset):int(limit)]
+        response["items"] = response["items"][int(offset):int(limit)+1]
 
     return response
 
