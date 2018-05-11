@@ -83,7 +83,11 @@ def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.dat
     response["totalItems"] = len(response["items"])
 
     if limit:
-        response["items"] = response["items"][int(offset):int(limit)+1]
+        param_offset = int(offset)
+        param_limit = int(limit)
+        if param_offset != 0:
+            param_limit += 1
+        response["items"] = response["items"][param_offset:param_limit]
 
     return response
 
