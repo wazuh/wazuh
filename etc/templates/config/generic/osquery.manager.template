@@ -1,6 +1,5 @@
   <wodle name="osquery">
     <disabled>yes</disabled>
     <logpath>/var/log/osquery/osqueryd.results.log</logpath>
-    <binpath>/usr/bin</binpath>
     <add_labels>no</add_labels>
   </wodle>

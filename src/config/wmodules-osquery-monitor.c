@@ -23,7 +23,6 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     wm_osquery_monitor_t *osquery_monitor;
 
     os_calloc(1, sizeof(wm_osquery_monitor_t), osquery_monitor);
-    os_strdup("/usr/bin", osquery_monitor->bin_path);
     os_strdup("/var/log/osquery/osqueryd.results.log", osquery_monitor->log_path);
     os_strdup("/etc/osquery/osquery.conf", osquery_monitor->config_path);
     os_calloc(1, sizeof(wm_osquery_pack_t *), osquery_monitor->packs);

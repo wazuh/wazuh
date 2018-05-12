@@ -150,7 +150,14 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
     char osqueryd_path[PATH_MAX];
     char config_path[PATH_MAX];
 
-    snprintf(osqueryd_path, sizeof(osqueryd_path), "%s/osqueryd", osquery->bin_path);
+    if (osquery->bin_path && *osquery->bin_path) {
+        snprintf(osqueryd_path, sizeof(osqueryd_path), "%s/osqueryd", osquery->bin_path);
+    } else {
+        strncpy(osqueryd_path, "osqueryd", sizeof(osqueryd_path));
+        osqueryd_path[sizeof(osqueryd_path) - 1] = '\0';
+    }
+
+    mdebug1("Launching '%s' with config file '%s'", osqueryd_path, osquery->config_path);
     snprintf(config_path, sizeof(config_path), "--config_path=%s", osquery->config_path);
 
     // We check that the osquery demon is not down, in which case we run it again.
