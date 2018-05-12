@@ -8,8 +8,14 @@ static const char *XML_LOGPATH = "logpath";
 static const char *XML_CONFIGPATH = "configpath";
 static const char *XML_PACK = "pack";
 static const char *XML_PACKNAME = "name";
+static const char *XML_ADD_LABELS = "add_labels";
 
-//Función de lectura
+static short eval_bool(const char *str)
+{
+    return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID;
+}
+
+// Reading function
 int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
 {
     unsigned int i;
@@ -34,14 +40,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
         }
         else if (!strcmp(nodes[i]->element, XML_DISABLED))
         {
-            if (!strcmp(nodes[i]->content, "yes"))
-                osquery_monitor->disable = 1;
-            else if (!strcmp(nodes[i]->content, "no"))
-            {
-                osquery_monitor->disable = 0;
-            }
-            else
-            {
+            if (osquery_monitor->disable = eval_bool(nodes[i]->content), osquery_monitor->disable == OS_INVALID) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -76,6 +75,13 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
             os_realloc(osquery_monitor->packs, (pack_i + 2) * sizeof(wm_osquery_pack_t *), osquery_monitor->packs);
             osquery_monitor->packs[pack_i] = pack;
             osquery_monitor->packs[++pack_i] = NULL;
+        } else if (!strcmp(nodes[i]->element, XML_ADD_LABELS)) {
+            if (osquery_monitor->add_labels = eval_bool(nodes[i]->content), osquery_monitor->disable == OS_INVALID) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else {
+            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_OSQUERYMONITOR_CONTEXT.name);
         }
 
     }

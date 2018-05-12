@@ -31,7 +31,6 @@ static int wm_osquery_check_logfile(const char * path, FILE * fp);
 static int wm_osquery_packs(wm_osquery_monitor_t *osquery);
 
 static volatile int active = 1;
-static char *osquery_config_temp = NULL;
 
 const wm_context WM_OSQUERYMONITOR_CONTEXT =
     {
@@ -152,7 +151,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
     char config_path[PATH_MAX];
 
     snprintf(osqueryd_path, sizeof(osqueryd_path), "%s/osqueryd", osquery->bin_path);
-    snprintf(config_path, sizeof(config_path), "--config_path=%s%s", DEFAULTDIR, TMP_CONFIG_PATH);
+    snprintf(config_path, sizeof(config_path), "--config_path=%s", osquery->config_path);
 
     // We check that the osquery demon is not down, in which case we run it again.
 
@@ -212,148 +211,120 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 
         wstatus = WEXITSTATUS(wpclose(wfd));
 
-        // If osquery was alive less than 10 seconds, give up
-
-        if (time(NULL) - time_started < 10) {
+        if (wstatus == 127) {
+            // 127 means error in exec
+            merror("Couldn't execute osquery (%s). Check file and permissions.", osqueryd_path);
+            active = 0;
+            return NULL;
+        } else if (time(NULL) - time_started < 10) {
+            // If osquery was alive less than 10 seconds, give up
             merror("Osquery exited with code %d. Closing module.", wstatus);
             active = 0;
-            pthread_exit(NULL);
+            return NULL;
         } else {
             mwarn("Osquery exited with code %d. Restarting.", wstatus);
         }
     }
 }
 
-void wm_osquery_decorators()
+int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
 {
-    char *line = strdup("");
-    char *select = strdup("SELECT ");
-    char *as = strdup(" AS ");
     char *key = NULL;
     char *value = NULL;
-    char *coma = strdup(", ");
-    char *json_block = NULL;
-    char *firstPath = strdup(DEFAULTDIR);
-    char *lastpath = strdup("/etc/ossec.conf");
-    char *configPath = NULL;
-    cJSON *root;
+    cJSON *root = NULL;
     cJSON *decorators;
     cJSON *always;
     wlabel_t *labels;
-    struct stat stp = {0};
-    char *content;
-    FILE *osquery_conf = NULL;
-    //PATH CREATION
+    char buffer[OS_MAXSTR];
+    int retval = -1;
+    int i;
 
-    osquery_config_temp = strdup("/var/ossec/tmp/osquery.conf.tmp");
-    os_malloc(strlen(firstPath) + strlen(lastpath)+1, configPath);
+    // Is label addition enabled?
 
-    strcpy(configPath, firstPath);
-    strcat(configPath, lastpath);
-
-    //CJSON OBJECTS
-    int i = 0;
+    if (!osquery->add_labels) {
+        return 0;
+    }
 
     os_calloc(1, sizeof(wlabel_t), labels);
 
-    if (ReadConfig(CLABELS | CBUFFER, configPath, &labels, NULL) < 0)
-        return;
+    if (ReadConfig(CLABELS, DEFAULTCPATH, &labels, NULL) < 0)
+        goto end;
 
 #ifdef CLIENT
-    if (ReadConfig(CLABELS, AGENTCONFIG, &labels, NULL) < 0)
+    if (ReadConfig(CLABELS | CAGENT_CONFIG, AGENTCONFIG, &labels, NULL) < 0)
     {
-        return;
+        goto end;
     }
-
 #endif
 
-    root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "decorators", decorators = cJSON_CreateObject());
-    cJSON_AddItemToObject(decorators, "always", always = cJSON_CreateArray());
+    // Do we have labels defined?
 
-    //OPEN OSQUERY CONF
-    if (osquery_conf = fopen(osquery_config_temp, "r"), !osquery_conf)
-    {
-        merror("Cannot read tmp config file, exiting...");
-        pthread_exit(0);
+    if (!labels[0].key) {
+        retval = 0;
+        goto end;
     }
-    if(stat(osquery_config_temp, &stp)<0)
-    {
-        merror("invalid tmp file descriptor, exiting...");
-        pthread_exit(0);
+
+    // Load original osquery configuration
+
+    if (root = json_fread(osquery->config_path), !root) {
+        merror("Couldn't load configuration file '%s': %s (%d)", osquery->config_path, strerror(errno), errno);
+        goto end;
     }
-    int filesize = stp.st_size;
 
-    os_malloc(filesize + 1, content);
+    // Add labels to JSON as decorators
 
-    if (fread(content, 1, filesize, osquery_conf) == 0)
-    {
-        mterror(WM_OSQUERYMONITOR_LOGTAG, "error in reading");
-        //free input string
-        free(content);
+    if (decorators = cJSON_GetObjectItem(root, "decorators"), !decorators) {
+        decorators = cJSON_CreateObject();
+        cJSON_AddItemToObject(root, "decorators", decorators);
     }
-    content[filesize] = '\0';
-    //CHECK IF CONF HAVE DECORATORS
-    int decorated = 0;
-    int newlen2;
-    if (strstr(content, "decorators") != NULL)
-        decorated = 1;
-    else
-        decorated = 0;
 
-    //ADD DECORATORS FROM AGENT LABELS
-    if (!decorated)
-    {
+    if (always = cJSON_GetObjectItem(decorators, "always"), !always) {
+        always = cJSON_CreateArray();
+        cJSON_AddItemToObject(decorators, "always", always);
+    }
 
-        for (i = 0; labels[i].key != NULL; i++)
-        {
-            key = strdup(labels[i].key);
-            value = strdup(labels[i].value);
-            int newlen = sizeof(char) * (strlen("select") + strlen(line) + strlen(key) + strlen(as) + strlen(value) + (6 * sizeof(char)));
-            line = (char *)realloc(line, newlen);
-            snprintf(line, newlen, "select '%s' as '%s';", value, key);
-            cJSON_AddStringToObject(always, "line", line);
+    for (i = 0; labels[i].key; ++i) {
+        // Prevent SQL injection
+        key = wstr_replace(labels[i].key, "'", "''");
+        value = wstr_replace(labels[i].value, "'", "''");
+
+        if (snprintf(buffer, sizeof(buffer), "SELECT '%s' AS '%s';", value, key) < (int)sizeof(buffer)) {
+            mdebug2("Adding decorator: %s", buffer);
+            cJSON_AddItemToArray(always, cJSON_CreateString(buffer));
+        } else {
+            mwarn("Label '%s' too long. Couldn't insert decorator.", labels[i].key);
         }
 
-        json_block = cJSON_PrintUnformatted(root);
-        memmove(json_block, json_block + 1, strlen(json_block));
-        content[strlen(content) - 1] = ',';
-        newlen2 = strlen(content) + strlen(json_block)+1;
-        content = realloc(content, newlen2);
-        strcat(content, json_block);
-        fclose(osquery_conf);
+        free(key);
+        free(value);
     }
-    //Write content to TMPFile
-    //content[newlen2]='\0';
-    osquery_conf = fopen(osquery_config_temp, "w");
-    fprintf(osquery_conf, "%s", content);
-    fclose(osquery_conf);
 
-    //FREE MEMORY
-    free(line);
-    free(select);
-    free(as);
-    free(key);
-    free(value);
-    free(coma);
-    free(firstPath);
-    free(lastpath);
-    free(configPath);
-    free(json_block);
+    // Change configuration file path
+
+    free(osquery->config_path);
+    os_strdup(DEFAULTDIR TMP_CONFIG_PATH, osquery->config_path);
+
+    // Write new configuration
+
+    if (json_fwrite(osquery->config_path, root) < 0) {
+        merror("At %s(): couldn't write JSON content into configuration '%s': %s (%d)", __func__, osquery->config_path, strerror(errno), errno);
+        goto end;
+    }
+
+    retval = 0;
+
+end:
+    labels_free(labels);
     cJSON_Delete(root);
+    return retval;
 }
-
-
 
 int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 {
-    FILE * osquery_config_file = NULL;
-    long filesize;
-    char *content = NULL;
     cJSON * root;
     cJSON * packs;
     int i;
-    int retval = -1;
+    int retval = 0;
 
     // Do we have packs defined?
 
@@ -365,35 +336,9 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 
     // Load original osquery configuration
 
-    if (osquery_config_file = fopen(osquery->config_path, "r"), !osquery_config_file) {
-        merror(FOPEN_ERROR, osquery->config_path, errno, strerror(errno));
+    if (root = json_fread(osquery->config_path), !root) {
+        merror("Couldn't load configuration file '%s': %s (%d)", osquery->config_path, strerror(errno), errno);
         return -1;
-    }
-
-    // Get file size and alloc memory
-
-    if (filesize = get_fp_size(osquery_config_file), filesize < 0) {
-        merror(FSEEK_ERROR, osquery->config_path, errno, strerror(errno));
-        goto end;
-    }
-
-    os_malloc(filesize + 1, content);
-
-    // Get file and parse into JSON
-
-    if (fread(content, 1, filesize, osquery_config_file) == 0)
-    {
-        merror(FREAD_ERROR, osquery->config_path, errno, strerror(errno));
-        goto end;
-    }
-
-    content[filesize] = '\0';
-    fclose(osquery_config_file);
-    osquery_config_file = NULL;
-
-    if (root = cJSON_Parse(content), !root) {
-        mwarn("Couldn't parse JSON file '%s'", osquery->config_path);
-        goto end;
     }
 
     // Add packs to JSON
@@ -407,36 +352,19 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
         cJSON_AddStringToObject(packs, osquery->packs[i]->name, osquery->packs[i]->path);
     }
 
-    // Print JSON into string
+    // Change configuration file path
 
     free(osquery->config_path);
     os_strdup(DEFAULTDIR TMP_CONFIG_PATH, osquery->config_path);
 
-    free(content);
-    content = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
-    filesize = strlen(content);
-
     // Write new configuration
 
-    if (osquery_config_file = fopen(osquery->config_path, "w"), !osquery_config_file) {
-        merror(FOPEN_ERROR, osquery->config_path, errno, strerror(errno));
-        goto end;
-    }
-    if (fwrite(content, 1, filesize, osquery_config_file) != (size_t)filesize) {
-        merror("Couldn't write JSON content into configuration '%s': %s (%d)", osquery->config_path, strerror(errno), errno);
-        goto end;
+    if (json_fwrite(osquery->config_path, root) < 0) {
+        merror("At %s(): couldn't write JSON content into configuration '%s': %s (%d)", __func__, osquery->config_path, strerror(errno), errno);
+        retval = -1;
     }
 
-    retval = 0;
-
-end:
-
-    if (osquery_config_file) {
-        fclose(osquery_config_file);
-    }
-
-    free(content);
+    cJSON_Delete(root);
     return retval;
 }
 
@@ -446,6 +374,7 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     pthread_t thread1, thread2;
 
     osquery->msg_delay = 1000000 / wm_max_eps;
+    minfo("Module started.");
 
     // Connect to queue
 
@@ -456,22 +385,22 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
-        pthread_exit(NULL);
+        return NULL;
     }
 
     // Handle configuration
 
-    if (wm_osquery_packs(osquery) < 0) {
+    if (wm_osquery_packs(osquery) < 0 || wm_osquery_decorators(osquery) < 0) {
         return NULL;
     }
-
-    wm_osquery_decorators(osquery);
 
     pthread_create(&thread1, NULL, (void *)&Execute_Osquery, osquery);
     pthread_create(&thread2, NULL, (void *)&Read_Log, osquery);
 
     pthread_join(thread2, NULL);
     pthread_join(thread1, NULL);
+
+    minfo("Closing module.");
     return NULL;
 }
 

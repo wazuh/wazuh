@@ -3,4 +3,5 @@
     <logpath>/var/log/osquery/osqueryd.results.log</logpath>
     <binpath>/usr/bin</binpath>
     <configpath>${INSTALLDIR}/etc/shared/osquery.conf</configpath>
+    <add_labels>yes</add_labels>
   </wodle>
