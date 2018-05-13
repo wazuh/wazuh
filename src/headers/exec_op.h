@@ -12,10 +12,14 @@
 #ifndef EXEC_OP_H
 #define EXEC_OP_H
 
-#define W_BIND_STDOUT   01
-#define W_BIND_STDERR   02
-#define W_CHECK_WRITE   04
-#define W_APPEND_POOL   10
+#define W_BIND_STDOUT   001
+#define W_BIND_STDERR   002
+#define W_CHECK_WRITE   004
+#define W_APPEND_POOL   010
+
+#ifdef WIN32
+#define WEXITSTATUS(x) x
+#endif
 
 typedef struct wfd_t {
     FILE * file;

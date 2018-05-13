@@ -74,8 +74,10 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         }
     }
 
+    mdebug2("%s(): path = '%s', command = '%s'", __func__, path, lpCommandLine);
+
     if (!CreateProcess(path, lpCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
-        merror("CreateProcess(): %ld", GetLastError());
+        mdebug1("CreateProcess(): %ld", GetLastError());
 
         if (fp) {
             fclose(fp);
@@ -91,6 +93,11 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
     if (fp) {
         CloseHandle(hPipe[1]);
         wfd->file = fp;
+    }
+
+    if (flags & W_APPEND_POOL) {
+        wm_append_handle(pinfo.hProcess);
+        wfd->append_pool = 1;
     }
 
     wfd->pinfo = pinfo;
@@ -221,6 +228,11 @@ int wpclose(wfd_t * wfd) {
 
 #ifdef WIN32
     DWORD exitcode;
+
+    if (wfd->append_pool) {
+        wm_remove_handle(wfd->pinfo.hProcess);
+    }
+
     switch (WaitForSingleObject(wfd->pinfo.hProcess, INFINITE)) {
     case WAIT_OBJECT_0:
         GetExitCodeProcess(wfd->pinfo.hProcess, &exitcode);

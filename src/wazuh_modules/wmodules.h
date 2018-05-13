@@ -91,11 +91,19 @@ void wm_destroy();
  */
 int wm_exec(char *command, char **output, int *exitcode, int secs);
 
-// Add process group to pool
+#ifdef WIN32
+// Add process to pool
+void wm_append_handle(HANDLE hProcess);
+
+// Remove process group from pool
+void wm_remove_handle(HANDLE hProcess);
+#else
+// Add process to pool
 void wm_append_sid(pid_t sid);
 
 // Remove process group from pool
 void wm_remove_sid(pid_t sid);
+#endif
 
 // Terminate every child process group
 void wm_kill_children();

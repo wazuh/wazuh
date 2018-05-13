@@ -51,7 +51,12 @@ cJSON * json_fread(const char * path) {
     buffer[size] = '\0';
 
     if (item = cJSON_Parse(buffer), !item) {
-        mdebug1("Couldn't parse JSON file '%s'", path);
+        mdebug1("Couldn't parse JSON file '%s'. Trying to clear comments.", path);
+        json_strip(buffer);
+
+        if (item = cJSON_Parse(buffer), !item) {
+            mdebug1("Couldn't parse JSON file '%s'.", path);
+        }
     }
 
 end:
@@ -97,4 +102,48 @@ end:
     }
 
     return retval;
+}
+
+// Clear C/C++ style comments from a JSON string
+void json_strip(char * json) {
+    char * line;
+    char * cursor;
+    char * next;
+
+    for (line = json; line; line = next) {
+        if (next = strchr(line, '\n'), next) {
+            *next = '\0';
+        }
+
+        // Skip whitespaces
+        cursor = line + strspn(line, " \t");
+
+        if (!strncmp(cursor, "//", 2)) {
+            if (next) {
+                // If there are more lines, copy all of them
+                *next = '\n';
+                memmove(cursor, next, strlen(next) + 1);
+                next = cursor + 1;
+            } else {
+                // Otherwise end string here
+                *cursor = '\0';
+                break;
+            }
+        } else if (!strncmp(cursor, "/*", 2)) {
+            if (next) {
+                *next = '\n';
+            }
+
+            if (next = strstr(cursor + 2, "*/"), next) {
+                memmove(cursor, next + 2, strlen(next + 2) + 1);
+                next = cursor;
+            } else {
+                // This is a syntax error - unterminated comment
+                break;
+            }
+        } else if (next) {
+            // Restore newline and move forward
+            *next++ = '\n';
+        }
+    }
 }

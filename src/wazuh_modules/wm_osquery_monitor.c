@@ -17,7 +17,13 @@
 #include <signal.h>
 #include <stdio.h>
 
-#define TMP_CONFIG_PATH "/tmp/osquery.conf.tmp"
+#define TMP_CONFIG_PATH "tmp/osquery.conf.tmp"
+
+#ifdef WIN32
+#define OSQUERYD_BIN "osqueryd.exe"
+#else
+#define OSQUERYD_BIN "osqueryd"
+#endif
 
 #define minfo(format, ...) mtinfo(WM_OSQUERYMONITOR_LOGTAG, format, ##__VA_ARGS__)
 #define mwarn(format, ...) mtwarn(WM_OSQUERYMONITOR_LOGTAG, format, ##__VA_ARGS__)
@@ -150,11 +156,15 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
     char osqueryd_path[PATH_MAX];
     char config_path[PATH_MAX];
 
-    if (osquery->bin_path && *osquery->bin_path) {
-        snprintf(osqueryd_path, sizeof(osqueryd_path), "%s/osqueryd", osquery->bin_path);
-    } else {
-        strncpy(osqueryd_path, "osqueryd", sizeof(osqueryd_path));
+    // Windows agent needs the complete path to osqueryd
+#ifndef WIN32
+    if (!(osquery->bin_path && *osquery->bin_path)) {
+        strncpy(osqueryd_path, OSQUERYD_BIN, sizeof(osqueryd_path));
         osqueryd_path[sizeof(osqueryd_path) - 1] = '\0';
+    } else
+#endif
+    {
+        snprintf(osqueryd_path, sizeof(osqueryd_path), "%s/" OSQUERYD_BIN, osquery->bin_path);
     }
 
     mdebug1("Launching '%s' with config file '%s'", osqueryd_path, osquery->config_path);
@@ -274,7 +284,12 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
     // Load original osquery configuration
 
     if (root = json_fread(osquery->config_path), !root) {
-        merror("Couldn't load configuration file '%s': %s (%d)", osquery->config_path, strerror(errno), errno);
+        if (errno) {
+            merror("Couldn't load configuration file '%s': %s (%d)", osquery->config_path, strerror(errno), errno);
+        } else {
+            merror("Couldn't load configuration file '%s'. Maybe format is invalid.", osquery->config_path);
+        }
+
         goto end;
     }
 
@@ -309,7 +324,12 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
     // Change configuration file path
 
     free(osquery->config_path);
-    os_strdup(DEFAULTDIR TMP_CONFIG_PATH, osquery->config_path);
+
+#ifdef WIN32
+    os_strdup(TMP_CONFIG_PATH, osquery->config_path);
+#else
+    os_strdup(DEFAULTDIR "/" TMP_CONFIG_PATH, osquery->config_path);
+#endif
 
     // Write new configuration
 
@@ -344,7 +364,12 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
     // Load original osquery configuration
 
     if (root = json_fread(osquery->config_path), !root) {
-        merror("Couldn't load configuration file '%s': %s (%d)", osquery->config_path, strerror(errno), errno);
+        if (errno) {
+            merror("Couldn't load configuration file '%s': %s (%d)", osquery->config_path, strerror(errno), errno);
+        } else {
+            merror("Couldn't load configuration file '%s'. Maybe format is invalid.", osquery->config_path);
+        }
+
         return -1;
     }
 
@@ -362,7 +387,12 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
     // Change configuration file path
 
     free(osquery->config_path);
-    os_strdup(DEFAULTDIR TMP_CONFIG_PATH, osquery->config_path);
+
+#ifdef WIN32
+    os_strdup(TMP_CONFIG_PATH, osquery->config_path);
+#else
+    os_strdup(DEFAULTDIR "/" TMP_CONFIG_PATH, osquery->config_path);
+#endif
 
     // Write new configuration
 
