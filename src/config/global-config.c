@@ -17,9 +17,12 @@
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
+    int j = 0;
     unsigned int ign_size = 1;
     const char *xml_ignore = "ignore";
     const char *xml_auto_ignore = "auto_ignore";
+    const char *xml_ignore_frecuency = "frecuency";
+    const char *xml_ignore_time = "timeframe";
     const char *xml_alert_new_files = "alert_new_files";
 
     _Config *Config;
@@ -48,6 +51,8 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
+            Config->syscheck_ignore_frecuency = 10;
+            Config->syscheck_ignore_time = 3600;
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_auto_ignore = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
@@ -56,6 +61,33 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+            for (j = 0; node[i]->attributes && node[i]->attributes[j]; ++j) {
+                if (strcmp(node[i]->attributes[0], xml_ignore_frecuency) == 0) {
+                    if (!OS_StrIsNum(node[i]->values[0])) {
+                        merror(XML_VALUEERR, node[i]->attributes[0], node[i]->values[0]);
+                        return (OS_INVALID);
+                    }
+                    Config->syscheck_ignore_frecuency = atoi(node[i]->values[0]);
+                    if (Config->syscheck_ignore_frecuency < 1 || Config->syscheck_ignore_frecuency > 99) {
+                        merror(XML_VALUEERR, node[i]->attributes[1], node[i]->values[1]);
+                        return (OS_INVALID);
+                    }
+                } else if (strcmp(node[i]->attributes[1], xml_ignore_time) == 0) {
+                    if (!OS_StrIsNum(node[i]->values[1])) {
+                        merror(XML_VALUEERR, node[i]->attributes[1], node[i]->values[1]);
+                        return (OS_INVALID);
+                    }
+                    Config->syscheck_ignore_time = atoi(node[i]->values[1]);
+                    if (Config->syscheck_ignore_time < 0 || Config->syscheck_ignore_time > 43200) {
+                        merror(XML_VALUEERR, node[i]->attributes[1], node[i]->values[1]);
+                        return (OS_INVALID);
+                    }
+                } else {
+                    merror(XML_INVATTR, node[i]->attributes[j], node[i]->element);
+                    return OS_INVALID;
+                }
+            }
+
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_alert_new = 1;

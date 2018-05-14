@@ -139,9 +139,9 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 if (stat(file_name, &statbuf_lnk) == 0) {
                     if (S_ISREG(statbuf_lnk.st_mode)) {
                         if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
-                            strncpy(mf_sum, "xxx", 4);
-                            strncpy(sf_sum, "xxx", 4);
-                            strncpy(sf256_sum, "xxx", 4);
+                            strncpy(mf_sum, "n/a", 4);
+                            strncpy(sf_sum, "n/a", 4);
+                            strncpy(sf256_sum, "n/a", 4);
                         }
                     }
                 }
@@ -150,9 +150,9 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
 #endif
             {
-                strncpy(mf_sum, "xxx", 4);
-                strncpy(sf_sum, "xxx", 4);
-                strncpy(sf256_sum, "xxx", 4);
+                strncpy(mf_sum, "n/a", 4);
+                strncpy(sf_sum, "n/a", 4);
+                strncpy(sf256_sum, "n/a", 4);
             }
 
             if (opts & CHECK_SEECHANGES) {
@@ -179,6 +179,27 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 alertdump = seechanges_addfile(file_name);
             }
 
+#ifdef WIN32
+            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:::%s:%s:%s:%s:%s:%ld:%ld",
+                     opts & CHECK_SIZE ? '+' : '-',
+                     opts & CHECK_PERM ? '+' : '-',
+                     opts & CHECK_OWNER ? '+' : '-',
+                     opts & CHECK_GROUP ? '+' : '-',
+                     opts & CHECK_MD5SUM ? '+' : '-',
+                     sha1s,
+                     sha256s,
+                     opts & CHECK_MTIME ? '+' : '-',
+                     opts & CHECK_INODE ? '+' : '-',
+                     opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
+                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                     opts & CHECK_MD5SUM ? mf_sum : "xxx",
+                     opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                     opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
+                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0);
+#else
             snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%s:%ld:%ld",
                      opts & CHECK_SIZE ? '+' : '-',
                      opts & CHECK_PERM ? '+' : '-',
@@ -200,6 +221,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0);
+#endif
 
             if (OSHash_Add(syscheck.fp, file_name, strdup(alert_msg)) <= 0) {
                 merror("Unable to add file to db: %s", file_name);
@@ -208,6 +230,21 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             /* Send the new checksum to the analysis server */
             alert_msg[1172] = '\0';
 
+#ifdef WIN32
+            snprintf(alert_msg, 1172, "%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s %s%s%s",
+                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
+                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                opts & CHECK_MD5SUM ? mf_sum : "xxx",
+                opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
+                file_name,
+                alertdump ? "\n" : "",
+                alertdump ? alertdump : "");
+#else
             snprintf(alert_msg, 1172, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
@@ -223,6 +260,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
+#endif
             send_syscheck_msg(alert_msg);
             free(alertdump);
         } else {

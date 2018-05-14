@@ -11,7 +11,7 @@
     <alert_new_files>yes</alert_new_files>
 
     <!-- Don't ignore files that change more than 3 times -->
-    <auto_ignore>no</auto_ignore>
+    <auto_ignore frecuency="10" timeframe="3600">no</auto_ignore>
 
     <!-- Directories to check  (perform all possible verifications) -->
     <directories check_all="yes">/etc,/usr/bin,/usr/sbin</directories>
