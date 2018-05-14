@@ -204,12 +204,14 @@ def get_files_status(node_type, get_md5=True):
 
         if item['source'] == node_type or item['source'] == 'all':
             if item.get("files") and "agent-info.merged" in item["files"]:
-                agents_to_send, _ = merge_agent_info(merge_type="agent-info",
-                                                time_limit_seconds=cluster_items\
-                                                ['sync_options']['get_agentinfo_newer_than'])
+                agents_to_send, merged_path = merge_agent_info(merge_type="agent-info",
+                                                               time_limit_seconds=cluster_items\
+                                                                        ['sync_options']['get_agentinfo_newer_than'])
                 if agents_to_send == 0:
                     return {}
-            fullpath = common.ossec_path + file_path
+                fullpath = common.ossec_path + path.dirname(merged_path)
+            else:
+                fullpath = common.ossec_path + file_path
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
@@ -282,11 +284,11 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
                 agent_name_re = re.match(r'(^.+)-(.+)$', path.basename(file_path))
                 agent_name = agent_name_re.group(1) if agent_name_re else path.basename(file_path)
                 if agent_name not in agent_names:
-                    raise Exception("Received an unexistent agent status file: {}".format(agent_name))
+                    raise WazuhException(3010, agent_name)
             elif is_agent_group:
                 agent_id = path.basename(file_path)
                 if agent_id not in agent_ids:
-                    raise Exception("Received the group of an unexistent agent: {}".format(agent_id))
+                    raise WazuhException(3010, agent_id)
 
             try:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')

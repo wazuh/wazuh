@@ -15,7 +15,7 @@ import time
 from datetime import datetime
 from operator import itemgetter
 
-from wazuh import common
+from wazuh import common, WazuhException
 from wazuh.agent import Agent
 from wazuh.cluster import __version__
 from wazuh.cluster.cluster import get_cluster_items, _update_file, \
@@ -113,7 +113,7 @@ class MasterManagerHandler(ServerHandler):
 
 
     # Private methods
-    def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path, client_name, cluster_control_key, cluster_control_subkey, tag):
+    def _update_client_files_in_master(self, json_file, zip_dir_path, client_name, cluster_control_key, cluster_control_subkey, tag):
         def update_file(n_errors, name, data, file_time=None, content=None, agents=None):
             # Full path
             full_path = common.ossec_path + name
@@ -133,14 +133,21 @@ class MasterManagerHandler(ServerHandler):
             try:
                 fcntl.lockf(lock_file, fcntl.LOCK_EX)
                 _update_file(file_path=name, new_content=content,
-                umask_int=umask, mtime=file_time, w_mode=w_mode,
-                tmp_dir=tmp_path, whoami='master', agents=agents)
+                             umask_int=umask, mtime=file_time, w_mode=w_mode,
+                             tmp_dir=tmp_path, whoami='master', agents=agents)
 
+            except WazuhException as e:
+                logger.debug2("{}: Warning updating file '{}': {}".format(tag, name, e))
+                error_tag = 'warnings'
+                error_updating_file = True
             except Exception as e:
                 logger.debug2("{}: Error updating file '{}': {}".format(tag, name, e))
-                n_errors[data['cluster_item_key']] = 1 if not n_errors.get(data['cluster_item_key']) \
-                                                          else n_errors[data['cluster_item_key']] + 1
+                error_tag = 'errors'
                 error_updating_file = True
+
+            if error_updating_file:
+                n_errors[error_tag][data['cluster_item_key']] = 1 if not n_errors[error_tag].get(data['cluster_item_key']) \
+                                                                  else n_errors[error_tag][data['cluster_item_key']] + 1
 
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
             lock_file.close()
@@ -152,7 +159,7 @@ class MasterManagerHandler(ServerHandler):
         tmp_path = "/queue/cluster/{}/tmp_files".format(client_name)
         cluster_items = get_cluster_items()['files']
         n_merged_files = 0
-        n_errors = {}
+        n_errors = {'errors': {}, 'warnings': {}}
 
         # create temporary directory for lock files
         lock_directory = "{}/queue/cluster/lockdir".format(common.ossec_path)
@@ -188,9 +195,13 @@ class MasterManagerHandler(ServerHandler):
         after = time.time()
         logger.debug("{0}: Time updating client files: {1:.2f}s. Total of updated client files: {2}.".format(tag, after - before, n_merged_files))
 
-        if sum(n_errors.values()) > 0:
+        if sum(n_errors['errors'].values()) > 0:
             logging.error("{}: Errors updating client files: {}".format(tag,
-                ' | '.join(['{}: {}'.format(key, value) for key, value in n_errors.items()])
+                ' | '.join(['{}: {}'.format(key, value) for key, value in n_errors['errors'].items()])
+            ))
+        if sum(n_errors['warnings'].values()) > 0:
+            logging.warning("{}: Received non exiting clients' statuses or groups assignments to update. Skipping: {}".format(tag,
+                ' | '.join(['{}: {}'.format(key, value) for key, value in n_errors['warnings'].items()])
             ))
 
         # Save info for healthcheck
@@ -229,8 +240,7 @@ class MasterManagerHandler(ServerHandler):
         logger.info("{0}: Updating master files: Start.".format(tag))
 
         # Update files
-        self._update_client_files_in_master(client_files_json, client_files_json,
-                                            zip_dir_path, client_name,
+        self._update_client_files_in_master(client_files_json, zip_dir_path, client_name,
                                             cluster_control_key, cluster_control_subkey,
                                             tag)
 
