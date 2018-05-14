@@ -333,7 +333,10 @@ if __name__ == '__main__':
         logging.getLogger('').setLevel(logging.DEBUG) #10
 
     try:
-        if args.list_agents:
+        if args.filter_status and not args.list_agents:
+            print ("Wrong arguments.")
+            parser.print_help()
+        elif args.list_agents:
             if is_master:
                 print_agents(args.filter_status, args.filter_node)
             else:
