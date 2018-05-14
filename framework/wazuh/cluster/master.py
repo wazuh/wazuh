@@ -538,6 +538,7 @@ class MasterManager(Server):
 
     def get_healthcheck(self, filter_nodes=None):
         clients_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_clients().items() if not filter_nodes or name in filter_nodes}
+        n_connected_nodes = len(self.get_connected_clients().items()) + 1 # clients + master
 
         cluster_config = read_config()
         if  not filter_nodes or cluster_config['node_name'] in filter_nodes:
@@ -549,7 +550,7 @@ class MasterManager(Server):
         for node_name in clients_info.keys():
             clients_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(status='Active', node_name=node_name)['totalItems']
 
-        health_info = {"n_connected_nodes":len(clients_info), "nodes": clients_info}
+        health_info = {"n_connected_nodes":n_connected_nodes, "nodes": clients_info}
         return health_info
 
 
