@@ -277,6 +277,10 @@
             "pci_dss": {
               "type": "keyword",
               "doc_values": "true"
+            },
+            "gdpr": {
+              "type": "keyword",
+              "doc_values": "true"
             }
           }
         },
