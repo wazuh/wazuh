@@ -12,7 +12,7 @@
 #ifndef WM_VUNALIZER_DB
 #define WM_VUNALIZER_DB
 
-#define CVE_DBS_PATH            "wodles/"
+#define CVE_DBS_PATH            "queue/vulnerabilities/"
 #define CVE_DB CVE_DBS_PATH     "cve.db"
 
 #define AGENTS_TABLE            "AGENTS"
