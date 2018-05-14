@@ -275,6 +275,8 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 return (0);
             }
 
+            OSHash_Delete(syscheck.last_check, file_name);
+
             if (strcmp(c_sum, buf + SK_DB_NATTR) != 0) {
                 // Update database
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
@@ -429,14 +431,28 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
 
 int run_dbcheck()
 {
-    int i = 0;
+    unsigned int i = 0;
+    OSHashNode *curr_node;
+    char alert_msg[PATH_MAX+4];
 
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
         read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]);
         i++;
     }
+    /* Check for deleted files */
+    for (i = 0; i <= syscheck.last_check->rows; i++) {
+        curr_node = syscheck.last_check->table[i];
+        if(curr_node && curr_node->key) {
+            mdebug2("Sending delete msg for file: %s", curr_node->key);
+            snprintf(alert_msg, PATH_MAX + 4, "-1 %s", curr_node->key);
+            send_syscheck_msg(alert_msg);
+            OSHash_Delete(syscheck.fp, curr_node->key);
+        }
+    }
 
+    /* Duplicate hash table to check for deleted files */
+    syscheck.last_check = OSHash_Duplicate(syscheck.fp);
     return (0);
 }
 
@@ -446,7 +462,8 @@ int create_db()
 
     /* Create store data */
     syscheck.fp = OSHash_Create();
-    if (!syscheck.fp) {
+    syscheck.last_check = OSHash_Create();
+    if (!syscheck.fp || !syscheck.last_check) {
         merror_exit("Unable to create syscheck database. Exiting.");
     }
 
@@ -480,6 +497,9 @@ int create_db()
         }
         i++;
     } while (syscheck.dir[i] != NULL);
+
+    /* Duplicate hash table to check for deleted files */
+    syscheck.last_check = OSHash_Duplicate(syscheck.fp);
 
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
     if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
