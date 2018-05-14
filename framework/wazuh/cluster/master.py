@@ -72,7 +72,7 @@ class MasterManagerHandler(ServerHandler):
             return 'ack', self.set_worker(command, mcf_thread, data)
         elif command == 'get_nodes':
             data = data.decode()
-            response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
+            response = {name:data['info'] for name,data in self.server.get_connected_clients().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master",  "version": __version__}})
             serialized_response = ['ok', json.dumps(response)]
@@ -117,6 +117,7 @@ class MasterManagerHandler(ServerHandler):
         def update_file(n_errors, name, data, file_time=None, content=None, agents=None):
             # Full path
             full_path = common.ossec_path + name
+            error_updating_file = False
 
             # Cluster items information: write mode and umask
             w_mode = cluster_items[data['cluster_item_key']]['write_mode']
@@ -139,18 +140,18 @@ class MasterManagerHandler(ServerHandler):
                 logger.debug2("{}: Error updating file '{}': {}".format(tag, name, e))
                 n_errors[data['cluster_item_key']] = 1 if not n_errors.get(data['cluster_item_key']) \
                                                           else n_errors[data['cluster_item_key']] + 1
+                error_updating_file = True
 
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
             lock_file.close()
 
-            return n_errors
+            return n_errors, error_updating_file
 
 
         # tmp path
         tmp_path = "/queue/cluster/{}/tmp_files".format(client_name)
         cluster_items = get_cluster_items()['files']
-        n_agentsinfo = 0
-        n_agentgroups = 0
+        n_merged_files = 0
         n_errors = {}
 
         # create temporary directory for lock files
@@ -162,7 +163,6 @@ class MasterManagerHandler(ServerHandler):
             agents = Agent.get_agents_overview(select={'fields':['name']}, limit=None)['items']
             agent_names = set(map(itemgetter('name'), agents))
             agent_ids = set(map(itemgetter('id'), agents))
-            agents = None
         except Exception as e:
             logger.debug2("{}: Error getting agent ids and names: {}".format(tag, e))
             agent_names, agent_ids = {}, {}
@@ -172,23 +172,21 @@ class MasterManagerHandler(ServerHandler):
             for filename, data in json_file.items():
                 if data['merged']:
                     for file_path, file_data, file_time in unmerge_agent_info(data['merge_type'], zip_dir_path, data['merge_name']):
-                        n_errors = update_file(n_errors, file_path, data, file_time, file_data, (agent_names, agent_ids))
-                        if data['merge_type'] == 'agent-info':
-                            n_agentsinfo += 1
-                        else:
-                            n_agentgroups += 1
+                        n_errors, error_updating_file = update_file(n_errors, file_path, data, file_time, file_data, (agent_names, agent_ids))
+                        if not error_updating_file:
+                            n_merged_files += 1
 
                         if self.stopper.is_set():
                             break
                 else:
-                    n_errors = update_file(n_errors, filename, data)
+                    n_errors, _ = update_file(n_errors, filename, data)
 
         except Exception as e:
             logger.error("{}: Error updating client files: '{}'.".format(tag, e))
             raise e
 
         after = time.time()
-        logger.debug("{0}: Time updating client files: {1:.2f}s. Agents-info updated total: {2}. Agent-groups updated total: {3}.".format(tag, after - before, n_agentsinfo, n_agentgroups))
+        logger.debug("{0}: Time updating client files: {1:.2f}s. Total of updated client files: {2}.".format(tag, after - before, n_merged_files))
 
         if sum(n_errors.values()) > 0:
             logging.error("{}: Errors updating client files: {}".format(tag,
@@ -196,8 +194,7 @@ class MasterManagerHandler(ServerHandler):
             ))
 
         # Save info for healthcheck
-        status_number = n_agentsinfo if cluster_control_key == 'last_sync_agentinfo' else n_agentgroups
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status=status_number)
+        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status=n_merged_files)
 
 
     # New methods
@@ -540,7 +537,8 @@ class MasterManager(Server):
 
 
     def get_healthcheck(self, filter_nodes=None):
-        clients_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_clients().iteritems() if not filter_nodes or name in filter_nodes}
+        clients_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_clients().items() if not filter_nodes or name in filter_nodes}
+        n_connected_nodes = len(self.get_connected_clients().items()) + 1 # clients + master
 
         cluster_config = read_config()
         if  not filter_nodes or cluster_config['node_name'] in filter_nodes:
@@ -552,7 +550,7 @@ class MasterManager(Server):
         for node_name in clients_info.keys():
             clients_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(status='Active', node_name=node_name)['totalItems']
 
-        health_info = {"n_connected_nodes":len(clients_info), "nodes": clients_info}
+        health_info = {"n_connected_nodes":n_connected_nodes, "nodes": clients_info}
         return health_info
 
 
@@ -618,6 +616,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
         serialized_response = ""
+        data = data.decode()
 
         if command == 'get_files':
             split_data = data.split('%--%', 2)
@@ -661,13 +660,9 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_nodes':
-            node_list = data if data != 'None' else None
-            response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
+            response = {name:data['info'] for name,data in self.manager.get_connected_clients().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
-
-            if node_list:
-                response = {node:info for node, info in response.iteritems() if node in node_list}
 
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response

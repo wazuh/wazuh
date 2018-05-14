@@ -704,17 +704,13 @@ class ClientInternalSocketHandler(InternalSocketHandler):
                     response = {my_file:content for my_file,content in response.items() if my_file in file_list}
                 response = ['ok', json.dumps(response)]
         elif command == "get_nodes":
-            node_list = data if data != 'None' else None
             node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
             type_response = node_response[0]
             response = node_response[1]
             if type_response == "err":
                 response = ["err", json.dumps({"err":response})]
             else:
-                response = json.loads(response)
-                if node_list:
-                    response = {node:info for node, info in response.iteritems() if node in node_list}
-                response = ['ok', json.dumps(response)]
+                response = ['ok', response]
 
         elif command == "get_health":
             node_list = data if data != 'None' else None

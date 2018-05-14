@@ -43,16 +43,21 @@ def check_cluster_status():
 
 ## Requests
 
-def get_nodes(filter_node=None):
-    request="get_nodes {}".format(filter_node) if filter_node else "get_nodes"
-    return __execute(request)
+def get_nodes(filter_list_nodes=None):
+    request="get_nodes {}"
+    nodes = __execute(request)
+    response = {"items":{}, "node_error":[]}
+    response["items"] = {node:node_info for node, node_info in nodes.items() if not filter_list_nodes or node in filter_list_nodes}
+    if filter_list_nodes:
+        response["node_error"] = [node for node in filter_list_nodes if node not in response["items"]]
+    return response
 
 def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
-    nodes = get_nodes()
+    request="get_nodes {}"
+    nodes = __execute(request)
     valid_select_fiels = {"name", "version", "type", "ip"}
     valid_types = {"client", "master"}
     select_fields_param = {}
-    response = {"items":[], "totalItems":0}
 
     if select:
         select_fields_param = set(select['fields'])
@@ -64,8 +69,9 @@ def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.dat
         if not filter_type in valid_types:
             raise WazuhException(1728, "{0} is not valid. Allowed types: {1}.".format(filter_type, ', '.join(list(valid_types))))
 
+    response = {"items":[], "totalItems":0}
     for node, data in nodes.items():
-        if (filter_node and node not in filter_node) or (filter_type and data['type'] not in filter_type):
+        if (filter_node and node != filter_node) or (filter_type and data['type'] not in filter_type):
             continue
         if select:
             filtered_node = {}
@@ -74,6 +80,12 @@ def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.dat
         else:
             filtered_node = data
         response["items"].append(filtered_node)
+
+    if filter_node:
+        if len(response["items"]):
+            return response["items"][0]
+        else:
+            raise WazuhException(1730, "{0}.".format(filter_node))
 
     if search:
         response["items"] = search_array(response['items'], search['value'], search['negation'], fields=['name','type','version','ip'])

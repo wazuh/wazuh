@@ -771,7 +771,7 @@ def send_to_internal_socket(socket_name, message):
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     socket_address = "{}/{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
     logger.debug("[Transport-InternalSocketSend] Starting: {}.".format(socket_address))
-    response = ""
+    response = b""
 
     # Connect to UDS socket
     try:
@@ -792,7 +792,7 @@ def send_to_internal_socket(socket_name, message):
     logger.debug("[Transport-InternalSocketSend] Request sent.")
 
     # Receive response
-    buf = ""
+    buf = b""
     buf_size = 4096
     try:
         while not response:
@@ -810,7 +810,7 @@ def send_to_internal_socket(socket_name, message):
         sock.close()
         logging.debug("[Transport-InternalSocketSend] Socket closed.")
 
-    return response
+    return response.decode()
 
 
 class ProcessFiles(ClusterThread):

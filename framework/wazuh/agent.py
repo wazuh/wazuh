@@ -789,7 +789,7 @@ class Agent:
 
     @staticmethod
     def get_agents_dict(conn, select_fields, user_select_fields):
-        select_fields = map(lambda x: x.replace('`',''), select_fields)
+        select_fields = list(map(lambda x: x.replace('`',''), select_fields))
         db_api_name = {name:name for name in select_fields}
         db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
         fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
@@ -865,13 +865,17 @@ class Agent:
             limit_seconds = 1830 # 600*3 + 30
             result = datetime.now() - timedelta(seconds=limit_seconds)
             request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-
-            if status.lower() == 'active':
+            status = status.lower()
+            if status == 'active':
                 query += ' AND (last_keepalive >= :time_active or id = 0)'
-            elif status.lower() == 'disconnected':
+            elif status == 'disconnected':
                 query += ' AND last_keepalive < :time_active'
-            elif status.lower() == "never connected":
+            elif status == "never connected" or status == "neverconnected":
                 query += ' AND last_keepalive IS NULL AND id != 0'
+            elif status == 'pending':
+                query += ' AND last_keepalive IS NOT NULL AND version IS NULL'
+            else:
+                raise WazuhException(1729, status)
 
         if os_platform != "all":
             request['os_platform'] = os_platform
