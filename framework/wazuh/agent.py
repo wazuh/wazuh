@@ -789,7 +789,7 @@ class Agent:
 
     @staticmethod
     def get_agents_dict(conn, select_fields, user_select_fields):
-        select_fields = map(lambda x: x.replace('`',''), select_fields)
+        select_fields = list(map(lambda x: x.replace('`',''), select_fields))
         db_api_name = {name:name for name in select_fields}
         db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
         fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])

@@ -72,7 +72,7 @@ class MasterManagerHandler(ServerHandler):
             return 'ack', self.set_worker(command, mcf_thread, data)
         elif command == 'get_nodes':
             data = data.decode()
-            response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
+            response = {name:data['info'] for name,data in self.server.get_connected_clients().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master",  "version": __version__}})
             serialized_response = ['ok', json.dumps(response)]
@@ -615,6 +615,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
         serialized_response = ""
+        data = data.decode()
 
         if command == 'get_files':
             split_data = data.split('%--%', 2)
@@ -658,9 +659,10 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_nodes':
-            response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
+            response = {name:data['info'] for name,data in self.manager.get_connected_clients().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
+
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
 
