@@ -1808,7 +1808,7 @@ int wm_vulnerability_update_oval(update_node *update) {
     }
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_STOP_REFRESH_DB, update->dist_ext);
 
-success = 1;
+    success = 1;
 free_mem:
     if (tmp_file) {
         free(tmp_file);
@@ -1816,6 +1816,8 @@ free_mem:
     OS_ClearNode(node);
     OS_ClearNode(chld_node);
     OS_ClearXML(&xml);
+    remove(CVE_TEMP_FILE);
+    remove(CVE_FIT_TEMP_FILE);
 
     if (success) {
         return 0;
@@ -2232,7 +2234,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
         os_calloc(1, sizeof(last_scan), scan);
         os_strdup(scan_id, scan->last_scan_id);
         scan->last_scan_time = time(NULL);
-        OSHash_Add(agents_triag, strdup(agent->agent_id), scan);
+        OSHash_Add(agents_triag, agent->agent_id, scan);
         request = VU_SOFTWARE_FULL_REQ; // Check all at the first time
     }
 
