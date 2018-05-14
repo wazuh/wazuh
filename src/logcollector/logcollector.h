@@ -68,6 +68,15 @@ void *read_audit(logreader *lf, int *rc, int drop_it);
 /* Read json events */
 void *read_json(logreader *lf, int *rc, int drop_it);
 
+/* Init queue */
+void w_msg_queue_init(size_t size);
+
+/* Push message into the queue */
+int w_msg_queue_push(const char * buffer, unsigned long size);
+
+/* Pop message from the queue */
+char * w_msg_queue_pop();
+
 #ifdef WIN32
 void win_startel();
 void win_readel();
@@ -94,5 +103,9 @@ typedef enum {
     NEXT_IT,
     LEAVE_IT
 } IT_control;
+
+/* Message queue */
+w_queue_t * msg_queue;
+
 
 #endif /* __LOGREADER_H */

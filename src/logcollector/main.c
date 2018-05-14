@@ -160,6 +160,11 @@ int main(int argc, char **argv)
         merror_exit(QUEUE_FATAL, DEFAULTQPATH);
     }
 
+    /* Init message queue */
+    w_msg_queue_init(OS_SIZE_4096);
+    
     /* Main loop */
     LogCollectorStart();
+
+    /* Free the message queue */
 }

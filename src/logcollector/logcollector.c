@@ -32,6 +32,8 @@ int maximum_files;
 int current_files = 0;
 static int _cday = 0;
 logsocket default_agent = { .name = "agent" };
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t available = PTHREAD_COND_INITIALIZER;
 
 
 static char *rand_keepalive_str(char *dst, int size)
@@ -938,4 +940,47 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
     }
 
     return d_control;
+}
+
+void w_msg_queue_init(size_t size){
+    msg_queue = queue_init(size);
+}
+
+int w_msg_queue_push(const char * buffer, unsigned long size){
+    char *str;
+    int result;
+
+    w_mutex_lock(&mutex);
+    os_calloc(OS_MAXSTR+1,sizeof(char),str);
+
+    if (result = queue_push(msg_queue, str), result == 0) {
+        w_cond_signal(&available);
+    }
+
+    w_mutex_unlock(&mutex);
+
+    return result;
+}
+
+char * w_msg_queue_pop(){
+    char *str;
+    str = queue_pop(msg_queue);
+
+    w_mutex_lock(&mutex);
+
+    while (str = (message_t *)queue_pop(queue), !str) {
+        w_cond_wait(&available, &mutex);
+    }
+
+    w_mutex_unlock(&mutex);
+    return str;
+}
+
+void w_msg_queue_free(){
+    char *str;
+
+    while(str = (char *)queue_pop(msg_queue), str){
+        free(str);
+    }
+    queue_free(msg_queue);
 }
