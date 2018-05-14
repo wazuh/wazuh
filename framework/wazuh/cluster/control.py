@@ -52,7 +52,6 @@ def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.dat
     valid_select_fiels = {"name", "version", "type", "ip"}
     valid_types = {"client", "master"}
     select_fields_param = {}
-    response = {"items":[], "totalItems":0}
 
     if select:
         select_fields_param = set(select['fields'])
@@ -64,8 +63,9 @@ def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.dat
         if not filter_type in valid_types:
             raise WazuhException(1728, "{0} is not valid. Allowed types: {1}.".format(filter_type, ', '.join(list(valid_types))))
 
+    response = {"items":[], "totalItems":0}
     for node, data in nodes.items():
-        if (filter_node and node not in filter_node) or (filter_type and data['type'] not in filter_type):
+        if (filter_node and node != filter_node) or (filter_type and data['type'] not in filter_type):
             continue
         if select:
             filtered_node = {}
@@ -74,6 +74,12 @@ def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.dat
         else:
             filtered_node = data
         response["items"].append(filtered_node)
+
+    if filter_node:
+        if len(response["items"]):
+            return response["items"][0]
+        else:
+            raise WazuhException(1730, "{0}.".format(filter_node))
 
     if search:
         response["items"] = search_array(response['items'], search['value'], search['negation'], fields=['name','type','version','ip'])
