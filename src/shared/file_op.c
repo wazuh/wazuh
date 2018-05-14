@@ -685,14 +685,15 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
 
     fseek(fp, 0, SEEK_END);
     files_size = ftell(fp);
-
+    mdebug1("FILE:%s",files);
     tmpfile = strchr(files+OFFSET, '/');
+    mdebug1("TMPFILE1:%s",tmpfile);
     if (tmpfile) {
         tmpfile++;
     } else {
-        tmpfile = files;
+        tmpfile = strrchr(files,'/');
     }
-    mdebug1("TMPFILE:%s",tmpfile);
+    mdebug1("TMPFILE2:%s",tmpfile);
 
 
     //CHECK IF DIRECTORY
@@ -701,24 +702,18 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
             stat(files, &statbuff);
 
             if(S_ISDIR(statbuff.st_mode)){
-                //mdebug1("DIRECTORY: %s",files);
+                 mdebug1("DIRECTORY: %s",files);
                  DIR *newDIR = opendir(files);
                  struct dirent *ent;
 
                  while ((ent = readdir(newDIR)) != NULL) {
                      if(strcmp(ent->d_name,".")!=0&&strcmp(ent->d_name,"..")!=0){
-                        int newlen = strlen(files)+strlen(ent->d_name);
                         char* newpath=NULL;
                         //realpath(f,buff);
-                        os_malloc(strlen(files)+1,newpath);
-                        newpath = strdup(files);
-                        strcat(newpath,"/");
-
-                        newpath = (char*)realloc(newpath,newlen);
-
-                        strcat(newpath,ent->d_name);
-
+                        os_malloc(PATH_MAX,newpath);
+                        snprintf(newpath,PATH_MAX,"%s/%s",files,ent->d_name);
                         MergeAppendFile(finalpath, newpath, tag);
+                        free(newpath);
                      }
                      /*else if(ent->d_type==DT_DIR){
                         mdebug1("newpath DIR: %s",files);
