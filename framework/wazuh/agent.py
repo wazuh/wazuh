@@ -865,13 +865,17 @@ class Agent:
             limit_seconds = 1830 # 600*3 + 30
             result = datetime.now() - timedelta(seconds=limit_seconds)
             request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-
-            if status.lower() == 'active':
+            status = status.lower()
+            if status == 'active':
                 query += ' AND (last_keepalive >= :time_active or id = 0)'
-            elif status.lower() == 'disconnected':
+            elif status == 'disconnected':
                 query += ' AND last_keepalive < :time_active'
-            elif status.lower() == "never connected":
+            elif status == "never connected" or status == "neverconnected":
                 query += ' AND last_keepalive IS NULL AND id != 0'
+            elif status == 'pending':
+                query += ' AND last_keepalive IS NOT NULL AND version IS NULL'
+            else:
+                raise WazuhException(1729, status)
 
         if os_platform != "all":
             request['os_platform'] = os_platform

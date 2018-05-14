@@ -99,6 +99,7 @@ class WazuhException(Exception):
         1726: 'Ossec authd is not running',
         1727: 'Error listing group files',
         1728: 'Invalid node type',
+        1729: 'Agent status not valid. Valid statuses are Active, Disconnected, Pending and Never Connected.',
 
         # Manager:
 
