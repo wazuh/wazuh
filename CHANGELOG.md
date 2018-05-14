@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - New internal option to enable merged file creation by Remoted. ([#603](https://github.com/wazuh/wazuh/pull/603))
+- Created alert item for GDPR and GPG13. ([#608](https://github.com/wazuh/wazuh/pull/608))
 
 ### Fixed
 
