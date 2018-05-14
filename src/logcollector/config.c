@@ -21,6 +21,7 @@ int LogCollectorConfig(const char *cfgfile)
     modules |= CSOCKET;
 
     log_config.config = NULL;
+    log_config.globs = NULL;
     log_config.socket_list = NULL;
     log_config.agent_cfg = 0;
     log_config.accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
@@ -30,6 +31,7 @@ int LogCollectorConfig(const char *cfgfile)
     open_file_attempts = getDefine_Int("logcollector", "open_attempts", 2, 998);
     vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
     maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
+    maximum_files = getDefine_Int("logcollector", "max_files", 0, 100000);
     sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
 
     if (maximum_lines > 0 && maximum_lines < 100) {
@@ -49,6 +51,7 @@ int LogCollectorConfig(const char *cfgfile)
 #endif
 
     logff = log_config.config;
+    globs = log_config.globs;
     logsk = log_config.socket_list;
 
     // List readed sockets

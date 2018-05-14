@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
 - Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
 - Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
+- Add rescanning of expanded files with wildcards in logcollector ([#332](https://github.com/wazuh/wazuh/pull/332))
 
 ### Changed
 

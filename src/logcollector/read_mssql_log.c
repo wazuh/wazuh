@@ -14,11 +14,10 @@
 
 
 /* Send MS SQL message and check the return code */
-static void __send_mssql_msg(int pos, int drop_it, char *buffer)
-{
+static void __send_mssql_msg(logreader *lf, int drop_it, char *buffer) {
     mdebug2("Reading MSSQL message: '%s'", buffer);
     if (drop_it == 0) {
-        if (SendMSGtoSCK(logr_queue, buffer, logff[pos].file, LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
+        if (SendMSGtoSCK(logr_queue, buffer, lf->file, LOCALFILE_MQ, lf->target_socket, lf->outformat) < 0) {
             merror(QUEUE_SEND);
             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                 merror_exit(QUEUE_FATAL, DEFAULTQPATH);
@@ -28,8 +27,7 @@ static void __send_mssql_msg(int pos, int drop_it, char *buffer)
 }
 
 /* Read MS SQL log files */
-void *read_mssql_log(int pos, int *rc, int drop_it)
-{
+void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
     int need_clear = 0;
     char *p;
@@ -43,7 +41,7 @@ void *read_mssql_log(int pos, int *rc, int drop_it)
     *rc = 0;
 
     /* Get new entry */
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Get buffer size */
@@ -107,7 +105,7 @@ void *read_mssql_log(int pos, int *rc, int drop_it)
 
             /* If not, send the saved one and store the new one for later */
             else {
-                __send_mssql_msg(pos, drop_it, buffer);
+                __send_mssql_msg(lf, drop_it, buffer);
 
                 /* Store current one at the buffer */
                 strncpy(buffer, str, str_len + 2);
@@ -145,9 +143,9 @@ void *read_mssql_log(int pos, int *rc, int drop_it)
 
     /* Send whatever is stored */
     if (buffer[0] != '\0') {
-        __send_mssql_msg(pos, drop_it, buffer);
+        __send_mssql_msg(lf, drop_it, buffer);
     }
 
-    mdebug2("Read %d lines from %s", lines, logff[pos].file);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }
