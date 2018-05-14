@@ -190,7 +190,7 @@ def print_file_status_master(filter_file_list, filter_node_list):
 
     data = []
     # Convert JSON data to table format
-    for node_name in sorted(files.iterkeys()):
+    for node_name in sorted(files.keys()):
 
         if not files[node_name]:
             continue
@@ -198,7 +198,7 @@ def print_file_status_master(filter_file_list, filter_node_list):
             node_error[node_name] = files[node_name]
             continue
 
-        for file_name in sorted(files[node_name].iterkeys()):
+        for file_name in sorted(files[node_name].keys()):
             my_file = [node_name, file_name, files[node_name][file_name]['mod_time'].split('.', 1)[0], files[node_name][file_name]['md5']]
             data.append(my_file)
 
@@ -206,7 +206,7 @@ def print_file_status_master(filter_file_list, filter_node_list):
 
     if len(node_error) > 0:
         print ("Error:")
-        for node, error in node_error.iteritems():
+        for node, error in node_error.items():
             print (" - {}: {}".format(node, error))
 
 
@@ -214,7 +214,7 @@ def print_file_status_client(filter_file_list, node_name):
     my_files = __execute(my_function=get_files, my_args=(filter_file_list, node_name,))
     headers = ["Node", "File name", "Modification time", "MD5"]
     data = []
-    for file_name in sorted(my_files.iterkeys()):
+    for file_name in sorted(my_files.keys()):
             my_file = [node_name, file_name, my_files[file_name]['mod_time'].split('.', 1)[0], my_files[file_name]['md5']]
             data.append(my_file)
 
@@ -223,18 +223,23 @@ def print_file_status_client(filter_file_list, node_name):
 
 
 ### Get nodes
-def print_nodes_status(filter_node):
-    nodes = __execute(my_function=get_nodes, my_args=(filter_node,))
+def print_nodes_status(filter_node=None):
+    response = __execute(my_function=get_nodes, my_args=(filter_node,))
+
+    nodes = response["items"]
     headers = ["Name", "Address", "Type", "Version"]
-    data = [[nodes[node_name]['name'], nodes[node_name]['ip'], nodes[node_name]['type'], nodes[node_name]['version']] for node_name in sorted(nodes.iterkeys())]
+    data = [[nodes[node_name]['name'], nodes[node_name]['ip'], nodes[node_name]['type'], nodes[node_name]['version']] for node_name in sorted(nodes.keys())]
     __print_table(data, headers, True)
+
+    if len(response["node_error"]):
+        print ("The following nodes could not be found: {}.".format(' ,'.join(response["node_error"])))
 
 
 ### Sync
 def sync_master(filter_node):
     node_response = __execute(my_function=sync, my_args=(filter_node,))
     headers = ["Node", "Response"]
-    data = [[node, response] for node, response in node_response.iteritems()]
+    data = [[node, response] for node, response in node_response.items()]
     __print_table(data, headers, True)
 
 

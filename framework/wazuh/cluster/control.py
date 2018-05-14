@@ -43,12 +43,18 @@ def check_cluster_status():
 
 ## Requests
 
-def get_nodes(filter_node=None):
-    request="get_nodes {}".format(filter_node) if filter_node else "get_nodes"
-    return __execute(request)
+def get_nodes(filter_list_nodes=None):
+    request="get_nodes {}"
+    nodes = __execute(request)
+    response = {"items":{}, "node_error":[]}
+    response["items"] = {node:node_info for node, node_info in nodes.items() if not filter_list_nodes or node in filter_list_nodes}
+    if filter_list_nodes:
+        response["node_error"] = [node for node in filter_list_nodes if node not in response["items"]]
+    return response
 
 def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
-    nodes = get_nodes()
+    request="get_nodes {}"
+    nodes = __execute(request)
     valid_select_fiels = {"name", "version", "type", "ip"}
     valid_types = {"client", "master"}
     select_fields_param = {}
