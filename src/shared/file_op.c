@@ -685,15 +685,14 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
 
     fseek(fp, 0, SEEK_END);
     files_size = ftell(fp);
-    mdebug1("FILE:%s",files);
     tmpfile = strchr(files+OFFSET, '/');
-    mdebug1("TMPFILE1:%s",tmpfile);
+   
     if (tmpfile) {
         tmpfile++;
     } else {
         tmpfile = strrchr(files,'/');
     }
-    mdebug1("TMPFILE2:%s",tmpfile);
+
 
 
     //CHECK IF DIRECTORY
@@ -715,11 +714,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
                         MergeAppendFile(finalpath, newpath, tag);
                         free(newpath);
                      }
-                     /*else if(ent->d_type==DT_DIR){
-                        mdebug1("newpath DIR: %s",files);
-                        MergeAppendFile(finalpath, files, tag);
-                     }*/
-                }
+
             }
             else{
                 //mdebug1("FILES: %s",files);
