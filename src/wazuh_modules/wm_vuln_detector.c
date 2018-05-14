@@ -1808,7 +1808,7 @@ int wm_vulnerability_update_oval(update_node *update) {
     }
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_STOP_REFRESH_DB, update->dist_ext);
 
-success = 1;
+    success = 1;
 free_mem:
     if (tmp_file) {
         free(tmp_file);
@@ -1816,6 +1816,8 @@ free_mem:
     OS_ClearNode(node);
     OS_ClearNode(chld_node);
     OS_ClearXML(&xml);
+    remove(CVE_TEMP_FILE);
+    remove(CVE_FIT_TEMP_FILE);
 
     if (success) {
         return 0;
