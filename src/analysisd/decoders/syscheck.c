@@ -207,9 +207,10 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
     size_t sn_size;
     int agent_id;
     int changes = 0;
-    unsigned int st;
-    unsigned int sf;
-
+    int st = 0;
+    int sf = 0;
+    int comment_buf = 0;
+    
     char *saved_sum;
     char *saved_name;
     char *saved_time;
@@ -500,34 +501,34 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* Provide information about the file */
-                snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
+                comment_buf = snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
                          "'%.756s'\n"
                          "%s"
                          "%s"
                          "%s"
                          "%s"
                          "%s"
-                         "%s"
-                         "%s%s",
+                         "%s",
                          f_name,
                          sdb.size,
                          sdb.perm,
                          sdb.owner,
                          sdb.gowner,
                          sdb.md5,
-                         sdb.sha1,
-                         lf->data ? "What changed:\n" : "",
-                         lf->data ? lf->data : ""
+                         sdb.sha1
                         );
 
                 if(!changes) {
                     lf->data = NULL;
                     return 0;
+                } else {
+                    os_strdup(sdb.comment, lf->changes_msg);
                 }
-                else {
-                    os_strdup(sdb.comment, lf->diff);
+
+                if(lf->data) {
+                    snprintf(sdb.comment+comment_buf, OS_MAXSTR-comment_buf, "What changed:\n%s", lf->data);
+                    os_strdup(sdb.comment+comment_buf, lf->diff);
                 }
-                    
 
                 lf->event_type = FIM_MODIFIED;
                 break;

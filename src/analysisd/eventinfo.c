@@ -528,6 +528,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->inode_before = 0;
     lf->inode_after = 0;
     lf->diff = NULL;
+    lf->changes_msg = NULL;
     lf->previous = NULL;
     lf->labels = NULL;
 
@@ -676,6 +677,9 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->diff) {
         free(lf->diff);
+    }
+    if (lf->changes_msg) {
+        free(lf->changes_msg);
     }
 
     /* Free node to delete */

@@ -100,6 +100,7 @@ typedef struct _Eventinfo {
     long inode_before;
     long inode_after;
     char *diff;
+    char *changes_msg;
     const char *previous;
     const wlabel_t *labels;
 } Eventinfo;
