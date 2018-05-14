@@ -714,6 +714,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
                         MergeAppendFile(finalpath, newpath, tag);
                         free(newpath);
                      }
+                 }
 
             }
             else{
