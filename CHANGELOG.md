@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 - New internal option to enable merged file creation by Remoted. ([#603](https://github.com/wazuh/wazuh/pull/603))
 - Created alert item for GDPR and GPG13. ([#608](https://github.com/wazuh/wazuh/pull/608))
 
+### Changed
+
+- Set default agent limit to 14.000 and file descriptor limit to 65.536 per process. ([#624](https://github.com/wazuh/wazuh/pull/624))
+
 ### Fixed
 
 - Fixed agent wait condition and improve logging messages. ([#550](https://github.com/wazuh/wazuh/pull/550))
