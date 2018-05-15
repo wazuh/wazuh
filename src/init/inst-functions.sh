@@ -705,7 +705,11 @@ InstallCommon(){
     fi
 
     if [ ! -f ${PREFIX}/etc/client.keys ]; then
-        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+        if [ ${INSTYPE} = 'agent' ]; then
+            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+        else
+            ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+        fi
     fi
 
     if [ ! -f ${PREFIX}/etc/ossec.conf ]; then
@@ -776,8 +780,8 @@ InstallLocal(){
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/rules
 
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b update/ruleset/RULESET_VERSION ${PREFIX}/ruleset/VERSION
-    ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
-    ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
 
     ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX}
@@ -864,7 +868,7 @@ InstallAgent(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/incoming
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
-    ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
+    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/wpk_root.pem ${PREFIX}/etc/
 
 }
