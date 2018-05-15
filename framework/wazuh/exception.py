@@ -123,7 +123,7 @@ class WazuhException(Exception):
         3007: 'Client.keys file received in master node',
         3008: 'Received invalid agent status',
         3009: 'Error executing request to internal socket',
-
+        3010: 'Received the status/group of an unexisting agent',
         3011: 'Agent info file received in a client node',
         3012: 'Cluster is not running',
         3013: 'Cluster is disabled',

@@ -60,7 +60,7 @@
             "description": "user CDB lists"
         },
 
-        "/queue/cluster/": {
+        "/queue/agent-info/": {
             "umask": "0o117",
             "source": "client",
             "write_mode": "atomic",
