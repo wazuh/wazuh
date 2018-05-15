@@ -11,7 +11,7 @@ ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 endif
 LUA_PLAT=posix
-MAXAGENTS?=8000
+MAXAGENTS?=40000
 REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
