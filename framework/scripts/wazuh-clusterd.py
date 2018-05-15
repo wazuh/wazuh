@@ -18,7 +18,6 @@ try:
     import ctypes.util
     import socket
     from signal import signal, SIGINT, SIGTERM
-    from pwd import getpwnam
     from sys import argv, exit, path, version_info
     from os.path import dirname
     from os import seteuid, setgid, getpid, kill, unlink
@@ -239,9 +238,8 @@ if __name__ == '__main__':
 
     # Drop privileges to ossec
     if not args.r:
-        pwdnam_ossec = getpwnam('ossec')
-        setgid(pwdnam_ossec.pw_gid)
-        seteuid(pwdnam_ossec.pw_uid)
+        setgid(common.ossec_gid)
+        seteuid(common.ossec_uid)
 
     # Creating pid file
     create_pid("wazuh-clusterd", getpid())
