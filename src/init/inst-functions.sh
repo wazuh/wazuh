@@ -653,6 +653,9 @@ InstallCommon(){
         ${INSTALL} -m 0750 -o root -g 0 libwazuhext.dylib ${PREFIX}/lib
     else
         ${INSTALL} -m 0750 -o root -g 0 libwazuhext.so ${PREFIX}/lib
+        if [ "$DIST_NAME$DIST_VER"="rhel5" ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/libwazuhext.so
+        fi
     fi
 
   ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
