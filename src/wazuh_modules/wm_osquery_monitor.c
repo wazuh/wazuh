@@ -48,7 +48,7 @@ const wm_context WM_OSQUERYMONITOR_CONTEXT =
 void *Read_Log(wm_osquery_monitor_t * osquery)
 {
     int i = 0;
-    ino_t current_inode;
+    wino_t current_inode;
     char line[OS_MAXSTR];
     FILE *result_log = NULL;
     char * end;
@@ -76,7 +76,7 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
 
         // Save file inode
 
-        if (current_inode = get_fp_inode(result_log), current_inode == (ino_t)-1) {
+        if (current_inode = get_fp_inode(result_log), current_inode == (wino_t)-1) {
             merror("Couldn't get inode of file '%s': %s (%d)", osquery->log_path, strerror(errno), errno);
             fclose(result_log);
             continue;
@@ -140,16 +140,45 @@ endloop:
  */
 int wm_osquery_check_logfile(const char * path, FILE * fp) {
     struct stat buf;
-    ino_t old_inode;
+    wino_t old_inode;
     long old_size;
 
-    if (old_inode = get_fp_inode(fp), old_inode == (ino_t)-1) {
+    if (old_inode = get_fp_inode(fp), old_inode == (wino_t)-1) {
         return -1;
     } else if (old_size = ftell(fp), old_size < 0) {
         return -1;
     }
 
-    return stat(path, &buf) < 0 ? -1 : buf.st_ino != old_inode ? 2 : buf.st_size < old_size ? 1 : 0;
+    if (stat(path, &buf) < 0) {
+        return -1;
+    }
+
+#ifdef WIN32
+    HANDLE hFile;
+    BY_HANDLE_FILE_INFORMATION fileInfo;
+
+    if (hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), hFile == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    if (GetFileInformationByHandle(hFile, &fileInfo) == 0) {
+        CloseHandle(hFile);
+        return -1;
+    }
+
+    CloseHandle(hFile);
+
+    if (((wino_t)fileInfo.nFileIndexHigh << 32 | fileInfo.nFileIndexLow) != old_inode) {
+        return 2;
+    }
+
+#else
+    if (buf.st_ino != old_inode) {
+        return 2;
+    }
+#endif
+
+    return buf.st_size < old_size ? 1 : 0;
 }
 
 void *Execute_Osquery(wm_osquery_monitor_t *osquery)
@@ -209,7 +238,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
                     mwarn("osqueryd initialize failed: Could not initialize database.");
                 } else if (end = wm_osquery_already_running(text), end) {
                     free(strpid);
-                    os_strdup(end, strpid);
+                    strpid = end;
                     minfo("osqueryd is already running with pid %s.", strpid);
                 }
                 else {
@@ -266,7 +295,9 @@ char * wm_osquery_already_running(char * text) {
 
     if (begin = strstr(text, PATTERNS[0]), begin && (end = strstr(begin += strlen(PATTERNS[0]), PATTERNS[1]), end)) {
         *end = '\0';
-        return begin;
+        os_strdup(begin, text);
+        *end = *PATTERNS[1];
+        return text;
     } else {
         return NULL;
     }

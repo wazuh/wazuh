@@ -2055,9 +2055,28 @@ cJSON* getunameJSON()
         return NULL;
 }
 
-ino_t get_fp_inode(FILE * fp) {
+wino_t get_fp_inode(FILE * fp) {
+#ifdef WIN32
+    int fd;
+    HANDLE h;
+    BY_HANDLE_FILE_INFORMATION fileInfo;
+
+    if (fd = _fileno(fp), fd < 0) {
+        return -1;
+    }
+
+    if (h = (HANDLE)_get_osfhandle(fd), h == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    return GetFileInformationByHandle(h, &fileInfo) ? (wino_t)fileInfo.nFileIndexHigh << 32 | fileInfo.nFileIndexLow : (wino_t)-1;
+
+#else
+
     struct stat buf;
-    return fstat(fileno(fp), &buf) ? (ino_t)-1 : buf.st_ino;
+    int fd;
+    return fd = fileno(fp), fd < 0 ? (wino_t)-1 : fstat(fd, &buf) ? (wino_t)-1 : buf.st_ino;
+#endif
 }
 
 long get_fp_size(FILE * fp) {
