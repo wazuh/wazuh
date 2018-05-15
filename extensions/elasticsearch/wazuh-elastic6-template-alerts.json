@@ -281,6 +281,10 @@
             "gdpr": {
               "type": "keyword",
               "doc_values": "true"
+            },
+            "gpg13": {
+              "type": "keyword",
+              "doc_values": "true"
             }
           }
         },
