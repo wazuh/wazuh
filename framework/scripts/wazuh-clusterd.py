@@ -8,6 +8,13 @@
 #
 error_msg = ""
 try:
+    from sys import argv, exit, path, version_info
+
+    if version_info[0] == 2 and version_info[1] < 7:
+        print("Error starting wazuh-clusterd. Minimal Python version required is 2.7. Found version is {0}.{1}".format(
+            version_info[0], version_info[1]))
+        exit()
+
     import asyncore
     import threading
     import time
@@ -18,7 +25,6 @@ try:
     import ctypes.util
     import socket
     from signal import signal, SIGINT, SIGTERM
-    from sys import argv, exit, path, version_info
     from os.path import dirname
     from os import seteuid, setgid, getpid, kill, unlink
 
@@ -33,12 +39,8 @@ try:
 
         from wazuh import common
     except Exception as e:
-        if version_info[0] == 2 and version_info[1] < 7:
-            error_msg = "Python 2.7 required. Exiting."
-        else:
-            error_msg = str(e)
-        print(error_msg)
-        exit(1)
+        print("Error starting wazuh-clusterd: {}".format(e))
+        exit()
 
     try:
         from wazuh.exception import WazuhException
