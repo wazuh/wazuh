@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Added option for setting the source IP when the agent registers with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
 - Added option to force the vulnerability detection in unsupported OS. ([#462](https://github.com/wazuh/wazuh/pull/462))
 - Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
+- Add arch check for Red Hat's OVAL in vulnerability-detector. ([#625](https://github.com/wazuh/wazuh/pull/625))
 - Integration with Osquery. ([#627](https://github.com/wazuh/wazuh/pull/627))
     - Enrich osquery configuration with pack files aggregation and agent labels as decorators.
     - Launch osquery daemon in background.

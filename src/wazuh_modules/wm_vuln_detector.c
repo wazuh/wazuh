@@ -517,6 +517,8 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char *cvss2;
     char *cvss3;
     char *patch;
+    char *arch_op;
+    char *arch_val;
     int i;
     char send_queue;
 
@@ -572,6 +574,17 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             cvss2 = (char *)sqlite3_column_text(stmt, 14);
             cvss3 = (char *)sqlite3_column_text(stmt, 15);
             patch = (char *)sqlite3_column_text(stmt, 16);
+            arch_op = (char *)sqlite3_column_text(stmt, 17);
+            arch_val = (char *)sqlite3_column_text(stmt, 18);
+
+            if (arch_op && arch_val) {
+                if (!strcmp(arch_op, "pattern match") || !strcmp(arch_val, "equals")) {
+                    if (!strstr(arch_val, agents_it->arch)) {
+                        // This check is not for the agent architecture
+                        continue;
+                    }
+                }
+            }
 
             if (!(updated && *updated)) {
                 updated = published;
@@ -997,7 +1010,9 @@ set_op:
         }
         sqlite3_bind_text(stmt, 1, state_it->operation, -1, NULL);
         sqlite3_bind_text(stmt, 2, state_it->operation_value, -1, NULL);
-        sqlite3_bind_text(stmt, 3, state_it->id, -1, NULL);
+        sqlite3_bind_text(stmt, 3, state_it->arch_operation, -1, NULL);
+        sqlite3_bind_text(stmt, 4, state_it->arch_value, -1, NULL);
+        sqlite3_bind_text(stmt, 5, state_it->id, -1, NULL);
         if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
             sqlite3_finalize(stmt);
             return wm_vulnerability_detector_sql_error(db);
@@ -1009,6 +1024,8 @@ set_op:
         free(state_aux->id);
         free(state_aux->operation);
         free(state_aux->operation_value);
+        free(state_aux->arch_operation);
+        free(state_aux->arch_value);
         free(state_aux);
     }
 
@@ -1298,6 +1315,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     static const char *XML_LINUX_DEF_EVR = "linux-def:evr";
     static const char *XML_EVR = "evr";
     static const char *XML_RPM_DEF_EVR = "red-def:evr";
+    static const char *XML_RPM_DEF_ARCH = "red-def:arch";
     static const char *XML_RPM_DEF_VERSION = "red-def:version";
     static const char *XML_RPM_DEF_SIGN = "red-def:signature_keyid";
     static const char *XML_OPERATION = "operation";
@@ -1346,6 +1364,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     os_calloc(1, sizeof(info_state), infos);
                     os_strdup(node[i]->values[j], infos->id);
                     infos->operation = infos->operation_value = NULL;
+                    infos->arch_operation = infos->arch_value = NULL;
                     infos->prev = parsed_oval->info_states;
                     parsed_oval->info_states = infos;
                     if (wm_vulnerability_detector_parser(xml, chld_node, parsed_oval, update, condition) == OS_INVALID) {
@@ -1391,6 +1410,15 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     os_strdup(node[i]->content, parsed_oval->info_states->operation_value);
                 }
 
+            }
+        } else if (dist == DIS_REDHAT && !strcmp(node[i]->element, XML_RPM_DEF_ARCH)) {
+            if (node[i]->attributes) {
+                for (j = 0; node[i]->attributes[j]; j++) {
+                    if (!strcmp(node[i]->attributes[j], XML_OPERATION)) {
+                        os_strdup(node[i]->values[j], parsed_oval->info_states->arch_operation);
+                        os_strdup(node[i]->content, parsed_oval->info_states->arch_value);
+                    }
+                }
             }
         } else if ((condition == VU_PACKG) &&
                    ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_STATE))                                        ||
@@ -2474,6 +2502,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
                     agent_software *agent_aux = agent->next;
                     free(agent->agent_id);
                     free(agent->agent_name);
+                    free(agent->arch);
                     free(agent->agent_ip);
                     free(agent);
 
@@ -2529,6 +2558,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
     char *ip;
     char *os_name;
     char *os_version;
+    char *arch;
     const char *agent_os;
     distribution agent_dist;
 
@@ -2622,6 +2652,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
 
         id = (char *) sqlite3_column_text(stmt, 3);
         ip = (char *) sqlite3_column_text(stmt, 4);
+        arch = (char *) sqlite3_column_text(stmt, 5);
 
         if (agents) {
             os_malloc(sizeof(agent_software), agents->next);
@@ -2641,6 +2672,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         }
         os_strdup(name, agents->agent_name);
         os_strdup(agent_os, agents->OS);
+        os_strdup(arch, agents->arch);
         agents->dist = agent_dist;
         agents->info = 0;
         agents->next = NULL;
