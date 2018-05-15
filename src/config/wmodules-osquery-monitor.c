@@ -3,12 +3,13 @@
 #include <stdio.h>
 
 static const char *XML_DISABLED = "disabled";
-static const char *XML_BINPATH = "binpath";
-static const char *XML_LOGPATH = "logpath";
-static const char *XML_CONFIGPATH = "configpath";
+static const char *XML_BINPATH = "bin_path";
+static const char *XML_LOGPATH = "log_path";
+static const char *XML_CONFIGPATH = "config_path";
 static const char *XML_PACK = "pack";
 static const char *XML_PACKNAME = "name";
 static const char *XML_ADD_LABELS = "add_labels";
+static const char *XML_RUN_DAEMON = "run_daemon";
 
 static short eval_bool(const char *str)
 {
@@ -25,6 +26,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     os_calloc(1, sizeof(wm_osquery_monitor_t), osquery_monitor);
     os_calloc(1, sizeof(wm_osquery_pack_t *), osquery_monitor->packs);
     osquery_monitor->disable = 0;
+    osquery_monitor->run_daemon = 1;
     module->context = &WM_OSQUERYMONITOR_CONTEXT;
     module->data = osquery_monitor;
 
@@ -84,6 +86,11 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
             osquery_monitor->packs[++pack_i] = NULL;
         } else if (!strcmp(nodes[i]->element, XML_ADD_LABELS)) {
             if (osquery_monitor->add_labels = eval_bool(nodes[i]->content), osquery_monitor->disable == OS_INVALID) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_RUN_DAEMON)) {
+            if (osquery_monitor->run_daemon = eval_bool(nodes[i]->content), osquery_monitor->disable == OS_INVALID) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
                 return OS_INVALID;
             }

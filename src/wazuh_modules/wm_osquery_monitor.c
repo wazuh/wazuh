@@ -268,10 +268,7 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
         goto end;
 
 #ifdef CLIENT
-    if (ReadConfig(CLABELS | CAGENT_CONFIG, AGENTCONFIG, &labels, NULL) < 0)
-    {
-        goto end;
-    }
+    ReadConfig(CLABELS | CAGENT_CONFIG, AGENTCONFIG, &labels, NULL);
 #endif
 
     // Do we have labels defined?
@@ -408,7 +405,7 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 {
     int i;
-    pthread_t thread1, thread2;
+    pthread_t tlauncher, treader;
 
     if (osquery->disable) {
         minfo("Module disabled. Exiting...");
@@ -430,17 +427,25 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
         return NULL;
     }
 
-    // Handle configuration
+    if (osquery->run_daemon) {
+        // Handle configuration
 
-    if (wm_osquery_packs(osquery) < 0 || wm_osquery_decorators(osquery) < 0) {
-        return NULL;
+        if (wm_osquery_packs(osquery) < 0 || wm_osquery_decorators(osquery) < 0) {
+            return NULL;
+        }
+
+        pthread_create(&tlauncher, NULL, (void *)&Execute_Osquery, osquery);
+    } else {
+        minfo("run_daemon disabled, finding detached osquery process results.");
     }
 
-    pthread_create(&thread1, NULL, (void *)&Execute_Osquery, osquery);
-    pthread_create(&thread2, NULL, (void *)&Read_Log, osquery);
+    pthread_create(&treader, NULL, (void *)&Read_Log, osquery);
 
-    pthread_join(thread2, NULL);
-    pthread_join(thread1, NULL);
+    if (osquery->run_daemon) {
+        pthread_join(tlauncher, NULL);
+    }
+
+    pthread_join(treader, NULL);
 
     minfo("Closing module.");
     return NULL;

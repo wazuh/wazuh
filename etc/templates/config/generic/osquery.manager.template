@@ -1,6 +1,0 @@
-  <!-- Osquery integration -->
-  <wodle name="osquery">
-    <disabled>yes</disabled>
-    <logpath>/var/log/osquery/osqueryd.results.log</logpath>
-    <add_labels>no</add_labels>
-  </wodle>
