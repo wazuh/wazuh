@@ -410,8 +410,13 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     int i;
     pthread_t thread1, thread2;
 
-    osquery->msg_delay = 1000000 / wm_max_eps;
+    if (osquery->disable) {
+        minfo("Module disabled. Exiting...");
+        return NULL;
+    }
+
     minfo("Module started.");
+    osquery->msg_delay = 1000000 / wm_max_eps;
 
     // Connect to queue
 
