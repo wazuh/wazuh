@@ -544,7 +544,9 @@ endif
 
 OPENSSL_FLAGS = enable-weak-ssl-ciphers no-shared
 
-${OPENSSL_LIB} $(CRYPTO_LIB):
+${CRYPTO_LIB}: ${OPENSSL_LIB}
+
+${OPENSSL_LIB}:
 ifeq (${TARGET},winagent)
 	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ./Configure $(OPENSSL_FLAGS) mingw && ${MAKE} build_libs
 else
