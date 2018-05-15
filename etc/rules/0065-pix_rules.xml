@@ -200,7 +200,7 @@
   <rule id="4381" level="10" frequency="6" timeframe="360">
     <if_matched_sid>4311</if_matched_sid>
     <description>PIX: Multiple critical messages.</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gpg13_4.1,ggdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gpg13_4.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="4382" level="10" frequency="8" timeframe="120">
