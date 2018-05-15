@@ -807,17 +807,6 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset ${PREFIX}/bin/update_ruleset
 
-    if [ ${NUNAME} = 'Darwin' ]
-    then
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SQLITE}libsqlite3.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.2.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_CURL}lib/.libs/libcurl.4.dylib ${PREFIX}/lib
-    else
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SQLITE}libsqlite3.so ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2 ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_CURL}lib/.libs/libcurl.so.4 ${PREFIX}/lib
-    fi
-
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/decoders
