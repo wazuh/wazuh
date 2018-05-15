@@ -28,8 +28,6 @@ logger = logging.getLogger(__name__)
 class ClientManagerHandler(ClientHandler):
 
     def __init__(self, cluster_config):
-        if len(cluster_config['nodes']) > 1:
-            logger.warning("[Client]: Found more than one node in configuration. Only master node should be specified. Using {} as master.".format(cluster_config['nodes'][0]))
         ClientHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'])
 
         self.config = cluster_config

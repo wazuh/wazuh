@@ -53,16 +53,23 @@ def check_cluster_config(config):
     iv = InputValidator()
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
 
-    if not 'key' in config.keys():
+    if not 'key' in config:
         raise WazuhException(3004, 'Unspecified key')
     elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
         raise WazuhException(3004, 'Key must be 32 characters long and only have alphanumeric characters')
 
-    if config['node_type'] != 'master' and config['node_type'] != 'client':
+    if 'node_type' not in config:
+        raise WazuhException(3004, "Node type not present in cluster configuration")
+    elif config['node_type'] != 'master' and config['node_type'] != 'client':
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
 
-    if len(config['nodes']) == 0:
+    if 'nodes' not in config or len(config['nodes']) == 0:
         raise WazuhException(3004, 'No nodes defined in cluster configuration.')
+
+    if len(config['nodes']) > 1:
+        logger.warning(
+            "Found more than one node in configuration. Only master node should be specified. Using {} as master.".format(
+                config['nodes'][0]))
 
     invalid_elements = list(reservated_ips & set(config['nodes']))
 
