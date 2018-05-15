@@ -45,6 +45,7 @@ try:
 
     from wazuh.exception import WazuhException
     from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
+    from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
     from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
     from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
@@ -100,6 +101,10 @@ def set_logging(foreground_mode=False, debug_mode=0):
                   debug_mode == 1 else logging.INFO
 
     logger.setLevel(debug_level)
+
+
+def print_version():
+    print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
 def clean_exit(reason, error=False):
@@ -199,6 +204,9 @@ if __name__ == '__main__':
     parser.add_argument('-V', help="Print version", action='store_true')
     parser.add_argument('-r', help="Run as root", action='store_true')
     args = parser.parse_args()
+
+    if args.V:
+        print_version()
 
     # Set logger
     try:
