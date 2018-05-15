@@ -39,7 +39,7 @@ int OS_ReadXMLRules(const char *rulefile,
          *if_matched_regex = NULL, *if_matched_group = NULL,
          *user = NULL, *id = NULL, *srcport = NULL,
          *dstport = NULL, *status = NULL, *hostname = NULL,
-         *extra_data = NULL, *program_name = NULL;
+         *extra_data = NULL, *program_name = NULL, *location = NULL;
 
     /** XML variables **/
     /* These are the available options for the rule configuration */
@@ -72,6 +72,7 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_status = "status";
     const char *xml_action = "action";
     const char *xml_compiled = "compiled_rule";
+    const char *xml_location = "location";
 
     const char *xml_if_sid = "if_sid";
     const char *xml_if_group = "if_group";
@@ -395,6 +396,10 @@ int OS_ReadXMLRules(const char *rulefile,
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_program_name) == 0) {
                     program_name = os_LoadString(program_name,
+                                                 rule_opt[k]->content);
+                } else if (strcasecmp(rule_opt[k]->element,
+                                      xml_location) == 0) {
+                    location = os_LoadString(location,
                                                  rule_opt[k]->content);
                 } else if (strcasecmp(rule_opt[k]->element, xml_action) == 0) {
                     config_ruleinfo->action =
@@ -806,6 +811,18 @@ int OS_ReadXMLRules(const char *rulefile,
                 url = NULL;
             }
 
+            /* Add location */
+            if (location) {
+                os_calloc(1, sizeof(OSMatch), config_ruleinfo->location);
+                if (!OSMatch_Compile(location, config_ruleinfo->location, 0)) {
+                    merror(REGEX_COMPILE, location, config_ruleinfo->location->error);
+                    retval = -1;
+                    goto cleanup;
+                }
+                free(location);
+                location = NULL;
+            }
+
             /* Add matched_group */
             if (if_matched_group) {
                 os_calloc(1, sizeof(OSMatch), config_ruleinfo->if_matched_group);
@@ -865,6 +882,7 @@ cleanup:
     free(match);
     free(rulepath);
     free(user);
+    free(location);
 
     OS_ClearNode(rule_opt);
     OS_ClearNode(rule);
@@ -946,6 +964,7 @@ static RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->hostname = NULL;
     ruleinfo_pt->program_name = NULL;
     ruleinfo_pt->action = NULL;
+    ruleinfo_pt->location = NULL;
 
     /* Zero last matched events */
     ruleinfo_pt->__frequency = 0;
@@ -1105,6 +1124,7 @@ void _OS_FreeRule(RuleInfo *ruleinfo) {
     free(ruleinfo->status);
     free(ruleinfo->hostname);
     free(ruleinfo->program_name);
+    free(ruleinfo->location);
     free(ruleinfo->extra_data);
     free(ruleinfo->action);
     free(ruleinfo->comment);

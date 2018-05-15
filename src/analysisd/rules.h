@@ -151,6 +151,7 @@ typedef struct _RuleInfo {
     OSMatch *hostname;
     OSMatch *program_name;
     OSMatch *extra_data;
+    OSMatch *location;
     FieldInfo **fields;
     char *action;
 
