@@ -634,6 +634,99 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
     return (ret);
 }
 
+
+int TestUnmergeFiles(const char *finalpath, int mode)
+{
+    int ret = 1;
+    size_t i = 0, n = 0, files_size = 0, readed_bytes = 0,data_size = 0;
+    char *files;
+    char buf[2048 + 1];
+    FILE *finalfp;
+
+    finalfp = fopen(finalpath, mode == OS_BINARY ? "rb" : "r");
+    if (!finalfp) {
+        merror("Unable to read merged file: '%s'.", finalpath);
+        return (0);
+    }
+
+    while (1) {
+        /* Read header portion */
+        if (fgets(buf, sizeof(buf) - 1, finalfp) == NULL) {
+            break;
+        }
+
+        /* Initiator */
+        switch(buf[0]){
+            case '#':
+                continue;
+            case '!':
+                goto parse;
+            default:
+                ret = 0;
+                goto end;
+        }
+
+parse:
+        /* Get file size and name */
+        files_size = (size_t) atol(buf + 1);
+        data_size = files_size;
+
+        files = strchr(buf, '\n');
+        if (files) {
+            *files = '\0';
+        }
+
+        files = strchr(buf, ' ');
+        if (!files) {
+            ret = 0;
+            continue;
+        }
+        files++;
+
+        /* Check for file name */
+		if(*files == '\0')
+		{
+			ret = 0;
+            goto end;
+		}
+
+        if (files_size < sizeof(buf) - 1) {
+            i = files_size;
+            files_size = 0;
+        } else {
+            i = sizeof(buf) - 1;
+            files_size -= sizeof(buf) - 1;
+        }
+
+        readed_bytes = 0;
+        while ((n = fread(buf, 1, i, finalfp)) > 0) {
+            buf[n] = '\0';
+            readed_bytes += n;
+
+            if (files_size == 0) {
+                break;
+            } else {
+                if (files_size < sizeof(buf) - 1) {
+                    i = files_size;
+                    files_size = 0;
+                } else {
+                    i = sizeof(buf) - 1;
+                    files_size -= sizeof(buf) - 1;
+                }
+            }
+        }
+
+        if(readed_bytes != data_size){
+            ret = 0;
+            goto end;
+        }
+
+    }
+end:
+    fclose(finalfp);
+    return (ret);
+}
+
 int MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset)
 {
     size_t n = 0;
@@ -799,6 +892,89 @@ int MergeFiles(const char *finalpath, char **files, const char *tag)
 
     fclose(finalfp);
     return (ret);
+}
+
+int w_backup_file(File *file, const char *source) {
+    FILE *fp_src;
+    int fd;
+    char template[OS_FLSIZE + 1];
+    mode_t old_mask;
+
+	/* Check if source file exists */
+	FILE *fsource;
+	fsource = fopen(source,"r");
+
+	if(!fsource)
+	{
+        merror(FOPEN_ERROR, source, errno, strerror(errno));
+		return -1;
+	}
+
+    snprintf(template, OS_FLSIZE, "%s.backup", source);
+    old_mask = umask(0177);
+
+    fd = open(template,O_WRONLY | O_CREAT,old_mask);
+    umask(old_mask);
+
+    if (fd < 0) {
+        return -1;
+    }
+
+#ifndef WIN32
+    struct stat buf;
+
+    if (stat(source, &buf) == 0) {
+        if (fchmod(fd, buf.st_mode) < 0) {
+            close(fd);
+            unlink(template);
+            return -1;
+        }
+    } else {
+        mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
+    }
+
+#endif
+
+    file->fp = fdopen(fd, "w");
+
+    if (!file->fp) {
+        close(fd);
+        unlink(template);
+        return -1;
+    }
+
+
+    size_t count_r;
+    size_t count_w;
+    char buffer[4096];
+
+    if (fp_src = fopen(source, "r"), fp_src) {
+        while (!feof(fp_src)) {
+            count_r = fread(buffer, 1, 4096, fp_src);
+
+            if (ferror(fp_src)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+
+            count_w = fwrite(buffer, 1, count_r, file->fp);
+
+            if (count_w != count_r || ferror(file->fp)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+        }
+
+        fclose(fp_src);
+    }
+
+
+    file->name = strdup(template);
+    return 0;
 }
 
 
@@ -983,31 +1159,36 @@ void goDaemon()
 
 int checkVista()
 {
+    /* Check if the system is Vista (must be called during the startup) */
     const char *m_uname;
     isVista = 0;
 
     m_uname = getuname();
-    if (!m_uname) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        return (0);
+
+    OSVERSIONINFOEX osvi;
+    BOOL bOsVersionInfoEx;
+
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+    if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
+        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+        if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
+            merror("Cannot get Windows version number.");
+            return -1;
+        }
     }
 
-    /* Check if the system is Vista (must be called during the startup) */
-    if (strstr(m_uname, "Windows Server 2008") ||
-            strstr(m_uname, "Vista") ||
-            strstr(m_uname, "Windows 7") ||
-            strstr(m_uname, "Windows 8") ||
-            strstr(m_uname, "Windows 10") ||
-            strstr(m_uname, "Windows Server 2012") ||
-            strstr(m_uname, "Windows Server 2016")) {
+    if (osvi.dwMajorVersion >= 6) {
         isVista = 1;
-        minfo("System is Vista or newer (%s).", m_uname);
-    } else {
-        minfo("System is older than Vista (%s).", m_uname);
+        minfo("Windows version is 6.0 or newer. (%s).", m_uname);
     }
+    else
+        minfo("Windows version is older than 6.0. (%s).", m_uname);
 
     return (isVista);
 }
+
 
 /* Get basename of path */
 char *basename_ex(char *path)
@@ -1214,12 +1395,7 @@ const char *getuname()
     int ret_size = OS_SIZE_1024 - 2;
     static char ret[OS_SIZE_1024 + 1] = "";
     char os_v[128 + 1];
-    FILE *cmd_output;
-    char *command;
-    size_t buf_tam = 100;
-    char read_buff[buf_tam];
     int add_infoEx = 1;
-    int status;
 
     typedef void (WINAPI * PGNSI)(LPSYSTEM_INFO);
     typedef BOOL (WINAPI * PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
@@ -1399,41 +1575,29 @@ const char *getuname()
                 }
                 ret_size -= strlen(ret) + 1;
             } else if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 2 || osvi.dwMinorVersion == 3)) {
-                command = "wmic os get caption";
-                char *end;
-                cmd_output = popen(command, "r");
-                if (!cmd_output) {
-                    merror("Unable to execute command: '%s'.", command);
-                } else {
-                    if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff,"Caption",7) == 0) {
-                        if (!fgets(read_buff, buf_tam, cmd_output)){
-                            merror("Can't get OS name.");
-                            strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
-                        }
-                        else if (end = strpbrk(read_buff,"\r\n"), end) {
-                            *end = '\0';
-                            int i = strlen(read_buff) - 1;
-                            while(read_buff[i] == 32){
-                                read_buff[i] = '\0';
-                                i--;
-                            }
-                            char * pch = strstr(read_buff, "Windows");
-                            strncat(ret, "Microsoft ", ret_size - 1);
-                            strncat(ret, pch, ret_size - 1);
-                        } else
-                            strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
-                    } else {
-                        mwarn("Can't get OS name (bad header)");
-                        strncat(ret, "Microsoft Windows unknown version ", ret_size - 1);
-                    }
+                // Read Windows Version from registry
+                DWORD dwRet;
+                HKEY RegistryKey;
+                const DWORD size = 1024;
+                TCHAR value[size];
+                DWORD dwCount = size;
+                add_infoEx = 0;
 
-                    if (status = pclose(cmd_output), status) {
-                        mwarn("Command 'wmic' returned %d getting OS name.", status);
-                    }
-
-                    add_infoEx = 0;
-                    ret_size -= strlen(ret) + 1;
+                if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"), 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+                    merror("Error opening Windows registry.");
                 }
+
+                dwRet = RegQueryValueEx(RegistryKey, TEXT("ProductName"), NULL, NULL, (LPBYTE)value, &dwCount);
+                if (dwRet != ERROR_SUCCESS) {
+                    merror("Error reading Windows registry. (Error %u)",(unsigned int)dwRet);
+                    strncat(ret, "Microsoft Windows undefined version", ret_size - 1);
+                }
+                else {
+                    RegCloseKey(RegistryKey);
+                    strncat(ret, "Microsoft ", ret_size - 1);
+                    strncat(ret, value, ret_size - 1);
+                }
+                ret_size -= strlen(ret) + 1;
             } else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2) {
                 pGNSI = (PGNSI) GetProcAddress(
                             GetModuleHandle("kernel32.dll"),
@@ -1625,32 +1789,67 @@ const char *getuname()
                 ret_size -= strlen(__wp) + 1;
                 RegCloseKey( hKey );
             } else if (osvi.dwMajorVersion == 6 && (osvi.dwMinorVersion == 2 || osvi.dwMinorVersion == 3)) {
+                // Read Windows Version number from registry
                 char __wp[64];
                 memset(__wp, '\0', 64);
-                command = "wmic os get Version";
-                cmd_output = popen(command, "r");
-                if (!cmd_output) {
-                    merror("Unable to execute command: '%s'.", command);
-                    snprintf(__wp, 63, " [Ver: %s]", "desc");
-                } else {
-                    if (fgets(read_buff, buf_tam, cmd_output) && strncmp(read_buff,"Version",7) == 0) {
-                        if (!fgets(read_buff, buf_tam, cmd_output)){
-                            merror("Can't get OS version.");
-                            snprintf(__wp, 63, " [Ver: %s]", "desc");
+                DWORD dwRet;
+                HKEY RegistryKey;
+                const DWORD size = 30;
+                TCHAR winver[size];
+                TCHAR wincomp[size];
+                DWORD winMajor = 0;
+                DWORD winMinor = 0;
+                DWORD dwCount = size;
+                unsigned long type=REG_DWORD;
+
+                if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"), 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+                    merror("Error opening Windows registry.");
+                }
+
+                // Windows 10
+                dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentMajorVersionNumber"), NULL, &type, (LPBYTE)&winMajor, &dwCount);
+                if (dwRet == ERROR_SUCCESS) {
+                    dwCount = size;
+                    dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentMinorVersionNumber"), NULL, &type, (LPBYTE)&winMinor, &dwCount);
+                    if (dwRet != ERROR_SUCCESS) {
+                        merror("Error reading 'CurrentMinorVersionNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
+                    }
+                    else {
+                        dwCount = size;
+                        dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
+                        if (dwRet != ERROR_SUCCESS) {
+                            merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
+                            snprintf(__wp, 63, " [Ver: %d.%d]", (unsigned int)winMajor, (unsigned int)winMinor);
                         }
                         else {
-                            snprintf(__wp, 63, " [Ver: %s]", strtok(read_buff," "));
+                            snprintf(__wp, 63, " [Ver: %d.%d.%s]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp);
                         }
-                    } else {
-                        mwarn("Can't get OS version (bad header)");
-                        snprintf(__wp, 63, " [Ver: %s]", "desc");
                     }
-
-                    pclose(cmd_output);
-
-                    strncat(ret, __wp, ret_size - 1);
-                    ret_size -= strlen(__wp) + 1;
+                    RegCloseKey(RegistryKey);
                 }
+                // Windows 6.2 or 6.3
+                else {
+                    dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentVersion"), NULL, NULL, (LPBYTE)winver, &dwCount);
+                    if (dwRet != ERROR_SUCCESS) {
+                        merror("Error reading 'Current Version' from Windows registry. (Error %u)",(unsigned int)dwRet);
+                        snprintf(__wp, 63, " [Ver: 6.2]");
+                    }
+                    else {
+                        dwCount = size;
+                        dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
+                        if (dwRet != ERROR_SUCCESS) {
+                            merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
+                            snprintf(__wp, 63, " [Ver: 6.2]");
+                        }
+                        else {
+                            snprintf(__wp, 63, " [Ver: %s.%s]", winver,wincomp);
+                        }
+                        RegCloseKey(RegistryKey);
+                    }
+                }
+
+                strncat(ret, __wp, ret_size - 1);
+                ret_size -= strlen(ret) + 1;
             } else {
                 char __wp[64];
 
@@ -2108,4 +2307,36 @@ long get_fp_size(FILE * fp) {
     }
 
     return size;
+}
+
+static int qsort_strcmp(const void *s1, const void *s2) {
+    return strcmp(*(const char **)s1, *(const char **)s2);
+}
+
+// Read directory and return an array of contained files, sorted alphabetically.
+char ** wreaddir(const char * name) {
+    DIR * dir;
+    struct dirent * dirent;
+    char ** files;
+    unsigned int i = 0;
+
+    if (dir = opendir(name), !dir) {
+        return NULL;
+    }
+
+    files = malloc(sizeof(char *));
+
+    while (dirent = readdir(dir), dirent) {
+        // Skip "." and ".."
+        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+            continue;
+        }
+
+        files = realloc(files, (i + 2) * sizeof(char *));
+        files[i++] = strdup(dirent->d_name);
+    }
+
+    files[i] = NULL;
+    qsort(files, i, sizeof(char *), qsort_strcmp);
+    return files;
 }

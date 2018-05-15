@@ -68,7 +68,6 @@ int realtime_checksumfile(const char *file_name)
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
-            free(buf);
 
             if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
                 merror("Unable to update file to db: %s", file_name);
@@ -91,10 +90,13 @@ int realtime_checksumfile(const char *file_name)
             }
             send_syscheck_msg(alert_msg);
 
+            free(buf);
+
             return (1);
         } else {
             mdebug2("Discarding '%s': checksum already reported.", file_name);
         }
+
         return (0);
     } else {
         /* New file */
@@ -271,7 +273,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     int lcount;
     size_t offset = 0;
     char *ptfile;
-    char wdchar[32 + 1];
+    char wdchar[260 + 1];
     char final_path[MAX_LINE + 1];
     win32rtfim *rtlocald;
     PFILE_NOTIFY_INFORMATION pinfo;
@@ -288,8 +290,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     }
 
     /* Get hash to parse the data */
-    wdchar[32] = '\0';
-    snprintf(wdchar, 32, "%d", (int)overlap->Offset);
+    wdchar[260] = '\0';
+    snprintf(wdchar, 260, "%s", (char*)overlap->Pointer);
     rtlocald = OSHash_Get(syscheck.realtime->dirtb, wdchar);
     if (rtlocald == NULL) {
         merror("real time call back called, but hash is empty.");
@@ -360,7 +362,7 @@ int realtime_win32read(win32rtfim *rtlocald)
 
 int realtime_adddir(const char *dir)
 {
-    char wdchar[32 + 1];
+    char wdchar[260 + 1];
     win32rtfim *rtlocald;
 
     if (!syscheck.realtime) {
@@ -368,50 +370,45 @@ int realtime_adddir(const char *dir)
     }
 
     /* Maximum limit for realtime on Windows */
-    if (syscheck.realtime->fd > 256) {
+    if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
         merror("Unable to add directory to real time monitoring: '%s' - Maximum size permitted.", dir);
         return (0);
     }
 
-    os_calloc(1, sizeof(win32rtfim), rtlocald);
-
-    rtlocald->h = CreateFile(dir,
-                             FILE_LIST_DIRECTORY,
-                             FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                             NULL,
-                             OPEN_EXISTING,
-                             FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-                             NULL);
-
-
-    if (rtlocald->h == INVALID_HANDLE_VALUE ||
-            rtlocald->h == NULL) {
-        free(rtlocald);
-        rtlocald = NULL;
-        merror("Unable to add directory to real time monitoring: '%s'.", dir);
-        return (0);
-    }
-
-    rtlocald->overlap.Offset = ++syscheck.realtime->fd;
-
     /* Set key for hash */
-    wdchar[32] = '\0';
-    snprintf(wdchar, 32, "%d", (int)rtlocald->overlap.Offset);
-
-    if (OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
-        merror("Entry already in the real time hash: %s", wdchar);
-        CloseHandle(rtlocald->overlap.hEvent);
-        free(rtlocald);
-        rtlocald = NULL;
-        return (0);
+    wdchar[260] = '\0';
+    snprintf(wdchar, 260, "%s", dir);
+    if(OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
+        mdebug2("Entry '%s' already exists in the RT hash.", wdchar);
     }
+    else {
+        os_calloc(1, sizeof(win32rtfim), rtlocald);
 
-    /* Add final elements to the hash */
-    os_strdup(dir, rtlocald->dir);
-    OSHash_Add(syscheck.realtime->dirtb, strdup(wdchar), rtlocald);
+        rtlocald->h = CreateFile(dir,
+                                FILE_LIST_DIRECTORY,
+                                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                NULL,
+                                OPEN_EXISTING,
+                                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+                                NULL);
 
-    /* Add directory to be monitored */
-    realtime_win32read(rtlocald);
+
+        if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
+            free(rtlocald);
+            rtlocald = NULL;
+            merror("Unable to add directory to real time monitoring: '%s'.", dir);
+            return (0);
+        }
+        syscheck.realtime->fd++;
+
+        /* Add final elements to the hash */
+        os_strdup(dir, rtlocald->dir);
+        os_strdup(dir, rtlocald->overlap.Pointer);
+        OSHash_Add(syscheck.realtime->dirtb, wdchar, rtlocald);
+
+        /* Add directory to be monitored */
+        realtime_win32read(rtlocald);
+    }
 
     return (1);
 }

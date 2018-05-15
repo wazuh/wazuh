@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include "shared_download.h"
 #include <unistd.h>
 
 
@@ -124,7 +125,7 @@ int main(int argc, char **argv)
         merror_exit(CONFIG_ERROR, cfg);
     }
 
-    logr.nocmerged = nocmerged;
+    logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
 
     /* Exit if test_config is set */
     if (test_config) {
@@ -180,6 +181,9 @@ int main(int argc, char **argv)
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
+
+    //Start shared download
+    w_init_shared_download();
 
     /* Really start the program */
     i = 0;

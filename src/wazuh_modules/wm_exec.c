@@ -95,7 +95,7 @@ int wm_exec(char *command, char **output, int *status, int secs) {
         }
     }
 
-    switch (WaitForSingleObject(pinfo.hProcess, secs * 1000)) {
+    switch (WaitForSingleObject(pinfo.hProcess, secs ? (unsigned)(secs * 1000) : INFINITE)) {
     case 0:
         if (status) {
             DWORD exitcode;

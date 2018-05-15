@@ -189,7 +189,7 @@
 
   <rule id="3398" level="6">
     <if_sid>3395</if_sid>
-    <match>MAIL</match>
+    <match>MAIL|does not resolve to address</match>
     <description>Postfix: Illegal address from unknown sender</description>
     <group>spam,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>

@@ -2,4 +2,5 @@
     <connection>secure</connection>
     <port>1514</port>
     <protocol>udp</protocol>
+    <queue_size>16384</queue_size>
   </remote>

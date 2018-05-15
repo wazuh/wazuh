@@ -52,6 +52,10 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
 
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode) __attribute__((nonnull(1)));
 
+int TestUnmergeFiles(const char *finalpath, int mode) __attribute__((nonnull(1)));
+
+int w_backup_file(File *file, const char *source) __attribute__((nonnull(1, 2)));
+
 /* Daemonize a process */
 void goDaemon(void);
 
@@ -96,5 +100,8 @@ int w_ref_parent_folder(const char * path);
 wino_t get_fp_inode(FILE * fp);
 
 long get_fp_size(FILE * fp);
+
+// Read directory and return an array of contained files, sorted alphabetically.
+char ** wreaddir(const char * name);
 
 #endif /* __FILE_H */

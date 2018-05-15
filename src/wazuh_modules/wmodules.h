@@ -32,7 +32,7 @@
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
 #define WM_POOL_SIZE    8                           // Child process pool size.
-#define WM_HEADER_SIZE  OS_SIZE_1024
+#define WM_HEADER_SIZE  OS_SIZE_2048
 
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
@@ -63,6 +63,7 @@ typedef struct wmodule {
 #include "wm_aws.h"
 #include "wm_vuln_detector.h"
 #include "wm_osquery_monitor.h"
+#include "wm_download.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
@@ -109,7 +110,7 @@ void wm_remove_sid(pid_t sid);
 void wm_kill_children();
 
 // Reads an HTTP header and extracts the size of the response
-int wm_read_http_header(char *header);
+long int wm_read_http_size(char *header);
 
 /* Concatenate strings with optional separator
  *

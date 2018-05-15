@@ -69,7 +69,7 @@ CREATE TABLE data
     (
     id              INT8        NOT NULL,
     server_id       INT4        NOT NULL,
-    "user"          TEXT        NOT NULL,
+    "user"          TEXT,
     full_log        TEXT        NOT NULL,
     PRIMARY KEY  (id, server_id)
     );

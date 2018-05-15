@@ -67,6 +67,8 @@ static void* wm_database_main(wm_database *data);
 static void* wm_database_destroy(wm_database *data);
 // Update manager information
 static void wm_sync_manager();
+// Get agent's architecture
+static char * wm_get_os_arch(char * os_header);
 
 static char * wm_get_os_arch(char * os_header);
 
@@ -76,6 +78,9 @@ static void wm_check_agents();
 
 // Synchronize agents and groups
 static void wm_sync_agents();
+
+// Clean dangling database files
+static void wm_clean_dangling_db();
 
 #endif // LOCAL
 
@@ -111,6 +116,10 @@ void* wm_database_main(wm_database *data) {
     if (data->sync_agents) {
         wm_sync_manager();
     }
+
+#ifndef LOCAL
+    wm_clean_dangling_db();
+#endif
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
@@ -276,6 +285,7 @@ void wm_sync_manager() {
         free(os_major);
         free(os_minor);
         free(os_uname);
+        free(os_arch);
     }
 
     // Set starting offset if full_sync disabled
@@ -391,7 +401,9 @@ void wm_sync_agents() {
             snprintf(id, 9, "%03d", agents[i]);
 
             if (OS_IsAllowedID(&keys, id) == -1)
-                wdb_remove_agent(agents[i]);
+                if (wdb_remove_agent(agents[i]) < 0) {
+                    mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
+                }
             }
 
         free(agents);
@@ -402,6 +414,50 @@ void wm_sync_agents() {
     gettime(&spec1);
     time_sub(&spec1, &spec0);
     mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+}
+
+// Clean dangling database files
+void wm_clean_dangling_db() {
+    char dirname[PATH_MAX + 1];
+    char path[PATH_MAX + 1];
+    char * end;
+    char * name;
+    struct dirent * dirent;
+    DIR * dir;
+
+    snprintf(dirname, sizeof(dirname), "%s%s/agents", isChroot() ? "/" : "", WDB_DIR);
+    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", dirname);
+
+    if (!(dir = opendir(dirname))) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
+        return;
+    }
+
+    while ((dirent = readdir(dir))) {
+        if (dirent->d_name[0] != '.') {
+            if (end = strchr(dirent->d_name, '-'), end) {
+                *end = 0;
+
+                if (name = wdb_agent_name(atoi(dirent->d_name)), name) {
+                    // Agent found: OK
+                    free(name);
+                } else {
+                    *end = '-';
+
+                    if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
+                        mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
+                        if (remove(path) < 0) {
+                            mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
+                        }
+                    }
+                }
+            } else {
+                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", dirname, dirent->d_name);
+            }
+        }
+    }
+
+    closedir(dir);
 }
 
 #endif // LOCAL

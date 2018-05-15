@@ -9,23 +9,15 @@
 
 # Auto generated build files
 src/LOCATION
-src/external/zlib/configure.log
-src/external/zlib/Makefile
-src/external/zlib/zconf.h
-src/external/zlib/zlib.pc
-src/external/zlib/zlib.3.pdf
 src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
 src/Config.OS
-src/external/zlib/ztest*
 
 # Compiled programs
 src/agent-auth
 src/agent_control
 src/clear_stats
-src/external/lua-5.2.3/src/ossec-lua
-src/external/lua-5.2.3/src/ossec-luac
 src/isbigendian
 src/list_agents
 src/manage_agents
@@ -55,8 +47,6 @@ src/wazuh-auth
 src/wazuh-db
 
 # Windows agent
-src/external/lua-5.2.3/src/lua52.dll
-src/external/lua-5.2.3/src/ossec-lua*.exe
 src/win32/*.exe
 src/win32/LICENSE.txt
 src/win32/default-local_internal_options.conf
@@ -94,12 +84,5 @@ src/test_os_zlib
 src/test_shared
 etc/preloaded-vars.conf
 
-# OpenSSL
-
-src/external/openssl/crypto/opensslconf.h
-src/external/openssl/include/openssl/dso.h
-src/external/openssl/include/openssl/pqueue.h
-src/external/openssl/test/ecdhtest.c
-src/external/openssl/test/jpaketest.c
-src/external/openssl/test/ssltest.c
-src/external/openssl/test/sslv2conftest.c
+# Old firewall-drop.sh (moved to default-firewall-drop.sh)
+active-response/firewall-drop.sh

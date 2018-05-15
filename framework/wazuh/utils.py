@@ -7,12 +7,13 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close
+from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
 from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
 import re
+import errno
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 from operator import itemgetter
@@ -331,6 +332,29 @@ def chown_r(filepath, uid, gid):
                 chown_r(itempath, uid, gid)
 
 
+def mkdir_with_mode(name, mode=0o770):
+    """
+    Creates a directory with specified permissions.
+
+    :param directory: directory path
+    :param mode: permissions to set to the directory
+    """
+    head, tail = path.split(name)
+    if not tail:
+        head, tail = path.split(head)
+    if head and tail and not path.exists(head):
+        try:
+            mkdir_with_mode(head, mode)
+        except OSError as e:
+            # be happy if someone already created the path
+            if e.errno != errno.EEXIST:
+                raise
+        if tail == curdir:           # xxx/newdir/. exists if xxx/newdir exists
+            return
+    mkdir(name, mode)
+    chmod(name, mode)
+
+
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
@@ -355,7 +379,6 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
                 field_subfield
     into a real nested dictionary in form
                 field {subfield}
-
     For example, the following input dictionary
     data = {
        "ram_free": "1669524",
@@ -378,16 +401,16 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
       },
       "board_serial": "BSS-0123456789"
     }
-
     :param data: dictionary to nest
     :param nested: fields to nest
     :param force_fields: fields to force nesting in
     """
     # separate fields and subfields:
-    # nested = {'cpu': [('cores', 'cpu_cores'), ('mhz', 'cpu_mhz'), ('name', 'cpu_name')], 'ram': [('free','ram_free'), ('total', 'ram_total')]}
-    keys = set(data.keys())
-    if nested is None:
-        nested, non_nested = get_fields_to_nest(keys, force_fields)
+    # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
+    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
+             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())),
+             key=lambda x:x[0])}
+
     # create a nested dictionary with those fields that have subfields
     # (board_serial won't be added because it only has one subfield)
     #  nested_dict = {
@@ -401,12 +424,13 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data[full_sf] for sf,full_sf in sfl if full_sf in keys} 
-                  for f,sfl in nested}
+    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl
+                  in nested.items() if len(sfl) > 1 or f in force_fields}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f:data[f] for f in non_nested & keys}
+    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0]
+                       not in nested_dict.keys()}
 
     # append both dictonaries
     nested_dict.update(non_nested_dict)
@@ -439,7 +463,7 @@ def load_wazuh_xml(xml_path):
         data = data.replace(comment.group(2), good_comment)
 
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
-    data = re.sub(r"<(?!/?[\w='$,#\"\. -]+>|!--)", "&lt;", data)
+    data = re.sub(r"<(?!/?[\w=\'$,#\"\.@\/_ -:]+>|!--)", "&lt;", data)
 
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!\w+;)", "&amp;", data)

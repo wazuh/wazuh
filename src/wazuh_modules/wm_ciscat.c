@@ -108,7 +108,11 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
             if (!env_var){
                 snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
+            } else if (strlen(env_var) >= OS_MAXSTR) {
+                mterror(WM_CISCAT_LOGTAG, "'PATH' variable too long.");
+                ciscat->flags.error = 1;
             } else {
+
         #ifdef WIN32
                 snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
             }
@@ -1111,7 +1115,7 @@ wm_rule_data* read_group(const OS_XML *xml, XML_NODE node, wm_rule_data *rule_in
     if (*group == '\0') {
         for (i = 0; node[i]; i++) {
             if ((strcmp(node[i]->element, XML_TITLE) == 0) || (strcmp(node[i]->element, XML_TITLE2) == 0)) {
-                os_strdup(node[i]->content, group);
+                snprintf(group, OS_MAXSTR - 1, "%s", node[i]->content);
                 break;
             }
         }

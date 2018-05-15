@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, WazuhVersion, plain_dict_to_nested_dict, create_exception_dic, get_fields_to_nest
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, create_exception_dic, get_fields_to_nest
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -751,30 +751,33 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_dict(conn, min_select_fields, user_select_fields):
-        db_api_name = {name:name for name in min_select_fields}
-        min_select_fields = map(lambda x: x.replace('`',''), min_select_fields)
+    def get_agents_dict(conn, select_fields, user_select_fields):
+        select_fields = map(lambda x: x.replace('`',''), select_fields)
+        db_api_name = {name:name for name in select_fields}
         db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
         fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
 
-        items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field in user_select_fields} for tuple in conn]
-        items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested) for d in items]
+        agent_items = [{field:value for field,value in zip(select_fields, tuple) if value is not None} for tuple in conn]
 
         if 'status' in user_select_fields:
             today = date.today()
-            items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('lastKeepAlive'), item.get('version') is None, today)) for item in items]
+            agent_items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('last_keepalive'), item.get('version') is None, today)) for item in agent_items]
+        else:
+            agent_items = [dict(item, id=str(item['id']).zfill(3)) for item in agent_items]
 
-        if len(items) > 0 and items[0]['id'] == '000' and 'ip' in user_select_fields:
-            items[0]['ip'] = '127.0.0.1'
+        if len(agent_items) > 0 and agent_items[0]['id'] == '000' and 'ip' in user_select_fields:
+            agent_items[0]['ip'] = '127.0.0.1'
 
-        return items
+        agent_items = [{db_api_name[key]:value for key,value in agent.items() if key in user_select_fields} for agent in agent_items]
+        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os']) for d in agent_items]
+
+        return agent_items
 
 
     @staticmethod
     def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
         """
         Gets a list of available agents with basic attributes.
-
         :param status: Filters by agent status: Active, Disconnected or Never connected.
         :param os_platform: Filters by OS platform.
         :param os_version: Filters by OS version.
@@ -803,7 +806,6 @@ class Agent:
                    'os.arch': 'os_arch', 'node_name': 'node_name'}
         valid_select_fields = set(fields.values()) | {'status'}
         # at least, we should retrieve those fields since other fields dependend on those
-        min_select_fields = {'id', 'version', 'last_keepalive'}
         search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
         request = {}
         if select:
@@ -811,7 +813,9 @@ class Agent:
                 incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                                     format(valid_select_fields, incorrect_fields))
-            min_select_fields |= set(select['fields'])
+            select_fields_set = set(select['fields'])
+            min_select_fields = {'id'} | select_fields_set if 'status' not in select_fields_set\
+                                        else select_fields_set | {'id', 'last_keepalive', 'version'}
         else:
             valid_select_fields.remove('node_name') # only return node_type if asked
             min_select_fields = valid_select_fields
@@ -904,6 +908,7 @@ class Agent:
         data['items'] = Agent.get_agents_dict(conn, min_select_fields, user_select_fields)
 
         return data
+
 
     @staticmethod
     def get_agents_summary():
@@ -1193,7 +1198,6 @@ class Agent:
         return remove_agent
 
 
-    @staticmethod
     def get_outdated_agents(offset=0, limit=common.database_limit, sort=None):
         """
         Gets the outdated agents.
@@ -1274,10 +1278,7 @@ class Agent:
         if self.os['platform']=="windows":
             versions_url = wpk_repo + "windows/versions"
         else:
-            if self.os['platform']=="ubuntu":
-                versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/versions"
-            else:
-                versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
+            versions_url = wpk_repo +"linux/versions"
 
         try:
             result = urlopen(versions_url)
@@ -1344,10 +1345,7 @@ class Agent:
         if self.os['platform']=="windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
         else:
-            if self.os['platform']=="ubuntu":
-                wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
-            else:
-                wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
+            wpk_file = "wazuh_agent_{0}_linux_{1}.wpk".format(agent_new_ver, self.os['arch'])
 
         wpk_file_path = "{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)
 
@@ -1368,10 +1366,7 @@ class Agent:
         if self.os['platform']=="windows":
             wpk_url = wpk_repo + "windows/" + wpk_file
         else:
-            if self.os['platform']=="ubuntu":
-                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
-            else:
-                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/" + wpk_file
+            wpk_url = wpk_repo +"linux" + "/" + wpk_file
 
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))
@@ -1666,7 +1661,7 @@ class Agent:
         # Open file on agent
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(common.ossec_path + "/queue/ossec/request")
-        msg = "{0} com open w {1}".format(str(self.id).zfill(3), wpk_file)
+        msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))

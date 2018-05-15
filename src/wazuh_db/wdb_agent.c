@@ -148,6 +148,7 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
 int wdb_remove_agent(int id) {
     int result;
     sqlite3_stmt *stmt;
+    char * name;
 
     if (wdb_open_global() < 0)
         return -1;
@@ -157,11 +158,15 @@ int wdb_remove_agent(int id) {
         return -1;
     }
 
-    sqlite3_bind_int(stmt, 1, id);
+    name = wdb_agent_name(id);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? wdb_remove_agent_db(id) : -1;
+    sqlite3_bind_int(stmt, 1, id);
+    result = wdb_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
 
+    result = result && name ? wdb_remove_agent_db(id, name) : -1;
+
+    free(name);
     return result;
 }
 
@@ -271,22 +276,21 @@ int wdb_create_agent_db(int id, const char *name) {
 }
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
-int wdb_remove_agent_db(int id) {
+int wdb_remove_agent_db(int id, const char * name) {
     char path[OS_FLSIZE + 1];
     char path_aux[OS_FLSIZE + 1];
-    char *name = wdb_agent_name(id);
-
-    if (!name)
-        return -1;
 
     snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
-    free(name);
 
     if (!remove(path)) {
         snprintf(path_aux, OS_FLSIZE, "%s-shm", path);
-        remove(path_aux);
+        if (remove(path_aux) < 0) {
+            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
+        }
         snprintf(path_aux, OS_FLSIZE, "%s-wal", path);
-        remove(path_aux);
+        if (remove(path_aux) < 0) {
+            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
+        }
         return 0;
     } else
         return -1;

@@ -93,8 +93,6 @@ void dump_registry_ignore(syscheck_config *syscheck, char *entry, int arch) {
     int ign_size = 0;
 
     if (syscheck->registry_ignore) {
-        int ign_size;
-
         /* We do not add duplicated entries */
         for (ign_size = 0; syscheck->registry_ignore[ign_size].entry; ign_size++)
             if (syscheck->registry_ignore[ign_size].arch == arch &&
@@ -353,7 +351,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_SHA256SUM;
                 } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_SHA256SUM;
+                    opts &= ~ CHECK_SHA256SUM;
                 } else {
                     merror(SK_INV_OPT, *values, *attrs);
                     ret = 0;

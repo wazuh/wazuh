@@ -238,26 +238,27 @@ int UninstallService()
 /* "Signal" handler */
 VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 {
-    switch (dwOpcode) {
-        case SERVICE_CONTROL_STOP:
-            ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
-            ossecServiceStatus.dwWin32ExitCode          = 0;
-            ossecServiceStatus.dwCheckPoint             = 0;
-            ossecServiceStatus.dwWaitHint               = 0;
+    if (ossecServiceStatusHandle) {
+        switch (dwOpcode) {
+            case SERVICE_CONTROL_STOP:
+                ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
+                ossecServiceStatus.dwWin32ExitCode          = 0;
+                ossecServiceStatus.dwCheckPoint             = 0;
+                ossecServiceStatus.dwWaitHint               = 0;
 
-            minfo("Received exit signal.");
-            SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
-            minfo("Exiting...");
+                minfo("Received exit signal.");
+                SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
+                minfo("Exiting...");
 
 #ifdef OSSECHIDS
-            // Kill children processes spawned by modules, only in wazuh-agent
-            wm_kill_children();
+                // Kill children processes spawned by modules, only in wazuh-agent
+                wm_kill_children();
 #endif
-            return;
-        default:
-            break;
+                return;
+            default:
+                break;
+        }
     }
-    return;
 }
 
 /* Set the error code in the service */
