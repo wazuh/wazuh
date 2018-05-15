@@ -35,6 +35,7 @@ static void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor);
 static void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
 static int wm_osquery_check_logfile(const char * path, FILE * fp);
 static int wm_osquery_packs(wm_osquery_monitor_t *osquery);
+static char * wm_osquery_already_running(char * text);
 
 static volatile int active = 1;
 
@@ -155,6 +156,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 {
     char osqueryd_path[PATH_MAX];
     char config_path[PATH_MAX];
+    char * strpid = NULL;
 
     // Windows agent needs the complete path to osqueryd
 #ifndef WIN32
@@ -205,7 +207,12 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
                     mwarn("osqueryd has unsafe permissions.");
                 } else if (strstr(text, "[Ref #1629]")) {
                     mwarn("osqueryd initialize failed: Could not initialize database.");
-                } else {
+                } else if (end = wm_osquery_already_running(text), end) {
+                    free(strpid);
+                    os_strdup(end, strpid);
+                    minfo("osqueryd is already running with pid %s.", strpid);
+                }
+                else {
                     switch (text[0]) {
                     case 'E':
                     case 'W':
@@ -232,15 +239,36 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
             // 127 means error in exec
             merror("Couldn't execute osquery (%s). Check file and permissions.", osqueryd_path);
             active = 0;
-            return NULL;
+            break;
+        } else if (strpid) {
+            // Osquery is already running. Close thread silently.
+            break;
         } else if (time(NULL) - time_started < 10) {
             // If osquery was alive less than 10 seconds, give up
             merror("Osquery exited with code %d. Closing module.", wstatus);
             active = 0;
-            return NULL;
+            break;
         } else {
             mwarn("Osquery exited with code %d. Restarting.", wstatus);
         }
+    }
+
+    free(strpid);
+    return NULL;
+}
+
+char * wm_osquery_already_running(char * text) {
+    const char * PATTERNS[] = { "osqueryd (", ") is already running" };
+    char * begin;
+    char * end;
+
+    // Find "osqueryd (xxxx) is already running"
+
+    if (begin = strstr(text, PATTERNS[0]), begin && (end = strstr(begin += strlen(PATTERNS[0]), PATTERNS[1]), end)) {
+        *end = '\0';
+        return begin;
+    } else {
+        return NULL;
     }
 }
 
