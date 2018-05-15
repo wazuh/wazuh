@@ -375,7 +375,6 @@
 #define mkstemp(x) 0
 #define mkdir(x, y) mkdir(x)
 #endif /* WIN32 */
-#define OFFSET 13
 
 const char *__local_name = "unset";
 
@@ -635,14 +634,18 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
     return (ret);
 }
 
-int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
+int MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset)
 {
     size_t n = 0;
     long files_size = 0;
     char buf[2048 + 1];
-    const char *tmpfile;
     FILE *fp;
     FILE *finalfp;
+    struct stat statbuff;
+    char newpath[PATH_MAX];
+    DIR *dir;
+    struct dirent *ent;
+
     /* Create a new entry */
 
     if (files == NULL) {
@@ -666,76 +669,78 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
         return (1);
     }
 
+    if (path_offset < 0) {
+        char filename[PATH_MAX];
+        char * basedir;
 
+        // Create default basedir
 
-    finalfp = fopen(finalpath, "a");
-    if (!finalfp) {
-        merror("Unable to append merged file: '%s'.", finalpath);
-        return (0);
+        strncpy(filename, files, sizeof(filename));
+        filename[sizeof(filename) - 1] = '\0';
+        basedir = dirname(filename);
+        path_offset = strlen(basedir);
+
+        if (basedir[path_offset - 1] != '/') {
+            path_offset++;
+        }
     }
 
-    fp = fopen(files, "r");
-
-    if (!fp) {
-        merror("Unable to merge file '%s'.", files);
-        fclose(finalfp);
-        return (0);
+    if (stat(files, &statbuff) < 0) {
+        merror("at %s(): " FSTAT_ERROR, __func__, files, errno, strerror(errno));
+        return 0;
     }
 
+    if (S_ISDIR(statbuff.st_mode)) {
+        mdebug2("Merging directory: %s", files);
 
-    fseek(fp, 0, SEEK_END);
-    files_size = ftell(fp);
-    tmpfile = strchr(files+OFFSET, '/');
-   
-    if (tmpfile) {
-        tmpfile++;
-    } else {
-        tmpfile = strrchr(files,'/');
-    }
+        if (dir = opendir(files), !dir) {
+            merror("Couldn't open directory '%s': %s (%d)", files, strerror(errno), errno);
+            return 0;
+        }
 
-
-
-    //CHECK IF DIRECTORY
-            struct stat statbuff;
-
-            stat(files, &statbuff);
-
-            if(S_ISDIR(statbuff.st_mode)){
-                 mdebug1("DIRECTORY: %s",files);
-                 DIR *newDIR = opendir(files);
-                 struct dirent *ent;
-
-                 while ((ent = readdir(newDIR)) != NULL) {
-                     if(strcmp(ent->d_name,".")!=0&&strcmp(ent->d_name,"..")!=0){
-                        char* newpath=NULL;
-                        //realpath(f,buff);
-                        os_malloc(PATH_MAX,newpath);
-                        snprintf(newpath,PATH_MAX,"%s/%s",files,ent->d_name);
-                        MergeAppendFile(finalpath, newpath, tag);
-                        free(newpath);
-                     }
-                 }
-
+        while ((ent = readdir(dir)) != NULL) {
+            // Skip . and ..
+            if (ent->d_name[0] != '.' || (ent->d_name[1] && (ent->d_name[1] != '.' || ent->d_name[2]))) {
+                snprintf(newpath, PATH_MAX, "%s/%s", files, ent->d_name);
+                MergeAppendFile(finalpath, newpath, tag, path_offset);
             }
-            else{
-                //mdebug1("FILES: %s",files);
-                if (tag) {
-                    fprintf(finalfp, "#%s\n", tag);
-                }
+        }
 
-                fprintf(finalfp, "!%ld %s\n", files_size, tmpfile);
-                fseek(fp, 0, SEEK_SET);
+        closedir(dir);
+    } else {
+        finalfp = fopen(finalpath, "a");
+        if (!finalfp) {
+            merror("Unable to append merged file: '%s'.", finalpath);
+            return (0);
+        }
 
-                while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
-                    buf[n] = '\0';
-                    fwrite(buf, n, 1, finalfp);
-                }
-                //mdebug1("BUF: %s",buf);
+        fp = fopen(files, "r");
 
-                fclose(fp);
+        if (!fp) {
+            merror("Unable to merge file '%s'.", files);
+            fclose(finalfp);
+            return (0);
+        }
 
-                fclose(finalfp);
+        fseek(fp, 0, SEEK_END);
+        files_size = ftell(fp);
+
+        if (tag) {
+            fprintf(finalfp, "#%s\n", tag);
+        }
+
+        fprintf(finalfp, "!%ld %s\n", files_size, files + path_offset);
+        fseek(fp, 0, SEEK_SET);
+
+        while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
+            buf[n] = '\0';
+            fwrite(buf, n, 1, finalfp);
+        }
+
+        fclose(fp);
+        fclose(finalfp);
     }
+
     return (1);
 }
 

@@ -48,7 +48,7 @@ void DeleteState();
 
 int MergeFiles(const char *finalpath, char **files, const char *tag) __attribute__((nonnull(1, 2)));
 
-int MergeAppendFile(const char *finalpath, const char *files, const char *tag) __attribute__((nonnull(1)));
+int MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset) __attribute__((nonnull(1)));
 
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode) __attribute__((nonnull(1)));
 
