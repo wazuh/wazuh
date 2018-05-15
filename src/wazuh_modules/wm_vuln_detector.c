@@ -163,9 +163,9 @@ int wm_checks_package_vulnerability(char *version, const char *operation, char *
             }
 
             if (version_value > cversion_value) {
-                return 0;
+                return VU_NOT_VULNERABLE;
             } else if (version_value < cversion_value) {
-                return 1;
+                return VU_VULNERABLE;
             }
 
             // Separate the version from the revision
