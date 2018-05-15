@@ -133,6 +133,7 @@ typedef struct agent_software {
     char *agent_name;
     char *agent_ip;
     const char *OS;
+    char *arch;
     distribution dist;
     char info;
     struct agent_software *next;
@@ -215,6 +216,8 @@ typedef struct info_state {
     char *id;
     char *operation;
     char *operation_value;
+    char *arch_operation;
+    char *arch_value;
     struct info_state *prev;
 } info_state;
 
