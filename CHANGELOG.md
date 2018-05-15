@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
     - Limit the frequency of agent keys reloading.
     - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
 - Alert from deleted files with syscheck in frecuency mode ([#617](https://github.com/wazuh/wazuh/pull/617))
+- Add Syscheck improvements ([#605](https://github.com/wazuh/wazuh/pull/605))
 
 ### Changed
 
