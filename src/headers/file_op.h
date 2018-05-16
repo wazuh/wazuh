@@ -12,6 +12,7 @@
 #ifndef __FILE_H
 #define __FILE_H
 
+#include <stdint.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <external/cJSON/cJSON.h>
