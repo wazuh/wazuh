@@ -136,7 +136,6 @@ typedef int sock2len_t;
 
 #ifndef WIN32
 #define CloseSocket(x) close(x)
-typedef ino_t wino_t;
 #endif
 
 #ifdef WIN32
@@ -151,7 +150,6 @@ void WinSetError();
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
-typedef uint64_t wino_t;
 
 #define MSG_DONTWAIT    0
 

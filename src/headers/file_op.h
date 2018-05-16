@@ -18,6 +18,12 @@
 
 #define OS_PIDFILE  "/var/run"
 
+#ifdef WIN32
+typedef uint64_t wino_t;
+#else
+typedef ino_t wino_t;
+#endif
+
 typedef struct File {
     char *name;
     FILE *fp;
