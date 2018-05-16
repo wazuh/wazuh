@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include <pthread.h>
 
 /* Prototypes */
 static int update_fname(int i, int j);
@@ -942,45 +943,153 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
     return d_control;
 }
 
-void w_msg_queue_init(size_t size){
-    msg_queue = queue_init(size);
+void w_msg_hash_queues_init(){
+    msg_queues_table = OSHash_Create();
+
+    if(!msg_queues_table){
+        merror_exit("Failed to create hash table for queue threads");
+    }
 }
 
-int w_msg_queue_push(const char * buffer, unsigned long size){
-    char *str;
+int w_msg_hash_queues_add_entry(const char *key){
     int result;
+    w_msg_queue_t *msg;
 
-    w_mutex_lock(&mutex);
-    os_calloc(OS_MAXSTR+1,sizeof(char),str);
+    os_calloc(1,sizeof(w_msg_queue_t),msg);
+    msg->msg_queue = queue_init(OS_SIZE_4096);
+    msg->mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+    msg->available = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
 
-    if (result = queue_push(msg_queue, str), result == 0) {
-        w_cond_signal(&available);
+    result = OSHash_Add(msg_queues_table, key, msg);
+    return result;
+}
+
+int w_msg_hash_queues_push(const char *str,char *file,char *outformat,unsigned long size,logsocket **target_socket,char queue_mq){
+    w_msg_queue_t *msg;
+    int i;
+
+    for (i = 0; target_socket[i] && target_socket[i]->name; i++)
+    {
+        w_mutex_lock(&mutex);
+
+        while (msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table,target_socket[i]->name), !msg) {
+            w_cond_wait(&available, &mutex);
+        }
+
+        w_mutex_unlock(&mutex);
+
+        if(msg){
+            w_msg_queue_push(msg,str,file,outformat,size,target_socket,queue_mq);
+            return 0;
+        }
+        else{
+            return OS_INVALID;
+        }
     }
 
-    w_mutex_unlock(&mutex);
+    return 0;
+}
+
+w_message_t * w_msg_hash_queues_pop(const char *key){
+    w_msg_queue_t *msg;
+
+    msg = OSHash_Get(msg_queues_table,key);
+
+    if(msg)
+    {
+        w_message_t *message;
+        message = w_msg_queue_pop(msg);
+
+        if(message){
+            return message;
+        }
+    }
+    return NULL;
+}
+
+int w_msg_queue_push(w_msg_queue_t * msg,const char * buffer,char *file,char *outformat, unsigned long size,logsocket **target_socket,char queue_mq){
+    w_message_t *message;
+    static int reported = 0;
+    int result;
+
+    w_mutex_lock(&msg->mutex);
+
+    os_calloc(1,sizeof(w_message_t),message);
+    os_calloc(size,sizeof(char),message->buffer);
+    memcpy(message->buffer,buffer,size);
+    message->size = size;
+    message->file = file;
+    message->outformat = outformat;
+    message->target_socket = target_socket;
+    message->queue_mq = queue_mq;
+
+   
+    if (result = queue_push(msg->msg_queue, message), result == 0) {
+        w_cond_signal(&msg->available);
+    }
+
+    w_mutex_unlock(&msg->mutex);
+
+    if (result < 0) {
+        free(message->buffer);
+        free(message);
+        mdebug2("Discarding log line from logcollector");
+
+        if (!reported) {
+            mwarn("Message message queue is full (%zu). Log lines may be lost.", msg->msg_queue->size);
+            reported = 1;
+        }
+    }
 
     return result;
 }
 
-char * w_msg_queue_pop(){
-    char *str;
-    str = queue_pop(msg_queue);
+w_message_t * w_msg_queue_pop(w_msg_queue_t * msg){
+    w_message_t *message;
+    w_mutex_lock(&msg->mutex);
 
-    w_mutex_lock(&mutex);
-
-    while (str = (message_t *)queue_pop(queue), !str) {
-        w_cond_wait(&available, &mutex);
+    while (message = (w_message_t *)queue_pop(msg->msg_queue), !message) {
+        w_cond_wait(&msg->available, &msg->mutex);
     }
 
-    w_mutex_unlock(&mutex);
-    return str;
+    w_mutex_unlock(&msg->mutex);
+    return message;
 }
 
-void w_msg_queue_free(){
-    char *str;
+void * w_output_thread(void * args){
+    char *queue_name = args;
+    w_message_t *message;
 
-    while(str = (char *)queue_pop(msg_queue), str){
-        free(str);
+    while(1)
+    {
+        /* Pop message from the queue */
+        message = w_msg_hash_queues_pop(queue_name);
+
+        if (SendMSGtoSCK(logr_queue, message->buffer, message->file,
+                        message->queue_mq, message->target_socket, message->outformat) < 0) {
+                merror(QUEUE_SEND);
+            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+            }
+        }
+
+        free(message->buffer);
+        free(message);
+    }  
+}
+
+void w_create_output_threads(){
+    unsigned int i;
+    const OSHashNode *curr_node;
+
+    for(i = 0; i <= msg_queues_table->rows; i++){
+        if(msg_queues_table->table[i]){
+            curr_node = msg_queues_table->table[i];
+
+            /* Create one thread per valid hash entry */
+            if(curr_node->key){
+                w_create_thread(w_output_thread, curr_node->key);
+            }
+        }
     }
-    queue_free(msg_queue);
 }

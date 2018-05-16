@@ -67,6 +67,7 @@ int LogCollectorConfig(const char *cfgfile)
             for (j=0;logff[i].target[j];j++) {
                 if (strcmp(logff[i].target[j], "agent") == 0) {
                     logff[i].target_socket[j] = &default_agent;
+                    w_msg_hash_queues_add_entry("agent");
                     continue;
                 }
                 int found = -1;
@@ -80,6 +81,7 @@ int LogCollectorConfig(const char *cfgfile)
                     merror_exit("Socket '%s' for '%s' is not defined.", logff[i].target[j], logff[i].file);
                 } else {
                     logff[i].target_socket[j] = &logsk[k];
+                    w_msg_hash_queues_add_entry(logsk[k].name);
                 }
             }
         }

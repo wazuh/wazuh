@@ -17,12 +17,7 @@
 static void __send_pgsql_msg(logreader *lf, int drop_it, char *buffer) {
     mdebug2("Reading PostgreSQL message: '%s'", buffer);
     if (drop_it == 0) {
-        if (SendMSGtoSCK(logr_queue, buffer, lf->file, POSTGRESQL_MQ, lf->target_socket, lf->outformat) < 0) {
-            merror(QUEUE_SEND);
-            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-            }
-        }
+        w_msg_hash_queues_push(buffer,lf->file,lf->outformat,strlen(buffer),lf->target_socket,POSTGRESQL_MQ);
     }
 }
 

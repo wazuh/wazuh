@@ -101,6 +101,9 @@ int main(int argc, char **argv)
 
     mdebug1(STARTED_MSG);
 
+    /* Init message queue */
+    w_msg_hash_queues_init();
+
     /* Read config file */
     if (LogCollectorConfig(cfg) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
@@ -160,11 +163,12 @@ int main(int argc, char **argv)
         merror_exit(QUEUE_FATAL, DEFAULTQPATH);
     }
 
-    /* Init message queue */
-    w_msg_queue_init(OS_SIZE_4096);
-    
+   
+    w_create_output_threads();
+
     /* Main loop */
     LogCollectorStart();
 
     /* Free the message queue */
+   // w_msg_queue_free();
 }

@@ -238,13 +238,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
 
         if (drop_it == 0) {
             /* Send message to queue */
-            if (SendMSGtoSCK(logr_queue, final_msg, lf->file,
-                        HOSTINFO_MQ, lf->target_socket, lf->outformat) < 0) {
-                merror(QUEUE_SEND);
-                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                }
-            }
+            w_msg_hash_queues_push(final_msg,lf->file,lf->outformat,strlen(final_msg),lf->target_socket,HOSTINFO_MQ);
         }
 
         /* Get next */
