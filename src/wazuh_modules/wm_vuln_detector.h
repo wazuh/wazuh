@@ -41,6 +41,7 @@
 #define VU_XENIAL     "XENIAL"
 #define VU_RHEL       "RED HAT"
 #define VU_CENTOS     "CENTOS"
+#define VU_AMAZL      "AMAZON LINUX"
 #define VU_RHEL5      "RHEL5"
 #define VU_RHEL6      "RHEL6"
 #define VU_RHEL7      "RHEL7"

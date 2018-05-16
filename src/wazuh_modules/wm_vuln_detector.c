@@ -222,6 +222,10 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     (found = strstr(version_it, ".el"))? *found = '\0' : 0;
     (found = strstr(cversion_it, ".el"))? *found = '\0' : 0;
 
+    // For Amazon Linux packages
+    (found = strstr(version_it, ".amzn"))? *found = '\0' : 0;
+    (found = strstr(cversion_it, ".amzn"))? *found = '\0' : 0;
+
     // Check version
     if (strcmp(version_it, cversion_it)) {
         for (i = 0, j = 0, version_found = 0, cversion_found = 0;;) {
@@ -2077,6 +2081,8 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                                     continue;
                                 }
                             }
+                        } else if (strcasestr(buffer, VU_AMAZL)) {
+                            os_strdup(VU_RHEL7, agents->OS);
                         } else {
                             mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS, agents->agent_name);
                             if (agents = skip_agent(agents, agents_software), !agents) {
