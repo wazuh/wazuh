@@ -3,59 +3,59 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-#
-# Imports
-#
-error_msg = ""
+# Necessary imports to enable logging
 try:
-    import asyncore
-    import threading
-    import time
+    from sys import argv, exit, path, version_info
+
+    if version_info[0] == 2 and version_info[1] < 7:
+        raise Exception("Error starting wazuh-clusterd. Minimal Python version required is 2.7. Found version is {0}.{1}".\
+            format(version_info[0], version_info[1]))
+
     import argparse
     import logging
     import logging.handlers
+    from os.path import dirname
+
+    # Import framework
+    # Search path
+    path.append(dirname(argv[0]) + '/../framework')
+
+    # Import and Initialize
+    from wazuh import Wazuh
+
+    myWazuh = Wazuh(get_init=True)
+
+    from wazuh import common
+except Exception as e:
+    print ("Error starting wazuh-clusterd: {0}".format(e))
+    exit()
+
+
+# Rest of imports. If an exception is raised, it will be logged using logging.
+error_msg = ""
+try:
+    from signal import signal, SIGINT, SIGTERM
+    import asyncore
+    import threading
+    import time
     import ctypes
     import ctypes.util
     import socket
-    from signal import signal, SIGINT, SIGTERM
-    from pwd import getpwnam
-    from sys import argv, exit, path, version_info
-    from os.path import dirname
     from os import seteuid, setgid, getpid, kill, unlink
 
-    # Import framework
-    try:
-        # Search path
-        path.append(dirname(argv[0]) + '/../framework')
-
-        # Import and Initialize
-        from wazuh import Wazuh
-        myWazuh = Wazuh(get_init=True)
-
-        from wazuh import common
-    except Exception as e:
-        if version_info[0] == 2 and version_info[1] < 7:
-            error_msg = "Python 2.7 required. Exiting."
-        else:
-            error_msg = str(e)
-        raise ValueError(error_msg)
-
-    try:
-        from wazuh.exception import WazuhException
-        from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
-        from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
-        from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
-        from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
-        from wazuh.cluster.communication import InternalSocketThread
-        from wazuh import configuration as config
-        from wazuh.manager import status
-    except Exception as e:
-        error_msg = str(e)
-        raise ValueError(error_msg)
+    from wazuh.exception import WazuhException
+    from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
+    from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
+    from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
+    from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
+    from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
+    from wazuh.cluster.communication import InternalSocketThread
+    from wazuh import configuration as config
+    from wazuh.manager import status
 
 except Exception as e:
-    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-    exit()
+    error_msg = str(e)
+
 
 logger = logging.getLogger()
 
@@ -101,6 +101,10 @@ def set_logging(foreground_mode=False, debug_mode=0):
                   debug_mode == 1 else logging.INFO
 
     logger.setLevel(debug_level)
+
+
+def print_version():
+    print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
 def clean_exit(reason, error=False):
@@ -193,10 +197,6 @@ if __name__ == '__main__':
     manager_tag = "wazuh-clusterd"
     processing_exit = False
 
-    # Signals
-    signal(SIGINT, signal_handler)
-    signal(SIGTERM, signal_handler)
-
     # Parse args
     parser =argparse.ArgumentParser()
     parser.add_argument('-f', help="Run in foreground", action='store_true')
@@ -205,24 +205,24 @@ if __name__ == '__main__':
     parser.add_argument('-r', help="Run as root", action='store_true')
     args = parser.parse_args()
 
+    if args.V:
+        print_version()
+
     # Set logger
-    e = None
     try:
         debug_mode = config.get_internal_options_value('wazuh_clusterd','debug',2,0) or args.d
-    except NameError:
-        debug_mode = False
-    except Exception as e:
-        debug_mode = False
+    except Exception:
+        debug_mode = 0
 
     set_logging(foreground_mode=args.f, debug_mode=debug_mode)
-
-    if e:
-        logger.error("{}".format(str(e)))
 
     if error_msg:
         logger.error(error_msg)
         exit()
 
+    # Signals
+    signal(SIGINT, signal_handler)
+    signal(SIGTERM, signal_handler)
 
     # Check if it is already running
     if status()['wazuh-clusterd'] == 'running':
@@ -243,9 +243,8 @@ if __name__ == '__main__':
 
     # Drop privileges to ossec
     if not args.r:
-        pwdnam_ossec = getpwnam('ossec')
-        setgid(pwdnam_ossec.pw_gid)
-        seteuid(pwdnam_ossec.pw_uid)
+        setgid(common.ossec_gid)
+        seteuid(common.ossec_uid)
 
     # Creating pid file
     create_pid("wazuh-clusterd", getpid())

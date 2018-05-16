@@ -4,7 +4,9 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.cluster.cluster import check_cluster_status, get_cluster_items, get_cluster_items_communication_intervals
+from wazuh.cluster.cluster import check_cluster_status, get_cluster_items_communication_intervals
+from wazuh.cluster import __version__
+from wazuh.utils import WazuhVersion
 import asyncore
 import threading
 import random
@@ -79,13 +81,17 @@ def msgparse(buf, my_fernet):
     header_size = 8 + cmd_size
     if len(buf) >= header_size:
         counter, size, command = struct.unpack('!2I{}s'.format(cmd_size), buf[:header_size])
+
+        if size > max_msg_size:
+            raise Exception("Received message exceeds max allowed length. Received: {}. Max: {}".format(size, max_msg_size))
+
         command = command.decode().split(' ',1)[0]
         if len(buf) >= size + header_size:
             payload = buf[header_size:size + header_size]
             if payload and my_fernet:
                 try:
                     payload = my_fernet.decrypt(payload)
-                except InvalidToken as e:
+                except InvalidToken:
                     raise Exception("Could not decrypt message. Check the key is correct.")
             return size + header_size, counter, command, payload
     return None
@@ -132,11 +138,11 @@ class ClusterThread(threading.Thread):
 
 
     def sleep(self, delay):
-        exit = False
+        must_exit = False
         count = 0
-        while not exit and not self.stopper.is_set() and self.running:
+        while not must_exit and not self.stopper.is_set() and self.running:
             if count == delay:
-                exit = True
+                must_exit = True
             else:
                 count += 1
                 time.sleep(1)
@@ -146,8 +152,8 @@ class ClusterThread(threading.Thread):
 
 class Handler(asyncore.dispatcher_with_send):
 
-    def __init__(self, key, sock=None, map=None):
-        asyncore.dispatcher_with_send.__init__(self, sock=sock, map=map)
+    def __init__(self, key, sock=None, asyncore_map=None):
+        asyncore.dispatcher_with_send.__init__(self, sock=sock, map=asyncore_map)
         self.box = {}
         self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
         self.inbuffer = b''
@@ -199,27 +205,27 @@ class Handler(asyncore.dispatcher_with_send):
 
 
     def get_worker(self, data):
-        # the worker id will be the first element spliting the data by spaces
-        id = data.split(b' ', 1)[0].decode()
+        # the worker worker_id will be the first element spliting the data by spaces
+        worker_id = data.split(b' ', 1)[0].decode()
         with self.workers_lock:
-            if id in self.workers:
-                return self.workers[id], 'ack', 'Command received for {}'.format(id)
+            if worker_id in self.workers:
+                return self.workers[worker_id], 'ack', 'Command received for {}'.format(worker_id)
             else:
-                return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(id)
+                return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(worker_id)
 
 
-    def compute_md5(self, file, blocksize=2**20):
+    def compute_md5(self, my_file, blocksize=2 ** 20):
         hash_algorithm = hashlib.md5()
-        with open(file, 'rb') as f:
+        with open(my_file, 'rb') as f:
             for chunk in iter(lambda: f.read(blocksize), b''):
                 hash_algorithm.update(chunk)
 
         return hash_algorithm.hexdigest()
 
 
-    def send_file(self, reason, file, remove=False, interval_file_transfer_send=0.1):
+    def send_file(self, reason, file_to_send, remove=False, interval_file_transfer_send=0.1):
         """
-        To send a file without collapsing the network, two special commands
+        To send a file without collapsing the network, three special commands
         are defined:
             - send_file_open <node_name> <file_name>
             - send_file_update <node_name> <file_name> <file_content>
@@ -230,38 +236,38 @@ class Handler(asyncore.dispatcher_with_send):
         Before sending the file, a request with a "reason" is sent. This way,
         the server will get prepared to receive the file.
 
-        :param file: filename (path)
-        :param reason: command to send before starting to send the file
-        :param remove: whether to remove the file after sending it or not
+        :param interval_file_transfer_send: Time to sleep between each chunk sent
+        :param file_to_send: filename (path)
+        :param reason: command to send before starting to send the file_to_send
+        :param remove: whether to remove the file_to_send after sending it or not
         """
-        # response will be of form 'ack id'
-        _, id = self.execute(reason, os.path.basename(file)).split(' ',1)
+        # response will be of form 'ack worker_id'
+        _, worker_id = self.execute(reason, os.path.basename(file_to_send)).split(' ', 1)
 
         try:
-            res, data = self.execute("file_open", "{}".format(id)).split(' ', 1)
+            res, data = self.execute("file_open", "{}".format(worker_id)).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
-            # TO-DO remove ossec_path from sent filepath
-            base_msg = "{} ".format(id).encode()
+            base_msg = "{} ".format(worker_id).encode()
             chunk_size = max_msg_size - len(base_msg)
 
-            with open(file, 'rb') as f:
+            with open(file_to_send, 'rb') as f:
                 for chunk in iter(lambda: f.read(chunk_size), b''):
                     res, data = self.execute("file_update", base_msg + chunk).split(' ', 1)
                     if res == "err":
                         raise Exception(data)
                     time.sleep(interval_file_transfer_send)
 
-            res, data = self.execute("file_close", "{} {}".format(id, self.compute_md5(file))).split(' ', 1)
+            res, data = self.execute("file_close", "{} {}".format(worker_id, self.compute_md5(file_to_send))).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
         except Exception as e:
-            logger.error("[Transport-Handler] Error sending file: '{}'.".format(str(e)))
+            logger.error("[Transport-Handler] Error sending file_to_send: '{}'.".format(str(e)))
 
         if remove:
-            os.remove(file)
+            os.remove(file_to_send)
 
         return res + ' ' + data
 
@@ -361,13 +367,14 @@ class Handler(asyncore.dispatcher_with_send):
         return counter
 
 
-    def split_data(self, data):
+    @staticmethod
+    def split_data(data):
         try:
             pair = data.split(' ', 1)
             cmd = pair[0]
             payload = pair[1] if len(pair) > 1 else None
         except Exception as e:
-            logger.error("[Transport-Handler] Error splitting data: '{}'.".format(str(e)))
+            logger.error("[Transport-Handler] Error splitting data: '{}'.".format(e))
             cmd = "err"
             payload = "Error splitting data"
 
@@ -378,7 +385,7 @@ class Handler(asyncore.dispatcher_with_send):
         try:
             return self.process_request(command, payload)
         except Exception as e:
-            error_msg = "Error processing command '{0}': '{1}'.".format(command, str(e))
+            error_msg = "Error processing command '{0}': '{1}'.".format(command, e)
             logger.error("[Transport-Handler] {0}".format(error_msg))
             return 'err ', error_msg
 
@@ -399,9 +406,7 @@ class Handler(asyncore.dispatcher_with_send):
 
 
     def process_response(self, response):
-        answer, payload = self.split_data(response)
-
-        final_response = None
+        answer, payload = Handler.split_data(response)
 
         if answer == 'ok':
             final_response = 'answered: {}.'.format(payload)
@@ -421,9 +426,9 @@ class Handler(asyncore.dispatcher_with_send):
 
 class ServerHandler(Handler):
 
-    def __init__(self, sock, server, map, addr=None):
-        Handler.__init__(self, server.config['key'], sock, map)
-        self.map = map
+    def __init__(self, sock, server, asyncore_map, addr=None):
+        Handler.__init__(self, server.config['key'], sock, asyncore_map)
+        self.map = asyncore_map
         self.name = None
         self.server = server
         self.addr = addr
@@ -447,12 +452,20 @@ class ServerHandler(Handler):
 
 
     def hello(self, data):
+
         try:
-            id = self.server.add_client(data, self.addr, self)
-            self.name = id  # TO DO: change self.name to self.id
-            logger.info("[Master] [{0}]: Connected.".format(id))
+            # Check client version
+            client_version = WazuhVersion(data.split(' ')[2])
+            server_version = WazuhVersion(__version__)
+            if server_version.to_array()[0] != client_version.to_array()[0] or server_version.to_array()[1] != client_version.to_array()[1]:
+                self.handle_close()
+                raise Exception("Incompatible client version ({})".format(client_version))
+
+            client_id = self.server.add_client(data, self.addr, self)
+            self.name = client_id  # TO DO: change self.name to self.client_id
+            logger.info("[Master] [{0}]: Connected.".format(client_id))
         except Exception as e:
-            logger.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, str(e)))
+            logger.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, e))
         return None
 
 
@@ -462,12 +475,12 @@ class ServerHandler(Handler):
 
 class Server(asyncore.dispatcher):
 
-    def __init__(self, host, port, handle_type, map = {}):
-        asyncore.dispatcher.__init__(self, map=map)
+    def __init__(self, host, port, handle_type, asyncore_map = {}):
+        asyncore.dispatcher.__init__(self, map=asyncore_map)
         self._clients = {}
         self._clients_lock = threading.Lock()
 
-        self.map = map
+        self.map = asyncore_map
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
         self.bind((host, port))
@@ -516,15 +529,16 @@ class Server(asyncore.dispatcher):
 
 
     def add_client(self, data, ip, handler):
-        name, type = data.split(' ')
-        id = name
+        name, node_type, version = data.split(' ')
+        node_id = name
         with self._clients_lock:
-            self._clients[id] = {
+            self._clients[node_id] = {
                 'handler': handler,
                 'info': {
                     'name': name,
                     'ip': ip,
-                    'type': type
+                    'type': node_type,
+                    'version': version
                 },
                 'status': {
                     'sync_integrity_free': True,
@@ -552,18 +566,18 @@ class Server(asyncore.dispatcher):
                     }
                 }
             }
-        return id
+        return node_id
 
 
-    def remove_client(self, id):
+    def remove_client(self, client_id):
         with self._clients_lock:
             try:
                 # Remove threads
-                self._clients[id]['handler'].exit()
+                self._clients[client_id]['handler'].exit()
 
-                del self._clients[id]
+                del self._clients[client_id]
             except KeyError:
-                logger.error("[Transport-Server] Client '{}'' is already disconnected.".format(id))
+                logger.error("[Transport-Server] Client '{}'' is already disconnected.".format(client_id))
 
 
     def get_connected_clients(self):
@@ -581,12 +595,11 @@ class Server(asyncore.dispatcher):
                 raise Exception(error_msg)
 
 
-    def send_file(self, client_name, reason, file, remove = False):
-        return self.get_client_info(client_name)['handler'].send_file(reason, file, remove, self.interval_file_transfer_send)
+    def send_file(self, client_name, reason, file_to_send, remove = False):
+        return self.get_client_info(client_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
 
 
     def send_request(self, client_name, command, data=None):
-        response = None
 
         if client_name in self.get_connected_clients():
             response = self.get_client_info(client_name)['handler'].execute(command, data)
@@ -599,7 +612,6 @@ class Server(asyncore.dispatcher):
 
 
     def send_request_broadcast(self, command, data=None):
-        message = "{0} {1}".format(command, data)
 
         for c_name in self.get_connected_clients():
             response = self.get_client_info(c_name)['handler'].execute(command, data)
@@ -608,9 +620,9 @@ class Server(asyncore.dispatcher):
 
 class ClientHandler(Handler):
 
-    def __init__(self, key, host, port, name, map = {}):
-        Handler.__init__(self, key=key, map=map)
-        self.map = map
+    def __init__(self, key, host, port, name, asyncore_map = {}):
+        Handler.__init__(self, key=key, asyncore_map=asyncore_map)
+        self.map = asyncore_map
         self.host = host
         self.port = port
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -622,7 +634,7 @@ class ClientHandler(Handler):
     def handle_connect(self):
         logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
-        payload = msgbuild(counter, 'hello', self.my_fernet, '{} {}'.format(self.name, 'client'))
+        payload = msgbuild(counter, 'hello', self.my_fernet, '{} {} {}'.format(self.name, 'client', __version__))
         self.send(payload)
         self.my_connected = True
         logger.info("[Client] Connected.")
@@ -635,7 +647,6 @@ class ClientHandler(Handler):
 
 
     def send_request(self, command, data=None):
-        response = None
 
         if self.my_connected:
             response = self.execute(command, data)
@@ -654,8 +665,8 @@ class ClientHandler(Handler):
 
 class InternalSocketHandler(Handler):
 
-    def __init__(self, sock, manager, map):
-        Handler.__init__(self, key=None, sock=sock, map=map)
+    def __init__(self, sock, manager, asyncore_map):
+        Handler.__init__(self, key=None, sock=sock, asyncore_map=asyncore_map)
         self.manager = manager
 
 
@@ -665,13 +676,13 @@ class InternalSocketHandler(Handler):
 
 class InternalSocket(asyncore.dispatcher):
 
-    def __init__(self, socket_name, manager, handle_type, map = {}):
-        asyncore.dispatcher.__init__(self, map=map)
+    def __init__(self, socket_name, manager, handle_type, asyncore_map = {}):
+        asyncore.dispatcher.__init__(self, map=asyncore_map)
         self.handle_type = handle_type
-        self.map = map
+        self.map = asyncore_map
         self.socket_name = socket_name
         self.manager = manager
-        self.socket_address = "{}/{}/{}.sock".format(common.ossec_path, "/queue/cluster", self.socket_name)
+        self.socket_address = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", self.socket_name)
         self.__create_socket()
 
 
@@ -690,10 +701,11 @@ class InternalSocket(asyncore.dispatcher):
         self.set_reuse_addr()
         try:
             self.bind(self.socket_address)
+            os.chown(self.socket_address, common.ossec_uid, common.ossec_gid)
             self.listen(5)
             logger.debug2("[Transport-InternalSocket] Listening.")
         except Exception as e:
-            logger.error("[Transport-InternalSocket] Cannot create the socket: '{}'.".format(str(e)))
+            logger.error("[Transport-InternalSocket] Cannot create the socket: '{}'.".format(e))
 
         logger.debug2("[Transport-InternalSocket] Created.")
 
@@ -703,7 +715,7 @@ class InternalSocket(asyncore.dispatcher):
         if pair is not None:
             sock, addr = pair
             logger.debug("[Transport-InternalSocket] Incoming connection from '{0}'.".format(repr(addr)))
-            handler = self.handle_type(sock=sock, manager=self.manager, map=self.map)
+            handler = self.handle_type(sock=sock, manager=self.manager, asyncore_map=self.map)
 
 
     def handle_error(self):
@@ -738,7 +750,7 @@ class InternalSocketThread(threading.Thread):
         try:
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
         except Exception as e:
-            logger.error("{0} [Internal-COM ]: Error initializing: '{1}'.".format(self.thread_tag, str(e)))
+            logger.error("{0} [Internal-COM ]: Error initializing: '{1}'.".format(self.thread_tag, e))
             self.internal_socket = None
 
     def run(self):
@@ -759,13 +771,13 @@ def send_to_internal_socket(socket_name, message):
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     socket_address = "{}/{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
     logger.debug("[Transport-InternalSocketSend] Starting: {}.".format(socket_address))
-    response = ""
+    response = b""
 
     # Connect to UDS socket
     try:
         sock.connect(socket_address)
     except Exception as e:
-        logger.error('{}'.format(e))
+        logger.error('[Transport-InternalSocketSend] Error connecting: {}'.format(e))
         return response
 
     # Send message
@@ -780,7 +792,7 @@ def send_to_internal_socket(socket_name, message):
     logger.debug("[Transport-InternalSocketSend] Request sent.")
 
     # Receive response
-    buf = ""
+    buf = b""
     buf_size = 4096
     try:
         while not response:
@@ -798,7 +810,7 @@ def send_to_internal_socket(socket_name, message):
         sock.close()
         logging.debug("[Transport-InternalSocketSend] Socket closed.")
 
-    return response
+    return response.decode()
 
 
 class ProcessFiles(ClusterThread):
@@ -863,7 +875,7 @@ class ProcessFiles(ClusterThread):
 
                     self.unlock_and_stop(reason="task performed", send_err_request=False)
                 except Exception as e:
-                    logger.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, str(e)))
+                    logger.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, e))
                     self.unlock_and_stop(reason="error")
 
             elif self.received_error:
@@ -875,7 +887,7 @@ class ProcessFiles(ClusterThread):
                     try:
                         command, data = self.command_queue.get(block=True, timeout=1)
                         self.n_get_timeouts = 0
-                    except Empty as e:
+                    except Empty:
                         self.n_get_timeouts += 1
                         # wait before raising the exception but
                         # check while conditions every second
@@ -887,7 +899,7 @@ class ProcessFiles(ClusterThread):
 
                     self.process_file_cmd(command, data)
                 except Exception as e:
-                    logger.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, str(e)))
+                    logger.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, e))
                     self.unlock_and_stop(reason="error")
 
             time.sleep(self.interval_file_transfer_receive)
@@ -951,11 +963,9 @@ class ProcessFiles(ClusterThread):
                 self.size_received = 0
                 logger.debug("{0}: Opening file.".format(self.thread_tag))
                 self.start_time = time.time()
-                command = ""
                 self.file_open()
             elif command == "file_update":
                 logger.debug("{0}: Updating file.".format(self.thread_tag))
-                command = ""
                 self.file_update(data)
             elif command == "file_close":
                 logger.debug("{0}: Closing file.".format(self.thread_tag))
@@ -964,9 +974,8 @@ class ProcessFiles(ClusterThread):
                 self.end_time = time.time()
                 self.total_time = self.end_time - self.start_time
                 self.received_all_information = True
-                command = ""
         except Exception as e:
-            logger.error("{0}: '{1}'.".format(self.thread_tag, str(e)))
+            logger.error("{0}: '{1}'.".format(self.thread_tag, e))
             self.received_error = True
 
 
@@ -976,9 +985,9 @@ class ProcessFiles(ClusterThread):
         """
         # Create the file
         self.filename = "{}/queue/cluster/{}/{}.tmp".format(common.ossec_path, self.name, self.id)
-        logger.debug2("{0}: Creating file {1}".format(self.thread_tag, self.filename))  # debug2
+        logger.debug2("{0}: Creating file {1}".format(self.thread_tag, self.filename))
         self.f = open(self.filename, 'wb')
-        logger.debug2("{}: File {} created successfully.".format(self.thread_tag, self.filename))  # debug2
+        logger.debug2("{}: File {} created successfully.".format(self.thread_tag, self.filename))
 
 
     def file_update(self, chunk):
@@ -1010,7 +1019,6 @@ class ProcessFiles(ClusterThread):
         if local_md5_sum != md5_sum.decode():
             error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
                             format(self.filename, md5_sum, local_md5_sum)
-            #return 'err', error_msg
             os.remove(self.filename)
             raise Exception(error_msg)
 

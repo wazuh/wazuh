@@ -46,6 +46,8 @@ def show_groups():
     for g in groups_data['items']:
         print("  {0} ({1})".format(g['name'], g['count']))
 
+    print("Unassigned agents: {0}.".format(group.get_agents_without_group()['totalItems']))
+
 
 def show_group(agent_id):
     agent_info = Agent(id=agent_id).get_basic_information()

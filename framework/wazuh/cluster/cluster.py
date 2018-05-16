@@ -10,29 +10,20 @@ from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
-
 from datetime import datetime, timedelta
-from hashlib import sha512
-from time import time, mktime, sleep
-from os import path, listdir, rename, utime, environ, umask, stat, chmod, devnull, strerror, remove
+from time import time
+from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
-from io import BytesIO
-from itertools import compress, chain
-from operator import eq 
-from ast import literal_eval
-import socket
+from operator import eq, setitem
 import json
-import threading
 from stat import S_IRWXG, S_IRWXU
-from sys import version
 from difflib import unified_diff
-import asyncore
-import asynchat
 import errno
 import logging
 import re
 import os
+import ast
 from calendar import timegm
 from random import random
 
@@ -41,12 +32,6 @@ try:
     import xml.etree.cElementTree as ET
 except ImportError:
     import xml.etree.ElementTree as ET
-
-is_py2 = version[0] == '2'
-if is_py2:
-    from Queue import Queue as queue
-else:
-    from queue import Queue as queue
 
 import zipfile
 
@@ -68,16 +53,23 @@ def check_cluster_config(config):
     iv = InputValidator()
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
 
-    if not 'key' in config.keys():
+    if not 'key' in config:
         raise WazuhException(3004, 'Unspecified key')
     elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
         raise WazuhException(3004, 'Key must be 32 characters long and only have alphanumeric characters')
 
-    if config['node_type'] != 'master' and config['node_type'] != 'client':
+    if 'node_type' not in config:
+        raise WazuhException(3004, "Node type not present in cluster configuration")
+    elif config['node_type'] != 'master' and config['node_type'] != 'client':
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
 
-    if len(config['nodes']) == 0:
+    if 'nodes' not in config or len(config['nodes']) == 0:
         raise WazuhException(3004, 'No nodes defined in cluster configuration.')
+
+    if len(config['nodes']) > 1:
+        logger.warning(
+            "Found more than one node in configuration. Only master node should be specified. Using {} as master.".format(
+                config['nodes'][0]))
 
     invalid_elements = list(reservated_ips & set(config['nodes']))
 
@@ -88,6 +80,7 @@ def check_cluster_config(config):
 def get_cluster_items():
     try:
         cluster_items = json.load(open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)))
+        map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values()))
         return cluster_items
     except Exception as e:
         raise WazuhException(3005, str(e))
@@ -106,7 +99,6 @@ def get_cluster_items_client_intervals():
 
 
 def read_config():
-    # Get api/configuration/config.js content
     try:
         config_cluster = get_ossec_conf('cluster')
 
@@ -128,9 +120,6 @@ def get_node(name=None):
     data = {}
     if not name:
         config_cluster = read_config()
-
-        if not config_cluster:
-            raise WazuhException(3000, "No config found")
 
         data["node"]    = config_cluster["node_name"]
         data["cluster"] = config_cluster["name"]
@@ -184,8 +173,8 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
         if entry in excluded_files or entry[-1] == '~' or entry[-4:] == ".tmp" or entry[-5:] == ".lock":
             continue
 
+        full_path = path.join(dirname, entry)
         if entry in files or files == ["all"]:
-            full_path = path.join(dirname, entry)
 
             if not path.isdir(full_path):
                 file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
@@ -195,7 +184,7 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
 
                 new_key = full_path.replace(common.ossec_path, "")
                 walk_files[new_key] = {"mod_time" : str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
-                if 'merged' in entry:
+                if '.merged' in entry:
                     walk_files[new_key]['merged'] = True
                     walk_files[new_key]['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
                     walk_files[new_key]['merge_name'] = '/queue/cluster/' + entry
@@ -205,8 +194,8 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
                 if get_md5:
                     walk_files[new_key]['md5'] = md5(full_path)
 
-            elif recursive:
-                walk_files.update(walk_dir(full_path, recursive, files, excluded_files, get_cluster_item_key, get_md5, whoami))
+        if recursive and path.isdir(full_path):
+            walk_files.update(walk_dir(full_path, recursive, files, excluded_files, get_cluster_item_key, get_md5, whoami))
 
     return walk_files
 
@@ -222,12 +211,14 @@ def get_files_status(node_type, get_md5=True):
 
         if item['source'] == node_type or item['source'] == 'all':
             if item.get("files") and "agent-info.merged" in item["files"]:
-                agents_to_send, path = merge_agent_info(merge_type="agent-info",
-                                                time_limit_seconds=cluster_items\
-                                                ['sync_options']['get_agentinfo_newer_than'])
+                agents_to_send, merged_path = merge_agent_info(merge_type="agent-info",
+                                                               time_limit_seconds=cluster_items\
+                                                                        ['sync_options']['get_agentinfo_newer_than'])
                 if agents_to_send == 0:
                     return {}
-            fullpath = "{}{}".format(common.ossec_path,file_path).replace("//","/")
+                fullpath = common.ossec_path + path.dirname(merged_path)
+            else:
+                fullpath = common.ossec_path + file_path
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'], file_path, get_md5, node_type))
             except WazuhException as e:
@@ -236,7 +227,7 @@ def get_files_status(node_type, get_md5=True):
     return final_items
 
 
-def compress_files(source, name, list_path, cluster_control_json=None):
+def compress_files(name, list_path, cluster_control_json=None):
     zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}-{3}.zip".format(common.ossec_path, name, time(), str(random())[2:])
     with zipfile.ZipFile(zip_file_path, 'w') as zf:
         # write files
@@ -259,7 +250,6 @@ def compress_files(source, name, list_path, cluster_control_json=None):
 
 
 def decompress_files(zip_path, ko_files_name="cluster_control.json"):
-    zip_json = {}
     ko_files = ""
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
@@ -301,15 +291,15 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
                 agent_name_re = re.match(r'(^.+)-(.+)$', path.basename(file_path))
                 agent_name = agent_name_re.group(1) if agent_name_re else path.basename(file_path)
                 if agent_name not in agent_names:
-                    raise Exception("Received an unexistent agent status file: {}".format(agent_name))
+                    raise WazuhException(3010, agent_name)
             elif is_agent_group:
                 agent_id = path.basename(file_path)
                 if agent_id not in agent_ids:
-                    raise Exception("Received the group of an unexistent agent: {}".format(agent_id))
+                    raise WazuhException(3010, agent_id)
 
             try:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
-            except ValueError as e:
+            except ValueError:
                 mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S')
 
             if path.isfile(dst_path):
@@ -360,6 +350,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
         if not os.path.exists(dirpath):
             mkdir_with_mode(dirpath)
             chmod(path.dirname(dst_path), S_IRWXU | S_IRWXG)
+        chown(f_temp, common.ossec_uid, common.ossec_gid)
         rename(f_temp, dst_path)
 
 
@@ -369,8 +360,8 @@ def compare_files(good_files, check_files):
     missing_files = set(good_files.keys()) - set(check_files.keys())
 
     extra_files, extra_valid_files = [], []
-    for file in set(check_files.keys()) - set(good_files.keys()):
-        (extra_files, extra_valid_files)[cluster_items[check_files[file]['cluster_item_key']]['extra_valid']].append(file)
+    for my_file in set(check_files.keys()) - set(good_files.keys()):
+        (extra_files, extra_valid_files)[cluster_items[check_files[my_file]['cluster_item_key']]['extra_valid']].append(my_file)
 
     shared_files = {name: {'cluster_item_key': data['cluster_item_key'],
                           'merged':False} for name, data in good_files.items()
@@ -405,22 +396,22 @@ def clean_up(node_name=""):
 
     :param node_name: Name of the node to clean up
     """
-    def remove_directory_contents(rm_path):
-        if not path.exists(rm_path):
-            logger.debug("[Cluster] Nothing to remove in '{}'.".format(rm_path))
+    def remove_directory_contents(local_rm_path):
+        if not path.exists(local_rm_path):
+            logger.debug("[Cluster] Nothing to remove in '{}'.".format(local_rm_path))
             return
 
-        for f in listdir(rm_path):
+        for f in listdir(local_rm_path):
             if f == "c-internal.sock":
                 continue
-            f_path = path.join(rm_path, f)
+            f_path = path.join(local_rm_path, f)
             try:
                 if path.isdir(f_path):
                     rmtree(f_path)
                 else:
                     remove(f_path)
             except Exception as e:
-                logger.error("[Cluster] Error removing '{}': '{}'.".format(f_path, str(e)))
+                logger.error("[Cluster] Error removing '{}': '{}'.".format(f_path, e))
                 continue
 
     try:
@@ -435,27 +426,28 @@ def clean_up(node_name=""):
 #
 # Agents
 #
-def get_agents_status(filter_status="", filter_nodes=""):
+def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=common.database_limit, sort=None, search=None):
     """
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
     """
-    agent_list = []
-    for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
-        if int(agent['id']) == 0:
-            continue
-        if filter_status and agent['status'] != filter_status:
-            continue
+    if not offset:
+        offset = 0
+    if not filter_status:
+        filter_status="all"
+    if not filter_nodes:
+        filter_nodes="all"
+    elif filter_nodes != 'all':
+        filter_nodes=ast.literal_eval(filter_nodes)
+    if not limit:
+        limit = common.database_limit
+    if sort:
+        sort=ast.literal_eval(sort)
+    if search:
+        sort=ast.literal_eval(search)
 
-        if not agent.get('node_name'):
-            agent['node_name'] = "Unknown"
-        
-        if filter_nodes and agent['node_name'] not in filter_nodes:
-            continue
-
-        agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
-
-    return agent_list
+    agents = Agent.get_agents_overview(status=filter_status, node_name=filter_nodes , select={'fields':['id','ip','name','status','node_name']}, limit=limit, offset=offset, sort=sort, search=search)
+    return agents
 
 
 def _check_removed_agents(new_client_keys):
@@ -473,7 +465,7 @@ def _check_removed_agents(new_client_keys):
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
 
-    regex = re.compile('-\d+ \w+ (any|\d+\.\d+\.\d+\.\d+|\d+\.\d+\.\d+\.\d+\/\d+) \w+')
+    regex = re.compile('-\d+ \w+ (any|\d+\.\d+\.\d+\.\d+|\d+\.\d+\.\d+\.\d+/\d+) \w+')
     for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
         if regex.match(removed_line):
             agent_id, _, _, _, = removed_line[1:].split(" ")
@@ -560,7 +552,7 @@ def unmerge_agent_info(merge_type, path_file, filename):
         try:
             st_size, name, st_mtime = header[:-1].split(' ',2)
             st_size = int(st_size)
-        except ValueError as e:
+        except ValueError:
             raise Exception("Malformed agent-info.merged file")
 
         # read data

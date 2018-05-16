@@ -1,7 +1,7 @@
 {
     "files":{
         "/etc/": {
-            "umask": "0o117",
+            "umask": "0o127",
             "source": "master",
             "write_mode": "atomic",
             "files": ["client.keys"],
@@ -13,10 +13,10 @@
         },
 
         "/etc/shared/": {
-            "umask": "0o117",
+            "umask": "0o127",
             "source": "master",
             "write_mode": "atomic",
-            "files": ["all"],
+            "files": ["merged.mg"],
             "recursive": true,
             "restart": false,
             "remove_subdirs_if_empty": true,
@@ -25,7 +25,7 @@
         },
 
         "/etc/rules/": {
-            "umask": "0o137",
+            "umask": "0o127",
             "source": "master",
             "write_mode": "atomic",
             "files": ["all"],
@@ -37,7 +37,7 @@
         },
 
         "/etc/decoders/": {
-            "umask": "0o137",
+            "umask": "0o127",
             "source": "master",
             "write_mode": "atomic",
             "files": ["all"],
@@ -60,7 +60,7 @@
             "description": "user CDB lists"
         },
 
-        "/queue/cluster/": {
+        "/queue/agent-info/": {
             "umask": "0o117",
             "source": "client",
             "write_mode": "atomic",
@@ -88,7 +88,6 @@
 
         "excluded_files": [
             "ar.conf",
-            "merged.mg",
             "ossec.conf"
         ]
     },
