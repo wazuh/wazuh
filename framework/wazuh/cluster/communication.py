@@ -458,14 +458,16 @@ class ServerHandler(Handler):
             client_version = WazuhVersion(data.split(' ')[2])
             server_version = WazuhVersion(__version__)
             if server_version.to_array()[0] != client_version.to_array()[0] or server_version.to_array()[1] != client_version.to_array()[1]:
-                self.handle_close()
                 raise Exception("Incompatible client version ({})".format(client_version))
 
             client_id = self.server.add_client(data, self.addr, self)
+
             self.name = client_id  # TO DO: change self.name to self.client_id
             logger.info("[Master] [{0}]: Connected.".format(client_id))
         except Exception as e:
             logger.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, e))
+            self.handle_close()
+
         return None
 
 
@@ -532,6 +534,9 @@ class Server(asyncore.dispatcher):
         name, node_type, version = data.split(' ')
         node_id = name
         with self._clients_lock:
+            if node_id in self._clients or node_id == handler.server.config['node_name']:
+                raise Exception("Received a connection from a client with a repeated node name '{}'. Rejecting.".format(node_id))
+
             self._clients[node_id] = {
                 'handler': handler,
                 'info': {
