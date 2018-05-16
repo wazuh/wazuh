@@ -210,6 +210,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
         int wstatus;
         char * text;
         char * end;
+        int running_count = 0;
 
         if (wfd = wpopenl(osqueryd_path, W_BIND_STDERR | W_APPEND_POOL, osqueryd_path, config_path, NULL), !wfd) {
             mwarn("Couldn't execute osquery (%s). Sleeping for 10 minutes.", osqueryd_path);
@@ -239,7 +240,13 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
                 } else if (end = wm_osquery_already_running(text), end) {
                     free(strpid);
                     strpid = end;
-                    minfo("osqueryd is already running with pid %s.", strpid);
+                    minfo("osqueryd is already running with pid %s. Will run again in 1 minute.", strpid);
+
+                    // Don't report the first time
+
+                    if (!running_count++) {
+                        continue;
+                    }
                 }
                 else {
                     switch (text[0]) {
@@ -270,8 +277,8 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
             active = 0;
             break;
         } else if (strpid) {
-            // Osquery is already running. Close thread silently.
-            break;
+            // Osquery is already running. It has been already reported.
+            sleep(60);
         } else if (time(NULL) - time_started < 10) {
             // If osquery was alive less than 10 seconds, give up
             merror("Osquery exited with code %d. Closing module.", wstatus);
