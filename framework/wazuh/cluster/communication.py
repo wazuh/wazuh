@@ -535,7 +535,7 @@ class Server(asyncore.dispatcher):
         node_id = name
         with self._clients_lock:
             if node_id in self._clients or node_id == handler.server.config['node_name']:
-                raise Exception("Received a connection from a client with a repeated node name '{}'. Rejecting.".format(node_id))
+                raise Exception("Incoming connection from '{0}' rejected: There is already a node with the same ID ('{1}') connected.".format(ip, node_id))
 
             self._clients[node_id] = {
                 'handler': handler,
