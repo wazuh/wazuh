@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 - New internal option to enable merged file creation by Remoted. ([#603](https://github.com/wazuh/wazuh/pull/603))
 - Created alert item for GDPR and GPG13. ([#608](https://github.com/wazuh/wazuh/pull/608))
+- Add support for Amazon Linux in vulnerability-detector.
 
 ### Changed
 
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Fixed bad file descriptor error in Wazuh DB ([#588](https://github.com/wazuh/wazuh/issues/588))
 - Fixed unpredictable file sorting when creating merged files. ([#599](https://github.com/wazuh/wazuh/issues/599))
 - Fixed race condition in Remoted when closing connections.
+- Fix epoch check in vulnerability-detector.
 
 ## [v3.2.2]
 
