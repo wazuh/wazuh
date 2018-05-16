@@ -29,4 +29,28 @@
     <description>osquery data grouped</description>
   </rule>
 
+  <rule id="24011" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">high_load_average</field>
+    <description>System memory is under $(columns.threshold)</description>
+  </rule>
+
+  <rule id="24012" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">low_free_memory</field>
+    <description>System memory is under $(columns.threshold)</description>
+  </rule>
+
+  <rule id="24013" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">low_disk_space</field>
+    <description>Free disk space is under $(columns.threshold)</description>
+  </rule>
+
+  <rule id="24014" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">disk_time_busy</field>
+    <description>Disk busy time is over $(columns.threshold)</description>
+  </rule>
+
 </group>
