@@ -26,6 +26,9 @@ int request_timeout;
 int response_timeout;
 int INTERVAL;
 rlim_t nofile;
+unsigned int _s_comp_print;
+unsigned int _s_recv_flush;
+int _s_verify_counter;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
@@ -113,6 +116,9 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON *internals = cJSON_CreateObject();
     cJSON *remoted = cJSON_CreateObject();
 
+    cJSON_AddNumberToObject(remoted,"recv_counter_flush",_s_recv_flush);
+    cJSON_AddNumberToObject(remoted,"comp_average_printout",_s_comp_print);
+    cJSON_AddNumberToObject(remoted,"verify_msg_id",_s_verify_counter);
     cJSON_AddNumberToObject(remoted,"recv_timeout",timeout);
     cJSON_AddNumberToObject(remoted,"pass_empty_keyfile",pass_empty_keyfile);
     cJSON_AddNumberToObject(remoted,"sender_pool",sender_pool);
@@ -124,6 +130,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"response_timeout",response_timeout);
     cJSON_AddNumberToObject(remoted,"shared_reload",INTERVAL);
     cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
+    cJSON_AddNumberToObject(remoted,"merge_shared",logr.nocmerged);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);

@@ -271,7 +271,7 @@ cJSON *getAnalysisInternalOptions(void) {
     cJSON_AddNumberToObject(analysisd,"stats_mindiff",mindiff);
     cJSON_AddNumberToObject(analysisd,"stats_percent_diff",percent_diff);
     cJSON_AddNumberToObject(analysisd,"fts_list_size",fts_list_size);
-    cJSON_AddNumberToObject(analysisd,"fts_minsize_for_str",fts_minsize_for_str);
+    cJSON_AddNumberToObject(analysisd,"fts_min_size_for_str",fts_minsize_for_str);
     cJSON_AddNumberToObject(analysisd,"log_fw",Config.logfw);
     cJSON_AddNumberToObject(analysisd,"decoder_order_size",Config.decoder_order_size);
     cJSON_AddNumberToObject(analysisd,"label_cache_maxage",Config.label_cache_maxage);
