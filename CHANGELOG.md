@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Fixed unpredictable file sorting when creating merged files. ([#599](https://github.com/wazuh/wazuh/issues/599))
 - Fixed race condition in Remoted when closing connections.
 - Fix epoch check in vulnerability-detector.
+- Fixed hash sum in logs rotation. ([#636](https://github.com/wazuh/wazuh/issues/636))
 
 ## [v3.2.2]
 
