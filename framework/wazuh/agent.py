@@ -1463,7 +1463,7 @@ class Agent:
                              "config_sum", "merged_sum", "manager_host", "status"}
         # fields like status need to retrieve others to be properly computed.
         dependent_select_fields = {'status': {'last_keepalive','version'}}
-        search_fields = {"id", "name", "os_name"}
+        search_fields = {"id", "name", "os_name", "ip", "status", "version", "os_platform", "manager_host"}
 
         # Init query
         query = "SELECT {0} FROM agent WHERE `group` = :group_id"
@@ -1568,7 +1568,7 @@ class Agent:
                              "config_sum", "merged_sum", "manager_host", "status"}
         # fields like status need to retrieve others to be properly computed.
         dependent_select_fields = {'status': {'last_keepalive','version'}}
-        search_fields = {"id", "name", "os_name"}
+        search_fields = {"id", "name", "os_name", "ip", "status", "version", "os_platform", "manager_host"}
 
         # Init query
         query = "SELECT {0} FROM agent WHERE `group` IS NULL AND id != 0"
