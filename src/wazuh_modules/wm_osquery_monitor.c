@@ -212,9 +212,20 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
         char * end;
         int running_count = 0;
 
+        // Check that the configuration file is valid
+
+        if (access(osquery->config_path, R_OK) < 0) {
+            mwarn("The configuration file '%s' is not accessible: %s (%d)", osquery->config_path, strerror(errno), errno);
+            sleep(600);
+            continue;
+        }
+
+        // Run osquery
+
         if (wfd = wpopenl(osqueryd_path, W_BIND_STDERR | W_APPEND_POOL, osqueryd_path, config_path, NULL), !wfd) {
             mwarn("Couldn't execute osquery (%s). Sleeping for 10 minutes.", osqueryd_path);
             sleep(600);
+            continue;
         }
 
         time_started = time(NULL);
