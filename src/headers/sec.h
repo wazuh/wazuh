@@ -152,4 +152,8 @@ void os_set_agent_crypto_method(keystore * keys,const int method);
 #define SENDER_COUNTER  "sender_counter"
 #define KEYSIZE         128
 
+extern unsigned int _s_comp_print;
+extern unsigned int _s_recv_flush;
+extern int _s_verify_counter;
+
 #endif /* __SEC_H */
