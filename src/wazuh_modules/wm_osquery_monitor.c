@@ -463,6 +463,17 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
     }
 
     for (i = 0; osquery->packs[i]; ++i) {
+        if (strcmp(osquery->packs[i]->name, "*")) {
+            // Check if the file exists
+
+            if (access(osquery->packs[i]->path, R_OK) < 0) {
+                mwarn("Possible invalid configuration: Pack file '%s' is not accessible: %s (%d)", osquery->packs[i]->path, strerror(errno), errno);
+            }
+        } else if (!strchr(osquery->packs[i]->path, '*')) {
+            // If name is "*" but no "*" is in the path, log a warning
+            mwarn("Possible invalid configuration for pack '*' (%s): no such wildcards.", osquery->packs[i]->path);
+        }
+
         cJSON_AddStringToObject(packs, osquery->packs[i]->name, osquery->packs[i]->path);
     }
 
