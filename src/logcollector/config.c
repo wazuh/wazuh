@@ -152,6 +152,7 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"open_attempts",open_file_attempts);
     cJSON_AddNumberToObject(logcollector,"vcheck_files",vcheck_files);
     cJSON_AddNumberToObject(logcollector,"max_lines",maximum_lines);
+    cJSON_AddNumberToObject(logcollector,"sock_fail_time",sock_fail_time);
     cJSON_AddNumberToObject(logcollector,"debug",lc_debug_level);
 
     cJSON_AddItemToObject(internals,"logcollector",logcollector);

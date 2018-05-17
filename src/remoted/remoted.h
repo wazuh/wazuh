@@ -147,5 +147,8 @@ extern int request_timeout;
 extern int response_timeout;
 extern int INTERVAL;
 extern rlim_t nofile;
+extern unsigned int _s_comp_print;
+extern unsigned int _s_recv_flush;
+extern int _s_verify_counter;
 
 #endif /* __LOGREMOTE_H */
