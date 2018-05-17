@@ -369,6 +369,10 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
     }
 
     for (i = 0; labels[i].key; ++i) {
+        if (labels[i].flags.hidden) {
+            continue;
+        }
+
         // Prevent SQL injection
         key = wstr_replace(labels[i].key, "'", "''");
         value = wstr_replace(labels[i].value, "'", "''");
