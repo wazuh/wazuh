@@ -186,6 +186,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
     char osqueryd_path[PATH_MAX];
     char config_path[PATH_MAX];
     char * strpid = NULL;
+    int running_count = 0;
 
     // Windows agent needs the complete path to osqueryd
 #ifndef WIN32
@@ -210,7 +211,6 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
         int wstatus;
         char * text;
         char * end;
-        int running_count = 0;
 
         // Check that the configuration file is valid
 
@@ -251,7 +251,6 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
                 } else if (end = wm_osquery_already_running(text), end) {
                     free(strpid);
                     strpid = end;
-                    minfo("osqueryd is already running with pid %s. Will run again in 1 minute.", strpid);
 
                     // Don't report the first time
 
@@ -284,12 +283,17 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 
         if (wstatus == 127) {
             // 127 means error in exec
-            merror("Couldn't execute osquery (%s). Check file and permissions.", osqueryd_path);
-            active = 0;
-            break;
+            merror("Couldn't execute osquery (%s). Check file and permissions. Sleeping for 10 minutes.", osqueryd_path);
+            sleep(600);
         } else if (strpid) {
-            // Osquery is already running. It has been already reported.
-            sleep(60);
+            // Osquery is already running.
+            if (running_count == 1) {
+                minfo("osqueryd is already running with pid %s. Will run again in 1 minute.", strpid);
+                sleep(60);
+            } else {
+                minfo("osqueryd is already running with pid %s. Will run again in 10 minutes.", strpid);
+                sleep(600);
+            }
         } else if (time(NULL) - time_started < 10) {
             // If osquery was alive less than 10 seconds, give up
             merror("Osquery exited with code %d. Closing module.", wstatus);
