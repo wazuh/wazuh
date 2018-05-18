@@ -11,6 +11,7 @@
 #include "localfile-config.h"
 #include "config.h"
 
+static const char *MULTI_LINE_FORMAT = "multi-line";
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -314,7 +315,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, "command") == 0) {
             } else if (strcmp(logf[pl].logformat, "full_command") == 0) {
             } else if (strcmp(logf[pl].logformat, "audit") == 0) {
-            } else if (strncmp(logf[pl].logformat, "multi-line", 10) == 0) {
+            } else if (strncmp(logf[pl].logformat, MULTI_LINE_FORMAT, 10) == 0) {
                 int x = 0;
                 logf[pl].logformat += 10;
 
@@ -470,6 +471,11 @@ void Free_Localfile(logreader_config * config){
                 free(config->config[i].file);
                 if (config->config[i].logformat != last_logformat) {
                     last_logformat = config->config[i].logformat;
+                    // If it is a multi-line format we will have to go back to the beginning of the string to free its memory.
+                    if (config->config[i].logformat[0] >= '0' && config->config[i].logformat[0] <= '9') {
+                        for (; *config->config[i].logformat != ':'; config->config[i].logformat--);
+                        config->config[i].logformat = config->config[i].logformat - strlen(MULTI_LINE_FORMAT);
+                    }
                     free(config->config[i].logformat);
                 }
                 free(config->config[i].djb_program_name);
