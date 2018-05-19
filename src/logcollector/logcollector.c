@@ -15,6 +15,7 @@ static int update_fname(int i, int j);
 static int update_current(logreader **current, int *i, int *j);
 static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
+static void set_sockets();
 #ifndef WIN32
 static void check_pattern_expand(logreader *current);
 #endif
@@ -64,6 +65,7 @@ void LogCollectorStart()
     char keepalive[1024];
     logreader *current;
 
+    set_sockets();
 #ifndef WIN32
     int int_error = 0;
     struct timeval fp_timeout;
@@ -571,7 +573,7 @@ void LogCollectorStart()
     }
 }
 
-int update_fname(int i, int j)
+static int update_fname(int i, int j)
 {
     struct tm *p;
     time_t __ctime = time(0);
@@ -744,7 +746,7 @@ void win_format_event_string(char *string)
 
 #endif /* WIN32 */
 
-int update_current(logreader **current, int *i, int *j)
+static int update_current(logreader **current, int *i, int *j)
 {
     if (*j < 0) {
         /* Check for normal files */
@@ -774,7 +776,7 @@ int update_current(logreader **current, int *i, int *j)
     return CONTINUE_IT;
 }
 
-void set_read(logreader *current, int i, int j) {
+static void set_read(logreader *current, int i, int j) {
     int tg;
     current->command = NULL;
 
@@ -844,7 +846,7 @@ void set_read(logreader *current, int i, int j) {
     }
 }
 
-void check_pattern_expand(logreader *current) {
+static void check_pattern_expand(logreader *current) {
     glob_t g;
     int err;
     int glob_offset;
@@ -938,4 +940,41 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
     }
 
     return d_control;
+}
+
+static void set_sockets() {
+    int i, j, k, t;
+    logreader *current;
+    char *file;
+
+    for (i = 0, t = -1;; i++) {
+        if (t == -1 && logff && logff[i].file) {
+            current = &logff[i];
+            file = logff[i].file;
+        } else if (globs && globs[++t].gpath){
+            current = globs[t].gfiles;
+            file = globs[t].gpath;
+        } else {
+            break;
+        }
+
+        for (j = 0; current->target[j]; j++) {
+            if (strcmp(current->target[j], "agent") == 0) {
+                current->target_socket[j] = &default_agent;
+                continue;
+            }
+            int found = -1;
+            for (k = 0; logsk && logsk[k].name; k++) {
+                found = strcmp(logsk[k].name, current->target[j]);
+                if (found == 0) {
+                    break;
+                }
+            }
+            if (found != 0) {
+                merror_exit("Socket '%s' for '%s' is not defined.", current->target[j], file);
+            } else {
+                current->target_socket[j] = &logsk[k];
+            }
+        }
+    }
 }
