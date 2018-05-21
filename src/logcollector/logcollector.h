@@ -14,6 +14,10 @@
 #define ARGV0 "ossec-logcollector"
 #endif
 
+#define N_INPUT_THREADS 4
+#define N_OUPUT_THREADS 1
+#define DONT_PROCESS_INPUT -2
+
 #include "shared.h"
 #include "config/localfile-config.h"
 #include "config/config.h"
@@ -88,6 +92,7 @@ extern int maximum_lines;
 extern logsocket default_agent;
 extern int maximum_files;
 extern int current_files;
+extern int total_files;
 
 typedef enum {
     CONTINUE_IT,
@@ -117,6 +122,16 @@ typedef struct w_message_t {
 } w_message_t;
 
 
+/* Input thread range */
+typedef struct w_input_range_t{
+    int start_i;
+    int start_j;
+    int end_i;
+    int end_j;
+} w_input_range_t;
+
+w_input_range_t *w_input_threads_range;
+
 /* Init queue hash table */
 void w_msg_hash_queues_init();
 
@@ -141,5 +156,13 @@ void * w_output_thread(void * args);
 /* Prepare pool of output threads */
 void w_create_output_threads();
 
+/* Input processing thread */
+void * w_input_thread(void * t_id);
+
+/* Prepare pool of input threads */
+void w_create_input_threads();
+
+/* Update delimitation range of files for each thread */
+int w_input_update_ranges(int number_files_per_thread);
 
 #endif /* __LOGREADER_H */

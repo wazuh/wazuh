@@ -163,12 +163,6 @@ int main(int argc, char **argv)
         merror_exit(QUEUE_FATAL, DEFAULTQPATH);
     }
 
-   
-    w_create_output_threads();
-
     /* Main loop */
     LogCollectorStart();
-
-    /* Free the message queue */
-   // w_msg_queue_free();
 }

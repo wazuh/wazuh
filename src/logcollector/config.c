@@ -60,50 +60,5 @@ int LogCollectorConfig(const char *cfgfile)
         mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
     }
 
-    // Check sockets
-    if (logff) {
-        int i, j, k, r, count_localfiles = 0;
-        for (i=0;logff[i].file;i++) {
-            for (j=0;logff[i].target[j];j++) {
-                if (strcmp(logff[i].target[j], "agent") == 0) {
-                    logff[i].target_socket[j] = &default_agent;
-                    w_msg_hash_queues_add_entry("agent");
-                    continue;
-                }
-                int found = -1;
-                for (k=0;logsk && logsk[k].name;k++) {
-                    found = strcmp(logsk[k].name, logff[i].target[j]);
-                    if (found == 0) {
-                        break;
-                    }
-                }
-                if (found != 0) {
-                    merror_exit("Socket '%s' for '%s' is not defined.", logff[i].target[j], logff[i].file);
-                } else {
-                    logff[i].target_socket[j] = &logsk[k];
-                    w_msg_hash_queues_add_entry(logsk[k].name);
-                }
-            }
-        }
-
-        /* Remove duplicate entries */
-
-        for (i = 0;; i++) {
-            if (logff[i].file == NULL) {
-                break;
-            }
-            for (r = 0; r < i; r++) {
-                if (logff[r].file && strcmp(logff[i].file, logff[r].file) == 0) {
-                    mwarn("Duplicated log file given: '%s'.", logff[i].file);
-                    logff[r].duplicated = 1;
-                    count_localfiles--;
-                    break;
-                }
-            }
-            count_localfiles++;
-        }
-        mdebug1("Added %i valid 'localfile' entries.", count_localfiles);
-    }
-
     return (1);
 }
