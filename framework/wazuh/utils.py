@@ -17,6 +17,9 @@ import errno
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 from operator import itemgetter
+from sys import version_info
+if version_info.major == 3:
+    unicode = str
 
 try:
     from subprocess import check_output
@@ -171,7 +174,9 @@ def get_values(o, fields=None):
         for key in obj:
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
-    else:
+    elif type(obj) is str or type(obj) is unicode: # str or unicode.
+        strings.append(obj.lower())
+    else: # other types
         strings.append(str(obj).lower())
 
     return strings
@@ -191,7 +196,6 @@ def search_array(array, text, negation=False, fields=None):
     found = []
 
     for item in array:
-
         values = get_values(o=item, fields=fields)
 
         # print("'{0}' in '{1}'?".format(text, values))
