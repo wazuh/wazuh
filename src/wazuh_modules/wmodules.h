@@ -62,6 +62,7 @@ typedef struct wmodule {
 #include "wm_ciscat.h"
 #include "wm_aws.h"
 #include "wm_vuln_detector.h"
+#include "wm_download.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
@@ -100,7 +101,7 @@ void wm_remove_sid(pid_t sid);
 void wm_kill_children();
 
 // Reads an HTTP header and extracts the size of the response
-int wm_read_http_header(char *header);
+long int wm_read_http_size(char *header);
 
 /* Concatenate strings with optional separator
  *

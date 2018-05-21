@@ -35,6 +35,10 @@ class WazuhException(Exception):
         1104: 'Invalid type',
         1105: 'Error reading API configuration',
         1106: 'Requested section not present in configuration',
+        1107: 'Internal options file not found',
+        1108: 'Value not found in internal_options.conf',
+        1109: 'Option must be a digit',
+        1110: 'Option value is out of the limits',
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -42,6 +46,7 @@ class WazuhException(Exception):
         1202: 'Argument \'status\' must be: enabled, disabled or all',
         1203: 'Argument \'level\' must be a number or an interval separated by \'-\'',
         1204: 'Operation not implemented',
+        1205: 'Requirement not valid. Valid ones are pci and gdpr',
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',
@@ -93,7 +98,9 @@ class WazuhException(Exception):
         1725: 'Error registering a new agent',
         1726: 'Ossec authd is not running',
         1727: 'Error listing group files',
-        1728: 'Error removing group',
+        1728: 'Invalid node type',
+        1729: 'Agent status not valid. Valid statuses are Active, Disconnected, Pending and Never Connected.',
+        1730: 'Node does not exist',
 
         # Manager:
 
@@ -114,16 +121,13 @@ class WazuhException(Exception):
         3005: 'Error reading cluster JSON file',
         3006: 'Error reading cluster configuration',
         3007: 'Client.keys file received in master node',
-        3008: 'Error importing cryptography module',
-        3009: 'Error connecting to cluster database',
-        3010: 'Error in cluster client',
+        3008: 'Received invalid agent status',
+        3009: 'Error executing request to internal socket',
+        3010: 'Received the status/group of an unexisting agent',
         3011: 'Agent info file received in a client node',
-        3012: 'Received an old file',
+        3012: 'Cluster is not running',
         3013: 'Cluster is disabled',
-        3014: 'Manager name or IP incorrect',
         3015: 'Cannot access directory',
-        3016: "Cluster nodes are not correctly configured at ossec.conf.",
-        3017: "Could not get remote nodes' information"
 
         # > 9000: Authd
     }

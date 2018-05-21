@@ -133,6 +133,7 @@ UpdateStopOSSEC()
         rm -f $DIRECTORY/queue/agent-info/* > /dev/null 2>&1
     fi
     rm -f $DIRECTORY/queue/syscheck/.* > /dev/null 2>&1
+    rm -rf $DIRECTORY/framework/* > /dev/null 2>&1
 }
 
 UpdateOldVersions()

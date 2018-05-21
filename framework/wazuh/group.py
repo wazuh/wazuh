@@ -271,7 +271,6 @@ def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, 
 
     # Init query
     query = "SELECT {0} FROM agent WHERE `group` = :group_id"
-    fields = {'id': 'id', 'name': 'name'}  # field: db_column
     request = {'group_id': group_id}
 
     # Select
@@ -289,9 +288,115 @@ def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, 
 
     # add dependent select fields to the database select query
     db_select_fields = set()
-    for dependent, fields in dependent_select_fields.items():
+    for dependent, dependent_fields in dependent_select_fields.items():
         if dependent in select_fields:
-            db_select_fields |= fields
+            db_select_fields |= dependent_fields
+    db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
+
+    # Search
+    if search:
+        query += " AND NOT" if bool(search['negation']) else ' AND'
+        query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
+        request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
+                                                                else search['value'])
+
+    # Count
+    conn.execute(query.format('COUNT(*)'), request)
+    data = {'totalItems': conn.fetch()[0]}
+
+    # Sorting
+    if sort:
+        if sort['fields']:
+            allowed_sort_fields = db_select_fields
+            # Check if every element in sort['fields'] is in allowed_sort_fields.
+            if not set(sort['fields']).issubset(allowed_sort_fields):
+                raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.\
+                    format(allowed_sort_fields, sort['fields']))
+
+            order_str_fields = ['{0} {1}'.format(i, sort['order']) for i in sort['fields']]
+            query += ' ORDER BY ' + ','.join(order_str_fields)
+        else:
+            query += ' ORDER BY id {0}'.format(sort['order'])
+    else:
+        query += ' ORDER BY id ASC'
+
+    # OFFSET - LIMIT
+    if limit:
+        query += ' LIMIT :offset,:limit'
+        request['offset'] = offset
+        request['limit'] = limit
+
+    # Data query
+    conn.execute(query.format(','.join(db_select_fields)), request)
+
+    non_nested = [{field:tuple_elem for field,tuple_elem \
+            in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
+
+    if 'id' in select_fields:
+        map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+
+    if 'status' in select_fields:
+        try:
+            map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+        except KeyError:
+            pass
+
+    # return only the fields requested by the user (saved in select_fields) and not the dependent ones
+    non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
+
+    data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
+
+    return data
+
+
+def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    """
+    Gets the agents in a group
+
+    :param group_id: Group ID.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param search: Looks for items with the specified string.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+
+    # Connect DB
+    db_global = glob(common.database_path_global)
+    if not db_global:
+        raise WazuhException(1600)
+
+    conn = Connection(db_global[0])
+    valid_select_fiels = {"id", "name", "ip", "last_keepalive", "os_name",
+                         "os_version", "os_platform", "os_uname", "version",
+                         "config_sum", "merged_sum", "manager_host", "status"}
+    # fields like status need to retrieve others to be properly computed.
+    dependent_select_fields = {'status': {'last_keepalive','version'}}
+    search_fields = {"id", "name", "os_name"}
+
+    # Init query
+    query = "SELECT {0} FROM agent WHERE `group` IS NULL AND id != 0"
+    fields = {'id': 'id', 'name': 'name'}  # field: db_column
+    request = {}
+
+    # Select
+    if select:
+        select_fields_param = set(select['fields'])
+
+        if not select_fields_param.issubset(valid_select_fiels):
+            uncorrect_fields = select_fields_param - valid_select_fiels
+            raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                    format(', '.join(list(valid_select_fiels)), ', '.join(uncorrect_fields)))
+
+        select_fields = select_fields_param
+    else:
+        select_fields = valid_select_fiels
+
+    # add dependent select fields to the database select query
+    db_select_fields = set()
+    for dependent, dependent_fields in dependent_select_fields.items():
+        if dependent in select_fields:
+            db_select_fields |= dependent_fields
     db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
 
     # Search
@@ -329,7 +434,23 @@ def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, 
 
     # Data query
     conn.execute(query.format(','.join(db_select_fields)), request)
-    data['items'] = Agent.get_agents_dict(conn, db_select_fields, select_fields)
+
+    non_nested = [{field:tuple_elem for field,tuple_elem \
+            in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
+
+    if 'id' in select_fields:
+        map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+
+    if 'status' in select_fields:
+        try:
+            map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+        except KeyError:
+            pass
+
+    # return only the fields requested by the user (saved in select_fields) and not the dependent ones
+    non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
+
+    data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
 
     return data
 
@@ -405,14 +526,11 @@ def create_group(group_id):
     if group_id.lower() == "default" or path.exists(group_path):
         raise WazuhException(1711, group_id)
 
-    ossec_uid = getpwnam("ossec").pw_uid
-    ossec_gid = getgrnam("ossec").gr_gid
-
     # Create group in /etc/shared
     group_def_path = "{0}/default".format(common.shared_path)
     try:
         copytree(group_def_path, group_path)
-        chown_r(group_path, ossec_uid, ossec_gid)
+        chown_r(group_path, common.ossec_uid, common.ossec_gid)
         chmod_r(group_path, 0o660)
         chmod(group_path, 0o770)
         msg = "Group '{0}' created.".format(group_id)
@@ -420,6 +538,7 @@ def create_group(group_id):
         raise WazuhException(1005, str(e))
 
     return msg
+
 
 
 def remove_group(group_id):
@@ -448,10 +567,8 @@ def remove_group(group_id):
                 removed = _remove_single_group(id)
                 ids.append(id)
                 affected_agents += removed['affected_agents']
-            except WazuhException as e:
-                failed_ids.append(create_exception_dic(id, e))
             except Exception as e:
-                raise WazuhException(1728, str(e))
+                failed_ids.append(create_exception_dic(id, e))
     else:
         if group_id.lower() == "default":
             raise WazuhException(1712)
@@ -460,10 +577,8 @@ def remove_group(group_id):
             removed = _remove_single_group(group_id)
             ids.append(group_id)
             affected_agents += removed['affected_agents']
-        except WazuhException as e:
-            failed_ids.append(create_exception_dic(group_id, e))
         except Exception as e:
-            raise WazuhException(1728, str(e))
+            failed_ids.append(create_exception_dic(group_id, e))
 
     final_dict = {}
     if not failed_ids:
@@ -507,9 +622,7 @@ def set_group(agent_id, group_id, force=False):
         f_group.close()
 
         if new_file:
-            ossec_uid = getpwnam("ossec").pw_uid
-            ossec_gid = getgrnam("ossec").gr_gid
-            chown(agent_group_path, ossec_uid, ossec_gid)
+            chown(agent_group_path, common.ossec_uid, common.ossec_gid)
             chmod(agent_group_path, 0o660)
     except Exception as e:
         raise WazuhException(1005, str(e))

@@ -1015,13 +1015,16 @@ void* run_writer(__attribute__((unused)) void *arg) {
         }
 
         for (cur = copy_remove; cur; cur = next) {
+            char full_name[FILE_SIZE + 1];
             next = cur->next;
-            delete_agentinfo(cur->id, cur->name);
+            snprintf(full_name, sizeof(full_name), "%s-%s", cur->name, cur->ip);
+            delete_agentinfo(cur->id, full_name);
             OS_RemoveCounter(cur->id);
             OS_RemoveAgentTimestamp(cur->id);
             OS_RemoveAgentGroup(cur->id);
             free(cur->id);
             free(cur->name);
+            free(cur->ip);
             free(cur);
         }
     }
@@ -1066,6 +1069,7 @@ void add_remove(const keyentry *entry) {
     os_calloc(1, sizeof(struct keynode), node);
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
+    node->ip = strdup(entry->ip->ip);
 
     (*remove_tail) = node;
     remove_tail = &node->next;

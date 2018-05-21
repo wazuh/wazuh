@@ -635,6 +635,98 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
     return (ret);
 }
 
+int TestUnmergeFiles(const char *finalpath, int mode)
+{
+    int ret = 1;
+    size_t i = 0, n = 0, files_size = 0, readed_bytes = 0,data_size = 0;
+    char *files;
+    char buf[2048 + 1];
+    FILE *finalfp;
+
+    finalfp = fopen(finalpath, mode == OS_BINARY ? "rb" : "r");
+    if (!finalfp) {
+        merror("Unable to read merged file: '%s'.", finalpath);
+        return (0);
+    }
+
+    while (1) {
+        /* Read header portion */
+        if (fgets(buf, sizeof(buf) - 1, finalfp) == NULL) {
+            break;
+        }
+
+        /* Initiator */
+        switch(buf[0]){
+            case '#':
+                continue;
+            case '!':
+                goto parse;
+            default:
+                ret = 0;
+                goto end;
+        }
+
+parse:
+        /* Get file size and name */
+        files_size = (size_t) atol(buf + 1);
+        data_size = files_size;
+
+        files = strchr(buf, '\n');
+        if (files) {
+            *files = '\0';
+        }
+
+        files = strchr(buf, ' ');
+        if (!files) {
+            ret = 0;
+            continue;
+        }
+        files++;
+
+        /* Check for file name */
+		if(*files == '\0')
+		{
+			ret = 0;
+            goto end;
+		}
+
+        if (files_size < sizeof(buf) - 1) {
+            i = files_size;
+            files_size = 0;
+        } else {
+            i = sizeof(buf) - 1;
+            files_size -= sizeof(buf) - 1;
+        }
+
+        readed_bytes = 0;
+        while ((n = fread(buf, 1, i, finalfp)) > 0) {
+            buf[n] = '\0';
+            readed_bytes += n;
+
+            if (files_size == 0) {
+                break;
+            } else {
+                if (files_size < sizeof(buf) - 1) {
+                    i = files_size;
+                    files_size = 0;
+                } else {
+                    i = sizeof(buf) - 1;
+                    files_size -= sizeof(buf) - 1;
+                }
+            }
+        }
+
+        if(readed_bytes != data_size){
+            ret = 0;
+            goto end;
+        }
+            
+    }
+end:
+    fclose(finalfp);
+    return (ret);
+}
+
 int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
 {
     size_t n = 0;
@@ -763,6 +855,89 @@ int MergeFiles(const char *finalpath, char **files, const char *tag)
 
     fclose(finalfp);
     return (ret);
+}
+
+int w_backup_file(File *file, const char *source) {
+    FILE *fp_src;
+    int fd;
+    char template[OS_FLSIZE + 1];
+    mode_t old_mask;
+
+	/* Check if source file exists */
+	FILE *fsource;
+	fsource = fopen(source,"r");
+
+	if(!fsource)
+	{
+        merror(FOPEN_ERROR, source, errno, strerror(errno));
+		return -1;
+	}
+
+    snprintf(template, OS_FLSIZE, "%s.backup", source);
+    old_mask = umask(0177);
+
+    fd = open(template,O_WRONLY | O_CREAT,old_mask);
+    umask(old_mask);
+
+    if (fd < 0) {
+        return -1;
+    }
+
+#ifndef WIN32
+    struct stat buf;
+
+    if (stat(source, &buf) == 0) {
+        if (fchmod(fd, buf.st_mode) < 0) {
+            close(fd);
+            unlink(template);
+            return -1;
+        }
+    } else {
+        mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
+    }
+
+#endif
+
+    file->fp = fdopen(fd, "w");
+
+    if (!file->fp) {
+        close(fd);
+        unlink(template);
+        return -1;
+    }
+
+    
+    size_t count_r;
+    size_t count_w;
+    char buffer[4096];
+
+    if (fp_src = fopen(source, "r"), fp_src) {
+        while (!feof(fp_src)) {
+            count_r = fread(buffer, 1, 4096, fp_src);
+
+            if (ferror(fp_src)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+
+            count_w = fwrite(buffer, 1, count_r, file->fp);
+
+            if (count_w != count_r || ferror(file->fp)) {
+                fclose(fp_src);
+                fclose(file->fp);
+                unlink(template);
+                return -1;
+            }
+        }
+
+        fclose(fp_src);
+    }
+    
+
+    file->name = strdup(template);
+    return 0;
 }
 
 
@@ -2040,4 +2215,36 @@ cJSON* getunameJSON()
     }
     else
         return NULL;
+}
+
+static int qsort_strcmp(const void *s1, const void *s2) {
+    return strcmp(*(const char **)s1, *(const char **)s2);
+}
+
+// Read directory and return an array of contained files, sorted alphabetically.
+char ** wreaddir(const char * name) {
+    DIR * dir;
+    struct dirent * dirent;
+    char ** files;
+    unsigned int i = 0;
+
+    if (dir = opendir(name), !dir) {
+        return NULL;
+    }
+
+    files = malloc(sizeof(char *));
+
+    while (dirent = readdir(dir), dirent) {
+        // Skip "." and ".."
+        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+            continue;
+        }
+
+        files = realloc(files, (i + 2) * sizeof(char *));
+        files[i++] = strdup(dirent->d_name);
+    }
+
+    files[i] = NULL;
+    qsort(files, i, sizeof(char *), qsort_strcmp);
+    return files;
 }

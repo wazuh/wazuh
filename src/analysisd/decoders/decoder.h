@@ -29,6 +29,7 @@ typedef struct {
     u_int16_t id;
     u_int16_t regex_offset;
     u_int16_t prematch_offset;
+    u_int16_t plugin_offset;
 
     int fts;
     int accumulate;

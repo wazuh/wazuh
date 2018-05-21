@@ -67,6 +67,8 @@ static void* wm_database_main(wm_database *data);
 static void* wm_database_destroy(wm_database *data);
 // Update manager information
 static void wm_sync_manager();
+// Get agent's architecture
+static char * wm_get_os_arch(char * os_header);
 
 static char * wm_get_os_arch(char * os_header);
 
@@ -283,6 +285,7 @@ void wm_sync_manager() {
         free(os_major);
         free(os_minor);
         free(os_uname);
+        free(os_arch);
     }
 
     // Set starting offset if full_sync disabled

@@ -7,12 +7,13 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close
+from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
 from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
 import re
+import errno
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 from operator import itemgetter
@@ -98,7 +99,7 @@ def cut_array(array, offset, limit):
     offset = int(offset)
     limit = int(limit)
 
-    if offset < 0 or offset >= len(array):
+    if offset < 0:
         raise WazuhException(1400)
     elif limit < 1:
         raise WazuhException(1401)
@@ -331,6 +332,29 @@ def chown_r(filepath, uid, gid):
                 chown_r(itempath, uid, gid)
 
 
+def mkdir_with_mode(name, mode=0o770):
+    """
+    Creates a directory with specified permissions.
+
+    :param directory: directory path
+    :param mode: permissions to set to the directory
+    """
+    head, tail = path.split(name)
+    if not tail:
+        head, tail = path.split(head)
+    if head and tail and not path.exists(head):
+        try:
+            mkdir_with_mode(head, mode)
+        except OSError as e:
+            # be happy if someone already created the path
+            if e.errno != errno.EEXIST:
+                raise
+        if tail == curdir:           # xxx/newdir/. exists if xxx/newdir exists
+            return
+    mkdir(name, mode)
+    chmod(name, mode)
+
+
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
@@ -355,7 +379,6 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
                 field_subfield
     into a real nested dictionary in form
                 field {subfield}
-
     For example, the following input dictionary
     data = {
        "ram_free": "1669524",
@@ -378,7 +401,6 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
       },
       "board_serial": "BSS-0123456789"
     }
-
     :param data: dictionary to nest
     :param nested: fields to nest
     :param force_fields: fields to force nesting in
@@ -441,7 +463,7 @@ def load_wazuh_xml(xml_path):
         data = data.replace(comment.group(2), good_comment)
 
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
-    data = re.sub(r"<(?!/?[\w='$,#\"\.@\/_ -]+>|!--)", "&lt;", data)
+    data = re.sub(r"<(?!/?[\w=\'$,#\"\.@\/_ -:]+>|!--)", "&lt;", data)
 
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!\w+;)", "&amp;", data)

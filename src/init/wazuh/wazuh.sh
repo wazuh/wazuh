@@ -39,4 +39,9 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/queue/db/*.db*
     rm -f $DIRECTORY/queue/db/.template.db
+
+    # Remove existing SQLite databases for vulnerability-detector
+
+    rm -f $DIRECTORY/wodles/cve.db
+    rm -f $DIRECTORY/queue/vulnerabilities/cve.db
 }

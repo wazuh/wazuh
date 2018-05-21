@@ -46,6 +46,12 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!strcmp(node[i]->element, cluster_name)) {
             os_strdup(node[i]->content, Config->cluster_name);
         } else if (!strcmp(node[i]->element, node_name)) {
+            static const char *C_VALID = " !\"#$%&'-.0123456789:<=>?ABCDEFGHIJKLMNOPQRESTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";
+            if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content))
+            {
+                merror("Detected a not allowed character in node name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
+                return OS_INVALID;
+            }
             os_strdup(node[i]->content, Config->node_name);
         } else if (!strcmp(node[i]->element, node_type)) {
         } else if (!strcmp(node[i]->element, key)) {
@@ -65,6 +71,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, interval)) {
+            mwarn("Detected a deprecated configuration for cluster. Interval option is not longer available.");
         } else if (!strcmp(node[i]->element, nodes)) {
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
