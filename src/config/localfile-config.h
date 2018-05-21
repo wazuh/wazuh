@@ -14,6 +14,8 @@
 #define EVENTCHANNEL "eventchannel"
 #define DATE_MODIFIED   1
 
+#include <pthread.h>
+
 /* For ino_t */
 #include <sys/types.h>
 #include "labels_op.h"
@@ -56,6 +58,7 @@ typedef struct _logreader {
     logsocket **target_socket;
     int duplicated;
     wlabel_t *labels;
+    pthread_mutex_t mutex;
 
     void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 

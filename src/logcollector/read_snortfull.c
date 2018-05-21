@@ -70,13 +70,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
 
                     /* Send the message */
                     if (drop_it == 0) {
-                        if (SendMSGtoSCK(logr_queue, f_msg, lf->file,
-                                    LOCALFILE_MQ, lf->target_socket, lf->outformat) < 0) {
-                            merror(QUEUE_SEND);
-                            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                            }
-                        }
+                        w_msg_hash_queues_push(str,lf->file,lf->outformat,strlen(f_msg),lf->target_socket,LOCALFILE_MQ);
                     }
 
                     f_msg[0] = '\0';
@@ -94,7 +88,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
 
                     /* Send the message */
                     if (drop_it == 0) {
-                        w_msg_hash_queues_push(str,lf->file,lf->outformat,strlen(str),lf->target_socket,LOCALFILE_MQ);
+                        w_msg_hash_queues_push(str,lf->file,lf->outformat,strlen(str)+1,lf->target_socket,LOCALFILE_MQ);
                     }
 
                     f_msg[0] = '\0';

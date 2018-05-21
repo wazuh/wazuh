@@ -13,6 +13,7 @@
 
 int maximum_files;
 int current_files;
+int total_files;
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -276,6 +277,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             merror("Missing 'command' argument. "
                    "This option will be ignored.");
         }
+        total_files++;
     } else {
         current_files++;
     }

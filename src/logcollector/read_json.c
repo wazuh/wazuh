@@ -85,7 +85,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
 
         /* Send message to queue */
         if (drop_it == 0) {
-            w_msg_hash_queues_push(jsonParsed,lf->file,lf->outformat,strlen(jsonParsed),lf->target_socket,LOCALFILE_MQ);
+            w_msg_hash_queues_push(jsonParsed,lf->file,lf->outformat,strlen(jsonParsed)+1,lf->target_socket,LOCALFILE_MQ);
         }
         free(jsonParsed);
         /* Incorrect message size */

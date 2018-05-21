@@ -36,14 +36,7 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
 
     if (!drop_it) {
         message[n] = '\0';
-
-        if (SendMSGtoSCK(logr_queue, message, file, LOCALFILE_MQ, tsockets, pattern) < 0) {
-            merror(QUEUE_SEND);
-
-            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-            }
-        }
+        w_msg_hash_queues_push(message,(char *)file,(char *)pattern,strlen(message)+1,tsockets,LOCALFILE_MQ);
     }
 }
 
