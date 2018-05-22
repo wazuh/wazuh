@@ -361,7 +361,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             }
             agname[sizeof(agname) - 1] = '\0';
 
-            merror(ENC_IP_ERROR, buffer + 1, srcip, agname);
+            mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
 
             if (sock_client >= 0)
                 _close_sock(&keys, sock_client);
@@ -442,7 +442,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
     int retval;
-    
+
     key_lock_write();
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
