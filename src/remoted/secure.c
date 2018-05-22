@@ -348,15 +348,20 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         tmp_msg++;
         recv_b -= 2;
 
+        key_lock_read();
         agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
 
         if (agentid == -1) {
             int id = OS_IsAllowedID(&keys, buffer + 1);
+
             if (id < 0) {
                 strncpy(agname, "unknown", sizeof(agname));
             } else {
                 strncpy(agname, keys.keyentries[id]->name, sizeof(agname));
             }
+
+            key_unlock();
+
             agname[sizeof(agname) - 1] = '\0';
 
             mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
@@ -367,9 +372,11 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             return;
         }
     } else {
+        key_lock_read();
         agentid = OS_IsAllowedIP(&keys, srcip);
 
         if (agentid < 0) {
+            key_unlock();
             mwarn(DENYIP_WARN, srcip);
 
             if (sock_client >= 0)
@@ -382,7 +389,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Decrypt the message */
 
-    key_lock_read();
     tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip);
 
     if (tmp_msg == NULL) {
@@ -396,11 +402,15 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     if (IsValidHeader(tmp_msg)) {
         int r = 2;
 
+        key_unlock();
+        key_lock_write();
+
         /* We need to save the peerinfo if it is a control msg */
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
+        key_unlock();
 
         switch (r) {
         case 0:
@@ -414,7 +424,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
 
         save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
-        key_unlock();
         return;
     }
 
@@ -422,6 +431,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
+
     key_unlock();
 
     /* If we can't send the message, try to connect to the
