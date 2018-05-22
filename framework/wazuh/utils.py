@@ -185,7 +185,7 @@ def search_array(array, text, negation=False, fields=None):
     :param text: Text to search.
     :param negation: the text must not be in the array.
     :param fields: fields of the array to search in
-    :return: True or False.
+    :return: filtered array.
     """
 
     found = []

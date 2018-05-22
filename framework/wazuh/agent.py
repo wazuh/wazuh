@@ -907,7 +907,7 @@ class Agent:
             query += " OR " + " OR ".join(x + ' LIKE :search' for x in (search_fields - {"id"})) + " )"
             request['search'] = '%{0}%'.format(search['value'])
             request['search_id'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
-                                                                    else search['value'])
+                                                                     else search['value'])
 
         if "FROM agent AND" in query:
             query = query.replace("FROM agent AND", "FROM agent WHERE")
@@ -957,6 +957,10 @@ class Agent:
         conn.execute(query.format(','.join(min_select_fields)), request)
 
         data['items'] = Agent.get_agents_dict(conn, min_select_fields, user_select_fields)
+
+        if search:
+            data['items'] = search_array(data['items'], search['value'], bool(search['negation']), search_fields)
+            data['totalItems'] = len(data['items'])
 
         return data
 
