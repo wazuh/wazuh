@@ -3,8 +3,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import wazuh.InputValidator as InputValidator
 from wazuh.exception import WazuhException
-from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
 from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
@@ -99,6 +99,9 @@ def cut_array(array, offset, limit):
     if not array or limit == 0 or limit == None:
         return array
 
+    InputValidator.check_number(limit)
+    InputValidator.check_number(offset)
+
     offset = int(offset)
     limit = int(limit)
 
@@ -110,7 +113,7 @@ def cut_array(array, offset, limit):
         return array[offset:offset + limit]
 
 
-def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
+def sort_array(array, sort_by=[], order='asc', allowed_sort_fields=None):
     """
     Sorts an array.
 
@@ -125,6 +128,8 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         if not sort_by.issubset(allowed_sort_fields):
             uncorrect_fields = map(lambda x: str(x), sort_by - allowed_sort_fields)
             raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(list(allowed_sort_fields), uncorrect_fields))
+
+    InputValidator.check_sort_param({'fields': sort_by, 'order':order})
 
     if not array:
         return array
@@ -192,6 +197,7 @@ def search_array(array, text, negation=False, fields=None):
     :param fields: fields of the array to search in
     :return: True or False.
     """
+    InputValidator.check_search_param({'value':text, 'negation':negation})
 
     found = []
 

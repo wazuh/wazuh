@@ -8,7 +8,7 @@ from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
-from wazuh.InputValidator import InputValidator
+import wazuh.InputValidator as iv
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
@@ -50,7 +50,6 @@ logger = logging.getLogger(__name__)
 
 
 def check_cluster_config(config):
-    iv = InputValidator()
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
 
     if not 'key' in config:

@@ -9,14 +9,13 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
 from wazuh.database import Connection
 from wazuh.wdb import WazuhDBConnection
-from wazuh.InputValidator import InputValidator
+import wazuh.InputValidator as InputValidator
 from wazuh import manager
 from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
 from shutil import copyfile, move, copytree
-from time import time
 from platform import platform
 from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat
 from time import time, sleep
@@ -85,7 +84,7 @@ class Agent:
     OSSEC Agent object.
     """
 
-    def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
+    def __init__(self, agent_id=None, name=None, ip=None, key=None, force=-1):
         """
         Initialize an agent.
         'id': When the agent exists
@@ -94,7 +93,12 @@ class Agent:
         'name', 'ip', 'id', 'key': Insert an agent with an existent id and key
         'name', 'ip', 'id', 'key', 'force': Insert an agent with an existent id and key, removing old agent with same IP if disconnected since <force> seconds.
         """
-        self.id            = id
+        InputValidator.check_name(name)
+        InputValidator.check_ip(ip)
+        InputValidator.check_ossec_key(key)
+        InputValidator.check_number(agent_id)
+
+        self.id            = agent_id
         self.name          = name
         self.ip            = ip
         self.internal_key  = key
@@ -112,7 +116,7 @@ class Agent:
         # if the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
         if name != None and ip != None:
-            self._add(name=name, ip=ip, id=id, key=key, force=force)
+            self._add(name=name, ip=ip, agent_id=agent_id, key=key, force=force)
 
     def __str__(self):
         return str(self.to_dict())
@@ -143,6 +147,7 @@ class Agent:
         """
         Gets attributes of existing agent.
         """
+        InputValidator.check_select_param(select)
 
         db_global = glob(common.database_path_global)
         if not db_global:
@@ -278,6 +283,8 @@ class Agent:
                 query += " and {} = '{}'".format(key, value)
 
         if search:
+            InputValidator.check_search_param(search)
+
             query += " and not" if bool(search['negation']) else " and"
             query += '(' + " or ".join("{} like '%{}%'".format(x, search['value']) for x in search['fields']) + ')'
 
@@ -285,9 +292,14 @@ class Agent:
             query = query.replace("from {} and".format(table), "from {} where".format(table))
 
         if limit:
+            InputValidator.check_number(limit)
+            InputValidator.check_number(offset)
+
             query += ' limit {} offset {}'.format(limit, offset)
 
         if sort and sort['fields']:
+            InputValidator.check_sort_param(sort)
+
             str_order = "desc" if sort['order'] == 'asc' else "asc"
             order_str_fields = []
             for field in sort['fields']:
@@ -341,6 +353,7 @@ class Agent:
 
         return info
 
+
     def compute_key(self):
         str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
         return b64encode(str_key.encode()).decode()
@@ -360,6 +373,7 @@ class Agent:
             self.key = ""
 
         return self.key
+
 
     def restart(self):
         """
@@ -383,6 +397,7 @@ class Agent:
 
         return ret_msg
 
+
     def use_only_authd(self):
         """
         Function to know the value of the option "use_only_authd" in API configuration
@@ -396,6 +411,7 @@ class Agent:
             return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
         except IOError:
             return False
+
 
     def remove(self, backup=False, purge=False):
         """
@@ -531,7 +547,8 @@ class Agent:
 
         return 'Agent deleted successfully.'
 
-    def _add(self, name, ip, id=None, key=None, force=-1):
+
+    def _add(self, name, ip, agent_id=None, key=None, force=-1):
         """
         Adds an agent to OSSEC.
         2 uses:
@@ -540,7 +557,7 @@ class Agent:
 
         :param name: name of the new agent.
         :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param id: ID of the new agent.
+        :param agent_id: ID of the new agent.
         :param key: Key of the new agent.
         :param force: Remove old agents with same IP if disconnected since <force> seconds
         :return: Agent ID.
@@ -553,30 +570,31 @@ class Agent:
                 raise WazuhException(1726)
 
         if not is_authd_running:
-            data = self._add_manual(name, ip, id, key, force)
+            data = self._add_manual(name, ip, agent_id, key, force)
         else:
-            data = self._add_authd(name, ip, id, key, force)
+            data = self._add_authd(name, ip, agent_id, key, force)
 
         return data
 
-    def _add_authd(self, name, ip, id=None, key=None, force=-1):
+
+    def _add_authd(self, name, ip, agent_id=None, key=None, force=-1):
         """
         Adds an agent to OSSEC using authd.
         2 uses:
-            - name and ip [force]: Add an agent like manage_agents (generate id and key).
-            - name, ip, id, key [force]: Insert an agent with an existing id and key.
+            - name and ip [force]: Add an agent like manage_agents (generate agent_id and key).
+            - name, ip, agent_id, key [force]: Insert an agent with an existing agent_id and key.
 
         :param name: name of the new agent.
         :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param id: ID of the new agent.
+        :param agent_id: ID of the new agent.
         :param key: Key of the new agent.
         :param force: Remove old agents with same IP if disconnected since <force> seconds
         :return: Agent ID.
         """
 
         # Check arguments
-        if id:
-            id = id.zfill(3)
+        if agent_id:
+            agent_id = agent_id.zfill(3)
 
         ip = ip.lower()
 
@@ -587,10 +605,10 @@ class Agent:
 
         msg = ""
         if name and ip:
-            if id and key:
+            if agent_id and key:
                 msg = { "function": "add", "arguments": { "name": name, "ip": ip, "force": force } }
             else:
-                msg = { "function": "add", "arguments": { "name": name, "ip": ip, "id": id, "key": key, "force": force } }
+                msg = { "function": "add", "arguments": { "name": name, "ip": ip, "id": agent_id, "key": key, "force": force}}
 
         authd_socket = OssecSocket(common.AUTHD_SOCKET)
         authd_socket.send(msg)
@@ -601,7 +619,8 @@ class Agent:
         self.internal_key = data['key']
         self.key = self.compute_key()
 
-    def _add_manual(self, name, ip, id=None, key=None, force=-1):
+
+    def _add_manual(self, name, ip, agent_id=None, key=None, force=-1):
         """
         Adds an agent to OSSEC manually.
         2 uses:
@@ -610,15 +629,15 @@ class Agent:
 
         :param name: name of the new agent.
         :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param id: ID of the new agent.
+        :param agent_id: ID of the new agent.
         :param key: Key of the new agent.
         :param force: Remove old agents with same IP if disconnected since <force> seconds
         :return: Agent ID.
         """
 
         # Check arguments
-        if id:
-            id = id.zfill(3)
+        if agent_id:
+            agent_id = agent_id.zfill(3)
 
         ip = ip.lower()
 
@@ -639,7 +658,7 @@ class Agent:
         if name == manager_name:
             raise WazuhException(1705, name)
 
-        # Check if ip, name or id exist in client.keys
+        # Check if ip, name or agent_id exist in client.keys
         last_id = 0
         lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
         fcntl.lockf(lock_file, fcntl.LOCK_EX)
@@ -652,7 +671,7 @@ class Agent:
                     if line[0] in ('# '):  # starts with # or ' '
                         continue
 
-                    line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
+                    line_data = line.strip().split(' ')  # 0 -> agent_id, 1 -> name, 2 -> ip, 3 -> key
 
                     line_id = int(line_data[0])
                     if last_id < line_id:
@@ -662,8 +681,8 @@ class Agent:
                         continue
 
                     check_remove = 0
-                    if id and id == line_data[0]:
-                        raise WazuhException(1708, id)
+                    if agent_id and agent_id == line_data[0]:
+                        raise WazuhException(1708, agent_id)
                     if name == line_data[1]:
                         if force < 0:
                             raise WazuhException(1705, name)
@@ -685,10 +704,10 @@ class Agent:
                                 raise WazuhException(1706, ip)
 
 
-                if not id:
+                if not agent_id:
                     agent_id = str(last_id + 1).zfill(3)
                 else:
-                    agent_id = id
+                    agent_id = agent_id
 
                 if not key:
                     # Generate key
@@ -724,7 +743,7 @@ class Agent:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
                 raise ex
-            except Exception as ex:
+            except Exception as e:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
                 raise WazuhException(1725, str(e))
@@ -736,6 +755,7 @@ class Agent:
         self.id = agent_id
         self.internal_key = agent_key
         self.key = self.compute_key()
+
 
     def _remove_single_group(self, group_id):
         """
@@ -848,6 +868,7 @@ class Agent:
         search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
         request = {}
         if select:
+            InputValidator.check_select_param(select)
             if not set(select['fields']).issubset(valid_select_fields):
                 incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
@@ -901,6 +922,7 @@ class Agent:
 
         # Search
         if search:
+            InputValidator.check_search_param(search)
             search['value'] = re.sub( r'([Wazuh])([v])', r'\1 \2', search['value'] )
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " (" + " id LIKE :search_id"
@@ -918,6 +940,7 @@ class Agent:
 
         # Sorting
         if sort:
+            InputValidator.check_sort_param(sort)
             if sort['fields']:
                 allowed_sort_fields = fields.keys()
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
@@ -946,6 +969,9 @@ class Agent:
 
 
         if limit:
+            InputValidator.check_number(limit)
+            InputValidator.check_number(offset)
+
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1002,6 +1028,7 @@ class Agent:
 
         return {'Total': total, 'Active': active, 'Disconnected': disconnected, 'Never connected': never}
 
+
     @staticmethod
     def get_os_summary(offset=0, limit=common.database_limit, sort=None, search=None):
         """
@@ -1028,6 +1055,8 @@ class Agent:
 
         # Search
         if search:
+            InputValidator.check_search_param(search)
+
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " ( os_platform LIKE :search )"
             request['search'] = '%{0}%'.format(search['value'])
@@ -1038,6 +1067,8 @@ class Agent:
 
         # Sorting
         if sort:
+            InputValidator.check_sort_param(sort)
+
             if sort['fields']:
                 allowed_sort_fields = fields.keys()
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
@@ -1053,6 +1084,9 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            InputValidator.check_number(limit)
+            InputValidator.check_number(offset)
+
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1065,6 +1099,7 @@ class Agent:
                 data['items'].append(tuple[0])
 
         return data
+
 
     @staticmethod
     def restart_agents(agent_id=None, restart_all=False):
@@ -1111,14 +1146,18 @@ class Agent:
 
             return final_dict
 
+
     @staticmethod
     def get_agent_by_name(agent_name, select=None):
         """
         Gets an existing agent called agent_name.
 
         :param agent_name: Agent name.
+        :param select: fields to select
         :return: The agent.
         """
+        InputValidator.check_name(agent_name)
+
         db_global = glob(common.database_path_global)
         if not db_global:
             raise WazuhException(1600)
@@ -1132,16 +1171,18 @@ class Agent:
 
         return Agent(agent_id).get_basic_information(select)
 
+
     @staticmethod
     def get_agent(agent_id, select=None):
         """
         Gets an existing agent.
 
         :param agent_id: Agent ID.
+        :param select: fields to select
         :return: The agent.
         """
-
         return Agent(agent_id).get_basic_information(select)
+
 
     @staticmethod
     def get_agent_key(agent_id):
@@ -1153,6 +1194,7 @@ class Agent:
         """
 
         return Agent(agent_id).get_key()
+
 
     @staticmethod
     def remove_agent(agent_id, backup=False, purge=False):
@@ -1194,6 +1236,7 @@ class Agent:
 
         return final_dict
 
+
     @staticmethod
     def add_agent(name, ip='any', force=-1):
         """
@@ -1208,6 +1251,7 @@ class Agent:
         new_agent = Agent(name=name, ip=ip, force=force)
         return {'id': new_agent.id, 'key': new_agent.key}
 
+
     @staticmethod
     def insert_agent(name, id, key, ip='any', force=-1):
         """
@@ -1221,21 +1265,22 @@ class Agent:
         :return: Agent ID.
         """
 
-        new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force)
+        new_agent = Agent(name=name, ip=ip, agent_id=id, key=key, force=force)
         return {'id': new_agent.id, 'key': key}
 
+
     @staticmethod
-    def check_if_delete_agent(id, seconds):
+    def check_if_delete_agent(agent_id, seconds):
         """
         Check if we should remove an agent: if time from last connection is greater thant <seconds>.
 
-        :param id: id of the new agent.
+        :param agent_id: id of the new agent.
         :param seconds: Number of seconds.
         :return: True if time from last connection is greater thant <seconds>.
         """
         remove_agent = False
 
-        agent_info = Agent(id=id).get_basic_information()
+        agent_info = Agent(agent_id=agent_id).get_basic_information()
 
         if 'lastKeepAlive' in agent_info:
             if agent_info['lastKeepAlive'] == 0:
@@ -1247,6 +1292,7 @@ class Agent:
                     remove_agent = True
 
         return remove_agent
+
 
     @staticmethod
     def get_all_groups_sql(offset=0, limit=common.database_limit, sort=None, search=None):
@@ -1275,6 +1321,8 @@ class Agent:
 
         # Search
         if search:
+            InputValidator.check_search_param(search)
+
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " ( `group` LIKE :search )"
             request['search'] = '%{0}%'.format(search['value'])
@@ -1285,6 +1333,8 @@ class Agent:
 
         # Sorting
         if sort:
+            InputValidator.check_sort_param(sort)
+
             if sort['fields']:
                 allowed_sort_fields = fields.keys()
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
@@ -1300,6 +1350,9 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            InputValidator.check_number(offset)
+            InputValidator.check_number(limit)
+
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1314,6 +1367,7 @@ class Agent:
                 data['items'].append(tuple[0])
 
         return data
+
 
     @staticmethod
     def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
@@ -1392,6 +1446,7 @@ class Agent:
 
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
+
     @staticmethod
     def group_exists_sql(group_id):
         """
@@ -1401,7 +1456,7 @@ class Agent:
         :return: True if group exists, False otherwise
         """
         # Input Validation of group_id
-        if not InputValidator().group(group_id):
+        if not InputValidator.group(group_id):
             raise WazuhException(1722)
 
         db_global = glob(common.database_path_global)
@@ -1422,6 +1477,7 @@ class Agent:
             else:
                 return False
 
+
     @staticmethod
     def group_exists(group_id):
         """
@@ -1431,13 +1487,14 @@ class Agent:
         :return: True if group exists, False otherwise
         """
         # Input Validation of group_id
-        if not InputValidator().group(group_id):
+        if not InputValidator.group(group_id):
             raise WazuhException(1722)
 
         if path.exists("{0}/{1}".format(common.shared_path, group_id)):
             return True
         else:
             return False
+
 
     @staticmethod
     def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
@@ -1449,6 +1506,7 @@ class Agent:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+        :param select: Fields to return
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
 
@@ -1471,6 +1529,8 @@ class Agent:
 
         # Select
         if select:
+            InputValidator.check_select_param(select)
+
             select_fields_param = set(select['fields'])
 
             if not select_fields_param.issubset(valid_select_fiels):
@@ -1491,6 +1551,8 @@ class Agent:
 
         # Search
         if search:
+            InputValidator.check_search_param(search)
+
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
             request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
@@ -1502,6 +1564,8 @@ class Agent:
 
         # Sorting
         if sort:
+            InputValidator.check_sort_param(sort)
+
             if sort['fields']:
                 allowed_sort_fields = db_select_fields
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
@@ -1518,6 +1582,9 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            InputValidator.check_number(offset)
+            InputValidator.check_number(limit)
+
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1543,6 +1610,7 @@ class Agent:
         data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
 
         return data
+
 
     @staticmethod
     def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None):
@@ -1597,6 +1665,8 @@ class Agent:
 
         # Search
         if search:
+            InputValidator.check_search_param(search)
+
             query += " AND NOT" if bool(search['negation']) else ' AND'
             query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
             request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
@@ -1608,6 +1678,8 @@ class Agent:
 
         # Sorting
         if sort:
+            InputValidator.check_sort_param(sort)
+
             if sort['fields']:
                 allowed_sort_fields = db_select_fields
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
@@ -1624,6 +1696,9 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            InputValidator.check_number(limit)
+            InputValidator.check_number(offset)
+
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1649,6 +1724,7 @@ class Agent:
         data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
 
         return data
+
 
     @staticmethod
     def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -1705,6 +1781,7 @@ class Agent:
         except Exception as e:
             raise WazuhException(1727, str(e))
 
+
     @staticmethod
     def create_group(group_id):
         """
@@ -1714,7 +1791,7 @@ class Agent:
         :return: Confirmation message.
         """
         # Input Validation of group_id
-        if not InputValidator().group(group_id):
+        if not InputValidator.group(group_id):
             raise WazuhException(1722)
 
         group_path = "{0}/{1}".format(common.shared_path, group_id)
@@ -1735,6 +1812,7 @@ class Agent:
 
         return msg
 
+
     @staticmethod
     def remove_group(group_id):
         """
@@ -1745,7 +1823,7 @@ class Agent:
         """
 
         # Input Validation of group_id
-        if not InputValidator().group(group_id):
+        if not InputValidator.group(group_id):
             raise WazuhException(1722)
 
 
@@ -1785,6 +1863,7 @@ class Agent:
 
         return final_dict
 
+
     @staticmethod
     def set_group(agent_id, group_id, force=False):
         """
@@ -1796,7 +1875,7 @@ class Agent:
         :return: Confirmation message.
         """
         # Input Validation of group_id
-        if not InputValidator().group(group_id):
+        if not InputValidator.group(group_id):
             raise WazuhException(1722)
 
         agent_id = agent_id.zfill(3)
@@ -1828,6 +1907,7 @@ class Agent:
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
+
     @staticmethod
     def unset_group(agent_id, force=False):
         """
@@ -1847,6 +1927,7 @@ class Agent:
                 fo.write("default")
 
         return "Group unset for agent '{0}'.".format(agent_id)
+
 
     @staticmethod
     def get_outdated_agents(offset=0, limit=common.database_limit, sort=None):
@@ -1883,6 +1964,8 @@ class Agent:
 
         # Sorting
         if sort:
+            InputValidator.check_sort_param(sort)
+
             if sort['fields']:
                 allowed_sort_fields = fields.keys()
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
@@ -1898,6 +1981,9 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            InputValidator.check_number(limit)
+            InputValidator.check_number(offset)
+
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -2511,6 +2597,7 @@ class Agent:
         :param limit: Maximum number of items to return.
         :return: List of agents ids.
         """
+        InputValidator.check_timeframe(timeframe)
         timeframe = get_timeframe_int(timeframe)
         purgeable_agents, total = Agent._get_purgeable_agents(timeframe, offset, limit,count=True )
 
@@ -2545,6 +2632,9 @@ class Agent:
             total = conn.fetch()[0]
 
         if limit:
+            InputValidator.check_number(limit)
+            InputValidator.check_number(offset)
+
             query = query + " LIMIT :offset,:limit"
             request['limit'] = limit
             request['offset'] = offset

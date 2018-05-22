@@ -129,6 +129,9 @@ class WazuhException(Exception):
         3013: 'Cluster is disabled',
         3015: 'Cannot access directory',
 
+        # Input validation:
+        4000: 'Argument not valid',
+
         # > 9000: Authd
     }
 
