@@ -63,6 +63,13 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Set default agent limit to 14.000 and file descriptor limit to 65.536 per process. ([#624](https://github.com/wazuh/wazuh/pull/624))
+- Cluster improvements.
+    - New protocol for communications.
+    - Inverted communication flow: clients start communications with the master.
+    - Just the master address is required in the `<nodes>` list configuration.
+    - Improved synchronization algorithm.
+    - Reduced the number of processes to one: `wazuh-clusterd`.
+- Cluster control tool improvements: outputs are the same regardless of node type.
 
 ### Fixed
 
@@ -74,6 +81,14 @@ All notable changes to this project will be documented in this file.
 - Fixed unpredictable file sorting when creating merged files. ([#599](https://github.com/wazuh/wazuh/issues/599))
 - Fixed race condition in Remoted when closing connections.
 - Fix epoch check in vulnerability-detector.
+- Fixed hash sum in logs rotation. ([#636](https://github.com/wazuh/wazuh/issues/636))
+- Fixed cluster CPU usage.
+- Fixed segmentation fault in logcollector when multi-line is applied to a remote configuration. ([#641](https://github.com/wazuh/wazuh/pull/641))
+
+### Removed
+
+- Removed cluster database and internal cluster daemon.
+
 
 ## [v3.2.2]
 
