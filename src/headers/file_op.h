@@ -97,4 +97,7 @@ int mkdir_ex(const char * path);
 
 int w_ref_parent_folder(const char * path);
 
+// Read directory and return an array of contained files, sorted alphabetically.
+char ** wreaddir(const char * name);
+
 #endif /* __FILE_H */

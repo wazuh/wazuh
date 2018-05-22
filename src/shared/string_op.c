@@ -246,3 +246,16 @@ char * wstr_replace(const char * string, const char * search, const char * repla
     result[wi] = '\0';
     return result;
 }
+
+// Free string array
+void free_strarray(char ** array) {
+    int i;
+
+    if (array) {
+        for (i = 0; array[i]; ++i) {
+            free(array[i]);
+        }
+
+        free(array);
+    }
+}

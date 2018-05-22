@@ -18,6 +18,7 @@ ID: 87600--87700
     <if_sid>88100</if_sid>
     <field name="mariadb.type">[ERROR]</field>
     <description>MariaDB error message</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="88102" level="3">

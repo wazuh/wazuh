@@ -3,7 +3,6 @@
     <node_name>node01</node_name>
     <node_type>master</node_type>
     <key></key>
-    <interval>2m</interval>
     <port>1516</port>
     <bind_addr>0.0.0.0</bind_addr>
     <nodes>

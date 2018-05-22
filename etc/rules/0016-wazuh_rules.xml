@@ -22,21 +22,21 @@
     <if_sid>201</if_sid>
     <field name="level">%</field>
     <description>Agent event queue is $(level) full.</description>
-    <group>agent_flooding,</group>
+    <group>agent_flooding,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="203" level="9">
     <if_sid>201</if_sid>
     <field name="level">full</field>
     <description>Agent event queue is full. Events may be lost.</description>
-    <group>agent_flooding,</group>
+    <group>agent_flooding,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="204" level="12">
     <if_sid>201</if_sid>
     <field name="level">flooded</field>
     <description>Agent event queue is flooded. Check the agent configuration.</description>
-    <group>agent_flooding,</group>
+    <group>agent_flooding,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="205" level="3">

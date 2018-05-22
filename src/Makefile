@@ -13,7 +13,7 @@ ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
-MAXAGENTS?=8000
+MAXAGENTS?=14000
 REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
@@ -48,22 +48,16 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 endif
 
 OSSEC_CFLAGS = -pthread ${CFLAGS}
-OSSEC_LDFLAGS = -pthread -L${EXTERNAL_OPENSSL} -L$(EXTERNAL_JSON) -L$(EXTERNAL_ZLIB) ${LDFLAGS}
-OSSEC_LIBS = -lcjson -lm -lssl -lcrypto -lz $(LIBS)
+OSSEC_LDFLAGS = -pthread ${LDFLAGS}
+OSSEC_LIBS = $(LIBS)
 
 ifneq (${TARGET},winagent)
-ifneq (${TARGET},agent)
-		OSSEC_LDFLAGS += -L$(EXTERNAL_SQLITE) -L${EXTERNAL_CURL}lib/.libs -L${EXTERNAL_LIBYAML}src/.libs
-		OSSEC_LIBS += -lsqlite3 -lcurl -lyaml
-endif
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_CFLAGS+=-I${EXTERNAL_LIBDB}
-		OSSEC_LDFLAGS+=-L$(EXTERNAL_PROCPS)
-		OSSEC_LDFLAGS+=-L${EXTERNAL_LIBDB}.libs
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		OSSEC_LIBS+=-lrt -ldl -lproc -ldb-6.2
+		OSSEC_LIBS+=-lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
 else
 ifeq (${uname_S},AIX)
@@ -455,7 +449,6 @@ BUILD_SERVER+=ossec-dbd -
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
-BUILD_SERVER+=wazuh-framework
 
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
@@ -497,7 +490,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/libwinpthread-1.dll
+winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
@@ -517,23 +510,18 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-ifeq (${TARGET},winagent)
-OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl-1_1.$(SHARED)
-ZLIB_LIB    = $(EXTERNAL_ZLIB)/zlib1.$(SHARED)
-else
-OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.$(SHARED)
-CRYPTO_LIB = $(EXTERNAL_OPENSSL)libcrypto.$(SHARED)
-ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.$(SHARED)
-endif
+ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.a
+OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.a
+CRYPTO_LIB = $(EXTERNAL_OPENSSL)libcrypto.a
 
-SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.$(SHARED)
-JSON_LIB    = $(EXTERNAL_JSON)libcjson.$(SHARED)
-PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.$(SHARED)
-DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.$(SHARED)
-LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.$(SHARED)
-LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.$(SHARED)
+SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
+JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
+PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
+DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
+LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
+LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
 
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
@@ -554,7 +542,9 @@ endif
 
 #### OpenSSL ##########
 
-OPENSSL_FLAGS = enable-weak-ssl-ciphers
+OPENSSL_FLAGS = enable-weak-ssl-ciphers no-shared
+
+${CRYPTO_LIB}: ${OPENSSL_LIB}
 
 ${OPENSSL_LIB}:
 ifeq (${TARGET},winagent)
@@ -562,9 +552,6 @@ ifeq (${TARGET},winagent)
 else
 ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
-	install_name_tool -id "@rpath/libssl.1.1.dylib" $(OPENSSL_LIB)
-	install_name_tool -id "@rpath/libcrypto.1.1.dylib" $(CRYPTO_LIB)
-	install_name_tool -change /usr/local/lib/libcrypto.1.1.dylib @rpath/libcrypto.1.1.dylib $(OPENSSL_LIB)
 else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
@@ -586,12 +573,9 @@ endif
 
 $(ZLIB_LIB):
 ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} zlib1.dll
+	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
 else
-	cd ${EXTERNAL_ZLIB} && ./configure && ${MAKE} shared
-ifeq (${uname_S},Darwin)
-	install_name_tool -id "@rpath/libz.1.dylib" $@
-endif
+	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure && ${MAKE} libz.a
 endif
 
 ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
@@ -604,15 +588,12 @@ os_zlib/%.o: os_zlib/%.c
 
 #### SQLite #########
 
-ifeq (${uname_S},Darwin)
-SQLITE_SHFLAGS=-install_name @rpath/libsqlite3.$(SHARED)
-endif
-
 sqlite_c = ${EXTERNAL_SQLITE}sqlite3.c
 sqlite_o = ${EXTERNAL_SQLITE}sqlite3.o
 
 $(SQLITE_LIB): $(sqlite_o)
-	${OSSEC_SHARED} ${OSSEC_CFLAGS} $(SQLITE_SHFLAGS) -o $@ $^
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
 
 $(sqlite_o): $(sqlite_c)
 	${OSSEC_CC} ${OSSEC_CFLAGS} -w -fPIC -c $^ -o $@ -fPIC
@@ -627,7 +608,8 @@ cjson_c := ${EXTERNAL_JSON}cJSON.c
 cjson_o := $(cjson_c:.c=.o)
 
 $(JSON_LIB): ${cjson_o}
-	${OSSEC_SHARED} ${OSSEC_CFLAGS} $(JSON_SHFLAGS) -o $@ $^
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
 
 ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
@@ -636,27 +618,21 @@ ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
 
 ${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
 	$(MAKE) -C $(EXTERNAL_LIBYAML)
-ifeq (${uname_S},Darwin)
-	install_name_tool -id "@rpath/libyaml-0.2.dylib" $@
-endif
 
 $(EXTERNAL_LIBYAML)Makefile:
-	cd $(EXTERNAL_LIBYAML) && ./configure
+	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes
 
 #### curl ##########
 
 ${LIBCURL_LIB}: $(EXTERNAL_CURL)Makefile
 	${MAKE} -C $(EXTERNAL_CURL)lib
-ifeq (${uname_S},Darwin)
-	install_name_tool -id "@rpath/libcurl.4.dylib" $@
-endif
 
 ifeq (${uname_S},Darwin)
 $(EXTERNAL_CURL)Makefile:
 	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LD_LIBRARY_PATH="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure
 endif
 
 
@@ -671,13 +647,17 @@ ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
 $(PROCPS_LIB): ${procps_o}
-	${OSSEC_SHARED} ${OSSEC_CFLAGS} -o $@ $^
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
 
 #### Berkeley DB ######
 
-${DB_LIB}:
 ifeq (${uname_S},Linux)
-	cd ${EXTERNAL_LIBDB} && ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics --enable-shared --enable-static=no && ${MAKE} library_build
+${DB_LIB}: $(EXTERNAL_LIBDB)Makefile
+	 ${MAKE} -C $(EXTERNAL_LIBDB) libdb.a
+
+$(EXTERNAL_LIBDB)Makefile:
+	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics
 endif
 
 ################################
@@ -709,7 +689,8 @@ external/%.tar.gz:
 #### OSSEC Libs ####
 ####################
 
-BUILD_LIBS = libwazuh.a
+WAZUHEXT_LIB = libwazuhext.$(SHARED)
+BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
@@ -788,7 +769,7 @@ wazuh_modules/%.o: wazuh_modules/%.c
 
 ifeq (${TARGET},winagent)
 wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/syscollector_win_ext.o
-	${OSSEC_SHARED} ${OSSEC_LDFLAGS} $^ -o $@ $(OSSEC_LIBS)
+	${OSSEC_SHARED} ${OSSEC_LDFLAGS} $^ -o $@ $(OSSEC_LIBS) $(JSON_LIB) -liphlpapi -lws2_32
 endif # DLL for Windows
 
 ifndef DISABLE_SYSC
@@ -881,6 +862,23 @@ crypto_o := ${crypto_blowfish_o} \
 libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
+
+### libwazuhext #########
+
+ifeq (${uname_S},Darwin)
+WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
+
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load
+else
+ifeq (${TARGET}, winagent)
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
+endif
 
 #### os_mail #########
 
@@ -1228,11 +1226,6 @@ wmodulesd_o := $(wmodulesd_c:.c=.o)
 wazuh-modulesd: ${wmodulesd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-### wazuh-framework ##
-
-wazuh-framework: ${shared_o} ${wdblib_o}
-	${MAKE} -C ../framework build PREFIX=${PREFIX}
-
 
 ####################
 #### test ##########
@@ -1368,7 +1361,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.o addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
+clean: clean-test clean-internals clean-external clean-windows clean-config
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1426,9 +1419,6 @@ clean-internals:
 	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o}
 	rm -f ${wdb_o}
-
-clean-framework:
-	${MAKE} -C ../framework clean
 
 clean-windows:
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll

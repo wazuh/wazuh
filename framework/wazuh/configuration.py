@@ -8,6 +8,13 @@ import re
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.utils import cut_array, load_wazuh_xml
+# Python 2/3 compability
+try:
+    from ConfigParser import RawConfigParser, NoOptionError
+    from StringIO import StringIO
+except ImportError:
+    from configparser import RawConfigParser, NoOptionError
+    from io import StringIO
 
 # Aux functions
 
@@ -481,3 +488,44 @@ def get_file_conf_path(filename, file_path, type_conf=None):
             data = _rcl2json(file_path)
 
     return data
+
+
+def parse_internal_options(high_name, low_name):
+    def get_config(config_path):
+        with open(config_path) as f:
+            str_config = StringIO('[root]\n' + f.read())
+
+        config = RawConfigParser()
+        config.readfp(str_config)
+
+        return config
+
+
+    if not os_path.exists(common.internal_options):
+        raise WazuhException(1107)
+
+    # Check if the option exists at local internal options
+    if os_path.exists(common.local_internal_options):
+        try:
+            return get_config(common.local_internal_options).get('root',
+                                    '{0}.{1}'.format(high_name, low_name))
+        except NoOptionError:
+            pass
+
+    try:
+        return get_config(common.internal_options).get('root',
+                            '{0}.{1}'.format(high_name, low_name))
+    except NoOptionError as e:
+        raise WazuhException(1108, e.args[0])
+
+
+def get_internal_options_value(high_name, low_name, max, min):
+    option = parse_internal_options(high_name, low_name)
+    if not option.isdigit():
+        raise WazuhException(1109, 'Option: {}.{}. Value: {}'.format(high_name, low_name, option))
+
+    option = int(option)
+    if option < min or option > max:
+        raise WazuhException(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max, min, option))
+
+    return option

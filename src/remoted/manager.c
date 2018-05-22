@@ -33,7 +33,7 @@ typedef struct group_t {
 /* Internal functions prototypes */
 static void read_controlmsg(const char *agent_id, char *msg);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum);
-static void c_group(const char *group, DIR *dp, file_sum ***_f_sum);
+static void c_group(const char *group, char ** files, file_sum ***_f_sum);
 static void c_files(void);
 static file_sum** find_sum(const char *group);
 static file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE]);
@@ -212,14 +212,14 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     }
 }
 
-void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
-    struct dirent *entry;
+void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     os_md5 md5sum;
     unsigned int f_size = 0;
     file_sum **f_sum;
     char merged_tmp[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
     char file[PATH_MAX + 1];
+    unsigned int i;
 
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
@@ -332,15 +332,15 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         }
 
         /* Read directory */
-        while ((entry = readdir(dp)) != NULL) {
+        for (i = 0; files[i]; ++i) {
             /* Ignore hidden files  */
             /* Leave the shared config file for later */
             /* Also discard merged.mg.tmp */
-            if (entry->d_name[0] == '.' || !strncmp(entry->d_name, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
+            if (files[i][0] == '.' || !strncmp(files[i], SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
                 continue;
             }
 
-            snprintf(file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, entry->d_name);
+            snprintf(file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
 
             if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
                 merror("Accessing file '%s'", file);
@@ -351,7 +351,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
             *_f_sum = f_sum;
             os_calloc(1, sizeof(file_sum), f_sum[f_size]);
             strncpy(f_sum[f_size]->sum, md5sum, 32);
-            os_strdup(entry->d_name, f_sum[f_size]->name);
+            os_strdup(files[i], f_sum[f_size]->name);
 
             if (!logr.nocmerged) {
                 MergeAppendFile(merged_tmp, file, NULL);
@@ -367,7 +367,10 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
         }
 
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-            merror("Accessing file '%s'", merged);
+            if (!logr.nocmerged) {
+                merror("Accessing file '%s'", merged);
+            }
+
             f_sum[0]->sum[0] = '\0';
         }
 
@@ -380,7 +383,7 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
 static void c_files()
 {
     DIR *dp;
-    DIR *subdir;
+    char ** subdir;
     struct dirent *entry;
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
@@ -442,9 +445,7 @@ static void c_files()
 
         // Try to open directory, avoid TOCTOU hazard
 
-        subdir = opendir(path);
-
-        if (!subdir) {
+        if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
                 merror("Could not open directory '%s'", path);
             }
@@ -457,7 +458,7 @@ static void c_files()
         groups[p_size]->group = strdup(entry->d_name);
         groups[p_size + 1] = NULL;
         c_group(entry->d_name, subdir, &groups[p_size]->f_sum);
-        closedir(subdir);
+        free_strarray(subdir);
         p_size++;
     }
 
@@ -570,6 +571,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     file_sum **f_sum = NULL;
     os_md5 tmp_sum;
     char *end;
+    agent_group *agt_group;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -655,15 +657,17 @@ static void read_controlmsg(const char *agent_id, char *msg)
                     return;
                 }
             }
+
+            set_agent_group(agent_id, group);
         }
 
         // Check if the group is set in the yaml file
-        agent_group *agt_group = w_parser_get_agent(agent_id);
-
         // Check if the group we want to set is "default", apply yaml configuration
-        if(agt_group && !strncmp(group,"default",7)){
-            if(set_agent_group(agent_id, agt_group->group) == -1){
-                merror("Could not set group '%s' specified in the yaml file for agent '%s'",agt_group->group,agent_id);
+        if (!strcmp(group, "default")) {
+            if (agt_group = w_parser_get_agent(agent_id), agt_group) {
+                if(set_agent_group(agent_id, agt_group->group) == -1){
+                    merror("Could not set group '%s' specified in the yaml file for agent '%s'",agt_group->group,agent_id);
+                }
             }
         }
 
