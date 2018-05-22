@@ -41,7 +41,7 @@ try:
     import ctypes
     import ctypes.util
     import socket
-    from os import seteuid, setgid, getpid, kill, unlink
+    from os import seteuid, setgid, getpid, chown, chmod
 
     from wazuh.exception import WazuhException
     from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
@@ -215,6 +215,10 @@ if __name__ == '__main__':
         debug_mode = 0
 
     set_logging(foreground_mode=args.f, debug_mode=debug_mode)
+
+    # set appropiate permissions to the cluster.log file
+    chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
+    chmod('{0}/logs/cluster.log'.format(common.ossec_path), 0o660)
 
     if error_msg:
         logger.error(error_msg)
