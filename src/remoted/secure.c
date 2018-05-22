@@ -212,8 +212,6 @@ void HandleSecure()
                         continue;
                     }
 
-                    mdebug2("recv(): length=%d [%zu]", length, recv_b);
-
                     /* Nothing received */
                     if (recv_b <= 0 || length > OS_MAXSTR) {
                         switch (recv_b) {
