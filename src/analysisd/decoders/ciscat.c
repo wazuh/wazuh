@@ -167,50 +167,6 @@ int DecodeCiscat(Eventinfo *lf)
             if (sc_send_db(msg) < 0) {
                 return (0);
             }
-
-        } else if (cis_data = cJSON_GetObjectItem(logJSON, "cis-data"), cis_data) {
-            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "scan_id");
-            cJSON * scan_time = cJSON_GetObjectItem(cis_data, "timestamp");
-            cJSON * benchmark = cJSON_GetObjectItem(cis_data, "benchmark");
-            cJSON * score = cJSON_GetObjectItem(cis_data, "score");
-
-            snprintf(msg, OS_MAXSTR - 1, "agent %s ciscat save", lf->agent_id);
-
-            if (scan_id) {
-                char id[OS_MAXSTR];
-                snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
-                wm_strcat(&msg, id, ' ');
-            } else {
-                wm_strcat(&msg, "NULL", ' ');
-            }
-
-            if (scan_time) {
-                wm_strcat(&msg, scan_time->valuestring, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
-            }
-
-            if (benchmark) {
-                wm_strcat(&msg, benchmark->valuestring, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
-            }
-
-            for (int i = 0; i<5; i++) {
-                wm_strcat(&msg, "NULL", '|');
-            }
-
-            if (score) {
-                char _score[VAR_LENGTH];
-                snprintf(_score, VAR_LENGTH - 1, "%d", score->valueint);
-                wm_strcat(&msg, _score, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
-            }
-
-            if (sc_send_db(msg) < 0) {
-                return (0);
-            }
         } else {
             mdebug1("Unable to parse CIS-CAT event for agent '%s'", lf->agent_id);
             return (0);
