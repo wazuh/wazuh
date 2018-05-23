@@ -11,9 +11,10 @@
 #include "remoted.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
+#include "shared_download.h"
 #include <pthread.h>
 
-#if defined(__FreeBSD__) || defined(__MACH__)
+#if defined(__FreeBSD__) || defined(__MACH__) || defined(__sun__)
 #define HOST_NAME_MAX 64
 #endif
 
@@ -32,7 +33,7 @@ typedef struct group_t {
 /* Internal functions prototypes */
 static void read_controlmsg(const char *agent_id, char *msg);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum);
-static void c_group(const char *group, DIR *dp, file_sum ***_f_sum);
+static void c_group(const char *group, char ** files, file_sum ***_f_sum);
 static void c_files(void);
 static file_sum** find_sum(const char *group);
 static file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE]);
@@ -51,6 +52,10 @@ OSHash *pending_data;
 static pthread_mutex_t lastmsg_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t files_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t awake_mutex = PTHREAD_COND_INITIALIZER;
+
+
+/* Interval polling */
+static int poll_interval_time = 0;
 
 /* Save a control message received from an agent
  * read_controlmsg (other thread) is going to deal with it
@@ -207,14 +212,14 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     }
 }
 
-void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
-    struct dirent *entry;
+void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     os_md5 md5sum;
     unsigned int f_size = 0;
     file_sum **f_sum;
     char merged_tmp[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
     char file[PATH_MAX + 1];
+    unsigned int i;
 
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
@@ -227,79 +232,158 @@ void c_group(const char *group, DIR *dp, file_sum ***_f_sum) {
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
 
-    if (!logr.nocmerged) {
-        snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
-        // First call, truncate merged file
-        MergeAppendFile(merged_tmp, NULL, group);
+    remote_files_group *r_group = w_parser_get_group(group);
+    if(r_group){
+        if(r_group->current_polling_time <= 0){
+            r_group->current_polling_time = r_group->poll;
+
+            char *file_url;
+            char *file_name;
+            char destination_path[PATH_MAX + 1];
+            int downloaded;
+
+            // Check if we have merged.mg file in this group
+            if(r_group->merge_file_index >= 0){
+                file_url = r_group->files[r_group->merge_file_index].url;
+                file_name = SHAREDCFG_FILENAME;
+                snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
+                mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
+                downloaded = wurl_request(file_url,destination_path);
+                w_download_status(downloaded,file_url,destination_path);
+                r_group->merged_is_downloaded = !downloaded;
+
+                // Validate the file
+                if(r_group->merged_is_downloaded){
+
+                    // File is invalid
+                    if(!TestUnmergeFiles(destination_path,OS_TEXT))
+                    {
+                        int fd = unlink(destination_path);
+
+                        merror("The downloaded file '%s' is corrupted.",destination_path);
+
+                        if(fd == -1){
+                            merror("Failed to delete file '%s'",destination_path);
+                        }
+                        return;
+                    }
+
+                    OS_MoveFile(destination_path,merged);
+                }
+            }
+            else{ // Download all files
+                int i;
+
+                if(r_group->files){
+                    for(i = 0; r_group->files[i].name; i++)
+                    {
+                        file_url = r_group->files[i].url;
+                        file_name = r_group->files[i].name;
+                        snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                        mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
+                        downloaded = wurl_request(file_url,destination_path);
+                        w_download_status(downloaded,file_url,destination_path);
+                    }
+                }
+            }
+        }
+        else{
+            r_group->current_polling_time -= poll_interval_time;
+        }
     }
 
     f_size++;
 
-    // Merge ar.conf always
+    if(r_group && r_group->merged_is_downloaded){
 
-    if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
-        os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
-        *_f_sum = f_sum;
-        os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-        strncpy(f_sum[f_size]->sum, md5sum, 32);
-        os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
+        // Validate the file
+        if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
+            f_sum[0]->sum[0] = '\0';
+            merror("Accessing file '%s'", merged);
+        }
+        else{
+            strncpy(f_sum[0]->sum, md5sum, 32);
+            os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
+        }
+
+        f_sum[f_size] = NULL;
+    }
+    else{
+        // Merge ar.conf always
 
         if (!logr.nocmerged) {
-            MergeAppendFile(merged_tmp, DEFAULTAR, NULL);
+            snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
+            // First call, truncate merged file
+            MergeAppendFile(merged_tmp, NULL, group);
         }
 
-        f_size++;
-    }
+        if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
+            os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
+            *_f_sum = f_sum;
+            os_calloc(1, sizeof(file_sum), f_sum[f_size]);
+            strncpy(f_sum[f_size]->sum, md5sum, 32);
+            os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
 
-    /* Read directory */
-    while ((entry = readdir(dp)) != NULL) {
-        /* Ignore hidden files  */
-        /* Leave the shared config file for later */
-        /* Also discard merged.mg.tmp */
-        if (entry->d_name[0] == '.' || !strncmp(entry->d_name, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
-            continue;
+            if (!logr.nocmerged) {
+                MergeAppendFile(merged_tmp, DEFAULTAR, NULL);
+            }
+
+            f_size++;
         }
 
-        snprintf(file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, entry->d_name);
+        /* Read directory */
+        for (i = 0; files[i]; ++i) {
+            /* Ignore hidden files  */
+            /* Leave the shared config file for later */
+            /* Also discard merged.mg.tmp */
+            if (files[i][0] == '.' || !strncmp(files[i], SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
+                continue;
+            }
 
-        if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
-            merror("Accessing file '%s'", file);
-            continue;
+            snprintf(file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
+
+            if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
+                merror("Accessing file '%s'", file);
+                continue;
+            }
+
+            os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
+            *_f_sum = f_sum;
+            os_calloc(1, sizeof(file_sum), f_sum[f_size]);
+            strncpy(f_sum[f_size]->sum, md5sum, 32);
+            os_strdup(files[i], f_sum[f_size]->name);
+
+            if (!logr.nocmerged) {
+                MergeAppendFile(merged_tmp, file, NULL);
+            }
+
+            f_size++;
         }
 
-        os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
-        *_f_sum = f_sum;
-        os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-        strncpy(f_sum[f_size]->sum, md5sum, 32);
-        os_strdup(entry->d_name, f_sum[f_size]->name);
+        f_sum[f_size] = NULL;
 
         if (!logr.nocmerged) {
-            MergeAppendFile(merged_tmp, file, NULL);
+            OS_MoveFile(merged_tmp, merged);
         }
 
-        f_size++;
+        if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
+            if (!logr.nocmerged) {
+                merror("Accessing file '%s'", merged);
+            }
+
+            f_sum[0]->sum[0] = '\0';
+        }
+
+        strncpy(f_sum[0]->sum, md5sum, 32);
+        os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
     }
-
-    f_sum[f_size] = NULL;
-
-    if (!logr.nocmerged) {
-        OS_MoveFile(merged_tmp, merged);
-    }
-
-    if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-        merror("Accessing file '%s'", merged);
-        f_sum[0]->sum[0] = '\0';
-    }
-
-    strncpy(f_sum[0]->sum, md5sum, 32);
-    os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
 }
 
 /* Create the structure with the files and checksums */
 static void c_files()
 {
     DIR *dp;
-    DIR *subdir;
+    char ** subdir;
     struct dirent *entry;
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
@@ -361,9 +445,7 @@ static void c_files()
 
         // Try to open directory, avoid TOCTOU hazard
 
-        subdir = opendir(path);
-
-        if (!subdir) {
+        if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
                 merror("Could not open directory '%s'", path);
             }
@@ -376,7 +458,7 @@ static void c_files()
         groups[p_size]->group = strdup(entry->d_name);
         groups[p_size + 1] = NULL;
         c_group(entry->d_name, subdir, &groups[p_size]->f_sum);
-        closedir(subdir);
+        free_strarray(subdir);
         p_size++;
     }
 
@@ -489,6 +571,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     file_sum **f_sum = NULL;
     os_md5 tmp_sum;
     char *end;
+    agent_group *agt_group;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -576,6 +659,16 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             set_agent_group(agent_id, group);
+        }
+
+        // Check if the group is set in the yaml file
+        // Check if the group we want to set is "default", apply yaml configuration
+        if (!strcmp(group, "default")) {
+            if (agt_group = w_parser_get_agent(agent_id), agt_group) {
+                if(set_agent_group(agent_id, agt_group->group) == -1){
+                    merror("Could not set group '%s' specified in the yaml file for agent '%s'",agt_group->group,agent_id);
+                }
+            }
         }
 
         /* New agents only have merged.mg */
@@ -691,6 +784,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 /* Update shared files */
 void *update_shared_files(__attribute__((unused)) void *none) {
     const int INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
+    poll_interval_time = INTERVAL;
 
     while (1) {
         time_t _ctime = time(0);
@@ -700,6 +794,11 @@ void *update_shared_files(__attribute__((unused)) void *none) {
          */
 
         if ((_ctime - _stime) >= INTERVAL) {
+            // Check if the yaml file has changed and reload it
+            if(w_yaml_file_has_changed()){
+                w_yaml_file_update_structs();
+            }
+
             c_files();
             _stime = _ctime;
         }

@@ -5,7 +5,7 @@ set -u
 
 # Checking which firewall to use.
 UNAME=$(uname);
-FILE="";
+FILE="default-firewall-drop.sh";
 
 if [ "X${UNAME}" = "XFreeBSD" ]; then
     # Is ipfw enabled?
@@ -44,7 +44,6 @@ fi
 # If file is set and execute flag is set
 if [ ! "X$FILE" = "X" ]; then
     if [ $# -eq 1 ] && [ "X$1" = "Xexecute" ]; then
-        cp -pr ../active-response/firewall-drop.sh ../active-response/firewalls/default-firewall-drop.sh
         cp -pr ../active-response/firewalls/$FILE ../active-response/firewall-drop.sh
     fi
 fi

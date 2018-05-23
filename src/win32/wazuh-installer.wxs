@@ -65,8 +65,11 @@
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
                         <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" />
                     </Component>
-		            <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
+                    <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
                         <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="..\wazuh_modules\syscollector\syscollector_win_ext.dll" />
+                    </Component>
+                    <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A"/>
+                        <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
                     <Component Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
                         <File Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" Name="default-local_internal_options.conf" Source="default-local_internal_options.conf">
@@ -294,6 +297,7 @@
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
+            <ComponentRef Id="LIBWAZUHEXT_DLL" />
             <ComponentRef Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="DEFAULT_OSSEC.CONF" />
             <ComponentRef Id="OSSEC.CONF" />

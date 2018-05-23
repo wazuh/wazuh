@@ -3,6 +3,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from pwd import getpwnam
+from grp import getgrnam
+
 def set_paths_based_on_ossec(o_path='/var/ossec'):
     """
     Set paths based on ossec location.
@@ -15,6 +18,11 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
 
     global ossec_conf
     ossec_conf = "{0}/etc/ossec.conf".format(ossec_path)
+
+    global internal_options
+    internal_options = "{0}/etc/internal_options.conf".format(ossec_path)
+    global local_internal_options
+    local_internal_options = "{0}/etc/local_internal_options.conf".format(ossec_path)
 
     global ossec_log
     ossec_log = "{0}/logs/ossec.log".format(ossec_path)
@@ -47,7 +55,7 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     database_path_global = database_path + '/global.db'
 
     global wdb_socket_path
-    wdb_socket_path = '{}/queue/db/wdb'.format(ossec_path)
+    wdb_socket_path = '{0}/queue/db/wdb'.format(ossec_path)
 
     global api_config_path
     api_config_path = "{0}/api/configuration/config.js".format(ossec_path)
@@ -83,26 +91,8 @@ agent_info_sleep = 2 # Seconds between retries
 # Common variables
 database_limit = 500
 
-# Cluster protocol
-global cluster_protocol_plain_size
-cluster_protocol_plain_size = 14
-
-def get_encrypted_size(plain_size):
-    # Token format: https://github.com/fernet/spec/blob/master/Spec.md
-    encrypted_size = 57+(16*(((plain_size/16 + 1)*16)/16))
-    return int(((4 * encrypted_size / 3) + 3)) & ~3 # base64 length
-
-# token encrypted with base64
-global cluster_sync_msg_size
-cluster_sync_msg_size = get_encrypted_size(cluster_protocol_plain_size)
-
-# timeout of the cluster server & client
-global cluster_internal_timeout
-cluster_internal_timeout = 15
-
-# global dictionary to store and reuse connections among cluster nodes
-global cluster_connections
-cluster_connections = {}
+ossec_uid = getpwnam("ossec").pw_uid
+ossec_gid = getgrnam("ossec").gr_gid
 
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()

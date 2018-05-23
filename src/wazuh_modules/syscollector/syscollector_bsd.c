@@ -28,7 +28,278 @@
 
 hw_info *get_system_bsd();    // Get system information
 
-#if defined(__FreeBSD__)
+#if defined(__MACH__)
+
+char* sys_parse_pkg(const char * app_folder, const char * timestamp, int ID);
+
+// Get installed programs inventory
+
+void sys_packages_bsd(int queue_fd, const char* LOCATION){
+
+    int ID = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+    struct dirent *de;
+    DIR *dr;
+    char path[PATH_LENGTH];
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
+    // Set timestamp
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
+
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
+    mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
+
+    /* Set positive random ID for each event */
+
+    if (ID < 0)
+        ID = -ID;
+
+    dr = opendir(MAC_APPS);
+
+    if (dr == NULL) {
+        mterror("Unable to open '%s' directory", MAC_APPS);
+    } else {
+
+        while ((de = readdir(dr)) != NULL) {
+
+            // Skip not intereset files
+            if (!strncmp(de->d_name, ".", 1)) {
+                continue;
+            } else if (strstr(de->d_name, ".app")) {
+                snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, de->d_name);
+                char * string = NULL;
+                if (string = sys_parse_pkg(path, timestamp, ID), string) {
+
+                    mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
+                    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                    free(string);
+
+                } else
+                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", de->d_name);
+            }
+        }
+        closedir(dr);
+    }
+
+    dr = opendir(UTILITIES);
+
+    if (dr == NULL) {
+        mterror("Unable to open '%s' directory", UTILITIES);
+    } else {
+
+        while ((de = readdir(dr)) != NULL) {
+
+            // Skip not intereset files
+            if (!strncmp(de->d_name, ".", 1)) {
+                continue;
+            } else if (strstr(de->d_name, ".app")) {
+                snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, de->d_name);
+                char * string = NULL;
+                if (string = sys_parse_pkg(path, timestamp, ID), string) {
+
+                    mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
+                    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                    free(string);
+
+                } else
+                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", de->d_name);
+            }
+        }
+        closedir(dr);
+    }
+
+    /* Get Homebrew applications */
+
+    dr = opendir(HOMEBREW_APPS);
+
+    if (dr == NULL) {
+        mtdebug1("No homebrew applications found in '%s'", HOMEBREW_APPS);
+    } else {
+
+        DIR *dir;
+        struct dirent *version;
+
+        while ((de = readdir(dr)) != NULL) {
+
+            if (!strncmp(de->d_name, ".", 1))
+                continue;
+
+            cJSON *object = cJSON_CreateObject();
+            cJSON *package = cJSON_CreateObject();
+            cJSON_AddStringToObject(object, "type", "program");
+            cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddStringToObject(object, "timestamp", timestamp);
+            cJSON_AddItemToObject(object, "program", package);
+            cJSON_AddStringToObject(package, "format", "pkg");
+            cJSON_AddStringToObject(package, "name", de->d_name);
+
+            snprintf(path, PATH_LENGTH - 1, "%s/%s", HOMEBREW_APPS, de->d_name);
+            cJSON_AddStringToObject(package, "location", path);
+            cJSON_AddStringToObject(package, "source", "homebrew");
+
+            dir = opendir(path);
+            if (dir != NULL) {
+                while ((version = readdir(dir)) != NULL) {
+                    if (!strncmp(version->d_name, ".", 1))
+                        continue;
+
+                    cJSON_AddStringToObject(package, "version", version->d_name);
+                    snprintf(path, PATH_LENGTH - 1, "%s/%s/%s/.brew/%s.rb", HOMEBREW_APPS, de->d_name, version->d_name, de->d_name);
+
+                    char read_buff[OS_MAXSTR];
+                    FILE *fp;
+
+                    if ((fp = fopen(path, "r"))) {
+                        int found = 0;
+                        while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL && !found){
+                            if (strstr(read_buff, "desc \"") != NULL) {
+                                found = 1;
+                                char ** parts = OS_StrBreak('"', read_buff, 3);
+                                cJSON_AddStringToObject(package, "description", parts[1]);
+                            }
+                        }
+                        fclose(fp);
+                    }
+                }
+                closedir(dir);
+            }
+
+            /* Send package information */
+            char *string;
+            string = cJSON_PrintUnformatted(object);
+            mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
+            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            cJSON_Delete(object);
+            free(string);
+        }
+        closedir(dr);
+    }
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "program_end");
+    cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
+    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
+    free(timestamp);
+}
+
+char* sys_parse_pkg(const char * app_folder, const char * timestamp, int ID) {
+
+    char read_buff[OS_MAXSTR];
+    FILE *fp;
+    char filepath[PATH_LENGTH];
+    int i = 0;
+
+    snprintf(filepath, PATH_LENGTH - 1, "%s/%s", app_folder, INFO_FILE);
+    memset(read_buff, 0, OS_MAXSTR);
+
+    if ((fp = fopen(filepath, "r"))) {
+
+        cJSON *object = cJSON_CreateObject();
+        cJSON *package = cJSON_CreateObject();
+        cJSON_AddStringToObject(object, "type", "program");
+        cJSON_AddNumberToObject(object, "ID", ID);
+        cJSON_AddStringToObject(object, "timestamp", timestamp);
+        cJSON_AddItemToObject(object, "program", package);
+        cJSON_AddStringToObject(package, "format", "pkg");
+
+        while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
+
+            if (strstr(read_buff, "CFBundleName")) {
+                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                    char ** parts = OS_StrBreak('>', read_buff, 2);
+                    char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                    cJSON_AddStringToObject(package, "name", _parts[0]);
+
+                    for (i = 0; _parts[i]; i++) {
+                        free(_parts[i]);
+                        free(parts[i]);
+                    }
+                    free(parts);
+                    free(_parts);
+                }
+            } else if (strstr(read_buff, "CFBundleShortVersionString")){
+                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                    char ** parts = OS_StrBreak('>', read_buff, 2);
+                    char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                    cJSON_AddStringToObject(package, "version", _parts[0]);
+
+                    for (i = 0; _parts[i]; i++) {
+                        free(_parts[i]);
+                        free(parts[i]);
+                    }
+                    free(parts);
+                    free(_parts);
+                }
+            } else if (strstr(read_buff, "LSApplicationCategoryType")){
+                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                    char ** parts = OS_StrBreak('>', read_buff, 2);
+                    char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                    cJSON_AddStringToObject(package, "group", _parts[0]);
+
+                    for (i = 0; _parts[i]; i++) {
+                        free(_parts[i]);
+                        free(parts[i]);
+                    }
+                    free(parts);
+                    free(_parts);
+                }
+            } else if (strstr(read_buff, "CFBundleIdentifier")){
+                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                    char ** parts = OS_StrBreak('>', read_buff, 2);
+                    char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                    cJSON_AddStringToObject(package, "description", _parts[0]);
+
+                    for (i = 0; _parts[i]; i++) {
+                        free(_parts[i]);
+                        free(parts[i]);
+                    }
+                    free(parts);
+                    free(_parts);
+                }
+            }
+        }
+
+        if (strstr(app_folder, "/Utilities") != NULL) {
+            cJSON_AddStringToObject(package, "source", "utilities");
+        } else {
+            cJSON_AddStringToObject(package, "source", "applications");
+        }
+        cJSON_AddStringToObject(package, "location", app_folder);
+
+        char *string;
+        string = cJSON_PrintUnformatted(object);
+        fclose(fp);
+
+        return string;
+
+    }
+
+    return NULL;
+}
+
+#elif defined(__FreeBSD__)
 
 // Get installed programs inventory
 
@@ -143,7 +414,6 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
-    int status;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -189,6 +459,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     FILE *output;
     char read_buff[SERIAL_LENGTH];
     int i;
+    int status;
 
     memset(read_buff, 0, SERIAL_LENGTH);
     command = "system_profiler SPHardwareDataType | grep Serial";
@@ -434,6 +705,16 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         cJSON_AddItemToObject(object, "iface", interface);
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
+        cJSON *ipv4 = cJSON_CreateObject();
+        cJSON *ipv4_addr = cJSON_CreateArray();
+        cJSON *ipv4_netmask = cJSON_CreateArray();
+        cJSON *ipv4_broadcast = cJSON_CreateArray();
+
+        cJSON *ipv6 = cJSON_CreateObject();
+        cJSON *ipv6_addr = cJSON_CreateArray();
+        cJSON *ipv6_netmask = cJSON_CreateArray();
+        cJSON *ipv6_broadcast = cJSON_CreateArray();
+
         for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
 
             if (strcmp(ifaces_list[i], ifa->ifa_name)){
@@ -446,9 +727,6 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
             family = ifa->ifa_addr->sa_family;
 
             if (family == AF_INET){
-
-                cJSON *ipv4 = cJSON_CreateObject();
-                cJSON_AddItemToObject(interface, "IPv4", ipv4);
 
                 if (ifa->ifa_addr){
 
@@ -463,7 +741,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                             host,
                             sizeof (host));
 
-                    cJSON_AddStringToObject(ipv4, "address", host);
+                    cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
 
                     /* Netmask Address */
                     addr_ptr = &((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr;
@@ -474,7 +752,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                             netmask,
                             sizeof (netmask));
 
-                    cJSON_AddStringToObject(ipv4, "netmask", netmask);
+                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
 
                     /* Broadcast Address */
                     addr_ptr = &((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr;
@@ -485,16 +763,10 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                             broadaddr,
                             sizeof (broadaddr));
 
-                    cJSON_AddStringToObject(ipv4, "broadcast", broadaddr);
-
-                    /* No DHCP state is collected in BSD */
-                    cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
+                    cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
                 }
 
             } else if (family == AF_INET6){
-
-                cJSON *ipv6 = cJSON_CreateObject();
-                cJSON_AddItemToObject(interface, "IPv6", ipv6);
 
                 if (ifa->ifa_addr){
 
@@ -509,7 +781,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                             host,
                             sizeof (host));
 
-                    cJSON_AddStringToObject(ipv6, "address", host);
+                    cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
 
                     /* Netmask address */
                     if (ifa->ifa_netmask){
@@ -521,7 +793,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                                 netmask6,
                                 sizeof (netmask6));
 
-                        cJSON_AddStringToObject(ipv6, "netmask", netmask6);
+                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
                     }
 
                     /* Broadcast address */
@@ -534,11 +806,8 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                                 broadaddr6,
                                 sizeof (broadaddr6));
 
-                        cJSON_AddStringToObject(ipv6, "broadcast", broadaddr6);
+                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
                     }
-
-                    /* No DHCP state is collected in BSD */
-                    cJSON_AddStringToObject(ipv6, "DHCP", "unknown");
                 }
 
             } else if (family == AF_LINK && ifa->ifa_data != NULL){
@@ -604,10 +873,57 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                 cJSON_AddNumberToObject(interface, "rx_packets", stats->ifi_ipackets);
                 cJSON_AddNumberToObject(interface, "tx_bytes", stats->ifi_obytes);
                 cJSON_AddNumberToObject(interface, "rx_bytes", stats->ifi_ibytes);
+                cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_oerrors);
+                cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_ierrors);
+                cJSON_AddNumberToObject(interface, "rx_dropped", stats->ifi_iqdrops);
 
                 cJSON_AddNumberToObject(interface, "MTU", stats->ifi_mtu);
 
             }
+        }
+
+        /* Add address information to the structure */
+
+        if (cJSON_GetArraySize(ipv4_addr) > 0) {
+            cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
+            if (cJSON_GetArraySize(ipv4_netmask) > 0) {
+                cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
+            } else {
+                cJSON_Delete(ipv4_netmask);
+            }
+            if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
+                cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
+            } else {
+                cJSON_Delete(ipv4_broadcast);
+            }
+            cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
+            cJSON_AddItemToObject(interface, "IPv4", ipv4);
+        } else {
+            cJSON_Delete(ipv4_addr);
+            cJSON_Delete(ipv4_netmask);
+            cJSON_Delete(ipv4_broadcast);
+            cJSON_Delete(ipv4);
+        }
+
+        if (cJSON_GetArraySize(ipv6_addr) > 0) {
+            cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
+            if (cJSON_GetArraySize(ipv6_netmask) > 0) {
+                cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
+            } else {
+                cJSON_Delete(ipv6_netmask);
+            }
+            if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
+                cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
+            } else {
+                cJSON_Delete(ipv6_broadcast);
+            }
+            cJSON_AddStringToObject(ipv6, "DHCP", "unknown");
+            cJSON_AddItemToObject(interface, "IPv6", ipv6);
+        } else {
+            cJSON_Delete(ipv6_addr);
+            cJSON_Delete(ipv6_netmask);
+            cJSON_Delete(ipv6_broadcast);
+            cJSON_Delete(ipv6);
         }
 
         /* Send interface data in JSON format */

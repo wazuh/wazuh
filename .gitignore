@@ -83,3 +83,6 @@ src/test_os_xml
 src/test_os_zlib
 src/test_shared
 etc/preloaded-vars.conf
+
+# Old firewall-drop.sh (moved to default-firewall-drop.sh)
+active-response/firewall-drop.sh

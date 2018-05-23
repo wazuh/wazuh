@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, WazuhVersion, plain_dict_to_nested_dict, create_exception_dic, get_fields_to_nest
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, create_exception_dic, get_fields_to_nest
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -18,9 +18,7 @@ from base64 import b64encode
 from shutil import copyfile, move
 from time import time
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom, stat
-from pwd import getpwnam
-from grp import getgrnam
+from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat
 from time import time, sleep
 import socket
 import hashlib
@@ -116,7 +114,7 @@ class Agent:
 
 
     @staticmethod
-    def calculate_status(last_keep_alive, pending, today=date.today()):
+    def calculate_status(last_keep_alive, pending, today=datetime.today()):
         """
         Calculates state based on last keep alive
         """
@@ -124,7 +122,9 @@ class Agent:
             return "Never connected"
         else:
             limit_seconds = 1830 # 600*3 + 30
-            last_date = date(int(last_keep_alive[:4]), int(last_keep_alive[5:7]), int(last_keep_alive[8:10]))
+            # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
+            last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
+                                hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
             difference = (today - last_date).total_seconds()
 
             return "Disconnected" if difference > limit_seconds else ("Pending" if pending else "Active")
@@ -443,10 +443,8 @@ class Agent:
         f_keys_temp = '{0}.tmp'.format(common.client_keys)
         open(f_keys_temp, 'a').close()
 
-        ossec_uid = getpwnam("ossec").pw_uid
-        ossec_gid = getgrnam("ossec").gr_gid
         f_keys_st = stat(common.client_keys)
-        chown(f_keys_temp, ossec_uid, ossec_gid)
+        chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
         chmod(f_keys_temp, f_keys_st.st_mode)
 
         f_tmp = open(f_keys_temp, 'w')
@@ -700,10 +698,8 @@ class Agent:
                 f_keys_temp = '{0}.tmp'.format(common.client_keys)
                 open(f_keys_temp, 'a').close()
 
-                ossec_uid = getpwnam("ossec").pw_uid
-                ossec_gid = getgrnam("ossec").gr_gid
                 f_keys_st = stat(common.client_keys)
-                chown(f_keys_temp, ossec_uid, ossec_gid)
+                chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
                 chmod(f_keys_temp, f_keys_st.st_mode)
 
                 copyfile(common.client_keys, f_keys_temp)
@@ -751,30 +747,35 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_dict(conn, min_select_fields, user_select_fields):
-        db_api_name = {name:name for name in min_select_fields}
-        min_select_fields = map(lambda x: x.replace('`',''), min_select_fields)
+    def get_agents_dict(conn, select_fields, user_select_fields):
+        select_fields = list(map(lambda x: x.replace('`',''), select_fields))
+        db_api_name = {name:name for name in select_fields}
         db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
         fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
 
-        items = [{db_api_name[field]:value for field,value in zip(min_select_fields, tuple) if value is not None and field in user_select_fields} for tuple in conn]
-        items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested) for d in items]
+        agent_items = [{field:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in conn]
 
         if 'status' in user_select_fields:
-            today = date.today()
-            items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('lastKeepAlive'), item.get('version') is None, today)) for item in items]
+            today = datetime.today()
+            agent_items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('last_keepalive'), item.get('version') is None, today)) for item in agent_items]
+        else:
+            agent_items = [dict(item, id=str(item['id']).zfill(3)) for item in agent_items]
 
-        if len(items) > 0 and items[0]['id'] == '000' and 'ip' in user_select_fields:
-            items[0]['ip'] = '127.0.0.1'
+        if len(agent_items) > 0 and agent_items[0]['id'] == '000' and 'ip' in user_select_fields:
+            agent_items[0]['ip'] = '127.0.0.1'
 
-        return items
+        agent_items = [{db_api_name[key]:value for key,value in agent.items() if key in user_select_fields} for agent in agent_items]
+        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os']) for d in agent_items]
+
+        return agent_items
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", node_name="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
         """
         Gets a list of available agents with basic attributes.
-
+        :param node_name: Filters by agents connected to the cluster node "node_name"
+        :param version: Filters by agent version.
         :param status: Filters by agent status: Active, Disconnected or Never connected.
         :param os_platform: Filters by OS platform.
         :param os_version: Filters by OS version.
@@ -802,8 +803,7 @@ class Agent:
                    'os.codename': 'os_codename','os.major': 'os_major','os.uname': 'os_uname',
                    'os.arch': 'os_arch', 'node_name': 'node_name'}
         valid_select_fields = set(fields.values()) | {'status'}
-        # at least, we should retrieve those fields since other fields dependend on those
-        min_select_fields = {'id', 'version', 'last_keepalive'}
+        # at least, we should retrieve those fields since other fields depending on those
         search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
         request = {}
         if select:
@@ -811,9 +811,10 @@ class Agent:
                 incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                                     format(valid_select_fields, incorrect_fields))
-            min_select_fields |= set(select['fields'])
+            select_fields_set = set(select['fields'])
+            min_select_fields = {'id'} | select_fields_set if 'status' not in select_fields_set\
+                                        else select_fields_set | {'id', 'last_keepalive', 'version'}
         else:
-            valid_select_fields.remove('node_name') # only return node_type if asked
             min_select_fields = valid_select_fields
 
         # save the fields that the user has selected
@@ -823,13 +824,17 @@ class Agent:
             limit_seconds = 1830 # 600*3 + 30
             result = datetime.now() - timedelta(seconds=limit_seconds)
             request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-
-            if status.lower() == 'active':
+            status = status.lower()
+            if status == 'active':
                 query += ' AND (last_keepalive >= :time_active or id = 0)'
-            elif status.lower() == 'disconnected':
+            elif status == 'disconnected':
                 query += ' AND last_keepalive < :time_active'
-            elif status.lower() == "never connected":
+            elif status == "never connected" or status == "neverconnected":
                 query += ' AND last_keepalive IS NULL AND id != 0'
+            elif status == 'pending':
+                query += ' AND last_keepalive IS NOT NULL AND version IS NULL'
+            else:
+                raise WazuhException(1729, status)
 
         if os_platform != "all":
             request['os_platform'] = os_platform
@@ -843,6 +848,15 @@ class Agent:
         if version != "all":
             request['version'] = re.sub( r'([a-zA-Z])([v])', r'\1 \2', version )
             query += ' AND version = :version'
+        if node_name != "all":
+            if isinstance(node_name,list):
+                node_list = [name.lower() for name in node_name]
+                query += ' AND node_name COLLATE NOCASE IN ({})'.format(','.join([":node_name{}".format(x) for x in range(len(node_list))]))
+                key_list = [":node_name{}".format(x) for x in range(len(node_list))]
+                request.update({x[1:]: y for x, y in zip(key_list, node_list)})
+            else:
+                request['node_name'] = node_name.lower()
+                query += ' AND node_name = :node_name COLLATE NOCASE'
 
         # Search
         if search:
@@ -904,6 +918,7 @@ class Agent:
         data['items'] = Agent.get_agents_dict(conn, min_select_fields, user_select_fields)
 
         return data
+
 
     @staticmethod
     def get_agents_summary():
@@ -1192,8 +1207,6 @@ class Agent:
 
         return remove_agent
 
-
-    @staticmethod
     def get_outdated_agents(offset=0, limit=common.database_limit, sort=None):
         """
         Gets the outdated agents.
@@ -1274,10 +1287,7 @@ class Agent:
         if self.os['platform']=="windows":
             versions_url = wpk_repo + "windows/versions"
         else:
-            if self.os['platform']=="ubuntu":
-                versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/versions"
-            else:
-                versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
+            versions_url = wpk_repo +"linux/versions"
 
         try:
             result = urlopen(versions_url)
@@ -1344,10 +1354,7 @@ class Agent:
         if self.os['platform']=="windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
         else:
-            if self.os['platform']=="ubuntu":
-                wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
-            else:
-                wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
+            wpk_file = "wazuh_agent_{0}_linux_{1}.wpk".format(agent_new_ver, self.os['arch'])
 
         wpk_file_path = "{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)
 
@@ -1368,10 +1375,7 @@ class Agent:
         if self.os['platform']=="windows":
             wpk_url = wpk_repo + "windows/" + wpk_file
         else:
-            if self.os['platform']=="ubuntu":
-                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
-            else:
-                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/" + wpk_file
+            wpk_url = wpk_repo +"linux" + "/" + wpk_file
 
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))

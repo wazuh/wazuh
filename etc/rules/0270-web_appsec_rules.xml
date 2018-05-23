@@ -20,7 +20,7 @@
     <url>/wp-comments-post.php</url>
     <regex>Googlebot|MSNBot|BingBot</regex>
     <description>WordPress Comment Spam (coming from a fake search engine UA).</description>
-    <group>pci_dss_6.5,pci_dss_11.4,</group>
+    <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- Timthumb scans.
@@ -30,7 +30,7 @@
     <url>thumb.php|timthumb.php</url>
     <regex> "GET \S+thumb.php?src=\S+.php</regex>
     <description>TimThumb vulnerability exploit attempt.</description>
-    <group>pci_dss_6.5,pci_dss_11.4,</group>
+    <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- osCommerce login.php bypass
@@ -40,7 +40,7 @@
     <url>login.php</url>
     <regex> "POST /\S+.php/login.php?cPath=</regex>
     <description>osCommerce login.php bypass attempt.</description>
-    <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,</group>
+    <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- osCommerce file manager login.php bypass
@@ -50,7 +50,7 @@
     <url>login.php</url>
     <regex>/admin/\w+.php/login.php</regex>
     <description>osCommerce file manager login.php bypass attempt.</description>
-    <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,</group>
+    <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- Timthumb backdoor access.
@@ -60,7 +60,7 @@
     <url>/cache/external</url>
     <regex> "GET /\S+/cache/external\S+.php</regex>
     <description>TimThumb backdoor access attempt.</description>
-    <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,</group>
+    <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- Timthumb backdoor access.
@@ -70,7 +70,7 @@
     <url>cart.php</url>
     <regex> "GET /\S+cart.php?\S+templatefile=../</regex>
     <description>Cart.php directory transversal attempt.</description>
-    <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,pci_dss_6.5.1,</group>
+    <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- MSSQL IIS inject rules -->
@@ -78,7 +78,7 @@
     <if_sid>31100</if_sid>
     <url>DECLARE%20@S%20CHAR|%20AS%20CHAR</url>
     <description>MSSQL Injection attempt (ur.php, urchin.js).</description>
-   <group>pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <!-- BAD/Annoying user agents -->
@@ -86,7 +86,7 @@
     <if_sid>31100</if_sid>
     <match> "ZmEu"| "libwww-perl/|"the beast"|"Morfeus|"ZmEu|"Nikto|"w3af.sourceforge.net| Jorgee"|"Proxy Gear Pro|"DataCha0s</match>
     <description>Blacklisted user agent (known malicious user agent).</description>
-   <group>pci_dss_6.5,pci_dss_11.4,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <!-- WordPress wp-login.php brute force -->
@@ -95,7 +95,7 @@
     <url>wp-login.php|/administrator</url>
     <regex>] "POST \S+wp-login.php| "POST /administrator</regex>
     <description>CMS (WordPress or Joomla) login attempt.</description>
-   <group>pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.10,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.10,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <!-- If we see frequent wp-login POST's, it is likely a bot. -->
@@ -103,7 +103,7 @@
     <if_matched_sid>31509</if_matched_sid>
     <same_source_ip />
     <description>CMS (WordPress or Joomla) brute force attempt.</description>
-   <group>pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.10,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.10,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <!-- Nothing wrong with wget per se, but it misses a lot of links
@@ -113,7 +113,7 @@
     <if_sid>31100</if_sid>
     <match>" "Wget/</match>
     <description>Blacklisted user agent (wget).</description>
-   <group>pci_dss_6.5,pci_dss_11.4,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <!-- Uploadify scans.
@@ -123,7 +123,7 @@
     <url>uploadify.php</url>
     <regex> "GET /\S+/uploadify.php?src=http://\S+.php</regex>
     <description>Uploadify vulnerability exploit attempt.</description>
-   <group>pci_dss_6.5,pci_dss_11.4,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- BBS delete.php skin_path.
@@ -133,7 +133,7 @@
     <url>delete.php</url>
     <regex> "GET \S+/delete.php?board_skin_path=http://\S+.php</regex>
     <description>BBS delete.php exploit attempt.</description>
-   <group>pci_dss_6.5,pci_dss_11.4,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- Simple shell.php command execution
@@ -143,7 +143,7 @@
     <url>shell.php</url>
     <regex> "GET \S+/shell.php?cmd=</regex>
     <description>Simple shell.php command execution.</description>
-   <group>pci_dss_6.5,pci_dss_11.4,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- PHPMyAdmin scans
@@ -152,7 +152,7 @@
     <if_sid>31100</if_sid>
     <url>phpMyAdmin/scripts/setup.php</url>
     <description>PHPMyAdmin scans (looking for setup.php).</description>
-   <group>pci_dss_6.5,pci_dss_11.4,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- Suspicious URL's access
@@ -161,7 +161,7 @@
     <if_sid>31100</if_sid>
     <url>.swp$|.bak$|/.htaccess|/server-status|/.ssh|/.history|/wallet.dat</url>
     <description>Suspicious URL access.</description>
-   <group>pci_dss_6.5,pci_dss_11.4,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- Checking POST requests - Too many in a small type = likely a bot -->
@@ -182,7 +182,7 @@
     <if_matched_sid>31530</if_matched_sid>
     <same_source_ip />
     <description>High amount of POST requests in a small period of time (likely bot).</description>
-   <group>pci_dss_6.5,pci_dss_11.4,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
 
   <!-- Anomaly rules - Used on common web attacks -->
@@ -191,7 +191,7 @@
     <url>%00</url>
     <regex> "GET /\S+.php?\S+%00</regex>
     <description>Anomaly URL query (attempting to pass null termination).</description>
-   <group>pci_dss_6.5,pci_dss_11.4,</group>
+   <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
 
 </group>

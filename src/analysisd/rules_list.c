@@ -305,6 +305,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->comment = newrule->comment;
             r_node->ruleinfo->info = newrule->info;
             r_node->ruleinfo->cve = newrule->cve;
+            r_node->ruleinfo->info_details = newrule->info_details;
             r_node->ruleinfo->if_matched_regex = newrule->if_matched_regex;
             r_node->ruleinfo->if_matched_group = newrule->if_matched_group;
             r_node->ruleinfo->if_matched_sid = newrule->if_matched_sid;
@@ -411,4 +412,3 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
 
     return (0);
 }
-
