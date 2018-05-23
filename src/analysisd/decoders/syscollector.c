@@ -21,8 +21,6 @@
 #include "string_op.h"
 #include <time.h>
 
-#define SYSCOLLECTOR_DIR    "/queue/syscollector"
-
 static int decode_netinfo(char *agent_id, cJSON * logJSON);
 static int decode_osinfo(char *agent_id, cJSON * logJSON);
 static int decode_hardware(char *agent_id, cJSON * logJSON);

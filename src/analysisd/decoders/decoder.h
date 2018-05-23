@@ -67,6 +67,7 @@ void HostinfoInit(void);
 void SyscheckInit(void);
 void RootcheckInit(void);
 void SyscollectorInit(void);
+void CiscatInit(void);
 int sc_send_db(char * msg);
 
 int ReadDecodeXML(const char *file);
