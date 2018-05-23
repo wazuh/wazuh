@@ -398,36 +398,33 @@ int OS_CheckUpdateKeys(const keystore *keys)
 }
 
 /* Update the keys if changed */
-int OS_UpdateKeys(keystore *keys)
+void OS_UpdateKeys(keystore *keys)
 {
     keystore *old_keys;
 
-    if (keys->file_change != File_DateofChange(KEYS_FILE) || keys->inode != File_Inode(KEYS_FILE)) {
-        minfo(ENCFILE_CHANGED);
-        mdebug1("OS_DupKeys");
-        old_keys = OS_DupKeys(keys);
+    mdebug1("Reloading keys");
 
-        mdebug1("Freekeys");
-        OS_FreeKeys(keys);
+    mdebug2("OS_DupKeys");
+    old_keys = OS_DupKeys(keys);
 
-        /* Read keys */
-        mdebug1("OS_ReadKeys");
-        minfo(ENC_READ);
-        OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed, 0);
+    mdebug2("Freekeys");
+    OS_FreeKeys(keys);
 
-        mdebug1("OS_StartCounter");
-        OS_StartCounter(keys);
+    /* Read keys */
+    mdebug2("OS_ReadKeys");
+    minfo(ENC_READ);
+    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed, 0);
 
-        mdebug1("move_netdata");
-        move_netdata(keys, old_keys);
+    mdebug2("OS_StartCounter");
+    OS_StartCounter(keys);
 
-        OS_FreeKeys(old_keys);
-        free(old_keys);
+    mdebug2("move_netdata");
+    move_netdata(keys, old_keys);
 
-        mdebug1("OS_UpdateKeys completed");
-        return (1);
-    }
-    return (0);
+    OS_FreeKeys(old_keys);
+    free(old_keys);
+
+    mdebug1("Key reloading completed");
 }
 
 /* Check if an IP address is allowed to connect */
