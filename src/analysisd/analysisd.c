@@ -53,6 +53,7 @@ int DecodeSyscheck(Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf);
+int DecodeCiscat(Eventinfo *lf);
 
 /* For stats */
 static void DumpLogstats(void);
@@ -567,6 +568,9 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Initialize Syscollector */
     SyscollectorInit();
 
+    /* Initialize CIS-CAT */
+    CiscatInit();
+
     /* Initialize host info */
     HostinfoInit();
 
@@ -786,7 +790,15 @@ void OS_ReadMSG_analysisd(int m_queue)
             /* Syscollector decoding */
             else if (msg[0] == SYSCOLLECTOR_MQ) {
                 if (!DecodeSyscollector(lf)) {
-                    /* We don't process hostinfo events further */
+                    /* We don't process Syscollector events further */
+                    goto CLMEM;
+                }
+                lf->size = strlen(lf->log);
+            }
+            /* CIS-CAT decoding */
+            else if (msg[0] == CISCAT_MQ) {
+                if (!DecodeCiscat(lf)) {
+                    /* We don't process cis-cat events further */
                     goto CLMEM;
                 }
                 lf->size = strlen(lf->log);
@@ -877,6 +889,7 @@ void OS_ReadMSG_analysisd(int m_queue)
             }
 
             do {
+
                 if (lf->decoder_info->type == OSSEC_ALERT) {
                     if (!lf->generated_rule) {
                         goto CLMEM;

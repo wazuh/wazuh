@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017 Wazuh Inc.
+* Copyright (C) 2018 Wazuh Inc.
 * April 23, 2018.
 *
 * This program is a free software; you can redistribute it
@@ -17,7 +17,20 @@
 #include "wazuh_modules/wmodules.h"
 #include "string_op.h"
 
+static OSDecoderInfo *ciscat_decoder = NULL;
+
 #define VAR_LENGTH  32
+
+void CiscatInit(){
+
+    os_calloc(1, sizeof(OSDecoderInfo), ciscat_decoder);
+    ciscat_decoder->id = getDecoderfromlist(CISCAT_MOD);
+    ciscat_decoder->name = CISCAT_MOD;
+    ciscat_decoder->type = OSSEC_RL;
+    ciscat_decoder->fts = 0;
+
+    mdebug1("CiscatInit completed.");
+}
 
 /* Special decoder for CIS-CAT events */
 int DecodeCiscat(Eventinfo *lf)
@@ -25,18 +38,40 @@ int DecodeCiscat(Eventinfo *lf)
     cJSON *logJSON;
     char *msg_type = NULL;
 
+    // Decode JSON
+    JSON_Decoder_Exec(lf);
+
+    lf->decoder_info = ciscat_decoder;
+
+    // Check location
+    if (lf->location[0] == '(') {
+        char* search;
+        search = strchr(lf->location, '>');
+        if (!search) {
+            mdebug1("Invalid received event.");
+            return (0);
+        }
+        else if (strcmp(search + 1, "wodle_cis-cat") != 0) {
+            mdebug1("Invalid received event. Not CIS-CAT.");
+            return (0);
+        }
+    } else if (strcmp(lf->location, "wodle_cis-cat") != 0) {
+        mdebug1("Invalid received event. (Location)");
+        return (0);
+    }
+
     // Parsing event.
     logJSON = cJSON_Parse(lf->log);
     if (!logJSON) {
         mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
-        return -1;
+        return (0);
     }
 
     // Detect message type
     msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
     if (!msg_type) {
         mdebug1("Invalid message. Type not found.");
-        return -1;
+        return (0);
     }
 
     if (strcmp(msg_type, "scan_info") == 0) {
@@ -130,7 +165,7 @@ int DecodeCiscat(Eventinfo *lf)
             }
 
             if (sc_send_db(msg) < 0) {
-                return -1;
+                return (0);
             }
 
         } else if (cis_data = cJSON_GetObjectItem(logJSON, "cis-data"), cis_data) {
@@ -174,18 +209,14 @@ int DecodeCiscat(Eventinfo *lf)
             }
 
             if (sc_send_db(msg) < 0) {
-                return -1;
+                return (0);
             }
         } else {
             mdebug1("Unable to parse CIS-CAT event for agent '%s'", lf->agent_id);
-            return -1;
+            return (0);
         }
-    }
-    else {
-        mdebug1("Invalid message type: %s.", msg_type);
-        return -1;
     }
 
     cJSON_Delete (logJSON);
-    return 0;
+    return (1);
 }
