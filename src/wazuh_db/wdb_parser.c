@@ -2228,6 +2228,7 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
     char * scan_id;
     char * scan_time;
     char * benchmark;
+    char * profile;
     int pass, fail, error, notchecked, unknown, score;
     int result;
 
@@ -2290,6 +2291,20 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
             mdebug1("Invalid CISCAT query syntax.");
             mdebug2("CISCAT query: %s", benchmark);
             snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", benchmark);
+            return -1;
+        }
+
+        profile = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(profile, "NULL"))
+            profile = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", profile);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", profile);
             return -1;
         }
 
@@ -2364,7 +2379,7 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
         else
             score = strtol(next,NULL,10);
 
-        if (result = wdb_ciscat_save(wdb, scan_id, scan_time, benchmark, pass, fail, error, notchecked, unknown, score), result < 0) {
+        if (result = wdb_ciscat_save(wdb, scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score), result < 0) {
             mdebug1("Cannot save CISCAT information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save CISCAT information.");
         } else {
