@@ -293,10 +293,10 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 int wdb_port_delete(wdb_t * wdb, const char * scan_id);
 
 // Save CIS-CAT scan results.
-int wdb_ciscat_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, int pass, int fail, int error, int notchecked, int unknown, int score);
+int wdb_ciscat_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, const char * profile, int pass, int fail, int error, int notchecked, int unknown, int score);
 
 // Insert CIS-CAT results tuple. Return 0 on success or -1 on error.
-int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, int pass, int fail, int error, int notchecked, int unknown, int score);
+int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, const char * profile, int pass, int fail, int error, int notchecked, int unknown, int score);
 
 // Delete old information from the 'ciscat_results' table
 int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);

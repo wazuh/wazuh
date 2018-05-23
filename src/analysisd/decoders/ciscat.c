@@ -85,6 +85,7 @@ int DecodeCiscat(Eventinfo *lf)
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "scan_id");
             cJSON * scan_time = cJSON_GetObjectItem(cis_data, "timestamp");
             cJSON * benchmark = cJSON_GetObjectItem(cis_data, "benchmark");
+            cJSON * profile = cJSON_GetObjectItem(cis_data, "profile");
             cJSON * pass = cJSON_GetObjectItem(cis_data, "pass");
             cJSON * fail = cJSON_GetObjectItem(cis_data, "fail");
             cJSON * error = cJSON_GetObjectItem(cis_data, "error");
@@ -110,6 +111,12 @@ int DecodeCiscat(Eventinfo *lf)
 
             if (benchmark) {
                 wm_strcat(&msg, benchmark->valuestring, '|');
+            } else {
+                wm_strcat(&msg, "NULL", '|');
+            }
+
+            if (profile) {
+                wm_strcat(&msg, profile->valuestring, '|');
             } else {
                 wm_strcat(&msg, "NULL", '|');
             }

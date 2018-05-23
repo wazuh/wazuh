@@ -226,6 +226,7 @@ CREATE TABLE IF NOT EXISTS ciscat_results (
     scan_id INTEGER,
     scan_time TEXT,
     benchmark TEXT,
+    profile TEXT,
     pass INTEGER,
     fail INTEGER,
     error INTEGER,

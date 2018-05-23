@@ -22,6 +22,7 @@ static void* wm_ciscat_main(wm_ciscat *ciscat);        // Module main function. 
 static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_check();                       // Check configuration, disable flag
 static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id);      // Run a CIS-CAT policy
+static char * wm_ciscat_get_profile();               // Read evaluated profile from the report
 static void wm_ciscat_preparser();                   // Prepare report for the xml parser
 static wm_scan_data* wm_ciscat_txt_parser();        // Parse CIS-CAT csv reports
 static void wm_ciscat_xml_parser();                 // Parse CIS-CAT xml reports
@@ -483,6 +484,11 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
+        if (eval->profile) {
+            os_strdup(eval->profile, scan_info->profile);
+        } else {
+            scan_info->profile = wm_ciscat_get_profile();
+        }
         if (!ciscat->flags.error) {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
@@ -643,6 +649,11 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
+        if (eval->profile) {
+            os_strdup(eval->profile, scan_info->profile);
+        } else {
+            scan_info->profile = wm_ciscat_get_profile();
+        }
         if (!ciscat->flags.error) {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
@@ -660,6 +671,48 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 }
 
 #endif
+
+char * wm_ciscat_get_profile() {
+
+    char * profile;
+    char readbuff[OS_MAXSTR];
+    char file[OS_MAXSTR];
+    FILE *fp;
+    int i;
+
+    #ifdef WIN32
+        snprintf(file, OS_MAXSTR - 1, "%s%s", TMP_DIR, "\\ciscat-report.xml");
+    #else
+        snprintf(file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/ciscat-report.xml");
+    #endif
+
+    os_strdup("unknown", profile);
+
+#ifdef WIN32
+    if ((fp = fopen(file, "rb"))) {
+#else
+    if ((fp = fopen(file, "r"))) {
+#endif
+
+        do{
+            if (fgets(readbuff, OS_MAXSTR, fp)){}
+        } while (!strstr(readbuff, WM_CISCAT_PROFILE) && !strstr(readbuff, WM_CISCAT_PROFILE2));
+
+        char ** parts = NULL;
+
+        parts = OS_StrBreak('"', readbuff, 3);
+        os_strdup(parts[1], profile);
+
+        for (i=0; parts[i]; i++){
+            free(parts[i]);
+        }
+        free(parts);
+
+        fclose(fp);
+    }
+
+    return profile;
+}
 
 wm_scan_data* wm_ciscat_txt_parser(){
 
@@ -705,9 +758,6 @@ wm_scan_data* wm_ciscat_txt_parser(){
             line++;
 
             if (line == 1){
-
-                char benchmark[OS_MAXSTR];
-                snprintf(benchmark, OS_MAXSTR - 1, "%s", readbuff);
                 os_strdup(readbuff, info->benchmark);
 
             } else if (line == 2) {
@@ -1342,6 +1392,7 @@ void wm_ciscat_send_scan(wm_scan_data *info, int id){
     cJSON_AddNumberToObject(object, "scan_id", id);
     cJSON_AddItemToObject(object, "cis", data);
     cJSON_AddStringToObject(data, "benchmark", info->benchmark);
+    cJSON_AddStringToObject(data, "profile", info->profile);
     cJSON_AddStringToObject(data, "hostname", info->hostname);
     cJSON_AddStringToObject(data, "timestamp", info->timestamp);
     cJSON_AddNumberToObject(data, "pass", info->pass);
@@ -1366,6 +1417,7 @@ void wm_ciscat_send_scan(wm_scan_data *info, int id){
 
     free(msg);
     free(info->benchmark);
+    free(info->profile);
     free(info->hostname);
     free(info->timestamp);
     free(info->score);
