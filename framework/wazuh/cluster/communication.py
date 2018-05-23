@@ -82,10 +82,8 @@ def msgparse(buf, my_fernet):
     if len(buf) >= header_size:
         counter, size, command = struct.unpack('!2I{}s'.format(cmd_size), buf[:header_size])
 
-        if size > max_msg_size:
-            raise Exception("Received message exceeds max allowed length. Received: {}. Max: {}".format(size, max_msg_size))
-
         command = command.decode().split(' ',1)[0]
+
         if len(buf) >= size + header_size:
             payload = buf[header_size:size + header_size]
             if payload and my_fernet:
@@ -93,6 +91,10 @@ def msgparse(buf, my_fernet):
                     payload = my_fernet.decrypt(payload)
                 except InvalidToken:
                     raise Exception("Could not decrypt message. Check the key is correct.")
+
+            if payload and len(payload) > max_msg_size:
+                raise Exception("Received message exceeds max allowed length. Command: {}. Received: {}. Max: {}.".format(command, size, max_msg_size))
+
             return size + header_size, counter, command, payload
     return None
 
