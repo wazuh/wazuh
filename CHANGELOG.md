@@ -23,6 +23,10 @@ All notable changes to this project will be documented in this file.
 - Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
 - Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
 - Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
+- Boost Remoted performance with multithreading. ([#649](https://github.com/wazuh/wazuh/pull/649))
+    - Up to 16 parallel threads to decrypt messages from agents.
+    - Limit the frequency of agent keys reloading.
+    - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
 
 ### Changed
 
