@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Fix epoch check in vulnerability-detector.
 - Fixed hash sum in logs rotation. ([#636](https://github.com/wazuh/wazuh/issues/636))
 - Fixed cluster CPU usage.
+- Fixed invalid deletion of agent timestamp entries. ([#639](https://github.com/wazuh/wazuh/issues/639))
 - Fixed segmentation fault in logcollector when multi-line is applied to a remote configuration. ([#641](https://github.com/wazuh/wazuh/pull/641))
 
 ### Removed
