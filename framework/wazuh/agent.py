@@ -874,7 +874,7 @@ class Agent:
             for status in list_status:
                 status = status.lower()
                 if status == 'active':
-                    query += '(last_keepalive >= :time_active or id = 0) OR '
+                    query += '((last_keepalive >= :time_active AND version IS NOT NULL) or id = 0) OR '
                 elif status == 'disconnected':
                     query += 'last_keepalive < :time_active OR '
                 elif status == "never connected" or status == "neverconnected":
@@ -883,7 +883,7 @@ class Agent:
                     query += 'last_keepalive IS NOT NULL AND version IS NULL OR '
                 else:
                     raise WazuhException(1729, status)
-            query = query[:-3] + ")"
+            query = query[:-3] + ")" #Remove the last OR from query
 
         if timeframe != 'all':
             request['timeframe'] = get_timeframe_int(timeframe)
@@ -1253,9 +1253,9 @@ class Agent:
 
         final_dict = {}
         if failed_ids:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids, 'timeframe': timeframe}
         else:
-            final_dict = {'msg': message, 'affected_agents': affected_agents}
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'timeframe': timeframe}
 
         return final_dict
 
