@@ -191,6 +191,19 @@ int wdb_parse(char * input, char * output) {
                     merror("Unable to update 'sys_processes' table for agent '%s'", sagent_id);
                 }
             }
+        } else if (strcmp(query, "ciscat") == 0) {
+            if (!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if (wdb_parse_ciscat(wdb, next, output) == 0){
+                    mdebug2("Updated 'ciscat_results' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'ciscat_results' table for agent '%s'", sagent_id);
+                }
+            }
         } else if (strcmp(query, "sql") == 0) {
             if (!next) {
                 mdebug1("Invalid DB query syntax.");
@@ -2193,6 +2206,164 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         mdebug1("Invalid Process query syntax.");
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * scan_id;
+    char * scan_time;
+    char * benchmark;
+    int pass, fail, error, notchecked, unknown, score;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid CISCAT query syntax.");
+        mdebug2("CISCAT query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "save") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_id = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_id, "NULL"))
+            scan_id = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_time = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_time, "NULL"))
+            scan_time = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", scan_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", scan_time);
+            return -1;
+        }
+
+        benchmark = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(benchmark, "NULL"))
+            benchmark = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", benchmark);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", benchmark);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pass = -1;
+        else
+            pass = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", pass);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            fail = -1;
+        else
+            fail = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", fail);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            error = -1;
+        else
+            error = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", error);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            notchecked = -1;
+        else
+            notchecked = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", notchecked);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            unknown = -1;
+        else
+            unknown = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        if (!strncmp(next, "NULL", 4))
+            score = -1;
+        else
+            score = strtol(next,NULL,10);
+
+        if (result = wdb_ciscat_save(wdb, scan_id, scan_time, benchmark, pass, fail, error, notchecked, unknown, score), result < 0) {
+            mdebug1("Cannot save CISCAT information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save CISCAT information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else {
+        mdebug1("Invalid CISCAT query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
         return -1;
     }
 }

@@ -194,6 +194,7 @@ static void fillData(Eventinfo *lf, const char *key, const char *value)
     lf->fields[lf->nfields].key = strdup(key);
     lf->fields[lf->nfields].value = strdup(value);
     lf->nfields++;
+
 }
 
 static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)

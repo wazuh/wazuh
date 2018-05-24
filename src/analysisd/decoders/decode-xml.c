@@ -760,6 +760,7 @@ int SetDecodeXML()
     addDecoder2list(HOSTINFO_NEW);
     addDecoder2list(HOSTINFO_MOD);
     addDecoder2list(SYSCOLLECTOR_MOD);
+    addDecoder2list(CISCAT_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {
