@@ -374,7 +374,6 @@
 
 #define mkstemp(x) 0
 #define mkdir(x, y) mkdir(x)
-
 #endif /* WIN32 */
 
 const char *__local_name = "unset";
@@ -635,6 +634,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
     return (ret);
 }
 
+
 int TestUnmergeFiles(const char *finalpath, int mode)
 {
     int ret = 1;
@@ -720,23 +720,27 @@ parse:
             ret = 0;
             goto end;
         }
-            
+
     }
 end:
     fclose(finalfp);
     return (ret);
 }
 
-int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
+int MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset)
 {
     size_t n = 0;
     long files_size = 0;
     char buf[2048 + 1];
-    const char *tmpfile;
     FILE *fp;
     FILE *finalfp;
+    struct stat statbuff;
+    char newpath[PATH_MAX];
+    DIR *dir;
+    struct dirent *ent;
 
     /* Create a new entry */
+
     if (files == NULL) {
         finalfp = fopen(finalpath, "w");
         if (!finalfp) {
@@ -758,45 +762,78 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
         return (1);
     }
 
-    finalfp = fopen(finalpath, "a");
-    if (!finalfp) {
-        merror("Unable to append merged file: '%s'.", finalpath);
-        return (0);
+    if (path_offset < 0) {
+        char filename[PATH_MAX];
+        char * basedir;
+
+        // Create default basedir
+
+        strncpy(filename, files, sizeof(filename));
+        filename[sizeof(filename) - 1] = '\0';
+        basedir = dirname(filename);
+        path_offset = strlen(basedir);
+
+        if (basedir[path_offset - 1] != '/') {
+            path_offset++;
+        }
     }
 
-    fp = fopen(files, "r");
-    if (!fp) {
-        merror("Unable to merge file '%s'.", files);
-        fclose(finalfp);
-        return (0);
+    if (stat(files, &statbuff) < 0) {
+        merror("at %s(): " FSTAT_ERROR, __func__, files, errno, strerror(errno));
+        return 0;
     }
 
-    fseek(fp, 0, SEEK_END);
-    files_size = ftell(fp);
+    if (S_ISDIR(statbuff.st_mode)) {
+        mdebug2("Merging directory: %s", files);
 
-    tmpfile = strrchr(files, '/');
-    if (tmpfile) {
-        tmpfile++;
+        if (dir = opendir(files), !dir) {
+            merror("Couldn't open directory '%s': %s (%d)", files, strerror(errno), errno);
+            return 0;
+        }
+
+        while ((ent = readdir(dir)) != NULL) {
+            // Skip . and ..
+            if (ent->d_name[0] != '.' || (ent->d_name[1] && (ent->d_name[1] != '.' || ent->d_name[2]))) {
+                snprintf(newpath, PATH_MAX, "%s/%s", files, ent->d_name);
+                MergeAppendFile(finalpath, newpath, tag, path_offset);
+            }
+        }
+
+        closedir(dir);
     } else {
-        tmpfile = files;
+        finalfp = fopen(finalpath, "a");
+        if (!finalfp) {
+            merror("Unable to append merged file: '%s'.", finalpath);
+            return (0);
+        }
+
+        fp = fopen(files, "r");
+
+        if (!fp) {
+            merror("Unable to merge file '%s'.", files);
+            fclose(finalfp);
+            return (0);
+        }
+
+        fseek(fp, 0, SEEK_END);
+        files_size = ftell(fp);
+
+        if (tag) {
+            fprintf(finalfp, "#%s\n", tag);
+        }
+
+        fprintf(finalfp, "!%ld %s\n", files_size, files + path_offset);
+        fseek(fp, 0, SEEK_SET);
+
+        while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
+            buf[n] = '\0';
+            fwrite(buf, n, 1, finalfp);
+        }
+
+        fclose(fp);
+        fclose(finalfp);
     }
 
-    if (tag) {
-        fprintf(finalfp, "#%s\n", tag);
-    }
-
-    fprintf(finalfp, "!%ld %s\n", files_size, tmpfile);
-
-    fseek(fp, 0, SEEK_SET);
-
-    while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
-        buf[n] = '\0';
-        fwrite(buf, n, 1, finalfp);
-    }
-
-    fclose(fp);
-
-    fclose(finalfp);
     return (1);
 }
 
@@ -906,7 +943,7 @@ int w_backup_file(File *file, const char *source) {
         return -1;
     }
 
-    
+
     size_t count_r;
     size_t count_w;
     char buffer[4096];
@@ -934,7 +971,7 @@ int w_backup_file(File *file, const char *source) {
 
         fclose(fp_src);
     }
-    
+
 
     file->name = strdup(template);
     return 0;
@@ -2217,6 +2254,61 @@ cJSON* getunameJSON()
         return NULL;
 }
 
+wino_t get_fp_inode(FILE * fp) {
+#ifdef WIN32
+    int fd;
+    HANDLE h;
+    BY_HANDLE_FILE_INFORMATION fileInfo;
+
+    if (fd = _fileno(fp), fd < 0) {
+        return -1;
+    }
+
+    if (h = (HANDLE)_get_osfhandle(fd), h == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    return GetFileInformationByHandle(h, &fileInfo) ? (wino_t)fileInfo.nFileIndexHigh << 32 | fileInfo.nFileIndexLow : (wino_t)-1;
+
+#else
+
+    struct stat buf;
+    int fd;
+    return fd = fileno(fp), fd < 0 ? (wino_t)-1 : fstat(fd, &buf) ? (wino_t)-1 : buf.st_ino;
+#endif
+}
+
+long get_fp_size(FILE * fp) {
+    long offset;
+    long size;
+
+    // Get initial position
+
+    if (offset = ftell(fp), offset < 0) {
+        return -1;
+    }
+
+    // Move to end
+
+    if (fseek(fp, 0, SEEK_END) < 0) {
+        return -1;
+    }
+
+    // Get ending position
+
+    if (size = ftell(fp), size < 0) {
+        return -1;
+    }
+
+    // Restore original offset
+
+    if (fseek(fp, offset, SEEK_SET) < 0) {
+        return -1;
+    }
+
+    return size;
+}
+
 static int qsort_strcmp(const void *s1, const void *s2) {
     return strcmp(*(const char **)s1, *(const char **)s2);
 }
@@ -2248,4 +2340,74 @@ char ** wreaddir(const char * name) {
     qsort(files, i, sizeof(char *), qsort_strcmp);
     closedir(dir);
     return files;
+}
+
+// Open file normally in Linux, allow read/write/delete in Windows
+
+FILE * wfopen(const char * pathname, const char * mode) {
+#ifdef WIN32
+    HANDLE hFile;
+    DWORD dwDesiredAccess = 0;
+    const DWORD dwShareMode = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
+    DWORD dwCreationDisposition = 0;
+    const DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL;
+    int flags = _O_TEXT;
+    int fd;
+    FILE * fp;
+    int i;
+
+    for (i = 0; mode[i]; ++i) {
+        switch (mode[i]) {
+        case '+':
+            dwDesiredAccess |= GENERIC_WRITE;
+            flags &= ~_O_RDONLY;
+            break;
+        case 'a':
+            dwDesiredAccess = GENERIC_WRITE;
+            dwCreationDisposition = OPEN_ALWAYS;
+            flags = _O_CREAT;
+            break;
+        case 'b':
+            flags &= ~_O_TEXT;
+            break;
+        case 'r':
+            dwDesiredAccess = GENERIC_READ;
+            dwCreationDisposition = OPEN_EXISTING;
+            flags |= _O_RDONLY;
+            break;
+        case 't':
+            flags |= _O_TEXT;
+            break;
+        case 'w':
+            dwDesiredAccess = GENERIC_WRITE;
+            dwCreationDisposition = CREATE_ALWAYS;
+        }
+    }
+
+    if (!(dwDesiredAccess && dwCreationDisposition)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    hFile = CreateFile(pathname, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, flags), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    if (fp = _fdopen(fd, mode), fp == NULL) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    return fp;
+
+#else
+    return fopen(pathname, mode);
+#endif
 }

@@ -23,6 +23,13 @@ All notable changes to this project will be documented in this file.
 - Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
 - Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
 - Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
+- Integration with Osquery. ([#627](https://github.com/wazuh/wazuh/pull/627))
+    - Enrich osquery configuration with pack files aggregation and agent labels as decorators.
+    - Launch osquery daemon in background.
+    - Monitor results file and send them to the manager.
+    - New option in rules `<location>` to filter events by osquery.
+    - Support folders in shared configuration. This makes easy to send pack folders to agents.
+    - Basic ruleset for osquery events and daemon logs.
 - Boost Remoted performance with multithreading. ([#649](https://github.com/wazuh/wazuh/pull/649))
     - Up to 16 parallel threads to decrypt messages from agents.
     - Limit the frequency of agent keys reloading.

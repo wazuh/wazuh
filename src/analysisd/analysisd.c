@@ -1171,6 +1171,17 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
     }
 
+    /* Checking for the URL */
+    if (rule->location) {
+        if (!lf->location) {
+            return (NULL);
+        }
+
+        if (!OSMatch_Execute(lf->location, strlen(lf->location), rule->location)) {
+            return (NULL);
+        }
+    }
+
     /* Check for dynamic fields */
 
     for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {

@@ -16,6 +16,8 @@
 #include <mach/mach.h>
 #endif
 
+static pthread_mutex_t wm_children_mutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex for child process pool
+
 // Data structure to share with the reader thread
 
 typedef struct ThreadInfo {
@@ -35,6 +37,7 @@ typedef struct ThreadInfo {
 // Windows version -------------------------------------------------------------
 
 static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
+static volatile HANDLE wm_children[WM_POOL_SIZE] = { NULL };   // Child process pool
 
 // Execute command with timeout of secs
 
@@ -163,6 +166,62 @@ DWORD WINAPI Reader(LPVOID args) {
     return 0;
 }
 
+// Add process to pool
+
+void wm_append_handle(HANDLE hProcess) {
+    int i;
+
+    pthread_mutex_lock(&wm_children_mutex);
+
+    for (i = 0; i < WM_POOL_SIZE; i++) {
+        if (!wm_children[i]) {
+            wm_children[i] = hProcess;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&wm_children_mutex);
+
+    if (i == WM_POOL_SIZE)
+        merror("Child process pool is full. Couldn't register handle %p.", hProcess);
+}
+
+// Remove process from pool
+
+void wm_remove_handle(HANDLE hProcess) {
+    int i;
+
+    pthread_mutex_lock(&wm_children_mutex);
+
+    for (i = 0; i < WM_POOL_SIZE; i++) {
+        if (wm_children[i] == hProcess) {
+            wm_children[i] = 0;
+            break;
+        }
+    }
+
+    if (i == WM_POOL_SIZE)
+        merror("Child process %p not found.", hProcess);
+
+    pthread_mutex_unlock(&wm_children_mutex);
+}
+
+// Terminate every child process group. Doesn't wait for them!
+
+void wm_kill_children() {
+    // This function may be called from a signal handler
+
+    int i;
+
+    w_mutex_lock(&wm_children_mutex);
+
+    for (i = 0; wm_children[i] && i < WM_POOL_SIZE; i++)  {
+        TerminateProcess(wm_children[i], 127);
+    }
+
+    w_mutex_unlock(&wm_children_mutex);
+}
+
 #else
 
 // Unix version ----------------------------------------------------------------
@@ -177,7 +236,6 @@ extern char ** environ;
 static void* reader(void *args);   // Reading thread's start point
 
 static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child process pool
-static pthread_mutex_t wm_children_mutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex for child process pool
 
 // Execute command with timeout of secs
 
@@ -402,6 +460,8 @@ void wm_kill_children() {
     int timeout;
     pid_t sid;
 
+    w_mutex_lock(&wm_children_mutex);
+
     for (i = 0; i < WM_POOL_SIZE; i++) {
         sid = wm_children[i];
 
@@ -456,6 +516,8 @@ void wm_kill_children() {
             }
         }
     }
+
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 #endif // WIN32

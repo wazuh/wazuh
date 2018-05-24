@@ -12,11 +12,18 @@
 #ifndef __FILE_H
 #define __FILE_H
 
+#include <stdint.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <external/cJSON/cJSON.h>
 
 #define OS_PIDFILE  "/var/run"
+
+#ifdef WIN32
+typedef uint64_t wino_t;
+#else
+typedef ino_t wino_t;
+#endif
 
 typedef struct File {
     char *name;
@@ -48,7 +55,7 @@ void DeleteState();
 
 int MergeFiles(const char *finalpath, char **files, const char *tag) __attribute__((nonnull(1, 2)));
 
-int MergeAppendFile(const char *finalpath, const char *files, const char *tag) __attribute__((nonnull(1)));
+int MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset) __attribute__((nonnull(1)));
 
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode) __attribute__((nonnull(1)));
 
@@ -97,7 +104,14 @@ int mkdir_ex(const char * path);
 
 int w_ref_parent_folder(const char * path);
 
+wino_t get_fp_inode(FILE * fp);
+
+long get_fp_size(FILE * fp);
+
 // Read directory and return an array of contained files, sorted alphabetically.
 char ** wreaddir(const char * name);
+
+// Open file normally in Linux, allow read/write/delete in Windows
+FILE * wfopen(const char * pathname, const char * mode);
 
 #endif /* __FILE_H */

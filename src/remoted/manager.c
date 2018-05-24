@@ -314,7 +314,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
         if (!logr.nocmerged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
             // First call, truncate merged file
-            MergeAppendFile(merged_tmp, NULL, group);
+            MergeAppendFile(merged_tmp, NULL, group, -1);
         }
 
         if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
@@ -325,7 +325,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
 
             if (!logr.nocmerged) {
-                MergeAppendFile(merged_tmp, DEFAULTAR, NULL);
+                MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
             }
 
             f_size++;
@@ -354,7 +354,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
             os_strdup(files[i], f_sum[f_size]->name);
 
             if (!logr.nocmerged) {
-                MergeAppendFile(merged_tmp, file, NULL);
+                MergeAppendFile(merged_tmp, file, NULL, -1);
             }
 
             f_size++;
