@@ -63,10 +63,27 @@ logger = logging.getLogger()
 # Aux functions
 #
 
+class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
+    """
+    Wazuh cluster log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
+    Also, rotated logs are stored in /logs/archives
+    """
+
+    def doRollover(self):
+        """
+        Override base class method to make the set the appropiate permissions to the new log file
+        """
+        # Rotate the file first
+        logging.handlers.TimedRotatingFileHandler.doRollover(self)
+
+        # Set appropiate permissions
+        chown(self.baseFilename, common.ossec_uid, common.ossec_gid)
+        chmod(self.baseFilename, 0o660)
+
+
 def set_logging(foreground_mode=False, debug_mode=0):
     # configure logger
-    fh = logging.handlers.TimedRotatingFileHandler(filename="{}/logs/cluster.log"\
-                                    .format(common.ossec_path), when='midnight')
+    fh = CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
     formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
     fh.setFormatter(formatter)
     logger.addHandler(fh)
