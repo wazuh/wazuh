@@ -220,6 +220,21 @@ CREATE TABLE IF NOT EXISTS sys_processes (
 
 CREATE INDEX IF NOT EXISTS processes_id ON sys_processes (scan_id);
 
+CREATE TABLE IF NOT EXISTS ciscat_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER,
+    scan_time TEXT,
+    benchmark TEXT,
+    pass INTEGER,
+    fail INTEGER,
+    error INTEGER,
+    notchecked INTEGER,
+    unknown INTEGER,
+    score INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS ciscat_id ON ciscat_results (scan_id);
+
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
     value TEXT
