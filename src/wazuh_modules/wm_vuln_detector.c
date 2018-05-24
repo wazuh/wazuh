@@ -407,6 +407,10 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     (found = strstr(version_it, "ubuntu"))? *found = '\0' : 0;
     (found = strstr(cversion_it, "ubuntu"))? *found = '\0' : 0;
 
+    // For Amazon Linux packages
+    (found = strstr(version_it, ".amzn"))? *found = '\0' : 0;
+    (found = strstr(cversion_it, ".amzn"))? *found = '\0' : 0;
+
     // Check version
     if (strcmp(version_it, cversion_it)) {
         for (i = 0, j = 0, version_found = 0, cversion_found = 0;;) {

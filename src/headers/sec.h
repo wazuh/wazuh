@@ -87,7 +87,7 @@ void OS_FreeKeys(keystore *keys) __attribute((nonnull));
 int OS_CheckUpdateKeys(const keystore *keys) __attribute((nonnull));
 
 /* Update the keys if they changed on the system */
-int OS_UpdateKeys(keystore *keys) __attribute((nonnull));
+void OS_UpdateKeys(keystore *keys) __attribute((nonnull));
 
 /* Start counter for all agents */
 void OS_StartCounter(keystore *keys) __attribute((nonnull));

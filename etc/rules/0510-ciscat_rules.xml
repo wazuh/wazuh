@@ -36,6 +36,7 @@
       <if_sid>87401</if_sid>
       <field name="type">^scan_info$</field>
       <description>CIS-CAT: assessment information for scan $(scan_id)</description>
+      <group></group>
   </rule>
 
   <!-- Rule to support CIS-CAT rules of Wazuh 3.1 -->
@@ -43,6 +44,7 @@
       <if_sid>87402</if_sid>
       <field name="type">^scan_info$</field>
       <description>CIS-CAT: assessment information for scan $(scan_id)</description>
+      <group></group>
   </rule>
 
   <rule id="87405" level="0">
@@ -134,6 +136,7 @@
       <field name="type">^scan_result$</field>
       <field name="cis.result">^fail$</field>
       <description>CIS-CAT: $(cis.rule_title) (failed)</description>
+      <group>gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="87418" level="7">
@@ -141,6 +144,7 @@
       <field name="type">^scan_result$</field>
       <field name="cis-data.result">^fail$</field>
       <description>CIS-CAT: $(cis-data.rule_title) (failed)</description>
+      <group>gdpr_IV_35.7.d,</group>
   </rule>
 
 <!-- Example JSON event
@@ -175,24 +179,28 @@
     <if_sid>87401</if_sid>
     <field name="cis.score">^4\d|^3\d</field>
     <description>CIS-CAT Report overview: Score less than 50% ($(cis.score))</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="87424" level="7">
     <if_sid>87402</if_sid>
     <field name="cis-data.score">^4\d|^3\d</field>
     <description>CIS-CAT Report overview: Score less than 50% ($(cis-data.score) %)</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="87425" level="9">
     <if_sid>87401</if_sid>
     <field name="cis.score">^2\d|^1\d|^\d$</field>
     <description>CIS-CAT Report overview: Score less than 30% ($(cis.score))</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="87426" level="9">
     <if_sid>87402</if_sid>
     <field name="cis-data.score">^2\d|^1\d|^\d$</field>
     <description>CIS-CAT Report overview: Score less than 30% ($(cis-data.score) %)</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
 
 </group>

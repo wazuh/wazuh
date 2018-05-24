@@ -62,7 +62,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81400</if_sid>
         <match>oscap: ERROR: </match>
         <description>OpenSCAP: Error messages grouped.</description>
-        <group>errors,</group>
+        <group>errors,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -72,7 +72,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81501</if_sid>
         <match>OpenSCAP not installed</match>
         <description>OpenSCAP ERROR: OpenSCAP not installed.</description>
-        <group>errors,</group>
+        <group>errors,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -82,7 +82,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81501</if_sid>
         <match>Impossible to execute OpenSCAP</match>
         <description>OpenSCAP ERROR: Impossible to execute OpenSCAP.</description>
-        <group>errors,</group>
+        <group>errors,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -92,7 +92,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81501</if_sid>
         <match>: File "</match>
         <description>OpenSCAP ERROR: Wrong configuration - Inexistent policy.</description>
-        <group>errors,</group>
+        <group>errors,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -102,7 +102,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81501</if_sid>
         <match>Parsing file </match>
         <description>OpenSCAP ERROR: Wrong configuration - Invalid policy.</description>
-        <group>errors,</group>
+        <group>errors,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -112,7 +112,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81501</if_sid>
         <match>Executing profile</match>
         <description>OpenSCAP ERROR: Problem executing oscap.</description>
-        <group>errors,</group>
+        <group>errors,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -122,7 +122,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81501</if_sid>
         <match>Profile</match>
         <description>OpenSCAP ERROR: Wrong configuration - Inexistent profile.</description>
-        <group>errors,</group>
+        <group>errors,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -132,7 +132,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81501</if_sid>
         <match>Timeout expired</match>
         <description>OpenSCAP ERROR: Timeout expired</description>
-        <group>errors,</group>
+        <group>errors,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -142,7 +142,7 @@ Wodle OpenSCAP: 81500 - 81600
         <if_sid>81501</if_sid>
         <match>xsltproc not installed</match>
         <description>OpenSCAP ERROR: xsltproc not installed.</description>
-        <group>errors,</group>
+        <group>errors,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!-- -->

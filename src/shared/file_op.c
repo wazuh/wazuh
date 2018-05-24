@@ -2338,6 +2338,7 @@ char ** wreaddir(const char * name) {
 
     files[i] = NULL;
     qsort(files, i, sizeof(char *), qsort_strcmp);
+    closedir(dir);
     return files;
 }
 

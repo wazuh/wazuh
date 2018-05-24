@@ -15,7 +15,7 @@
   <rule id="9801" level="5">
     <if_sid>9800</if_sid>
     <match>failed auth</match>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <description>vm-pop3d: Login failed accessing the pop3 server.</description>
   </rule>
 
@@ -23,7 +23,7 @@
     <if_matched_sid>9801</if_matched_sid>
     <same_source_ip />
     <description>vm-pop3d: POP3 brute force (multiple failed logins).</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
 </group>

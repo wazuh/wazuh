@@ -14,11 +14,10 @@ from operator import itemgetter
 import errno
 import fnmatch
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, get_files_status, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info, merge_agent_info
-from wazuh.exception import WazuhException
+from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info, merge_agent_info
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
-from wazuh.cluster.communication import ClientHandler, Handler, ProcessFiles, ClusterThread, InternalSocketHandler
+from wazuh.cluster.communication import ClientHandler, ProcessFiles, ClusterThread, InternalSocketHandler
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +74,6 @@ class ClientManagerHandler(ClientHandler):
         answer, payload = self.split_data(response)
         logger.debug("[Client] [Response-R ]: '{0}'.".format(answer))
 
-        response_data = None
-
         if answer == 'ok-c':  # test
             response_data = '[response_only_for_client] Master answered: {}.'.format(payload)
         else:
@@ -90,7 +87,7 @@ class ClientManagerHandler(ClientHandler):
             # Cluster items information: write mode and umask
             cluster_item_key = data['cluster_item_key']
             w_mode = cluster_items[cluster_item_key]['write_mode']
-            umask = int(cluster_items[cluster_item_key]['umask'], base=0)
+            umask = cluster_items[cluster_item_key]['umask']
 
             if content is None:
                 # Full path
@@ -223,7 +220,7 @@ class ClientManagerHandler(ClientHandler):
 
         logger.debug("{0}: Compressing files.".format(tag))
         # Compress data: control json
-        compressed_data_path = compress_files('client', self.name, None, cluster_control_json)
+        compressed_data_path = compress_files(self.name, None, cluster_control_json)
 
         logger.debug("{0}: Files compressed.".format(tag))
 
@@ -258,7 +255,7 @@ class ClientManagerHandler(ClientHandler):
             logger.info("{0}: There are agent-info files to send.".format(tag))
 
             # Compress data: client files + control json
-            compressed_data_path = compress_files('client', self.name, client_files_paths, cluster_control_json)
+            compressed_data_path = compress_files(self.name, client_files_paths, cluster_control_json)
 
             data_for_master = compressed_data_path
 
@@ -292,13 +289,12 @@ class ClientManagerHandler(ClientHandler):
                                             'merge_type': 'agent-groups',
                                             'cluster_item_key': '/queue/agent-groups/'}})
 
-        compressed_data_path = compress_files('client', self.name, files, {'client_files': files})
+        compressed_data_path = compress_files(self.name, files, {'client_files': files})
 
         return compressed_data_path
 
 
     def process_files_from_master(self, data_received, tag=None):
-        sync_result = False
 
         if not tag:
             tag = "[Client] [process_files_from_master]"
@@ -387,7 +383,7 @@ class ClientProcessMasterFiles(ProcessFiles):
 #
 # Client
 #
-class ClientManager():
+class ClientManager:
     SYNC_I_T = "Sync_I_Thread"
     SYNC_AI_T = "Sync_AI_Thread"
     KA_T = "KeepAlive_Thread"
@@ -577,7 +573,7 @@ class SyncClientThread(ClientThread):
         if compressed_data_path:
             logger.info("{0}: Sending files to master.".format(self.thread_tag))
 
-            response = self.client_handler.send_file(reason = self.reason, file = compressed_data_path, remove = True)
+            response = self.client_handler.send_file(reason = self.reason, file_to_send= compressed_data_path, remove = True)
 
             processed_response = self.client_handler.process_response(response)
             if processed_response:
@@ -669,7 +665,7 @@ class SyncExtraValidFilesThread(SyncClientThread):
         logger.info("{0}: Sending files to master.".format(self.thread_tag))
 
         response = self.client_handler.send_file(reason = self.reason,
-                                    file = compressed_data_path, remove = True)
+                                                 file_to_send= compressed_data_path, remove = True)
 
         processed_response = self.client_handler.process_response(response)
         if processed_response:
@@ -686,13 +682,11 @@ class SyncExtraValidFilesThread(SyncClientThread):
 # Internal socket
 #
 class ClientInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
+    def __init__(self, sock, manager, asyncore_map):
+        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
-        serialized_response = ""
-
 
         if command == "get_files":
             split_data = data.split(' ', 1)
@@ -700,43 +694,41 @@ class ClientInternalSocketHandler(InternalSocketHandler):
             node_response = self.manager.handler.process_request(command = 'file_status', data="")
 
             if node_response[0] == 'err': # Error response
-                response = {"err":node_response[1]}
+                response = ["err", json.dumps({"err":node_response[1]})]
             else:
                 response = json.loads(node_response[1])
                 # Filter files
                 if file_list and len(response):
-                    response = {file:content for file,content in response.iteritems() if file in file_list}
-
-            response =  json.dumps(response)
-
-            serialized_response = ['ok', response]
-
-            return serialized_response
+                    response = {my_file:content for my_file,content in response.items() if my_file in file_list}
+                response = ['ok', json.dumps(response)]
         elif command == "get_nodes":
-            split_data = data.split(' ', 1)
-            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-
             node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
-
             type_response = node_response[0]
             response = node_response[1]
-
             if type_response == "err":
-                response = {"err":response}
+                response = ["err", json.dumps({"err":response})]
             else:
-                response = json.loads(response)
-                if node_list:
-                    response = {node:info for node, info in response.iteritems() if node in node_list}
+                response = ['ok', response]
 
-            serialized_response = ['ok', json.dumps(response)]
-            return serialized_response
         elif command == "get_health":
-            response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)[1]
-            serialized_response = ['ok',  response]
-            return serialized_response
-        else:
-            response = self.manager.send_request(command=command, data=data)
-            if response:
-                serialized_response = response.split(' ', 1)
+            node_list = data if data != 'None' else None
+            node_response = self.manager.handler.send_request(command=command, data=node_list).split(' ', 1)
+            type_response = node_response[0]
+            response = node_response[1]
+            if type_response == "err":
+                response = ["err", json.dumps({"err":response})]
+            else:
+                response = ['ok', response]
 
-        return serialized_response
+        elif command == "get_agents":
+            node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
+            type_response = node_response[0]
+            response = node_response[1]
+            if type_response == "err":
+                response = ["err", json.dumps({"err":response})]
+            else:
+                response = ['ok', response]
+        else:
+            response = json.dumps({'err': "Received an unknown command '{}'".format(command)})
+
+        return response

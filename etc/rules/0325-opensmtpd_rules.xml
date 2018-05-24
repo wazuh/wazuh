@@ -70,6 +70,7 @@ y Error
     <if_sid>53500</if_sid>
     <match>Server certificate verification failed</match>
     <description>Server TLS certificate verification failed.</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
 
 </group>

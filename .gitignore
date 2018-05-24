@@ -6,6 +6,7 @@
 *.pyc
 *.dll
 *.exe
+*.dylib
 
 # Auto generated build files
 src/LOCATION

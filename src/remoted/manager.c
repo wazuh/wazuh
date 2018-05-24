@@ -367,7 +367,10 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
         }
 
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-            merror("Accessing file '%s'", merged);
+            if (!logr.nocmerged) {
+                merror("Accessing file '%s'", merged);
+            }
+
             f_sum[0]->sum[0] = '\0';
         }
 
@@ -568,6 +571,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     file_sum **f_sum = NULL;
     os_md5 tmp_sum;
     char *end;
+    agent_group *agt_group;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -653,15 +657,17 @@ static void read_controlmsg(const char *agent_id, char *msg)
                     return;
                 }
             }
+
+            set_agent_group(agent_id, group);
         }
 
         // Check if the group is set in the yaml file
-        agent_group *agt_group = w_parser_get_agent(agent_id);
-
         // Check if the group we want to set is "default", apply yaml configuration
-        if(agt_group && !strncmp(group,"default",7)){
-            if(set_agent_group(agent_id, agt_group->group) == -1){
-                merror("Could not set group '%s' specified in the yaml file for agent '%s'",agt_group->group,agent_id);
+        if (!strcmp(group, "default")) {
+            if (agt_group = w_parser_get_agent(agent_id), agt_group) {
+                if(set_agent_group(agent_id, agt_group->group) == -1){
+                    merror("Could not set group '%s' specified in the yaml file for agent '%s'",agt_group->group,agent_id);
+                }
             }
         }
 

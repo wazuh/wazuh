@@ -30,6 +30,10 @@ All notable changes to this project will be documented in this file.
     - New option in rules `<location>` to filter events by osquery.
     - Support folders in shared configuration. This makes easy to send pack folders to agents.
     - Basic ruleset for osquery events and daemon logs.
+- Boost Remoted performance with multithreading. ([#649](https://github.com/wazuh/wazuh/pull/649))
+    - Up to 16 parallel threads to decrypt messages from agents.
+    - Limit the frequency of agent keys reloading.
+    - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
 
 ### Changed
 
@@ -64,6 +68,19 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - New internal option to enable merged file creation by Remoted. ([#603](https://github.com/wazuh/wazuh/pull/603))
+- Created alert item for GDPR and GPG13. ([#608](https://github.com/wazuh/wazuh/pull/608))
+- Add support for Amazon Linux in vulnerability-detector.
+
+### Changed
+
+- Set default agent limit to 14.000 and file descriptor limit to 65.536 per process. ([#624](https://github.com/wazuh/wazuh/pull/624))
+- Cluster improvements.
+    - New protocol for communications.
+    - Inverted communication flow: clients start communications with the master.
+    - Just the master address is required in the `<nodes>` list configuration.
+    - Improved synchronization algorithm.
+    - Reduced the number of processes to one: `wazuh-clusterd`.
+- Cluster control tool improvements: outputs are the same regardless of node type.
 
 ### Fixed
 
@@ -74,6 +91,15 @@ All notable changes to this project will be documented in this file.
 - Fixed bad file descriptor error in Wazuh DB ([#588](https://github.com/wazuh/wazuh/issues/588))
 - Fixed unpredictable file sorting when creating merged files. ([#599](https://github.com/wazuh/wazuh/issues/599))
 - Fixed race condition in Remoted when closing connections.
+- Fix epoch check in vulnerability-detector.
+- Fixed hash sum in logs rotation. ([#636](https://github.com/wazuh/wazuh/issues/636))
+- Fixed cluster CPU usage.
+- Fixed segmentation fault in logcollector when multi-line is applied to a remote configuration. ([#641](https://github.com/wazuh/wazuh/pull/641))
+
+### Removed
+
+- Removed cluster database and internal cluster daemon.
+
 
 ## [v3.2.2]
 

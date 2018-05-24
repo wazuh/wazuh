@@ -37,14 +37,14 @@ ID: 81600 - 80799
         <if_sid>81603</if_sid>
         <status>dpd_failure</status>
         <description>Fortigate: IP Sec DPD Failed.</description>
-        <group>firewall_drop,pci_dss_1.4,</group>
+        <group>firewall_drop,pci_dss_1.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="81605" level="7" frequency="16" timeframe="45" ignore="240">
         <if_matched_sid>81604</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple Firewall drop events from same source.</description>
-        <group>multiple_drops,pci_dss_1.4,pci_dss_10.6.1,</group>
+        <group>multiple_drops,pci_dss_1.4,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
 
@@ -56,7 +56,7 @@ ID: 81600 - 80799
         <action>login</action>
         <status>failed</status>
         <description>Fortigate: Login failed.</description>
-        <group>authentication_failed,invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>authentication_failed,invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="81607" level="7" frequency="16" timeframe="45" ignore="240">
@@ -64,7 +64,7 @@ ID: 81600 - 80799
         <same_source_ip />
         <options>alert_by_email</options>
         <description>Fortigate: Multiple failed login events from same source.</description>
-        <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
 
@@ -76,12 +76,14 @@ ID: 81600 - 80799
         <match>Configuration is changed in the admin session</match>
         <options>alert_by_email</options>
         <description>Fortigate: Configuration changed.</description>
+        <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="81609" level="8" frequency="16" timeframe="45" ignore="240">
         <if_matched_sid>81608</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple changed configuration events from same source.</description>
+        <group>gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -91,7 +93,7 @@ ID: 81600 - 80799
         <if_sid>81603</if_sid>
         <match>http_decoder: HTTP.Unknown.Tunnelling</match>
         <description>Fortigate: Default tunneling setting. Could be IPS.</description>
-        <group>pci_dss_10.6.1,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="81611" level="7" frequency="16" timeframe="45" ignore="240">
@@ -99,7 +101,7 @@ ID: 81600 - 80799
         <same_source_ip />
         <options>alert_by_email</options>
         <description>Fortigate: Multiple default tunneling setting events from same source.</description>
-        <group>pci_dss_10.6.1,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -109,14 +111,14 @@ ID: 81600 - 80799
         <if_sid>81603</if_sid>
         <action>Edit</action>
         <description>Fortigate: Firewall configuration changes</description>
-        <group>pci_dss_10.6.1,gpg13_4.13,</group>
+        <group>pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="81613" level="4" frequency="16" timeframe="45" ignore="240">
         <if_matched_sid>81612</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple Firewall edit events from same source.</description>
-        <group>pci_dss_10.6.1,gpg13_4.13,</group>
+        <group>pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,</group>
     </rule>
 
 
@@ -127,7 +129,7 @@ ID: 81600 - 80799
         <if_sid>81603</if_sid>
         <match>ssl-login-fail</match>
         <description>Fortigate: SSL VPN User failed login attempt</description>
-        <group>authentication_failed,invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>authentication_failed,invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="81615" level="7" frequency="16" timeframe="45" ignore="240">
@@ -135,7 +137,7 @@ ID: 81600 - 80799
         <same_source_ip />
         <options>alert_by_email</options>
         <description>Fortigate: Multiple Firewall SSL VPN failed login events from same source.</description>
-        <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <!--
@@ -146,14 +148,14 @@ ID: 81600 - 80799
         <action>logout</action>
         <status>success</status>
         <description>Fortigate: User logout successful</description>
-        <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,</group>
+        <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="81617" level="7" frequency="16" timeframe="45" ignore="240">
         <if_matched_sid>81616</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple Firewall logout events from same source.</description>
-        <group>pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,</group>
     </rule>
 
     <!--
@@ -164,7 +166,7 @@ ID: 81600 - 80799
         <match>type=traffic</match>
         <status>high</status>
         <description>Fortigate: Traffic to be aware of.</description>
-        <group>pci_dss_10.6.1,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="81619" level="3" frequency="16" timeframe="45" ignore="240">
@@ -172,7 +174,7 @@ ID: 81600 - 80799
         <same_source_ip />
         <options>alert_by_email</options>
         <description>Fortigate: Multiple high traffic events from same source.</description>
-        <group>pci_dss_10.6.1,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -183,14 +185,14 @@ ID: 81600 - 80799
         <status>warning</status>
         <action>blocked</action>
         <description>Fortigate: URL Blocked by Firewall.</description>
-        <group>firewall_drop,pci_dss_10.6.1,</group>
+        <group>firewall_drop,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="81621" level="3" frequency="16" timeframe="45" ignore="240">
         <if_matched_sid>81620</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple URL blocked from same source.</description>
-        <group>multiple_drops,pci_dss_10.6.1,</group>
+        <group>multiple_drops,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -201,14 +203,14 @@ ID: 81600 - 80799
         <match>level=information</match>
         <action>tunnel-up</action>
         <description>Fortigate: VPN User connected.</description>
-        4.13<group>authentication_success,pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="81623" level="4" frequency="16" timeframe="45" ignore="240">
         <if_matched_sid>81622</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple vpn user connected from same source.</description>
-        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,</group>
     </rule>
 
     <!--
@@ -219,14 +221,14 @@ ID: 81600 - 80799
         <match>level=information</match>
         <action>tunnel-down</action>
         <description>Fortigate: VPN User disconnected.</description>
-        <group>pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="81625" level="4" frequency="16" timeframe="45" ignore="240">
         <if_matched_sid>81624</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple user disconnected events from same source.</description>
-        <group>pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,</group>
     </rule>
 
     <!--
@@ -238,14 +240,14 @@ ID: 81600 - 80799
         <status>success</status>
         <action>login</action>
         <description>Fortigate: User successfully logged into firewall interface.</description>
-        <group>pci_dss_10.6.1,gpg13_7.1,gpg13_7.2,</group>
+        <group>pci_dss_10.6.1,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="81627" level="4" frequency="16" timeframe="45" ignore="240">
         <if_matched_sid>81626</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple Firewall login events from same source.</description>
-        <group>pci_dss_10.6.1,gpg13_7.1,gpg13_7.2,</group>
+        <group>pci_dss_10.6.1,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,</group>
     </rule>
 
 
@@ -259,7 +261,7 @@ ID: 81600 - 80799
         <match>attack</match>
         <action>detected</action>
         <description>Fortigate Attack Detected</description>
-        <group>attack,</group>
+        <group>attack,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="81629" level="3">
@@ -267,7 +269,7 @@ ID: 81600 - 80799
         <match>attack</match>
         <action>dropped</action>
         <description>Fortigate Attack Dropped</description>
-        <group>attack,</group>
+        <group>attack,gdpr_IV_35.7.d,</group>
     </rule>
 
 </group>

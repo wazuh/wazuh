@@ -675,7 +675,8 @@ InstallCommon(){
         ${INSTALL} -m 0750 -o root -g 0 libwazuhext.dylib ${PREFIX}/lib
     else
         ${INSTALL} -m 0750 -o root -g 0 libwazuhext.so ${PREFIX}/lib
-        if [ "$DIST_NAME$DIST_VER"="rhel5" ]; then
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${PREFIX}/lib/libwazuhext.so
         fi
     fi
@@ -741,7 +742,11 @@ InstallCommon(){
     fi
 
     if [ ! -f ${PREFIX}/etc/client.keys ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+        if [ ${INSTYPE} = 'agent' ]; then
+            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+        else
+            ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+        fi
     fi
 
     if [ ! -f ${PREFIX}/etc/ossec.conf ]; then
@@ -767,7 +772,7 @@ InstallCommon(){
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
 
-      ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
   ./init/fw-check.sh execute
 }
@@ -820,21 +825,21 @@ InstallLocal(){
     ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX}
 
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
     if [ ! -f ${PREFIX}/etc/rules/local_rules.xml ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${PREFIX}/etc/lists ]; then
         ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
     fi
     if [ ! -f ${PREFIX}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
-        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
+        ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -862,11 +867,10 @@ InstallServer(){
 
     # Install cluster files
     ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
-    ${INSTALL} -d 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/cluster
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/cluster
 
     ${INSTALL} -d -m 760 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
-
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
+    ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
 
     TransferShared
@@ -884,10 +888,10 @@ InstallServer(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
 
-    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
+    ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
 
     if [ ! -f ${PREFIX}/etc/shared/default/agent.conf ]; then
-        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
     fi
 
     GenerateAuthCert

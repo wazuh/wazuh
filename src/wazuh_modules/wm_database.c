@@ -233,7 +233,6 @@ void wm_sync_manager() {
     OS_ClearXML(&xml);
 
     if ((os_uname = strdup(getuname()))) {
-        os_arch = (char *) malloc(50);
         os_arch = wm_get_os_arch(os_uname);
         char *ptr;
 
