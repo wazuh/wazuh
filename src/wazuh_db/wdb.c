@@ -770,7 +770,7 @@ int wdb_stmt_cache(wdb_t * wdb, int index) {
             return -1;
         }
     } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK) {
-        merror("at wdb_stmt_cache(): at sqlite3_reset(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("at wdb_stmt_cache(): at sqlite3_reset(): %s", sqlite3_errmsg(wdb->db));
 
         // Retry to prepare
 
