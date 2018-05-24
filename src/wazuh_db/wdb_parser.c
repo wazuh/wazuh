@@ -591,7 +591,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
             rx_dropped = strtol(next,NULL,10);
 
         if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped), result < 0) {
-            mdebug1("Cannot save Network information.");
+            mdebug1("at wdb_parse_netinfo(): Cannot save Network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Network information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -609,7 +609,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_netinfo_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old network information.");
+            mdebug1("at wdb_parse_netinfo(): Cannot delete old network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old network information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -707,7 +707,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
             dhcp = next;
 
         if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp), result < 0) {
-            mdebug1("Cannot save netproto information.");
+            mdebug1("at wdb_parse_netproto(): Cannot save netproto information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netproto information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -805,7 +805,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
             broadcast = next;
 
         if (result = wdb_netaddr_save(wdb, scan_id, proto, address, netmask, broadcast), result < 0) {
-            mdebug1("Cannot save netaddr information.");
+            mdebug1("at wdb_parse_netaddr(): Cannot save netaddr information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netaddr information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1040,7 +1040,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
             version = next;
 
         if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version), result < 0) {
-            mdebug1("Cannot save OS information.");
+            mdebug1("at wdb_parse_osinfo(): Cannot save OS information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save OS information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1174,7 +1174,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
         ram_free = strtol(next,NULL,10);
 
         if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free), result < 0) {
-            mdebug1("Cannot save HW information.");
+            mdebug1("at wdb_parse_hardware(): Cannot save HW information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save HW information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1398,7 +1398,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
             process = next;
 
         if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process), result < 0) {
-            mdebug1("Cannot save Port information.");
+            mdebug1("at wdb_parse_ports(): Cannot save Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Port information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1415,7 +1415,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_port_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Port information.");
+            mdebug1("at wdb_parse_ports(): Cannot delete old Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Port information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1667,7 +1667,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             location = next;
 
         if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location), result < 0) {
-            mdebug1("Cannot save Package information.");
+            mdebug1("at wdb_parse_packages(): Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1685,12 +1685,12 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_package_update(wdb, scan_id), result < 0) {
-            mdebug1("Cannot save scanned packages before delete old Package information.");
+            mdebug1("at wdb_parse_packages(): Cannot update scanned packages.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old Package information.");
         }
 
         if (result = wdb_package_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Package information.");
+            mdebug1("at wdb_parse_packages(): Cannot delete old Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Package information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -2164,7 +2164,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
             processor = strtol(next,NULL,10);
 
         if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor), result < 0) {
-            mdebug1("Cannot save Process information.");
+            mdebug1("at wdb_parse_processes(): Cannot save Process information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Process information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -2181,7 +2181,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_process_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Process information.");
+            mdebug1("at wdb_parse_processes(): Cannot delete old Process information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Process information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");

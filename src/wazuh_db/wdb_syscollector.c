@@ -17,7 +17,7 @@ static int iface_id = 0;
 int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_netinfo_save(): cannot begin transaction");
+        mdebug1("at wdb_netinfo_save(): cannot begin transaction");
         return -1;
     }
 
@@ -49,8 +49,8 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_NETINFO_INSERT) > 0) {
-        merror("at wdb_netinfo_insert(): cannot cache statement");
+    if (wdb_stmt_cache(wdb, WDB_STMT_NETINFO_INSERT) < 0) {
+        mdebug1("at wdb_netinfo_insert(): cannot cache statement");
         return -1;
     }
 
@@ -117,7 +117,7 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
         return 0;
     }
     else {
-        mdebug1("at wdb_netinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_netinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -126,7 +126,7 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_netproto_save(): cannot begin transaction");
+        mdebug1("at wdb_netproto_save(): cannot begin transaction");
         return -1;
     }
 
@@ -148,8 +148,8 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
 
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROTO_INSERT) > 0) {
-        merror("at wdb_netproto_insert(): cannot cache statement");
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROTO_INSERT) < 0) {
+        mdebug1("at wdb_netproto_insert(): cannot cache statement");
         return -1;
     }
 
@@ -171,7 +171,7 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
         return 0;
     }
     else {
-        mdebug1("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -180,7 +180,7 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_netaddr_save(): cannot begin transaction");
+        mdebug1("at wdb_netaddr_save(): cannot begin transaction");
         return -1;
     }
 
@@ -202,8 +202,8 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char 
 
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_ADDR_INSERT) > 0) {
-        merror("at wdb_netaddr_insert(): cannot cache statement");
+    if (wdb_stmt_cache(wdb, WDB_STMT_ADDR_INSERT) < 0) {
+        mdebug1("at wdb_netaddr_insert(): cannot cache statement");
         return -1;
     }
 
@@ -225,7 +225,7 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char 
         return 0;
     }
     else {
-        mdebug1("at wdb_netaddr_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_netaddr_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -236,49 +236,49 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_netinfo_delete(): cannot begin transaction");
+        mdebug1("at wdb_netinfo_delete(): cannot begin transaction");
         return -1;
     }
 
     // Delete 'sys_netiface' table
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_NETINFO_DEL) > 0) {
-        merror("at wdb_netinfo_delete(): cannot cache statement");
+    if (wdb_stmt_cache(wdb, WDB_STMT_NETINFO_DEL) < 0) {
+        mdebug1("at wdb_netinfo_delete(): cannot cache statement");
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_NETINFO_DEL];
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_netiface' table: %s", sqlite3_errmsg(wdb->db));
+        merror("Deleting old information from 'sys_netiface' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     // Delete 'sys_netproto' table
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROTO_DEL) > 0) {
-        merror("at wdb_netinfo_delete(): cannot cache statement");
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROTO_DEL) < 0) {
+        mdebug1("at wdb_netinfo_delete(): cannot cache statement");
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_PROTO_DEL];
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_netproto' table: %s", sqlite3_errmsg(wdb->db));
+        merror("Deleting old information from 'sys_netproto' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
     // Delete 'sys_netaddr' table
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_ADDR_DEL) > 0) {
-        merror("at wdb_netinfo_delete(): cannot cache statement");
+    if (wdb_stmt_cache(wdb, WDB_STMT_ADDR_DEL) < 0) {
+        mdebug1("at wdb_netinfo_delete(): cannot cache statement");
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_ADDR_DEL];
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_netaddr' table: %s", sqlite3_errmsg(wdb->db));
+        merror("Deleting old information from 'sys_netaddr' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -291,13 +291,13 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_osinfo_save(): cannot begin transaction");
+        mdebug1("at wdb_osinfo_save(): cannot begin transaction");
         return -1;
     }
 
     /* Delete old OS information before insert the new scan */
     if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) < 0) {
-        merror("at wdb_osinfo_save(): cannot cache statement");
+        mdebug1("at wdb_osinfo_save(): cannot cache statement");
         return -1;
     }
 
@@ -335,7 +335,7 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) < 0) {
-        merror("at wdb_osinfo_insert(): cannot cache statement");
+        mdebug1("at wdb_osinfo_insert(): cannot cache statement");
         return -1;
     }
 
@@ -370,7 +370,7 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_package_save(): cannot begin transaction");
+        mdebug1("at wdb_package_save(): cannot begin transaction");
         return -1;
     }
 
@@ -403,7 +403,7 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) < 0) {
-        merror("at wdb_package_insert(): cannot cache statement");
+        mdebug1("at wdb_package_insert(): cannot cache statement");
         return -1;
     }
 
@@ -430,15 +430,21 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 15, location, -1, NULL);
     sqlite3_bind_int(stmt, 16, triaged);
 
-
-    if (sqlite3_step(stmt) == SQLITE_DONE){
-        return 0;
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_DONE:
+            return 0;
+        case SQLITE_CONSTRAINT:
+            if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
+                mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                return 0;
+            } else {
+                merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                return -1;
+            }
+        default:
+            merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
     }
-    else {
-        mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
 }
 
 // Function to update old Package information from DB. Return 0 on success or -1 on error.
@@ -447,12 +453,12 @@ int wdb_package_update(wdb_t * wdb, const char * scan_id) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_package_update(): cannot begin transaction");
+        mdebug1("at wdb_package_update(): cannot begin transaction");
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_UPD) > 0) {
-        merror("at wdb_package_update(): cannot cache statement");
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_UPD) < 0) {
+        mdebug1("at wdb_package_update(): cannot cache statement");
         return -1;
     }
 
@@ -461,7 +467,7 @@ int wdb_package_update(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to update the new information from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
+        merror("Unable to update the 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -474,12 +480,12 @@ int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_package_delete(): cannot begin transaction");
+        mdebug1("at wdb_package_delete(): cannot begin transaction");
         return -1;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) < 0) {
-        merror("at wdb_package_delete(): cannot cache statement");
+        mdebug1("at wdb_package_delete(): cannot cache statement");
         return -1;
     }
 
@@ -501,13 +507,13 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_hardware_save(): cannot begin transaction");
+        mdebug1("at wdb_hardware_save(): cannot begin transaction");
         return -1;
     }
 
     /* Delete old OS information before insert the new scan */
     if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_DEL) < 0) {
-        merror("at wdb_hardware_save(): cannot cache statement");
+        mdebug1("at wdb_hardware_save(): cannot cache statement");
         return -1;
     }
 
@@ -539,7 +545,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) < 0) {
-        merror("at wdb_hardware_insert(): cannot cache statement");
+        mdebug1("at wdb_hardware_insert(): cannot cache statement");
         return -1;
     }
 
@@ -583,7 +589,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_port_save(): cannot begin transaction");
+        mdebug1("at wdb_port_save(): cannot begin transaction");
         return -1;
     }
 
@@ -613,7 +619,7 @@ int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PORT_INSERT) < 0) {
-        merror("at wdb_port_insert(): cannot cache statement");
+        mdebug1("at wdb_port_insert(): cannot cache statement");
         return -1;
     }
 
@@ -679,12 +685,12 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_port_delete(): cannot begin transaction");
+        mdebug1("at wdb_port_delete(): cannot begin transaction");
         return -1;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PORT_DEL) < 0) {
-        merror("at wdb_port_delete(): cannot cache statement");
+        mdebug1("at wdb_port_delete(): cannot cache statement");
         return -1;
     }
 
@@ -704,7 +710,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
 int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_process_save(): cannot begin transaction");
+        mdebug1("at wdb_process_save(): cannot begin transaction");
         return -1;
     }
 
@@ -751,7 +757,7 @@ int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PROC_INSERT) < 0) {
-        merror("at wdb_process_insert(): cannot cache statement");
+        mdebug1("at wdb_process_insert(): cannot cache statement");
         return -1;
     }
 
@@ -854,12 +860,12 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        merror("at wdb_process_delete(): cannot begin transaction");
+        mdebug1("at wdb_process_delete(): cannot begin transaction");
         return -1;
     }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_PROC_DEL) < 0) {
-        merror("at wdb_process_delete(): cannot cache statement");
+        mdebug1("at wdb_process_delete(): cannot cache statement");
         return -1;
     }
 
