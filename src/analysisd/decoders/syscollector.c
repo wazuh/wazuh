@@ -21,8 +21,6 @@
 #include "string_op.h"
 #include <time.h>
 
-#define SYSCOLLECTOR_DIR    "/queue/syscollector"
-
 static int error_package = 0;
 static int prev_package_id = 0;
 static int error_port = 0;
@@ -56,9 +54,6 @@ int DecodeSyscollector(Eventinfo *lf)
 {
     cJSON *logJSON;
     char *msg_type = NULL;
-
-    // Decoding JSON
-    JSON_Decoder_Exec(lf);
 
     lf->decoder_info = sysc_decoder;
 
