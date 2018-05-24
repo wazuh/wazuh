@@ -2340,3 +2340,73 @@ char ** wreaddir(const char * name) {
     qsort(files, i, sizeof(char *), qsort_strcmp);
     return files;
 }
+
+// Open file normally in Linux, allow read/write/delete in Windows
+
+FILE * wfopen(const char * pathname, const char * mode) {
+#ifdef WIN32
+    HANDLE hFile;
+    DWORD dwDesiredAccess = 0;
+    const DWORD dwShareMode = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
+    DWORD dwCreationDisposition = 0;
+    const DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL;
+    int flags = _O_TEXT;
+    int fd;
+    FILE * fp;
+    int i;
+
+    for (i = 0; mode[i]; ++i) {
+        switch (mode[i]) {
+        case '+':
+            dwDesiredAccess |= GENERIC_WRITE;
+            flags &= ~_O_RDONLY;
+            break;
+        case 'a':
+            dwDesiredAccess = GENERIC_WRITE;
+            dwCreationDisposition = OPEN_ALWAYS;
+            flags = _O_CREAT;
+            break;
+        case 'b':
+            flags &= ~_O_TEXT;
+            break;
+        case 'r':
+            dwDesiredAccess = GENERIC_READ;
+            dwCreationDisposition = OPEN_EXISTING;
+            flags |= _O_RDONLY;
+            break;
+        case 't':
+            flags |= _O_TEXT;
+            break;
+        case 'w':
+            dwDesiredAccess = GENERIC_WRITE;
+            dwCreationDisposition = CREATE_ALWAYS;
+        }
+    }
+
+    if (!(dwDesiredAccess && dwCreationDisposition)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    hFile = CreateFile(pathname, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, flags), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    if (fp = _fdopen(fd, mode), fp == NULL) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    return fp;
+
+#else
+    return fopen(pathname, mode);
+#endif
+}

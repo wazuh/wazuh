@@ -56,9 +56,9 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
     while (active) {
         // Wait to open log file
 
-        while (result_log = fopen(osquery->log_path, "r"), !result_log && active) {
+        while (result_log = wfopen(osquery->log_path, "r"), !result_log && active) {
             mwarn("Results file '%s' not available: %s (%d)", osquery->log_path, strerror(errno), errno);
-            sleep(i < 60 ? ++i : 60);
+            sleep((i < 60 ? ++i : 60));
         }
 
         if (!active) {
@@ -103,7 +103,12 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
 
             switch (wm_osquery_check_logfile(osquery->log_path, result_log)) {
             case -1:
-                mwarn("Error accessing results file '%s': %s (%d)", osquery->log_path, strerror(errno), errno);
+                if (errno == ENOENT) {
+                    minfo("Results file '%s' was deleted.", osquery->log_path);
+                } else {
+                    mwarn("Couldn't access results file '%s': %s (%d)", osquery->log_path, strerror(errno), errno);
+                }
+
                 goto endloop;
             case 0:
                 // File did not change
