@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
     - Improved synchronization algorithm.
     - Reduced the number of processes to one: `wazuh-clusterd`.
 - Cluster control tool improvements: outputs are the same regardless of node type.
+- Disconnected agents will no longer report vulnerabilities. ([#666](https://github.com/wazuh/wazuh/pull/666))
 
 ### Fixed
 
