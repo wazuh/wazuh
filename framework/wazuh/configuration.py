@@ -17,8 +17,15 @@ except ImportError:
     from configparser import RawConfigParser, NoOptionError
     from io import StringIO
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Aux functions
 
+# Type of configuration sections:
+#   * Duplicate -> there can be multiple independent sections. Must be returned as multiple json entries.
+#   * Multiple -> there can be multiple sections but all are dependent with each other. Must be returned as a single json entry.
+#   * Simple -> there can be multiple sections in the configuration but only the last one will be returned. The rest, ignored.
 conf_sections = {
     'active-response': { 'type': 'duplicate', 'list_options': [] },
     'command': { 'type': 'duplicate', 'list_options': [] },
@@ -33,7 +40,7 @@ conf_sections = {
     'email_alerts': { 'type': 'simple', 'list_options': [] },
     'reports': { 'type': 'simple', 'list_options': [] },
     'global': {
-        'type': 'simple',
+        'type': 'multiple',
         'list_options': ['white_list']
     },
     'open-scap': {
@@ -105,7 +112,7 @@ def _insert_section(json_dst, section_name, section_data):
             json_dst[section_name].append(section_data)  # Append new values
         else:
             json_dst[section_name] = [section_data]  # Create as list
-    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'simple':
+    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'multiple':
         if section_name in json_dst:
             for option in section_data:
                 if option in json_dst[section_name] and option in conf_sections[section_name]['list_options']:
@@ -114,6 +121,11 @@ def _insert_section(json_dst, section_name, section_data):
                     json_dst[section_name][option] = section_data[option]  # Update values
         else:
             json_dst[section_name] = section_data  # Create
+    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'simple':
+        if section_name in json_dst:
+            # if the option already exists it is overwritten. But a warning is shown.
+            logger.warning("There are multiple {} sections in configuration. Using only last section.".format(section_name))
+        json_dst[section_name] = section_data  # Create
 
 
 def _read_option(section_name, opt):
