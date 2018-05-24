@@ -24,8 +24,9 @@ import logging
 import re
 import os
 import ast
-from calendar import timegm
+from calendar import timegm, month_abbr
 from random import random
+import glob
 
 # import the C accelerated API of ElementTree
 try:
@@ -562,3 +563,43 @@ def unmerge_agent_info(merge_type, path_file, filename):
         yield dst_agent_info_path + '/' + name, data, st_mtime
 
     src_f.close()
+
+
+class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
+    """
+    Wazuh cluster log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
+    Also, rotated logs are stored in /logs/ossec
+    """
+
+    def doRollover(self):
+        """
+        Override base class method to make the set the appropiate permissions to the new log file
+        """
+        # Rotate the file first
+        logging.handlers.TimedRotatingFileHandler.doRollover(self)
+
+        # Set appropiate permissions
+        chown(self.baseFilename, common.ossec_uid, common.ossec_gid)
+        chmod(self.baseFilename, 0o660)
+
+        # Save rotated file in /logs/ossec directory
+        rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
+        rename(rotated_file, self.computeArchivesDirectory(rotated_file))
+
+
+    def computeArchivesDirectory(self, rotated_filepath):
+        """
+        Based on the name of the rotated file, compute in which directory it should be stored.
+
+        :param rotated_filepath: Filepath of the rotated log
+        :return: New directory path
+        """
+        rotated_file = path.basename(rotated_filepath)
+        year, month = re.match(r'[\w\.]+\.(\d+)-(\d+)-\d+', rotated_file).groups()
+        month = month_abbr[int(month)]
+
+        log_path = '{}/logs/ossec/{}/{}'.format(common.ossec_path, year, month)
+        if not path.exists(log_path):
+            mkdir_with_mode(log_path, 0o750)
+
+        return '{}/{}'.format(log_path, rotated_file)

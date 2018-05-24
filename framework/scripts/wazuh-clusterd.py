@@ -46,7 +46,7 @@ try:
     from wazuh.exception import WazuhException
     from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
     from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
-    from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
+    from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items, CustomFileRotatingHandler
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
     from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
     from wazuh.cluster.communication import InternalSocketThread
@@ -62,24 +62,6 @@ logger = logging.getLogger()
 #
 # Aux functions
 #
-
-class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
-    """
-    Wazuh cluster log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
-    Also, rotated logs are stored in /logs/archives
-    """
-
-    def doRollover(self):
-        """
-        Override base class method to make the set the appropiate permissions to the new log file
-        """
-        # Rotate the file first
-        logging.handlers.TimedRotatingFileHandler.doRollover(self)
-
-        # Set appropiate permissions
-        chown(self.baseFilename, common.ossec_uid, common.ossec_gid)
-        chmod(self.baseFilename, 0o660)
-
 
 def set_logging(foreground_mode=False, debug_mode=0):
     # configure logger
