@@ -41,6 +41,7 @@ All notable changes to this project will be documented in this file.
 - Extracts agent's OS from the database instead of the agent-info.
 - Increases the maximum size of XML parser to 20KB.
 - Extract CVE instead of RHSA codes into vulnerability-detector. ([#549](https://github.com/wazuh/wazuh/pull/549))
+- Changed logcollector analysis message order. ([#675](https://github.com/wazuh/wazuh/pull/675))
 
 ### Fixed
 

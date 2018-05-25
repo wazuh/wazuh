@@ -696,9 +696,10 @@ int update_current(logreader **current, int *i, int *j)
 void set_read(logreader *current, int i, int j) {
     int tg;
     current->command = NULL;
-
+    minfo(READING_FILE, current->file);
     /* Initialize the files */
     if (current->ffile) {
+        
         /* Day must be zero for all files to be initialized */
         _cday = 0;
         if (update_fname(i, j)) {
@@ -715,7 +716,7 @@ void set_read(logreader *current, int i, int j) {
         }
     }
 
-    minfo(READING_FILE, current->file);
+    
 
     tg = 0;
     if (current->target) {
