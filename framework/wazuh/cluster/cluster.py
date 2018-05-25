@@ -12,9 +12,9 @@ from wazuh.InputValidator import InputValidator
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
-from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove
+from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
 from subprocess import check_output, check_call, CalledProcessError
-from shutil import rmtree
+from shutil import rmtree, copyfileobj
 from operator import eq, setitem
 import json
 from stat import S_IRWXG, S_IRWXU
@@ -27,6 +27,7 @@ import ast
 from calendar import timegm, month_abbr
 from random import random
 import glob
+import gzip
 
 # import the C accelerated API of ElementTree
 try:
@@ -584,7 +585,13 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
 
         # Save rotated file in /logs/ossec directory
         rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
-        rename(rotated_file, self.computeArchivesDirectory(rotated_file))
+
+        new_rotated_file = self.computeArchivesDirectory(rotated_file)
+        with open(rotated_file, 'rb') as f_in, gzip.open(new_rotated_file, 'wb') as f_out:
+            copyfileobj(f_in, f_out)
+        chmod(new_rotated_file, 0o640)
+        unlink(rotated_file)
+
 
 
     def computeArchivesDirectory(self, rotated_filepath):
