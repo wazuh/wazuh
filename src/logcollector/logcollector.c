@@ -19,7 +19,7 @@ static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
 #ifndef WIN32
-static void check_pattern_expand(logreader *current);
+static int check_pattern_expand(logreader *current);
 #endif
 
 /* Global variables */
@@ -464,11 +464,22 @@ void LogCollectorStart()
 
 #ifndef WIN32
             // Check for new files to be expanded
-            check_pattern_expand(current);
-            /* Remove duplicate entries */
-            if (remove_duplicates(current, i, j) == NEXT_IT) {
-                i--;
-                continue;
+            if (check_pattern_expand(current)) {
+                /* Remove duplicate entries */
+                for (i = 0, j = -1;; i++) {
+                    if (f_control = update_current(&current, &i, &j), f_control) {
+                        if (f_control == NEXT_IT) {
+                            continue;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (remove_duplicates(current, i, j) == NEXT_IT) {
+                        i--;
+                        continue;
+                    }
+                }
             }
 #endif
             w_rwlock_unlock(&files_update_rwlock);
@@ -753,12 +764,13 @@ void set_read(logreader *current, int i, int j) {
 }
 
 #ifndef WIN32
-void check_pattern_expand(logreader *current) {
+int check_pattern_expand(logreader *current) {
     glob_t g;
     int err;
     int glob_offset;
     int found;
     int i, j;
+    int retval = 0;
 
     if (globs) {
         for (j = 0; globs[j].gpath; j++) {
@@ -787,6 +799,7 @@ void check_pattern_expand(logreader *current) {
                     }
                 }
                 if (!found) {
+                    retval = 1;
                     minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
                     os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
                     if (i) {
@@ -810,6 +823,8 @@ void check_pattern_expand(logreader *current) {
             globfree(&g);
         }
     }
+
+    return retval;
 }
 #endif
 
