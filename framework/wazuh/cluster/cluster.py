@@ -595,11 +595,11 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         :return: New directory path
         """
         rotated_file = path.basename(rotated_filepath)
-        year, month = re.match(r'[\w\.]+\.(\d+)-(\d+)-\d+', rotated_file).groups()
+        year, month, day = re.match(r'[\w\.]+\.(\d+)-(\d+)-(\d+)', rotated_file).groups()
         month = month_abbr[int(month)]
 
         log_path = '{}/logs/cluster/{}/{}'.format(common.ossec_path, year, month)
         if not path.exists(log_path):
             mkdir_with_mode(log_path, 0o750)
 
-        return '{}/{}'.format(log_path, rotated_file)
+        return '{}/cluster-{}.log.gz'.format(log_path, day)
