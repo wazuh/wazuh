@@ -598,7 +598,7 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         year, month = re.match(r'[\w\.]+\.(\d+)-(\d+)-\d+', rotated_file).groups()
         month = month_abbr[int(month)]
 
-        log_path = '{}/logs/ossec/{}/{}'.format(common.ossec_path, year, month)
+        log_path = '{}/logs/cluster/{}/{}'.format(common.ossec_path, year, month)
         if not path.exists(log_path):
             mkdir_with_mode(log_path, 0o750)
 

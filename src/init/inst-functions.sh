@@ -829,6 +829,7 @@ InstallServer(){
 
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/cluster
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/cluster
 
     ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
