@@ -126,4 +126,3 @@ void *SymantecWS_Decoder_Exec(Eventinfo *lf)
 
     return (NULL);
 }
-
