@@ -802,7 +802,6 @@ int w_validate_wday(const char * day_str) {
 
     /* Must be a valid string */
     if (!day_str) {
-        merror(INVALID_DAY, day_str);
         return -1;
     }
 
@@ -828,7 +827,6 @@ char * w_validate_time(const char * time_str) {
     char * ret_time = NULL;
 
     if (!time_str) {
-        merror(INVALID_TIME, time_str);
         return NULL;
     }
 
@@ -860,7 +858,7 @@ char * w_validate_time(const char * time_str) {
 // Validate if the specified interval is multiple of weeks or days
 int w_validate_interval(int interval, int force) {
 
-    int ret;
+    int ret = -1;
 
     switch(force) {
         case 0:     // Force to be a multiple of a day
