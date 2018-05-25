@@ -76,6 +76,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         if (linesgot < linecount) {
             continue;
         }
+        linesgot = 0;
 
         /* Send message to queue */
         if (drop_it == 0) {
