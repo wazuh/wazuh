@@ -56,7 +56,7 @@ def get_timeframe_in_seconds(timeframe):
 
     :return: Time in seconds.
     """
-    if not isinstance(timeframe, int) and len(timeframe) == 2:
+    if not timeframe.isdigit():
         regex = re.compile('(\d*)(\w)$')
         g = regex.findall(timeframe)
         number = int(g[0][0])
