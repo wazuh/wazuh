@@ -688,47 +688,15 @@ class ClientInternalSocketHandler(InternalSocketHandler):
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
 
-        if command == "get_files":
-            split_data = data.split(' ', 1)
-            file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-            node_response = self.manager.handler.process_request(command = 'file_status', data="")
-
-            if node_response[0] == 'err': # Error response
-                response = ["err", json.dumps({"err":node_response[1]})]
-            else:
-                response = json.loads(node_response[1])
-                # Filter files
-                if file_list and len(response):
-                    response = {my_file:content for my_file,content in response.items() if my_file in file_list}
-                response = ['ok', json.dumps(response)]
-        elif command == "get_nodes":
-            node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
-            type_response = node_response[0]
-            response = node_response[1]
-            if type_response == "err":
-                response = ["err", json.dumps({"err":response})]
-            else:
-                response = ['ok', response]
-
-        elif command == "get_health":
-            node_list = data if data != 'None' else None
-            node_response = self.manager.handler.send_request(command=command, data=node_list).split(' ', 1)
-            type_response = node_response[0]
-            response = node_response[1]
-            if type_response == "err":
-                response = ["err", json.dumps({"err":response})]
-            else:
-                response = ['ok', response]
-
-        elif command == "get_agents":
-            node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
-            type_response = node_response[0]
-            response = node_response[1]
-            if type_response == "err":
-                response = ["err", json.dumps({"err":response})]
-            else:
-                response = ['ok', response]
+        if command not in ['get_nodes','get_health','get_agents']:  # ToDo: create a list of valid internal socket commands
+            response = InternalSocketHandler.process_request(self, command, data)
         else:
-            response = json.dumps({'err': "Received an unknown command '{}'".format(command)})
+            node_response = self.manager.handler.send_request(command=command, data=data if data != 'None' else None).split(' ', 1)
+            type_response = node_response[0]
+            response = node_response[1]
+            if type_response == "err":
+                response = ["err", json.dumps({"err": response})]
+            else:
+                response = ['ok', response]
 
         return response

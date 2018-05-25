@@ -712,4 +712,4 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         else:
-            return ['err', json.dumps({'err': "Received an unknown command '{}'".format(command)})]
+            InternalSocketHandler.process_request(self,command,data)

@@ -678,7 +678,7 @@ class InternalSocketHandler(Handler):
 
 
     def process_request(self, command, data):
-        raise NotImplementedError
+        return ['err', json.dumps({'err', "Received an unknown command '{}'".format(command)})]
 
 
 class InternalSocket(asyncore.dispatcher):
