@@ -49,48 +49,24 @@ def create_exception_dic(id, e):
     return exception_dic
 
 
-def get_timeframe_int(timeframe):
+def get_timeframe_in_seconds(timeframe):
     """
     Gets number of seconds from a timeframe.
-    :param older_than: Time in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s.
+    :param timeframe: Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s".
 
     :return: Time in seconds.
     """
+    if not isinstance(timeframe, int) and len(timeframe) == 2:
+        regex = re.compile('(\d*)(\w)$')
+        g = regex.findall(timeframe)
+        number = int(g[0][0])
+        unit = g[0][1]
+        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's':1}
+        seconds = number * time_equivalence_seconds[unit]
+    else:
+        seconds = int(timeframe)
 
-    if not isinstance(timeframe, int):
-        regex_days = re.compile('\d*d')
-        regex_hours = re.compile('\d*h')
-        regex_minutes = re.compile('\d*m')
-        regex_seconds = re.compile('\d*s')
-
-        timeframe_str = timeframe
-        timeframe = 0
-
-        days = regex_days.search(timeframe_str)
-        if days is not None:
-            days = days.group().replace("d", "")
-            timeframe += int(days) * 86400
-
-        hours = regex_hours.search(timeframe_str)
-        if hours is not None:
-            hours = hours.group().replace("h", "")
-            timeframe += int(hours) * 3600
-
-        minutes = regex_minutes.search(timeframe_str)
-        if minutes is not None:
-            minutes = minutes.group().replace("m", "")
-            timeframe += int(minutes) * 60
-
-        seconds = regex_seconds.search(timeframe_str)
-        if seconds is not None:
-            seconds = seconds.group().replace("s", "")
-            timeframe += int(seconds)
-
-        # If user sends an integer as string:
-        if timeframe == 0:
-            timeframe = int(timeframe_str)
-
-    return timeframe
+    return seconds
 
 
 class Agent:
@@ -841,7 +817,7 @@ class Agent:
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
         :param search: Looks for items with the specified string.
-        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s. For never connected agents, uses the register date.
+        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never connected agents, uses the register date.
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
@@ -900,7 +876,7 @@ class Agent:
             query = query[:-3] + ")" #Remove the last OR from query
 
         if older_than != 'all':
-            request['older_than'] = get_timeframe_int(older_than)
+            request['older_than'] = get_timeframe_in_seconds(older_than)
             query += " AND ("
             # If the status is not neverconnected, compare older_than with the last keepalive:
             query += "(last_keepalive IS NOT NULL AND CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
@@ -1223,10 +1199,10 @@ class Agent:
         """
         Removes an existing agent.
 
-        :param agent_id: List of agents ID's.
+        :param list_agent_ids: List of agents ID's.
         :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
-        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s. For never connected agents, uses the register date.
+        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never connected agents, uses the register date.
         :param status: Filters by agent status: Active, Disconnected or Never connected. Multiples statuses separated by commas.
         :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary (agents that cannot been removed), and a message.
         """
