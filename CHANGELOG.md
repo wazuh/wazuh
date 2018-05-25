@@ -24,6 +24,11 @@ All notable changes to this project will be documented in this file.
 - Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
 - Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
 - Add rescanning of expanded files with wildcards in logcollector ([#332](https://github.com/wazuh/wazuh/pull/332))
+- Parallelization of logcollector ([#627](https://github.com/wazuh/wazuh/pull/672))
+  - Now the input of logcollector is multithreaded, reading logs in parallel.
+  - A thread is created for each type of output socket.
+  - Periodically rescan of new files.
+  - New options have been added to internal_options.conf file.
 
 ### Changed
 
