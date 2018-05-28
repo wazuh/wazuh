@@ -6,4 +6,10 @@
 import wazuh.cluster.dapi.requests_list as rq
 
 def distribute_function(input_json):
-    return rq.functions[input_json['function']]()
+    if 'arguments' in input_json and input_json['arguments']:
+        return rq.functions[input_json['function']](**input_json['arguments'])
+    else:
+        return rq.functions[input_json['function']]()
+
+def get_functions():
+    return rq.functions.keys()
