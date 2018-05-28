@@ -217,12 +217,6 @@ int main(int argc, char **argv)
     //Start shared download
     w_init_shared_download();
 
-    // Prepares shared memory
-    if (remoted_state = mmap(NULL, sizeof(remoted_state_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0), remoted_state == MAP_FAILED) {
-        merror_exit(SHA_MEM_ERROR);
-    }
-    memset(remoted_state, 0, sizeof(remoted_state_t));
-
     /* Really start the program */
     i = 0;
     while (logr.conn[i] != 0) {
@@ -238,6 +232,5 @@ int main(int argc, char **argv)
         }
     }
 
-    rem_state_main();
     return (0);
 }

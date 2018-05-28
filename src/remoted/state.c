@@ -13,9 +13,10 @@
 #include "remoted.h"
 #include <pthread.h>
 
-remoted_state_t *remoted_state;
+remoted_state_t remoted_state = {0};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int rem_write_state();
+static char *refresh_time;
 
 void * rem_state_main() {
     int interval = getDefine_Int("remoted", "state_interval", 0, 86400);
@@ -23,6 +24,15 @@ void * rem_state_main() {
     if (!interval) {
         minfo("State file is disabled.");
         return NULL;
+    }
+
+    os_calloc(30, sizeof(char), refresh_time);
+    if (interval < 60) {
+        snprintf(refresh_time, 30, "Updated every %i seconds.", interval);
+    } else if (interval < 3600) {
+        snprintf(refresh_time, 30, "Updated every %i minutes.", interval/60);
+    } else {
+        snprintf(refresh_time, 30, "Updated every %i hours.", interval/3600);
     }
 
     mdebug1("State file updating thread started.");
@@ -57,11 +67,18 @@ int rem_write_state() {
     }
 
     w_mutex_lock(&state_mutex);
-    memcpy(&state_cpy, remoted_state, sizeof(remoted_state_t));
+    memcpy(&state_cpy, &remoted_state, sizeof(remoted_state_t));
     w_mutex_unlock(&state_mutex);
 
     fprintf(fp,
         "# State file for %s\n"
+        "# %s\n"
+        "\n"
+        "# Queue size\n"
+        "queue_size:'%zu'\n"
+        "\n"
+        "# Total queue size\n"
+        "total_queue_size:'%zu'\n"
         "\n"
         "# TCP sessions\n"
         "tcp_sessions:'%u'\n"
@@ -72,9 +89,14 @@ int rem_write_state() {
         "# Control messages received\n"
         "ctrl_msg_count:'%u'\n"
         "\n"
+        "# Discarded messages\n"
+        "discarded_count:'%u'\n"
+        "\n"
         "# Messages sent\n"
         "msg_sent:'%u'\n",
-        __local_name, state_cpy.tcp_sessions, state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.msg_sent);
+        __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
+        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent);
+
     fclose(fp);
 
     if (rename(path_temp, path) < 0) {
@@ -90,30 +112,36 @@ int rem_write_state() {
 
 void rem_inc_tcp() {
     w_mutex_lock(&state_mutex);
-    remoted_state->tcp_sessions++;
+    remoted_state.tcp_sessions++;
     w_mutex_unlock(&state_mutex);
 }
 
 void rem_dec_tcp() {
     w_mutex_lock(&state_mutex);
-    remoted_state->tcp_sessions--;
+    remoted_state.tcp_sessions--;
     w_mutex_unlock(&state_mutex);
 }
 
 void rem_inc_evt() {
     w_mutex_lock(&state_mutex);
-    remoted_state->evt_count++;
+    remoted_state.evt_count++;
     w_mutex_unlock(&state_mutex);
 }
 
 void rem_inc_ctrl_msg() {
     w_mutex_lock(&state_mutex);
-    remoted_state->ctrl_msg_count++;
+    remoted_state.ctrl_msg_count++;
     w_mutex_unlock(&state_mutex);
 }
 
 void rem_inc_msg_sent() {
     w_mutex_lock(&state_mutex);
-    remoted_state->msg_sent++;
+    remoted_state.msg_sent++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_discarded() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.discarded_count++;
     w_mutex_unlock(&state_mutex);
 }

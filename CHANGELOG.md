@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
   - A thread is created for each type of output socket.
   - Periodically rescan of new files.
   - New options have been added to internal_options.conf file.
+- Added statistical functions to remoted. ([#682](https://github.com/wazuh/wazuh/pull/682))
 - Added a recursion level option to Syscheck to set the directory scanning depth. ([#1081](https://github.com/wazuh/wazuh/pull/1081))
 - Added custom tags to FIM directories and registries. ([#1096](https://github.com/wazuh/wazuh/pull/1096))
 

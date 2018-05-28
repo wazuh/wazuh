@@ -42,6 +42,7 @@ typedef struct message_t {
 /* Status structure */
 
 typedef struct remoted_state_t {
+    unsigned int discarded_count;
     unsigned int tcp_sessions;
     unsigned int evt_count;
     unsigned int ctrl_msg_count;
@@ -107,6 +108,12 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * ad
 // Pop message from queue
 message_t * rem_msgpop();
 
+// Get queue size
+size_t rem_get_qsize();
+
+// Get total queue size
+size_t rem_get_tsize();
+
 // Free message
 void rem_msgfree(message_t * message);
 
@@ -123,6 +130,5 @@ void rem_inc_msg_sent();
 extern keystore keys;
 extern remoted logr;
 extern char* node_name;
-extern remoted_state_t *remoted_state;
 
 #endif /* __LOGREMOTE_H */
