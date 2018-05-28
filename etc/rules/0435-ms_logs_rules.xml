@@ -15,7 +15,7 @@
         <if_sid>18101</if_sid>
         <id>1102</id>
         <description>The audit log was cleared</description>
-        <group>log_clearing_auditlog,gpg13_10.1,</group>
+        <group>log_clearing_auditlog,gpg13_10.1,gdpr_II_5.1.f,gdpr_IV_30.1.g,</group>
     </rule>
 
     <!--
@@ -25,7 +25,7 @@
         <if_sid>18101</if_sid>
         <id>^104$</id>
         <description>The Internet Explorer log file was cleared</description>
-        <group>log_clearing_ie,gpg13_10.1,</group>
+        <group>log_clearing_ie,gpg13_10.1,gdpr_II_5.1.f,</group>
     </rule>
 
     <!--

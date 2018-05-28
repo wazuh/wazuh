@@ -163,9 +163,9 @@ int wm_checks_package_vulnerability(char *version, const char *operation, char *
             }
 
             if (version_value > cversion_value) {
-                return 0;
+                return VU_NOT_VULNERABLE;
             } else if (version_value < cversion_value) {
-                return 1;
+                return VU_VULNERABLE;
             }
 
             // Separate the version from the revision
@@ -221,6 +221,10 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     // For RedHat/CentOS packages
     (found = strstr(version_it, ".el"))? *found = '\0' : 0;
     (found = strstr(cversion_it, ".el"))? *found = '\0' : 0;
+
+    // For Amazon Linux packages
+    (found = strstr(version_it, ".amzn"))? *found = '\0' : 0;
+    (found = strstr(cversion_it, ".amzn"))? *found = '\0' : 0;
 
     // Check version
     if (strcmp(version_it, cversion_it)) {
@@ -1364,6 +1368,7 @@ int wm_vulnerability_detector_socketconnect(char *url) {
 		}
 	}
 
+    // https://bugzilla.redhat.com/show_bug.cgi?id=116526
 	freeaddrinfo(host_info);
 
     if (*ip_addr == '\0') {
@@ -2019,6 +2024,26 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
             if (manager_found) {
                 strncpy(m_uname, uname_p, OS_MAXSTR -1);
                 m_uname[OS_MAXSTR - 1] = '\0';
+            } else {
+                struct stat file_status;
+                char skip = 0;
+
+                if (stat(agent_info, &file_status) < 0) {
+                    skip = 1;
+                }
+
+                if (file_status.st_mtime < (time(0) - DISCON_TIME)) {
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AG_DISC, agents->agent_name);
+                    skip = 1;
+                }
+
+                if (skip) {
+                    if (agents = skip_agent(agents, agents_software), !agents) {
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
             }
             buffer = agent_info;
             size_t max = OS_MAXSTR;
@@ -2077,6 +2102,8 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
                                     continue;
                                 }
                             }
+                        } else if (strcasestr(buffer, VU_AMAZL)) {
+                            os_strdup(VU_RHEL7, agents->OS);
                         } else {
                             mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS, agents->agent_name);
                             if (agents = skip_agent(agents, agents_software), !agents) {

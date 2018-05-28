@@ -66,6 +66,7 @@ int GlobalConf(const char *cfgfile)
     Config.rotate_interval = 0;
     Config.min_rotate_interval = 0;
     Config.max_output_size = 0;
+    Config.queue_size = 131072;
 
     os_calloc(1, sizeof(wlabel_t), Config.labels);
 
@@ -95,6 +96,15 @@ int GlobalConf(const char *cfgfile)
     if (Config.max_output_size && (Config.max_output_size < 1000000 || Config.max_output_size > 1099511627776)) {
         merror("Maximum output size must be between 1 MiB and 1 TiB.");
         return (OS_INVALID);
+    }
+
+    if (Config.queue_size < 1) {
+        merror("Queue size is invalid. Review configuration.");
+        return OS_INVALID;
+    }
+
+    if (Config.queue_size > 262144) {
+        mwarn("Queue size is very high. The application may run out of memory.");
     }
 
     return (0);

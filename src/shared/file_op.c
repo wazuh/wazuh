@@ -2041,3 +2041,36 @@ cJSON* getunameJSON()
     else
         return NULL;
 }
+
+static int qsort_strcmp(const void *s1, const void *s2) {
+    return strcmp(*(const char **)s1, *(const char **)s2);
+}
+
+// Read directory and return an array of contained files, sorted alphabetically.
+char ** wreaddir(const char * name) {
+    DIR * dir;
+    struct dirent * dirent;
+    char ** files;
+    unsigned int i = 0;
+
+    if (dir = opendir(name), !dir) {
+        return NULL;
+    }
+
+    files = malloc(sizeof(char *));
+
+    while (dirent = readdir(dir), dirent) {
+        // Skip "." and ".."
+        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+            continue;
+        }
+
+        files = realloc(files, (i + 2) * sizeof(char *));
+        files[i++] = strdup(dirent->d_name);
+    }
+
+    files[i] = NULL;
+    qsort(files, i, sizeof(char *), qsort_strcmp);
+    closedir(dir);
+    return files;
+}
