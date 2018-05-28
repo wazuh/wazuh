@@ -28,7 +28,7 @@ try:
 
     # Import cluster
     from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
-    from wazuh.cluster.control import check_cluster_status, get_nodes, get_healthcheck, get_agents, sync, get_files
+    from wazuh.cluster.control import check_cluster_status, get_nodes, get_healthcheck, sync, get_files, get_agents
 
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -244,7 +244,7 @@ def sync_master(filter_node):
 
 
 ### Get agents
-def print_agents(filter_status=None, filter_node=None):
+def print_agents(filter_status, filter_node):
     agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
     data = [[agent['id'], agent['ip'], agent['name'], agent['status'],agent['node_name']] for agent in agents['items']]
     headers = ["ID", "Address", "Name", "Status", "Node"]
@@ -253,6 +253,7 @@ def print_agents(filter_status=None, filter_node=None):
         print ("Found {} agent(s) with status '{}'.".format(len(agents['items']), "".join(filter_status)))
     else:
         print ("Listing {} agent(s).".format(len(agents['items'])))
+
 
 ### Get healthchech
 def print_healthcheck(conf, more=False, filter_node=None):

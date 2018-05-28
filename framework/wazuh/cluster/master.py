@@ -24,6 +24,7 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, \
     read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, ClusterThread
 from wazuh.cluster.internal_socket import InternalSocketHandler
+from wazuh.cluster.dapi import dapi
 from wazuh.utils import mkdir_with_mode
 
 
@@ -679,17 +680,6 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
 
-        elif command == 'get_agents':
-            split_data = data.split('%--%', 5)
-            filter_status = split_data[0] if split_data[0] != 'None' else None
-            filter_nodes = split_data[1] if split_data[1] != 'None' else None
-            offset = split_data[2] if split_data[2] != 'None' else None
-            limit = split_data[3] if split_data[3] != 'None' else None
-            sort = split_data[4] if split_data[4] != 'None' else None
-            search = split_data[5] if split_data[5] != 'None' else None
-            response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
-            serialized_response = ['ok',  json.dumps(response)]
-            return serialized_response
 
         elif command == 'get_health':
             node_list = data if data != 'None' else None
@@ -710,6 +700,9 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                 response = list(self.manager.send_request_broadcast(command=command, data=data))
                 serialized_response = ['ok', json.dumps({node:data for node,data in response})]
             return serialized_response
+
+        elif command == 'dapi':
+            return ['ok', json.dumps(dapi.distribute_function(json.loads(data)))]
 
         else:
             InternalSocketHandler.process_request(self,command,data)

@@ -103,33 +103,22 @@ def get_healthcheck(filter_node=None):
     request="get_health {}".format(filter_node)
     return __execute(request)
 
-def get_agents(filter_status="all", filter_node="all", offset=0, limit=common.database_limit, sort=None, search=None):
-    filter_status_f = "all"
-    filter_node_f = "all"
-
-    if filter_status and filter_status != "all":
-        filter_status_f = filter_status.lower().replace(" ", "").replace("-", "")
-        if filter_status_f == "neverconnected":
-            filter_status_f = "Never connected"
-        elif filter_status_f == "active":
-            filter_status_f = "Active"
-        elif filter_status_f == "disconnected":
-            filter_status_f = "Disconnected"
-        elif filter_status_f == "pending":
-            filter_status_f = "Pending"
-        else:
-            raise WazuhException(3008, "'{}' is not a valid agent status. Try with 'Active', 'Disconnected', 'NeverConnected' or 'Pending'.".format(filter_status))
-
-    if filter_node:
-        filter_node_f = [node_name.lower() for node_name in filter_node]
-
-    request="get_agents {}%--%{}%--%{}%--%{}%--%{}%--%{}".format(filter_status_f, filter_node_f, offset, limit, sort, search)
-    return __execute(request)
 
 def sync(filter_node=None):
     request = "sync {}".format(filter_node) if filter_node else "sync"
     return __execute(request)
 
+
 def get_files(filter_file_list=None, filter_node_list=None):
     request = "get_files {}".format(filter_file_list) if not filter_node_list else "get_files {}%--%{}".format(filter_file_list, filter_node_list)
+    return __execute(request)
+
+
+def get_agents(filter_status, filter_node):
+    filter_status = "all" if not filter_status else filter_status
+    filter_node = "all" if not filter_node else filter_node
+
+    input_json = {'function': '/agents', 'arguments': {'status': filter_status, 'node_name': filter_node,
+                                                       'select': {'fields': ['id','ip','name','status','node_name']}}}
+    request = "dapi {}".format(json.dumps(input_json))
     return __execute(request)
