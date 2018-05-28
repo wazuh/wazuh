@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh import common
+from wazuh import common, WazuhException
 from wazuh.cluster.cluster import check_cluster_status, get_cluster_items_communication_intervals
 from wazuh.cluster import __version__
 from wazuh.utils import WazuhVersion
@@ -386,10 +386,13 @@ class Handler(asyncore.dispatcher_with_send):
     def dispatch(self, command, payload):
         try:
             return self.process_request(command, payload)
+        except WazuhException as e:
+            logger.error("[Transport-Handler] {0}".format(e.message))
+            return 'err', str(e)
         except Exception as e:
             error_msg = "Error processing command '{0}': '{1}'.".format(command, e)
             logger.error("[Transport-Handler] {0}".format(error_msg))
-            return 'err ', error_msg
+            return 'err', error_msg
 
 
     def process_request(self, command, data):

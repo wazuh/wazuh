@@ -116,14 +116,13 @@ def read_config():
     return config_cluster
 
 
-def get_node(name=None):
+def get_node():
     data = {}
-    if not name:
-        config_cluster = read_config()
+    config_cluster = read_config()
 
-        data["node"]    = config_cluster["node_name"]
-        data["cluster"] = config_cluster["name"]
-        data["type"]    = config_cluster["node_type"]
+    data["node"]    = config_cluster["node_name"]
+    data["cluster"] = config_cluster["name"]
+    data["type"]    = config_cluster["node_type"]
 
     return data
 

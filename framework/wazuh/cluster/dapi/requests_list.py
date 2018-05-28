@@ -23,88 +23,286 @@ import wazuh.syscollector as syscollector
 
 functions = {
     # Agents
-    '/agents/:agent_id': Agent.get_agent,
-    '/agents/name/:agent_name': Agent.get_agent_by_name,
-    '/agents/:agent_id/key': Agent.get_agent_key,
-    '/agents': Agent.get_agents_overview,
-    '/agents/summary': Agent.get_agents_summary,
-    '/agents/summary/os': Agent.get_os_summary,
-    '/agents/outdated': Agent.get_outdated_agents,
-    '/agents/:agent_id/upgrade_result': Agent.get_upgrade_result,
-    'PUT/agents/:agent_id/upgrade': Agent.upgrade_agent,
-    'PUT/agents/:agent_id/upgrade_custom': Agent.upgrade_agent_custom,
-    'PUT/agents/:agent_id/restart': Agent.restart_agents,
-    'PUT/agents/restart': Agent.restart_agents,
-    'PUT/agents/:agent_name': Agent.add_agent,
-    'POST/agents/restart': Agent.restart_agents,
-    'POST/agents': Agent.add_agent,
-    'POST/agents/insert': Agent.insert_agent,
-    'DELETE/agents/groups': Agent.remove_group,
-    'DELETE/agents/:agent_id': Agent.remove_agent,
-    'DELETE/agents/': Agent.remove_agent,
+    '/agents/:agent_id': {
+        'function': Agent.get_agent,
+        'type': 'local_master'
+    },
+    '/agents/name/:agent_name': {
+        'function': Agent.get_agent_by_name,
+        'type': 'local_master'
+    },
+    '/agents/:agent_id/key': {
+        'function': Agent.get_agent_key,
+        'type': 'local_master'
+    },
+    '/agents': {
+        'function': Agent.get_agents_overview,
+        'type': 'local_master'
+    },
+    '/agents/summary': {
+        'function': Agent.get_agents_summary,
+        'type': 'local_master'
+    },
+    '/agents/summary/os': {
+        'function': Agent.get_os_summary,
+        'type': 'local_master'
+    },
+    '/agents/outdated': {
+        'function': Agent.get_outdated_agents,
+        'type': 'local_master'
+    },
+    '/agents/:agent_id/upgrade_result': {
+        'function': Agent.get_upgrade_result,
+        'type': 'local_master'
+    },
+    'PUT/agents/:agent_id/upgrade': {
+        'function': Agent.upgrade_agent,
+        'type': 'local_master'
+    },
+    'PUT/agents/:agent_id/upgrade_custom': {
+        'function': Agent.upgrade_agent_custom,
+        'type': 'local_master'
+    },
+    'PUT/agents/:agent_id/restart': {
+        'function': Agent.restart_agents,
+        'type': 'local_master'
+    },
+    'PUT/agents/restart': {
+        'function': Agent.restart_agents,
+        'type': 'local_master'
+    },
+    'PUT/agents/:agent_name': {
+        'function': Agent.add_agent,
+        'type': 'local_master'
+    },
+    'POST/agents/restart': {
+        'function': Agent.restart_agents,
+        'type': 'local_master'
+    },
+    'POST/agents': {
+        'function': Agent.add_agent,
+        'type': 'local_master'
+    },
+    'POST/agents/insert': {
+        'function': Agent.insert_agent,
+        'type': 'local_master'
+    },
+    'DELETE/agents/groups': {
+        'function': Agent.remove_group,
+        'type': 'local_master'
+    },
+    'DELETE/agents/:agent_id': {
+        'function': Agent.remove_agent,
+        'type': 'local_master'
+    },
+    'DELETE/agents/': {
+        'function': Agent.remove_agent,
+        'type': 'local_master'
+    },
 
     # Groups
-    '/agents/groups': Agent.get_all_groups,
-    '/agents/no_group': Agent.get_agents_without_group,
-    '/agents/groups/:group_id': Agent.get_agent_group,
-    '/agents/groups/:group_id/configuration':configuration.get_agent_conf,
-    '/agents/groups/:group_id/files':Agent.get_group_files,
-    '/agents/groups/:group_id/files/:filename':configuration.get_file_conf,
-    'PUT/agents/:agent_id/group/:group_id': Agent.set_group,
-    'PUT/agents/groups/:group_id': Agent.create_group,
-    'DELETE/agents/groups/:group_id':Agent.remove_group,
-    'DELETE/agents/:agent_id/group':Agent.unset_group,
+    '/agents/groups': {
+        'function': Agent.get_all_groups,
+        'type': 'local_master'
+    },
+    '/agents/no_group': {
+        'function': Agent.get_agents_without_group,
+        'type': 'local_master'
+    },
+    '/agents/groups/:group_id': {
+        'function': Agent.get_agent_group,
+        'type': 'local_master'
+    },
+    '/agents/groups/:group_id/configuration': {
+        'function': configuration.get_agent_conf,
+        'type': 'local_master'
+    },
+    '/agents/groups/:group_id/files': {
+        'function': Agent.get_group_files,
+        'type': 'local_master'
+    },
+    '/agents/groups/:group_id/files/:filename': {
+        'function': configuration.get_file_conf,
+        'type': 'local_master'
+    },
+    'PUT/agents/:agent_id/group/:group_id': {
+        'function': Agent.set_group,
+        'type': 'local_master'
+    },
+    'PUT/agents/groups/:group_id': {
+        'function': Agent.create_group,
+        'type': 'local_master'
+    },
+    'DELETE/agents/groups/:group_id': {
+        'function': Agent.remove_group,
+        'type': 'local_master'
+    },
+    'DELETE/agents/:agent_id/group': {
+        'function': Agent.unset_group,
+        'type': 'local_master'
+    },
 
     # Decoders
-    '/decoders': Decoder.get_decoders,
-    '/decoders/files': Decoder.get_decoders_files,
+    '/decoders': {
+        'function': Decoder.get_decoders,
+        'type': 'local_any'
+    },
+    '/decoders/files': {
+        'function': Decoder.get_decoders_files,
+        'type': 'local_master'
+    },
 
     # Managers
-    '/manager/info': Wazuh.get_ossec_init,
-    '/manager/status': manager.status,
-    '/manager/configuration': configuration.get_ossec_conf,
-    '/manager/stats': stats.totals,
-    '/manager/stats/hourly': stats.hourly,
-    '/manager/stats/weekly': stats.weekly,
-    '/manager/logs/summary': manager.ossec_log_summary,
-    '/manager/logs': manager.ossec_log,
+    '/manager/info': {
+        'function': Wazuh.get_ossec_init,
+        'type': 'local_master'
+    },
+    '/manager/status': {
+        'function': manager.status,
+        'type': 'local_master'
+    },
+    '/manager/configuration': {
+        'function': configuration.get_ossec_conf,
+        'type': 'local_master'
+    },
+    '/manager/stats': {
+        'function': stats.totals,
+        'type': 'local_master'
+    },
+    '/manager/stats/hourly': {
+        'function': stats.hourly,
+        'type': 'local_master'
+    },
+    '/manager/stats/weekly': {
+        'function': stats.weekly,
+        'type': 'local_master'
+    },
+    '/manager/logs/summary': {
+        'function': manager.ossec_log_summary,
+        'type': 'local_master'
+    },
+    '/manager/logs': {
+        'function': manager.ossec_log,
+        'type': 'local_master'
+    },
 
     # Cluster
-    '/cluster/status': cluster.get_status_json,
-    '/cluster/config': cluster.read_config,
-    '/cluster/node': cluster.get_node,
-    '/cluster/nodes': cluster_control.get_nodes_api,
-    '/cluster/nodes/:node_name': cluster_control.get_nodes_api,
-    '/cluster/healthcheck': cluster_control.get_healthcheck,
+    '/cluster/status': {
+        'function': cluster.get_status_json,
+        'type': 'local_master'
+    },
+    '/cluster/config': {
+        'function': cluster.read_config,
+        'type': 'local_master'
+    },
+    '/cluster/node': {
+        'function': cluster.get_node,
+        'type': 'local_master'
+    },
+    '/cluster/nodes': {
+        'function': cluster_control.get_nodes_api,
+        'type': 'local_master'
+    },
+    '/cluster/nodes/:node_name': {
+        'function': cluster_control.get_nodes_api,
+        'type': 'local_master'
+    },
+    '/cluster/healthcheck': {
+        'function': cluster_control.get_healthcheck,
+        'type': 'local_master'
+    },
 
     # Rootcheck
-    '/rootcheck/:agent_id': rootcheck.print_db,
-    '/rootcheck/:agent_id/pci': rootcheck.get_pci,
-    '/rootcheck/:agent_id/cis': rootcheck.get_cis,
-    '/rootcheck/:agent_id/last_scan': rootcheck.last_scan,
-    'PUT/rootcheck': rootcheck.run,
-    'DELETE/rootcheck': rootcheck.clear,
+    '/rootcheck/:agent_id': {
+        'function': rootcheck.print_db,
+        'type': 'local_master'
+    },
+    '/rootcheck/:agent_id/pci': {
+        'function': rootcheck.get_pci,
+        'type': 'local_master'
+    },
+    '/rootcheck/:agent_id/cis': {
+        'function': rootcheck.get_cis,
+        'type': 'local_master'
+    },
+    '/rootcheck/:agent_id/last_scan': {
+        'function': rootcheck.last_scan,
+        'type': 'local_master'
+    },
+    'PUT/rootcheck': {
+        'function': rootcheck.run,
+        'type': 'local_master'
+    },
+    'DELETE/rootcheck': {
+        'function': rootcheck.clear,
+        'type': 'local_master'
+    },
 
     # Rules
-    '/rules': Rule.get_rules,
-    '/rules/groups': Rule.get_groups,
-    '/rules/pci': Rule.get_pci,
-    '/rules/gdpr': Rule.get_gdpr,
-    '/rules/files': Rule.get_rules_files,
+    '/rules': {
+        'function': Rule.get_rules,
+        'type': 'local_master'
+    },
+    '/rules/groups': {
+        'function': Rule.get_groups,
+        'type': 'local_master'
+    },
+    '/rules/pci': {
+        'function': Rule.get_pci,
+        'type': 'local_master'
+    },
+    '/rules/gdpr': {
+        'function': Rule.get_gdpr,
+        'type': 'local_master'
+    },
+    '/rules/files': {
+        'function': Rule.get_rules_files,
+        'type': 'local_master'
+    },
 
     # Syscheck
-    '/syscheck/:agent_id': syscheck.files,
-    '/syscheck/:agent_id/last_scan': syscheck.last_scan,
-    'PUT/syscheck': syscheck.run,
-    'DELETE/syscheck': syscheck.clear,
+    '/syscheck/:agent_id': {
+        'function': syscheck.files,
+        'type': 'local_master'
+    },
+    '/syscheck/:agent_id/last_scan': {
+        'function': syscheck.last_scan,
+        'type': 'local_master'
+    },
+    'PUT/syscheck': {
+        'function': syscheck.run,
+        'type': 'local_master'
+    },
+    'DELETE/syscheck': {
+        'function': syscheck.clear,
+        'type': 'local_master'
+    },
 
     # Syscollector
-    '/syscollector/:agent_id/os': syscollector.get_os_agent,
-    '/syscollector/:agent_id/hardware': syscollector.get_hardware_agent,
-    '/syscollector/:agent_id/packages': syscollector.get_packages_agent,
-    '/syscollector/os': syscollector.get_os,
-    '/syscollector/hardware': syscollector.get_hardware,
-    '/syscollector/packages': syscollector.get_packages
+    '/syscollector/:agent_id/os': {
+        'function': syscollector.get_os_agent,
+        'type': 'local_master'
+    },
+    '/syscollector/:agent_id/hardware': {
+        'function': syscollector.get_hardware_agent,
+        'type': 'local_master'
+    },
+    '/syscollector/:agent_id/packages': {
+        'function': syscollector.get_packages_agent,
+        'type': 'local_master'
+    },
+    '/syscollector/os': {
+        'function': syscollector.get_os,
+        'type': 'local_master'
+    },
+    '/syscollector/hardware': {
+        'function': syscollector.get_hardware,
+        'type': 'local_master'
+    },
+    '/syscollector/packages': {
+        'function': syscollector.get_packages,
+        'type': 'local_master'
+    },
 
 }
 

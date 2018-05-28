@@ -97,7 +97,7 @@ class MasterManagerHandler(ServerHandler):
             return serialized_response
         elif command == 'dapi':
             response = dapi.distribute_function(json.loads(data))
-            return ['ok', json.dumps(response)]
+            return ['ok', response]
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
@@ -705,7 +705,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'dapi':
-            return ['ok', json.dumps(dapi.distribute_function(json.loads(data)))]
+            return ['ok', dapi.distribute_function(json.loads(data))]
 
         else:
             InternalSocketHandler.process_request(self,command,data)

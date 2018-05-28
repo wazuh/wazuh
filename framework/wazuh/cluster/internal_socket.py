@@ -5,6 +5,8 @@
 
 from wazuh.cluster import communication
 from wazuh import common
+from wazuh.exception import WazuhException
+from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
 import socket
 import random
 import json
@@ -164,3 +166,33 @@ def send_to_internal_socket(socket_name, message):
         logging.debug("[Transport-InternalSocketSend] Socket closed.")
 
     return response.decode()
+
+
+def check_cluster_status():
+    # Get cluster config
+    cluster_config = read_config()
+
+    if not cluster_config or cluster_config['disabled'] == 'yes':
+        raise WazuhException(3013)
+
+    # Validate cluster config
+    check_cluster_config(cluster_config)
+
+    status = get_status_json()
+    if status["running"] != "yes":
+        raise WazuhException(3012)
+
+
+def execute(request):
+    socket_name = "c-internal"
+    try:
+        # if no exception is raised from function check_cluster_status, the cluster is ok.
+        check_cluster_status()
+
+        response = send_to_internal_socket(socket_name=socket_name, message=request)
+        response_json = json.loads(response)
+        return response_json
+    except WazuhException as e:
+        raise e
+    except Exception as e:
+        raise WazuhException(3009, str(e))
