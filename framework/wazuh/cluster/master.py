@@ -23,7 +23,7 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, \
     compress_files, compare_files, get_agents_status, \
     read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
 from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
-    InternalSocketHandler, ClusterThread
+    InternalSocketHandler, ClusterThread, ProcessString
 from wazuh.utils import mkdir_with_mode
 
 
@@ -94,6 +94,10 @@ class MasterManagerHandler(ServerHandler):
             response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
+        elif command == 'string':
+            string_sender_thread = StringReceiver(manager_handler=self, stopper=self.stopper)
+            string_sender_thread.start()
+            return 'ack', self.set_worker(command, string_sender_thread)
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
@@ -345,6 +349,18 @@ class MasterManagerHandler(ServerHandler):
 #
 # Threads (workers) created by MasterManagerHandler
 #
+
+class StringReceiver(ProcessString):
+
+    def __init__(self, manager_handler, stopper):
+        ProcessString.__init__(self, manager_handler,
+                              manager_handler.get_client(),
+                              stopper)
+        self.thread_tag = "[Master] [{0}] [StringReceiver]".format(self.manager_handler.name)
+
+
+    def check_connection(self):
+        return True
 
 
 class ProcessClient(ProcessFiles):
