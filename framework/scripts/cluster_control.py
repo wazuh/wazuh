@@ -344,11 +344,7 @@ if __name__ == '__main__':
             print ("Wrong arguments.")
             parser.print_help()
         elif args.list_agents:
-            if is_master:
-                print_agents(args.filter_status, args.filter_node)
-            else:
-                print ("Wrong arguments. To use this command you need to be a master node.")
-                parser.print_help()
+            print_agents(args.filter_status, args.filter_node)
 
         elif args.list_nodes:
             print_nodes_status(args.filter_node)
@@ -360,13 +356,6 @@ if __name__ == '__main__':
         else:
             parser.print_help()
             exit()
-
-        #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
-        #elif is_master and args.sync is not None:
-        #    sync_master(args.filter_node)
-        #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
 
     except Exception as e:
         logging.error(str(e))

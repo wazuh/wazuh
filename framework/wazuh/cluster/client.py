@@ -689,7 +689,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
 
-        if command not in ['get_nodes','get_health','get_agents']:  # ToDo: create a list of valid internal socket commands
+        if command not in ['get_nodes','get_health','dapi']:  # ToDo: create a list of valid internal socket commands
             response = InternalSocketHandler.process_request(self, command, data)
         else:
             node_response = self.manager.handler.send_request(command=command, data=data if data != 'None' else None).split(' ', 1)

@@ -95,6 +95,9 @@ class MasterManagerHandler(ServerHandler):
             response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
+        elif command == 'dapi':
+            response = dapi.distribute_function(json.loads(data))
+            return ['ok', json.dumps(response)]
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
