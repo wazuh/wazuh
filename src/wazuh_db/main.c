@@ -218,7 +218,7 @@ void * run_dealer(__attribute__((unused)) void * args) {
         // Accept new peer
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if ((errno == EINTR)) {
+            if (errno == EINTR) {
                 minfo("at run_dealer(): accept(): %s", strerror(errno));
             } else {
                 merror("at run_dealer(): accept(): %s", strerror(errno));

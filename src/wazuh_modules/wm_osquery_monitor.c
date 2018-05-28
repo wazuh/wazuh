@@ -283,8 +283,8 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
         }
 
         // If this point is reached, osquery exited
-
-        wstatus = WEXITSTATUS(wpclose(wfd));
+        int wp_closefd = wpclose(wfd);
+        wstatus = WEXITSTATUS(wp_closefd);
 
         if (wstatus == 127) {
             // 127 means error in exec
