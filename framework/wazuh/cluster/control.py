@@ -7,7 +7,7 @@ import json
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
-from wazuh.cluster.communication import send_to_internal_socket
+from wazuh.cluster.internal_socket import send_to_internal_socket
 from wazuh.utils import sort_array, search_array, cut_array
 
 socket_name = "c-internal"

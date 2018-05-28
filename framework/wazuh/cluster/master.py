@@ -22,8 +22,8 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, \
     decompress_files, get_files_status, \
     compress_files, compare_files, get_agents_status, \
     read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
-from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
-    InternalSocketHandler, ClusterThread
+from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, ClusterThread
+from wazuh.cluster.internal_socket import InternalSocketHandler
 from wazuh.utils import mkdir_with_mode
 
 

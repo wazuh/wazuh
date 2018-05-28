@@ -49,7 +49,7 @@ try:
     from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
     from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
-    from wazuh.cluster.communication import InternalSocketThread
+    from wazuh.cluster.internal_socket import InternalSocketThread
     from wazuh import configuration as config
     from wazuh.manager import status
 
