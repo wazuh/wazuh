@@ -69,6 +69,9 @@ void HandleSecure()
     // Create Request listener thread
     w_create_thread(req_main, NULL);
 
+    // Create State writer thread
+    w_create_thread(rem_state_main, NULL);
+
     /* Create wait_for_msgs threads */
 
     {
@@ -445,9 +448,9 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-        } else {
-            rem_inc_evt();
         }
+    } else {
+        rem_inc_evt();
     }
 }
 
