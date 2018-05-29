@@ -251,7 +251,7 @@ class Handler(asyncore.dispatcher_with_send):
         _, worker_id = self.execute(reason, os.path.basename(file_to_send)).split(' ', 1)
 
         try:
-            res, data = self.execute("file_open", "{}".format(worker_id)).split(' ', 1)
+            res, data = self.execute("new_f_r", "{}".format(worker_id)).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
@@ -260,12 +260,12 @@ class Handler(asyncore.dispatcher_with_send):
 
             with open(file_to_send, 'rb') as f:
                 for chunk in iter(lambda: f.read(chunk_size), b''):
-                    res, data = self.execute("file_update", base_msg + chunk).split(' ', 1)
+                    res, data = self.execute("update_f_r", base_msg + chunk).split(' ', 1)
                     if res == "err":
                         raise Exception(data)
                     time.sleep(interval_file_transfer_send)
 
-            res, data = self.execute("file_close", "{} {}".format(worker_id, self.compute_md5(file_to_send))).split(' ', 1)
+            res, data = self.execute("end_f_r", "{} {}".format(worker_id, self.compute_md5(file_to_send))).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
@@ -278,7 +278,7 @@ class Handler(asyncore.dispatcher_with_send):
         return res + ' ' + data
 
 
-    def send_string(self, node_name, reason, string_data=None, interval_string_transfer_send=0.1):
+    def send_string(self, reason, string_data=None, interval_string_transfer_send=0.1):
         """
         Every chunk sent, this function sleeps for interval_string_transfer_send seconds.
         This way, other network packages can be sent while a long string is being sent.
@@ -288,7 +288,6 @@ class Handler(asyncore.dispatcher_with_send):
 
         The max B that is possible to send is max_string_send_size.
 
-        :param node_name: Name of the client that will receive the request.
         :param interval_string_transfer_send: Time to sleep between each chunk sent.
         :param reason: Command to send before starting to send the file_to_send.
         :param string_data: String data to send to the client.
@@ -312,26 +311,26 @@ class Handler(asyncore.dispatcher_with_send):
             chunk_size = max_msg_size - len(base_msg)
 
             # Start to send
-            res, data = self.execute("str_new", "{}".format(worker_id)).split(' ', 1)
+            res, data = self.execute("new_f_r", "{}".format(worker_id)).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
             # Send string
             for current_size_read in range(0, data_size, chunk_size):
-                res, data = self.execute("str_update", "{}{}".format(base_msg,
+                res, data = self.execute("update_f_r", "{}{}".format(base_msg,
                                             string_data[current_size_read:current_size_read+chunk_size])).split(' ', 1)
                 if res == "err":
                     raise Exception(data)
                 time.sleep(interval_string_transfer_send)
 
             # End
-            res, data = self.execute("str_close", "{}".format(worker_id)).split(' ', 1)
+            res, data = self.execute("end_f_r", "{}".format(worker_id)).split(' ', 1)
             if res == "err":
                 raise Exception(data)
             response = res + " " + data
 
         except Exception as e:
-            error_msg = "Error sending string ({}) to {}: {}.".format(reason, node_name, e)
+            error_msg = "Error sending string ({}): {}.".format(reason, e)
             logger.error("[Transport-Server] {}.".format(error_msg))
             response = "err" + " " + error_msg
 
@@ -458,11 +457,11 @@ class Handler(asyncore.dispatcher_with_send):
 
     def process_request(self, command, data):
 
-        worker_cmds = ['file_open', 'file_update', 'file_close', 'str_new', 'str_update', 'str_close']
+        fragmented_requests_commands = ["new_f_r", "update_f_r", "end_f_r"]
 
         if command == 'echo':
             return 'ok ', data.decode()
-        elif command in worker_cmds:
+        elif command in fragmented_requests_commands:
             # At this moment, the thread should exists
             worker, cmd, message = self.get_worker(data)
             if worker:
@@ -676,7 +675,7 @@ class Server(asyncore.dispatcher):
 
     def send_string(self, client_name, reason, string_to_send):
         if client_name in self.get_connected_clients():
-            response = self.get_client_info(client_name)['handler'].send_string(client_name, reason, string_to_send, self.interval_string_transfer_send)
+            response = self.get_client_info(client_name)['handler'].send_string(reason, string_to_send, self.interval_string_transfer_send)
         else:
             error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
             logger.error("[Transport-Server] {0}.".format(error_msg))
@@ -714,6 +713,7 @@ class ClientHandler(Handler):
         ok = self.connect( (host, port) )
         self.name = name
         self.my_connected = False
+        self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']
 
 
     def handle_connect(self):
@@ -898,47 +898,36 @@ def send_to_internal_socket(socket_name, message):
     return response.decode()
 
 
-class ProcessFiles(ClusterThread):
+class FragmentedRequestReceiver(ClusterThread):
 
-    def __init__(self, manager_handler, filename, client_name, stopper):
+    def __init__(self, manager_handler, stopper):
         """
-        Abstract class which defines the necessary methods to receive a file
+        Abstract class which defines the necessary methods to receive a fragmented request
         """
         ClusterThread.__init__(self, stopper)
 
         self.manager_handler = manager_handler  # handler object
-        self.filename = filename                # filename of the file to receive
-        self.name = client_name                 # name of the sender
-        self.command_queue = Queue()            # queue to store received file commands
-        self.received_all_information = False   # flag to indicate whether all file has been received
+        self.command_queue = Queue()            # queue to store received commands
+        self.received_all_information = False   # flag to indicate whether all request has been received
         self.received_error = False             # flag to indicate there has been an error in receiving process
-        self.f = None                           # file object that is being received
         self.id = None                          # id of the thread doing the receiving process
-        self.thread_tag = "[FileThread]"        # logger tag of the thread
         self.n_get_timeouts = 0                 # number of times Empty exception is raised
+
+        #Debug
+        self.thread_tag = "[ReceiveFR]"         # logger tag of the thread
         self.start_time = 0                     # debug: start receiving time
         self.end_time = 0                       # debug: end time
         self.total_time = 0                     # debug: total time receiving
         self.size_received = 0                  # debug: total bytes received
 
         #Intervals
-        self.interval_file_transfer_receive = get_cluster_items_communication_intervals()['file_transfer_receive']
-        self.max_time_receiving_file = get_cluster_items_communication_intervals()['max_time_receiving_file']
-
-
-    # Overridden methods
-    def stop(self):
-        """
-        Stops the thread
-        """
-        if self.id:
-            self.manager_handler.del_worker(self.id)
-        ClusterThread.stop(self)
+        self.interval_transfer_receive = 30
+        self.max_time_receiving = 0.1
 
 
     def run(self):
         """
-        Receives the file and processes it.
+        Receives the request and processes it.
         """
         logger.info("{0}: Start.".format(self.thread_tag))
 
@@ -951,23 +940,13 @@ class ProcessFiles(ClusterThread):
             if self.received_all_information:
                 logger.info("{0}: Reception completed: Time: {1:.2f}s.".format(self.thread_tag, self.total_time))
                 logger.debug("{0}: Reception completed: Size: {2}B.".format(self.thread_tag, self.total_time, self.size_received))
-                try:
-                    result = self.process_file()
-                    if result:
-                        logger.info("{0}: Result: Successfully.".format(self.thread_tag))
-                    else:
-                        logger.error("{0}: Result: Error.".format(self.thread_tag))
-
-                    self.unlock_and_stop(reason="task performed", send_err_request=False)
-                except Exception as e:
-                    logger.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, e))
-                    self.unlock_and_stop(reason="error")
+                self.unlock_and_stop(reason="task performed", send_err_request=False)
 
             elif self.received_error:
-                logger.error("{0}: An error took place during file reception.".format(self.thread_tag))
+                logger.error("{0}: An error took place during request reception.".format(self.thread_tag))
                 self.unlock_and_stop(reason="error")
 
-            else:  # receiving file
+            else:  # receiving request
                 try:
                     try:
                         command, data = self.command_queue.get(block=True, timeout=1)
@@ -977,22 +956,31 @@ class ProcessFiles(ClusterThread):
                         # wait before raising the exception but
                         # check while conditions every second
                         # to stop the thread if a Ctrl+C is received
-                        if self.n_get_timeouts > self.max_time_receiving_file:
-                            raise Exception("No file command was received")
+                        if self.n_get_timeouts > self.max_time_receiving:
+                            raise Exception("No command was received")
                         else:
                             continue
 
-                    self.process_file_cmd(command, data)
+                    self.process_cmd(command, data)
                 except Exception as e:
-                    logger.error("{0}: Unknown error in process_file_cmd: {1}.".format(self.thread_tag, e))
+                    logger.error("{0}: Unknown error in process_cmd: {1}.".format(self.thread_tag, e))
                     self.unlock_and_stop(reason="error")
 
-            time.sleep(self.interval_file_transfer_receive)
+            time.sleep(self.interval_transfer_receive)
 
         logger.info("{0}: End.".format(self.thread_tag))
 
 
-    # New methods
+    # Overridden methods
+    def stop(self):
+        """
+        Stops the thread
+        """
+        if self.id:
+            self.manager_handler.del_worker(self.id)
+        ClusterThread.stop(self)
+
+
     def unlock_and_stop(self, reason, send_err_request=None):
         """
         Releases a lock before stopping the thread
@@ -1002,6 +990,65 @@ class ProcessFiles(ClusterThread):
         """
         self.lock_status(False)
         self.stop()
+
+
+    def set_command(self, command, data):
+        """
+        Adds a received command to the command queue
+
+        :param command: received command
+        :param data: received data (name, chunk, md5...)
+        """
+        split_data = data.split(b' ',1)
+        local_data = split_data[1] if len(split_data) > 1 else None
+        self.command_queue.put((command, local_data))
+
+
+    def process_cmd(self, command, data):
+        """
+        Process the commands received in the command queue
+        """
+        try:
+            if command == "new_f_r":
+                self.start_time = time.time()
+                self.start_reception()
+
+            elif command == "update_f_r":
+                self.update(data)
+
+            elif command == "end_f_r":
+                self.close_reception(data)
+                self.end_time = time.time()
+                self.total_time = self.end_time - self.start_time
+
+        except Exception as e:
+            logger.error("{0}: '{1}'.".format(self.thread_tag, e))
+            self.received_error = True
+
+
+    def start_reception(self):
+        """
+        Start the protocol of receiving a string.
+        """
+        raise NotImplementedError
+
+    def update(self, chunk):
+        """
+        Continue the protocol of receiving a request. Append data
+
+        :parm data: data received from socket
+
+        This data must be:
+            - chunk
+        """
+        raise NotImplementedError
+
+
+    def close_reception(self, md5_sum):
+        """
+        Ends the protocol of receiving a request
+        """
+        raise NotImplementedError
 
 
     def check_connection(self):
@@ -1020,86 +1067,37 @@ class ProcessFiles(ClusterThread):
         raise NotImplementedError
 
 
-    def process_file(self):
+
+class FragmentedFileReceiver(FragmentedRequestReceiver):
+
+    def __init__(self, manager_handler, filename, client_name, stopper):
         """
-        Method which defines how to process a file once it's been received.
+        Abstract class which defines the necessary methods to receive and process a fragmented file
         """
-        raise NotImplementedError
+        FragmentedRequestReceiver.__init__(self, manager_handler, stopper)
+
+        self.filename = filename                # filename of the file to receive
+        self.name = client_name                 # name of the sender
+        self.f = None                           # file object that is being received
+
+        #Debug
+        self.thread_tag = "[FileThread]"        # logger tag of the thread
+
+        #Intervals
+        self.interval_transfer_receive = get_cluster_items_communication_intervals()['file_transfer_receive']
+        self.max_time_receiving = get_cluster_items_communication_intervals()['max_time_receiving_file']
 
 
-    def set_command(self, command, data):
-        """
-        Adds a received command to the command queue
-
-        :param command: received command
-        :param data: received data (filename, file chunk, file md5...)
-        """
-        split_data = data.split(b' ',1)
-        local_data = split_data[1] if len(split_data) > 1 else None
-        self.command_queue.put((command, local_data))
-
-
-    def process_file_cmd(self, command, data):
-        """
-        Process the commands received in the command queue
-        """
-        try:
-            if command == "file_open":
-                self.size_received = 0
-                logger.debug("{0}: Opening file.".format(self.thread_tag))
-                self.start_time = time.time()
-                self.file_open()
-            elif command == "file_update":
-                logger.debug("{0}: Updating file.".format(self.thread_tag))
-                self.file_update(data)
-            elif command == "file_close":
-                logger.debug("{0}: Closing file.".format(self.thread_tag))
-                self.file_close(data)
-                logger.debug("{0}: File closed.".format(self.thread_tag))
-                self.end_time = time.time()
-                self.total_time = self.end_time - self.start_time
-                self.received_all_information = True
-        except Exception as e:
-            logger.error("{0}: '{1}'.".format(self.thread_tag, e))
-            self.received_error = True
-
-
-    def file_open(self):
-        """
-        Start the protocol of receiving a file. Create a new file
-        """
+    def __create_and_open_file(self):
         # Create the file
         self.filename = "{}/queue/cluster/{}/{}.tmp".format(common.ossec_path, self.name, self.id)
         logger.debug2("{0}: Creating file {1}".format(self.thread_tag, self.filename))
+        logger.debug("{0}: Opening file.".format(self.thread_tag))
         self.f = open(self.filename, 'wb')
         logger.debug2("{}: File {} created successfully.".format(self.thread_tag, self.filename))
 
 
-    def file_update(self, chunk):
-        """
-        Continue the protocol of receiving a file. Append data
-
-        :parm data: data received from socket
-
-        This data must be:
-            - chunk
-        """
-        # Open the file
-        self.f.write(chunk)
-        self.size_received += len(chunk)
-
-
-    def file_close(self, md5_sum):
-        """
-        Ends the protocol of receiving a file
-
-        :parm data: data received from socket
-
-        This data must be:
-            - MD5 sum
-        """
-        # compare local file's sum with received sum
-        self.f.close()
+    def __check_file_md5(self, md5_sum):
         local_md5_sum = self.manager_handler.compute_md5(self.filename)
         if local_md5_sum != md5_sum.decode():
             error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
@@ -1107,156 +1105,74 @@ class ProcessFiles(ClusterThread):
             os.remove(self.filename)
             raise Exception(error_msg)
 
-        logger.debug2("{0}: File {1} received successfully".format(self.thread_tag, self.filename))
+
+    def start_reception(self):
+        self.__create_and_open_file()
 
 
+    def update(self, chunk):
+        logger.debug("{0}: Updating file.".format(self.thread_tag))
+        self.f.write(chunk)
+        self.size_received += len(chunk)
 
 
-class ProcessString(ClusterThread):
+    def close_reception(self, md5_sum):
+        logger.debug("{0}: Closing file.".format(self.thread_tag))
+        self.f.close()
+        logger.debug("{0}: File closed.".format(self.thread_tag))
+        self.__check_file_md5(md5_sum)
 
-    def __init__(self, manager_handler, node, stopper):
+        result = self.process_file()
+        if result:
+            logger.debug2("{0}: File {1} received successfully".format(self.thread_tag, self.filename))
+            self.received_all_information = True
+        else:
+            raise Exception("Error processing file {0}.".format(self.filename))
+
+
+    def process_file(self):
         """
-        Abstract class which defines the necessary methods to receive a string request
+        Method which defines how to process a file once it's been received.
         """
-        ClusterThread.__init__(self, stopper)
+        raise NotImplementedError
 
-        self.sting_received = ""                # String in process
 
-        self.manager_handler = manager_handler  # handler object
-        self.name = node                        # name of the sender
-        self.command_queue = Queue()            # queue to store received data commands
-        self.received_all_information = False   # flag to indicate whether all data has been received
-        self.received_error = False             # flag to indicate there has been an error in receiving process
-        self.id = None                          # id of the thread doing the receiving process
-        self.thread_tag = "[StringThread]"      # logger tag of the thread
 
-        self.n_get_timeouts = 0                 # number of times Empty exception is raised
-        self.start_time = 0                     # debug: start receiving time
-        self.end_time = 0                       # debug: end time
-        self.total_time = 0                     # debug: total time receiving
-        self.size_received = 0                  # debug: total bytes received
+class FragmentedStringReceiver(FragmentedRequestReceiver):
+
+    def __init__(self, manager_handler, stopper):
+        """
+        Abstract class which defines the necessary methods to receive a fragmented string request
+        """
+        FragmentedRequestReceiver.__init__(self, manager_handler, stopper)
+
+        self.sting_received = ""
+
+        #Debug
+        self.thread_tag = "[StringThread]" # logger tag of the thread
 
         #Intervals
-        self.interval_string_transfer_receive = get_cluster_items_communication_intervals()['string_transfer_receive']
-        self.max_time_receiving_string = get_cluster_items_communication_intervals()['max_time_receiving_string']
+        self.interval_transfer_receive = get_cluster_items_communication_intervals()['string_transfer_receive']
+        self.max_time_receiving = get_cluster_items_communication_intervals()['max_time_receiving_string']
 
 
-    # Overridden methods
-    def stop(self):
-        """
-        Stops the thread
-        """
-        if self.id:
-            self.manager_handler.del_worker(self.id)
-        ClusterThread.stop(self)
-
-
-    def run(self):
-        """
-        Receives the string and processes it.
-        """
-        logger.info("{0}: Start.".format(self.thread_tag))
-
-        while not self.stopper.is_set() and self.running:
-
-            if not self.check_connection():
-                continue
-
-            if self.received_all_information:
-                logger.info("{0}: Reception completed: Time: {1:.2f}s.".format(self.thread_tag, self.total_time))
-                logger.debug("{0}: Reception completed: Size: {2}B.".format(self.thread_tag, self.total_time, self.size_received))
-                self.stop()
-
-            elif self.received_error:
-                logger.error("{0}: An error took place during string reception.".format(self.thread_tag))
-                self.stop()
-
-            else:  # receiving string
-                try:
-                    try:
-                        command, data = self.command_queue.get(block=True, timeout=1)
-                        self.n_get_timeouts = 0
-                    except Empty:
-                        self.n_get_timeouts += 1
-                        # wait before raising the exception but
-                        # check while conditions every second
-                        # to stop the thread if a Ctrl+C is received
-                        if self.n_get_timeouts > self.max_time_receiving_string:
-                            raise Exception("No string was received")
-                        else:
-                            continue
-
-                    self.process_string_cmd(command, data)
-                except Exception as e:
-                    logger.error("{0}: Unknown error in process_string_cmd: {1}.".format(self.thread_tag, e))
-                    self.stop()
-
-            time.sleep(self.interval_string_transfer_receive)
-
-        logger.info("{0}: End.".format(self.thread_tag))
-
-
-    def process_string_cmd(self, command, data):
-        """
-        Process the commands received in the command queue
-        """
-        try:
-            if command == "str_new":
-                self.new_string()
-
-            elif command == "str_update":
-                self.string_update(data)
-
-            elif command == "str_close":
-                self.close_reception()
-
-        except Exception as e:
-            logger.error("{0}: '{1}'.".format(self.thread_tag, e))
-            self.received_error = True
-
-
-    def new_string(self):
-        """
-        Start the protocol of receiving a string.
-        """
-        self.start_time = time.time()
+    def start_reception(self):
         logger.debug("{0}: Receiving new string.".format(self.thread_tag))
-        self.size_received = 0
-        self.received_string = ""
 
 
-    def string_update(self, chunk):
-        """
-        Continue the protocol of receiving a file. Append data
-
-        :parm data: data received from socket
-
-        This data must be:
-            - chunk
-        """
-        # Open the file
+    def update(self, chunk):
         logger.debug("{0}: Updating string.".format(self.thread_tag))
-        logger.debug("Received {0}".format(chunk)) #TODO remove this line
         self.sting_received += chunk
         self.size_received += len(chunk)
 
 
-    def close_reception(self):
-        """
-        Ends the protocol of receiving a file
-        """
+    def close_reception(self, md5_sum):
         logger.debug("{0}: Complete string reception.".format(self.thread_tag))
-        self.end_time = time.time()
-        self.total_time = self.end_time - self.start_time
         self.received_all_information = True
-        logger.debug("**************** Received {0}".format(self.sting_received)) #TODO remove this line
 
 
-    def check_connection(self):
-        """
-        Check if the node is connected. Only defined in client nodes.
-        """
-        raise NotImplementedError
+    def lock_status(self, status):
+        pass # Receive string doesn't need lock the status
 
 
     def get_response(self):
@@ -1268,19 +1184,6 @@ class ProcessString(ClusterThread):
         if self.received_all_information:
             result = True, self.sting_received
         elif self.received_error:
-            result = True, "err Processing string request."
+            result = True, "err Unknown error processing string request."
 
         return result
-
-
-    def set_command(self, command, data):
-        """
-        Adds a received command to the command queue
-
-        :param command: received command
-        :param data: received data (chunks)
-        """
-        split_data = data.split(b' ',1)
-        local_data = split_data[1] if len(split_data) > 1 else None
-        self.command_queue.put((command, local_data))
-

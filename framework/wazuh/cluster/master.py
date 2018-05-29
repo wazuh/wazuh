@@ -22,8 +22,8 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, \
     decompress_files, get_files_status, \
     compress_files, compare_files, get_agents_status, \
     read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
-from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
-    InternalSocketHandler, ClusterThread, ProcessString
+from wazuh.cluster.communication import FragmentedFileReceiver, Server, ServerHandler, \
+    InternalSocketHandler, ClusterThread, FragmentedStringReceiver
 from wazuh.utils import mkdir_with_mode
 
 
@@ -95,7 +95,7 @@ class MasterManagerHandler(ServerHandler):
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         elif command == 'string':
-            string_sender_thread = StringReceiver(manager_handler=self, stopper=self.stopper)
+            string_sender_thread = FragmentedStringReceiverMaster(manager_handler=self, stopper=self.stopper)
             string_sender_thread.start()
             return 'ack', self.set_worker(command, string_sender_thread)
         else:  # Non-master requests
@@ -350,25 +350,22 @@ class MasterManagerHandler(ServerHandler):
 # Threads (workers) created by MasterManagerHandler
 #
 
-class StringReceiver(ProcessString):
+class FragmentedStringReceiverMaster(FragmentedStringReceiver):
 
     def __init__(self, manager_handler, stopper):
-        ProcessString.__init__(self, manager_handler,
-                              manager_handler.get_client(),
-                              stopper)
-        self.thread_tag = "[Master] [{0}] [StringReceiver]".format(self.manager_handler.name)
-
+        FragmentedStringReceiver.__init__(self, manager_handler, stopper)
+        self.thread_tag = "[Master] [{0}] [String-R     ]".format(self.manager_handler.name)
 
     def check_connection(self):
         return True
 
 
-class ProcessClient(ProcessFiles):
+class ProcessClient(FragmentedFileReceiver):
 
     def __init__(self, manager_handler, filename, stopper):
-        ProcessFiles.__init__(self, manager_handler, filename,
-                              manager_handler.get_client(),
-                              stopper)
+        FragmentedFileReceiver.__init__(self, manager_handler, filename,
+                                                  manager_handler.get_client(),
+                                                  stopper)
 
     def check_connection(self):
         return True
@@ -386,7 +383,7 @@ class ProcessClient(ProcessFiles):
 
     def unlock_and_stop(self, reason, send_err_request=None):
         logger.info("{0}: Unlocking '{1}' due to {2}.".format(self.thread_tag, self.status_type, reason))
-        ProcessFiles.unlock_and_stop(self, reason, send_err_request)
+        FragmentedFileReceiver.unlock_and_stop(self, reason, send_err_request)
 
 
 class ProcessClientIntegrity(ProcessClient):
