@@ -19,6 +19,7 @@ from wazuh import common
 from wazuh.utils import mkdir_with_mode
 from wazuh.cluster.communication import ClientHandler, ProcessFiles, ClusterThread
 from wazuh.cluster.internal_socket import InternalSocketHandler
+from wazuh.cluster.dapi import dapi
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,9 @@ class ClientManagerHandler(ClientHandler):
             files = master_files
             files.update(client_files)
             return 'json', json.dumps(files)
+        elif command == 'dapi':
+            response = dapi.distribute_function(json.loads(data))
+            return ['ok', response]
         else:
             return ClientHandler.process_request(self, command, data)
 

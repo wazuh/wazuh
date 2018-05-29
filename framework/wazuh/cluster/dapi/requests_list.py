@@ -67,7 +67,7 @@ functions = {
     },
     'PUT/agents/:agent_id/restart': {
         'function': Agent.restart_agents,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     'PUT/agents/restart': {
         'function': Agent.restart_agents,

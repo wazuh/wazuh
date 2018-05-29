@@ -707,5 +707,10 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         elif command == 'dapi':
             return ['ok', dapi.distribute_function(json.loads(data))]
 
+        elif command == 'dapi_forward':
+            node_name, input_json = data.split(' ', 1)
+            response = self.manager.send_request(client_name=node_name, command='dapi', data=input_json)
+            return response.split(' ',1)
+
         else:
             InternalSocketHandler.process_request(self,command,data)
