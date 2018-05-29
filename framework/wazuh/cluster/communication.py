@@ -947,7 +947,18 @@ class FragmentedRequestReceiver(ClusterThread):
             if self.received_all_information:
                 logger.info("{0}: Reception completed: Time: {1:.2f}s.".format(self.thread_tag, self.total_time))
                 logger.debug("{0}: Reception completed: Size: {2}B.".format(self.thread_tag, self.total_time, self.size_received))
-                self.unlock_and_stop(reason="task performed", send_err_request=False)
+
+                try:
+                    result = self.process_received_data()
+                    if result:
+                        logger.info("{0}: Result: Successfully.".format(self.thread_tag))
+                    else:
+                        logger.error("{0}: Result: Error.".format(self.thread_tag))
+
+                    self.unlock_and_stop(reason="task performed", send_err_request=False)
+                except Exception as e:
+                    logger.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, e))
+                    self.unlock_and_stop(reason="error")
 
             elif self.received_error:
                 logger.error("{0}: An error took place during request reception.".format(self.thread_tag))
@@ -1073,6 +1084,13 @@ class FragmentedRequestReceiver(ClusterThread):
         raise NotImplementedError
 
 
+    def process_received_data(self):
+        """
+        Method which defines how to process a file once it's been received.
+        """
+        raise NotImplementedError
+
+
 
 class FragmentedFileReceiver(FragmentedRequestReceiver):
 
@@ -1127,19 +1145,15 @@ class FragmentedFileReceiver(FragmentedRequestReceiver):
         self.f.close()
         logger.debug("{0}: File closed.".format(self.thread_tag))
         self.__check_file_md5(md5_sum)
+        logger.debug2("{0}: File {1} received successfully".format(self.thread_tag, self.filename))
+        self.received_all_information = True
 
-        result = self.process_file()
-        if result:
-            logger.debug2("{0}: File {1} received successfully".format(self.thread_tag, self.filename))
-            self.received_all_information = True
-        else:
-            raise Exception("Error processing file {0}.".format(self.filename))
+
+    def process_received_data(self):
+        return self.process_file()
 
 
     def process_file(self):
-        """
-        Method which defines how to process a file once it's been received.
-        """
         raise NotImplementedError
 
 
@@ -1199,6 +1213,10 @@ class FragmentedStringReceiver(FragmentedRequestReceiver):
         if self.received_all_information:
             result = True, self.sting_received
         elif self.received_error:
-            result = True, "err Unknown error processing string request."
+            result = True, "Unknown error processing string request."
 
         return result
+
+
+    def process_received_data(self):
+        return True
