@@ -9,6 +9,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import Wazuh
+from wazuh import common
 from wazuh.agent import Agent
 from wazuh.rule import Rule
 from wazuh.decoder import Decoder
@@ -20,6 +21,7 @@ import wazuh.stats as stats
 import wazuh.rootcheck as rootcheck
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
+
 
 functions = {
     # Agents
@@ -154,7 +156,7 @@ functions = {
 
     # Managers
     '/manager/info': {
-        'function': Wazuh.get_ossec_init,
+        'function': Wazuh(common.ossec_path).get_ossec_init,
         'type': 'local_master'
     },
     '/manager/status': {
