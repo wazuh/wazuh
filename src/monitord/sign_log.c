@@ -58,6 +58,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     MD5_Init(&md5_ctx);
     SHA1_Init(&sha1_ctx);
+    SHA256_Init(&sha256_ctx);
 
     /* Generate MD5 of the old file */
     if (OS_MD5_File(logfilesum_old, mf_sum_old, OS_TEXT) < 0) {
