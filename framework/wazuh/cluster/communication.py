@@ -220,13 +220,17 @@ class Handler(asyncore.dispatcher_with_send):
                 return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(worker_id)
 
 
-    def compute_md5(self, my_file, blocksize=2 ** 20):
+    def compute_file_md5(self, my_file, blocksize=2 ** 20):
         hash_algorithm = hashlib.md5()
         with open(my_file, 'rb') as f:
             for chunk in iter(lambda: f.read(blocksize), b''):
                 hash_algorithm.update(chunk)
 
         return hash_algorithm.hexdigest()
+
+
+    def compute_string_md5(self, my_str):
+        return hashlib.md5(my_str).hexdigest()
 
 
     def send_file(self, reason, file_to_send, remove=False, interval_file_transfer_send=0.1):
@@ -265,17 +269,20 @@ class Handler(asyncore.dispatcher_with_send):
                         raise Exception(data)
                     time.sleep(interval_file_transfer_send)
 
-            res, data = self.execute("end_f_r", "{} {}".format(worker_id, self.compute_md5(file_to_send))).split(' ', 1)
+            res, data = self.execute("end_f_r", "{} {}".format(worker_id, self.compute_file_md5(file_to_send))).split(' ', 1)
             if res == "err":
                 raise Exception(data)
+            response = res + " " + data
 
         except Exception as e:
-            logger.error("[Transport-Handler] Error sending file_to_send: '{}'.".format(str(e)))
+            error_msg = "Error sending file ({}): '{}'".format(reason, str(e))
+            logger.error("[Transport-Handler] {}.".format(error_msg))
+            response = "err" + " " + error_msg
 
         if remove:
             os.remove(file_to_send)
 
-        return res + ' ' + data
+        return response
 
 
     def send_string(self, reason, string_data=None, interval_string_transfer_send=0.1):
@@ -324,14 +331,14 @@ class Handler(asyncore.dispatcher_with_send):
                 time.sleep(interval_string_transfer_send)
 
             # End
-            res, data = self.execute("end_f_r", "{}".format(worker_id)).split(' ', 1)
+            res, data = self.execute("end_f_r", "{} {}".format(worker_id, self.compute_string_md5(string_data))).split(' ', 1)
             if res == "err":
                 raise Exception(data)
             response = res + " " + data
 
         except Exception as e:
-            error_msg = "Error sending string ({}): {}.".format(reason, e)
-            logger.error("[Transport-Server] {}.".format(error_msg))
+            error_msg = "Error sending string ({}): {}".format(reason, e)
+            logger.error("[Transport-Handler] {}.".format(error_msg))
             response = "err" + " " + error_msg
 
         return response
@@ -971,7 +978,6 @@ class FragmentedRequestReceiver(ClusterThread):
         logger.info("{0}: End.".format(self.thread_tag))
 
 
-    # Overridden methods
     def stop(self):
         """
         Stops the thread
@@ -1098,7 +1104,7 @@ class FragmentedFileReceiver(FragmentedRequestReceiver):
 
 
     def __check_file_md5(self, md5_sum):
-        local_md5_sum = self.manager_handler.compute_md5(self.filename)
+        local_md5_sum = self.manager_handler.compute_file_md5(self.filename)
         if local_md5_sum != md5_sum.decode():
             error_msg = "Checksum of received file {} is not correct. Expected {} / Found {}".\
                             format(self.filename, md5_sum, local_md5_sum)
@@ -1166,7 +1172,16 @@ class FragmentedStringReceiver(FragmentedRequestReceiver):
         self.size_received += len(chunk)
 
 
+    def __check_md5(self, md5_sum):
+        local_md5_sum = self.manager_handler.compute_string_md5(self.sting_received)
+        if local_md5_sum != md5_sum.decode():
+            error_msg = "Checksum of received string is not correct. Expected {} / Found {}".\
+                            format(md5_sum, local_md5_sum)
+            raise Exception(error_msg)
+
+
     def close_reception(self, md5_sum):
+        self.__check_md5(md5_sum)
         logger.debug("{0}: Complete string reception.".format(self.thread_tag))
         self.received_all_information = True
 
