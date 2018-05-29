@@ -28,7 +28,8 @@ try:
 
     # Import cluster
     from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
-    from wazuh.cluster.control import check_cluster_status, get_nodes, get_healthcheck, sync, get_files, get_agents
+    from wazuh.cluster.control import get_nodes, get_healthcheck, sync, get_files, get_agents
+    from wazuh.cluster.internal_socket import check_cluster_status
 
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
