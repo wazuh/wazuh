@@ -117,7 +117,8 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
             else:
                 continue
         else:
-            logs[-1]['description'] += "\n" + line
+            if logs != []:
+                logs[-1]['description'] += "\n" + line
 
     if search:
         logs = search_array(logs, search['value'], search['negation'])
