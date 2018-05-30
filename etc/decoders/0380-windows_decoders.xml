@@ -621,6 +621,14 @@ Subject:
   <order>srcip</order>
 </decoder>
 
+<decoder name="windows_fields">
+  <type>windows</type>
+  <parent>windows</parent>
+  <regex>Workstation Name:\t*\s*(\S*)\s+Source</regex>
+  <order>workstation_name</order>
+</decoder>
+
+
 <!-- Windows generic END -->
 
 <!-- Windows decoder -NTsyslog format
