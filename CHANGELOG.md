@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 - Fixed segmentation fault in maild when `<queue-size>` is included in the global configuration.
 - Fixed bug in Framework when retrieving mangers logs. ([#644](https://github.com/wazuh/wazuh/pull/644))
 - Fixed bug in clusterd to prevent the synchronization of `.swp` files. ([#694](https://github.com/wazuh/wazuh/pull/694))
-- Fixed bug in Framework parsing agent configuration. ([#694](https://github.com/wazuh/wazuh/pull/681))
+- Fixed bug in Framework parsing agent configuration. ([#681](https://github.com/wazuh/wazuh/pull/681))
 
 
 ## [v3.2.3]
