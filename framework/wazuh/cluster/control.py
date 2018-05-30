@@ -93,4 +93,4 @@ def get_agents(filter_status, filter_node):
                                 'select': {'fields': ['id','ip','name','status','node_name']}}}
 
     request = "dapi {}".format(json.dumps(input_json))
-    return execute(request)
+    return execute(request)['data']

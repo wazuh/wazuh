@@ -626,8 +626,8 @@ class FileStatusUpdateThread(ClusterThread):
 # Internal socket
 #
 class MasterInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, asyncore_map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
+    def __init__(self, sock, server, asyncore_map, addr):
+        InternalSocketHandler.__init__(self, sock=sock, server=server, asyncore_map=asyncore_map, addr=addr)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
@@ -646,7 +646,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                     if node == read_config()['node_name']:
                         get_my_files = True
                         continue
-                    node_file = self.manager.send_request(client_name=node, command='file_status', data='')
+                    node_file = self.server.manager.send_request(client_name=node, command='file_status', data='')
 
                     if node_file.split(' ', 1)[0] == 'err': # Error response
                         response.update({node:node_file.split(' ', 1)[1]})
@@ -655,7 +655,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             else: # Broadcast
                 get_my_files = True
 
-                node_file = list(self.manager.send_request_broadcast(command = 'file_status'))
+                node_file = list(self.server.manager.send_request_broadcast(command = 'file_status'))
 
                 for node,data in node_file:
                     try:
@@ -676,7 +676,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_nodes':
-            response = {name:data['info'] for name,data in self.manager.get_connected_clients().items()}
+            response = {name:data['info'] for name,data in self.server.manager.get_connected_clients().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
 
@@ -686,7 +686,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
         elif command == 'get_health':
             node_list = data if data != 'None' else None
-            response = self.manager.get_healthcheck(node_list)
+            response = self.server.manager.get_healthcheck(node_list)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 
@@ -697,10 +697,10 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
             if node_list:
                 for node in node_list:
-                    response = {node:self.manager.send_request(client_name=node, command=command, data="")}
+                    response = {node:self.server.manager.send_request(client_name=node, command=command, data="")}
                 serialized_response = ['ok', json.dumps(response)]
             else:
-                response = list(self.manager.send_request_broadcast(command=command, data=data))
+                response = list(self.server.manager.send_request_broadcast(command=command, data=data))
                 serialized_response = ['ok', json.dumps({node:data for node,data in response})]
             return serialized_response
 
@@ -709,7 +709,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
         elif command == 'dapi_forward':
             node_name, input_json = data.split(' ', 1)
-            response = self.manager.send_request(client_name=node_name, command='dapi', data=input_json)
+            response = self.server.manager.send_request(client_name=node_name, command='dapi', data=input_json)
             return response.split(' ',1)
 
         else:

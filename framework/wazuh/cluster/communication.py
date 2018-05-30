@@ -436,7 +436,7 @@ class ServerHandler(Handler):
         self.map = asyncore_map
         self.name = None
         self.server = server
-        self.addr = addr
+        self.addr = addr[0] if addr else addr
 
 
     def handle_close(self):
@@ -480,35 +480,33 @@ class ServerHandler(Handler):
         return self.name
 
 
-class Server(asyncore.dispatcher):
+class AbstractServer(asyncore.dispatcher):
 
-    def __init__(self, host, port, handle_type, asyncore_map = {}):
+    def __init__(self, addr, handle_type, socket_type, socket_family, tag, asyncore_map = {}):
         asyncore.dispatcher.__init__(self, map=asyncore_map)
+        self.handle_type = handle_type
+        self.map = asyncore_map
         self._clients = {}
         self._clients_lock = threading.Lock()
-
-        self.map = asyncore_map
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.set_reuse_addr()
-        self.bind((host, port))
+        self.create_socket(socket_type, socket_family)
+        self.bind(addr)
         self.listen(5)
-        self.handle_type = handle_type
-        self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
+        self.tag = tag
 
 
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
             sock, addr = pair
-            logger.debug("[Transport-Server] Incoming connection.")
+            logger.debug("{0} Incoming connection from {1}.".format(self.tag, addr))
 
-            if self.find_client_by_ip(addr[0]):
+            if self.find_client_by_ip(addr):
                 sock.close()
-                logger.warning("[Transport-Server] Incoming connection from '{0}' rejected: Client is already connected.".format(repr(addr)))
+                logger.warning("{0} Incoming connection from '{1}' rejected. Client is already connected.".format(self.tag, repr(addr)))
                 return
 
             # addr is a tuple of form (ip, port)
-            handler = self.handle_type(sock, self, self.map, addr[0])
+            handler = self.handle_type(sock, self, self.map, addr)
 
 
     def handle_error(self):
@@ -521,8 +519,8 @@ class Server(asyncore.dispatcher):
 
         self.handle_close()
 
-        logger.error("[Transport-Server] Error: '{}'.".format(v))
-        logger.debug("[Transport-Server] Error: '{}' - '{}'.".format(t, tbinfo))
+        logger.error("{} Error: '{}'.".format(self.tag, v))
+        logger.debug("{} Error: '{}' - '{}'.".format(self.tag, t, tbinfo))
 
 
     def find_client_by_ip(self, client_ip):
@@ -533,6 +531,63 @@ class Server(asyncore.dispatcher):
                     return client
 
         return None
+
+
+    def add_client(self, data, ip, handler):
+        raise NotImplementedError
+
+
+    def remove_client(self, client_id):
+        with self._clients_lock:
+            try:
+                # Remove threads
+                self._clients[client_id]['handler'].exit()
+
+                del self._clients[client_id]
+            except KeyError:
+                logger.error("{} Client '{}'' is already disconnected.".format(self.tag, client_id))
+
+
+    def get_connected_clients(self):
+        with self._clients_lock:
+            return self._clients
+
+
+    def get_client_info(self, client_name):
+        with self._clients_lock:
+            try:
+                return self._clients[client_name]
+            except KeyError:
+                error_msg = "Client {} is disconnected.".format(client_name)
+                logger.error("{} {}".format(self.tag, error_msg))
+                raise Exception(error_msg)
+
+
+    def send_request_broadcast(self, command, data=None):
+
+        for c_name in self.get_connected_clients():
+            response = self.get_client_info(c_name)['handler'].execute(command, data)
+            yield c_name, response
+
+
+    def send_request(self, client_name, command, data=None):
+
+        if client_name in self.get_connected_clients():
+            response = self.get_client_info(client_name)['handler'].execute(command, data)
+        else:
+            error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
+            logger.error("{0} {1}.".format(self.tag, error_msg))
+            response = "err " + error_msg
+
+        return response
+
+
+class Server(AbstractServer):
+
+    def __init__(self, host, port, handle_type, asyncore_map = {}):
+        AbstractServer.__init__(self, addr=(host,port), handle_type=handle_type, asyncore_map=asyncore_map,
+                                socket_type=socket.AF_INET, socket_family=socket.SOCK_STREAM, tag="[Transport-Server]")
+        self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
 
 
     def add_client(self, data, ip, handler):
@@ -579,53 +634,8 @@ class Server(asyncore.dispatcher):
         return node_id
 
 
-    def remove_client(self, client_id):
-        with self._clients_lock:
-            try:
-                # Remove threads
-                self._clients[client_id]['handler'].exit()
-
-                del self._clients[client_id]
-            except KeyError:
-                logger.error("[Transport-Server] Client '{}'' is already disconnected.".format(client_id))
-
-
-    def get_connected_clients(self):
-        with self._clients_lock:
-            return self._clients
-
-
-    def get_client_info(self, client_name):
-        with self._clients_lock:
-            try:
-                return self._clients[client_name]
-            except KeyError:
-                error_msg = "Client {} is disconnected.".format(client_name)
-                logger.error("[Transport-Server] {}".format(error_msg))
-                raise Exception(error_msg)
-
-
     def send_file(self, client_name, reason, file_to_send, remove = False):
         return self.get_client_info(client_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
-
-
-    def send_request(self, client_name, command, data=None):
-
-        if client_name in self.get_connected_clients():
-            response = self.get_client_info(client_name)['handler'].execute(command, data)
-        else:
-            error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
-            logger.error("[Transport-Server] {0}.".format(error_msg))
-            response = "err " + error_msg
-
-        return response
-
-
-    def send_request_broadcast(self, command, data=None):
-
-        for c_name in self.get_connected_clients():
-            response = self.get_client_info(c_name)['handler'].execute(command, data)
-            yield c_name, response
 
 
 class ClientHandler(Handler):

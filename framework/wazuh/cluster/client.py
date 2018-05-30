@@ -687,8 +687,8 @@ class SyncExtraValidFilesThread(SyncClientThread):
 # Internal socket
 #
 class ClientInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, asyncore_map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
+    def __init__(self, sock, manager, asyncore_map, addr):
+        InternalSocketHandler.__init__(self, sock=sock, server=manager, asyncore_map=asyncore_map, addr=addr)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
@@ -696,7 +696,7 @@ class ClientInternalSocketHandler(InternalSocketHandler):
         if command not in ['get_nodes','get_health','dapi']:  # ToDo: create a list of valid internal socket commands
             response = InternalSocketHandler.process_request(self, command, data)
         else:
-            node_response = self.manager.handler.send_request(command=command, data=data if data != 'None' else None).split(' ', 1)
+            node_response = self.server.manager.handler.send_request(command=command, data=data if data != 'None' else None).split(' ', 1)
             type_response = node_response[0]
             response = node_response[1]
             if type_response == "err":

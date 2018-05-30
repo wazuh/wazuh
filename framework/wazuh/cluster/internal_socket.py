@@ -18,73 +18,51 @@ import asyncore
 
 logger = logging.getLogger(__name__)
 
-class InternalSocketHandler(communication.Handler):
+class InternalSocketHandler(communication.ServerHandler):
 
-    def __init__(self, sock, manager, asyncore_map):
-        communication.Handler.__init__(self, key=None, sock=sock, asyncore_map=asyncore_map)
-        self.manager = manager
+    def __init__(self, sock, server, asyncore_map, addr):
+        communication.ServerHandler.__init__(self, server=server, sock=sock, asyncore_map=asyncore_map, addr=addr)
 
 
     def process_request(self, command, data):
-        return ['err', json.dumps({'err', "Received an unknown command '{}'".format(command)})]
+        if command == 'hello':
+            return ['ack', self.server.add_client()]
+        else:
+            return ['err', json.dumps({'err', "Received an unknown command '{}'".format(command)})]
 
 
-class InternalSocket(asyncore.dispatcher):
+class InternalSocket(communication.AbstractServer):
 
     def __init__(self, socket_name, manager, handle_type, asyncore_map = {}):
-        asyncore.dispatcher.__init__(self, map=asyncore_map)
-        self.handle_type = handle_type
-        self.map = asyncore_map
-        self.socket_name = socket_name
+        self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
+
+        communication.AbstractServer.__init__(self, addr=self.socket_addr, handle_type=handle_type, asyncore_map=asyncore_map,
+                                              socket_type=socket.AF_UNIX, socket_family=socket.SOCK_STREAM,
+                                              tag="[Transport-InternalSocket]")
         self.manager = manager
-        self.socket_address = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", self.socket_name)
-        self.__create_socket()
+        self.config = {'key': None}
 
 
-    def __create_socket(self):
+    def create_socket(self, socket_type, socket_family):
         logger.debug2("[Transport-InternalSocket] Creating.")
 
         # Make sure the socket does not already exist
         try:
-            os.unlink(self.socket_address)
+            os.unlink(self.socket_addr)
         except OSError:
-            if os.path.exists(self.socket_address):
-                logger.error("[Transport-InternalSocket] Error: '{}' already exits".format(self.socket_address))
+            if os.path.exists(self.socket_addr):
+                logger.error("[Transport-InternalSocket] Error: '{}' already exits".format(self.socket_addr))
                 raise
 
-        self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.set_reuse_addr()
-        try:
-            self.bind(self.socket_address)
-            os.chown(self.socket_address, common.ossec_uid, common.ossec_gid)
-            self.listen(5)
-            logger.debug2("[Transport-InternalSocket] Listening.")
-        except Exception as e:
-            logger.error("[Transport-InternalSocket] Cannot create the socket: '{}'.".format(e))
-
-        logger.debug2("[Transport-InternalSocket] Created.")
+        communication.AbstractServer.create_socket(self, socket_type, socket_family)
 
 
-    def handle_accept(self):
-        pair = self.accept()
-        if pair is not None:
-            sock, addr = pair
-            logger.debug("[Transport-InternalSocket] Incoming connection from '{0}'.".format(repr(addr)))
-            handler = self.handle_type(sock=sock, manager=self.manager, asyncore_map=self.map)
+    def add_client(self, data, ip, handler):
+        node_id = random.randint(0, 2 ** 32 -1)
+        with self._clients_lock:
+            self._clients[node_id] = handler
 
-
-    def handle_error(self):
-        nil, t, v, tbinfo = asyncore.compact_traceback()
-
-        try:
-            self_repr = repr(self)
-        except:
-            self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
-
-        self.handle_close()
-
-        logger.error("[Transport-InternalSocket] Error: '{}'.".format(v))
-        logger.debug("[Transport-InternalSocket] Error: '{}' - '{}'.".format(t, tbinfo))
+        return node_id
 
 
 #
@@ -108,6 +86,7 @@ class InternalSocketThread(threading.Thread):
             logger.error("{0} [Internal-COM ]: Error initializing: '{1}'.".format(self.thread_tag, e))
             self.internal_socket = None
 
+
     def run(self):
         while self.running:
             if self.internal_socket:
@@ -115,7 +94,7 @@ class InternalSocketThread(threading.Thread):
 
                 asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
 
-                logger.info("{0} [Internal-COM ]: Disconnected. Trying to connect again in {}s.".format(self.thread_tag, self.interval_connection_retry))
+                logger.info("{0} [Internal-COM ]: Disconnected. Trying to connect again in {1}s.".format(self.thread_tag, self.interval_connection_retry))
 
                 time.sleep(self.interval_connection_retry)
             time.sleep(2)
