@@ -46,7 +46,10 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
     if (File_DateofChange(txt_filename) > File_DateofChange(cdb_filename) ||
             force) {
         printf(" * File %s needs to be updated\n", cdb_filename);
-        tmp_fd = fopen(tmp_filename, "w+");
+        if (tmp_fd = fopen(tmp_filename, "w+"), !tmp_fd) {
+            merror(FOPEN_ERROR, tmp_filename, errno, strerror(errno));
+            return;
+        }
         cdb_make_start(&cdbm, tmp_fd);
         if (!(txt_fd = fopen(txt_filename, "r"))) {
             merror(FOPEN_ERROR, txt_filename, errno, strerror(errno));
@@ -86,4 +89,3 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
         printf(" * File %s does not need to be compiled\n", cdb_filename);
     }
 }
-

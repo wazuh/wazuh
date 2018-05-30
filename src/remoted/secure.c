@@ -18,6 +18,12 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+// Message handler thread
+static void * rem_handler_main(__attribute__((unused)) void * args);
+
+// Key reloader thread
+void * rem_keyupdate_main(__attribute__((unused)) void * args);
+
 /* Handle each message received */
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
 
@@ -51,6 +57,9 @@ void HandleSecure()
     /* Initialize manager */
     manager_init();
 
+    // Initialize messag equeue
+    rem_msginit(logr.queue_size);
+
     /* Create Active Response forwarder thread */
     w_create_thread(update_shared_files, NULL);
 
@@ -73,6 +82,16 @@ void HandleSecure()
         }
     }
 
+    // Create message handler thread pool
+    {
+        int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
+
+        while (worker_pool > 0) {
+            w_create_thread(rem_handler_main, NULL);
+            worker_pool--;
+        }
+    }
+
     /* Connect to the message queue
      * Exit if it fails.
      */
@@ -86,6 +105,9 @@ void HandleSecure()
     minfo(ENC_READ);
     OS_ReadKeys(&keys, 1, 0, 0);
     OS_StartCounter(&keys);
+
+    // Key reloader thread
+    w_create_thread(rem_keyupdate_main, NULL);
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -190,8 +212,6 @@ void HandleSecure()
                         continue;
                     }
 
-                    mdebug2("recv(): length=%d [%zu]", length, recv_b);
-
                     /* Nothing received */
                     if (recv_b <= 0 || length > OS_MAXSTR) {
                         switch (recv_b) {
@@ -236,7 +256,7 @@ void HandleSecure()
 #endif /* __linux__ */
                         _close_sock(&keys, sock_client);
                     } else {
-                        HandleSecureMessage(buffer, recv_b, &peer_info, sock_client);
+                        rem_msgpush(buffer, recv_b, &peer_info, sock_client);
                     }
                 }
             }
@@ -247,9 +267,39 @@ void HandleSecure()
             if (recv_b <= 0) {
                 continue;
             } else {
-                HandleSecureMessage(buffer, recv_b, &peer_info, -1);
+                rem_msgpush(buffer, recv_b, &peer_info, -1);
             }
         }
+    }
+}
+
+// Message handler thread
+void * rem_handler_main(__attribute__((unused)) void * args) {
+    message_t * message;
+    char buffer[OS_MAXSTR + 1] = "";
+    mdebug1("Message handler thread started.");
+
+    while (1) {
+        message = rem_msgpop();
+        memcpy(buffer, message->buffer, message->size);
+        HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        rem_msgfree(message);
+    }
+
+    return NULL;
+}
+
+// Key reloader thread
+void * rem_keyupdate_main(__attribute__((unused)) void * args) {
+    int seconds;
+
+    mdebug1("Key reloader thread started.");
+    seconds = getDefine_Int("remoted", "keyupdate_interval", 1, 3600);
+
+    while (1) {
+        mdebug2("Checking for keys file changes.");
+        check_keyupdate();
+        sleep(seconds);
     }
 }
 
@@ -271,8 +321,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
     memset(srcmsg, '\0', OS_FLSIZE + 1);
     tmp_msg = NULL;
-
-    check_keyupdate();
 
     /* Get a valid agent id */
     if (buffer[0] == '!') {
@@ -300,18 +348,23 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         tmp_msg++;
         recv_b -= 2;
 
+        key_lock_read();
         agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
 
         if (agentid == -1) {
             int id = OS_IsAllowedID(&keys, buffer + 1);
+
             if (id < 0) {
                 strncpy(agname, "unknown", sizeof(agname));
             } else {
                 strncpy(agname, keys.keyentries[id]->name, sizeof(agname));
             }
+
+            key_unlock();
+
             agname[sizeof(agname) - 1] = '\0';
 
-            merror(ENC_IP_ERROR, buffer + 1, srcip, agname);
+            mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
 
             if (sock_client >= 0)
                 _close_sock(&keys, sock_client);
@@ -319,9 +372,11 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             return;
         }
     } else {
+        key_lock_read();
         agentid = OS_IsAllowedIP(&keys, srcip);
 
         if (agentid < 0) {
+            key_unlock();
             mwarn(DENYIP_WARN, srcip);
 
             if (sock_client >= 0)
@@ -333,43 +388,52 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     }
 
     /* Decrypt the message */
+
     tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip);
 
     if (tmp_msg == NULL) {
 
         /* If duplicated, a warning was already generated */
+        key_unlock();
         return;
     }
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        /* We need to save the peerinfo if it is a control msg */
-        memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
+        int r = 2;
 
-        if (protocol == TCP_PROTO) {
-            switch (OS_AddSocket(&keys, agentid, sock_client)) {
-            case 0:
-                merror("Couldn't add TCP socket to keystore.");
-                break;
-            case 1:
-                mdebug2("TCP socket already in keystore.");
-                break;
-            default:
-                ;
-            }
+        key_unlock();
+        key_lock_write();
+
+        /* We need to save the peerinfo if it is a control msg */
+
+        memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
+        r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        keys.keyentries[agentid]->rcvd = time(0);
+        key_unlock();
+
+        switch (r) {
+        case 0:
+            merror("Couldn't add TCP socket to keystore.");
+            break;
+        case 1:
+            mdebug2("TCP socket already in keystore.");
+            break;
+        default:
+            ;
         }
 
-        keys.keyentries[agentid]->rcvd = time(0);
         save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
-
         return;
     }
 
     /* Generate srcmsg */
+
     snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
 
-             mdebug1("000000000000000000000000000000 '%s' _ '%s'", tmp_msg, srcmsg);
+    key_unlock();
+
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
      */
@@ -385,6 +449,12 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
+    int retval;
+
+    key_lock_write();
+    retval = OS_DeleteSocket(keys, sock);
+    key_unlock();
     close(sock);
-    return OS_DeleteSocket(keys, sock);
+
+    return retval;
 }

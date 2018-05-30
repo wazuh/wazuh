@@ -52,52 +52,113 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     wm_ciscat_eval *eval;
     time_t time_start = 0;
     time_t time_sleep = 0;
+    int skip_java = 0;
     char *cis_path = NULL;
     char *jre_path = NULL;
+    char java_fullpath[OS_MAXSTR];
+    char bench_fullpath[OS_MAXSTR];
 
     // Check configuration and show debug information
 
     wm_ciscat_setup(ciscat);
     mtinfo(WM_CISCAT_LOGTAG, "Module started.");
 
+#ifdef WIN32
+    char* current;
+    os_calloc(OS_MAXSTR, sizeof(char), current);
+    if (!GetCurrentDirectory(OS_MAXSTR - 1, current)) {
+        mterror(WM_CISCAT_LOGTAG, "Unable to find current directory. Please use full paths for CIS-CAT configuration.");
+        ciscat->flags.error = 1;
+    }
+#endif
+
     os_calloc(OS_MAXSTR, sizeof(char), cis_path);
 
     // Check if Java path is defined and include it in "PATH" variable
 
     if (ciscat->java_path){
-        os_calloc(OS_MAXSTR, sizeof(char), jre_path);
 
-        char *env_var = getenv("PATH");
+        // Check if the defined path is relative or not
+        switch (wm_relative_path(ciscat->java_path)) {
+            case 0:
+                // Full path
+                snprintf(java_fullpath, OS_MAXSTR - 1, "%s", ciscat->java_path);
+                break;
+            case 1:
+            #ifdef WIN32
+                if (*current) {
+                    snprintf(java_fullpath, OS_MAXSTR - 1, "%s\\%s", current, ciscat->java_path);
+                } else {
+                    skip_java = 1;
+                }
+            #else
+                snprintf(java_fullpath, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->java_path);
+            #endif
+                break;
+            default:
+                mterror(WM_CISCAT_LOGTAG, "Defined Java path is not valid. Using the default one.");
+                skip_java = 1;
+        }
 
-        if (!env_var){
-            snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
-        } else {
-    #ifdef WIN32
-            snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
+        if (!skip_java) {
+            os_strdup(java_fullpath, ciscat->java_path);
+            os_calloc(OS_MAXSTR, sizeof(char), jre_path);
+
+            char *env_var = getenv("PATH");
+
+            if (!env_var){
+                snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
+            } else if (strlen(env_var) >= OS_MAXSTR) {
+                mterror(WM_CISCAT_LOGTAG, "'PATH' variable too long.");
+                ciscat->flags.error = 1;
+            } else {
+
+        #ifdef WIN32
+                snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
+            }
+            if (_putenv(jre_path) < 0) {
+                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+                ciscat->flags.error = 1;
+            }      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
+        #else
+                snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", ciscat->java_path, env_var);
+            }
+            if(setenv("PATH", jre_path, 1) < 0) {
+                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
+                ciscat->flags.error = 1;
+            }
+        #endif
+            char *new_env = getenv("PATH");
+            mtdebug1(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
         }
-        if (_putenv(jre_path) < 0) {
-            mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-            ciscat->flags.error = 1;
-        }      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
-    #else
-            snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", ciscat->java_path, env_var);
-        }
-        if(setenv("PATH", jre_path, 1) < 0) {
-            mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-            ciscat->flags.error = 1;
-        }
-    #endif
-        char *new_env = getenv("PATH");
-        mtdebug1(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
     }
 
     // Define path where CIS-CAT is installed
 
     if (ciscat->ciscat_path) {
-        snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
+        switch (wm_relative_path(ciscat->ciscat_path)) {
+            case 0:
+                // Full path
+                snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
+                break;
+            case 1:
+                // Relative path
+            #ifdef WIN32
+                if (*current) {
+                    snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
+                }
+            #else
+                snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->ciscat_path);
+            #endif
+                break;
+            default:
+                mterror(WM_CISCAT_LOGTAG, "Defined CIS-CAT path is not valid.");
+                ciscat->flags.error = 1;
+        }
     } else {
     #ifdef WIN32
-        snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR_WIN);
+        if (*current)
+            snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, WM_CISCAT_DEFAULT_DIR_WIN);
     #else
         snprintf(cis_path, OS_MAXSTR - 1, "%s", WM_CISCAT_DEFAULT_DIR);
     #endif
@@ -131,6 +192,22 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
             for (eval = ciscat->evals; eval; eval = eval->next) {
                 if (!eval->flags.error) {
+
+                    switch (wm_relative_path(eval->path)) {
+                        case 0:
+                            break;
+                        case 1:
+                        #ifdef WIN32
+                            snprintf(bench_fullpath, OS_MAXSTR - 1, "%s\\%s", cis_path, eval->path);
+                        #else
+                            snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", cis_path, eval->path);
+                        #endif
+                            os_strdup(bench_fullpath, eval->path);
+                            break;
+                        default:
+                            mterror(WM_CISCAT_LOGTAG, "Couldn't find benchmark path. Skipping...");
+                    }
+
                     if (IsFile(eval->path) < 0) {
                         mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
                     } else {
@@ -162,6 +239,9 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     free(cis_path);
     free(jre_path);
+#ifdef WIN32
+    free(current);
+#endif
 
     return NULL;
 }
@@ -226,7 +306,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path) {
 
     os_calloc(OS_MAXSTR, sizeof(char), ciscat_script);
 
-    snprintf(ciscat_script, OS_MAXSTR - 1, "%s\\CIS-CAT.BAT", path);
+    snprintf(ciscat_script, OS_MAXSTR - 1, "\"%s\\CIS-CAT.BAT\"", path);
 
     // Create arguments
 
@@ -1035,7 +1115,7 @@ wm_rule_data* read_group(const OS_XML *xml, XML_NODE node, wm_rule_data *rule_in
     if (*group == '\0') {
         for (i = 0; node[i]; i++) {
             if ((strcmp(node[i]->element, XML_TITLE) == 0) || (strcmp(node[i]->element, XML_TITLE2) == 0)) {
-                os_strdup(node[i]->content, group);
+                snprintf(group, OS_MAXSTR - 1, "%s", node[i]->content);
                 break;
             }
         }
@@ -1161,6 +1241,7 @@ wm_rule_data* read_rule_info(XML_NODE node, wm_rule_data *rule, char *group) {
 void wm_ciscat_send_scan(wm_scan_data *info){
 
     wm_rule_data *rule;
+    wm_rule_data *next_rule;
     cJSON *object = NULL;
     cJSON *data = NULL;
 
@@ -1220,6 +1301,10 @@ void wm_ciscat_send_scan(wm_scan_data *info){
     cJSON_Delete(object);
 
     free(msg);
+    free(info->benchmark);
+    free(info->hostname);
+    free(info->timestamp);
+    free(info->score);
     free(info);
 
     // Send scan results
@@ -1256,6 +1341,20 @@ void wm_ciscat_send_scan(wm_scan_data *info){
         cJSON_Delete(object);
 
         free(msg);
+    }
+
+    for (rule = head; rule; rule = next_rule) {
+
+        next_rule = rule->next;
+        free(rule->id);
+        free(rule->title);
+        free(rule->group);
+        free(rule->description);
+        free(rule->rationale);
+        free(rule->remediation);
+        free(rule->result);
+        free(rule);
+
     }
 }
 

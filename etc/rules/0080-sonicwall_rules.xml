@@ -16,14 +16,14 @@
     <if_sid>4800</if_sid>
     <status>^1</status>
     <description>SonicWall critical message.</description>
-    <group>gpg13_3.2,</group>
+    <group>gpg13_3.2,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="4802" level="8">
     <if_sid>4800</if_sid>
     <status>^2</status>
     <description>SonicWall critical message.</description>
-    <group>gpg13_3.2,</group>
+    <group>gpg13_3.2,gdpr_IV_35.7.d,</group>
   </rule>
 
  <rule id="4803" level="4">
@@ -61,25 +61,25 @@
     <if_sid>4806</if_sid>
     <id>^236$</id>
     <description>SonicWall: Firewall administrator login.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_3.6,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_3.6,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="4811" level="9">
     <if_sid>4801</if_sid>
     <id>^30$|^32$</id>
     <description>SonicWall: Firewall authentication failure.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_3.6,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_3.6,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="4850" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>4804</if_matched_sid>
     <description>SonicWall: Multiple firewall warning messages.</description>
-    <group>service_availability,pci_dss_10.6.1,</group>
+    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="4851" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>4803</if_matched_sid>
     <description>SonicWall: Multiple firewall error messages.</description>
-    <group>service_availability,pci_dss_10.6.1,gpg13_3.5,</group>
+    <group>service_availability,pci_dss_10.6.1,gpg13_3.5,gdpr_IV_35.7.d,</group>
   </rule>
 </group>

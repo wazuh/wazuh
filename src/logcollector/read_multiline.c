@@ -15,7 +15,6 @@
 void *read_multiline(int pos, int *rc, int drop_it)
 {
     int __ms = 0;
-    int linecount;
     int linesgot = 0;
     size_t buffer_size = 0;
     char *p;
@@ -28,8 +27,6 @@ void *read_multiline(int pos, int *rc, int drop_it)
     buffer[OS_MAXSTR] = '\0';
     str[OS_MAXSTR] = '\0';
     *rc = 0;
-
-    linecount = atoi(logff[pos].logformat);
 
     /* Get initial file location */
     fgetpos(logff[pos].fp, &fp_pos);
@@ -74,14 +71,14 @@ void *read_multiline(int pos, int *rc, int drop_it)
 
         strncpy(buffer + buffer_size, str, OS_MAXSTR - buffer_size - 2);
 
-        if (linesgot < linecount) {
+        if (linesgot < logff[pos].linecount) {
             continue;
         }
 
         /* Send message to queue */
         if (drop_it == 0) {
             if (SendMSGtoSCK(logr_queue, buffer, logff[pos].file,
-                        LOCALFILE_MQ, logff[pos].target_socket) < 0) {
+                        LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
                 merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                     merror_exit(QUEUE_FATAL, DEFAULTQPATH);

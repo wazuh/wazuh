@@ -29,6 +29,7 @@ typedef struct wm_command_t {
     unsigned int run_on_start:1;
     unsigned int ignore_output:1;
     unsigned int agent_cfg:1;
+    int timeout;
 } wm_command_t;
 
 extern const wm_context WM_COMMAND_CONTEXT;   // Context

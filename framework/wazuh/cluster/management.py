@@ -59,8 +59,12 @@ if check_cluster_status():
 
 
 class WazuhClusterClient(asynchat.async_chat):
-    def __init__(self, host, port, key, data, file):
-        asynchat.async_chat.__init__(self)
+    def __init__(self, host, port, key, data, file, map=None):
+        asynchat.async_chat.__init__(self, map=map)
+        if not map:
+            self.map = asyncore.socket_map
+        else:
+            self.map = map
         self.can_read = False
         self.can_write = True
         self.received_data = []
@@ -70,6 +74,7 @@ class WazuhClusterClient(asynchat.async_chat):
         self.file = file
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(common.cluster_timeout)
+        self.addr = host
         try:
             self.socket.connect((host, port))
         except socket.error as e:
@@ -91,7 +96,7 @@ class WazuhClusterClient(asynchat.async_chat):
         nil, t, v, tbinfo = asyncore.compact_traceback()
         self.close()
         if InvalidToken == t or InvalidSignature == t:
-            raise WazuhException(3010, "Could not decrypt message from {0}".format(self.addr[0]))
+            raise WazuhException(3010, "Could not decrypt message from {0}".format(self.addr))
         else:
             raise WazuhException(3010, str(v))
 
@@ -99,6 +104,7 @@ class WazuhClusterClient(asynchat.async_chat):
         self.received_data.append(data)
 
     def found_terminator(self):
+        logging.debug("Received {}".format(len(''.join(self.received_data))))
         self.response = json.loads(self.f.decrypt(''.join(self.received_data)))
         self.close()
 
@@ -113,11 +119,9 @@ class WazuhClusterClient(asynchat.async_chat):
         while i < msg_len:
             next_i = i+4096 if i+4096 < msg_len else msg_len
             sent = self.send(msg[i:next_i])
-            if sent == 4096 or next_i == msg_len:
-                i = next_i
-            logging.debug("CLIENT: Sending {} of {}".format(i, msg_len))
+            i += sent
 
-
+        logging.debug("CLIENT: Sent {}/{} bytes to {}".format(i, msg_len, self.addr))
         self.can_read=True
         self.can_write=False
 
@@ -126,8 +130,9 @@ def send_request(host, port, key, data, file=None):
     error = 0
     try:
         fernet_key = Fernet(key.encode('base64','strict'))
-        client = WazuhClusterClient(host, int(port), fernet_key, data, file)
-        asyncore.loop()
+        mymap = dict()
+        client = WazuhClusterClient(host, int(port), fernet_key, data, file, mymap)
+        asyncore.loop(map=mymap)
         data = client.response
 
     except NameError as e:
@@ -139,6 +144,7 @@ def send_request(host, port, key, data, file=None):
         data = str(e)
 
     return error, data
+
 
 def get_status_json():
     return {"enabled": "yes" if check_cluster_status() else "no",
@@ -178,6 +184,7 @@ def check_cluster_cmd(cmd, node_type):
 
 def check_cluster_config(config):
     iv = InputValidator()
+    reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
 
     if not 'key' in config.keys():
         raise WazuhException(3004, 'Unspecified key')
@@ -188,8 +195,14 @@ def check_cluster_config(config):
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
     if not re.compile("\d+[m|s]").match(config['interval']):
         raise WazuhException(3004, 'Invalid interval specification. Please, specify it with format <number>s or <number>m')
-    if config['nodes'][0] == 'localhost' and len(config['nodes']) == 1:
-        raise WazuhException(3004, 'Please specify IPs of all cluster nodes')
+
+    if len(config['nodes']) == 0:
+        raise WazuhException(3004, 'No nodes defined in cluster configuration.')
+
+    invalid_elements = list(reservated_ips & set(config['nodes']))
+
+    if len(invalid_elements) != 0:
+        raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
 
 def get_cluster_items():
@@ -238,13 +251,23 @@ def connect_to_db_socket(retry=False):
 
     return cluster_socket
 
-
 def receive_data_from_db_socket(cluster_socket):
     return ''.join(filter(lambda x: x != '\x00', cluster_socket.recv(10000).decode()))
 
+def send_recv_and_check(cluster_socket, query):
+    send_to_socket(cluster_socket, query)
+    received = receive_data_from_db_socket(cluster_socket)
+    if received != "Command OK":
+        logging.debug("Query {} did not executed correctly: {}".format(query.split(' ')[0], received))
 
 def send_to_socket(cluster_socket, query):
-    cluster_socket.send(query.encode())
+    # add the query size to the message
+    query_size = len(query)+1
+    new_query = "{} {}".format(query_size+len(str(query_size)), query)
+    query = "{} {}".format(len(new_query), query)
+    sent = cluster_socket.send(query.encode())
+    if sent != len(query):
+        logging.debug("Error sending query: sent {}/{}".format(sent, len(query)))
 
 
 get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
@@ -268,26 +291,27 @@ def get_nodes(updateDBname=False):
             if error == 0:
                 if response['error'] == 0:
                     response = response['data']
+                    response['localhost'] = False
                 else:
                     logging.warning("Received an error response from {0}: {1}".format(url, response))
                     error_response = True
         else:
             error = 0
-            url = "localhost"
             response = get_node()
+            response['localhost'] = True
 
         if error == 1:
             logging.warning("Error connecting with {0}: {1}".format(url, response))
             error_response = True
 
         if error_response:
-            data.append({'error': response, 'node':'unknown', 'status':'disconnected', 'url':url})
+            data.append({'error': response, 'node':'unknown', 'type':'unknown', 'status':'disconnected', 'url':url, 'localhost': False})
             error_response = False
             continue
 
         if config_cluster['node_type'] == 'master' or \
-           response['type'] == 'master' or url == "localhost":
-            data.append({'url':url, 'node':response['node'],
+           response['type'] == 'master' or response["localhost"]:
+            data.append({'url':url, 'node':response['node'], 'type': response['type'], 'localhost': response['localhost'],
                          'status':'connected', 'cluster':response['cluster']})
 
             if updateDBname:

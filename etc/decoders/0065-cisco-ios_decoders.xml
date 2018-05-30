@@ -9,26 +9,67 @@
 
 <!--
   - Group for Cisco IOS messages.
-  - We would need to support multiple formats, but currently we require
-  - no service time stamp and no sequence-numbers.
-  -
-  - Aug 17 17:41:26 xyz.com 681: Aug 17 17:41:24.776 AEST: %SEC-6-IPACCESSLOGS: list 30 denied 124.254.75.141 1 packet
-  - Aug 20 11:33:41 RouterName 696: %SYS-5-CONFIG_I: Configured from
-  console by admin on vty0 (210.x.x.12)
-  - 681: Aug 17 17:41:24.776 AEST: %SEC-6-IPACCESSLOGS:
-  - 1348: .Jun 12 18:22:22 UTC: %SYS-5-CONFIG_I:
-  - 1348: *Jun 12 18:22:22 UTC: %SYS-5-CONFIG_I:
-  - 23: May  3 05:15:25.217 UTC: %SEC-6-IPACCESSLOGP:
-  - Possible regex:
-  "^%\w+-\d-\w+: |^\S\w\w+ \.\d \d\d:\S+ \w+: %\w+-\d-\w+:"
-  -->
+ -->
+
+
 <decoder name="cisco-ios">
   <prematch>^%\w+-\d-\w+: </prematch>
 </decoder>
 
+<!--
+  - With "empty" program name
+-->
 <decoder name="cisco-ios">
   <program_name />
   <prematch>^%\w+-\d-\w+: </prematch>
+</decoder>
+
+<!--
+  - Hour first, no date or sequence number
+  - 00:00:46: %LINK-3-UPDOWN: Interface Port-channel1, changed state to up
+-->
+
+<decoder name="cisco-ios">
+  <prematch>^\d+:\d+:\d+:\s+%</prematch>
+</decoder>
+
+<!--
+  - Date and hour (preceded by * or nothing), no sequence number
+  - *Mar  1 18:46:11: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
+  - Mar  1 18:46:11: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
+-->
+<decoder name="cisco-ios">
+  <prematch>^\p*\w+\s+\d*\s+\d+:\d+:\d+:\s+%</prematch>
+</decoder>
+
+<!--
+  - Date and hour (preceded by * or nothing) with ms and timezone, no sequence number
+  - *Mar  1 18:48:50.483 UTC: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
+-->
+<decoder name="cisco-ios">
+  <prematch>^\p*\w+\s+\d*\s+\d+:\d+:\d+.\d+\s+\w+:\s+%</prematch>
+</decoder>
+
+
+<!--
+  - Sequence number, no date or time
+  - 000019: %SYS-5-CONFIG_I: Configured from console by vty2 (10.34.195.36)
+-->
+
+<decoder name="cisco-ios">
+  <prematch>^\d+: %</prematch>
+</decoder>
+
+<!--
+  - Sequence number, date (preceded by * or . or nothing) and hour
+  - 1348: .Jun 12 18:22:22 UTC: %SYS-5-CONFIG_I:
+  - 1348: *Jun 12 18:22:22 UTC: %SYS-5-CONFIG_I:
+  - 1348: Jun 12 18:22:22 UTC: %SYS-5-CONFIG_I:
+  - 681: Aug 17 17:41:24.776 AEST: %SEC-6-IPACCESSLOGS:
+-->
+
+<decoder name="cisco-ios">
+  <prematch>^\d+:\s+\p*\w+\s+\d+\s+\S+\s+\w+:\s+%</prematch>
 </decoder>
 
 
@@ -39,6 +80,7 @@
   - %SEC-6-IPACCESSLOGP: list 102 denied tcp 10.0.6.56(3067) -> 172.36.4.7(139), 1 packet
   - %SEC-6-IPACCESSLOGP: list 199 denied tcp 10.0.61.108(1477) -> 10.0.127.20(445), 1 packet
   -->
+
 <decoder name="cisco-ios-acl">
   <parent>cisco-ios</parent>
   <type>firewall</type>
@@ -68,10 +110,11 @@
 
 
 <!-- Cisco IOS
-  - Extracts the ID of cisco ios messages.
+  - Extracts the ID of cisco ios messages IF NOT IDS/ACL log.
   -->
-<decoder name="cisco-ios-generic">
+<decoder name="cisco-ios-default">
   <parent>cisco-ios</parent>
-  <regex>^(%\w+-\d-\w+): </regex>
+  <regex>(%\w+-\d-\w+):</regex>
   <order>id</order>
 </decoder>
+

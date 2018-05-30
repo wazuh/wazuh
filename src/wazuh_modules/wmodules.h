@@ -32,7 +32,7 @@
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
 #define WM_POOL_SIZE    8                           // Child process pool size.
-#define WM_HEADER_SIZE  OS_SIZE_1024
+#define WM_HEADER_SIZE  OS_SIZE_2048
 
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
@@ -62,6 +62,8 @@ typedef struct wmodule {
 #include "wm_ciscat.h"
 #include "wm_aws.h"
 #include "wm_vuln_detector.h"
+#include "wm_osquery_monitor.h"
+#include "wm_download.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
@@ -90,17 +92,25 @@ void wm_destroy();
  */
 int wm_exec(char *command, char **output, int *exitcode, int secs);
 
-// Add process group to pool
+#ifdef WIN32
+// Add process to pool
+void wm_append_handle(HANDLE hProcess);
+
+// Remove process group from pool
+void wm_remove_handle(HANDLE hProcess);
+#else
+// Add process to pool
 void wm_append_sid(pid_t sid);
 
 // Remove process group from pool
 void wm_remove_sid(pid_t sid);
+#endif
 
 // Terminate every child process group
 void wm_kill_children();
 
 // Reads an HTTP header and extracts the size of the response
-int wm_read_http_header(char *header);
+long int wm_read_http_size(char *header);
 
 /* Concatenate strings with optional separator
  *
@@ -123,5 +133,9 @@ void wm_free(wmodule * c);
 
 // Send message to a queue with a specific delay
 int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
+
+// Check if a path is relative or absolute.
+// Returns 0 if absolute, 1 if relative or -1 on error.
+int wm_relative_path(const char * path);
 
 #endif // W_MODULES

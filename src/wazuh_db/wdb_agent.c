@@ -18,7 +18,7 @@
 
 static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, key, date_add, `group`) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
@@ -88,7 +88,7 @@ int wdb_update_agent_name(int id, const char *name) {
 }
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name) {
+int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name) {
     int result = 0;
     sqlite3_stmt *stmt;
 
@@ -108,12 +108,13 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     sqlite3_bind_text(stmt, 6, os_platform, -1, NULL);
     sqlite3_bind_text(stmt, 7, os_build, -1, NULL);
     sqlite3_bind_text(stmt, 8, os_uname, -1, NULL);
-    sqlite3_bind_text(stmt, 9, version, -1, NULL);
-    sqlite3_bind_text(stmt, 10, config_sum, -1, NULL);
-    sqlite3_bind_text(stmt, 11, merged_sum, -1, NULL);
-    sqlite3_bind_text(stmt, 12, manager_host, -1, NULL);
-    sqlite3_bind_text(stmt, 13, node_name, -1, NULL);
-    sqlite3_bind_int(stmt, 14, id);
+    sqlite3_bind_text(stmt, 9, os_arch, -1, NULL);
+    sqlite3_bind_text(stmt, 10, version, -1, NULL);
+    sqlite3_bind_text(stmt, 11, config_sum, -1, NULL);
+    sqlite3_bind_text(stmt, 12, merged_sum, -1, NULL);
+    sqlite3_bind_text(stmt, 13, manager_host, -1, NULL);
+    sqlite3_bind_text(stmt, 14, node_name, -1, NULL);
+    sqlite3_bind_int(stmt, 15, id);
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
@@ -147,6 +148,7 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
 int wdb_remove_agent(int id) {
     int result;
     sqlite3_stmt *stmt;
+    char * name;
 
     if (wdb_open_global() < 0)
         return -1;
@@ -156,11 +158,15 @@ int wdb_remove_agent(int id) {
         return -1;
     }
 
-    sqlite3_bind_int(stmt, 1, id);
+    name = wdb_agent_name(id);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? wdb_remove_agent_db(id) : -1;
+    sqlite3_bind_int(stmt, 1, id);
+    result = wdb_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
 
+    result = result && name ? wdb_remove_agent_db(id, name) : -1;
+
+    free(name);
     return result;
 }
 
@@ -270,22 +276,21 @@ int wdb_create_agent_db(int id, const char *name) {
 }
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
-int wdb_remove_agent_db(int id) {
+int wdb_remove_agent_db(int id, const char * name) {
     char path[OS_FLSIZE + 1];
     char path_aux[OS_FLSIZE + 1];
-    char *name = wdb_agent_name(id);
-
-    if (!name)
-        return -1;
 
     snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
-    free(name);
 
     if (!remove(path)) {
         snprintf(path_aux, OS_FLSIZE, "%s-shm", path);
-        remove(path_aux);
+        if (remove(path_aux) < 0) {
+            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
+        }
         snprintf(path_aux, OS_FLSIZE, "%s-wal", path);
-        remove(path_aux);
+        if (remove(path_aux) < 0) {
+            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
+        }
         return 0;
     } else
         return -1;

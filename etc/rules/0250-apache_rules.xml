@@ -37,21 +37,21 @@
     <match>exit signal Segmentation Fault</match>
     <description>Apache: segmentation fault.</description>
     <info type="link">http://www.securityfocus.com/infocus/1633</info>
-    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,gpg13_4.14,</group>
+    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,gpg13_4.14,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30105" level="5">
     <if_sid>30101</if_sid>
     <match>denied by server configuration</match>
     <description>Apache: Attempt to access forbidden file or directory.</description>
-    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,</group>
+    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30106" level="5">
     <if_sid>30101</if_sid>
     <match>Directory index forbidden by rule</match>
     <description>Apache: Attempt to access forbidden directory index.</description>
-    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,</group>
+    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30107" level="6">
@@ -60,28 +60,28 @@
     <description>Apache: Code Red attack.</description>
     <info type="link">http://www.cert.org/advisories/CA-2001-19.html</info>
     <info type="text">CERT: Advisory CA-2001-19 "Code Red" Worm Exploiting Buffer Overflow In IIS Indexing Service DLL</info>
-    <group>automatic_attack,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,</group>
+    <group>automatic_attack,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30108" level="5">
     <if_sid>30102</if_sid>
     <match>authentication failed</match>
     <description>Apache: User authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="30109" level="9">
     <if_sid>30101</if_sid>
     <regex>user \S+ not found|user \S+ in realm \.* not found</regex>
     <description>Apache: Attempt to login using a non-existent user.</description>
-    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="30110" level="5">
     <if_sid>30101</if_sid>
     <match>authentication failure</match>
     <description>Apache: User authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="30112" level="0">
@@ -90,7 +90,7 @@
     <match>failed to open stream: No such file or directory|</match>
     <match>Failed opening </match>
     <description>Apache: Attempt to access an non-existent file (those are reported on the access.log).</description>
-    <group>unknown_resource,pci_dss_10.2.1,pci_dss_10.2.4,</group>
+    <group>unknown_resource,pci_dss_10.2.1,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <!-- [Tue Mar 07 12:05:15 2006] [error] [client 200.206.165.91] Invalid URI in request %3Bi%3A3%3Bi%3A0%3B%7D; usercookie[password]=d6ed9e1750d0b2aba6b3311cbec087d8; 45befd35f8a0f47b89ed8831f892b8dc=167c4e46a940cd2570b952eea527b27a; PHPSESSID=616hjdg7kj9bln37efsv7vt7g3
@@ -107,14 +107,14 @@
     <if_matched_sid>30115</if_matched_sid>
     <same_source_ip />
     <description>Apache: Multiple Invalid URI requests from same source.</description>
-    <group>invalid_request,pci_dss_10.2.4,pci_dss_11.4,</group>
+    <group>invalid_request,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30117" level="10">
     <if_sid>30101</if_sid>
     <match>File name too long|request failed: URI too long</match>
     <description>Apache: Invalid URI, file name too long.</description>
-    <group>invalid_request,pci_dss_10.2.4,</group>
+    <group>invalid_request,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <!-- Mod security rules by <ossec ( at ) sioban.net -->
@@ -122,21 +122,21 @@
     <if_sid>30101</if_sid>
     <match>mod_security: Access denied|ModSecurity: Access denied</match>
     <description>ModSecurity: Access attempt blocked.</description>
-    <group>modsecurity,access_denied,pci_dss_10.2.4,</group>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30119" level="12" frequency="6" timeframe="120">
     <if_matched_sid>30118</if_matched_sid>
     <same_source_ip />
     <description>ModSecurity: Multiple attempts blocked.</description>
-    <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,</group>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30120" level="12">
     <if_sid>30101</if_sid>
     <match>Resource temporarily unavailable:</match>
     <description>Apache: without resources to run.</description>
-    <group>service_availability,pci_dss_10.6.1,</group>
+    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30200" level="6" noalert="1">
@@ -149,13 +149,13 @@
     <if_sid>30200</if_sid>
     <match>^mod_security-message: Access denied </match>
     <description>ModSecurity: access denied.</description>
-    <group>modsecurity,access_denied,pci_dss_10.2.4,</group>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30202" level="10" frequency="8" timeframe="120">
     <if_matched_sid>30201</if_matched_sid>
     <description>ModSecurity: Multiple attempts blocked.</description>
-    <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,</group>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <!-- Apache 2.4 Rules -->
@@ -182,21 +182,21 @@
     <match>exit signal Segmentation Fault</match>
     <description>Apache: segmentation fault.</description>
     <info type="link">http://www.securityfocus.com/infocus/1633</info>
-    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,gpg13_4.14,</group>
+    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,gpg13_4.14,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30305" level="5">
     <if_sid>30301</if_sid>
     <id>AH01630</id>
     <description>Apache: Attempt to access forbidden file or directory.</description>
-    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,</group>
+    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30306" level="5">
     <if_sid>30301</if_sid>
     <id>AH01276</id>
     <description>Apache: Attempt to access forbidden directory index.</description>
-    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,</group>
+    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30307" level="6">
@@ -205,28 +205,28 @@
     <description>Apache: Client sent malformed Host header. Possible Code Red attack.</description>
     <info type="link">http://www.cert.org/advisories/CA-2001-19.html</info>
     <info type="text">CERT: Advisory CA-2001-19 "Code Red" Worm Exploiting Buffer Overflow In IIS Indexing Service DLL</info>
-    <group>automatic_attack,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,</group>
+    <group>automatic_attack,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30308" level="5">
     <if_sid>30302</if_sid>
     <id>AH01617|AH01807|AH01694|AH01695|AH02009|AH02010</id>
     <description>Apache: User authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="30309" level="5">
     <if_sid>30301</if_sid>
     <id>AH01618|AH01808|AH01790</id>
     <description>Apache: Attempt to login using a non-existent user.</description>
-    <group>invalid_login,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+    <group>invalid_login,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="30310" level="10" frequency="10" timeframe="160">
     <if_matched_sid>30309</if_matched_sid>
     <same_source_ip/>
     <description>Apache: Multiple authentication failures with invalid user.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="30312" level="0">
@@ -235,28 +235,28 @@
     <match>failed to open stream: No such file or directory|</match>
     <match>Failed opening </match>
     <description>Apache: Attempt to access an non-existent file (those are reported on the access.log).</description>
-    <group>unknown_resource,pci_dss_10.2.4,</group>
+    <group>unknown_resource,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30315" level="5">
     <if_sid>30301</if_sid>
     <id>AH00126</id>
     <description>Apache: Invalid URI (bad client request).</description>
-    <group>invalid_request,pci_dss_10.2.4,</group>
+    <group>invalid_request,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30316" level="10" frequency="8" timeframe="120">
     <if_matched_sid>30315</if_matched_sid>
     <same_source_ip />
     <description>Apache: Multiple Invalid URI requests from same source.</description>
-    <group>invalid_request,pci_dss_10.2.4,pci_dss_11.4,</group>
+    <group>invalid_request,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30317" level="10">
     <if_sid>30301</if_sid>
     <id>AH00565</id>
     <description>Apache: Invalid URI, file name too long.</description>
-    <group>invalid_request,pci_dss_10.2.4,</group>
+    <group>invalid_request,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30318" level="5">
@@ -277,7 +277,7 @@
     <if_sid>30301</if_sid>
     <match>ModSecurity: Access denied</match>
     <description>ModSecurity Access denied messages grouped</description>
-    <group>modsecurity,pci_dss_10.2.4,</group>
+    <group>modsecurity,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="30403" level="0">
@@ -309,7 +309,7 @@
         <description>Apache: Shellshock attack attempt</description>
 	<info type="cve">CVE-2014-6271</info>
 	<info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271</info>
-        <group>attack,pci_dss_11.4,</group>
+        <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
 </group>

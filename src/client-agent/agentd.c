@@ -51,6 +51,9 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
+    /* Try to connect to server */
+    os_setwait();
+
     /* Create the queue and read from it. Exit if fails. */
     if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
@@ -80,6 +83,9 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
                         agt->profile);
+
+    /*Set the crypto method for the agent */
+    os_set_agent_crypto_method(&keys,agt->crypto_method);
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
@@ -133,9 +139,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
             agt->execdq = -1;
         }
     }
-
-    /* Try to connect to server */
-    os_setwait();
 
     start_agent(1);
 

@@ -67,6 +67,10 @@ static void* wm_database_main(wm_database *data);
 static void* wm_database_destroy(wm_database *data);
 // Update manager information
 static void wm_sync_manager();
+// Get agent's architecture
+static char * wm_get_os_arch(char * os_header);
+
+static char * wm_get_os_arch(char * os_header);
 
 #ifndef LOCAL
 
@@ -74,6 +78,9 @@ static void wm_check_agents();
 
 // Synchronize agents and groups
 static void wm_sync_agents();
+
+// Clean dangling database files
+static void wm_clean_dangling_db();
 
 #endif // LOCAL
 
@@ -109,6 +116,10 @@ void* wm_database_main(wm_database *data) {
     if (data->sync_agents) {
         wm_sync_manager();
     }
+
+#ifndef LOCAL
+    wm_clean_dangling_db();
+#endif
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
@@ -196,6 +207,7 @@ void wm_sync_manager() {
     char *os_version = NULL;
     char *os_codename = NULL;
     char *os_platform = NULL;
+    char *os_arch = NULL;
     struct stat buffer;
     regmatch_t match[2];
     int match_size;
@@ -221,6 +233,7 @@ void wm_sync_manager() {
     OS_ClearXML(&xml);
 
     if ((os_uname = strdup(getuname()))) {
+        os_arch = wm_get_os_arch(os_uname);
         char *ptr;
 
         if ((ptr = strstr(os_uname, " - ")))
@@ -265,12 +278,13 @@ void wm_sync_manager() {
             }
         }
 
-        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name);
+        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, os_arch, __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name);
 
         free(node_name);
         free(os_major);
         free(os_minor);
         free(os_uname);
+        free(os_arch);
     }
 
     // Set starting offset if full_sync disabled
@@ -386,7 +400,9 @@ void wm_sync_agents() {
             snprintf(id, 9, "%03d", agents[i]);
 
             if (OS_IsAllowedID(&keys, id) == -1)
-                wdb_remove_agent(agents[i]);
+                if (wdb_remove_agent(agents[i]) < 0) {
+                    mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
+                }
             }
 
         free(agents);
@@ -399,7 +415,71 @@ void wm_sync_agents() {
     mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
+// Clean dangling database files
+void wm_clean_dangling_db() {
+    char dirname[PATH_MAX + 1];
+    char path[PATH_MAX + 1];
+    char * end;
+    char * name;
+    struct dirent * dirent;
+    DIR * dir;
+
+    snprintf(dirname, sizeof(dirname), "%s%s/agents", isChroot() ? "/" : "", WDB_DIR);
+    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", dirname);
+
+    if (!(dir = opendir(dirname))) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
+        return;
+    }
+
+    while ((dirent = readdir(dir))) {
+        if (dirent->d_name[0] != '.') {
+            if (end = strchr(dirent->d_name, '-'), end) {
+                *end = 0;
+
+                if (name = wdb_agent_name(atoi(dirent->d_name)), name) {
+                    // Agent found: OK
+                    free(name);
+                } else {
+                    *end = '-';
+
+                    if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
+                        mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
+                        if (remove(path) < 0) {
+                            mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
+                        }
+                    }
+                }
+            } else {
+                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", dirname, dirent->d_name);
+            }
+        }
+    }
+
+    closedir(dir);
+}
+
 #endif // LOCAL
+
+char * wm_get_os_arch(char * os_header) {
+    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
+    char * os_arch;
+    int i;
+
+    for (i = 0; ARCHS[i]; i++) {
+        if (strstr(os_header, ARCHS[i])) {
+            os_strdup(ARCHS[i], os_arch);
+            break;
+        }
+    }
+
+    if (!ARCHS[i]) {
+        os_strdup("", os_arch);
+    }
+
+    mtdebug2(WM_DATABASE_LOGTAG, "Detected architecture from %s: %s", os_header, os_arch);
+    return os_arch;
+}
 
 int wm_sync_agentinfo(int id_agent, const char *path) {
     char header[OS_MAXSTR];
@@ -414,6 +494,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *os_version = NULL;
     char *os_codename = NULL;
     char *os_platform = NULL;
+    char *os_arch = NULL;
     char *config_sum = NULL;
     char *merged_sum = NULL;
     char manager_host[512] = "";
@@ -435,6 +516,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
     if (os = fgets(header, OS_MAXSTR, fp), !os) {
         mtdebug1(WM_DATABASE_LOGTAG, "Empty file '%s'. Agent is pending.", path);
+
 
     } else {
 
@@ -532,6 +614,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
                     os_platform ++;
                 }
             }
+            os_arch = wm_get_os_arch(os);
         }
 
         // Search for merged.mg sum
@@ -574,7 +657,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     }
 
 
-    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, version, config_sum, merged_sum, manager_host, node_name);
+    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, os_arch, version, config_sum, merged_sum, manager_host, node_name);
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 
     free(os_major);

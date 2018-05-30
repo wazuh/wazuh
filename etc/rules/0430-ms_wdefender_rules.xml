@@ -21,6 +21,7 @@
         <if_sid>83000</if_sid>
         <id>1116</id>
         <description>Windows Defender: detected potentially unwanted software</description>
+        <group>gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -30,6 +31,7 @@
         <if_sid>83000</if_sid>
         <id>1117</id>
         <description>Windows Defender: error when taking action on potentially unwanted software</description>
+        <group>gdpr_IV_35.7.d,</group>
     </rule>
 
 </group>

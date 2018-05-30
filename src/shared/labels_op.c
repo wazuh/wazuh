@@ -16,7 +16,7 @@ wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const cha
     size_t i;
 
     if (overwrite) {
-        for (i = 0; labels[i].key; i++) {
+        for (i = 0; labels && labels[i].key; i++) {
             if (!strcmp(labels[i].key, key)) {
                 break;
             }
@@ -156,4 +156,25 @@ wlabel_t* labels_parse(const char *path) {
 
     fclose(fp);
     return labels;
+}
+
+// Duplicate label array
+wlabel_t * labels_dup(const wlabel_t * labels) {
+    wlabel_t * copy = NULL;
+    int i;
+
+    if (!labels) {
+        return NULL;
+    }
+
+    os_malloc(sizeof(wlabel_t), copy);
+
+    for (i = 0; labels[i].key; i++) {
+        os_realloc(copy, sizeof(wlabel_t) * (i + 2), copy);
+        os_strdup(labels[i].key, copy[i].key);
+        os_strdup(labels[i].value, copy[i].value);
+    }
+
+    copy[i].key = copy[i].value = NULL;
+    return copy;
 }

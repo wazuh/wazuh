@@ -209,7 +209,7 @@ void os_logging_config(){
     flags.log_plain = 1;
     flags.log_json = 0;
     OS_ClearXML(&xml);
-    merror_exit(XML_ERROR, "/etc/ossec.conf", xml.err, xml.err_line);
+    merror_exit(XML_ERROR, chroot_flag ? OSSECCONF : DEFAULTCPATH, xml.err, xml.err_line);
   }
 
   logformat = OS_GetOneContentforElement(&xml, xmlf);
@@ -477,3 +477,18 @@ int isChroot()
 {
     return (chroot_flag);
 }
+
+#ifdef WIN32
+char * win_strerror(unsigned long error) {
+    static TCHAR messageBuffer[4096];
+    LPSTR end;
+
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, messageBuffer, sizeof(messageBuffer) / sizeof(TCHAR), NULL);
+
+    if (end = strchr(messageBuffer, '\r'), end) {
+        *end = '\0';
+    }
+
+    return messageBuffer;
+}
+#endif

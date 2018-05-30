@@ -112,6 +112,7 @@ void wm_help()
 
 void wm_setup()
 {
+    gid_t gid;
     struct sigaction action = { .sa_handler = wm_handler };
 
     // Read XML settings and internal options
@@ -126,6 +127,18 @@ void wm_setup()
         goDaemon();
         nowDaemon();
     }
+
+    // Set group
+
+    if (gid = Privsep_GetGroup(GROUPGLOBAL), gid == (gid_t) -1) {
+        merror_exit(USER_ERROR, "", GROUPGLOBAL);
+    }
+
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
+    }
+
+    // Change working directory
 
     if (chdir(DEFAULTDIR) < 0)
         merror_exit("chdir(): %s", strerror(errno));
