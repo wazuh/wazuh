@@ -15,7 +15,7 @@ from time import time
 from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree
-from operator import eq, setitem
+from operator import eq, setitem, add
 import json
 from stat import S_IRWXG, S_IRWXU
 from difflib import unified_diff
@@ -26,6 +26,7 @@ import os
 import ast
 from calendar import timegm
 from random import random
+from functools import reduce
 
 # import the C accelerated API of ElementTree
 try:
@@ -161,7 +162,7 @@ def get_status_json():
 # Files
 #
 
-def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, get_md5=True, whoami='master'):
+def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True, whoami='master'):
     walk_files = {}
 
     try:
@@ -170,7 +171,7 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
         raise WazuhException(3015, str(e))
 
     for entry in entries:
-        if entry in excluded_files or entry[-1] == '~' or entry[-4:] == ".tmp" or entry[-5:] == ".lock":
+        if entry in excluded_files or reduce(add, map(lambda x: entry[-(len(x)):] == x, excluded_extensions)):
             continue
 
         full_path = path.join(dirname, entry)
@@ -195,7 +196,7 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
                     walk_files[new_key]['md5'] = md5(full_path)
 
         if recursive and path.isdir(full_path):
-            walk_files.update(walk_dir(full_path, recursive, files, excluded_files, get_cluster_item_key, get_md5, whoami))
+            walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5, whoami))
 
     return walk_files
 
@@ -206,7 +207,7 @@ def get_files_status(node_type, get_md5=True):
 
     final_items = {}
     for file_path, item in cluster_items['files'].items():
-        if file_path == "excluded_files":
+        if file_path == "excluded_files" or file_path == "excluded_extensions":
             continue
 
         if item['source'] == node_type or item['source'] == 'all':
@@ -220,7 +221,8 @@ def get_files_status(node_type, get_md5=True):
             else:
                 fullpath = common.ossec_path + file_path
             try:
-                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'], file_path, get_md5, node_type))
+                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
+                                            cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
             except WazuhException as e:
                 logger.warning("[Cluster] get_files_status: {}.".format(e))
 
