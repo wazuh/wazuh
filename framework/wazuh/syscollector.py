@@ -6,11 +6,10 @@
 from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
-from wazuh import Wazuh
-from wazuh.utils import plain_dict_to_nested_dict, cut_array, sort_array, search_array
+from wazuh.utils import plain_dict_to_nested_dict
 from operator import itemgetter
 
-def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, allowed_sort_fields, table, nested=True, array=False):
+def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, allowed_sort_fields, table, nested=True, array=False, internal_limit=10):
     Agent(agent_id).get_basic_information()
     if select:
         select_fields = list(set(select['fields']) & set(valid_select_fields))
@@ -31,18 +30,24 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
             raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(
                         ', '.join(allowed_sort_fields), ','.join(sort['fields'])))
 
-    response, total = Agent(agent_id)._load_info_from_agent_db(table=table,
-                        offset=offset, limit=limit, select=select_fields,
-                        count=True, sort=sort, search=search, filters=filters)
+    response = {'items': [], 'totalItems': 0} if array else []
+    if limit < internal_limit:
+        internal_limit = limit
+    for current_offset in range(offset, limit, internal_limit):
+        result_i, total = Agent(agent_id)._load_info_from_agent_db(table=table,
+                                                                   offset=current_offset, limit=internal_limit, select=select_fields,
+                                                                   count=True, sort=sort, search=search,
+                                                                   filters=filters)
+        if result_i == []:
+            continue
 
-    if array:
-        return_data = response
-    elif not response:
-        return_data = {}
-    else:
-        return_data = response[0] if not nested else plain_dict_to_nested_dict(response[0])
+        if array:
+            response['items'] += result_i
+            response['totalItems'] = total
+        else:
+            response = result_i[0] if not nested else plain_dict_to_nested_dict(result_i[0])
 
-    return {'items': return_data, 'totalItems': total} if array else return_data
+    return response
 
 
 def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
@@ -193,8 +198,8 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
         items = [items] if not array else items['items']
 
         for item in items:
-            if limit + 1 <= len(result):
-                break;
+            if limit <= len(result):
+                break
             item['agent_id'] = agent['id']
             result.append(item)
 
@@ -221,24 +226,24 @@ def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, 
 
 def get_processes(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
     return _get_agent_items(func=get_processes_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort)
+                            filters=filters, search=search, sort=sort, array=True)
 
 
 def get_ports(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
     return _get_agent_items(func=get_ports_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort)
+                            filters=filters, search=search, sort=sort, array=True)
 
 
 def get_netaddr(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
     return _get_agent_items(func=get_netaddr_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort)
+                            filters=filters, search=search, sort=sort, array=True)
 
 
 def get_netproto(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
     return _get_agent_items(func=get_netproto_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort)
+                            filters=filters, search=search, sort=sort, array=True)
 
 
 def get_netiface(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
     return _get_agent_items(func=get_netiface_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort)
+                            filters=filters, search=search, sort=sort, array=True)
