@@ -46,6 +46,8 @@ def show_groups():
     for g in groups_data['items']:
         print("  {0} ({1})".format(g['name'], g['count']))
 
+    print("Unassigned agents: {0}.".format(group.get_agents_without_group()['totalItems']))
+
 
 def show_group(agent_id):
     agent_info = Agent(id=agent_id).get_basic_information()
@@ -116,6 +118,7 @@ def remove_group(group_id, quiet=False):
 
 def set_group(agent_id, group_id, quiet=False):
     ans = 'n'
+    agent_id = "{}".format(int(agent_id)).zfill(3)
     if not quiet:
          ans = get_stdin("Do you want to set the group '{0}' to the agent '{1}'? [y/N]: ".format(group_id, agent_id))
     else:

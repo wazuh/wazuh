@@ -38,7 +38,7 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
         <if_sid>81700</if_sid>
         <id>0</id>
         <description>HP 5500 EI - Emergency event</description>
-        <group>hp-emergency,</group>
+        <group>hp-emergency,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="81702" level="6">
@@ -97,14 +97,14 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
         <if_sid>81705</if_sid>
         <match>failed to log in|failed to login|authentication failed|Authentication is failed</match>
         <description>HP 5500 EI - Warning event: Authentication failure</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="81710" level="10" frequency="6">
       <if_matched_sid>81709</if_matched_sid>
       <same_source_ip />
       <description>HP 5500 EI: Multiple authentication failures.</description>
-      <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,</group>
+      <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
 </group>

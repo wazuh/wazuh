@@ -11,6 +11,7 @@
 #include "localfile-config.h"
 #include "config.h"
 
+static void Free_Logreader(logreader * logf);
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -31,6 +32,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_query = "query";
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
+    const char *xml_localfile_outformat = "out_format";
 
     logreader *logf;
     logreader_config *log_config;
@@ -42,23 +44,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     if (!log_config->config) {
         os_calloc(2, sizeof(logreader), log_config->config);
         logf = log_config->config;
-        logf[0].file = NULL;
-        logf[0].command = NULL;
-        logf[0].alias = NULL;
-        logf[0].logformat = NULL;
-        logf[0].future = 0;
-        logf[0].query = NULL;
-        logf[0].target = NULL;
-        logf[0].target_socket = NULL;
-        logf[1].file = NULL;
-        logf[1].command = NULL;
-        logf[1].alias = NULL;
-        logf[1].logformat = NULL;
-        logf[1].future = 0;
-        logf[1].query = NULL;
-        logf[1].target = NULL;
-        logf[1].target_socket = NULL;
-        logf[1].duplicated = 0;
+        memset(logf, 0, 2 * sizeof(logreader));
     } else {
         logf = log_config->config;
         while (logf[pl].file != NULL) {
@@ -68,32 +54,12 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         /* Allocate more memory */
         os_realloc(logf, (pl + 2)*sizeof(logreader), log_config->config);
         logf = log_config->config;
-        logf[pl + 1].file = NULL;
-        logf[pl + 1].command = NULL;
-        logf[pl + 1].alias = NULL;
-        logf[pl + 1].logformat = NULL;
-        logf[pl + 1].future = 0;
-        logf[pl + 1].query = NULL;
-        logf[pl + 1].target = NULL;
-        logf[pl + 1].target_socket = NULL;
-        logf[pl + 1].duplicated = 0;
+        memset(logf + pl + 1, 0, sizeof(logreader));
     }
 
-    logf[pl].file = NULL;
-    logf[pl].command = NULL;
-    logf[pl].alias = NULL;
-    logf[pl].logformat = NULL;
-    logf[pl].future = 0;
-    logf[pl].query = NULL;
-    logf[pl].target = NULL;
-    logf[pl].target_socket = NULL;
-    logf[pl].duplicated = 0;
-    os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
-    logf[pl].fp = NULL;
-    logf[pl].ffile = NULL;
-    logf[pl].djb_program_name = NULL;
+    memset(logf + pl, 0, sizeof(logreader));
     logf[pl].ign = 360;
-    os_calloc(1, sizeof(logsocket *), logf[pl].target_socket);
+    os_calloc(2, sizeof(logsocket *), logf[pl].target_socket);
 
     /* Search for entries related to files */
     i = 0;
@@ -114,17 +80,23 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             // Count number of targets
             int count, n;
             count = 1;
-            for(n=0; node[i]->content[n]; n++) {
+            for (n=0; node[i]->content[n]; n++) {
                 if(node[i]->content[n] == ',') {
                     count ++;
                 }
             }
             logf[pl].target = OS_StrBreak(',', node[i]->content, count);
-            os_realloc(logf[pl].target_socket, count * sizeof(logsocket *), logf[pl].target_socket);
+            for (n=0; n<count; n++) {
+                os_strdup(w_strtrim(logf[pl].target[n]), logf[pl].target[n]);
+            }
+            os_realloc(logf[pl].target_socket, (count + 1) * sizeof(logsocket *), logf[pl].target_socket);
+            memset(logf[pl].target_socket + count, 0, sizeof(logsocket *));
+        } else if (strcmp(node[i]->element, xml_localfile_outformat) == 0) {
+            os_strdup(node[i]->content, logf[pl].outformat);
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             char *key_value = 0;
             int j;
-            for (j = 0; node[i]->attributes[j]; j++) {
+            for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                 if (strcmp(node[i]->attributes[j], "key") == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
                         key_value = node[i]->values[j];
@@ -212,19 +184,23 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     glob_set = pl + 1;
                 }
 
-                if (glob(node[i]->content, 0, NULL, &g) != 0) {
+                switch (glob(node[i]->content, 0, NULL, &g)) {
+                case 0:
+                    break;
+                case GLOB_NOMATCH:
+                    mwarn(GLOB_NFOUND, node[i]->content);
+                    goto clean;
+                default:
                     merror(GLOB_ERROR, node[i]->content);
-                    os_strdup(node[i]->content, logf[pl].file);
-                    i++;
-                    continue;
+                    goto clean;
                 }
 
                 /* Check for the last entry */
                 if ((g.gl_pathv[glob_offset]) == NULL) {
                     /* Check when nothing is found */
                     if (glob_offset == 0) {
-                        merror(GLOB_NFOUND, node[i]->content);
-                        return (OS_INVALID);
+                        mwarn(GLOB_NFOUND, node[i]->content);
+                        goto clean;
                     }
                     i++;
                     continue;
@@ -261,16 +237,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     pl++;
                     os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
                     logf = log_config->config;
-
-                    logf[pl].file = NULL;
-                    logf[pl].alias = NULL;
-                    logf[pl].logformat = NULL;
-                    logf[pl].fp = NULL;
-                    logf[pl].ffile = NULL;
-
-                    logf[pl +1].file = NULL;
-                    logf[pl +1].alias = NULL;
-                    logf[pl +1].logformat = NULL;
+                    memset(logf + pl, 0, 2 * sizeof(logreader));
                 }
 
 
@@ -327,35 +294,27 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, "full_command") == 0) {
             } else if (strcmp(logf[pl].logformat, "audit") == 0) {
             } else if (strncmp(logf[pl].logformat, "multi-line", 10) == 0) {
-                int x = 0;
-                logf[pl].logformat += 10;
 
-                while (logf[pl].logformat[0] == ' ') {
-                    logf[pl].logformat++;
+                char *p_lf = logf[pl].logformat;
+                p_lf += 10;
+
+                while (p_lf[0] == ' ') {
+                    p_lf++;
                 }
 
-                if (logf[pl].logformat[0] != ':') {
+                if (*p_lf != ':') {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
-                logf[pl].logformat++;
+                p_lf++;
 
-                while (*logf[pl].logformat == ' ') {
-                    logf[pl].logformat++;
-                }
+                char *end;
 
-                while (logf[pl].logformat[x] >= '0' && logf[pl].logformat[x] <= '9') {
-                    x++;
-                }
-
-                while (logf[pl].logformat[x] == ' ') {
-                    x++;
-                }
-
-                if (logf[pl].logformat[x] != '\0') {
+                if (logf[pl].linecount = strtol(p_lf, &end, 10), end == p_lf || logf[pl].linecount < 1 ) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
+
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
             } else {
@@ -372,24 +331,77 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         i++;
     }
 
+    if (logf[pl].target == NULL) {
+        os_calloc(2, sizeof(char*), logf[pl].target);
+        os_strdup("agent", logf[pl].target[0]);
+    }
+
     /* Validate glob entries */
     if (glob_set) {
         char *format;
+        char ** target;
+        char * outformat;
+        wlabel_t * labels;
 
         /* Get log format */
         if (logf[pl].logformat) {
             format = logf[pl].logformat;
+            logf[pl].logformat = NULL;
         } else if (logf[glob_set - 1].logformat) {
             format = logf[glob_set - 1].logformat;
+            logf[glob_set - 1].logformat = NULL;
         } else {
             merror(MISS_LOG_FORMAT);
+            return (OS_INVALID);
+        }
+
+        /* Get target */
+        if (logf[pl].target) {
+            target = logf[pl].target;
+            logf[pl].target = NULL;
+        } else if (logf[glob_set - 1].target) {
+            target = logf[glob_set - 1].target;
+            logf[glob_set - 1].target = NULL;
+        } else {
+            return (OS_INVALID);
+        }
+
+        // Delete target socket
+
+        if (logf[pl].target_socket) {
+            free(logf[pl].target_socket);
+        } else if (logf[glob_set - 1].target_socket) {
+            free(logf[glob_set - 1].target_socket);
+        } else {
+            return (OS_INVALID);
+        }
+
+        /* Get output format */
+        if (logf[pl].outformat) {
+            outformat = logf[pl].outformat;
+            logf[pl].outformat = NULL;
+        } else if (logf[glob_set - 1].outformat) {
+            outformat = logf[glob_set - 1].outformat;
+            logf[glob_set - 1].outformat = NULL;
+        } else {
+            outformat = NULL;
+        }
+
+        /* Get labels */
+        if (logf[pl].labels) {
+            labels = logf[pl].labels;
+            logf[pl].labels = NULL;
+        } else if (logf[glob_set - 1].labels) {
+            labels = logf[glob_set - 1].labels;
+            logf[glob_set - 1].labels = NULL;
+        } else {
             return (OS_INVALID);
         }
 
         /* The last entry is always null on glob */
         pl--;
 
-        /* Set format for all entries */
+        /* Set format and target for all entries */
         for (i = (glob_set - 1); i <= pl; i++) {
             /* Every entry must be valid */
             if (!logf[i].file) {
@@ -398,10 +410,44 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
 
             if (logf[i].logformat == NULL) {
-                logf[i].logformat = format;
+                os_strdup(format, logf[i].logformat);
             }
 
+            if (logf[i].target == NULL) {
+                int j;
+
+                for (j = 0; target[j]; j++) {
+                    os_realloc(logf[i].target, sizeof(char *) * (j + 2), logf[i].target);
+                    os_strdup(target[j], logf[i].target[j]);
+                }
+
+                logf[i].target[j] = NULL;
+                os_calloc(j + 1, sizeof(logsocket *), logf[i].target_socket);
+            }
+
+            if (outformat && !logf[i].outformat) {
+                os_strdup(outformat, logf[i].outformat);
+            }
+
+            if (logf[i].labels == NULL) {
+                logf[i].labels = labels_dup(labels);
+            }
         }
+
+        // Clear memory
+
+        for (i = 0; target[i]; i++) {
+            free(target[i]);
+        }
+
+        free(target);
+        free(format);
+        free(outformat);
+        labels_free(labels);
+    }
+
+    if (!logf[pl].labels) {
+        os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
     }
 
     /* Missing log format */
@@ -414,11 +460,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     if (!logf[pl].file) {
         merror(MISS_FILE);
         return (OS_INVALID);
-    }
-
-    if (logf[pl].target == NULL) {
-        os_calloc(2, sizeof(char*), logf[pl].target);
-        os_strdup("agent", logf[pl].target[0]);
     }
 
     /* Verify a valid event log config */
@@ -441,6 +482,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
 
     return (0);
+
+clean:
+    Free_Logreader(logf + pl);
+    memset(logf + pl, 0, sizeof(logreader));
+    return 0;
 }
 
 int Test_Localfile(const char * path){
@@ -462,26 +508,12 @@ int Test_Localfile(const char * path){
 }
 
 void Free_Localfile(logreader_config * config){
-    int i, j;
+    int i;
 
     if (config) {
         if (config->config) {
             for (i = 0; config->config[i].file; i++) {
-                free(config->config[i].ffile);
-                free(config->config[i].file);
-                free(config->config[i].logformat);
-                free(config->config[i].djb_program_name);
-                free(config->config[i].alias);
-                free(config->config[i].query);
-                for (j = 0; config->config[i].target[j]; j++) {
-                    free(config->config[i].target[j]);
-                }
-                free(config->config[i].target);
-                labels_free(config->config[i].labels);
-                if (config->config[i].fp) {
-                    fclose(config->config[i].fp);
-                }
-                free(config->config[i].target_socket);
+                Free_Logreader(&config->config[i]);
             }
 
             free(config->config);
@@ -496,5 +528,35 @@ void Free_Localfile(logreader_config * config){
 
             free(config->socket_list);
         }
+    }
+}
+
+void Free_Logreader(logreader * logf) {
+    int i;
+
+    if (logf) {
+        free(logf->ffile);
+        free(logf->file);
+        free(logf->logformat);
+        free(logf->djb_program_name);
+        free(logf->alias);
+        free(logf->query);
+
+        if (logf->target) {
+            for (i = 0; logf->target[i]; i++) {
+                free(logf->target[i]);
+            }
+
+            free(logf->target);
+        }
+
+        labels_free(logf->labels);
+
+        if (logf->fp) {
+            fclose(logf->fp);
+        }
+
+        free(logf->target_socket);
+        free(logf->outformat);
     }
 }

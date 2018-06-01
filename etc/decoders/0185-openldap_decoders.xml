@@ -19,17 +19,28 @@
   - Jan 11 09:26:57 hostname slapd[20872]: conn=999999 fd=64
         ^- Connection closed
 
+  - Oct  2 19:51:22 example slapd[30864]: conn=1068 fd=19 ACCEPT from IP=192.168.0.2:59800 (IP=0.0.0.0:636)
+  - Feb 11 20:12:27 ldap slapd[13129]: conn=15098 fd=23 ACCEPT from IP=[fda2:3ab6:adf4:aa2a::0]:45242 (IP=[::]:389)
+
   -->
 <decoder name="openldap">
     <program_name>^slapd</program_name>
     <accumulate/>
 </decoder>
 
-<decoder name="openldap-connect">
+<decoder name="openldap-connect_ipv6">
     <parent>openldap</parent>
-    <prematch>ACCEPT</prematch>
-    <regex>^conn=(\d+) fd=\d+ ACCEPT from IP=(\S+):</regex>
-    <order>id, srcip</order>
+    <prematch>ACCEPT from IP=[</prematch>
+    <regex>^conn=(\d+) fd=\d+ ACCEPT from IP=[(\S+)]:\d+ \(IP=[(\S+)]:</regex>
+    <order>id, srcip, dstip</order>
+    <accumulate/>
+</decoder>
+
+<decoder name="openldap-connect_ipv4">
+    <parent>openldap</parent>
+    <prematch>ACCEPT from IP=</prematch>
+    <regex>^conn=(\d+) fd=\d+ ACCEPT from IP=(\S+):\d+ \(IP=(\S+):</regex>
+    <order>id, srcip, dstip</order>
     <accumulate/>
 </decoder>
 

@@ -21,6 +21,7 @@
         <if_sid>85000</if_sid>
         <match>Starting up database</match>
         <description>Starting up database.</description>
+        <group></group>
     </rule>
   
 <!--
@@ -51,7 +52,7 @@
         <if_sid>85000</if_sid>
         <match>Login succeeded for user</match>
         <description>SQL Server login success.</description>
-        <group>sqlserver_login,,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,</group>
+        <group>sqlserver_login,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
     </rule>  
   
 <!--
@@ -62,14 +63,14 @@
         <if_sid>85000</if_sid>
         <match>Login failed for user</match>
         <description>SQL Server login failed.</description>
-        <group>sqlserver_login, authentication_failed,,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,</group>
+        <group>sqlserver_login, authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="85006" level="10" frequency="6">
         <if_matched_sid>85005</if_matched_sid>
         <same_source_ip />
         <description>SQL Server: Multiple authentication failures.</description>
-        <group>identityguard_login,authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,</group>
+        <group>identityguard_login,authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>  
 
 <!--
@@ -91,7 +92,7 @@
         <if_sid>85000</if_sid>
         <match>The SQL Server Network Interface library could not register the Service Principal Name</match>
         <description>SQL Server Network Interface library unregistered </description>
-        <group>sqlservererror, sqlserverlibraries,</group>
+        <group>sqlservererror, sqlserverlibraries,gdpr_IV_35.7.d,</group>
     </rule> 
   
 <!--
@@ -102,7 +103,7 @@
         <if_sid>85000</if_sid>
         <match>Error: </match>
         <description>SQL Server error.</description>
-        <group>sqlservererror,</group>
+        <group>sqlservererror,gdpr_IV_35.7.d,</group>
     </rule> 
     
 <!--

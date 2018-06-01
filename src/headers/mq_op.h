@@ -27,10 +27,12 @@
 #define AUTH_MQ          'c'
 #define SYSCOLLECTOR_MQ  'd'
 
+extern int sock_fail_time;
+
 int StartMQ(const char *key, short int type) __attribute__((nonnull));
 
 int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
 
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets) __attribute__((nonnull));
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets, const char * pattern) __attribute__((nonnull (2, 3, 5)));
 
 #endif

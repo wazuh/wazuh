@@ -1,3 +1,13 @@
+/*
+ * Contributed by Gael Muller (@gaelmuller)
+ * Maintained by Wazuh Inc.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #define SECURITY_WIN32
 #include <windef.h>
 #include <sspi.h>
@@ -37,7 +47,7 @@ void SendSecurityToken(const int socket, SecBuffer *OutBuffers)
     {
         sent = send(socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
         if (sent <= 0)
-            merror_exit("Could not send security token to server (is ossec-authd running ?)");
+            merror_exit("Could not send security token to server.");
 
         // Free Output Buffer
         FreeContextBuffer(OutBuffers[0].pvBuffer);
@@ -67,7 +77,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
 
     // Connect via TCP
     *socket = OS_ConnectTCP(port, manager, 0);
-    if (socket == 0)
+    if (*socket < 0)
         merror_exit("Unable to connect to %s:%d", manager, port);
 
     // Setting authentication credentials
@@ -109,8 +119,14 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
             SendSecurityToken(*socket, OutBuffers);
             total_read = 0;
             break;
+        case SEC_E_INSUFFICIENT_MEMORY:  // 0x80090300
+            merror_exit("Insufficient memory.");
+            break;
         case SEC_E_UNSUPPORTED_FUNCTION: // 0x80090302
             merror_exit("Couldn't negotiate encryption protocol. Try to run ossec-authd with \"-a\" option.");
+            break;
+        case SEC_E_INTERNAL_ERROR:  // 0x80090304
+            merror_exit("Internal error.");
             break;
         case SEC_E_INCOMPLETE_MESSAGE:   // 0x80090318
             break;
@@ -126,7 +142,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
         {
             read = recv(*socket, buffer + total_read, IO_BUFFER_SIZE - total_read, 0);
             if (read <= 0)
-                merror_exit("Could not get security token from server");
+                merror_exit("Could not get security token from server. Run ossec-authd with \"-a\" option and enable RC4 or 3DES cipher.");
 
             total_read += read;
         }

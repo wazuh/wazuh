@@ -1,6 +1,6 @@
 filebeat:
  prospectors:
-  - input_type: log
+  - type: log
     paths:
      - "/var/ossec/logs/alerts/alerts.json"
     document_type: json

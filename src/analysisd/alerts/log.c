@@ -124,7 +124,7 @@ void OS_LogOutput(Eventinfo *lf)
         "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
         "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
-        (long int)lf->time,
+        (long int)lf->time.tv_sec,
         __crt_ftell,
         lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
         lf->generated_rule->group,
@@ -230,6 +230,11 @@ void OS_LogOutput(Eventinfo *lf)
         if (lf->sha1_after)
             printf("New SHA1: %s\n", lf->sha1_after);
 
+        if (lf->sha256_before)
+            printf("Old SHA256: %s\n", lf->sha256_before);
+        if (lf->sha256_after)
+            printf("New SHA256: %s\n", lf->sha256_after);
+
         if (lf->mtime_before)
             printf("Old date: %s", ctime(&lf->mtime_before));
         if (lf->mtime_after)
@@ -292,7 +297,7 @@ void OS_Log(Eventinfo *lf)
             "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
             "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
-            (long int)lf->time,
+            (long int)lf->time.tv_sec,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
             lf->generated_rule->group,
@@ -397,6 +402,11 @@ void OS_Log(Eventinfo *lf)
         if (lf->sha1_after)
             fprintf(_aflog, "New SHA1: %s\n", lf->sha1_after);
 
+        if (lf->sha256_before)
+            fprintf(_aflog, "Old SHA256: %s\n", lf->sha256_before);
+        if (lf->sha256_after)
+            fprintf(_aflog, "New SHA256: %s\n", lf->sha256_after);
+
         if (lf->mtime_before)
             fprintf(_aflog, "Old date: %s", ctime(&lf->mtime_before));
         if (lf->mtime_after)
@@ -441,7 +451,7 @@ void OS_CustomLog(const Eventinfo *lf, const char *format)
     /* Replace all the tokens */
     os_strdup(format, log);
 
-    snprintf(tmp_buffer, 1024, "%ld", (long int)lf->time);
+    snprintf(tmp_buffer, 1024, "%ld", (long int)lf->time.tv_sec);
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_TIMESTAMP], tmp_buffer);
     free(log);
 

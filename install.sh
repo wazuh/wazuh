@@ -93,6 +93,14 @@ Install()
           MAKEBIN=/opt/freeware/bin/gmake
     fi
 
+    # On CentOS <= 5 we need to disable syscollector compilation
+    OS_VERSION_FOR_SYSC="${DIST_NAME}"
+    SYSC_FLAG=""
+
+    if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ] || [ "X${OS_VERSION_FOR_SYSC}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+        SYSC_FLAG="DISABLE_SYSC=true"
+    fi
+
 
     # Makefile
     echo " - ${runningmake}"
@@ -102,9 +110,12 @@ Install()
 
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
+        # Download external libraries if missing
+        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps
+
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} -j${THREADS} build
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"
@@ -151,14 +162,12 @@ Install()
     fi
 
     # Calling the init script  to start ossec hids during boot
-    if [ "X${update_only}" = "X" ]; then
-        runInit $INSTYPE
-        if [ $? = 1 ]; then
-            notmodified="yes"
-        elif [ "X$START_WAZUH" = "Xyes" ]; then
-            echo "Starting Wazuh..."
-            UpdateStartOSSEC
-        fi
+    runInit $INSTYPE ${update_only}
+    if [ $? = 1 ]; then
+        notmodified="yes"
+    elif [ "X$START_WAZUH" = "Xyes" ]; then
+        echo "Starting Wazuh..."
+        UpdateStartOSSEC
     fi
 
 }
@@ -599,7 +608,7 @@ setEnv()
         case $ANSWER in
             $yesmatch)
                 echo "      Stopping Wazuh..."
-                UpdateStopOSSEC > /dev/null 2>&1
+                UpdateStopOSSEC
                 rm -rf $INSTALLDIR
                 if [ ! $? = 0 ]; then
                     echo "Error deleting ${INSTALLDIR}"
