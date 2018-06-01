@@ -117,7 +117,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                 counter = 1;
                 while (counter < daily_rotations) {
                     if (rename(old_rename_path, rename_path) != 0) {
-                        merror("Could rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
                         return;
                     }
                     counter++;
@@ -161,7 +161,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                 counter = 1;
                 while (counter < daily_rotations) {
                     if (rename(old_rename_path, rename_path) != 0) {
-                        merror("Could rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
                         return;
                     }
                     counter++;
@@ -181,8 +181,9 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                 merror("Couldn't rename '%s' to '%s': %s", old_path_json, new_path_json, strerror(errno));
             }
         }
-
     }
+
+    minfo("Starting new log after rotation.");
 
     // Remove old compressed files
     remove_old_logs(base_dir, keep_log_days);

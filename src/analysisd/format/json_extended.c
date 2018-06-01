@@ -15,7 +15,7 @@
 void W_ParseJSON(cJSON* root, const Eventinfo* lf)
 {
     // Parse hostname & Parse AGENTIP
-    if(lf->hostname) {
+    if(lf->full_log && lf->hostname) {
         W_JSON_ParseHostname(root, lf);
         W_JSON_ParseAgentIP(root, lf);
     }
@@ -148,13 +148,12 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 {
     cJSON* groups;
     cJSON* rule;
-    int firstPCI, firstCIS, foundCIS, foundPCI;
+    int firstPCI, firstCIS, firstGDPR, firstGPG13;
     char delim[2];
     char buffer[MAX_STRING] = "";
     char* token;
 
-    firstPCI = firstCIS = 1;
-    foundPCI = foundCIS = 0;
+    firstPCI = firstCIS = firstGDPR = firstGPG13 = 1;
     delim[0] = ',';
     delim[1] = 0;
 
@@ -170,17 +169,15 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 
     token = strtok(buffer, delim);
     while(token) {
-        foundPCI = foundCIS = 0;
-        foundPCI = add_groupPCI(rule, token, firstPCI);
-        if(!foundPCI)
-            foundCIS = add_groupCIS(rule, token, firstCIS);
-
-        if(foundPCI && firstPCI)
+        if (add_groupPCI(rule, token, firstPCI)) {
             firstPCI = 0;
-        if(foundCIS && firstCIS)
+        } else if (add_groupCIS(rule, token, firstCIS)) {
             firstCIS = 0;
-
-        if(!foundPCI && !foundCIS) {
+        } else if (add_groupGDPR(rule, token, firstGDPR)) {
+            firstGDPR = 0;
+        } else if (add_groupGPG13(rule, token, firstGPG13)) {
+            firstGPG13 = 0;
+        } else {
             cJSON_AddItemToArray(groups, cJSON_CreateString(token));
         }
         token = strtok(0, delim);
@@ -224,6 +221,48 @@ int add_groupCIS(cJSON* rule, char* group, int firstCIS)
         aux = strdup(group);
         str_cut(aux, 0, 4);
         cJSON_AddItemToArray(cis, cJSON_CreateString(aux));
+        free(aux);
+        return 1;
+    }
+    return 0;
+}
+
+// Parse groups GDPR
+int add_groupGDPR(cJSON* rule, char* group, int firstGDPR)
+{
+    cJSON* gdpr;
+    char *aux;
+    if((startsWith("gdpr_", group)) == 1) {
+        if(firstGDPR == 1) {
+            gdpr = cJSON_CreateArray();
+            cJSON_AddItemToObject(rule, "gdpr", gdpr);
+        } else {
+            gdpr = cJSON_GetObjectItem(rule, "gdpr");
+        }
+        aux = strdup(group);
+        str_cut(aux, 0, 5);
+        cJSON_AddItemToArray(gdpr, cJSON_CreateString(aux));
+        free(aux);
+        return 1;
+    }
+    return 0;
+}
+
+// Parse groups GPG13
+int add_groupGPG13(cJSON* rule, char* group, int firstGPG13)
+{
+    cJSON* gpg13;
+    char *aux;
+    if((startsWith("gpg13_", group)) == 1) {
+        if(firstGPG13 == 1) {
+            gpg13 = cJSON_CreateArray();
+            cJSON_AddItemToObject(rule, "gpg13", gpg13);
+        } else {
+            gpg13 = cJSON_GetObjectItem(rule, "gpg13");
+        }
+        aux = strdup(group);
+        str_cut(aux, 0, 6);
+        cJSON_AddItemToArray(gpg13, cJSON_CreateString(aux));
         free(aux);
         return 1;
     }
@@ -303,30 +342,17 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 // Parse timestamp
 void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
 {
-    char buffer[25] = "";
+    char timestamp[64];
+    char datetime[64];
+    char timezone[64];
     struct tm tm;
-    time_t timestamp;
-    char *end;
 
-    if (lf->year && lf->mon[0] && lf->day && lf->hour[0]) {
-        timestamp = time(NULL);
-        memcpy(&tm, localtime(&timestamp), sizeof(struct tm));
-
-        if (!(end = strptime(lf->hour, "%T", &tm)) || *end) {
-            merror("Could not parse hour '%s'.", lf->hour);
-            return;
-        }
-
-        if (!(end = strptime(lf->mon, "%b", &tm)) || *end) {
-            merror("Could not parse month '%s'.", lf->mon);
-            return;
-        }
-
-        tm.tm_year = lf->year - 1900;
-        tm.tm_mday = lf->day;
-
-        strftime(buffer, 25, "%FT%T%z", &tm);
-        cJSON_AddStringToObject(root, "timestamp", buffer);
+    if (lf->time.tv_sec) {
+        localtime_r(&lf->time.tv_sec, &tm);
+        strftime(datetime, sizeof(datetime), "%FT%T", &tm);
+        strftime(timezone, sizeof(timezone), "%z", &tm);
+        snprintf(timestamp, sizeof(timestamp), "%s.%ld%s", datetime, lf->time.tv_nsec / 1000000, timezone);
+        cJSON_AddStringToObject(root, "timestamp", timestamp);
     }
 }
 

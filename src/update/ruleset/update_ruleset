@@ -30,6 +30,7 @@ try:
     from urllib2 import urlopen, URLError, HTTPError
 except:
     from urllib.request import urlopen  # Python 3
+    from urllib.error import URLError, HTTPError
 
 
 class RulesetLogger:
@@ -298,7 +299,13 @@ def get_new_ruleset(source, url, branch_name=None):
 
     # Update main directory
     copy("{0}/VERSION".format(update_ruleset), ossec_ruleset_version_path)
-    copy("{0}/update_ruleset".format(update_ruleset), ossec_update_script, 0o750)
+    try:
+        if os.path.isfile("{0}/update_ruleset".format(update_ruleset)):
+            copy("{0}/update_ruleset".format(update_ruleset), ossec_update_script, 0o750)
+        else:
+            copy("{0}/update_ruleset.py".format(update_ruleset), ossec_update_script, 0o750)
+    except Exception as e:
+        exit(2,"Upgrade aborted: Update ruleset not found.")
 
 
     return get_ruleset_version()
@@ -411,27 +418,37 @@ def upgrade_ruleset(ruleset):
 
 
 def restore_backups():
-    for src in [update_backups_rules, update_backups_decoders, update_backups_rootchecks]:
-        type_item = src.split('/')[-1]
-        if type_item == 'rules':
-            dst = ossec_rules
-        elif type_item == 'decoders':
-            dst = ossec_decoders
-        elif type_item == 'rootchecks':
-            dst = ossec_rootchecks
+    error_msg = "ERROR: No backups availables. Exiting..."
+    try:
+        directories = os.listdir(update_backups)
+        if directories != []:
+            for src in [update_backups_rules, update_backups_decoders, update_backups_rootchecks]:
+                type_item = src.split('/')[-1]
+                if type_item == 'rules':
+                    dst = ossec_rules
+                elif type_item == 'decoders':
+                    dst = ossec_decoders
+                elif type_item == 'rootchecks':
+                    dst = ossec_rootchecks
 
-        backups_items = os.listdir(src)
+                # try:
+                backups_items = os.listdir(src)
 
-        if backups_items:
-            logger.log("\t{0}:".format(type_item))
+                if backups_items:
+                    logger.log("\t{0}:".format(type_item))
+                else:
+                    logger.log("\t{0}: Empty".format(type_item))
+
+                for backup_item in backups_items:
+                    logger.log("\t\t{0}".format(backup_item))
+                    src_file = "{0}/{1}".format(src, backup_item)
+                    dst_file = "{0}/{1}".format(dst, backup_item)
+                    copy(src_file, dst_file)
         else:
-            logger.log("\t{0}: Empty".format(type_item))
-
-        for backup_item in backups_items:
-            logger.log("\t\t{0}".format(backup_item))
-            src_file = "{0}/{1}".format(src, backup_item)
-            dst_file = "{0}/{1}".format(dst, backup_item)
-            copy(src_file, dst_file)
+            raise Exception(error_msg)
+    except Exception as e:
+        logger.log("{0}".format(error_msg))
+        sys.exit(1)
 
 
 def main():
@@ -535,7 +552,7 @@ def same_major_minor(old_version, new_version):
 def usage():
     branch = get_branch()  # 'stable' 'master' 'development'
     msg = """
-    Update ruleset v3.0.0
+    Update ruleset v3.2.0
     Github repository: https://github.com/wazuh/wazuh-ruleset
     Full documentation: http://documentation.wazuh.com/en/latest/wazuh_ruleset.html
 
@@ -613,7 +630,6 @@ if __name__ == "__main__":
         elif o in ("-j", "--json"):
             arguments['json'] = True
         elif o in ("-n", "--branch-name"):
-            print("entro aqui")
             arguments['branch-name'] = a
             branch_found = True
         elif o in ("-u", "--url"):

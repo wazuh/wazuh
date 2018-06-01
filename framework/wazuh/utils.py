@@ -7,13 +7,16 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close
+from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
 from datetime import datetime, timedelta
 import hashlib
 import json
 import stat
 import re
+import errno
 from itertools import groupby, chain
+from xml.etree.ElementTree import fromstring
+from operator import itemgetter
 
 try:
     from subprocess import check_output
@@ -96,7 +99,7 @@ def cut_array(array, offset, limit):
     offset = int(offset)
     limit = int(limit)
 
-    if offset < 0 or offset >= len(array):
+    if offset < 0:
         raise WazuhException(1400)
     elif limit < 1:
         raise WazuhException(1401)
@@ -329,6 +332,29 @@ def chown_r(filepath, uid, gid):
                 chown_r(itempath, uid, gid)
 
 
+def mkdir_with_mode(name, mode=0o770):
+    """
+    Creates a directory with specified permissions.
+
+    :param directory: directory path
+    :param mode: permissions to set to the directory
+    """
+    head, tail = path.split(name)
+    if not tail:
+        head, tail = path.split(head)
+    if head and tail and not path.exists(head):
+        try:
+            mkdir_with_mode(head, mode)
+        except OSError as e:
+            # be happy if someone already created the path
+            if e.errno != errno.EEXIST:
+                raise
+        if tail == curdir:           # xxx/newdir/. exists if xxx/newdir exists
+            return
+    mkdir(name, mode)
+    chmod(name, mode)
+
+
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
@@ -336,13 +362,23 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def plain_dict_to_nested_dict(data, force_fields=[]):
+
+def get_fields_to_nest(fields, force_fields=[]):
+    nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
+             for k,g in groupby(map(lambda x: x.split('_'), sorted(fields)),
+             key=lambda x:x[0])}
+    nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
+    nested = [(field,{(subfield, '_'.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
+    non_nested = set(filter(lambda x: x.split('_')[0] not in map(itemgetter(0), nested), fields))
+    return nested, non_nested
+
+
+def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[]):
     """
     Turns an input dictionary with "nested" fields in form
                 field_subfield
     into a real nested dictionary in form
                 field {subfield}
-
     For example, the following input dictionary
     data = {
        "ram_free": "1669524",
@@ -365,41 +401,75 @@ def plain_dict_to_nested_dict(data, force_fields=[]):
       },
       "board_serial": "BSS-0123456789"
     }
-
     :param data: dictionary to nest
+    :param nested: fields to nest
     :param force_fields: fields to force nesting in
     """
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
-    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g))) 
-             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())), 
+    nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
+             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())),
              key=lambda x:x[0])}
 
     # create a nested dictionary with those fields that have subfields
     # (board_serial won't be added because it only has one subfield)
     #  nested_dict = {
     #       'cpu': {
-    #           'cores': '4', 
+    #           'cores': '4',
     #           'mhz': '2394.464',
     #           'name': 'Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz'
-    #       }, 
+    #       },
     #       'ram': {
-    #           'free': '1669524', 
+    #           'free': '1669524',
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl 
+    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl
                   in nested.items() if len(sfl) > 1 or f in force_fields}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0] 
+    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0]
                        not in nested_dict.keys()}
 
     # append both dictonaries
     nested_dict.update(non_nested_dict)
 
     return nested_dict
+
+
+def divide_list(l, size=1000):
+    return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
+
+
+def create_exception_dic(id, e):
+    """
+    Creates a dictionary with a list of agent ids and it's error codes.
+    """
+    exception_dic = {}
+    exception_dic['id'] = id
+    exception_dic['error'] = {'message': e.message, 'code': e.code}
+    return exception_dic
+
+
+def load_wazuh_xml(xml_path):
+    with open(xml_path) as f:
+        data = f.read()
+
+    # -- characters are not allowed in XML comments
+    xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
+    for comment in xml_comment.finditer(data):
+        good_comment = comment.group(2).replace('--','..')
+        data = data.replace(comment.group(2), good_comment)
+
+    # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
+    data = re.sub(r"<(?!/?[\w=\'$,#\"\.@\/_ -:]+>|!--)", "&lt;", data)
+
+    # & characters should be scaped if they don't represent an &entity;
+    data = re.sub(r"&(?!\w+;)", "&amp;", data)
+
+    return fromstring('<root_tag>' + data + '</root_tag>')
+
 
 class WazuhVersion:
 

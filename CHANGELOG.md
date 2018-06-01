@@ -1,7 +1,180 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.2.0]
+## [v3.3.0]
+
+### Added
+
+- Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
+- Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
+- Improved configuration of OVAL updates. ([#416](https://github.com/wazuh/wazuh/pull/416))
+- Added selective agent software request in vulnerability-detector. ([#404](https://github.com/wazuh/wazuh/pull/404))
+- Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
+- Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
+- Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
+- Get Windows packages inventory natively. ([#471](https://github.com/wazuh/wazuh/pull/471))
+- Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
+- Added Debian and Ubuntu 18 support in vulnerability-detector. ([#470](https://github.com/wazuh/wazuh/pull/470))
+- Added Rids Synchronization. ([#459](https://github.com/wazuh/wazuh/pull/459))
+- Added option for setting the group that the agent belongs to when registering it with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
+- Added option for setting the source IP when the agent registers with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
+- Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
+- Added option to force the vulnerability detection in unsupported OS. ([#462](https://github.com/wazuh/wazuh/pull/462))
+- Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
+- Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
+- Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
+- Integration with Osquery. ([#627](https://github.com/wazuh/wazuh/pull/627))
+    - Enrich osquery configuration with pack files aggregation and agent labels as decorators.
+    - Launch osquery daemon in background.
+    - Monitor results file and send them to the manager.
+    - New option in rules `<location>` to filter events by osquery.
+    - Support folders in shared configuration. This makes easy to send pack folders to agents.
+    - Basic ruleset for osquery events and daemon logs.
+- Boost Remoted performance with multithreading. ([#649](https://github.com/wazuh/wazuh/pull/649))
+    - Up to 16 parallel threads to decrypt messages from agents.
+    - Limit the frequency of agent keys reloading.
+    - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
+
+### Changed
+
+- Add default value for option -x in agent_control tool.
+- Syscheck RT process granularized to make frequency option more accurate.
+- External libraries moved to an external repository.
+- Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
+- Ignore OverlayFS directories on Rootcheck system scan.
+- Extracts agent's OS from the database instead of the agent-info.
+- Increases the maximum size of XML parser to 20KB.
+- Extract CVE instead of RHSA codes into vulnerability-detector. ([#549](https://github.com/wazuh/wazuh/pull/549))
+- Merge external libraries into a unique shared library. ([#620](https://github.com/wazuh/wazuh/pull/620))
+
+### Fixed
+
+- Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
+- Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
+- Fixed invalid alerts reported by Syscollector when the event contains the word "error". ([#461](https://github.com/wazuh/wazuh/pull/461))
+- Fixed registry_ignore problem on syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
+- Silenced Vuls integration starting and ending alerts. ([#541](https://github.com/wazuh/wazuh/pull/541))
+- Fix problem comparing releases of ubuntu packages. ([#556](https://github.com/wazuh/wazuh/pull/556))
+- Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
+- Fix bug in Rootcheck for Windows that searches for keys in 32-bit mode only. ([#566](https://github.com/wazuh/wazuh/pull/566))
+- Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
+
+### Removed
+
+- Deleted Lua language support.
+
+## [v3.2.3]
+
+### Added
+
+- New internal option to enable merged file creation by Remoted. ([#603](https://github.com/wazuh/wazuh/pull/603))
+- Created alert item for GDPR and GPG13. ([#608](https://github.com/wazuh/wazuh/pull/608))
+- Add support for Amazon Linux in vulnerability-detector.
+
+### Changed
+
+- Set default agent limit to 14.000 and file descriptor limit to 65.536 per process. ([#624](https://github.com/wazuh/wazuh/pull/624))
+- Cluster improvements.
+    - New protocol for communications.
+    - Inverted communication flow: clients start communications with the master.
+    - Just the master address is required in the `<nodes>` list configuration.
+    - Improved synchronization algorithm.
+    - Reduced the number of processes to one: `wazuh-clusterd`.
+- Cluster control tool improvements: outputs are the same regardless of node type.
+
+### Fixed
+
+- Fixed agent wait condition and improve logging messages. ([#550](https://github.com/wazuh/wazuh/pull/550))
+- Fix race condition in settings load time by Windows agent. ([#551](https://github.com/wazuh/wazuh/pull/551))
+- Fix bug in Authd that prevented it from deleting agent-info files when removing agents.
+- Fix bug in ruleset that did not overwrite the `<info>` option. ([#584](https://github.com/wazuh/wazuh/issues/584))
+- Fixed bad file descriptor error in Wazuh DB ([#588](https://github.com/wazuh/wazuh/issues/588))
+- Fixed unpredictable file sorting when creating merged files. ([#599](https://github.com/wazuh/wazuh/issues/599))
+- Fixed race condition in Remoted when closing connections.
+- Fix epoch check in vulnerability-detector.
+- Fixed hash sum in logs rotation. ([#636](https://github.com/wazuh/wazuh/issues/636))
+- Fixed cluster CPU usage.
+- Fixed segmentation fault in logcollector when multi-line is applied to a remote configuration. ([#641](https://github.com/wazuh/wazuh/pull/641))
+
+### Removed
+
+- Removed cluster database and internal cluster daemon.
+
+
+## [v3.2.2]
+
+### Added
+
+- Created an input queue for Remoted to prevent agent connection starvation. ([#509](https://github.com/wazuh/wazuh/pull/509))
+
+### Changed
+
+- Updated Slack integration. ([#443](https://github.com/wazuh/wazuh/pull/443))
+- Increased connection timeout for remote upgrades. ([#480](https://github.com/wazuh/wazuh/pull/480))
+- Vulnerability-detector does not stop agents detection if it fails to find the software for one of them.
+- Improve the version comparator algorithm in vulnerability-detector. ([#508](https://github.com/wazuh/wazuh/pull/508/files))
+
+### Fixed
+
+- Fixed bug in labels settings parser that may make Agentd or Logcollector crash.
+- Fixed issue when setting multiple `<server-ip>` stanzas in versions 3.0 - 3.2.1. ([#433](https://github.com/wazuh/wazuh/pull/433))
+- Fixed bug when socket database messages are not sent correctly. ([#435](https://github.com/wazuh/wazuh/pull/435))
+- Fixed unexpected stop in the sources installer when overwriting a previous corrupt installation.
+- Added a synchronization timeout in the cluster to prevent it from blocking ([#447](https://github.com/wazuh/wazuh/pull/447))
+- Fixed issue in CSyslogd when filtering by rule group. ([#446](https://github.com/wazuh/wazuh/pull/446))
+- Fixed error on DB daemon when parsing rules with options introduced in version 3.0.0.
+- Fixed unrecognizable characters error in Windows version name. ([#478](https://github.com/wazuh/wazuh/pull/478))
+- Fix Authd client in old versions of Windows ([#479](https://github.com/wazuh/wazuh/pull/479))
+- Cluster's socket management improved to use persistent connections ([#481](https://github.com/wazuh/wazuh/pull/481))
+- Fix memory corruption in Syscollector decoder and memory leaks in Vulnerability Detector. ([#482](https://github.com/wazuh/wazuh/pull/482))
+- Fixed memory corruption in Wazuh DB autoclosing procedure.
+- Fixed dangling db files at DB Sync module folder. ([#489](https://github.com/wazuh/wazuh/pull/489))
+- Fixed agent group file deletion when using Authd.
+- Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
+- Fixed remote command switch option. ([#504](https://github.com/wazuh/wazuh/pull/504))
+
+## [v3.2.1] 2018-03-03
+
+### Added
+
+- Added option in Makefile to disable CIS-CAT module. ([#381](https://github.com/wazuh/wazuh/pull/381))
+- Added field `totalItems` to `GET/agents/purgeable/:timeframe` API call. ([#385](https://github.com/wazuh/wazuh/pull/385))
+
+### Changed
+
+- Giving preference to use the selected Java over the default one in CIS-CAT wodle.
+- Added delay between message delivery for every module. ([#389](https://github.com/wazuh/wazuh/pull/389))
+- Verify all modules for the shared configuration. ([#408](https://github.com/wazuh/wazuh/pull/408))
+- Updated OpenSSL library to 1.1.0g.
+- Insert agent labels in JSON archives no matter the event matched a rule.
+- Support for relative/full/network paths in the CIS-CAT configuration. ([#419](https://github.com/wazuh/wazuh/pull/419))
+- Improved cluster control to give more information. ([#421](https://github.com/wazuh/wazuh/pull/421))
+- Updated rules for CIS-CAT.
+- Removed unnecessary compilation of vulnerability-detector in agents.
+- Increased wazuh-modulesd's subprocess pool.
+- Improved the agent software recollection by Syscollector.
+
+### Fixed
+
+- Fixed crash in Agentd when testing Syscollector configuration from agent.conf file.
+- Fixed duplicate alerts in Vulnerability Detector.
+- Fixed compiling issues in Solaris and HP-UX.
+- Fixed bug in Framework when listing directories due to permissions issues.
+- Fixed error handling in CIS-CAT module. ([#401](https://github.com/wazuh/wazuh/pull/401))
+- Fixed some defects reported by Coverity. ([#406](https://github.com/wazuh/wazuh/pull/406))
+- Fixed OS name detection in macOS and old Linux distros. ([#409](https://github.com/wazuh/wazuh/pull/409))
+- Fixed linked in HP-UX.
+- Fixed Red Hat detection in vulnerability-detector.
+- Fixed segmentation fault in wazuh-cluster when files path is too long.
+- Fixed a bug getting groups and searching by them in `GET/agents` API call. ([#390](https://github.com/wazuh/wazuh/pull/390))
+- Several fixes and improvements in cluster.
+- Fixed bug in wazuh-db when closing exceeded databases in transaction.
+- Fixed bug in vulnerability-detector that discarded valid agents.
+- Fixed segmentation fault in Windows agents when getting OS info.
+- Fixed memory leaks in vulnerability-detector and CIS-CAT wodle.
+- Fixed behavior when working directory is not found in CIS-CAT wodle.
+
+## [v3.2.0] 2018-02-13
 
 ### Added
 - Added support to synchronize custom rules and decoders in the cluster.([#344](https://github.com/wazuh/wazuh/pull/344))
@@ -19,7 +192,7 @@ All notable changes to this project will be documented in this file.
 - Fixed predecoder hostname field in JSON event output.
 - Several fixes and improvements in cluster.
 
-## [v3.1.0]
+## [v3.1.0] 2017-12-22
 
 ### Added
 

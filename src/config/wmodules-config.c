@@ -57,43 +57,59 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 
     // Select module by name
 
-    if (!strcmp(node->values[0], WM_OSCAP_CONTEXT.name)){
+   //osQuery monitor module
+    if (!strcmp(node->values[0], WM_OSQUERYMONITOR_CONTEXT.name)) {
+        if (wm_osquery_monitor_read(children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    else if (!strcmp(node->values[0], WM_OSCAP_CONTEXT.name)) {
         if (wm_oscap_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
 #ifdef ENABLE_SYSC
-    else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)){
+    else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
         if (wm_sys_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
 #endif
-    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)){
+    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)) {
         if (wm_command_read(children, cur_wmodule, agent_cfg) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)){
+    }
+#ifdef ENABLE_CISCAT
+    else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)) {
         if (wm_ciscat_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+    }
+#endif
 #ifndef WIN32
-    } else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name)){
+    else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name)) {
         if (wm_aws_read(children, cur_wmodule, agent_cfg) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
-    } else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)){
-        if (wm_vulnerability_detector_read(children, cur_wmodule) < 0) {
+    }
+#ifndef CLIENT
+    else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)) {
+        if (wm_vulnerability_detector_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+    }
 #endif
-    } else {
+#endif
+    else {
         merror("Unknown module '%s'", node->values[0]);
     }
 

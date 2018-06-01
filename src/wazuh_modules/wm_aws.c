@@ -27,8 +27,9 @@ const wm_context WM_AWS_CONTEXT = {
 void * wm_aws_main(wm_aws_t * config) {
     time_t time_start;
     time_t time_sleep = 0;
+
+    // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-    struct timeval timeout = { 0, usec };
 
     if (!config->enabled) {
         mtwarn(WM_AWS_LOGTAG, "Module AWS-CloudTrail is disabled. Exiting.");
@@ -38,7 +39,7 @@ void * wm_aws_main(wm_aws_t * config) {
     mtinfo(WM_AWS_LOGTAG, "Module AWS-CloudTrail started");
 
     // Connect to socket
-    
+
     int i;
 
     for (i = 0; config->queue_fd = StartMQ(DEFAULTQPATH, WRITE), config->queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++) {
@@ -64,8 +65,8 @@ void * wm_aws_main(wm_aws_t * config) {
     while (1) {
         int status;
         char * output = NULL;
-        char *command = NULL;  
-  
+        char *command = NULL;
+
         // Create arguments
 
         wm_strcat(&command, WM_AWS_SCRIPT_PATH, '\0');
@@ -113,9 +114,7 @@ void * wm_aws_main(wm_aws_t * config) {
         char * line;
 
         for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
-            timeout.tv_usec = usec;
-            select(0 , NULL, NULL, NULL, &timeout);
-            SendMSG(config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
+            wm_sendmsg(usec, config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
         }
 
         free(output);

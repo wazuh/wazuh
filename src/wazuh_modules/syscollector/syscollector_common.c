@@ -15,6 +15,7 @@
 static wm_sys_t *sys;                           // Pointer to configuration
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
+static void wm_sys_destroy(wm_sys_t *sys);      // Destroy data
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 
 // Syscollector module context definition
@@ -22,7 +23,7 @@ const char *WM_SYS_LOCATION = "syscollector";   // Location field for event send
 const wm_context WM_SYS_CONTEXT = {
     "syscollector",
     (wm_routine)wm_sys_main,
-    NULL
+    (wm_routine)wm_sys_destroy
 };
 
 #ifndef WIN32
@@ -64,9 +65,8 @@ void* wm_sys_main(wm_sys_t *sys) {
 
     #ifdef WIN32
         if (!checkVista()){
-            mtwarn(WM_SYS_LOGTAG, "Network, opened ports, and OS scans are incompatible with versions older than Vista.");
+            mtwarn(WM_SYS_LOGTAG, "Network and opened ports scans are incompatible with versions older than Vista.");
             sys->flags.netinfo = 0;
-            sys->flags.osinfo = 0;
             sys->flags.portsinfo = 0;
         }
     #endif
@@ -119,9 +119,9 @@ void* wm_sys_main(wm_sys_t *sys) {
             #if defined(WIN32)
                 sys_programs_windows(WM_SYS_LOCATION);
             #elif defined(__linux__)
-                sys_programs_linux(queue_fd, WM_SYS_LOCATION);
-            #elif defined(__FreeBSD__)
-                sys_programs_bsd(queue_fd, WM_SYS_LOCATION);
+                sys_packages_linux(queue_fd, WM_SYS_LOCATION);
+            #elif defined(__FreeBSD__) || defined(__MACH__)
+                sys_packages_bsd(queue_fd, WM_SYS_LOCATION);
             #else
                 sys->flags.programinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Packages inventory is not available for this OS version.");
@@ -262,4 +262,8 @@ void delay(unsigned int ms) {
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 
+}
+
+void wm_sys_destroy(wm_sys_t *sys) {
+    free(sys);
 }

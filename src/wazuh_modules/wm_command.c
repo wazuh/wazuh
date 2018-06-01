@@ -30,7 +30,6 @@ void * wm_command_main(wm_command_t * command) {
     size_t extag_len;
     char * extag;
     int usec = 1000000 / wm_max_eps;
-    struct timeval timeout = { 0, usec };
 
     if (!command->enabled) {
         mtwarn(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
@@ -58,6 +57,7 @@ void * wm_command_main(wm_command_t * command) {
 
     // Connect to socket
 
+#ifndef WIN32
     if (!command->ignore_output) {
         int i;
 
@@ -70,6 +70,7 @@ void * wm_command_main(wm_command_t * command) {
             pthread_exit(NULL);
         }
     }
+#endif
 
     // First sleeping
 
@@ -91,7 +92,7 @@ void * wm_command_main(wm_command_t * command) {
         // Get time and execute
         time_start = time(NULL);
 
-        switch (wm_exec(command->command, command->ignore_output ? NULL : &output, &status, 0)) {
+        switch (wm_exec(command->command, command->ignore_output ? NULL : &output, &status, command->timeout)) {
         case 0:
             if (status > 0) {
                 mtwarn(WM_COMMAND_LOGTAG, "Command '%s' returned exit code %d.", command->tag, status);
@@ -112,9 +113,11 @@ void * wm_command_main(wm_command_t * command) {
             char * line;
 
             for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
-                timeout.tv_usec = usec;
-                select(0 , NULL, NULL, NULL, &timeout);
-                SendMSG(command->queue_fd, line, extag, LOCALFILE_MQ);
+            #ifdef WIN32
+                wm_sendmsg(usec, 0, line, extag, LOCALFILE_MQ);
+            #else
+                wm_sendmsg(usec, command->queue_fd, line, extag, LOCALFILE_MQ);
+            #endif
             }
 
             free(output);

@@ -600,7 +600,7 @@ f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
 # 6.1.11 Restrict at/cron to Authorized Users (Scored)
 
 ###############################################
-# 6.1 Configure SSH
+# 6.2 Configure SSH
 ###############################################
 
 # 6.2.1 Set SSH Protocol to 2 (Scored)
@@ -618,7 +618,7 @@ f:/etc/ssh/sshd_config -> !r:^# && !r:LogLevel\.+INFO;
 # TODO
 
 # 6.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
-[ CIS - RHEL7 - 6.2.5 - SSH Configuration - Set SSH MaxAuthTries to 4 or Less  {CIS - RHEL7 - 6.2.5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+[CIS - RHEL7 - 6.2.5 - SSH Configuration - Set SSH MaxAuthTries to 4 or Less  {CIS - RHEL7 - 6.2.5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
 f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;
 
 # 6.2.6 Set SSH IgnoreRhosts to Yes (Scored)

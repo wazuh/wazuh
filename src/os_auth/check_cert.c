@@ -302,7 +302,7 @@ char *asn1_to_cstr(ASN1_STRING *astr)
         return NULL;
     }
 
-    if (!(tmp = (char *)ASN1_STRING_data(astr))) {
+    if (!(tmp = (char *)ASN1_STRING_get0_data(astr))) {
         return NULL;
     }
 

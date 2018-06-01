@@ -192,3 +192,70 @@ int w_str_in_array(const char * needle, const char ** haystack) {
 
     return 0;
 }
+
+/* Filter escape characters */
+
+char* filter_special_chars(const char *string) {
+    int i, j = 0;
+    int n = strlen(string);
+    char *filtered = malloc(n + 1);
+
+    if (!filtered)
+        return NULL;
+
+    for (i = 0; i <= n; i++)
+        filtered[j++] = (string[i] == '\\') ? string[++i] : string[i];
+
+    return filtered;
+}
+
+// Replace substrings
+
+char * wstr_replace(const char * string, const char * search, const char * replace) {
+    char * result;
+    const char * scur;
+    const char * snext;
+    size_t wi = 0;
+    size_t zcur;
+
+    if (!(string && search && replace)) {
+        return NULL;
+    }
+
+    const size_t ZSEARCH = strlen(search);
+    const size_t ZREPLACE = strlen(replace);
+
+    os_malloc(sizeof(char), result);
+
+    for (scur = string; snext = strstr(scur, search), snext; scur = snext + ZSEARCH) {
+        zcur = snext - scur;
+        os_realloc(result, wi + zcur + ZREPLACE + 1, result);
+        memcpy(result + wi, scur, zcur);
+        wi += zcur;
+        memcpy(result + wi, replace, ZREPLACE);
+        wi += ZREPLACE;
+    }
+
+    // Copy last chunk
+
+    zcur = strlen(scur);
+    os_realloc(result, wi + zcur + 1, result);
+    memcpy(result + wi, scur, zcur);
+    wi += zcur;
+
+    result[wi] = '\0';
+    return result;
+}
+
+// Free string array
+void free_strarray(char ** array) {
+    int i;
+
+    if (array) {
+        for (i = 0; array[i]; ++i) {
+            free(array[i]);
+        }
+
+        free(array);
+    }
+}

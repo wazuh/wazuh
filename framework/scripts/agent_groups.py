@@ -15,6 +15,7 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 try:
     from wazuh import Wazuh
     from wazuh.agent import Agent
+    import wazuh.group as group
     from wazuh.exception import WazuhException
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -39,11 +40,13 @@ def signal_handler(n_signal, frame):
 
 
 def show_groups():
-    groups_data = Agent.get_all_groups(limit=None)
+    groups_data = group.get_all_groups(limit=None)
 
     print("Groups ({0}):".format(groups_data['totalItems']))
     for g in groups_data['items']:
         print("  {0} ({1})".format(g['name'], g['count']))
+
+    print("Unassigned agents: {0}.".format(group.get_agents_without_group()['totalItems']))
 
 
 def show_group(agent_id):
@@ -54,7 +57,7 @@ def show_group(agent_id):
 
 
 def show_agents_with_group(group_id):
-    agents_data = Agent.get_agent_group(group_id, limit=0)
+    agents_data = group.get_agent_group(group_id, limit=0)
 
     if agents_data['totalItems'] == 0:
         print("No agents found in group '{0}'.".format(group_id))
@@ -65,7 +68,7 @@ def show_agents_with_group(group_id):
 
 
 def show_group_files(group_id):
-    data = Agent.get_group_files(group_id)
+    data = group.get_group_files(group_id)
     print("{0} files for '{1}' group:".format(data['totalItems'], group_id))
 
     longest_name = 0
@@ -86,7 +89,7 @@ def unset_group(agent_id, quiet=False):
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.unset_group(agent_id)
+        msg = group.unset_group(agent_id)
     else:
         msg = "Cancelled."
 
@@ -101,7 +104,7 @@ def remove_group(group_id, quiet=False):
         ans = 'y'
 
     if ans.lower() == 'y':
-        data = Agent.remove_group(group_id)
+        data = group.remove_group(group_id)
         msg = data['msg']
         if not data['affected_agents']:
             msg += "\nNo affected agents."
@@ -115,13 +118,14 @@ def remove_group(group_id, quiet=False):
 
 def set_group(agent_id, group_id, quiet=False):
     ans = 'n'
+    agent_id = "{}".format(int(agent_id)).zfill(3)
     if not quiet:
          ans = get_stdin("Do you want to set the group '{0}' to the agent '{1}'? [y/N]: ".format(group_id, agent_id))
     else:
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.set_group(agent_id, group_id)
+        msg = group.set_group(agent_id, group_id)
     else:
         msg = "Cancelled."
 
@@ -136,7 +140,7 @@ def create_group(group_id, quiet=False):
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.create_group(group_id)
+        msg = group.create_group(group_id)
     else:
         msg = "Cancelled."
 
