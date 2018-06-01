@@ -18,7 +18,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '3.2.4'
+__version__ = '3.2.5'
 
 
 msg = "\n\nPython 2.7 or newer not found."
