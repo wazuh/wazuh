@@ -155,7 +155,7 @@ class Agent:
         # Select
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
-                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                incorrect_fields = list(map(lambda x: str(x), set(select['fields']) - valid_select_fields))
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                         format(valid_select_fields, incorrect_fields))
             select_fields |= set(select['fields'])
@@ -380,7 +380,7 @@ class Agent:
             with open(common.api_config_path) as f:
                 data = f.readlines()
 
-            use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
+            use_only_authd = list(filter(lambda x: x.strip().startswith('config.use_only_authd'), data))
 
             return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
         except IOError:
@@ -590,6 +590,7 @@ class Agent:
         self.internal_key = data['key']
         self.key = self.compute_key()
 
+
     def _add_manual(self, name, ip, id=None, key=None, force=-1):
         """
         Adds an agent to OSSEC manually.
@@ -716,7 +717,7 @@ class Agent:
             except Exception as ex:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
-                raise WazuhException(1725, str(e))
+                raise WazuhException(1725, str(ex))
 
 
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
@@ -725,6 +726,7 @@ class Agent:
         self.id = agent_id
         self.internal_key = agent_key
         self.key = self.compute_key()
+
 
     def _remove_single_group(self, group_id):
         """
@@ -842,7 +844,7 @@ class Agent:
         request = {}
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
-                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                incorrect_fields = list(map(lambda x: str(x), set(select['fields']) - valid_select_fields))
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                                     format(valid_select_fields, incorrect_fields))
             select_fields_set = set(select['fields'])
@@ -1577,11 +1579,11 @@ class Agent:
                 in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
 
         if 'id' in select_fields:
-            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+            list(map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested))
 
         if 'status' in select_fields:
             try:
-                map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+                list(map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested))
             except KeyError:
                 pass
 
@@ -1683,11 +1685,11 @@ class Agent:
                 in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
 
         if 'id' in select_fields:
-            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+            list(map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested))
 
         if 'status' in select_fields:
             try:
-                map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+                list(map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested))
             except KeyError:
                 pass
 

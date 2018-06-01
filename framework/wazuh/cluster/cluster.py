@@ -81,7 +81,7 @@ def check_cluster_config(config):
 def get_cluster_items():
     try:
         cluster_items = json.load(open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)))
-        map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values()))
+        list(map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values())))
         return cluster_items
     except Exception as e:
         raise WazuhException(3005, str(e))
