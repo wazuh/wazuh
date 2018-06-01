@@ -1995,8 +1995,9 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 
                 if(result < 0)
                 {
+                    w_free_event_info(decode_event_lf->lf);
                     free(decode_event_lf);
-                    mwarn("Could not decode syscheck event");
+                    mwarn("Could not decode event. Queue is full");
                 }
             }
         }

@@ -26,6 +26,9 @@ static int rk_err;
 /* Rootcheck decoder */
 static OSDecoderInfo *rootcheck_dec = NULL;
 
+/* Rootcheck mutex */
+static pthread_mutex_t rootcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Initialize the necessary information to process the rootcheck information */
 void RootcheckInit()
 {
@@ -140,11 +143,14 @@ int DecodeRootcheck(Eventinfo *lf)
     rk_buf[0] = '\0';
     rk_buf[OS_SIZE_2048] = '\0';
 
+    w_mutex_lock(&rootcheck_mutex);
+
     fp = RK_File(lf->location, &agent_id);
 
     if (!fp) {
         merror("Error handling rootcheck database.");
         rk_err++;
+        w_mutex_unlock(&rootcheck_mutex);
 
         return (0);
     }
@@ -152,6 +158,7 @@ int DecodeRootcheck(Eventinfo *lf)
     /* Get initial position */
     if (fgetpos(fp, &fp_pos) == -1) {
         merror("Error handling rootcheck database (fgetpos).");
+        w_mutex_unlock(&rootcheck_mutex);
         return (0);
     }
 
@@ -162,6 +169,7 @@ int DecodeRootcheck(Eventinfo *lf)
         if (rk_buf[0] == '\n' || rk_buf[0] == '#') {
             if (fgetpos(fp, &fp_pos) == -1) {
                 merror("Error handling rootcheck database (fgetpos2).");
+                w_mutex_unlock(&rootcheck_mutex);
                 return (0);
             }
             continue;
@@ -184,6 +192,7 @@ int DecodeRootcheck(Eventinfo *lf)
                 lf->fields[RK_TITLE].value = rk_get_title(lf->log);
                 os_strdup(rootcheck_dec->fields[RK_FILE], lf->fields[RK_FILE].key);
                 lf->fields[RK_FILE].value = rk_get_file(lf->log);
+                w_mutex_unlock(&rootcheck_mutex);
                 return (1);
             }
         }
@@ -196,6 +205,7 @@ int DecodeRootcheck(Eventinfo *lf)
             if (strcmp(lf->log, tmpstr) == 0) {
                 if(fsetpos(fp, &fp_pos)) {
                     merror("Error handling rootcheck database (fsetpos).");
+                    w_mutex_unlock(&rootcheck_mutex);
                     return (0);
                 }
                 fprintf(fp, "!%ld", (long int)lf->time.tv_sec);
@@ -207,6 +217,7 @@ int DecodeRootcheck(Eventinfo *lf)
                 lf->fields[RK_TITLE].value = rk_get_title(lf->log);
                 os_strdup(rootcheck_dec->fields[RK_FILE], lf->fields[RK_FILE].key);
                 lf->fields[RK_FILE].value = rk_get_file(lf->log);
+                w_mutex_unlock(&rootcheck_mutex);
                 return (1);
             }
         }
@@ -214,6 +225,7 @@ int DecodeRootcheck(Eventinfo *lf)
         /* Get current position */
         if (fgetpos(fp, &fp_pos) == -1) {
             merror("Error handling rootcheck database (fgetpos3).");
+            w_mutex_unlock(&rootcheck_mutex);
             return (0);
         }
     }
@@ -230,5 +242,7 @@ int DecodeRootcheck(Eventinfo *lf)
     lf->fields[RK_TITLE].value = rk_get_title(lf->log);
     os_strdup(rootcheck_dec->fields[RK_FILE], lf->fields[RK_FILE].key);
     lf->fields[RK_FILE].value = rk_get_file(lf->log);
+
+    w_mutex_unlock(&rootcheck_mutex);
     return (1);
 }
