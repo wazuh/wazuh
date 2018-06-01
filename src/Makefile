@@ -58,7 +58,7 @@ ifeq (${uname_S},Linux)
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_CFLAGS+=-I${EXTERNAL_LIBDB}
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		OSSEC_LIBS+=-lrt -ldl
+		OSSEC_LIBS+=-lrt -ldl -lldap
 #		OSSEC_LDFLAGS+=-lmagic
 else
 ifeq (${uname_S},AIX)
