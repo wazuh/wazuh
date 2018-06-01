@@ -99,27 +99,12 @@ def has_vector(cve, type):
 def change_vector(type, family):
     return family if type == 'nvd' else 'nvd'
 
-def send_msg(msg):
-    # Message header
-    header = '1:Wazuh-VULS:'
+def send_msg(wazuh_queue, header, msg):
     msg['integration'] = 'vuls'
     debug(json.dumps(msg, indent=4))
     formatted = {}
     formatted['vuls'] = msg
     formatted = '{0}{1}'.format(header, json.dumps(formatted))
-    s = socket(AF_UNIX, SOCK_DGRAM)
-    try:
-        s.connect(wazuh_queue)
-    except:
-        print('Error: Wazuh must be running.')
-        sys.exit(1)
-    s.send(formatted.encode())
-    s.close()
-
-def send_notify(msg):
-    # Notify message header
-    notify_header = '9:rootcheck:'
-    formatted = '{0}{1}'.format(notify_header, msg)
     s = socket(AF_UNIX, SOCK_DGRAM)
     try:
         s.connect(wazuh_queue)
@@ -175,6 +160,10 @@ def main(argv):
     cvss_min = 0
     # CVSS source
     cvss_source=''
+    # Message header
+    header = '1:Wazuh-VULS:'
+    # Notify message header
+    notify_header = '9:rootcheck:'
     # Show packages info
     package_info = 1
     # Minimum antiquity
@@ -240,8 +229,9 @@ def main(argv):
     update(update_nvd, update_rh, update_ub, update_deb, update_orac, '', update_os_version, nvd_year)
 
     if not only_update:
-        msg = 'Starting vulnerability scan.'
-        send_notify(msg)
+        msg = {}
+        msg['event'] = 'Starting vulnerability scan.'
+        send_msg(wazuh_queue, notify_header, msg)
 
         try:
             call([vuls_bin, 'scan', '-results-dir={0}'.format(vuls_log), '-config={0}'.format(vuls_config), '-log-dir={0}'.format(vuls_log)])
@@ -314,7 +304,7 @@ def main(argv):
         if diff < antiquity_limit:
             msg['days'] = antiquity_limit
             msg['event'] = '{0} has a update date lower than {1} days.'.format(msg['scanned_cve'], antiquity_limit)
-            send_msg(msg)
+            send_msg(wazuh_queue, header, msg)
             del msg['days']
             del msg['event']
 
@@ -339,10 +329,11 @@ def main(argv):
 
         msg['affected_packages'] = msg['affected_packages'][0:-2]
 
-        send_msg(msg)
+        send_msg(wazuh_queue, header, msg)
 
-    msg = 'Ending vulnerability scan.'
-    send_notify(msg)
+    msg = {}
+    msg['event'] = 'Ending vulnerability scan.'
+    send_msg(wazuh_queue, notify_header, msg)
 
 if __name__ == "__main__":
     try:

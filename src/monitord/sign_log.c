@@ -10,7 +10,6 @@
 #include "shared.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
-#include "os_crypto/sha256/sha256_op.h"
 #include "monitord.h"
 #include <openssl/md5.h>
 #include <openssl/sha.h>
@@ -27,12 +26,8 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     os_sha1 sf_sum;
     os_sha1 sf_sum_old;
 
-    os_sha256 sf256_sum;
-    os_sha256 sf256_sum_old;
-
     SHA_CTX sha1_ctx;
     MD5_CTX md5_ctx;
-    SHA256_CTX sha256_ctx;
 
     char logfilesum[OS_FLSIZE + 1];
     char logfilesum_old[OS_FLSIZE + 1];
@@ -58,7 +53,6 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     MD5_Init(&md5_ctx);
     SHA1_Init(&sha1_ctx);
-    SHA256_Init(&sha256_ctx);
 
     /* Generate MD5 of the old file */
     if (OS_MD5_File(logfilesum_old, mf_sum_old, OS_TEXT) < 0) {
@@ -74,20 +68,12 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
         strncpy(sf_sum_old, "none", 6);
     }
 
-    /* Generate SHA-256 of the old file  */
-    if (OS_SHA256_File(logfilesum_old, sf256_sum_old, OS_TEXT) < 0) {
-        merror("No previous sha256 checksum found: '%s'. "
-               "Starting over.", logfilesum_old);
-        strncpy(sf256_sum_old, "none", 6);
-    }
-
-    /* Generate MD5, SHA-1, and SHA-256 of the current file */
+    /* Generate MD5 and SHA-1 of the current file */
 
     if (fp = fopen(logfile_r, "r"), fp) {
         while (n = fread(buffer, 1, 2048, fp), n > 0) {
             SHA1_Update(&sha1_ctx, buffer, n);
             MD5_Update(&md5_ctx, buffer, (unsigned long)n);
-            SHA256_Update(&sha256_ctx, buffer, n);
         }
 
         fclose(fp);
@@ -99,7 +85,6 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
                 while (n = fread(buffer, 1, 2048, fp), n > 0) {
                     SHA1_Update(&sha1_ctx, buffer, n);
                     MD5_Update(&md5_ctx, buffer, (unsigned long)n);
-                    SHA256_Update(&sha256_ctx, buffer, n);
                 }
 
                 fclose(fp);
@@ -125,7 +110,6 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     } else {
         strncpy(mf_sum, "none", 6);
         strncpy(sf_sum, "none", 6);
-        strncpy(sf256_sum, "none", 6);
     }
 
     fp = fopen(logfilesum, "w");
@@ -137,12 +121,10 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     fprintf(fp, "Current checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfile, mf_sum);
     fprintf(fp, "SHA1 (%s) = %s\n\n", logfile, sf_sum);
-    fprintf(fp, "SHA256 (%s) = %s\n\n", logfile, sf256_sum);
 
     fprintf(fp, "Chained checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfilesum_old, mf_sum_old);
     fprintf(fp, "SHA1 (%s) = %s\n\n", logfilesum_old, sf_sum_old);
-    fprintf(fp, "SHA256 (%s) = %s\n\n", logfilesum_old, sf256_sum_old);
     fclose(fp);
 
     return;

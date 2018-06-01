@@ -16,16 +16,6 @@
 
 /* For ino_t */
 #include <sys/types.h>
-#include "labels_op.h"
-
-typedef struct _logsocket {
-    char *name;
-    char *location;
-    int mode;
-    char *prefix;
-    int socket;
-    time_t last_attempt;
-} logsocket;
 
 /* Logreader config */
 typedef struct _logreader {
@@ -52,10 +42,6 @@ typedef struct _logreader {
     char *alias;
     char future;
     char *query;
-    char *outformat;
-    char **target;
-    logsocket **target_socket;
-    int duplicated;
     wlabel_t *labels;
 
     void *(*read)(int i, int *rc, int drop_it);
@@ -67,7 +53,6 @@ typedef struct _logreader_config {
     int agent_cfg;
     int accept_remote;
     logreader *config;
-    logsocket *socket_list;
 } logreader_config;
 
 /* Frees the Localfile struct  */

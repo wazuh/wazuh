@@ -34,14 +34,4 @@ WazuhUpgrade()
     rm -f $DIRECTORY/var/db/.profile.db*
     rm -f $DIRECTORY/var/db/.template.db*
     rm -f $DIRECTORY/var/db/agents/*
-
-    # Remove existing SQLite databases for Wazuh DB
-
-    rm -f $DIRECTORY/queue/db/*.db*
-    rm -f $DIRECTORY/queue/db/.template.db
-
-    # Remove existing SQLite databases for vulnerability-detector
-
-    rm -f $DIRECTORY/wodles/cve.db
-    rm -f $DIRECTORY/queue/vulnerabilities/cve.db
 }

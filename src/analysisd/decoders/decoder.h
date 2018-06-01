@@ -29,7 +29,6 @@ typedef struct {
     u_int16_t id;
     u_int16_t regex_offset;
     u_int16_t prematch_offset;
-    u_int16_t plugin_offset;
 
     int fts;
     int accumulate;
@@ -66,7 +65,6 @@ int SetDecodeXML(void);
 void HostinfoInit(void);
 void SyscheckInit(void);
 void RootcheckInit(void);
-void SyscollectorInit(void);
 
 int ReadDecodeXML(const char *file);
 

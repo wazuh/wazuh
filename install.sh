@@ -89,16 +89,6 @@ Install()
 	      MAKEBIN=gmake
     elif [ "X$NUNAME" = "XHP-UX" ]; then
           MAKEBIN=/usr/local/bin/gmake
-    elif [ "X$NUNAME" = "XAIX" ]; then
-          MAKEBIN=/opt/freeware/bin/gmake
-    fi
-
-    # On CentOS <= 5 we need to disable syscollector compilation
-    OS_VERSION_FOR_SYSC="${DIST_NAME}"
-    SYSC_FLAG=""
-
-    if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ] || [ "X${OS_VERSION_FOR_SYSC}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-        SYSC_FLAG="DISABLE_SYSC=true"
     fi
 
 
@@ -110,12 +100,9 @@ Install()
 
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
-        # Download external libraries if missing
-        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps
-
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} -j${THREADS} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} build
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"

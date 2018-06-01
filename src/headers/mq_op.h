@@ -10,8 +10,6 @@
 #ifndef _MQ__H
 #define _MQ__H
 
-#include "config/localfile-config.h"
-
 /* Default queues */
 #define LOCALFILE_MQ    '1'
 #define SYSLOG_MQ       '2'
@@ -22,17 +20,13 @@
 
 
 /* Queues for additional log types */
-#define MYSQL_MQ         'a'
-#define POSTGRESQL_MQ    'b'
-#define AUTH_MQ          'c'
-#define SYSCOLLECTOR_MQ  'd'
-
-extern int sock_fail_time;
+#define MYSQL_MQ        'a'
+#define POSTGRESQL_MQ   'b'
+#define AUTH_MQ         'c'
+#define SYSCOLLECTOR_MQ    'd'
 
 int StartMQ(const char *key, short int type) __attribute__((nonnull));
 
 int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
-
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets, const char * pattern) __attribute__((nonnull (2, 3, 5)));
 
 #endif

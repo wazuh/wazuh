@@ -25,8 +25,6 @@ typedef struct _Eventinfo {
     /* Extracted from the event */
     char *log;
     char *full_log;
-    const char * log_after_parent;
-    const char * log_after_prematch;
     char *agent_id;
     char *location;
     char *hostname;
@@ -70,7 +68,7 @@ typedef struct _Eventinfo {
     /* Other internal variables */
     int matched;
 
-    struct timespec time;
+    time_t time;
     int day;
     int year;
     char hour[10];
@@ -85,8 +83,6 @@ typedef struct _Eventinfo {
     char *md5_after;
     char *sha1_before;
     char *sha1_after;
-    char *sha256_before;
-    char *sha256_after;
     char *size_before;
     char *size_after;
     char *owner_before;

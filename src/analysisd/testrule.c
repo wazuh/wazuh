@@ -522,13 +522,13 @@ void OS_ReadMSG(char *ut_str)
                 /* Check ignore time */
                 if (currently_rule->ignore_time) {
                     if (currently_rule->time_ignored == 0) {
-                        currently_rule->time_ignored = lf->time.tv_sec;
+                        currently_rule->time_ignored = lf->time;
                     }
                     /* If the current time - the time the rule was ignored
                      * is less than the time it should be ignored,
                      * do not alert again
                      */
-                    else if ((lf->time.tv_sec - currently_rule->time_ignored)
+                    else if ((lf->time - currently_rule->time_ignored)
                              < currently_rule->ignore_time) {
                         break;
                     } else {

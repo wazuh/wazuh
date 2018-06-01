@@ -55,11 +55,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-<<<<<<< HEAD
-#define __ossec_version "v3.3.0"
-=======
 #define __ossec_version "v3.2.4"
->>>>>>> 99cdd6f0c444d5d03fe9976790c5daf899cd5778
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -104,10 +100,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define REMUSER         "ossecr"
 #endif
 
-#ifndef ROOTUSER
-#define ROOTUSER        "root"
-#endif
-
 #ifndef GROUPGLOBAL
 #define GROUPGLOBAL     "ossec"
 #endif
@@ -133,9 +125,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define WDB_LOCAL_SOCK_PATH DEFAULTDIR WDB_LOCAL_SOCK
 #endif
-
-#define WM_DOWNLOAD_SOCK "/queue/ossec/download"
-#define WM_DOWNLOAD_SOCK_PATH DEFAULTDIR WM_DOWNLOAD_SOCK
 
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
@@ -308,9 +297,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #else
 #define UPGRADE_DIR   "upgrade"
 #endif
-
-// Download directory
-#define DOWNLOAD_DIR  "/var/download"
 
 /* Built-in defines */
 #define DEFAULTQPATH    DEFAULTDIR DEFAULTQUEUE

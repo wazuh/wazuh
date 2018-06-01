@@ -407,12 +407,6 @@ int ReadDecodeXML(const char *file)
                            elements[j]->content);
                     goto cleanup;
                 }
-
-                pi->plugin_offset = ReadDecodeAttrs(elements[j]->attributes, elements[j]->values);
-
-                if (pi->plugin_offset & AFTER_ERROR) {
-                    merror_exit(DEC_REGEX_ERROR, pi->name);
-                }
             }
 
             /* Get the type */
@@ -658,19 +652,6 @@ int ReadDecodeXML(const char *file)
             }
         }
 
-        // Check the plugin offset
-        if ((pi->plugin_offset & AFTER_PARENT) && !pi->parent) {
-            merror(INV_OFFSET, "after_parent");
-            merror(DEC_REGEX_ERROR, pi->name);
-            goto cleanup;
-        }
-
-        if (pi->plugin_offset & AFTER_PREMATCH && !prematch) {
-            merror(INV_OFFSET, "after_prematch");
-            merror(DEC_REGEX_ERROR, pi->name);
-            goto cleanup;
-        }
-
         /* Compile the regex/prematch */
         if (prematch) {
             os_calloc(1, sizeof(OSRegex), pi->prematch);
@@ -759,7 +740,6 @@ int SetDecodeXML()
     addDecoder2list(SYSCHECK_DEL);
     addDecoder2list(HOSTINFO_NEW);
     addDecoder2list(HOSTINFO_MOD);
-    addDecoder2list(SYSCOLLECTOR_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {

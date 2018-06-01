@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, create_exception_dic, get_fields_to_nest
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -15,13 +15,14 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, move
+from shutil import copyfile, move, copytree
 from time import time
 from platform import platform
 from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat
 from time import time, sleep
 import socket
 import hashlib
+from operator import setitem
 import re
 import fcntl
 from json import loads
@@ -31,16 +32,6 @@ try:
 except ImportError:
     from urllib.request import urlopen, URLError, HTTPError
 
-<<<<<<< HEAD
-
-def get_timeframe_int(timeframe):
-
-    if not isinstance(timeframe, int):
-        regex_days = re.compile('\d*d')
-        regex_hours = re.compile('\d*h')
-        regex_minutes = re.compile('\d*m')
-        regex_seconds = re.compile('\d*s')
-=======
 def create_exception_dic(id, e):
     """
     Creates a dictionary with a list of agent ids and it's error codes.
@@ -48,7 +39,6 @@ def create_exception_dic(id, e):
     exception_dic = {}
     exception_dic['id'] = id
     exception_dic['error'] = {'message': e.message}
->>>>>>> 99cdd6f0c444d5d03fe9976790c5daf899cd5778
 
     if isinstance(e, WazuhException):
         exception_dic['error']['code'] = e.code
@@ -120,7 +110,6 @@ class Agent:
         dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os, 'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive, 'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum, 'group': self.group, 'manager_host': self.manager_host }
 
         return dictionary
-
 
     @staticmethod
     def calculate_status(last_keep_alive, pending, today=datetime.today()):
@@ -738,8 +727,6 @@ class Agent:
         self.internal_key = agent_key
         self.key = self.compute_key()
 
-<<<<<<< HEAD
-=======
 
     def _remove_single_group(self, group_id):
         """
@@ -773,7 +760,6 @@ class Agent:
 
         return {'msg': msg, 'affected_agents': ids}
 
->>>>>>> 99cdd6f0c444d5d03fe9976790c5daf899cd5778
 
     def get_agent_attr(self, attr):
         """
@@ -1008,7 +994,7 @@ class Agent:
         query_disconnected = query.format('last_keepalive < :time_active')
         query_never = query.format('last_keepalive IS NULL AND id != 0')
 
-        limit_seconds = 1830 # 600*3 + 30
+        limit_seconds = 600*3 + 30
         result = datetime.now() - timedelta(seconds=limit_seconds)
         request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -1313,8 +1299,6 @@ class Agent:
         return remove_agent
 
     @staticmethod
-<<<<<<< HEAD
-=======
     def get_all_groups_sql(offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets the existing groups.
@@ -1915,7 +1899,6 @@ class Agent:
         return "Group unset for agent '{0}'.".format(agent_id)
 
     @staticmethod
->>>>>>> 99cdd6f0c444d5d03fe9976790c5daf899cd5778
     def get_outdated_agents(offset=0, limit=common.database_limit, sort=None):
         """
         Gets the outdated agents.
@@ -1996,7 +1979,10 @@ class Agent:
         if self.os['platform']=="windows":
             versions_url = wpk_repo + "windows/versions"
         else:
-            versions_url = wpk_repo +"linux/versions"
+            if self.os['platform']=="ubuntu":
+                versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/versions"
+            else:
+                versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
 
         try:
             result = urlopen(versions_url)
@@ -2063,7 +2049,10 @@ class Agent:
         if self.os['platform']=="windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
         else:
-            wpk_file = "wazuh_agent_{0}_linux_{1}.wpk".format(agent_new_ver, self.os['arch'])
+            if self.os['platform']=="ubuntu":
+                wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
+            else:
+                wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
 
         wpk_file_path = "{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)
 
@@ -2084,7 +2073,10 @@ class Agent:
         if self.os['platform']=="windows":
             wpk_url = wpk_repo + "windows/" + wpk_file
         else:
-            wpk_url = wpk_repo +"linux" + "/" + wpk_file
+            if self.os['platform']=="ubuntu":
+                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
+            else:
+                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/" + wpk_file
 
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))
@@ -2529,142 +2521,4 @@ class Agent:
         if not file_path or not installer:
             raise WazuhException(1307)
 
-<<<<<<< HEAD
         return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
-
-
-    @staticmethod
-    def purge_agents(timeframe, backup=False, verbose=False):
-        """
-        Purge agents that have been disconnected in the last timeframe seconds.
-
-        :param timeframe: Time margin, in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s.
-        :param backup: Whether making a backup before deleting.
-        :param verbose: Get a list of agents purgeds.
-        :return: Amount of agents purgeds. Optional: list of agents and timeframe.
-        """
-
-        timeframe = get_timeframe_int(timeframe)
-        purgeable_agents = list(Agent._get_purgeable_agents(timeframe))
-
-        items = 0
-        for item in purgeable_agents:
-            Agent(item[0]).remove(backup, purge=True)
-            items += 1
-
-        result = {'totalItems': items}
-        if verbose is True:
-            list_ids = [{"id": str(item[0]).zfill(3), "name": item[1]} for item in purgeable_agents ]
-            result = {'totalItems': items, 'items': list_ids, 'timeframe': timeframe}
-
-        return result
-
-
-    @staticmethod
-    def get_purgeable_agents_json(timeframe, offset=0, limit=common.database_limit):
-        """
-        Get a list of agents that can be purged.
-
-        :param timeframe: Time margin, in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :return: List of agents ids.
-        """
-        timeframe = get_timeframe_int(timeframe)
-        purgeable_agents, total = Agent._get_purgeable_agents(timeframe, offset, limit,count=True )
-
-        list_ids = [{"id": str(agent_id).zfill(3), "name": name} for agent_id,name in purgeable_agents]
-
-        return {'timeframe': timeframe, 'items': list_ids, 'totalItems': total}
-
-
-    @staticmethod
-    def _get_purgeable_agents(timeframe, offset=0, limit=common.database_limit, count=False):
-        """
-        Get a list of agents that can be purged.
-
-        :param timeframe: Time margin in seconds.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :return: List of agents ids.
-        """
-        select_fields = ["id", "name"]
-        request = {'timeframe': timeframe}
-
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-        query = "SELECT {0} FROM agent WHERE last_keepalive IS NULL OR CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :timeframe"
-
-        if count:
-            conn.execute(query.format('COUNT(*)'), request)
-            total = conn.fetch()[0]
-
-        if limit:
-            query = query + " LIMIT :offset,:limit"
-            request['limit'] = limit
-            request['offset'] = offset
-
-        conn.execute(query.format(','.join(select_fields)), request)
-
-        if count:
-            return conn, total
-        else:
-            return conn
-
-
-    @staticmethod
-    def get_agents_status_cluster():
-        """
-        Return a nested list where each element has the following structure
-        [agent_id, agent_name, agent_status, manager_hostname]
-        """
-        agent_list = []
-        for agent in Agent.get_agents_overview(select={'fields':['id','ip','name','status','node_name']}, limit=None)['items']:
-            if int(agent['id']) == 0:
-                continue
-            try:
-                agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], agent['node_name']])
-            except KeyError:
-                agent_list.append([agent['id'], agent['ip'], agent['name'], agent['status'], "None"])
-
-        return agent_list
-
-
-    @staticmethod
-    def get_agent_status_json_cluster():
-        """
-        Return a nested list where each element has the following structure
-        {
-            manager: {
-                status: [
-                    id: name
-                ]
-            }
-        }
-        """
-        agents = Agent.get_agents_status_cluster()
-        cluster_dict = {}
-        for agent_id, agent_ip, name, status, manager in agents:
-            try:
-                cluster_dict[manager].append({
-                    'id': agent_id,
-                    'ip': agent_ip,
-                    'name': name,
-                    'status': status
-                })
-            except KeyError:
-                cluster_dict[manager] = [{
-                    'id': agent_id,
-                    'ip': agent_ip,
-                    'name': name,
-                    'status': status
-                }]
-
-        return cluster_dict
-=======
-        return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
->>>>>>> 99cdd6f0c444d5d03fe9976790c5daf899cd5778

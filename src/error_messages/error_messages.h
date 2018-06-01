@@ -56,7 +56,7 @@
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
-#define CONFIG_ERROR    "(1202): Configuration error at '%s'."
+#define CONFIG_ERROR    "(1202): Configuration error at '%s'. Exiting."
 #define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
@@ -181,9 +181,6 @@
 #define READING_EVTLOG  "(1951): Analyzing event log: '%s'."
 #define VAR_LOG_MON     "(1952): Monitoring variable log file: '%s'."
 #define INV_MULTILOG    "(1953): Invalid DJB multilog file: '%s'."
-#define MISS_SOCK_NAME  "(1954): Missing field 'name' for socket."
-#define MISS_SOCK_LOC   "(1955): Missing field 'location' for socket."
-
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -278,13 +275,13 @@
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5400): %s database could not be fetched."
 #define VU_OPEN_FILE_ERROR          "(5401): Could not open %s."
-#define VU_LOAD_CVE_ERROR           "(5402): Could not load the CVE OVAL for %s. %s"
+#define VU_LOAD_CVE_ERROR           "(5402): Could not load the CVE OVAL for %s."
 #define VU_INVALID_AT_VALUE         "(5403): Invalid '%s' value for '%s' attribute in node '%s'."
 #define VU_PACKAGE_NAME_ERROR       "(5404): The package name could not be obtained."
 #define VU_SQL_ERROR                "(5405): SQL error: %s"
 #define VU_CHECK_DB_ERROR           "(5406): Database check failed."
 #define VU_QUERY_ERROR              "(5407): The query could not be formed."
-#define VU_OS_VERSION_ERROR         "(5408): Invalid OS version."
+#define VU_OS_VERSION_ERROR         "(5408): Invalid SO version."
 #define VU_REFRESH_DB_ERROR         "(5409): Could not refresh the %s DB."
 #define VU_GET_SOFTWARE_ERROR       "(5410): The software of the agent '%s' could not be obtained."
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
@@ -304,13 +301,6 @@
 #define VU_CREATE_DB_ERROR          "(5427): The database could not be checked or created."
 #define VU_SOFTWARE_REQUEST_ERROR   "(5428): Agent %s software could not be requested."
 #define VU_NO_AGENT_ERROR           "(5429): The agents information could not be processed."
-#define VU_CREATE_HASH_ERRO         "(5430): The agents hash table could not be created."
-#define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last Syscollector scan from the agent %s could not be requested."
-#define VU_HTTP_HEADER_ERROR        "(5432): Invalid HTTP header."
-#define VU_PACKAGE_RECOG_ERROR      "(5433): The package could not be recognized in '%s'."
-#define VU_NO_SYSC_SCANS            "(5434): No Syscollector scans found for agent %s, so their vulnerabilities will not be checked."
-#define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
-#define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

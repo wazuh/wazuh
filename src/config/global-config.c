@@ -603,20 +603,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
             }
         } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
-<<<<<<< HEAD
-            char * end;
-
-            Config->queue_size = strtol(node[i]->content, &end, 10);
-
-            if (*end || Config->queue_size < 1) {
-                merror("Invalid value for option '<%s>'", xml_queue_size);
-                return OS_INVALID;
-            }
-
-            if (*end) {
-                merror("Invalid value for option '<%s>'", xml_queue_size);
-                return OS_INVALID;
-=======
             if (Config) {
                 char * end;
 
@@ -631,7 +617,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     merror("Invalid value for option '<%s>'", xml_queue_size);
                     return OS_INVALID;
                 }
->>>>>>> 99cdd6f0c444d5d03fe9976790c5daf899cd5778
             }
         } else {
             merror(XML_INVELEM, node[i]->element);

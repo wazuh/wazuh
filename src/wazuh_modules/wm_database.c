@@ -70,8 +70,6 @@ static void wm_sync_manager();
 // Get agent's architecture
 static char * wm_get_os_arch(char * os_header);
 
-static char * wm_get_os_arch(char * os_header);
-
 #ifndef LOCAL
 
 static void wm_check_agents();
@@ -481,6 +479,7 @@ char * wm_get_os_arch(char * os_header) {
     return os_arch;
 }
 
+
 int wm_sync_agentinfo(int id_agent, const char *path) {
     char header[OS_MAXSTR];
     char files[OS_MAXSTR];
@@ -516,7 +515,6 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
     if (os = fgets(header, OS_MAXSTR, fp), !os) {
         mtdebug1(WM_DATABASE_LOGTAG, "Empty file '%s'. Agent is pending.", path);
-
 
     } else {
 

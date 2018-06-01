@@ -1,69 +1,6 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-<<<<<<< HEAD
-## [v3.3.0]
-
-### Added
-
-- Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
-- Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
-- Improved configuration of OVAL updates. ([#416](https://github.com/wazuh/wazuh/pull/416))
-- Added selective agent software request in vulnerability-detector. ([#404](https://github.com/wazuh/wazuh/pull/404))
-- Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
-- Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
-- Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
-- Get Windows packages inventory natively. ([#471](https://github.com/wazuh/wazuh/pull/471))
-- Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
-- Added Debian and Ubuntu 18 support in vulnerability-detector. ([#470](https://github.com/wazuh/wazuh/pull/470))
-- Added Rids Synchronization. ([#459](https://github.com/wazuh/wazuh/pull/459))
-- Added option for setting the group that the agent belongs to when registering it with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
-- Added option for setting the source IP when the agent registers with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
-- Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
-- Added option to force the vulnerability detection in unsupported OS. ([#462](https://github.com/wazuh/wazuh/pull/462))
-- Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
-- Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
-- Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
-- Integration with Osquery. ([#627](https://github.com/wazuh/wazuh/pull/627))
-    - Enrich osquery configuration with pack files aggregation and agent labels as decorators.
-    - Launch osquery daemon in background.
-    - Monitor results file and send them to the manager.
-    - New option in rules `<location>` to filter events by osquery.
-    - Support folders in shared configuration. This makes easy to send pack folders to agents.
-    - Basic ruleset for osquery events and daemon logs.
-- Boost Remoted performance with multithreading. ([#649](https://github.com/wazuh/wazuh/pull/649))
-    - Up to 16 parallel threads to decrypt messages from agents.
-    - Limit the frequency of agent keys reloading.
-    - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
-
-### Changed
-
-- Add default value for option -x in agent_control tool.
-- Syscheck RT process granularized to make frequency option more accurate.
-- External libraries moved to an external repository.
-- Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
-- Ignore OverlayFS directories on Rootcheck system scan.
-- Extracts agent's OS from the database instead of the agent-info.
-- Increases the maximum size of XML parser to 20KB.
-- Extract CVE instead of RHSA codes into vulnerability-detector. ([#549](https://github.com/wazuh/wazuh/pull/549))
-- Merge external libraries into a unique shared library. ([#620](https://github.com/wazuh/wazuh/pull/620))
-
-### Fixed
-
-- Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
-- Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
-- Fixed invalid alerts reported by Syscollector when the event contains the word "error". ([#461](https://github.com/wazuh/wazuh/pull/461))
-- Fixed registry_ignore problem on syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
-- Silenced Vuls integration starting and ending alerts. ([#541](https://github.com/wazuh/wazuh/pull/541))
-- Fix problem comparing releases of ubuntu packages. ([#556](https://github.com/wazuh/wazuh/pull/556))
-- Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
-- Fix bug in Rootcheck for Windows that searches for keys in 32-bit mode only. ([#566](https://github.com/wazuh/wazuh/pull/566))
-- Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
-
-### Removed
-
-- Deleted Lua language support.
-=======
 ## [v3.2.4]
 
 ### Fixed
@@ -73,7 +10,6 @@ All notable changes to this project will be documented in this file.
 - Fixed bug in Framework parsing agent configuration. ([#681](https://github.com/wazuh/wazuh/pull/681))
 - Fixed several bugs using python3 with the Python framework. ([#701](https://github.com/wazuh/wazuh/pull/701))
 
->>>>>>> 99cdd6f0c444d5d03fe9976790c5daf899cd5778
 
 ## [v3.2.3]
 
@@ -150,7 +86,7 @@ All notable changes to this project will be documented in this file.
 - Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
 - Fixed remote command switch option. ([#504](https://github.com/wazuh/wazuh/pull/504))
 
-## [v3.2.1] 2018-03-03
+## [v3.2.1]
 
 ### Added
 
@@ -191,7 +127,7 @@ All notable changes to this project will be documented in this file.
 - Fixed memory leaks in vulnerability-detector and CIS-CAT wodle.
 - Fixed behavior when working directory is not found in CIS-CAT wodle.
 
-## [v3.2.0] 2018-02-13
+## [v3.2.0]
 
 ### Added
 - Added support to synchronize custom rules and decoders in the cluster.([#344](https://github.com/wazuh/wazuh/pull/344))
@@ -209,7 +145,7 @@ All notable changes to this project will be documented in this file.
 - Fixed predecoder hostname field in JSON event output.
 - Several fixes and improvements in cluster.
 
-## [v3.1.0] 2017-12-22
+## [v3.1.0]
 
 ### Added
 

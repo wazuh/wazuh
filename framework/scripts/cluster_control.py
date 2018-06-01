@@ -221,6 +221,7 @@ def print_file_status_client(filter_file_list, node_name):
     __print_table(data, headers, True)
     print ("(*) Clients only show their own files.")
 
+
 ### Get nodes
 def print_nodes_status(filter_node=None):
     response = __execute(my_function=get_nodes, my_args=(filter_node,))

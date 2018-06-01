@@ -93,7 +93,6 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
     int *loc_id;
     char sql_query[OS_SIZE_8192 + 1];
     char *fulllog = NULL;
-    char user[OS_SIZE_128];
 
     /* Clear the memory before insert */
     sql_query[0] = '\0';
@@ -129,13 +128,6 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
     /* Escape strings */
     osdb_escapestr(al_data->user);
     osdb_escapestr(al_data->location);
-
-    if (!al_data->user) {
-        snprintf(user, OS_SIZE_128, "NULL");
-    } else {
-        snprintf(user, OS_SIZE_128, "'%s'", al_data->user);
-    }
-
 
     /* We first need to insert the location */
     loc_id = (int *) OSHash_Get(db_config->location_hash, al_data->location);
@@ -191,28 +183,28 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
         snprintf(sql_query, OS_SIZE_8192,
                  "INSERT INTO "
                  "alert(server_id,rule_id,level,timestamp,location_id,src_ip,src_port,dst_ip,dst_port,alertid,user,full_log,tld) "
-                 "VALUES ('%u', '%u','%u','%u', '%u', '%lu', '%u', '%lu', '%u', '%s', %s, '%s','%.2s')",
+                 "VALUES ('%u', '%u','%u','%u', '%u', '%lu', '%u', '%lu', '%u', '%s', '%s', '%s','%.2s')",
                  db_config->server_id, al_data->rule,
                  al_data->level,
                  (unsigned int)time(0), *loc_id,
                  (unsigned long)ntohl(s_ip), (unsigned short)s_port,
                  (unsigned long)ntohl(d_ip), (unsigned short)d_port,
                  al_data->alertid,
-                 user, fulllog, al_data->srcgeoip);
+                 al_data->user, fulllog, al_data->srcgeoip);
 	break;
 
       case POSTGDB:
         snprintf(sql_query, OS_SIZE_8192,
                  "INSERT INTO "
                  "alert(server_id,rule_id,level,timestamp,location_id,src_ip,src_port,dst_ip,dst_port,alertid,\"user\",full_log) "
-                 "VALUES ('%u', '%u','%u','%u', '%u', '%s', '%u', '%s', '%u', '%s', %s, '%s')",
+                 "VALUES ('%u', '%u','%u','%u', '%u', '%s', '%u', '%s', '%u', '%s', '%s', '%s')",
                  db_config->server_id, al_data->rule,
                  al_data->level,
                  (unsigned int)time(0), *loc_id,
                  al_data->srcip, (unsigned short)s_port,
                  al_data->dstip, (unsigned short)d_port,
                  al_data->alertid,
-                 user, fulllog);
+                 al_data->user, fulllog);
 	break;
     }
 

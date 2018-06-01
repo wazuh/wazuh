@@ -95,8 +95,7 @@
     <match>^Starting rootcheck scan|^Ending rootcheck scan.|</match>
     <match>^Starting syscheck scan|^Ending syscheck scan.|</match>
     <match>^Starting OpenSCAP scan|^Ending OpenSCAP scan.|</match>
-    <match>^Starting CIS-CAT scan|^Ending CIS-CAT scan.|</match>
-    <match>^Starting vulnerability scan|^Ending vulnerability scan.</match>
+    <match>^Starting CIS-CAT scan|^Ending CIS-CAT scan.</match>
     <description>Ignoring scan messages.</description>
     <group>rootcheck,syscheck,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,</group>
   </rule>

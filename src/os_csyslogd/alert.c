@@ -13,7 +13,6 @@
 #include "os_net/os_net.h"
 #include "parser.h"
 
-
 /* Send an alert via syslog
  * Returns 1 on success or 0 on error
  */
@@ -31,7 +30,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
     /* Clear the memory before insert */
     memset(syslog_msg, '\0', OS_SIZE_2048);
 
-   /* Luis/Dennis 09/01/2017 - Custom CEF Struct Initialization */
+    /* Luis/Dennis 09/01/2017 - Custom CEF Struct Initialization */
     struct KeyStore* workingKeyStore = malloc(sizeof(struct KeyStore));
 
     /* Look if location is set */
@@ -117,12 +116,6 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " Current MD5: %s;", al_data->new_md5 );
         field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA1: %s;", al_data->old_sha1 );
         field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA1: %s;", al_data->new_sha1 );
-        if(al_data->old_sha256){
-            field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA256: %s;", al_data->old_sha256 );
-        }
-        if(al_data->new_sha256){
-            field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA256: %s;", al_data->new_sha256 );
-        }
      /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
         field_add_string(syslog_msg, OS_SIZE_2048, " Size changed: from %s;", al_data->file_size );
         field_add_string(syslog_msg, OS_SIZE_2048, " User ownership: was %s;", al_data->owner_chg );
@@ -142,16 +135,16 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
                  al_data->comment,
                  (al_data->level > 10) ? 10 : al_data->level,
                  hostname, al_data->location);
-	/* Luis 09/11/2017 - Custom CEF function call Start*/
+        /* Luis 09/11/2017 - Custom CEF function call Start*/
         parseString(al_data->location, "Summary", workingKeyStore);
-        field_add_string(syslog_msg, OS_SIZE_2048, " cs6Label=%s", "Location" );
+	field_add_string(syslog_msg, OS_SIZE_2048, " cs6Label=%s", "Location" );
         field_add_string(syslog_msg, OS_SIZE_2048, " cs6=%s", workingKeyStore->location );
         parseString(al_data->group, "cat", workingKeyStore);
         field_add_string(syslog_msg, OS_SIZE_2048, " cat=%s", (workingKeyStore->cat[0] == '\0') ? al_data->group : workingKeyStore->cat );
-	field_add_string(syslog_msg, OS_SIZE_2048, " dvc=%s", al_data->srcip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dvc=%s", al_data->srcip );
         field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", (workingKeyStore->shost[0] == '\0' ) ? '\0' : workingKeyStore->src );
-	/* Luis 09/13/2017 - workingKeyStore Struct Utilization End*/
-
+        /* Luis 09/13/2017 - workingKeyStore Struct Utilization End*/
+   
         //field_add_string(syslog_msg, OS_SIZE_2048, " cat=%s", al_data->group );
         //field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", al_data->srcip );
         field_add_int(syslog_msg, OS_SIZE_2048, " dpt=%d", al_data->dstport );
@@ -159,19 +152,19 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " fname=%s", al_data->filename );
         field_add_string(syslog_msg, OS_SIZE_2048, " dhost=%s", al_data->dstip );
         /* Luis 09/11/2017 - Custom CEF function call Start*/
-	field_add_string(syslog_msg, OS_SIZE_2048, " shost=%s", (workingKeyStore->shost[0] == '\0') ? hostname : workingKeyStore->shost );
+        field_add_string(syslog_msg, OS_SIZE_2048, " shost=%s", (workingKeyStore->shost[0] == '\0') ? hostname : workingKeyStore->shost );
         parseString(al_data->log[0], "duser", workingKeyStore);
         field_add_string(syslog_msg, OS_SIZE_2048, " duser=%s", (workingKeyStore->duser[0] == '\0') ? '\0' : workingKeyStore->duser );
-	parseString(al_data->log[0], "destinationDnsDomain", workingKeyStore);
+        parseString(al_data->log[0], "destinationDnsDomain", workingKeyStore);
         field_add_string(syslog_msg, OS_SIZE_2048, " destinationDnsDomain=%s", (workingKeyStore->destinationDnsDomain[0] == '\0') ? '\0' : workingKeyStore->destinationDnsDomain );
         parseString(al_data->log[0], "duid", workingKeyStore);
         field_add_string(syslog_msg, OS_SIZE_2048, " duid=%s", (workingKeyStore->duid[0] == '\0') ? '\0' : workingKeyStore->duid );
         parseString(al_data->log[0], "cn1", workingKeyStore);
         field_add_string(syslog_msg, OS_SIZE_2048, " cn1Label=%s", (workingKeyStore->cn1[0] == '\0') ? '\0' : "Logon Type" );
         field_add_string(syslog_msg, OS_SIZE_2048, " cn1=%s", (workingKeyStore->cn1[0] == '\0') ? '\0' : workingKeyStore->cn1 );
-	/* Luis 09/11/2017 - Custom CEF function call End*/
-
-	//field_add_string(syslog_msg, OS_SIZE_2048, " shost=%s", al_data->srcip );
+        /* Luis 09/11/2017 - Custom CEF function call End*/
+   
+        //field_add_string(syslog_msg, OS_SIZE_2048, " shost=%s", al_data->srcip );
         field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
         field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
 #ifdef LIBGEOIP_ENABLED
@@ -180,12 +173,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 #endif
         //field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
         field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
-	 /* Luis 09/11/2017 - Custom CEF function call Start*/ 
-	parseString(al_data->log[0], "dsm", workingKeyStore);
+        /* Luis 09/11/2017 - Custom CEF function call Start*/ 
+        parseString(al_data->log[0], "dsm", workingKeyStore);
         field_add_string(syslog_msg, OS_SIZE_2048, " sntdom=%s", (workingKeyStore->sntdom[0] == '\0') ? '\0' : workingKeyStore->sntdom );
         field_add_string(syslog_msg, OS_SIZE_2048, " externalId=%s", (workingKeyStore->externalId[0] == '\0') ? '\0' : workingKeyStore->externalId );
-	field_add_truncated(syslog_msg, OS_SIZE_2048, " msg=%s", (workingKeyStore->msg[0] == '\0') ? al_data->log[0] : workingKeyStore->msg, 2 );
-	 /* Luis 09/11/2017 - Custom CEF function call End*/
+        field_add_truncated(syslog_msg, OS_SIZE_2048, " msg=%s", (workingKeyStore->msg[0] == '\0') ? al_data->log[0] : workingKeyStore->msg, 2 );
+        /* Luis 09/11/2017 - Custom CEF function call End*/
         //field_add_truncated(syslog_msg, OS_SIZE_2048, " msg=%s", al_data->log[0], 2 );
         if (al_data->new_md5 && al_data->new_sha1) {
             field_add_string(syslog_msg, OS_SIZE_2048, " cs2Label=OldMD5 cs2=%s", al_data->old_md5);
@@ -194,8 +187,8 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
             field_add_string(syslog_msg, OS_SIZE_2048, " fhash=%s", al_data->new_sha1 );
             field_add_string(syslog_msg, OS_SIZE_2048, " fileHash=%s", al_data->new_sha1 );
         }
-	/* Luis 09/11/2017 - Free workingKeyStore Struct */
-	free(workingKeyStore);
+        /* Luis 09/11/2017 - Free workingKeyStore Struct */
+        free(workingKeyStore);
     } else if (syslog_config->format == JSON_CSYSLOG) {
         /* Build a JSON Object for logging */
         cJSON *root;
@@ -250,12 +243,6 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         }
         if (al_data->new_sha1) {
             cJSON_AddStringToObject(root,   "sha1_new",   al_data->new_sha1);
-        }
-        if (al_data->old_sha256) {
-            cJSON_AddStringToObject(root,   "sha256_old",   al_data->old_sha256);
-        }
-        if (al_data->new_sha256) {
-            cJSON_AddStringToObject(root,   "sha256_new",   al_data->new_sha256);
         }
 #ifdef LIBGEOIP_ENABLED
         if (al_data->srcgeoip) {
@@ -316,12 +303,6 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " md5_new=\"%s\",", al_data->new_md5 );
         field_add_string(syslog_msg, OS_SIZE_2048, " sha1_old=\"%s\",", al_data->old_sha1 );
         field_add_string(syslog_msg, OS_SIZE_2048, " sha1_new=\"%s\",", al_data->new_sha1 );
-        if(al_data->old_sha256){
-            field_add_string(syslog_msg, OS_SIZE_2048, " sha256_old=\"%s\",", al_data->old_sha256 );
-        }
-        if(al_data->new_sha256){
-            field_add_string(syslog_msg, OS_SIZE_2048, " sha256_new=\"%s\",", al_data->new_sha256 );
-        }   
         /* Message */
         field_add_truncated(syslog_msg, OS_SIZE_2048, " message=\"%s\"", al_data->log[0], 2 );
     }

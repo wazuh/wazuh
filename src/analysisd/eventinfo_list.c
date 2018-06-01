@@ -76,7 +76,7 @@ void OS_AddEvent(Eventinfo *lf)
              * or the events that will not match anymore
              * (higher than max frequency)
              */
-            while ((i < 10) || ((lf->time.tv_sec - lastnode->event->time.tv_sec) > _max_freq)) {
+            while ((i < 10) || ((lf->time - lastnode->event->time) > _max_freq)) {
                 oldlast = lastnode;
                 lastnode = lastnode->prev;
                 lastnode->next = NULL;
@@ -107,3 +107,4 @@ void OS_AddEvent(Eventinfo *lf)
 
     return;
 }
+

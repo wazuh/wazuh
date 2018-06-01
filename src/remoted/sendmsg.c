@@ -34,16 +34,21 @@ void key_unlock()
 /* Check for key updates */
 int check_keyupdate()
 {
+    int retval = 0;
+
     /* Check key for updates */
     if (!OS_CheckUpdateKeys(&keys)) {
         return (0);
     }
 
-    minfo(ENCFILE_CHANGED);
     key_lock_write();
-    OS_UpdateKeys(&keys);
+
+    if (OS_UpdateKeys(&keys)) {
+        retval = 1;
+    }
+
     key_unlock();
-    return 1;
+    return retval;
 }
 
 /* Send message to an agent

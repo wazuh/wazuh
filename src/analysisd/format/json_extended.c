@@ -342,17 +342,30 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 // Parse timestamp
 void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
 {
-    char timestamp[64];
-    char datetime[64];
-    char timezone[64];
+    char buffer[25] = "";
     struct tm tm;
+    time_t timestamp;
+    char *end;
 
-    if (lf->time.tv_sec) {
-        localtime_r(&lf->time.tv_sec, &tm);
-        strftime(datetime, sizeof(datetime), "%FT%T", &tm);
-        strftime(timezone, sizeof(timezone), "%z", &tm);
-        snprintf(timestamp, sizeof(timestamp), "%s.%ld%s", datetime, lf->time.tv_nsec / 1000000, timezone);
-        cJSON_AddStringToObject(root, "timestamp", timestamp);
+    if (lf->year && lf->mon[0] && lf->day && lf->hour[0]) {
+        timestamp = time(NULL);
+        memcpy(&tm, localtime(&timestamp), sizeof(struct tm));
+
+        if (!(end = strptime(lf->hour, "%T", &tm)) || *end) {
+            merror("Could not parse hour '%s'.", lf->hour);
+            return;
+        }
+
+        if (!(end = strptime(lf->mon, "%b", &tm)) || *end) {
+            merror("Could not parse month '%s'.", lf->mon);
+            return;
+        }
+
+        tm.tm_year = lf->year - 1900;
+        tm.tm_mday = lf->day;
+
+        strftime(buffer, 25, "%FT%T%z", &tm);
+        cJSON_AddStringToObject(root, "timestamp", buffer);
     }
 }
 

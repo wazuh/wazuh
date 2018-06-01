@@ -47,7 +47,6 @@ static void read_internal(int debug_level)
 {
     syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
-    syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
 
     /* Check current debug_level
      * Command line setting takes precedence
@@ -150,7 +149,7 @@ int Start_win32_Syscheck()
     minfo(STARTUP_MSG, getpid());
 
     /* Some sync time */
-    sleep(syscheck.tsleep * 5);
+    sleep(syscheck.tsleep + 10);
 
     /* Wait if agent started properly */
     os_wait();
@@ -353,7 +352,7 @@ int main(int argc, char **argv)
     }
 
     /* Some sync time */
-    sleep(syscheck.tsleep * 5);
+    sleep(syscheck.tsleep + 10);
 
     /* Start the daemon */
     start_daemon();

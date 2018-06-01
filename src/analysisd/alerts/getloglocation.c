@@ -92,7 +92,7 @@ int OS_GetLogLocation(const Eventinfo *lf)
 
     /* Setting the new day */
     __crt_day = lf->day;
-    __crt_rsec = lf->time.tv_sec;
+    __crt_rsec = lf->time;
 
     return (0);
 }

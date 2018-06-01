@@ -28,7 +28,7 @@ int prev_year;
 char prev_month[4];
 int __crt_hour;
 int __crt_wday;
-struct timespec c_timespec;
+time_t c_time;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 
@@ -176,3 +176,4 @@ int main(int argc, char **argv)
 
     exit(0);
 }
+

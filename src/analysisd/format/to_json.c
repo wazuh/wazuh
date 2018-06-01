@@ -41,11 +41,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON_AddItemToObject(root, "manager", manager = cJSON_CreateObject());
     data = cJSON_CreateObject();
 
-    if ( lf->time.tv_sec ) {
+    if ( lf->time ) {
 
         char alert_id[19];
         alert_id[18] = '\0';
-        if((snprintf(alert_id, 18, "%ld.%ld", (long int)lf->time.tv_sec, __crt_ftell)) < 0) {
+        if((snprintf(alert_id, 18, "%ld.%ld", (long int)lf->time, __crt_ftell)) < 0) {
             merror("snprintf failed");
         }
 
@@ -187,12 +187,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
         if (lf->sha1_after) {
             cJSON_AddStringToObject(file_diff, "sha1_after", lf->sha1_after);
-        }
-        if (lf->sha256_before) {
-            cJSON_AddStringToObject(file_diff, "sha256_before", lf->sha256_before);
-        }
-        if (lf->sha256_after) {
-            cJSON_AddStringToObject(file_diff, "sha256_after", lf->sha256_after);
         }
         if (lf->uname_before) {
             cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);

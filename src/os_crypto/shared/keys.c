@@ -95,7 +95,6 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->keyid = keys->keysize;
     keys->keyentries[keys->keysize]->global = 0;
     keys->keyentries[keys->keysize]->fp = NULL;
-    keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
@@ -315,7 +314,6 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
 
     /* Add additional entry for sender == keysize */
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
-    w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
     return;
 }
@@ -398,33 +396,36 @@ int OS_CheckUpdateKeys(const keystore *keys)
 }
 
 /* Update the keys if changed */
-void OS_UpdateKeys(keystore *keys)
+int OS_UpdateKeys(keystore *keys)
 {
     keystore *old_keys;
 
-    mdebug1("Reloading keys");
+    if (keys->file_change != File_DateofChange(KEYS_FILE) || keys->inode != File_Inode(KEYS_FILE)) {
+        minfo(ENCFILE_CHANGED);
+        mdebug1("OS_DupKeys");
+        old_keys = OS_DupKeys(keys);
 
-    mdebug2("OS_DupKeys");
-    old_keys = OS_DupKeys(keys);
+        mdebug1("Freekeys");
+        OS_FreeKeys(keys);
 
-    mdebug2("Freekeys");
-    OS_FreeKeys(keys);
+        /* Read keys */
+        mdebug1("OS_ReadKeys");
+        minfo(ENC_READ);
+        OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed, 0);
 
-    /* Read keys */
-    mdebug2("OS_ReadKeys");
-    minfo(ENC_READ);
-    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed, 0);
+        mdebug1("OS_StartCounter");
+        OS_StartCounter(keys);
 
-    mdebug2("OS_StartCounter");
-    OS_StartCounter(keys);
+        mdebug1("move_netdata");
+        move_netdata(keys, old_keys);
 
-    mdebug2("move_netdata");
-    move_netdata(keys, old_keys);
+        OS_FreeKeys(old_keys);
+        free(old_keys);
 
-    OS_FreeKeys(old_keys);
-    free(old_keys);
-
-    mdebug1("Key reloading completed");
+        mdebug1("OS_UpdateKeys completed");
+        return (1);
+    }
+    return (0);
 }
 
 /* Check if an IP address is allowed to connect */

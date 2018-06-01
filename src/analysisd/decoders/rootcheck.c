@@ -198,7 +198,7 @@ int DecodeRootcheck(Eventinfo *lf)
                     merror("Error handling rootcheck database (fsetpos).");
                     return (0);
                 }
-                fprintf(fp, "!%ld", (long int)lf->time.tv_sec);
+                fprintf(fp, "!%ld", (long int)lf->time);
                 fflush(fp);
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
@@ -220,7 +220,7 @@ int DecodeRootcheck(Eventinfo *lf)
 
     /* Add the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp, "!%ld!%ld %s\n", (long int)lf->time.tv_sec, (long int)lf->time.tv_sec, lf->log);
+    fprintf(fp, "!%ld!%ld %s\n", (long int)lf->time, (long int)lf->time, lf->log);
     fflush(fp);
 
     rootcheck_dec->fts = FTS_DONE;

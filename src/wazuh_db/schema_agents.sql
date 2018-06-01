@@ -68,8 +68,16 @@ CREATE INDEX IF NOT EXISTS pm_event_date ON pm_event (date_last);
 
 PRAGMA journal_mode=WAL;
 
-CREATE TABLE IF NOT EXISTS sys_netiface (
+CREATE TABLE IF NOT EXISTS sys_netaddr (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT NOT NULL,
+    netmask TEXT NOT NULL,
+    broadcast TEXT,
+    gateway TEXT,
+    dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown'
+);
+
+CREATE TABLE IF NOT EXISTS sys_netiface (
     scan_id INTEGER,
     scan_time TEXT,
     name TEXT,
@@ -82,37 +90,12 @@ CREATE TABLE IF NOT EXISTS sys_netiface (
     rx_packets INTEGER,
     tx_bytes INTEGER,
     rx_bytes INTEGER,
-    tx_errors INTEGER,
-    rx_errors INTEGER,
-    tx_dropped INTEGER,
-    rx_dropped INTEGER
+    id_ipv4 INTEGER REFERENCES netaddr (id),
+    id_ipv6 INTEGER REFERENCES netaddr (id),
+    PRIMARY KEY (scan_id, name)
 );
 
 CREATE INDEX IF NOT EXISTS netiface_id ON sys_netiface (scan_id);
-
-CREATE TABLE IF NOT EXISTS sys_netproto (
-    id INTEGER REFERENCES sys_netiface (id),
-    scan_id INTEGER,
-    iface TEXT,
-    type TEXT,
-    gateway TEXT,
-    dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
-    PRIMARY KEY (id, type)
-);
-
-CREATE INDEX IF NOT EXISTS netproto_id ON sys_netproto (scan_id);
-
-CREATE TABLE IF NOT EXISTS sys_netaddr (
-    id INTEGER REFERENCES sys_netiface (id),
-    scan_id INTEGER,
-    proto TEXT,
-    address TEXT,
-    netmask TEXT,
-    broadcast TEXT,
-    PRIMARY KEY (id, address)
-);
-
-CREATE INDEX IF NOT EXISTS netaddr_id ON sys_netaddr (scan_id);
 
 CREATE TABLE IF NOT EXISTS sys_osinfo (
     scan_id INTEGER,
@@ -167,18 +150,10 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     scan_time TEXT,
     format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg')),
     name TEXT,
-    priority TEXT,
-    section TEXT,
-    size INTEGER CHECK (size >= 0),
     vendor TEXT,
-    install_time TEXT,
     version TEXT,
     architecture TEXT,
-    multiarch TEXT,
-    source TEXT,
     description TEXT,
-    location TEXT,
-    triaged INTEGER(1),
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 

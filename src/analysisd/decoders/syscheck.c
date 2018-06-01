@@ -42,7 +42,6 @@ void SyscheckInit()
     memset(sdb.gowner, '\0', OS_FLSIZE + 1);
     memset(sdb.md5, '\0', OS_FLSIZE + 1);
     memset(sdb.sha1, '\0', OS_FLSIZE + 1);
-    memset(sdb.sha256, '\0', OS_FLSIZE + 1);
     memset(sdb.mtime, '\0', OS_FLSIZE + 1);
     memset(sdb.inode, '\0', OS_FLSIZE + 1);
 
@@ -61,7 +60,6 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_GID] = "gid";
     sdb.syscheck_dec->fields[SK_MD5] = "md5";
     sdb.syscheck_dec->fields[SK_SHA1] = "sha1";
-    sdb.syscheck_dec->fields[SK_SHA256] = "sha256";
     sdb.syscheck_dec->fields[SK_UNAME] = "uname";
     sdb.syscheck_dec->fields[SK_GNAME] = "gname";
     sdb.syscheck_dec->fields[SK_INODE] = "inode";
@@ -339,7 +337,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 p >= 1 ? '!' : '+',
                 p == 2 ? '!' : (p > 2) ? '?' : '+',
                 c_sum,
-                (long int)lf->time.tv_sec,
+                (long int)lf->time,
                 f_name);
         fflush(fp);
 
@@ -437,19 +435,6 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     os_strdup(oldsum.sha1, lf->sha1_before);
                 }
 
-                /* SHA-256 message */
-                if(newsum.sha256 && oldsum.sha256)
-                {
-                    if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
-                        sdb.sha256[0] = '\0';
-                    } else {
-                        snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\n"
-                                "New sha256sum is : '%s'\n",
-                                oldsum.sha256, newsum.sha256);
-                        os_strdup(oldsum.sha256, lf->sha256_before);
-                    }
-                }
-
                 /* Modification time message */
                 if (oldsum.mtime && newsum.mtime && oldsum.mtime != newsum.mtime) {
                     char *old_ctime = strdup(ctime(&oldsum.mtime));
@@ -538,7 +523,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
     /* If we reach here, this file is not present in our database */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time.tv_sec, f_name);
+    fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time, f_name);
     fflush(fp);
 
     /* Insert row in SQLite DB*/

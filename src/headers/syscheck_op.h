@@ -24,8 +24,7 @@
 #define SK_UNAME   7
 #define SK_GNAME   8
 #define SK_INODE   9
-#define SK_SHA256  10
-#define SK_NFIELDS 11
+#define SK_NFIELDS 10
 
 typedef struct __sdb {
     char buf[OS_MAXSTR + 1];
@@ -37,7 +36,6 @@ typedef struct __sdb {
     char gowner[OS_FLSIZE + 1];
     char md5[OS_FLSIZE + 1];
     char sha1[OS_FLSIZE + 1];
-    char sha256[OS_FLSIZE + 1];
     char mtime[OS_FLSIZE + 1];
     char inode[OS_FLSIZE + 1];
 
@@ -70,7 +68,6 @@ typedef struct sk_sum_t {
     char *gid;
     char *md5;
     char *sha1;
-    char *sha256;
     char *uname;
     char *gname;
     long mtime;

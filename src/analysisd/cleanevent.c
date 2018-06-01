@@ -539,7 +539,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     }
 
     /* Set up the event data */
-    lf->time = c_timespec;
+    lf->time = c_time;
     p = localtime(&c_time);
 
     /* Assign hour, day, year and month values */

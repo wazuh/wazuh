@@ -24,25 +24,11 @@
 #define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
 static int sc_send_db(char * msg);
-static int decode_netinfo(char *agent_id, cJSON * logJSON);
 static int decode_osinfo(char *agent_id, cJSON * logJSON);
 static int decode_hardware(char *agent_id, cJSON * logJSON);
-static int decode_package(char *agent_id, cJSON * logJSON);
+static int decode_program(char *agent_id, cJSON * logJSON);
 static int decode_port(char *agent_id, cJSON * logJSON);
 static int decode_process(char *agent_id, cJSON * logJSON);
-
-static OSDecoderInfo *sysc_decoder = NULL;
-
-void SyscollectorInit(){
-
-    os_calloc(1, sizeof(OSDecoderInfo), sysc_decoder);
-    sysc_decoder->id = getDecoderfromlist(SYSCOLLECTOR_MOD);
-    sysc_decoder->name = SYSCOLLECTOR_MOD;
-    sysc_decoder->type = OSSEC_RL;
-    sysc_decoder->fts = 0;
-
-    mdebug1("SyscollectorInit completed.");
-}
 
 /* Special decoder for syscollector */
 int DecodeSyscollector(Eventinfo *lf)
@@ -52,8 +38,6 @@ int DecodeSyscollector(Eventinfo *lf)
 
     // Decoding JSON
     JSON_Decoder_Exec(lf);
-
-    lf->decoder_info = sysc_decoder;
 
     // Check location
     if (lf->location[0] == '(') {
@@ -93,8 +77,8 @@ int DecodeSyscollector(Eventinfo *lf)
         }
     }
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
-        if (decode_package(lf->agent_id, logJSON) < 0) {
-            mdebug1("Unable to send packages information to Wazuh DB.");
+        if (decode_program(lf->agent_id, logJSON) < 0) {
+            mdebug1("Unable to send programs information to Wazuh DB.");
             return (0);
         }
     }
@@ -111,12 +95,9 @@ int DecodeSyscollector(Eventinfo *lf)
         }
     }
     else if (strcmp(msg_type, "network") == 0 || strcmp(msg_type, "network_end") == 0) {
-        if (decode_netinfo(lf->agent_id, logJSON) < 0) {
-            merror("Unable to send netinfo message to Wazuh DB.");
-            return (0);
-        }
+        return (1);
     }
-    else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_end") == 0) {
+    else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_list") == 0  || strcmp(msg_type, "process_end") == 0) {
         if (decode_process(lf->agent_id, logJSON) < 0) {
             mdebug1("Unable to send processes information to Wazuh DB.");
             return (0);
@@ -129,336 +110,6 @@ int DecodeSyscollector(Eventinfo *lf)
 
     cJSON_Delete (logJSON);
     return (1);
-}
-
-int decode_netinfo(char *agent_id, cJSON * logJSON) {
-
-    char *msg = NULL;
-    cJSON * iface;
-    char id[OS_MAXSTR];
-    int i;
-
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
-
-    if (iface = cJSON_GetObjectItem(logJSON, "iface"), iface) {
-        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
-        cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
-        cJSON * name = cJSON_GetObjectItem(iface, "name");
-        cJSON * adapter = cJSON_GetObjectItem(iface, "adapter");
-        cJSON * type = cJSON_GetObjectItem(iface, "type");
-        cJSON * state = cJSON_GetObjectItem(iface, "state");
-        cJSON * mac = cJSON_GetObjectItem(iface, "MAC");
-        cJSON * tx_packets = cJSON_GetObjectItem(iface, "tx_packets");
-        cJSON * rx_packets = cJSON_GetObjectItem(iface, "rx_packets");
-        cJSON * tx_bytes = cJSON_GetObjectItem(iface, "tx_bytes");
-        cJSON * rx_bytes = cJSON_GetObjectItem(iface, "rx_bytes");
-        cJSON * tx_errors = cJSON_GetObjectItem(iface, "tx_errors");
-        cJSON * rx_errors = cJSON_GetObjectItem(iface, "rx_errors");
-        cJSON * tx_dropped = cJSON_GetObjectItem(iface, "tx_dropped");
-        cJSON * rx_dropped = cJSON_GetObjectItem(iface, "rx_dropped");
-        cJSON * mtu = cJSON_GetObjectItem(iface, "MTU");
-
-        snprintf(msg, OS_MAXSTR - 1, "agent %s netinfo save", agent_id);
-
-        if (scan_id) {
-            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
-            wm_strcat(&msg, id, ' ');
-        } else {
-            wm_strcat(&msg, "NULL", ' ');
-        }
-
-        if (scan_time) {
-            wm_strcat(&msg, scan_time->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (name) {
-            wm_strcat(&msg, name->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (adapter) {
-            wm_strcat(&msg, adapter->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (type) {
-            wm_strcat(&msg, type->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (state) {
-            wm_strcat(&msg, state->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (mtu) {
-            char _mtu[OS_MAXSTR];
-            snprintf(_mtu, OS_MAXSTR - 1, "%d", mtu->valueint);
-            wm_strcat(&msg, _mtu, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (mac) {
-            wm_strcat(&msg, mac->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (tx_packets) {
-            char txpack[OS_MAXSTR];
-            snprintf(txpack, OS_MAXSTR - 1, "%d", tx_packets->valueint);
-            wm_strcat(&msg, txpack, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (rx_packets) {
-            char rxpack[OS_MAXSTR];
-            snprintf(rxpack, OS_MAXSTR - 1, "%d", rx_packets->valueint);
-            wm_strcat(&msg, rxpack, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (tx_bytes) {
-            char txbytes[OS_MAXSTR];
-            snprintf(txbytes, OS_MAXSTR - 1, "%d", tx_bytes->valueint);
-            wm_strcat(&msg, txbytes, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (rx_bytes) {
-            char rxbytes[OS_MAXSTR];
-            snprintf(rxbytes, OS_MAXSTR - 1, "%d", rx_bytes->valueint);
-            wm_strcat(&msg, rxbytes, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (tx_errors) {
-            char txerrors[OS_MAXSTR];
-            snprintf(txerrors, OS_MAXSTR - 1, "%d", tx_errors->valueint);
-            wm_strcat(&msg, txerrors, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (rx_errors) {
-            char rxerrors[OS_MAXSTR];
-            snprintf(rxerrors, OS_MAXSTR - 1, "%d", rx_errors->valueint);
-            wm_strcat(&msg, rxerrors, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (tx_dropped) {
-            char txdropped[OS_MAXSTR];
-            snprintf(txdropped, OS_MAXSTR - 1, "%d", tx_dropped->valueint);
-            wm_strcat(&msg, txdropped, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (rx_dropped) {
-            char rxdropped[OS_MAXSTR];
-            snprintf(rxdropped, OS_MAXSTR - 1, "%d", rx_dropped->valueint);
-            wm_strcat(&msg, rxdropped, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (sc_send_db(msg) < 0) {
-            return -1;
-        } else {
-            cJSON * ip;
-
-            if (ip = cJSON_GetObjectItem(iface, "IPv4"), ip) {
-
-                cJSON * address = cJSON_GetObjectItem(ip, "address");
-                cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
-                cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
-                cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
-                cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
-
-                os_calloc(OS_MAXSTR, sizeof(char), msg);
-                snprintf(msg, OS_MAXSTR - 1, "agent %s netproto save", agent_id);
-
-                if (scan_id) {
-                    wm_strcat(&msg, id, ' ');
-                } else {
-                    wm_strcat(&msg, "NULL", ' ');
-                }
-
-                if (name) {
-                    wm_strcat(&msg, name->valuestring, '|');
-                } else {
-                    wm_strcat(&msg, "NULL", '|');
-                }
-
-                // Information about an IPv4 interface
-                wm_strcat(&msg, "0", '|');
-
-                if (gateway) {
-                    wm_strcat(&msg, gateway->valuestring, '|');
-                } else {
-                    wm_strcat(&msg, "NULL", '|');
-                }
-
-                if (dhcp) {
-                    wm_strcat(&msg, dhcp->valuestring, '|');
-                } else {
-                    wm_strcat(&msg, "NULL", '|');
-                }
-
-                if (sc_send_db(msg) < 0) {
-                    return -1;
-                }
-
-                // Save addresses information into 'sys_netaddr' table
-
-                if (address) {
-                    for (i = 0; i < cJSON_GetArraySize(address); i++) {
-
-                        os_calloc(OS_MAXSTR, sizeof(char), msg);
-                        snprintf(msg, OS_MAXSTR - 1, "agent %s netaddr save", agent_id);
-
-                        if (scan_id) {
-                            wm_strcat(&msg, id, ' ');
-                        } else {
-                            wm_strcat(&msg, "NULL", ' ');
-                        }
-
-                        // Information about an IPv4 address
-                        wm_strcat(&msg, "0", '|');
-
-                        wm_strcat(&msg, cJSON_GetArrayItem(address,i)->valuestring, '|');
-
-                        if (cJSON_GetArrayItem(netmask,i) != NULL) {
-                            wm_strcat(&msg, cJSON_GetArrayItem(netmask,i)->valuestring, '|');
-                        } else {
-                            wm_strcat(&msg, "NULL", '|');
-                        }
-
-                        if (cJSON_GetArrayItem(broadcast,i) != NULL) {
-                            wm_strcat(&msg, cJSON_GetArrayItem(broadcast,i)->valuestring, '|');
-                        } else {
-                            wm_strcat(&msg, "NULL", '|');
-                        }
-
-                        if (sc_send_db(msg) < 0) {
-                            return -1;
-                        }
-                    }
-                }
-            }
-
-            if (ip = cJSON_GetObjectItem(iface, "IPv6"), ip) {
-                cJSON * address = cJSON_GetObjectItem(ip, "address");
-                cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
-                cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
-                cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
-                cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
-
-                os_calloc(OS_MAXSTR, sizeof(char), msg);
-                snprintf(msg, OS_MAXSTR - 1, "agent %s netproto save", agent_id);
-
-                if (scan_id) {
-                    wm_strcat(&msg, id, ' ');
-                } else {
-                    wm_strcat(&msg, "NULL", ' ');
-                }
-
-                if (name) {
-                    wm_strcat(&msg, name->valuestring, '|');
-                } else {
-                    wm_strcat(&msg, "NULL", '|');
-                }
-
-                // Information about an IPv6 interface
-                wm_strcat(&msg, "1", '|');
-
-                if (gateway) {
-                    wm_strcat(&msg, gateway->valuestring, '|');
-                } else {
-                    wm_strcat(&msg, "NULL", '|');
-                }
-
-                if (dhcp) {
-                    wm_strcat(&msg, dhcp->valuestring, '|');
-                } else {
-                    wm_strcat(&msg, "NULL", '|');
-                }
-
-                if (sc_send_db(msg) < 0) {
-                    return -1;
-                }
-
-                if (address) {
-                    for (i = 0; i < cJSON_GetArraySize(address); i++) {
-
-                        os_calloc(OS_MAXSTR, sizeof(char), msg);
-                        snprintf(msg, OS_MAXSTR - 1, "agent %s netaddr save", agent_id);
-
-                        if (scan_id) {
-                            wm_strcat(&msg, id, ' ');
-                        } else {
-                            wm_strcat(&msg, "NULL", ' ');
-                        }
-
-                        // Information about an IPv6 address
-                        wm_strcat(&msg, "1", '|');
-
-                        wm_strcat(&msg, cJSON_GetArrayItem(address,i)->valuestring, '|');
-
-                        if (cJSON_GetArrayItem(netmask,i) != NULL) {
-                            wm_strcat(&msg, cJSON_GetArrayItem(netmask,i)->valuestring, '|');
-                        } else {
-                            wm_strcat(&msg, "NULL", '|');
-                        }
-
-                        if (cJSON_GetArrayItem(broadcast,i) != NULL) {
-                            wm_strcat(&msg, cJSON_GetArrayItem(broadcast,i)->valuestring, '|');
-                        } else {
-                            wm_strcat(&msg, "NULL", '|');
-                        }
-
-                        if (sc_send_db(msg) < 0) {
-                            return -1;
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        // Looking for 'end' message.
-        char * msg_type = NULL;
-
-        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
-
-        if (!msg_type) {
-            merror("Invalid message. Type not found.");
-            free(msg);
-            return -1;
-        } else if (strcmp(msg_type, "network_end") == 0) {
-
-            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
-            snprintf(msg, OS_MAXSTR - 1, "agent %s netinfo del %d", agent_id, scan_id->valueint);
-
-            if (sc_send_db(msg) < 0) {
-                return -1;
-            }
-        }
-    }
-
-    return 0;
 }
 
 int decode_osinfo(char *agent_id, cJSON * logJSON) {
@@ -814,31 +465,25 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
     return 0;
 }
 
-int decode_package(char *agent_id, cJSON * logJSON) {
+int decode_program(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
-    cJSON * package;
+    cJSON * program;
 
-    if (package = cJSON_GetObjectItem(logJSON, "program"), package) {
+    if (program = cJSON_GetObjectItem(logJSON, "program"), program) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
-        cJSON * format = cJSON_GetObjectItem(package, "format");
-        cJSON * name = cJSON_GetObjectItem(package, "name");
-        cJSON * priority = cJSON_GetObjectItem(package, "priority");
-        cJSON * section = cJSON_GetObjectItem(package, "group");
-        cJSON * size = cJSON_GetObjectItem(package, "size");
-        cJSON * vendor = cJSON_GetObjectItem(package, "vendor");
-        cJSON * version = cJSON_GetObjectItem(package, "version");
-        cJSON * architecture = cJSON_GetObjectItem(package, "architecture");
-        cJSON * multiarch = cJSON_GetObjectItem(package, "multi-arch");
-        cJSON * source = cJSON_GetObjectItem(package, "source");
-        cJSON * description = cJSON_GetObjectItem(package, "description");
-        cJSON * installtime = cJSON_GetObjectItem(package, "install_time");
-        cJSON * location = cJSON_GetObjectItem(package, "location");
+        cJSON * format = cJSON_GetObjectItem(program, "format");
+        cJSON * name = cJSON_GetObjectItem(program, "name");
+        cJSON * vendor = cJSON_GetObjectItem(program, "vendor");
+        cJSON * version = cJSON_GetObjectItem(program, "version");
+        cJSON * architecture = cJSON_GetObjectItem(program, "architecture");
+        cJSON * description = cJSON_GetObjectItem(program, "description");
 
-        snprintf(msg, OS_MAXSTR - 1, "agent %s package save", agent_id);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s program save", agent_id);
+
 
         if (scan_id) {
             char id[OS_MAXSTR];
@@ -866,34 +511,8 @@ int decode_package(char *agent_id, cJSON * logJSON) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (priority) {
-            wm_strcat(&msg, priority->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (section) {
-            wm_strcat(&msg, section->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (size) {
-            char _size[OS_MAXSTR];
-            snprintf(_size, OS_MAXSTR - 1, "%d", size->valueint);
-            wm_strcat(&msg, _size, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
         if (vendor) {
             wm_strcat(&msg, vendor->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (installtime) {
-            wm_strcat(&msg, installtime->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -910,26 +529,8 @@ int decode_package(char *agent_id, cJSON * logJSON) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (multiarch) {
-            wm_strcat(&msg, multiarch->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (source) {
-            wm_strcat(&msg, source->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
         if (description) {
             wm_strcat(&msg, description->valuestring, '|');
-        } else {
-            wm_strcat(&msg, "NULL", '|');
-        }
-
-        if (location) {
-            wm_strcat(&msg, location->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -952,7 +553,7 @@ int decode_package(char *agent_id, cJSON * logJSON) {
         } else if (strcmp(msg_type, "program_end") == 0) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
-            snprintf(msg, OS_MAXSTR - 1, "agent %s package del %d", agent_id, scan_id->valueint);
+            snprintf(msg, OS_MAXSTR - 1, "agent %s program del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
                 return -1;
@@ -1272,8 +873,9 @@ int sc_send_db(char * msg) {
 
     if (sock < 0) {
         if (mtime = time(NULL), mtime > last_attempt + 10) {
+            last_attempt = mtime;
+
             if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-                last_attempt = mtime;
                 merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
                 goto end;
             }
@@ -1290,18 +892,18 @@ int sc_send_db(char * msg) {
             merror("Syscollector decoder: database socket is full");
         } else if (errno == EPIPE) {
             if (mtime = time(NULL), mtime > last_attempt + 10) {
+                last_attempt = mtime;
+
                 // Retry to connect
                 mwarn("Connection with wazuh-db lost. Reconnecting.");
                 close(sock);
 
                 if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-                    last_attempt = mtime;
                     merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
                     goto end;
                 }
 
                 if (send(sock, msg, size + 1, MSG_DONTWAIT) < size) {
-                    last_attempt = mtime;
                     merror("at sc_send_db(): at send() (retry): %s (%d)", strerror(errno), errno);
                     goto end;
                 }

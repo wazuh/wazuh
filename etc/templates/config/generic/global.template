@@ -8,9 +8,5 @@
     <email_from>ossecm@example.wazuh.com</email_from>
     <email_to>recipient@example.wazuh.com</email_to>
     <email_maxperhour>12</email_maxperhour>
-<<<<<<< HEAD
-    <queue_size>16384</queue_size>
-=======
     <queue_size>131072</queue_size>
->>>>>>> 99cdd6f0c444d5d03fe9976790c5daf899cd5778
   </global>
