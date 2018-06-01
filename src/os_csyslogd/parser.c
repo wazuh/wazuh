@@ -219,12 +219,13 @@ void findMatch(int regexIndex, char field[MAX_STR_LEN], char inputOriginal[MAX_S
 		        }
 		    }
 		}
-		
+		regfree(&re);
             }
         }
     }
     else{
     	fprintf(stderr, "Failed to compile regex %u '%s'\n", regexIndex, regexList[regexIndex]);
     } 
+    regfree(&re);
 }
  
