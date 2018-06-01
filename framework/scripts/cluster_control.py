@@ -156,7 +156,7 @@ def __print_table(data, headers, show_header=False):
         """
         For each column of the table, return the size of the biggest element
         """
-        return map(lambda x: max(map(lambda y: len(y)+2, x)), map(list, zip(*l)))
+        return list(map(lambda x: max(map(lambda y: len(y)+2, x)), map(list, zip(*l))))
 
     if show_header:
         table = list(chain.from_iterable([[headers], data]))
