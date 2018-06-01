@@ -282,6 +282,14 @@ int main(int argc, char **argv)
         goDaemon();
     }
 
+    /* Start signal handling */
+    StartSIG(ARGV0);
+
+    /* Create pid */
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        merror_exit(PID_ERROR);
+    }
+
     /* Initial time to settle */
     sleep(syscheck.tsleep + 2);
 
@@ -298,14 +306,6 @@ int main(int argc, char **argv)
                 merror_exit(QUEUE_FATAL, DEFAULTQPATH);
             }
         }
-    }
-
-    /* Start signal handling */
-    StartSIG(ARGV0);
-
-    /* Create pid */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
     }
 
     /* Start up message */

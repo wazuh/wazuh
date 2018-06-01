@@ -1856,6 +1856,7 @@ int wm_vulnerability_detector_socketconnect(char *url, in_port_t port) {
 		}
 	}
 
+    // https://bugzilla.redhat.com/show_bug.cgi?id=116526
 	freeaddrinfo(host_info);
 
     if (*ip_addr == '\0') {
@@ -2526,6 +2527,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
             } else {
                 dist_error = DIS_UBUNTU;
             }
+<<<<<<< HEAD
             agent_dist = DIS_UBUNTU;
         } else if (strcasestr(os_name, vu_dist_ext[DIS_DEBIAN])) {
             if (strstr(os_version, "7")) {
@@ -2558,6 +2560,32 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                 agent_os = vu_dist_tag[DIS_RHEL5];
             } else {
                 dist_error = DIS_CENTOS;
+=======
+        } else {
+            if (manager_found) {
+                strncpy(m_uname, uname_p, OS_MAXSTR -1);
+                m_uname[OS_MAXSTR - 1] = '\0';
+            } else {
+                struct stat file_status;
+                char skip = 0;
+
+                if (stat(agent_info, &file_status) < 0) {
+                    skip = 1;
+                }
+
+                if (file_status.st_mtime < (time(0) - DISCON_TIME)) {
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AG_DISC, agents->agent_name);
+                    skip = 1;
+                }
+
+                if (skip) {
+                    if (agents = skip_agent(agents, agents_software), !agents) {
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
+>>>>>>> 99cdd6f0c444d5d03fe9976790c5daf899cd5778
             }
             agent_dist = DIS_REDHAT;
         } else {

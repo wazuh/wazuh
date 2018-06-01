@@ -101,6 +101,7 @@ class WazuhException(Exception):
         1728: 'Invalid node type',
         1729: 'Agent status not valid. Valid statuses are Active, Disconnected, Pending and Never Connected.',
         1730: 'Node does not exist',
+        1731: 'Agent is not eligible for removal',
 
         # Manager:
 
