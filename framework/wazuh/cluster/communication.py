@@ -488,7 +488,7 @@ class AbstractServer(asyncore.dispatcher):
         self.map = asyncore_map
         self._clients = {}
         self._clients_lock = threading.Lock()
-        self.create_socket(socket_type, socket_family)
+        self.create_socket(socket_family, socket_type)
         self.bind(addr)
         self.listen(5)
         self.tag = tag
@@ -586,7 +586,7 @@ class Server(AbstractServer):
 
     def __init__(self, host, port, handle_type, asyncore_map = {}):
         AbstractServer.__init__(self, addr=(host,port), handle_type=handle_type, asyncore_map=asyncore_map,
-                                socket_type=socket.AF_INET, socket_family=socket.SOCK_STREAM, tag="[Transport-Server]")
+                                socket_family=socket.AF_INET, socket_type=socket.SOCK_STREAM, tag="[Transport-Server]")
         self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
 
 

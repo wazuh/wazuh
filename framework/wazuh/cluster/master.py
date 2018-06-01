@@ -713,4 +713,4 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return response.split(' ',1)
 
         else:
-            InternalSocketHandler.process_request(self,command,data)
+            return InternalSocketHandler.process_request(self,command,data)

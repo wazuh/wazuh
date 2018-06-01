@@ -37,13 +37,13 @@ class InternalSocket(communication.AbstractServer):
         self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
 
         communication.AbstractServer.__init__(self, addr=self.socket_addr, handle_type=handle_type, asyncore_map=asyncore_map,
-                                              socket_type=socket.AF_UNIX, socket_family=socket.SOCK_STREAM,
+                                              socket_family=socket.AF_UNIX, socket_type=socket.SOCK_STREAM,
                                               tag="[Transport-InternalSocket]")
         self.manager = manager
         self.config = {'key': None}
 
 
-    def create_socket(self, socket_type, socket_family):
+    def create_socket(self, family=socket.AF_UNIX, type=socket.SOCK_STREAM):
         logger.debug2("[Transport-InternalSocket] Creating.")
 
         # Make sure the socket does not already exist
@@ -54,7 +54,7 @@ class InternalSocket(communication.AbstractServer):
                 logger.error("[Transport-InternalSocket] Error: '{}' already exits".format(self.socket_addr))
                 raise
 
-        communication.AbstractServer.create_socket(self, socket_type, socket_family)
+        communication.AbstractServer.create_socket(self, family, type)
 
 
     def add_client(self, data, ip, handler):
