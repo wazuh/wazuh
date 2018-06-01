@@ -16,7 +16,6 @@ char regexList[][100] = {
    "\\(([^)]*)",
    "(pci.*)" 
 };
-//".*[^Account Domain:\\s\\s[^ ]*]*(Account Domain:\\s\\s[^ ]*)",
   
 /*
 int main()
@@ -118,7 +117,6 @@ void parseString(char *inputString, char fieldname[MAX_STR_LEN], struct KeyStore
  
     for(i = 0; i < loopEnd; i++)
     {
-        //printf("%u\n", indexList[i]);
         findMatch(indexList[i], fieldname, (workingKeyStore->original), workingKeyStore);
     }  
  
@@ -130,27 +128,15 @@ void findMatch(int regexIndex, char field[MAX_STR_LEN], char inputOriginal[MAX_S
     regex_t re;
     regmatch_t rm[10];
     size_t maxrm = 10;
-    //printf("DEBUG: input string length: %u \n", strlen((workingKeyStore->original)));
+    int res = regcomp(&re, regexList[regexIndex], REG_EXTENDED);
     
-    //for(regexIndex = 0; regexIndex < regexListSize; regexIndex++)
-    //{
-	//printf("regex %u : %s", regexIndex, regexList[regexIndex]);
-        if (regcomp(&re, regexList[regexIndex], REG_EXTENDED) != 0)
-        {
-            fprintf(stderr, "Failed to compile regex %u '%s'\n", regexIndex, regexList[regexIndex]);
-            //return EXIT_FAILURE;
-        }
-    //}
-    
-    
-    if (inputOriginal[0]) 
+    if (res == 0 && inputOriginal[0]) 
     {
         inputOriginal[strlen(inputOriginal)] = '\0';
         
         if ((retval = regexec(&re, inputOriginal, maxrm, rm, 0)) == 0)
         {  
             unsigned int g = 0;
-	    //char match[strlen(inputOriginal) + 1];
  
 	    for (g = 1; g < maxrm; g++)
             {
@@ -160,13 +146,11 @@ void findMatch(int regexIndex, char field[MAX_STR_LEN], char inputOriginal[MAX_S
           	char sourceCopy[strlen(inputOriginal) + 1];
           	strcpy(sourceCopy, inputOriginal);
           	sourceCopy[rm[g].rm_eo] = 0;
-		//printf("DEBUG: sourceCopy length: %u \n", strlen(sourceCopy));
           	if (DEBUG != 0) printf("Group %u: [%2u-%2u]: %s\n",
           	       g, rm[g].rm_so, rm[g].rm_eo,
          	       sourceCopy + rm[g].rm_so);
 
 		strcpy((workingKeyStore->match), sourceCopy + rm[g].rm_so);
-		//printf("DEBUG: match: %s\n", match);
 		
 		if (g == 1){
 		    if (regexIndex == 0){
@@ -238,6 +222,9 @@ void findMatch(int regexIndex, char field[MAX_STR_LEN], char inputOriginal[MAX_S
 		
             }
         }
+    }
+    else{
+    	fprintf(stderr, "Failed to compile regex %u '%s'\n", regexIndex, regexList[regexIndex]);
     } 
 }
  
