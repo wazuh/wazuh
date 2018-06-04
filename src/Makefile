@@ -65,7 +65,6 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
 		PATH:=${PATH}:/usr/vac/bin
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
@@ -137,6 +136,10 @@ endif
 
 ifndef DISABLE_CISCAT
 	DEFINES+=-DENABLE_CISCAT
+endif
+
+ifndef DISABLE_SHARED
+	DEFINES+=-DENABLE_SHARED
 endif
 
 ifdef DEBUGAD
@@ -693,8 +696,13 @@ external/%.tar.gz:
 #### OSSEC Libs ####
 ####################
 
+ifdef DISABLE_SHARED
+BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
+endif
+ifndef DISABLE_SHARED
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
+endif
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
@@ -869,6 +877,7 @@ libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os
 
 ### libwazuhext #########
 
+ifndef DISABLE_SHARED
 ifeq (${uname_S},Darwin)
 WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 
@@ -885,6 +894,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
 endif
 endif
 endif
