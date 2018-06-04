@@ -9,7 +9,10 @@ from wazuh.agent import Agent
 from wazuh.utils import plain_dict_to_nested_dict
 from operator import itemgetter
 
-def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, allowed_sort_fields, table, nested=True, array=False, internal_limit=10):
+request_internal_limit = {'sys_osinfo':20, "sys_hwinfo":20, "sys_programs":15, "sys_processes":6, "sys_ports":20,
+                          "sys_netaddr":20, "sys_netproto":20, "sys_netiface":10}
+
+def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, allowed_sort_fields, table, nested=True, array=False):
     Agent(agent_id).get_basic_information()
     if select:
         select_fields = list(set(select['fields']) & set(valid_select_fields))
@@ -30,25 +33,34 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
             raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(
                         ', '.join(allowed_sort_fields), ','.join(sort['fields'])))
 
-    response = {'items': [], 'totalItems': 0} if array else []
-    if limit < internal_limit:
-        internal_limit = limit
-    for current_offset in range(offset, limit, internal_limit):
-        result_i, total = Agent(agent_id)._load_info_from_agent_db(table=table,
-                                                                   offset=current_offset, limit=internal_limit, select=select_fields,
-                                                                   count=True, sort=sort, search=search,
-                                                                   filters=filters)
-        if result_i == []:
-            continue
-
-        if array:
-            response['items'] += result_i
-            response['totalItems'] = total
-        else:
-            response = result_i[0] if not nested else plain_dict_to_nested_dict(result_i[0])
+    kwargs = {"agent_id":agent_id, "offset":offset, "limit":limit, "select":select_fields, "search":search,
+              "sort":sort, "filters":filters, "table":table}
+    if array:
+        response = __get_array_response(**kwargs)[0] # [response, size]
+    else:
+        response = __get_response(**kwargs)[0][0] # [response, size]
+        if nested:
+            response = plain_dict_to_nested_dict(response)
 
     return response
 
+
+def __get_array_response(agent_id, offset, limit, select, search, sort, filters, table):
+    response = {'items': [], 'totalItems': 0}
+    internal_limit = limit if limit < request_internal_limit[table] else request_internal_limit[table]
+    for current_offset in range(offset, limit, internal_limit):
+        result_i, total = __get_response(agent_id=agent_id, table=table, offset=current_offset, limit=internal_limit, select=select,
+                                            sort=sort, search=search, filters=filters)
+        if result_i == []:
+            continue
+        response['items'] += result_i
+        response['totalItems'] = total
+    return response, response['totalItems']
+
+
+def __get_response(agent_id, offset, limit, select, search, sort, filters, table):
+    return Agent(agent_id)._load_info_from_agent_db(table=table,  offset=offset, limit=limit, select=select,
+                                                count=True, sort=sort, search=search, filters=filters)
 
 def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
     """
