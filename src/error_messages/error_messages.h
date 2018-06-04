@@ -140,7 +140,6 @@
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
 #define NO_CLIENT_KEYS  "(1751): File client.keys not found or empty."
-#define SHA_MEM_ERROR   "(1752): Could not initiated the shared memory."
 
 /* 1760 - 1769 -- reserved for maild */
 
