@@ -1876,9 +1876,9 @@ void * w_process_event_thread(__attribute__((unused)) void * args){
 
     while(1){
 
-         RuleNode *rulenode_pt;
+        RuleNode *rulenode_pt;
+        
         /* Extract decoded event from the queue */
-        // os_calloc(1,sizeof(decode_event),decode_event_out_lf);
         if(decode_event_out_lf = queue_pop_ex(decode_queue_event_output), decode_event_out_lf) {
             lf = decode_event_out_lf->lf;
             mdebug2("Taking out from the queue");
