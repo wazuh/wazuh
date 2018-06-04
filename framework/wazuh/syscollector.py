@@ -36,9 +36,11 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
     kwargs = {"agent_id":agent_id, "offset":offset, "limit":limit, "select":select_fields, "search":search,
               "sort":sort, "filters":filters, "table":table}
     if array:
-        response = __get_array_response(**kwargs)[0] # [response, size]
+        response = __get_array_response(**kwargs)
     else:
-        response = __get_response(**kwargs)[0][0] # [response, size]
+        response = __get_response(**kwargs)
+        response = {} if not response else response[0]
+
         if nested:
             response = plain_dict_to_nested_dict(response)
 
@@ -50,17 +52,21 @@ def __get_array_response(agent_id, offset, limit, select, search, sort, filters,
     internal_limit = limit if limit < request_internal_limit[table] else request_internal_limit[table]
     for current_offset in range(offset, limit, internal_limit):
         result_i, total = __get_response(agent_id=agent_id, table=table, offset=current_offset, limit=internal_limit, select=select,
-                                            sort=sort, search=search, filters=filters)
+                                            sort=sort, search=search, filters=filters, count=True)
         if result_i == []:
             continue
         response['items'] += result_i
         response['totalItems'] = total
-    return response, response['totalItems']
+    return response
 
 
-def __get_response(agent_id, offset, limit, select, search, sort, filters, table):
-    return Agent(agent_id)._load_info_from_agent_db(table=table,  offset=offset, limit=limit, select=select,
+def __get_response(agent_id, offset, limit, select, search, sort, filters, table, count=False):
+    response, total = Agent(agent_id)._load_info_from_agent_db(table=table,  offset=offset, limit=limit, select=select,
                                                 count=True, sort=sort, search=search, filters=filters)
+    if count:
+        return response, total
+
+    return response
 
 def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
     """
@@ -136,13 +142,13 @@ def get_processes_agent(agent_id, offset=0, limit=common.database_limit, select=
 
 def get_ports_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
     """
-    Get info about an agent's processes
+    Get info about an agent's ports
     """
     offset = int(offset)
     limit = int(limit)
     valid_select_fields = {'scan_id', 'scan_time', 'protocol', 'local_ip',
                            'local_port', 'remote_ip', 'remote_port', 'tx_queue', 'rx_queue', 'inode',
-                           'state', 'PID', 'process'}
+                           'state', 'pid', 'process'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select,
                          search=search, sort=sort, filters=filters, allowed_sort_fields=valid_select_fields,
@@ -151,7 +157,7 @@ def get_ports_agent(agent_id, offset=0, limit=common.database_limit, select={}, 
 
 def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
     """
-    Get info about an agent's processes
+    Get info about an agent's network address
     """
     offset = int(offset)
     limit = int(limit)
@@ -165,7 +171,7 @@ def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}
 
 def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
     """
-    Get info about an agent's processes
+    Get info about an agent's network protocol
     """
     offset = int(offset)
     limit = int(limit)
@@ -179,7 +185,7 @@ def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={
 
 def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
     """
-    Get info about an agent's processes
+    Get info about an agent's network interface
     """
     offset = int(offset)
     limit = int(limit)
