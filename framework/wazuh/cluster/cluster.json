@@ -115,7 +115,11 @@
         "communication":{
             "max_time_receiving_file": 30,
             "file_transfer_receive": 0.1,
-            "file_transfer_send": 0.1
+            "file_transfer_send": 0.1,
+
+            "max_time_receiving_string": 30,
+            "string_transfer_receive": 0.1,
+            "string_transfer_send": 0.1
         }
     },
 
