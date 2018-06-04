@@ -722,6 +722,6 @@ class ClientInternalSocketHandler(InternalSocketHandler):
             if type_response == "err":
                 response = ["err", json.dumps({"err": response})]
             else:
-                response = ['ok', response]
+                response = [type_response, response]
 
         return response

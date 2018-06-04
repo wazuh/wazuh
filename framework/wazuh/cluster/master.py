@@ -712,6 +712,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
 
         elif command == 'get_health':
+            client_id, data = data.split(' ', 1)
             node_list = data if data != 'None' else None
             response = self.server.manager.get_healthcheck(node_list)
             serialized_response = ['json',  json.dumps(response)]
