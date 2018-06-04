@@ -11,9 +11,7 @@
 #include "remoted.h"
 #include "shared_download.h"
 #include <unistd.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+
 
 /* Prototypes */
 static void help_remoted(void) __attribute__((noreturn));
@@ -48,7 +46,6 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     int nocmerged = 0;
-    //int shared_obj;
 
     OS_XML xml;
     const char * xmlf[] = {"ossec_config", "cluster", "disabled", NULL};

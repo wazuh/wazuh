@@ -75,25 +75,25 @@ int rem_write_state() {
         "# %s\n"
         "\n"
         "# Queue size\n"
-        "queue_size:'%zu'\n"
+        "queue_size='%zu'\n"
         "\n"
         "# Total queue size\n"
-        "total_queue_size:'%zu'\n"
+        "total_queue_size='%zu'\n"
         "\n"
         "# TCP sessions\n"
-        "tcp_sessions:'%u'\n"
+        "tcp_sessions='%u'\n"
         "\n"
         "# Events sent to Analysisd\n"
-        "evt_count:'%u'\n"
+        "evt_count='%u'\n"
         "\n"
         "# Control messages received\n"
-        "ctrl_msg_count:'%u'\n"
+        "ctrl_msg_count='%u'\n"
         "\n"
         "# Discarded messages\n"
-        "discarded_count:'%u'\n"
+        "discarded_count='%u'\n"
         "\n"
         "# Messages sent\n"
-        "msg_sent:'%u'\n",
+        "msg_sent='%u'\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
         state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent);
 
