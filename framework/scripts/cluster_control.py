@@ -28,7 +28,8 @@ try:
 
     # Import cluster
     from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
-    from wazuh.cluster.control import check_cluster_status, get_nodes, get_healthcheck, get_agents, sync, get_files
+    from wazuh.cluster.control import get_nodes, get_healthcheck, sync, get_files, get_agents
+    from wazuh.cluster.internal_socket import check_cluster_status
 
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -139,7 +140,7 @@ def __execute(my_function, my_args=()):
         if response:
             print ("Error: {}".format(response))
         else:
-            print ("{}".format(e))
+            print ("Error: {}".format(e))
         exit(1)
 
     return response
@@ -156,7 +157,7 @@ def __print_table(data, headers, show_header=False):
         """
         For each column of the table, return the size of the biggest element
         """
-        return map(lambda x: max(map(lambda y: len(y)+2, x)), map(list, zip(*l)))
+        return list(map(lambda x: max(map(lambda y: len(y)+2, x)), map(list, zip(*l))))
 
     if show_header:
         table = list(chain.from_iterable([[headers], data]))
@@ -244,7 +245,7 @@ def sync_master(filter_node):
 
 
 ### Get agents
-def print_agents(filter_status=None, filter_node=None):
+def print_agents(filter_status, filter_node):
     agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
     data = [[agent['id'], agent['ip'], agent['name'], agent['status'],agent['node_name']] for agent in agents['items']]
     headers = ["ID", "Address", "Name", "Status", "Node"]
@@ -253,6 +254,7 @@ def print_agents(filter_status=None, filter_node=None):
         print ("Found {} agent(s) with status '{}'.".format(len(agents['items']), "".join(filter_status)))
     else:
         print ("Listing {} agent(s).".format(len(agents['items'])))
+
 
 ### Get healthchech
 def print_healthcheck(conf, more=False, filter_node=None):
@@ -343,11 +345,7 @@ if __name__ == '__main__':
             print ("Wrong arguments.")
             parser.print_help()
         elif args.list_agents:
-            if is_master:
-                print_agents(args.filter_status, args.filter_node)
-            else:
-                print ("Wrong arguments. To use this command you need to be a master node.")
-                parser.print_help()
+            print_agents(args.filter_status, args.filter_node)
 
         elif args.list_nodes:
             print_nodes_status(args.filter_node)
@@ -359,13 +357,6 @@ if __name__ == '__main__':
         else:
             parser.print_help()
             exit()
-
-        #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
-        #elif is_master and args.sync is not None:
-        #    sync_master(args.filter_node)
-        #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
 
     except Exception as e:
         logging.error(str(e))

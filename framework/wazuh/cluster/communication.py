@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh import common
+from wazuh import common, WazuhException
 from wazuh.cluster.cluster import check_cluster_status, get_cluster_items_communication_intervals
 from wazuh.cluster import __version__
 from wazuh.utils import WazuhVersion
@@ -456,10 +456,13 @@ class Handler(asyncore.dispatcher_with_send):
     def dispatch(self, command, payload):
         try:
             return self.process_request(command, payload)
+        except WazuhException as e:
+            logger.error("[Transport-Handler] {0}".format(e.message))
+            return 'err', str(e)
         except Exception as e:
             error_msg = "Error processing command '{0}': '{1}'.".format(command, e)
             logger.error("[Transport-Handler] {0}".format(error_msg))
-            return 'err ', error_msg
+            return 'err', error_msg
 
 
     def process_request(self, command, data):
@@ -506,7 +509,7 @@ class ServerHandler(Handler):
         self.map = asyncore_map
         self.name = None
         self.server = server
-        self.addr = addr
+        self.addr = addr[0] if addr else addr
 
 
     def handle_close(self):
@@ -550,36 +553,33 @@ class ServerHandler(Handler):
         return self.name
 
 
-class Server(asyncore.dispatcher):
+class AbstractServer(asyncore.dispatcher):
 
-    def __init__(self, host, port, handle_type, asyncore_map = {}):
+    def __init__(self, addr, handle_type, socket_type, socket_family, tag, asyncore_map = {}):
         asyncore.dispatcher.__init__(self, map=asyncore_map)
+        self.handle_type = handle_type
+        self.map = asyncore_map
         self._clients = {}
         self._clients_lock = threading.Lock()
-
-        self.map = asyncore_map
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.set_reuse_addr()
-        self.bind((host, port))
+        self.create_socket(socket_family, socket_type)
+        self.bind(addr)
         self.listen(5)
-        self.handle_type = handle_type
-        self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
-        self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']
+        self.tag = tag
 
 
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
             sock, addr = pair
-            logger.debug("[Transport-Server] Incoming connection.")
+            logger.debug("{0} Incoming connection from {1}.".format(self.tag, addr))
 
-            if self.find_client_by_ip(addr[0]):
+            if self.find_client_by_ip(addr):
                 sock.close()
-                logger.warning("[Transport-Server] Incoming connection from '{0}' rejected: Client is already connected.".format(repr(addr)))
+                logger.warning("{0} Incoming connection from '{1}' rejected. Client is already connected.".format(self.tag, repr(addr)))
                 return
 
             # addr is a tuple of form (ip, port)
-            handler = self.handle_type(sock, self, self.map, addr[0])
+            handler = self.handle_type(sock, self, self.map, addr)
 
 
     def handle_error(self):
@@ -592,8 +592,8 @@ class Server(asyncore.dispatcher):
 
         self.handle_close()
 
-        logger.error("[Transport-Server] Error: '{}'.".format(v))
-        logger.debug("[Transport-Server] Error: '{}' - '{}'.".format(t, tbinfo))
+        logger.error("{} Error: '{}'.".format(self.tag, v))
+        logger.debug("{} Error: '{}' - '{}'.".format(self.tag, t, tbinfo))
 
 
     def find_client_by_ip(self, client_ip):
@@ -604,6 +604,64 @@ class Server(asyncore.dispatcher):
                     return client
 
         return None
+
+
+    def add_client(self, data, ip, handler):
+        raise NotImplementedError
+
+
+    def remove_client(self, client_id):
+        with self._clients_lock:
+            try:
+                # Remove threads
+                self._clients[client_id]['handler'].exit()
+
+                del self._clients[client_id]
+            except KeyError:
+                logger.error("{} Client '{}'' is already disconnected.".format(self.tag, client_id))
+
+
+    def get_connected_clients(self):
+        with self._clients_lock:
+            return self._clients
+
+
+    def get_client_info(self, client_name):
+        with self._clients_lock:
+            try:
+                return self._clients[client_name]
+            except KeyError:
+                error_msg = "Client {} is disconnected.".format(client_name)
+                logger.error("{} {}".format(self.tag, error_msg))
+                raise Exception(error_msg)
+
+
+    def send_request_broadcast(self, command, data=None):
+
+        for c_name in self.get_connected_clients():
+            response = self.get_client_info(c_name)['handler'].execute(command, data)
+            yield c_name, response
+
+
+    def send_request(self, client_name, command, data=None):
+
+        if client_name in self.get_connected_clients():
+            response = self.get_client_info(client_name)['handler'].execute(command, data)
+        else:
+            error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
+            logger.error("{0} {1}.".format(self.tag, error_msg))
+            response = "err " + error_msg
+
+        return response
+
+
+class Server(AbstractServer):
+
+    def __init__(self, host, port, handle_type, asyncore_map = {}):
+        AbstractServer.__init__(self, addr=(host,port), handle_type=handle_type, asyncore_map=asyncore_map,
+                                socket_family=socket.AF_INET, socket_type=socket.SOCK_STREAM, tag="[Transport-Server]")
+        self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
+        self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']
 
 
     def add_client(self, data, ip, handler):
@@ -650,32 +708,6 @@ class Server(asyncore.dispatcher):
         return node_id
 
 
-    def remove_client(self, client_id):
-        with self._clients_lock:
-            try:
-                # Remove threads
-                self._clients[client_id]['handler'].exit()
-
-                del self._clients[client_id]
-            except KeyError:
-                logger.error("[Transport-Server] Client '{}'' is already disconnected.".format(client_id))
-
-
-    def get_connected_clients(self):
-        with self._clients_lock:
-            return self._clients
-
-
-    def get_client_info(self, client_name):
-        with self._clients_lock:
-            try:
-                return self._clients[client_name]
-            except KeyError:
-                error_msg = "Client {} is disconnected.".format(client_name)
-                logger.error("[Transport-Server] {}".format(error_msg))
-                raise Exception(error_msg)
-
-
     def send_file(self, client_name, reason, file_to_send, remove = False):
         return self.get_client_info(client_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
 
@@ -709,18 +741,17 @@ class Server(asyncore.dispatcher):
             yield c_name, response
 
 
-class ClientHandler(Handler):
 
-    def __init__(self, key, host, port, name, asyncore_map = {}):
+class AbstractClient(Handler):
+
+    def __init__(self, key, addr, name, socket_family, socket_type, connect_query, asyncore_map = {}):
         Handler.__init__(self, key=key, asyncore_map=asyncore_map)
+        self.connect_query = connect_query
         self.map = asyncore_map
-        self.host = host
-        self.port = port
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        ok = self.connect( (host, port) )
-        self.name = name
         self.my_connected = False
-        self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']
+        self.create_socket(socket_family, socket_type)
+        self.name = name
+        ok = self.connect(addr)
 
 
     def handle_connect(self):
@@ -754,155 +785,27 @@ class ClientHandler(Handler):
         return self.my_connected
 
 
-
-class InternalSocketHandler(Handler):
-
-    def __init__(self, sock, manager, asyncore_map):
-        Handler.__init__(self, key=None, sock=sock, asyncore_map=asyncore_map)
-        self.manager = manager
-
-
-    def process_request(self, command, data):
-        raise NotImplementedError
+    def handle_connect(self):
+        counter = self.nextcounter()
+        payload = msgbuild(counter, 'hello', self.my_fernet, self.connect_query)
+        self.send(payload)
+        self.my_connected = True
+        logger.info("[Client] Connected.")
 
 
-class InternalSocket(asyncore.dispatcher):
+class ClientHandler(AbstractClient):
 
-    def __init__(self, socket_name, manager, handle_type, asyncore_map = {}):
-        asyncore.dispatcher.__init__(self, map=asyncore_map)
-        self.handle_type = handle_type
-        self.map = asyncore_map
-        self.socket_name = socket_name
-        self.manager = manager
-        self.socket_address = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", self.socket_name)
-        self.__create_socket()
+    def __init__(self, key, host, port, name, asyncore_map = {}):
+        connect_query = '{} {} {}'.format(name, 'client', __version__)
+        AbstractClient.__init__(self, key, (host, port), name, socket.AF_INET, socket.SOCK_STREAM, connect_query, asyncore_map)
+        self.host = host
+        self.port = port
+        self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']
 
 
-    def __create_socket(self):
-        logger.debug2("[Transport-InternalSocket] Creating.")
-
-        # Make sure the socket does not already exist
-        try:
-            os.unlink(self.socket_address)
-        except OSError:
-            if os.path.exists(self.socket_address):
-                logger.error("[Transport-InternalSocket] Error: '{}' already exits".format(self.socket_address))
-                raise
-
-        self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.set_reuse_addr()
-        try:
-            self.bind(self.socket_address)
-            os.chown(self.socket_address, common.ossec_uid, common.ossec_gid)
-            self.listen(5)
-            logger.debug2("[Transport-InternalSocket] Listening.")
-        except Exception as e:
-            logger.error("[Transport-InternalSocket] Cannot create the socket: '{}'.".format(e))
-
-        logger.debug2("[Transport-InternalSocket] Created.")
-
-
-    def handle_accept(self):
-        pair = self.accept()
-        if pair is not None:
-            sock, addr = pair
-            logger.debug("[Transport-InternalSocket] Incoming connection from '{0}'.".format(repr(addr)))
-            handler = self.handle_type(sock=sock, manager=self.manager, asyncore_map=self.map)
-
-
-    def handle_error(self):
-        nil, t, v, tbinfo = asyncore.compact_traceback()
-
-        try:
-            self_repr = repr(self)
-        except:
-            self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
-
-        self.handle_close()
-
-        logger.error("[Transport-InternalSocket] Error: '{}'.".format(v))
-        logger.debug("[Transport-InternalSocket] Error: '{}' - '{}'.".format(t, tbinfo))
-
-
-#
-# Internal Socket thread
-#
-class InternalSocketThread(threading.Thread):
-    def __init__(self, socket_name, tag="[InternalSocketThread]"):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.manager = None
-        self.running = True
-        self.internal_socket = None
-        self.socket_name = socket_name
-        self.thread_tag = tag
-        self.interval_connection_retry = 5
-
-    def setmanager(self, manager, handle_type):
-        try:
-            self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
-        except Exception as e:
-            logger.error("{0} [Internal-COM ]: Error initializing: '{1}'.".format(self.thread_tag, e))
-            self.internal_socket = None
-
-    def run(self):
-        while self.running:
-            if self.internal_socket:
-                logger.info("{0} [Internal-COM ]: Ready.".format(self.thread_tag))
-
-                asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
-
-                logger.info("{0} [Internal-COM ]: Disconnected. Trying to connect again in {}s.".format(self.thread_tag, self.interval_connection_retry))
-
-                time.sleep(self.interval_connection_retry)
-            time.sleep(2)
-
-
-def send_to_internal_socket(socket_name, message):
-    # Create a UDS socket
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    socket_address = "{}/{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
-    logger.debug("[Transport-InternalSocketSend] Starting: {}.".format(socket_address))
-    response = b""
-
-    # Connect to UDS socket
-    try:
-        sock.connect(socket_address)
-    except Exception as e:
-        logger.error('[Transport-InternalSocketSend] Error connecting: {}'.format(e))
-        return response
-
-    # Send message
-    logger.debug("[Transport-InternalSocketSend] Sending request: '{0}'.".format(message))
-
-    message = message.split(" ", 1)
-    cmd = message[0]
-    data = message[1] if len(message) > 1 else None
-    message_built = msgbuild(random.SystemRandom().randint(0, 2 ** 32 - 1), cmd, None, data)
-    sock.sendall(message_built)
-
-    logger.debug("[Transport-InternalSocketSend] Request sent.")
-
-    # Receive response
-    buf = b""
-    buf_size = 4096
-    try:
-        while not response:
-            buf += sock.recv(buf_size)
-            parse = msgparse(buf, None)
-            if parse:
-                offset, counter, command, response = parse
-
-        logger.debug("[Transport-InternalSocketSend] Answer received: '{0}'.".format(command))
-
-    except Exception as e:
-        logger.error("[Transport-InternalSocketSend] Error: {}.".format(str(e)))
-    finally:
-        logger.debug("[Transport-InternalSocketSend] Closing socket.")
-        sock.close()
-        logging.debug("[Transport-InternalSocketSend] Socket closed.")
-
-    return response.decode()
+    def handle_connect(self):
+        logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
+        AbstractClient.handle_connect(self)
 
 
 class FragmentedRequestReceiver(ClusterThread):

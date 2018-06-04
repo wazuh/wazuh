@@ -89,6 +89,13 @@
         "excluded_files": [
             "ar.conf",
             "ossec.conf"
+        ],
+
+        "excluded_extensions": [
+            "~",
+            ".tmp",
+            ".lock",
+            ".swp"
         ]
     },
 

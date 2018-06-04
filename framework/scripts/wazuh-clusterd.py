@@ -49,7 +49,7 @@ try:
     from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
     from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
-    from wazuh.cluster.communication import InternalSocketThread
+    from wazuh.cluster.internal_socket import InternalSocketThread
     from wazuh import configuration as config
     from wazuh.manager import status
 
@@ -177,6 +177,8 @@ def client_main(cluster_configuration):
             manager = ClientManager(cluster_config=cluster_configuration)
 
             internal_socket_thread.setmanager(manager, ClientInternalSocketHandler)
+
+            manager.handler.isocket_handler = internal_socket_thread.internal_socket
 
             asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 

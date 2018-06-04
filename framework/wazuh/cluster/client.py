@@ -9,7 +9,6 @@ import threading
 import time
 import os
 import shutil
-import ast
 from operator import itemgetter
 import errno
 import fnmatch
@@ -18,8 +17,9 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_file
     decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info, merge_agent_info
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
-from wazuh.cluster.communication import ClientHandler, FragmentedFileReceiver, \
-    ClusterThread, InternalSocketHandler, FragmentedStringReceiver
+from wazuh.cluster.communication import ClientHandler, ClusterThread, FragmentedFileReceiver, FragmentedStringReceiver
+from wazuh.cluster.internal_socket import InternalSocketHandler
+from wazuh.cluster.dapi import dapi
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,12 @@ class ClientManagerHandler(ClientHandler):
             string_sender_thread = FragmentedStringReceiverClient(manager_handler=self, stopper=self.stopper)
             string_sender_thread.start()
             return 'ack', self.set_worker(command, string_sender_thread)
+        elif command == 'dapi':
+            response = dapi.distribute_function(json.loads(data))
+            return ['json', response]
+        elif command == "dapi_res":
+            client_id, response = data.split(' ', 1)
+            return ['json', self.isocket_handler.send_request(client_id, command, response)]
         else:
             return ClientHandler.process_request(self, command, data)
 
@@ -675,6 +681,7 @@ class SyncExtraValidFilesThread(SyncClientThread):
         self.function = self.client_handler.send_extra_valid_files_to_master
         self.files = files
 
+
     def job(self):
         result = False
         compressed_data_path = self.function(reason="ExtraValid files", tag=self.thread_tag,
@@ -700,53 +707,21 @@ class SyncExtraValidFilesThread(SyncClientThread):
 # Internal socket
 #
 class ClientInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, asyncore_map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
+    def __init__(self, sock, manager, asyncore_map, addr):
+        InternalSocketHandler.__init__(self, sock=sock, server=manager, asyncore_map=asyncore_map, addr=addr)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
 
-        if command == "get_files":
-            split_data = data.split(' ', 1)
-            file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-            node_response = self.manager.handler.process_request(command = 'file_status', data="")
-
-            if node_response[0] == 'err': # Error response
-                response = ["err", json.dumps({"err":node_response[1]})]
-            else:
-                response = json.loads(node_response[1])
-                # Filter files
-                if file_list and len(response):
-                    response = {my_file:content for my_file,content in response.items() if my_file in file_list}
-                response = ['ok', json.dumps(response)]
-        elif command == "get_nodes":
-            node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
-            type_response = node_response[0]
-            response = node_response[1]
-            if type_response == "err":
-                response = ["err", json.dumps({"err":response})]
-            else:
-                response = ['ok', response]
-
-        elif command == "get_health":
-            node_list = data if data != 'None' else None
-            node_response = self.manager.handler.send_request(command=command, data=node_list).split(' ', 1)
-            type_response = node_response[0]
-            response = node_response[1]
-            if type_response == "err":
-                response = ["err", json.dumps({"err":response})]
-            else:
-                response = ['ok', response]
-
-        elif command == "get_agents":
-            node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
-            type_response = node_response[0]
-            response = node_response[1]
-            if type_response == "err":
-                response = ["err", json.dumps({"err":response})]
-            else:
-                response = ['ok', response]
+        if command not in ['get_nodes','get_health','dapi']:  # ToDo: create a list of valid internal socket commands
+            response = InternalSocketHandler.process_request(self, command, data)
         else:
-            response = json.dumps({'err': "Received an unknown command '{}'".format(command)})
+            node_response = self.server.manager.handler.send_request(command=command, data=data if data != 'None' else None).split(' ', 1)
+            type_response = node_response[0]
+            response = node_response[1]
+            if type_response == "err":
+                response = ["err", json.dumps({"err": response})]
+            else:
+                response = ['ok', response]
 
         return response

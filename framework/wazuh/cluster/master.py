@@ -14,7 +14,6 @@ import threading
 import time
 from datetime import datetime
 from operator import itemgetter
-
 from wazuh import common, WazuhException
 from wazuh.agent import Agent
 from wazuh.cluster import __version__
@@ -22,12 +21,26 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, \
     decompress_files, get_files_status, \
     compress_files, compare_files, get_agents_status, \
     read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
-from wazuh.cluster.communication import FragmentedFileReceiver, Server, ServerHandler, \
-    InternalSocketHandler, ClusterThread, FragmentedStringReceiver
+from wazuh.cluster.communication import FragmentedStringReceiver, FragmentedFileReceiver, Server, ServerHandler, ClusterThread
+from wazuh.cluster.internal_socket import InternalSocketHandler
+from wazuh.cluster.dapi import dapi
 from wazuh.utils import mkdir_with_mode
 
 
 logger = logging.getLogger(__name__)
+
+
+class APIRequestQueue(ClusterThread):
+    def __init__(self, manager, request):
+        ClusterThread.__init__(self, stopper=manager.stopper)
+        self.id, self.request = request.split(' ', 1)
+        self.request = json.loads(self.request)
+        self.manager = manager
+
+    def run(self):
+        result = dapi.distribute_function(self.request)
+        self.manager.server.send_request(client_name=self.manager.name, command='dapi_res', data=self.id + ' ' + result)
+
 
 #
 # Master Handler
@@ -75,12 +88,12 @@ class MasterManagerHandler(ServerHandler):
             response = {name:data['info'] for name,data in self.server.get_connected_clients().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master",  "version": __version__}})
-            serialized_response = ['ok', json.dumps(response)]
+            serialized_response = ['json', json.dumps(response)]
             return serialized_response
         elif command == 'get_health':
             filter_nodes = data.decode()
             response = self.manager.get_healthcheck(filter_nodes)
-            serialized_response = ['ok', json.dumps(response)]
+            serialized_response = ['json', json.dumps(response)]
             return serialized_response
         elif command == 'get_agents':
             data = data.decode()
@@ -98,6 +111,11 @@ class MasterManagerHandler(ServerHandler):
             string_sender_thread = FragmentedStringReceiverMaster(manager_handler=self, stopper=self.stopper)
             string_sender_thread.start()
             return 'ack', self.set_worker(command, string_sender_thread)
+        elif command == 'dapi':
+            data = data.decode()
+            api_thread = APIRequestQueue(manager=self, request=data)
+            api_thread.start()
+            return ['ack', "Request is being processed"]
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
@@ -635,8 +653,8 @@ class FileStatusUpdateThread(ClusterThread):
 # Internal socket
 #
 class MasterInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, asyncore_map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
+    def __init__(self, sock, server, asyncore_map, addr):
+        InternalSocketHandler.__init__(self, sock=sock, server=server, asyncore_map=asyncore_map, addr=addr)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
@@ -655,7 +673,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                     if node == read_config()['node_name']:
                         get_my_files = True
                         continue
-                    node_file = self.manager.send_request(client_name=node, command='file_status', data='')
+                    node_file = self.server.manager.send_request(client_name=node, command='file_status', data='')
 
                     if node_file.split(' ', 1)[0] == 'err': # Error response
                         response.update({node:node_file.split(' ', 1)[1]})
@@ -664,7 +682,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             else: # Broadcast
                 get_my_files = True
 
-                node_file = list(self.manager.send_request_broadcast(command = 'file_status'))
+                node_file = list(self.server.manager.send_request_broadcast(command = 'file_status'))
 
                 for node,data in node_file:
                     try:
@@ -681,33 +699,22 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             if node_list and len(response):
                 response = {node: response.get(node) for node in node_list}
 
-            serialized_response = ['ok',  json.dumps(response)]
+            serialized_response = ['json',  json.dumps(response)]
             return serialized_response
 
         elif command == 'get_nodes':
-            response = {name:data['info'] for name,data in self.manager.get_connected_clients().items()}
+            response = {name:data['info'] for name,data in self.server.manager.get_connected_clients().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
 
-            serialized_response = ['ok', json.dumps(response)]
+            serialized_response = ['json', json.dumps(response)]
             return serialized_response
 
-        elif command == 'get_agents':
-            split_data = data.split('%--%', 5)
-            filter_status = split_data[0] if split_data[0] != 'None' else None
-            filter_nodes = split_data[1] if split_data[1] != 'None' else None
-            offset = split_data[2] if split_data[2] != 'None' else None
-            limit = split_data[3] if split_data[3] != 'None' else None
-            sort = split_data[4] if split_data[4] != 'None' else None
-            search = split_data[5] if split_data[5] != 'None' else None
-            response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
-            serialized_response = ['ok',  json.dumps(response)]
-            return serialized_response
 
         elif command == 'get_health':
             node_list = data if data != 'None' else None
-            response = self.manager.get_healthcheck(node_list)
-            serialized_response = ['ok',  json.dumps(response)]
+            response = self.server.manager.get_healthcheck(node_list)
+            serialized_response = ['json',  json.dumps(response)]
             return serialized_response
 
         elif command == 'sync':
@@ -717,12 +724,20 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
             if node_list:
                 for node in node_list:
-                    response = {node:self.manager.send_request(client_name=node, command=command, data="")}
-                serialized_response = ['ok', json.dumps(response)]
+                    response = {node:self.server.manager.send_request(client_name=node, command=command, data="")}
+                serialized_response = ['json', json.dumps(response)]
             else:
-                response = list(self.manager.send_request_broadcast(command=command, data=data))
-                serialized_response = ['ok', json.dumps({node:data for node,data in response})]
+                response = list(self.server.manager.send_request_broadcast(command=command, data=data))
+                serialized_response = ['json', json.dumps({node:data for node,data in response})]
             return serialized_response
 
+        elif command == 'dapi':
+            return ['json', dapi.distribute_function(json.loads(data.split(' ',1)[1]))]
+
+        elif command == 'dapi_forward':
+            client_id, node_name, input_json = data.split(' ', 2)
+            response = self.server.manager.send_request(client_name=node_name, command='dapi', data=input_json)
+            return response.split(' ',1)
+
         else:
-            return ['err', json.dumps({'err': "Received an unknown command '{}'".format(command)})]
+            return InternalSocketHandler.process_request(self,command,data)

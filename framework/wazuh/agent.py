@@ -97,6 +97,7 @@ class Agent:
         self.mergedSum     = None
         self.group         = None
         self.manager_host  = None
+        self.node_name     = None
 
         # if the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -148,19 +149,22 @@ class Agent:
                                "last_keepalive", "config_sum", "merged_sum",
                                "group", "manager_host", "os_name", "os_version",
                                "os_major", "os_minor", "os_codename", "os_build",
-                               "os_platform", "os_uname"}
+                               "os_platform", "os_uname", "os_arch", "node_name", "status"}
         # we need to retrieve the fields that are used to compute other fields from the DB
         select_fields = {'id', 'version', 'last_keepalive'}
 
         # Select
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
-                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                incorrect_fields = list(map(lambda x: str(x), set(select['fields']) - valid_select_fields))
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                         format(valid_select_fields, incorrect_fields))
             select_fields |= set(select['fields'])
         else:
             select_fields = valid_select_fields
+
+        # save the fields that the user has selected
+        user_select_fields = (set(select['fields']) if select else select_fields.copy()) | {'id'}
 
         select_fields = list(select_fields)
         try:
@@ -169,83 +173,13 @@ class Agent:
             pass
 
         conn.execute(query.format(','.join(select_fields)), request)
-        db_data = conn.fetch()
-        if db_data is None:
-            raise WazuhException(1701)
 
-        no_result = True
-        for field,value in zip(select_fields, db_data):
-            no_result = False
-
-            if field == 'id' and value != None:
-                self.id = str(value).zfill(3)
-            if field == 'name' and value != None:
-                self.name = value
-            if field == 'ip' and value != None:
-                self.ip = value
-            if field == 'key' and value != None:
-                self.internal_key = value
-            if field == 'version' and value != None:
-                self.version = value
-                pending = False if self.version != "" else True
-            if field == 'date_add' and value != None:
-                self.dateAdd = value
-            if field == 'last_keepalive':
-                if value != None:
-                    self.lastKeepAlive = value
-                else:
-                    self.lastKeepAlive = 0
-            if field == 'config_sum' and value != None:
-                self.configSum = value
-            if field == 'merged_sum' and value != None:
-                self.mergedSum = value
-            if field == '`group`' and value != None:
-                self.group = value
-            if field == 'manager_host' and value != None:
-                self.manager_host = value
-            if field == 'os_name' and value != None:
-                self.os['name'] = value
-            if field == 'os_version' and value != None:
-                self.os['version'] = value
-            if field == 'os_major' and value != None:
-                self.os['major'] = value
-            if field == 'os_minor' and value != None:
-                self.os['minor'] = value
-            if field == 'os_codename' and value != None:
-                self.os['codename'] = value
-            if field == 'os_build' and value != None:
-                self.os['build'] = value
-            if field == 'os_platform' and value != None:
-                self.os['platform'] = value
-            if field == 'os_uname' and value != None:
-                self.os['uname'] = value
-                if "x86_64" in self.os['uname']:
-                    self.os['arch'] = "x86_64"
-                elif "i386" in self.os['uname']:
-                    self.os['arch'] = "i386"
-                elif "i686" in self.os['uname']:
-                    self.os['arch'] = "i686"
-                elif "sparc" in self.os['uname']:
-                    self.os['arch'] = "sparc"
-                elif "amd64" in self.os['uname']:
-                    self.os['arch'] = "amd64"
-                elif "ia64" in self.os['uname']:
-                    self.os['arch'] = "ia64"
-                elif "AIX" in self.os['uname']:
-                    self.os['arch'] = "AIX"
-                elif "armv6" in self.os['uname']:
-                    self.os['arch'] = "armv6"
-                elif "armv7" in self.os['uname']:
-                    self.os['arch'] = "armv7"
-
-        if self.id != "000":
-            self.status = Agent.calculate_status(self.lastKeepAlive, pending)
-        else:
-            self.status = 'Active'
-            self.ip = '127.0.0.1' if 'ip' in select_fields else None
-
-        if no_result:
+        try:
+            data = Agent.get_agents_dict(conn, select_fields, user_select_fields)[0]
+        except IndexError:
             raise WazuhException(1701, self.id)
+
+        map(lambda x: setattr(self, x[0], x[1]), data.items())
 
 
     def _load_info_from_agent_db(self, table, select, filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
@@ -327,8 +261,11 @@ class Agent:
             info['group'] = self.group
         if self.manager_host:
             info['manager_host'] = self.manager_host
+        if self.node_name:
+            info['node_name'] = self.node_name
 
         return info
+
 
     def compute_key(self):
         str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
@@ -380,7 +317,7 @@ class Agent:
             with open(common.api_config_path) as f:
                 data = f.readlines()
 
-            use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
+            use_only_authd = list(filter(lambda x: x.strip().startswith('config.use_only_authd'), data))
 
             return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
         except IOError:
@@ -590,6 +527,7 @@ class Agent:
         self.internal_key = data['key']
         self.key = self.compute_key()
 
+
     def _add_manual(self, name, ip, id=None, key=None, force=-1):
         """
         Adds an agent to OSSEC manually.
@@ -716,7 +654,7 @@ class Agent:
             except Exception as ex:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
-                raise WazuhException(1725, str(e))
+                raise WazuhException(1725, str(ex))
 
 
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
@@ -725,6 +663,7 @@ class Agent:
         self.id = agent_id
         self.internal_key = agent_key
         self.key = self.compute_key()
+
 
     def _remove_single_group(self, group_id):
         """
@@ -842,7 +781,7 @@ class Agent:
         request = {}
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
-                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                incorrect_fields = list(map(lambda x: str(x), set(select['fields']) - valid_select_fields))
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                                     format(valid_select_fields, incorrect_fields))
             select_fields_set = set(select['fields'])
@@ -1577,11 +1516,11 @@ class Agent:
                 in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
 
         if 'id' in select_fields:
-            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+            list(map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested))
 
         if 'status' in select_fields:
             try:
-                map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+                list(map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested))
             except KeyError:
                 pass
 
@@ -1683,11 +1622,11 @@ class Agent:
                 in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
 
         if 'id' in select_fields:
-            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+            list(map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested))
 
         if 'status' in select_fields:
             try:
-                map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+                list(map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested))
             except KeyError:
                 pass
 

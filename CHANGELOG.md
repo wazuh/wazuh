@@ -1,6 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.2.4]
+
+### Fixed
+- Fixed segmentation fault in maild when `<queue-size>` is included in the global configuration.
+- Fixed bug in Framework when retrieving mangers logs. ([#644](https://github.com/wazuh/wazuh/pull/644))
+- Fixed bug in clusterd to prevent the synchronization of `.swp` files. ([#694](https://github.com/wazuh/wazuh/pull/694))
+- Fixed bug in Framework parsing agent configuration. ([#681](https://github.com/wazuh/wazuh/pull/681))
+- Fixed several bugs using python3 with the Python framework. ([#701](https://github.com/wazuh/wazuh/pull/701))
+
+
 ## [v3.2.3]
 
 ### Added
