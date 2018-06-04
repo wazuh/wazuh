@@ -38,46 +38,35 @@ def create_exception_dic(id, e):
     """
     exception_dic = {}
     exception_dic['id'] = id
-    exception_dic['error'] = {'message': e.message, 'code': e.code}
+    exception_dic['error'] = {'message': e.message}
+
+    if isinstance(e, WazuhException):
+        exception_dic['error']['code'] = e.code
+    else:
+        exception_dic['error']['code'] = 1000
+
+
     return exception_dic
 
 
-def get_timeframe_int(timeframe):
+def get_timeframe_in_seconds(timeframe):
+    """
+    Gets number of seconds from a timeframe.
+    :param timeframe: Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s".
 
-    if not isinstance(timeframe, int):
-        regex_days = re.compile('\d*d')
-        regex_hours = re.compile('\d*h')
-        regex_minutes = re.compile('\d*m')
-        regex_seconds = re.compile('\d*s')
+    :return: Time in seconds.
+    """
+    if not timeframe.isdigit():
+        regex = re.compile('(\d*)(\w)$')
+        g = regex.findall(timeframe)
+        number = int(g[0][0])
+        unit = g[0][1]
+        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's':1}
+        seconds = number * time_equivalence_seconds[unit]
+    else:
+        seconds = int(timeframe)
 
-        timeframe_str = timeframe
-        timeframe = 0
-
-        days = regex_days.search(timeframe_str)
-        if days is not None:
-            days = days.group().replace("d", "")
-            timeframe += int(days) * 86400
-
-        hours = regex_hours.search(timeframe_str)
-        if hours is not None:
-            hours = hours.group().replace("h", "")
-            timeframe += int(hours) * 3600
-
-        minutes = regex_minutes.search(timeframe_str)
-        if minutes is not None:
-            minutes = minutes.group().replace("m", "")
-            timeframe += int(minutes) * 60
-
-        seconds = regex_seconds.search(timeframe_str)
-        if seconds is not None:
-            seconds = seconds.group().replace("s", "")
-            timeframe += int(seconds)
-
-        # If user sends an integer as string:
-        if timeframe == 0:
-            timeframe = int(timeframe_str)
-
-    return timeframe
+    return seconds
 
 
 class Agent:
@@ -167,7 +156,7 @@ class Agent:
         # Select
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
-                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                incorrect_fields = list(map(lambda x: str(x), set(select['fields']) - valid_select_fields))
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                         format(valid_select_fields, incorrect_fields))
             select_fields |= set(select['fields'])
@@ -328,7 +317,7 @@ class Agent:
             with open(common.api_config_path) as f:
                 data = f.readlines()
 
-            use_only_authd = filter(lambda x: x.strip().startswith('config.use_only_authd'), data)
+            use_only_authd = list(filter(lambda x: x.strip().startswith('config.use_only_authd'), data))
 
             return loads(use_only_authd[0][:-2].strip().split(' = ')[1]) if use_only_authd != [] else False
         except IOError:
@@ -538,6 +527,7 @@ class Agent:
         self.internal_key = data['key']
         self.key = self.compute_key()
 
+
     def _add_manual(self, name, ip, id=None, key=None, force=-1):
         """
         Adds an agent to OSSEC manually.
@@ -664,7 +654,7 @@ class Agent:
             except Exception as ex:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
-                raise WazuhException(1725, str(e))
+                raise WazuhException(1725, str(ex))
 
 
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
@@ -673,6 +663,7 @@ class Agent:
         self.id = agent_id
         self.internal_key = agent_key
         self.key = self.compute_key()
+
 
     def _remove_single_group(self, group_id):
         """
@@ -749,12 +740,14 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all", node_name="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None, version="all"):
+    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all",
+                            node_name="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+                            version="all", older_than="all"):
         """
         Gets a list of available agents with basic attributes.
         :param node_name: Filters by agents connected to the cluster node "node_name"
         :param version: Filters by agent version.
-        :param status: Filters by agent status: Active, Disconnected or Never connected.
+        :param status: Filters by agent status: Active, Disconnected or Never connected. Multiples statuses separated by commas.
         :param os_platform: Filters by OS platform.
         :param os_version: Filters by OS version.
         :param manager_host: Filters by manager hostname to which agents are connected.
@@ -763,6 +756,8 @@ class Agent:
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
         :param search: Looks for items with the specified string.
+        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never connected agents, uses the register date.
+
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
 
@@ -786,7 +781,7 @@ class Agent:
         request = {}
         if select:
             if not set(select['fields']).issubset(valid_select_fields):
-                incorrect_fields = map(lambda x: str(x), set(select['fields']) - valid_select_fields)
+                incorrect_fields = list(map(lambda x: str(x), set(select['fields']) - valid_select_fields))
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                                     format(valid_select_fields, incorrect_fields))
             select_fields_set = set(select['fields'])
@@ -802,17 +797,32 @@ class Agent:
             limit_seconds = 1830 # 600*3 + 30
             result = datetime.now() - timedelta(seconds=limit_seconds)
             request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-            status = status.lower()
-            if status == 'active':
-                query += ' AND (last_keepalive >= :time_active or id = 0)'
-            elif status == 'disconnected':
-                query += ' AND last_keepalive < :time_active'
-            elif status == "never connected" or status == "neverconnected":
-                query += ' AND last_keepalive IS NULL AND id != 0'
-            elif status == 'pending':
-                query += ' AND last_keepalive IS NOT NULL AND version IS NULL'
-            else:
-                raise WazuhException(1729, status)
+            list_status = status.split(',')
+            query += ' AND ('
+
+            for status in list_status:
+                status = status.lower()
+                if status == 'active':
+                    query += '((last_keepalive >= :time_active AND version IS NOT NULL) or id = 0) OR '
+                elif status == 'disconnected':
+                    query += 'last_keepalive < :time_active OR '
+                elif status == "never connected" or status == "neverconnected":
+                    query += 'last_keepalive IS NULL AND id != 0 OR '
+                elif status == 'pending':
+                    query += 'last_keepalive IS NOT NULL AND version IS NULL OR '
+                else:
+                    raise WazuhException(1729, status)
+            query = query[:-3] + ")" #Remove the last OR from query
+
+        if older_than != 'all':
+            request['older_than'] = get_timeframe_in_seconds(older_than)
+            query += " AND ("
+            # If the status is not neverconnected, compare older_than with the last keepalive:
+            query += "(last_keepalive IS NOT NULL AND CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
+            query += "OR "
+            # If the status is neverconnected, compare older_than with the date add:
+            query += "(last_keepalive IS NULL AND id != 0 AND CAST(strftime('%s', date_Add) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
+            query += ")"
 
         if os_platform != "all":
             request['os_platform'] = os_platform
@@ -1096,27 +1106,19 @@ class Agent:
         """
         Removes an existing agent.
 
-        :param agent_id: Agent ID. Can be a list of ID's.
+        :param agent_id: Agent ID.
         :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
-        :return: Message generated by OSSEC.
+        :return: Dictionary with affected_agents (agents removed), failed_ids if it necessary (agents that cannot been removed), and a message.
         """
 
         failed_ids = []
         affected_agents = []
-        if isinstance(agent_id, list):
-            for id in agent_id:
-                try:
-                    Agent(id).remove(backup, purge)
-                    affected_agents.append(id)
-                except Exception as e:
-                    failed_ids.append(create_exception_dic(id, e))
-        else:
-            try:
-                Agent(agent_id).remove(backup, purge)
-                affected_agents.append(agent_id)
-            except Exception as e:
-                failed_ids.append(create_exception_dic(agent_id, e))
+        try:
+            Agent(agent_id).remove(backup, purge)
+            affected_agents.append(agent_id)
+        except Exception as e:
+            failed_ids.append(create_exception_dic(agent_id, e))
 
         if not failed_ids:
             message = 'All selected agents were removed'
@@ -1128,6 +1130,54 @@ class Agent:
             final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
         else:
             final_dict = {'msg': message, 'affected_agents': affected_agents}
+
+        return final_dict
+
+    @staticmethod
+    def remove_agents(list_agent_ids="all", backup=False, purge=False, status="all", older_than="7d"):
+        """
+        Removes an existing agent.
+
+        :param list_agent_ids: List of agents ID's.
+        :param backup: Create backup before removing the agent.
+        :param purge: Delete definitely from key store.
+        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never connected agents, uses the register date.
+        :param status: Filters by agent status: Active, Disconnected or Never connected. Multiples statuses separated by commas.
+        :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary (agents that cannot been removed), and a message.
+        """
+
+        agents = Agent.get_agents_overview(status = status, older_than = older_than)
+        id_purgeable_agents = [agent['id'] for agent in agents['items']]
+
+        failed_ids = []
+        affected_agents = []
+
+        if list_agent_ids != "all":
+            for id in list_agent_ids:
+                try:
+                    if id not in id_purgeable_agents:
+                        raise WazuhException(1731, "The agent has a status different to '{}' or the specified time frame 'older_than {}' does not apply.".format(status, older_than))
+                    Agent(id).remove(backup, purge)
+                    affected_agents.append(id)
+                except Exception as e:
+                    failed_ids.append(create_exception_dic(id, e))
+        else:
+            for id in id_purgeable_agents:
+                try:
+                    Agent(id).remove(backup, purge)
+                    affected_agents.append(id)
+                except Exception as e:
+                    failed_ids.append(create_exception_dic(id, e))
+
+        if not failed_ids:
+            message = 'All selected agents were removed'
+        else:
+            message = 'Some agents were not removed'
+
+        if failed_ids:
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids, 'older_than': older_than}
+        else:
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'older_than': older_than}
 
         return final_dict
 
@@ -1466,11 +1516,11 @@ class Agent:
                 in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
 
         if 'id' in select_fields:
-            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+            list(map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested))
 
         if 'status' in select_fields:
             try:
-                map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+                list(map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested))
             except KeyError:
                 pass
 
@@ -1572,11 +1622,11 @@ class Agent:
                 in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
 
         if 'id' in select_fields:
-            map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested)
+            list(map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested))
 
         if 'status' in select_fields:
             try:
-                map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested)
+                list(map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested))
             except KeyError:
                 pass
 
@@ -2409,86 +2459,3 @@ class Agent:
             raise WazuhException(1307)
 
         return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
-
-
-    @staticmethod
-    def purge_agents(timeframe, backup=False, verbose=False):
-        """
-        Purge agents that have been disconnected in the last timeframe seconds.
-
-        :param timeframe: Time margin, in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s.
-        :param backup: Whether making a backup before deleting.
-        :param verbose: Get a list of agents purgeds.
-        :return: Amount of agents purgeds. Optional: list of agents and timeframe.
-        """
-
-        timeframe = get_timeframe_int(timeframe)
-        purgeable_agents = list(Agent._get_purgeable_agents(timeframe))
-
-        items = 0
-        for item in purgeable_agents:
-            Agent(item[0]).remove(backup, purge=True)
-            items += 1
-
-        result = {'totalItems': items}
-        if verbose is True:
-            list_ids = [{"id": str(item[0]).zfill(3), "name": item[1]} for item in purgeable_agents ]
-            result = {'totalItems': items, 'items': list_ids, 'timeframe': timeframe}
-
-        return result
-
-
-    @staticmethod
-    def get_purgeable_agents_json(timeframe, offset=0, limit=common.database_limit):
-        """
-        Get a list of agents that can be purged.
-
-        :param timeframe: Time margin, in seconds or [n_days]d[n_hours]h[n_minutes]m[n_seconds]s.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :return: List of agents ids.
-        """
-        timeframe = get_timeframe_int(timeframe)
-        purgeable_agents, total = Agent._get_purgeable_agents(timeframe, offset, limit,count=True )
-
-        list_ids = [{"id": str(agent_id).zfill(3), "name": name} for agent_id,name in purgeable_agents]
-
-        return {'timeframe': timeframe, 'items': list_ids, 'totalItems': total}
-
-
-    @staticmethod
-    def _get_purgeable_agents(timeframe, offset=0, limit=common.database_limit, count=False):
-        """
-        Get a list of agents that can be purged.
-
-        :param timeframe: Time margin in seconds.
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :return: List of agents ids.
-        """
-        select_fields = ["id", "name"]
-        request = {'timeframe': timeframe}
-
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-        query = "SELECT {0} FROM agent WHERE last_keepalive IS NULL OR CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :timeframe"
-
-        if count:
-            conn.execute(query.format('COUNT(*)'), request)
-            total = conn.fetch()[0]
-
-        if limit:
-            query = query + " LIMIT :offset,:limit"
-            request['limit'] = limit
-            request['offset'] = offset
-
-        conn.execute(query.format(','.join(select_fields)), request)
-
-        if count:
-            return conn, total
-        else:
-            return conn

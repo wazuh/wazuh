@@ -1368,6 +1368,7 @@ int wm_vulnerability_detector_socketconnect(char *url) {
 		}
 	}
 
+    // https://bugzilla.redhat.com/show_bug.cgi?id=116526
 	freeaddrinfo(host_info);
 
     if (*ip_addr == '\0') {
@@ -2023,6 +2024,26 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software)
             if (manager_found) {
                 strncpy(m_uname, uname_p, OS_MAXSTR -1);
                 m_uname[OS_MAXSTR - 1] = '\0';
+            } else {
+                struct stat file_status;
+                char skip = 0;
+
+                if (stat(agent_info, &file_status) < 0) {
+                    skip = 1;
+                }
+
+                if (file_status.st_mtime < (time(0) - DISCON_TIME)) {
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AG_DISC, agents->agent_name);
+                    skip = 1;
+                }
+
+                if (skip) {
+                    if (agents = skip_agent(agents, agents_software), !agents) {
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
             }
             buffer = agent_info;
             size_t max = OS_MAXSTR;

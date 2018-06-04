@@ -1,6 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.2.4]
+
+### Fixed
+- Fixed segmentation fault in maild when `<queue-size>` is included in the global configuration.
+- Fixed bug in Framework when retrieving mangers logs. ([#644](https://github.com/wazuh/wazuh/pull/644))
+- Fixed bug in clusterd to prevent the synchronization of `.swp` files. ([#694](https://github.com/wazuh/wazuh/pull/694))
+- Fixed bug in Framework parsing agent configuration. ([#681](https://github.com/wazuh/wazuh/pull/681))
+- Fixed several bugs using python3 with the Python framework. ([#701](https://github.com/wazuh/wazuh/pull/701))
+
+
 ## [v3.2.3]
 
 ### Added
@@ -20,6 +30,8 @@ All notable changes to this project will be documented in this file.
     - Improved synchronization algorithm.
     - Reduced the number of processes to one: `wazuh-clusterd`.
 - Cluster control tool improvements: outputs are the same regardless of node type.
+- The default input queue for remote events has been increased to 131072 events. ([#660](https://github.com/wazuh/wazuh/pull/660))
+- Disconnected agents will no longer report vulnerabilities. ([#666](https://github.com/wazuh/wazuh/pull/666))
 
 ### Fixed
 
@@ -35,6 +47,7 @@ All notable changes to this project will be documented in this file.
 - Fixed cluster CPU usage.
 - Fixed invalid deletion of agent timestamp entries. ([#639](https://github.com/wazuh/wazuh/issues/639))
 - Fixed segmentation fault in logcollector when multi-line is applied to a remote configuration. ([#641](https://github.com/wazuh/wazuh/pull/641))
+- Fixed issue in Syscheck that may leave the process running if the agent is stopped quickly. ([#671](https://github.com/wazuh/wazuh/pull/671))
 
 ### Removed
 
