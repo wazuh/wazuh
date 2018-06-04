@@ -354,7 +354,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
     /* Check for real time flag */
     if (opts & CHECK_REALTIME) {
 #ifdef INOTIFY_ENABLED
-        realtime_adddir(dir_name);
+        realtime_adddir(dir_name, opts & CHECK_WHODATA);
 #else
 #ifndef WIN32
         mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
@@ -407,6 +407,7 @@ int run_dbcheck()
 int create_db()
 {
     int i = 0;
+    int enable_who_scan = 0;
 
     /* Create store data */
     syscheck.fp = OSHash_Create();
@@ -435,7 +436,11 @@ int create_db()
         /* Check for real time flag on windows*/
         if (syscheck.opts[i] & CHECK_REALTIME) {
 #ifdef WIN32
-            realtime_adddir(syscheck.dir[i]);
+            int check_who = syscheck.opts[i] & CHECK_WHODATA;
+            realtime_adddir(syscheck.dir[i], check_who);
+            if (!enable_who_scan && check_who) {
+                enable_who_scan = 1;
+            }
 #else
 #ifndef INOTIFY_ENABLED
             mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);
@@ -450,6 +455,9 @@ int create_db()
         minfo("Real time file monitoring engine started.");
     }
 #endif
+    if (enable_who_scan && !run_whodata_scan()) {
+        minfo("Whodata auditing engine started.");
+    }
     minfo("Finished creating syscheck database (pre-scan completed).");
     return (0);
 }

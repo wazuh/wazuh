@@ -26,6 +26,7 @@
 #define CHECK_MTIME         0000400
 #define CHECK_INODE         0001000
 #define CHECK_SHA256SUM     0002000
+#define CHECK_WHODATA       0004000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
@@ -44,6 +45,21 @@ typedef struct _rtfim {
 } rtfim;
 
 #ifdef WIN32
+
+typedef struct whodata_evt {
+    char *user_name;
+    char *type;
+    char *path;
+    char *process_name;
+    unsigned __int64 process_id;
+    unsigned __int64 handle_id;
+    unsigned int mask;
+} whodata_evt;
+
+
+typedef struct whodata {
+    OSHash *fd; // Open file descriptors
+} whodata;
 
 typedef struct registry {
     char *entry;
@@ -99,6 +115,8 @@ typedef struct _config {
     OSHash *fp;
 
     rtfim *realtime;
+
+    whodata *wdata;
 
     char *prefilter_cmd;
 

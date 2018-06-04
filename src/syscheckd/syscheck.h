@@ -49,7 +49,10 @@ void os_winreg_check(void);
 int realtime_start(void);
 
 /* Add a directory to real time monitoring */
-int realtime_adddir(const char *dir) __attribute__((nonnull));
+int realtime_adddir(const char *dir, int whodata) __attribute__((nonnull(1)));
+
+/* Initializes the whodata scan mode */
+int run_whodata_scan();
 
 /* Process real time queue */
 int realtime_process(void);

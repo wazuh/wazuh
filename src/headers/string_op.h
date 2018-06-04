@@ -12,6 +12,18 @@
 
 #include <external/cJSON/cJSON.h>
 
+#ifdef WIN32
+#include <winsock2.h>
+#include <windows.h>
+
+#ifndef WC_ERR_INVALID_CHARS
+#define WC_ERR_INVALID_CHARS 0x80
+#endif
+
+/* converts a Windows format string to char* */
+char *convert_windows_string(LPCWSTR string);
+#endif
+
 /* Trim the CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str) __attribute__((nonnull));
 

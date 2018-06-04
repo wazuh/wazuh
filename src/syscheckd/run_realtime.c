@@ -14,8 +14,14 @@
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
+#include "string_op.h"
 
 #ifdef WIN32
+#define _WIN32_WINNT 0x600  // Windows Vista or later (must be included in the dll)
+#include <winsock2.h>
+#include <windows.h>
+#include <aclapi.h>
+#include <winevt.h>
 #define sleep(x) Sleep(x * 1000)
 #endif
 
@@ -35,11 +41,16 @@
 #include "error_messages/debug_messages.h"
 
 /* Prototypes */
-int realtime_checksumfile(const char *file_name) __attribute__((nonnull));
-
+int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
+#ifdef WIN32
+int set_winsacl(const char *dir);
+int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
+int whodata_audit_start();
+unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
+#endif
 
 /* Checksum of the realtime file being monitored */
-int realtime_checksumfile(const char *file_name)
+int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 {
     char *buf;
 
@@ -159,11 +170,12 @@ int realtime_start()
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir)
+int realtime_adddir(const char *dir, int whodata)
 {
     if (!syscheck.realtime) {
         realtime_start();
     }
+
 
     /* Check if it is ready to use */
     if (syscheck.realtime->fd < 0) {
@@ -247,7 +259,7 @@ int realtime_process()
                 struct timeval timeout = {0, syscheck.rt_delay * 1000};
                 select(0, NULL, NULL, NULL, &timeout);
 
-                realtime_checksumfile(final_name);
+                realtime_checksumfile(final_name, NULL);
             }
 
             i += REALTIME_EVENT_SIZE + event->len;
@@ -255,6 +267,10 @@ int realtime_process()
     }
 
     return (0);
+}
+
+int run_whodata_scan() {
+    return 0;
 }
 
 #elif defined(WIN32)
@@ -320,7 +336,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
         snprintf(final_path, MAX_LINE, "%s/%s", rtlocald->dir, finalfile);
 
         /* Check the change */
-        realtime_checksumfile(final_path);
+        realtime_checksumfile(final_path, NULL);
     } while (pinfo->NextEntryOffset != 0);
 
     realtime_win32read(rtlocald);
@@ -360,13 +376,17 @@ int realtime_win32read(win32rtfim *rtlocald)
     return (0);
 }
 
-int realtime_adddir(const char *dir)
+int realtime_adddir(const char *dir, int whodata)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
 
     if (!syscheck.realtime) {
         realtime_start();
+    }
+
+    if (whodata && !syscheck.wdata && whodata_audit_start()) {
+        return -1;
     }
 
     /* Maximum limit for realtime on Windows */
@@ -382,38 +402,325 @@ int realtime_adddir(const char *dir)
         mdebug2("Entry '%s' already exists in the RT hash.", wdchar);
     }
     else {
-        os_calloc(1, sizeof(win32rtfim), rtlocald);
+        if (!whodata) {
+            os_calloc(1, sizeof(win32rtfim), rtlocald);
 
-        rtlocald->h = CreateFile(dir,
-                                FILE_LIST_DIRECTORY,
-                                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                NULL,
-                                OPEN_EXISTING,
-                                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-                                NULL);
+            rtlocald->h = CreateFile(dir,
+                                    FILE_LIST_DIRECTORY,
+                                    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                    NULL,
+                                    OPEN_EXISTING,
+                                    FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+                                    NULL);
 
 
-        if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
-            free(rtlocald);
-            rtlocald = NULL;
-            merror("Unable to add directory to real time monitoring: '%s'.", dir);
-            return (0);
+            if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
+                free(rtlocald);
+                rtlocald = NULL;
+                merror("Unable to add directory to real time monitoring: '%s'.", dir);
+                return (0);
+            }
+            syscheck.realtime->fd++;
+
+            /* Add final elements to the hash */
+            os_strdup(dir, rtlocald->dir);
+            os_strdup(dir, rtlocald->overlap.Pointer);
+            OSHash_Add(syscheck.realtime->dirtb, wdchar, rtlocald);
+
+            /* Add directory to be monitored */
+            realtime_win32read(rtlocald);
+        } else {
+            if (set_winsacl(dir)) {
+                merror("Unable to add directory to whodata monitoring: '%s'.", dir);
+                return 0;
+            }
         }
-        syscheck.realtime->fd++;
-
-        /* Add final elements to the hash */
-        os_strdup(dir, rtlocald->dir);
-        os_strdup(dir, rtlocald->overlap.Pointer);
-        OSHash_Add(syscheck.realtime->dirtb, wdchar, rtlocald);
-
-        /* Add directory to be monitored */
-        realtime_win32read(rtlocald);
     }
 
     return (1);
 }
 
+int set_winsacl(const char *dir) {
+    static LPCTSTR priv = "SeSecurityPrivilege";
+	DWORD result = 0;
+	PACL old_sacl = NULL, new_sacl = NULL;
+	PSECURITY_DESCRIPTOR security_descriptor = NULL;
+	EXPLICIT_ACCESS entry_access;
+	HANDLE hdle;
+
+    // Code for expand the obj dir
+
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
+		merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
+		return 1;
+	}
+
+	if (set_privilege(hdle, priv, TRUE)) {
+		merror("The privilege could not be activated. Error: '%ld'.", GetLastError());
+		return 1;
+	}
+
+	if (result = GetNamedSecurityInfo(dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
+		merror("GetNamedSecurityInfo() failed. Error '%ld'", result);
+        goto error;
+	}
+
+	// Configure the new ACE
+	SecureZeroMemory(&entry_access, sizeof(EXPLICIT_ACCESS));
+	entry_access.grfAccessPermissions = GENERIC_WRITE;
+	entry_access.grfAccessMode = SET_AUDIT_SUCCESS;
+	entry_access.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+	entry_access.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+	entry_access.Trustee.ptstrName = "Everyone";
+
+	// Create a new ACL with the ACE
+	if (result = SetEntriesInAcl(1, &entry_access, old_sacl, &new_sacl), result != ERROR_SUCCESS) {
+		merror("SetEntriesInAcl() failed. Error: '%lu'", result);
+        goto error;
+	}
+
+	// Set the SACL
+	if (result = SetNamedSecurityInfo((char *) dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
+		merror("SetNamedSecurityInfo() failed. Error: '%lu'", result);
+		goto error;
+	}
+
+	// Disable the privilege
+	if (set_privilege(hdle, priv, 0)) {
+		merror("Failed to disable the privilege. Error '%lu'.", GetLastError());
+		return 1;
+	}
+
+	CloseHandle(hdle);
+	return 0;
+error:
+    if (security_descriptor) {
+        LocalFree((HLOCAL)security_descriptor);
+    }
+
+    if (new_sacl) {
+        LocalFree((HLOCAL)new_sacl);
+    }
+    return 1;
+}
+
+int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
+	TOKEN_PRIVILEGES tp;
+	LUID pr_uid;
+
+	// Get the privilege UID
+	if (!LookupPrivilegeValue(NULL, privilege, &pr_uid)) {
+		merror("Could not find the '%s' privilege. Error: %lu", privilege, GetLastError());
+		return 1;
+	}
+
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Luid = pr_uid;
+
+	if (enable) {
+		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	} else {
+		tp.Privileges[0].Attributes = 0;
+	}
+
+    // Set the privilege to the process
+	if (!AdjustTokenPrivileges(hdle, 0, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
+		merror("AdjustTokenPrivileges() failed. Error: '%lu'", GetLastError());
+		return 1;
+	}
+
+    if (enable) {
+        mdebug2("The '%s' privilege has been added.", privilege);
+    } else {
+        mdebug2("The '%s' privilege has been removed.", privilege);
+    }
+
+	return 0;
+}
+
+int run_whodata_scan() {
+    if (!EvtSubscribe(NULL, NULL, L"Security", L"Event[(System/EventID = 4656 or System/EventID = 4663 or System/EventID = 4658)]", NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
+        merror("Event Channel subscription could not be made. Whodata scan is disabled.");
+        return 1;
+    }
+    return 0;
+}
+
+unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event) {
+    unsigned int retval;
+    int result;
+    unsigned long p_count = 0;
+    unsigned long used_size;
+    EVT_HANDLE context;
+    PEVT_VARIANT buffer = NULL;
+    whodata_evt *w_evt;
+    short event_id;
+    char *user_name;
+    char *type;
+    char *path;
+    char *process_name;
+    unsigned __int64 process_id;
+    unsigned __int64 handle_id;
+    unsigned int mask;
+    static const wchar_t* event_fields[] = {
+        L"Event/System/EventID",
+        L"Event/EventData/Data[@Name='SubjectUserName']",
+        L"Event/EventData/Data[@Name='ObjectType']",
+        L"Event/EventData/Data[@Name='ObjectName']",
+        L"Event/EventData/Data[@Name='ProcessName']",
+        L"Event/EventData/Data[@Name='ProcessId']",
+        L"Event/EventData/Data[@Name='HandleId']",
+        L"Event/EventData/Data[@Name='AccessMask']"
+    };
+    static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
+    UNREFERENCED_PARAMETER(_void);
+
+    if (action == EvtSubscribeActionDeliver) {
+        char hash_id[21];
+
+        // Select the interesting fields
+        if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
+            wprintf(L"\nError creating the context. Error %lu.", GetLastError());
+            return 1;
+        }
+
+        // Extract the necessary memory size
+        EvtRender(context, event, EvtRenderEventValues, 0, NULL, &used_size, &p_count);
+        // We may be taking more memory than we need to
+		buffer = (PEVT_VARIANT)malloc(used_size);
+
+        if (!EvtRender(context, event, EvtRenderEventValues, used_size, buffer, &used_size, &p_count)) {
+			merror("Error rendering the event. Error %lu.", GetLastError());
+            retval = 1;
+            goto clean;
+		}
+
+        if (fields_number != p_count) {
+			merror("Invalid number of rendered parameters.");
+            retval = 1;
+            goto clean;
+        }
+
+        // Check types
+        if ((buffer[0].Type != EvtVarTypeUInt16 && buffer[0].Type != EvtVarTypeNull)   ||
+            (buffer[1].Type != EvtVarTypeString && buffer[1].Type != EvtVarTypeNull)   ||
+            (buffer[2].Type != EvtVarTypeString && buffer[2].Type != EvtVarTypeNull)   ||
+            (buffer[3].Type != EvtVarTypeString && buffer[3].Type != EvtVarTypeNull)   ||
+            (buffer[4].Type != EvtVarTypeString && buffer[4].Type != EvtVarTypeNull)   ||
+            (buffer[5].Type != EvtVarTypeHexInt64 && buffer[5].Type != EvtVarTypeNull) ||
+            (buffer[6].Type != EvtVarTypeHexInt64 && buffer[6].Type != EvtVarTypeNull) ||
+            (buffer[7].Type != EvtVarTypeHexInt32 && buffer[7].Type != EvtVarTypeNull)) {
+            merror("Invalid parameter type after rendering the event.");
+            retval = 1;
+            goto clean;
+        }
+
+        event_id = buffer[0].Int16Val;
+        user_name = convert_windows_string(buffer[1].XmlVal);
+        type = convert_windows_string(buffer[2].XmlVal);
+        path = convert_windows_string(buffer[3].XmlVal);
+        process_name = convert_windows_string(buffer[4].XmlVal);
+        process_id = buffer[5].UInt64Val;
+        handle_id = buffer[6].UInt64Val;
+        mask = buffer[7].UInt32Val;
+
+        //minfo("~~~~event_id:'%d'|user_name:'%s'|type:'%s'|path:'%s'|process_name:'%s'|process_id:'%I64x'|handle_id:'%I64x'|mask:'%x'",
+			//event_id, user_name, type, path, process_name, process_id, handle_id, mask);
+
+        snprintf(hash_id, 21, "%llu", handle_id);
+
+        switch(event_id) {
+            // Open fd
+            case 4656:
+                os_calloc(1, sizeof(whodata_evt), w_evt);
+                w_evt->user_name = user_name;
+                w_evt->type = type;
+                w_evt->path = path;
+                w_evt->process_name = process_name;
+                w_evt->process_id = process_id;
+                w_evt->handle_id = handle_id;
+                w_evt->mask = 0;
+
+                user_name = NULL;
+                type = NULL;
+                path = NULL;
+                process_name = NULL;
+
+                if (result = OSHash_Add(syscheck.wdata->fd, hash_id, w_evt), result != 2) {
+                    if (!result) {
+                        merror("The event could not be added to the whodata hash table.");
+                    } else if (result == 1) {
+                        merror("The event could not be added to the whodata hash table because is duplicated.");
+                    }
+                    retval = 1;
+                    goto clean;
+                }
+                //minfo("OPEN '%ld'-'%s'-'%s'", GetCurrentThreadId(), hash_id, w_evt->path);
+            break;
+            // Write fd
+            case 4663:
+                // Check if the mask is relevant
+                if (mask) {
+                    if (w_evt = OSHash_Get(syscheck.wdata->fd, hash_id), w_evt) {
+                        w_evt->mask |= mask;
+                        //minfo("UPDATED '%ld'-'%s'-'%s' to %x", GetCurrentThreadId(), hash_id, w_evt->path, w_evt->mask);
+                    } else {
+                        // The file was opened before Wazuh started Syscheck.
+                    }
+                }
+            break;
+            // Close fd
+            case 4658:
+                if (w_evt = OSHash_Delete(syscheck.wdata->fd, hash_id), w_evt) {
+                    if (w_evt->mask) {
+                        unsigned int mask = w_evt->mask;
+                        // Valid for a file
+                        minfo("'%s' modified. Flags: |write:%d|append:%d|. Mask: %d",
+                            w_evt->path,
+                            (mask & FILE_WRITE_DATA)? 1 : 0,
+                            (mask & FILE_APPEND_DATA)? 1 : 0,
+                            mask);
+                    }
+                    free(w_evt->user_name);
+                    free(w_evt->type);
+                    free(w_evt->path);
+                    free(w_evt->process_name);
+                    free(w_evt);
+                } else {
+                    // The file was opened before Wazuh started Syscheck.
+                }
+            break;
+            default:
+                merror("Invalid EventID. The whodata cannot be extracted.");
+                retval = 1;
+                goto clean;
+        }
+    }
+    retval = 0;
+clean:
+    free(user_name);
+    free(type);
+    free(path);
+    free(process_name);
+    if (buffer) {
+        free(buffer);
+    }
+    return retval;
+}
+
+int whodata_audit_start() {
+    os_calloc(1, sizeof(whodata), syscheck.wdata);
+    if (syscheck.wdata->fd = OSHash_Create(), !syscheck.wdata->fd) {
+        return 1;
+    }
+    return 0;
+}
+
 #else /* !WIN32 */
+
+int run_whodata_scan() {
+    return 0;
+}
 
 int realtime_start()
 {
@@ -422,7 +729,7 @@ int realtime_start()
     return (0);
 }
 
-int realtime_adddir(__attribute__((unused)) const char *dir)
+int realtime_adddir(__attribute__((unused)) const char *dir, int whodata)
 {
     return (0);
 }
