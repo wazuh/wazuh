@@ -638,26 +638,16 @@ class Server(AbstractServer):
         return self.get_client_info(client_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
 
 
-class ClientHandler(Handler):
+class AbstractClient(Handler):
 
-    def __init__(self, key, host, port, name, asyncore_map = {}):
+    def __init__(self, key, addr, name, socket_family, socket_type, connect_query, asyncore_map = {}):
         Handler.__init__(self, key=key, asyncore_map=asyncore_map)
+        self.connect_query = connect_query
         self.map = asyncore_map
-        self.host = host
-        self.port = port
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        ok = self.connect( (host, port) )
-        self.name = name
         self.my_connected = False
-
-
-    def handle_connect(self):
-        logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
-        counter = self.nextcounter()
-        payload = msgbuild(counter, 'hello', self.my_fernet, '{} {} {}'.format(self.name, 'client', __version__))
-        self.send(payload)
-        self.my_connected = True
-        logger.info("[Client] Connected.")
+        self.create_socket(socket_family, socket_type)
+        self.name = name
+        ok = self.connect(addr)
 
 
     def handle_close(self):
@@ -682,7 +672,26 @@ class ClientHandler(Handler):
         return self.my_connected
 
 
+    def handle_connect(self):
+        counter = self.nextcounter()
+        payload = msgbuild(counter, 'hello', self.my_fernet, self.connect_query)
+        self.send(payload)
+        self.my_connected = True
+        logger.info("[Client] Connected.")
 
+
+class ClientHandler(AbstractClient):
+
+    def __init__(self, key, host, port, name, asyncore_map = {}):
+        connect_query = '{} {} {}'.format(name, 'client', __version__)
+        AbstractClient.__init__(self, key, (host, port), name, socket.AF_INET, socket.SOCK_STREAM, connect_query, asyncore_map)
+        self.host = host
+        self.port = port
+
+
+    def handle_connect(self):
+        logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
+        AbstractClient.handle_connect(self)
 
 
 class ProcessFiles(ClusterThread):

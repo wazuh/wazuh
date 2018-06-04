@@ -30,6 +30,19 @@ from wazuh.utils import mkdir_with_mode
 
 logger = logging.getLogger(__name__)
 
+
+class APIRequestQueue(ClusterThread):
+    def __init__(self, manager, request):
+        ClusterThread.__init__(self, stopper=manager.stopper)
+        self.id, self.request = request.split(' ', 1)
+        self.request = json.loads(self.request)
+        self.manager = manager
+
+    def run(self):
+        result = dapi.distribute_function(self.request)
+        self.manager.server.send_request(client_name=self.manager.name, command='dapi_res', data=self.id + ' ' + result)
+
+
 #
 # Master Handler
 # There is a MasterManagerHandler for each connected client
@@ -76,12 +89,12 @@ class MasterManagerHandler(ServerHandler):
             response = {name:data['info'] for name,data in self.server.get_connected_clients().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master",  "version": __version__}})
-            serialized_response = ['ok', json.dumps(response)]
+            serialized_response = ['json', json.dumps(response)]
             return serialized_response
         elif command == 'get_health':
             filter_nodes = data.decode()
             response = self.manager.get_healthcheck(filter_nodes)
-            serialized_response = ['ok', json.dumps(response)]
+            serialized_response = ['json', json.dumps(response)]
             return serialized_response
         elif command == 'get_agents':
             data = data.decode()
@@ -96,8 +109,10 @@ class MasterManagerHandler(ServerHandler):
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         elif command == 'dapi':
-            response = dapi.distribute_function(json.loads(data))
-            return ['ok', response]
+            data = data.decode()
+            api_thread = APIRequestQueue(manager=self, request=data)
+            api_thread.start()
+            return ['ack', "Request is being processed"]
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
@@ -672,7 +687,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             if node_list and len(response):
                 response = {node: response.get(node) for node in node_list}
 
-            serialized_response = ['ok',  json.dumps(response)]
+            serialized_response = ['json',  json.dumps(response)]
             return serialized_response
 
         elif command == 'get_nodes':
@@ -680,14 +695,14 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
 
-            serialized_response = ['ok', json.dumps(response)]
+            serialized_response = ['json', json.dumps(response)]
             return serialized_response
 
 
         elif command == 'get_health':
             node_list = data if data != 'None' else None
             response = self.server.manager.get_healthcheck(node_list)
-            serialized_response = ['ok',  json.dumps(response)]
+            serialized_response = ['json',  json.dumps(response)]
             return serialized_response
 
         elif command == 'sync':
@@ -698,17 +713,17 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             if node_list:
                 for node in node_list:
                     response = {node:self.server.manager.send_request(client_name=node, command=command, data="")}
-                serialized_response = ['ok', json.dumps(response)]
+                serialized_response = ['json', json.dumps(response)]
             else:
                 response = list(self.server.manager.send_request_broadcast(command=command, data=data))
-                serialized_response = ['ok', json.dumps({node:data for node,data in response})]
+                serialized_response = ['json', json.dumps({node:data for node,data in response})]
             return serialized_response
 
         elif command == 'dapi':
-            return ['ok', dapi.distribute_function(json.loads(data))]
+            return ['json', dapi.distribute_function(json.loads(data.split(' ',1)[1]))]
 
         elif command == 'dapi_forward':
-            node_name, input_json = data.split(' ', 1)
+            client_id, node_name, input_json = data.split(' ', 2)
             response = self.server.manager.send_request(client_name=node_name, command='dapi', data=input_json)
             return response.split(' ',1)
 

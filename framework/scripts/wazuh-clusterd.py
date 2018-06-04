@@ -178,6 +178,8 @@ def client_main(cluster_configuration):
 
             internal_socket_thread.setmanager(manager, ClientInternalSocketHandler)
 
+            manager.handler.isocket_handler = internal_socket_thread.internal_socket
+
             asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 
             logger.error("[{0}] Disconnected. Trying to connect again in {1}s.".format(manager_tag, connection_retry_interval))

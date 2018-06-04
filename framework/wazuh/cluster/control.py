@@ -21,6 +21,7 @@ def get_nodes(filter_list_nodes=None):
         response["node_error"] = [node for node in filter_list_nodes if node not in response["items"]]
     return response
 
+
 def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
     request="get_nodes {}"
     nodes = execute(request)

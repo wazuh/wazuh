@@ -140,7 +140,7 @@ def __execute(my_function, my_args=()):
         if response:
             print ("Error: {}".format(response))
         else:
-            print ("{}".format(e))
+            print ("Error: {}".format(e))
         exit(1)
 
     return response

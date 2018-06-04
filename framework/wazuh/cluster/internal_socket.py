@@ -26,7 +26,8 @@ class InternalSocketHandler(communication.ServerHandler):
 
     def process_request(self, command, data):
         if command == 'hello':
-            return ['ack', self.server.add_client()]
+            self.server.add_client(data, '', self)
+            return None
         else:
             return ['err', json.dumps({'err', "Received an unknown command '{}'".format(command)})]
 
@@ -58,11 +59,14 @@ class InternalSocket(communication.AbstractServer):
 
 
     def add_client(self, data, ip, handler):
-        node_id = random.randint(0, 2 ** 32 -1)
         with self._clients_lock:
-            self._clients[node_id] = handler
+            self._clients[data] = {'handler': handler}
 
-        return node_id
+        return data
+
+
+    def find_client_by_ip(self, client_ip):
+        return None
 
 
 #
@@ -100,51 +104,55 @@ class InternalSocketThread(threading.Thread):
             time.sleep(2)
 
 
-def send_to_internal_socket(socket_name, message):
-    # Create a UDS socket
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    socket_address = "{}/{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
-    logger.debug("[Transport-InternalSocketSend] Starting: {}.".format(socket_address))
-    response = b""
+class InternalSocketClient(communication.AbstractClient):
 
-    # Connect to UDS socket
-    try:
-        sock.connect(socket_address)
-    except Exception as e:
-        logger.error('[Transport-InternalSocketSend] Error connecting: {}'.format(e))
-        return response
+    def __init__(self, socket_name, asyncore_map = {}):
+        self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
+        connect_query = str(random.randint(0, 2 ** 32 - 1))
+        logger.debug("[InternalSocketClient] Client ID: {}".format(connect_query))
+        communication.AbstractClient.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM, connect_query, asyncore_map)
+        self.final_response = communication.Response()
 
-    # Send message
-    logger.debug("[Transport-InternalSocketSend] Sending request: '{0}'.".format(message))
 
-    message = message.split(" ", 1)
-    cmd = message[0]
-    data = message[1] if len(message) > 1 else None
-    message_built = communication.msgbuild(random.SystemRandom().randint(0, 2 ** 32 - 1), cmd, None, data)
-    sock.sendall(message_built)
+    def send_request(self, command, data=None):
+        if data:
+            data = "{} {}".format(self.name, data)
 
-    logger.debug("[Transport-InternalSocketSend] Request sent.")
+        return communication.AbstractClient.send_request(self, command, data)
 
-    # Receive response
-    buf = b""
-    buf_size = 4096
-    try:
-        while not response:
-            buf += sock.recv(buf_size)
-            parse = communication.msgparse(buf, None)
-            if parse:
-                offset, counter, command, response = parse
 
-        logger.debug("[Transport-InternalSocketSend] Answer received: '{0}'.".format(command))
+    def process_response(self, response):
+        command, data = response
 
-    except Exception as e:
-        logger.error("[Transport-InternalSocketSend] Error: {}.".format(str(e)))
-    finally:
-        logger.debug("[Transport-InternalSocketSend] Closing socket.")
-        sock.close()
-        logging.debug("[Transport-InternalSocketSend] Socket closed.")
+        if command == 'ok' or command == 'ack':
+            return False
+        if command == 'json':
+            self.final_response.write(data)
+            return False
+        elif command == 'err':
+            self.final_response.write(data)
+            return True
 
-    return response.decode()
+
+    def process_request(self, command, data):
+        if command == 'dapi_res':
+            self.final_response.write(data)
+            return ['ack', 'response received']
+        else:
+            return communication.AbstractClient.process_request(self, command, data)
+
+
+class InternalSocketClientThread(communication.ClusterThread):
+
+    def __init__(self, socket_name, stopper = threading.Event()):
+        communication.ClusterThread.__init__(self, stopper)
+        self.manager = InternalSocketClient(socket_name)
+
+
+    def run(self):
+        while not self.stopper.is_set() and self.running:
+
+            asyncore.loop(map = self.manager.map)
 
 
 def check_cluster_status():
@@ -168,9 +176,17 @@ def execute(request):
         # if no exception is raised from function check_cluster_status, the cluster is ok.
         check_cluster_status()
 
-        response = send_to_internal_socket(socket_name=socket_name, message=request)
-        response_json = json.loads(response)
-        return response_json
+        # response = send_to_internal_socket(socket_name=socket_name, message=request)
+
+        isocket_client_thread = InternalSocketClientThread(socket_name=socket_name)
+        isocket_client_thread.start()
+        command, payload = request.split(' ',1)
+        is_error = isocket_client_thread.manager.process_response(isocket_client_thread.manager.send_request(command = command, data = payload).split(' ',1))
+        response = isocket_client_thread.manager.final_response.read()
+        isocket_client_thread.manager.handle_close()
+        isocket_client_thread.stop()
+        response = json.loads(response) if not is_error else response
+        return response
     except WazuhException as e:
         raise e
     except Exception as e:

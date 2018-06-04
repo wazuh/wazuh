@@ -9,7 +9,6 @@ import threading
 import time
 import os
 import shutil
-import ast
 from operator import itemgetter
 import errno
 import fnmatch
@@ -17,7 +16,7 @@ import fnmatch
 from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info, merge_agent_info
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
-from wazuh.cluster.communication import ClientHandler, ProcessFiles, ClusterThread
+from wazuh.cluster.communication import ClientHandler, ProcessFiles, ClusterThread, msgbuild
 from wazuh.cluster.internal_socket import InternalSocketHandler
 from wazuh.cluster.dapi import dapi
 
@@ -69,7 +68,10 @@ class ClientManagerHandler(ClientHandler):
             return 'json', json.dumps(files)
         elif command == 'dapi':
             response = dapi.distribute_function(json.loads(data))
-            return ['ok', response]
+            return ['json', response]
+        elif command == "dapi_res":
+            client_id, response = data.split(' ', 1)
+            return ['json', self.isocket_handler.send_request(client_id, command, response)]
         else:
             return ClientHandler.process_request(self, command, data)
 
@@ -661,6 +663,7 @@ class SyncExtraValidFilesThread(SyncClientThread):
         self.reason = "sync_ev_c_m"
         self.function = self.client_handler.send_extra_valid_files_to_master
         self.files = files
+
 
     def job(self):
         result = False
