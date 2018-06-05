@@ -50,8 +50,8 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
 def __get_array_response(agent_id, offset, limit, select, search, sort, filters, table):
     response = {'items': [], 'totalItems': 0}
     internal_limit = limit if limit < request_internal_limit[table] else request_internal_limit[table]
-    for current_offset in range(offset, limit, internal_limit):
-        result_i, total = __get_response(agent_id=agent_id, table=table, offset=current_offset, limit=internal_limit, select=select,
+    for current_offset in range(0, limit, internal_limit):
+        result_i, total = __get_response(agent_id=agent_id, table=table, offset=current_offset+offset, limit=internal_limit, select=select,
                                             sort=sort, search=search, filters=filters, count=True)
         if result_i == []:
             continue
