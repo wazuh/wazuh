@@ -438,14 +438,20 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* SHA-256 message */
-                if(newsum.sha256 && oldsum.sha256)
+                if(newsum.sha256)
                 {
-                    if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
-                        sdb.sha256[0] = '\0';
+                    if(oldsum.sha256) {
+                        if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
+                            sdb.sha256[0] = '\0';
+                        } else {
+                            snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\n"
+                                    "New sha256sum is : '%s'\n",
+                                    oldsum.sha256, newsum.sha256);
+                            os_strdup(oldsum.sha256, lf->sha256_before);
+                        }
                     } else {
-                        snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\n"
-                                "New sha256sum is : '%s'\n",
-                                oldsum.sha256, newsum.sha256);
+                        snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: 'n/a'\n"
+                                "New sha256sum is : '%s'\n", newsum.sha256);
                         os_strdup(oldsum.sha256, lf->sha256_before);
                     }
                 }
@@ -482,6 +488,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          "%s"
                          "%s"
                          "%s"
+                         "%s"
                          "%s%s",
                          f_name,
                          sdb.size,
@@ -490,6 +497,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          sdb.gowner,
                          sdb.md5,
                          sdb.sha1,
+                         sdb.sha256,
                          lf->data ? "What changed:\n" : "",
                          lf->data ? lf->data : ""
                         );
