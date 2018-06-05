@@ -317,8 +317,8 @@
 #define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"
 #define MSG_SOCKET_SIZE "(unix_domain) Maximum send buffer set to: '%d'."
 
-#define NO_SYSLOG       "(1501): No IP or network allowed in the access list" \
-                        " for syslog. No reason for running it. Exiting."
+#define NO_SYSLOG       "(1501): IP or network must be present in syslog" \
+                        " access list (allowed-ips). Syslog server disabled."
 #define CONN_TO     "Connected to '%s' (%s queue)"
 #define MAIL_DIS    "E-Mail notification disabled. Clean Exit."
 
