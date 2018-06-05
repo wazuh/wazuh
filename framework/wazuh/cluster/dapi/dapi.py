@@ -81,7 +81,8 @@ def forward_request(input_json, master_name, pretty):
     if is_list:
         responses = []
         for name,agent_ids in node_name.items():
-            input_json['arguments']['agent_id'] = agent_ids
+            if agent_ids:
+                input_json['arguments']['agent_id'] = agent_ids
             command = 'dapi_forward {}'.format(name) if name != master_name else 'dapi'
             responses.append(i_s.execute('{} {}'.format(command, json.dumps(input_json))))
         response = merge_results(responses)
@@ -123,6 +124,11 @@ def get_solver_node(input_json, master_name):
             # Get the node where the agent 'agent_id' is reporting
             node_name = Agent.get_agent(input_json['arguments']['agent_id'], select=select_node)['node_name']
             return node_name, False
+
+    elif 'agents' in input_json['function']:
+        agents = Agent.get_agents_overview(select=select_node, sort={'fields': ['node_name'], 'order': 'desc'})['items']
+        node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node_name'))}
+        return node_name, True
 
 
 def merge_results(responses, final_json = {}):
