@@ -34,6 +34,8 @@ except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
 
+import sys
+
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 def get_parser(type):
@@ -245,14 +247,21 @@ def sync_master(filter_node):
 
 ### Get agents
 def print_agents(filter_status=None, filter_node=None):
-    agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
-    data = [[agent['id'], agent['ip'], agent['name'], agent['status'],agent['node_name']] for agent in agents['items']]
-    headers = ["ID", "Address", "Name", "Status", "Node"]
-    __print_table(data, headers, True)
+    gen_agents = get_agents(filter_status, filter_node)
+    total_agents = 0
+
+    for agents in gen_agents:
+        table_str = ""
+        total_agents = agents['totalItems']
+        for agent in agents['items']:
+            table_str += "   Node: {}, ID: {}, Name: {}, IP: {}, Status: {}\n".format(agent['node_name'], agent['id'], agent['name'], agent['ip'], agent['status'])
+        sys.stdout.write(table_str)
+        sys.stdout.flush()
+
     if filter_status:
-        print ("Found {} agent(s) with status '{}'.".format(len(agents['items']), "".join(filter_status)))
+        print ("\nFound {} agent(s) with status '{}'.".format(total_agents, filter_status))
     else:
-        print ("Listing {} agent(s).".format(len(agents['items'])))
+        print ("\nListing {} agent(s).".format(total_agents))
 
 ### Get healthchech
 def print_healthcheck(conf, more=False, filter_node=None):
