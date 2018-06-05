@@ -176,8 +176,6 @@ def execute(request):
         # if no exception is raised from function check_cluster_status, the cluster is ok.
         check_cluster_status()
 
-        # response = send_to_internal_socket(socket_name=socket_name, message=request)
-
         isocket_client_thread = InternalSocketClientThread(socket_name=socket_name)
         isocket_client_thread.start()
         command, payload = request.split(' ',1)

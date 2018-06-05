@@ -9,19 +9,21 @@ import wazuh.cluster.internal_socket as i_s
 from wazuh.agent import Agent
 from wazuh.exception import WazuhException
 import json
+from itertools import groupby
+from operator import itemgetter
 
 def distribute_function(input_json, pretty=False, debug=False):
-    node_type = cluster.get_node()['type']
+    node_info = cluster.get_node()
     request_type = rq.functions[input_json['function']]['type']
 
     if not cluster.check_cluster_status() or request_type == 'local_any' or\
-            (request_type == 'local_master' and node_type == 'master')   or\
+            (request_type == 'local_master' and node_info['type'] == 'master')   or\
             (request_type == 'distributed_master' and input_json['from_cluster']):
 
         return execute_local_request(input_json, pretty, debug)
 
-    elif request_type == 'distributed_master' and node_type == 'master':
-        return forward_request(input_json, pretty)
+    elif request_type == 'distributed_master' and node_info['type'] == 'master':
+        return forward_request(input_json, node_info['node'], pretty)
     else:
         return execute_remote_request(input_json, pretty)
 
@@ -72,10 +74,21 @@ def execute_remote_request(input_json, pretty):
     return print_json(data=data, pretty=pretty, error=error)
 
 
-def forward_request(input_json, pretty):
-    node_name = get_solver_node(input_json)
+def forward_request(input_json, master_name, pretty):
+    node_name, is_list = get_solver_node(input_json)
     input_json['from_cluster'] = True
-    response = i_s.execute('dapi_forward {} {}'.format(node_name, json.dumps(input_json)))
+
+    if is_list:
+        responses = []
+        for name,agent_ids in node_name.items():
+            input_json['arguments']['agent_id'] = agent_ids
+            command = 'dapi_forward {}'.format(name) if name != master_name else 'dapi'
+            responses.append(i_s.execute('{} {}'.format(command, json.dumps(input_json))))
+        response = merge_results(responses)
+    else:
+        command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
+        response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+
     data, error = __split_response_data(response)
     return print_json(data=data, pretty=pretty, error=error)
 
@@ -86,9 +99,61 @@ def get_solver_node(input_json):
     Only called when the request type is 'master_distributed' and the node_type is master.
 
     :param input_json: API request parameters and description
-    :return: node name
+    :return: node name and whether the result is list or not
     """
+    select_node = {'fields':['node_name']}
     if 'agent_id' in input_json['arguments']:
-        # Get the node where the agent 'agent_id' is reporting
-        node_name = Agent.get_agent(input_json['arguments']['agent_id'], select={'fields':['node_name']})['node_name']
-        return node_name
+        # the request is for multiple agents
+        if isinstance(input_json['arguments']['agent_id'], list):
+            agents = Agent.get_agents_overview(select=select_node, ids=input_json['arguments']['agent_id'],
+                                                  sort={'fields':['node_name'], 'order':'desc'})['items']
+            node_name = {k:list(map(itemgetter('id'), g)) for k,g in groupby(agents, key=itemgetter('node_name'))}
+            return node_name, True
+        # if the request is only for one agent
+        else:
+            # Get the node where the agent 'agent_id' is reporting
+            node_name = Agent.get_agent(input_json['arguments']['agent_id'], select=select_node)['node_name']
+            return node_name, False
+
+
+def merge_results(responses, final_json = {}):
+    """
+    Merge results from an API call.
+
+    To do the merging process, the following is considered:
+        1.- If the field is a list, append items to it
+        2.- If the field is a message (msg), only replace it if the new message has more priority.
+
+    The priorities are defined in a list of tuples. The first item of the tuple is the element which has more priority.
+
+    :param responses: list of results from each node
+    :return: single JSON with the final result
+    """
+    priorities = {
+        ("Some agents were not restarted", "All selected agents were restarted")
+    }
+
+    for local_json in responses:
+        for key,field in local_json.items():
+            field_type = type(field)
+            if field_type == dict:
+                final_json[key] = merge_results([field], {} if key not in final_json else final_json[key])
+            elif field_type == list:
+                if key in final_json:
+                    final_json[key].extend(field)
+                else:
+                    final_json[key] = field
+            elif field_type == int:
+                if key in final_json:
+                    if field > final_json[key]:
+                        final_json[key] = field
+                else:
+                    final_json[key] = field
+            else: # str
+                if key in final_json:
+                    if (field, final_json[key]) in priorities:
+                        final_json[key] = field
+                else:
+                    final_json[key] = field
+
+    return final_json

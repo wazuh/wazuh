@@ -79,7 +79,7 @@ functions = {
     },
     'POST/agents/restart': {
         'function': Agent.restart_agents,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     'POST/agents': {
         'function': Agent.add_agent,
