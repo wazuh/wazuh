@@ -11,6 +11,7 @@ from wazuh.exception import WazuhException
 import json
 from itertools import groupby
 from operator import itemgetter
+from multiprocessing.dummy import Pool as ThreadPool
 
 def distribute_function(input_json, pretty=False, debug=False):
     node_info = cluster.get_node()
@@ -75,16 +76,22 @@ def execute_remote_request(input_json, pretty):
 
 
 def forward_request(input_json, master_name, pretty):
+    def forward_list(item):
+        name, agent_ids = item
+        if agent_ids:
+            input_json['arguments']['agent_id'] = agent_ids
+        command = 'dapi_forward {}'.format(name) if name != master_name else 'dapi'
+        return i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+
+
     node_name, is_list = get_solver_node(input_json, master_name)
     input_json['from_cluster'] = True
 
     if is_list:
-        responses = []
-        for name,agent_ids in node_name.items():
-            if agent_ids:
-                input_json['arguments']['agent_id'] = agent_ids
-            command = 'dapi_forward {}'.format(name) if name != master_name else 'dapi'
-            responses.append(i_s.execute('{} {}'.format(command, json.dumps(input_json))))
+        pool = ThreadPool()
+        responses = pool.map(forward_list, node_name.items())
+        pool.close()
+        pool.join()
         response = merge_results(responses)
     else:
         command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
