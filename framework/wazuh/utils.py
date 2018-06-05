@@ -362,7 +362,6 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-
 def get_fields_to_nest(fields, force_fields=[]):
     nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
              for k,g in groupby(map(lambda x: x.split('_'), sorted(fields)),
@@ -438,20 +437,6 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
-def divide_list(l, size=1000):
-    return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
-
-
-def create_exception_dic(id, e):
-    """
-    Creates a dictionary with a list of agent ids and it's error codes.
-    """
-    exception_dic = {}
-    exception_dic['id'] = id
-    exception_dic['error'] = {'message': e.message, 'code': e.code}
-    return exception_dic
-
-
 def load_wazuh_xml(xml_path):
     with open(xml_path) as f:
         data = f.read()
@@ -463,7 +448,7 @@ def load_wazuh_xml(xml_path):
         data = data.replace(comment.group(2), good_comment)
 
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
-    data = re.sub(r"<(?!/?[\w=\'$,#\"\.@\/_ -:]+>|!--)", "&lt;", data)
+    data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!\w+;)", "&amp;", data)

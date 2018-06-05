@@ -166,7 +166,7 @@ def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=co
             allowed_sort_fields = fields.keys()
             # Check if every element in sort['fields'] is in allowed_sort_fields
             if not set(sort['fields']).issubset(allowed_sort_fields):
-                uncorrect_fields = map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields))
+                uncorrect_fields = list(map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields)))
                 raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, uncorrect_fields))
                 
             query += ' ORDER BY ' + ','.join(['{0} {1}'.format(fields[i], sort['order']) for i in sort['fields']])
@@ -247,7 +247,7 @@ def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
             allowed_sort_fields = fields.keys()
             # Check if every element in sort['fields'] is in allowed_sort_fields
             if not set(sort['fields']).issubset(allowed_sort_fields):
-                uncorrect_fields = map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields))
+                uncorrect_fields = list(map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields)))
                 raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, uncorrect_fields))
 
             query += ' ORDER BY pci_dss ' + sort['order']
