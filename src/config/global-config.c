@@ -62,24 +62,24 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 return (OS_INVALID);
             }
             for (j = 0; node[i]->attributes && node[i]->attributes[j]; ++j) {
-                if (strcmp(node[i]->attributes[0], xml_ignore_frecuency) == 0) {
+                if (strcmp(node[i]->attributes[j], xml_ignore_frecuency) == 0) {
                     if (!OS_StrIsNum(node[i]->values[0])) {
-                        merror(XML_VALUEERR, node[i]->attributes[0], node[i]->values[0]);
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
                         return (OS_INVALID);
                     }
                     Config->syscheck_ignore_frecuency = atoi(node[i]->values[0]);
                     if (Config->syscheck_ignore_frecuency < 1 || Config->syscheck_ignore_frecuency > 99) {
-                        merror(XML_VALUEERR, node[i]->attributes[1], node[i]->values[1]);
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
                         return (OS_INVALID);
                     }
-                } else if (strcmp(node[i]->attributes[1], xml_ignore_time) == 0) {
-                    if (!OS_StrIsNum(node[i]->values[1])) {
-                        merror(XML_VALUEERR, node[i]->attributes[1], node[i]->values[1]);
+                } else if (strcmp(node[i]->attributes[j], xml_ignore_time) == 0) {
+                    if (!OS_StrIsNum(node[i]->values[j])) {
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
                         return (OS_INVALID);
                     }
                     Config->syscheck_ignore_time = atoi(node[i]->values[1]);
                     if (Config->syscheck_ignore_time < 0 || Config->syscheck_ignore_time > 43200) {
-                        merror(XML_VALUEERR, node[i]->attributes[1], node[i]->values[1]);
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
                         return (OS_INVALID);
                     }
                 } else {
