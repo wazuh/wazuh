@@ -94,6 +94,7 @@ void * wm_download_main(wm_download_t * data) {
 
         close(peer);
     }
+    return NULL;
 }
 
 // Dispatch request. Write the output into the same input buffer.

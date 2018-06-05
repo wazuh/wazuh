@@ -243,9 +243,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
                 globfree(&g);
             } else if (strchr(node[i]->content, '%'))
-            #else
+#else
             if (strchr(node[i]->content, '%'))
-            #endif /* WIN32 */
+#endif /* WIN32 */
 
             /* We need the format file (based on date) */
             {
@@ -483,10 +483,12 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     return (0);
 
+#ifndef WIN32
 clean:
     Free_Logreader(logf + pl);
     memset(logf + pl, 0, sizeof(logreader));
     return 0;
+#endif
 }
 
 int Test_Localfile(const char * path){
