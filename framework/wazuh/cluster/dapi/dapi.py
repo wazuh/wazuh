@@ -75,7 +75,7 @@ def execute_remote_request(input_json, pretty):
 
 
 def forward_request(input_json, master_name, pretty):
-    node_name, is_list = get_solver_node(input_json)
+    node_name, is_list = get_solver_node(input_json, master_name)
     input_json['from_cluster'] = True
 
     if is_list:
@@ -93,12 +93,13 @@ def forward_request(input_json, master_name, pretty):
     return print_json(data=data, pretty=pretty, error=error)
 
 
-def get_solver_node(input_json):
+def get_solver_node(input_json, master_name):
     """
     Gets the node that can solve a request.
     Only called when the request type is 'master_distributed' and the node_type is master.
 
     :param input_json: API request parameters and description
+    :param master_name: name of the master node
     :return: node name and whether the result is list or not
     """
     select_node = {'fields':['node_name']}
@@ -108,6 +109,14 @@ def get_solver_node(input_json):
             agents = Agent.get_agents_overview(select=select_node, ids=input_json['arguments']['agent_id'],
                                                   sort={'fields':['node_name'], 'order':'desc'})['items']
             node_name = {k:list(map(itemgetter('id'), g)) for k,g in groupby(agents, key=itemgetter('node_name'))}
+
+            # add non existing ids in the master's dictionary entry
+            non_existent_ids = list(set(input_json['arguments']['agent_id']) - set(map(itemgetter('id'), agents)))
+            if master_name in node_name:
+                node_name[master_name].extend(non_existent_ids)
+            else:
+                node_name[master_name] = non_existent_ids
+
             return node_name, True
         # if the request is only for one agent
         else:
