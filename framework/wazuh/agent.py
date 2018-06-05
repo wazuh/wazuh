@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest
+from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -16,7 +16,6 @@ from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
 from shutil import copyfile, move, copytree
-from time import time
 from platform import platform
 from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat
 from time import time, sleep
@@ -47,6 +46,20 @@ def create_exception_dic(id, e):
 
 
     return exception_dic
+
+
+def filter_list_or_string(field, field_name, request, query):
+    if isinstance(field, list):
+        node_list = [name.lower() for name in field]
+        query += ' AND {} COLLATE NOCASE IN ({})'.format(field_name,
+            ','.join([":{}{}".format(field_name, x) for x in range(len(node_list))]))
+        key_list = [":{}{}".format(field_name, x) for x in range(len(node_list))]
+        request.update({x[1:]: y for x, y in zip(key_list, node_list)})
+    else:
+        request[field_name] = field.lower()
+        query += ' AND {0} = :{0} COLLATE NOCASE'.format(field_name)
+
+    return query
 
 
 def get_timeframe_in_seconds(timeframe):
@@ -742,7 +755,7 @@ class Agent:
     @staticmethod
     def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all",
                             node_name="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                            version="all", older_than="all"):
+                            version="all", older_than="all", ids="all"):
         """
         Gets a list of available agents with basic attributes.
         :param node_name: Filters by agents connected to the cluster node "node_name"
@@ -757,10 +770,10 @@ class Agent:
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
         :param search: Looks for items with the specified string.
         :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never connected agents, uses the register date.
+        :param ids: Return only agents with those ids.
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-
         db_global = glob(common.database_path_global)
         if not db_global:
             raise WazuhException(1600)
@@ -837,14 +850,10 @@ class Agent:
             request['version'] = re.sub( r'([a-zA-Z])([v])', r'\1 \2', version )
             query += ' AND version = :version'
         if node_name != "all":
-            if isinstance(node_name,list):
-                node_list = [name.lower() for name in node_name]
-                query += ' AND node_name COLLATE NOCASE IN ({})'.format(','.join([":node_name{}".format(x) for x in range(len(node_list))]))
-                key_list = [":node_name{}".format(x) for x in range(len(node_list))]
-                request.update({x[1:]: y for x, y in zip(key_list, node_list)})
-            else:
-                request['node_name'] = node_name.lower()
-                query += ' AND node_name = :node_name COLLATE NOCASE'
+            query = filter_list_or_string(node_name, 'node_name', request, query)
+        if ids != "all":
+            query = filter_list_or_string(ids, 'id', request, query)
+
 
         # Search
         if search:
