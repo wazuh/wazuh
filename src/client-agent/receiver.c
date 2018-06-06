@@ -234,9 +234,12 @@ int receive_msg()
                                     mwarn("Could not clean up shared directory.");
                                 }
 
-                                UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
-
-                                if (agt->flags.remote_conf && !verifyRemoteConf()) {
+                                if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
+                                    char *error_msg = "Could not unmerge files.";
+                                    merror("%s",error_msg);
+                                    send_msg(error_msg, -1);
+                                }
+                                else if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                     if (agt->flags.auto_restart) {
                                         minfo("Agent is restarting due to shared configuration changes.");
                                         restartAgent();
