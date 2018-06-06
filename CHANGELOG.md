@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
     - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
 - Module to download shared files for agent groups dinamically. ([#519](https://github.com/wazuh/wazuh/pull/519))
     - Added group creation for files.yml if the group does not exist. ([#1010](https://github.com/wazuh/wazuh/pull/1010))
+- Added scheduling options to CIS-CAT integration. ([#586](https://github.com/wazuh/wazuh/pull/586))
 - Option to download the wpk using http in `agent_upgrade`. ([#798](https://github.com/wazuh/wazuh/pull/798))
 - Add `172.0.0.1` as manager IP when creating `global.db`. ([#970](https://github.com/wazuh/wazuh/pull/970))
 - New requests for Syscollector. ([#728](https://github.com/wazuh/wazuh/pull/728))
@@ -43,6 +44,8 @@ All notable changes to this project will be documented in this file.
 - Extracts agent's OS from the database instead of the agent-info.
 - Increases the maximum size of XML parser to 20KB.
 - Extract CVE instead of RHSA codes into vulnerability-detector. ([#549](https://github.com/wazuh/wazuh/pull/549))
+- Store CIS-CAT results into Wazuh DB. ([#568](https://github.com/wazuh/wazuh/pull/568))
+- Add profile information to CIS-CAT reports. ([#658](https://github.com/wazuh/wazuh/pull/658))
 - Merge external libraries into a unique shared library. ([#620](https://github.com/wazuh/wazuh/pull/620))
 - Cluster log rotation: set correct permissions and store rotations in /logs/ossec. ([#667](https://github.com/wazuh/wazuh/pull/667))
 -`Distinct` requests don't allow `limit=0` or `limit>maximun_limit`. ([#1007](https://github.com/wazuh/wazuh/pull/1007))
