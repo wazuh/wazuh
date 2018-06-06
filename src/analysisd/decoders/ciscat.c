@@ -71,6 +71,7 @@ int DecodeCiscat(Eventinfo *lf)
     msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
     if (!msg_type) {
         mdebug1("Invalid message. Type not found.");
+        cJSON_Delete(logJSON);
         return (0);
     }
 
@@ -172,10 +173,12 @@ int DecodeCiscat(Eventinfo *lf)
             }
 
             if (sc_send_db(msg) < 0) {
+                cJSON_Delete(logJSON);
                 return (0);
             }
         } else {
             mdebug1("Unable to parse CIS-CAT event for agent '%s'", lf->agent_id);
+            cJSON_Delete(logJSON);
             return (0);
         }
     }
