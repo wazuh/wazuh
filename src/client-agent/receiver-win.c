@@ -255,9 +255,13 @@ void *receiver_thread(__attribute__((unused)) void *none)
                                         mwarn("Could not clean up shared directory.");
                                     }
 
-                                    UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
+                                    if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
+                                        char msg_output[OS_MAXSTR];
 
-                                    if (agt->flags.remote_conf && !verifyRemoteConf()) {
+                                        snprintf(msg_output, OS_MAXSTR, "%c:%s:%s:",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);
+                                        send_msg(msg_output, -1);
+                                    }
+                                    else if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                         if (agt->flags.auto_restart) {
                                             minfo("Agent is restarting due to shared configuration changes.");
                                             restartAgent();
