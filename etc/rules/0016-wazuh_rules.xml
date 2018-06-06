@@ -133,4 +133,11 @@
     <description>Syscollector event.</description>
   </rule>
 
+  <rule id="222" level="7">
+    <if_sid>200</if_sid>
+    <match>^wazuh: Could not unmerge shared file.</match>
+    <description>The agent could not restart due to a error while unmerging files.</description>
+    <group>agent_restarting,configuration_failure,</group>
+  </rule>
+
 </group>
