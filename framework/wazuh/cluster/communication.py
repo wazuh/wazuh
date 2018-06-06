@@ -165,17 +165,18 @@ class Handler(asyncore.dispatcher_with_send):
         self.workers = {}
         self.stopper = threading.Event()
         self.my_fernet = Fernet(base64_encoding(key)) if key else None
+        self.tag = "[Transport-Handler]"
 
 
     def exit(self):
-        logger.debug("[Transport-Handler] Cleaning handler threads. Start.")
+        logger.debug("{} Cleaning handler threads. Start.".format(self.tag))
         self.stopper.set()
 
         with self.workers_lock:
             worker_ids = self.workers.keys()
 
         for worker_id in worker_ids:
-            logger.debug2("[Transport-Handler] Cleaning handler thread: '{0}'.".format(worker_id))
+            logger.debug2("{1} Cleaning handler thread: '{0}'.".format(worker_id, self.tag))
 
             with self.workers_lock:
                 my_worker = self.workers[worker_id]
@@ -183,14 +184,14 @@ class Handler(asyncore.dispatcher_with_send):
             try:
                 my_worker.join(timeout=2)
             except Exception as e:
-                logger.error("[Transport-Handler] Cleaning '{0}' thread. Error: '{1}'.".format(worker_id, str(e)))
+                logger.error("{2} Cleaning '{0}' thread. Error: '{1}'.".format(worker_id, str(e), self.tag))
 
             if my_worker.isAlive():
-                logger.warning("[Transport-Handler] Cleaning '{0}' thread. Timeout.".format(worker_id))
+                logger.warning("{1} Cleaning '{0}' thread. Timeout.".format(worker_id, self.tag))
             else:
-                logger.debug2("[Transport-Handler] Cleaning '{0}' thread. Terminated.".format(worker_id))
+                logger.debug2("{1} Cleaning '{0}' thread. Terminated.".format(worker_id, self.tag))
 
-        logger.debug("[Transport-Handler] Cleaning handler threads. End.")
+        logger.debug("{} Cleaning handler threads. End.".format(self.tag))
 
 
     def set_worker(self, command, worker, filename=None):
@@ -276,7 +277,7 @@ class Handler(asyncore.dispatcher_with_send):
 
         except Exception as e:
             error_msg = "Error sending file ({}): '{}'".format(reason, str(e))
-            logger.error("[Transport-Handler] {}.".format(error_msg))
+            logger.error("{} {}.".format(self.tag, error_msg))
             response = "err" + " " + error_msg
 
         if remove:
@@ -338,7 +339,7 @@ class Handler(asyncore.dispatcher_with_send):
 
         except Exception as e:
             error_msg = "Error sending string ({}): {}".format(reason, e)
-            logger.error("[Transport-Handler] {}.".format(error_msg))
+            logger.error("{} {}.".format(self.tag, error_msg))
             response = "err" + " " + error_msg
 
         return response
@@ -394,8 +395,8 @@ class Handler(asyncore.dispatcher_with_send):
             self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
 
         self.handle_close()
-        logger.error("[Transport-Handler] Error: '{}'.".format(v))
-        logger.debug("[Transport-Handler] Error: '{}' - '{}'.".format(t, tbinfo))
+        logger.error("{} Error: '{}'.".format(self.tag, v))
+        logger.debug("{} Error: '{}' - '{}'.".format(self.tag, t, tbinfo))
 
 
     def handle_close(self):
@@ -424,7 +425,7 @@ class Handler(asyncore.dispatcher_with_send):
         try:
             message = msgbuild(counter, command, self.my_fernet, payload)
         except Exception as e:
-            logger.error("[Transport-Handler] Error sending a request/response (command: '{}') due to '{}'.".format(command, str(e)))
+            logger.error("{} Error sending a request/response (command: '{}') due to '{}'.".format(self.tag, command, str(e)))
             message = msgbuild(counter, "err", self.my_fernet, str(e))
 
         with self.lock:
@@ -457,11 +458,11 @@ class Handler(asyncore.dispatcher_with_send):
         try:
             return self.process_request(command, payload)
         except WazuhException as e:
-            logger.error("[Transport-Handler] {0}".format(e.message))
+            logger.error("{} {0}".format(self.tag, e.message))
             return 'err', str(e)
         except Exception as e:
             error_msg = "Error processing command '{0}': '{1}'.".format(command, e)
-            logger.error("[Transport-Handler] {0}".format(error_msg))
+            logger.error("{1} {0}".format(error_msg, self.tag))
             return 'err', error_msg
 
 
@@ -479,7 +480,7 @@ class Handler(asyncore.dispatcher_with_send):
             return cmd, message
         else:
             message = "'{0}' - Unknown command received '{1}'.".format(self.name, command)
-            logger.error("[Transport-Handler] {}".format(message))
+            logger.error("{} {}".format(self.tag, message))
             return "err", message
 
 
@@ -494,10 +495,10 @@ class Handler(asyncore.dispatcher_with_send):
             final_response = json.loads(payload)
         elif answer == 'err':
             final_response = None
-            logger.debug("[Transport-Handler] Error received: '{0}'.".format(payload))
+            logger.debug("{} Error received: '{0}'.".format(self.tag, payload))
         else:
             final_response = None
-            logger.error("[Transport-Handler] Error - Unknown answer: '{}'. Payload: '{}'.".format(answer, payload))
+            logger.error("{} Error - Unknown answer: '{}'. Payload: '{}'.".format(self.tag, answer, payload))
 
         return final_response
 
@@ -560,11 +561,11 @@ class AbstractServer(asyncore.dispatcher):
         self.handle_type = handle_type
         self.map = asyncore_map
         self._clients = {}
+        self.tag = tag
         self._clients_lock = threading.Lock()
         self.create_socket(socket_family, socket_type)
         self.bind(addr)
         self.listen(5)
-        self.tag = tag
 
 
     def handle_accept(self):
@@ -744,29 +745,29 @@ class Server(AbstractServer):
 
 class AbstractClient(Handler):
 
-    def __init__(self, key, addr, name, socket_family, socket_type, connect_query, asyncore_map = {}):
+    def __init__(self, key, addr, name, socket_family, socket_type, connect_query, tag, asyncore_map = {}):
         Handler.__init__(self, key=key, asyncore_map=asyncore_map)
         self.connect_query = connect_query
         self.map = asyncore_map
         self.my_connected = False
+        self.tag = tag
         self.create_socket(socket_family, socket_type)
         self.name = name
         ok = self.connect(addr)
 
 
     def handle_connect(self):
-        logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
-        payload = msgbuild(counter, 'hello', self.my_fernet, '{} {} {}'.format(self.name, 'client', __version__))
+        payload = msgbuild(counter, 'hello', self.my_fernet, self.connect_query)
         self.send(payload)
         self.my_connected = True
-        logger.info("[Client] Connected.")
+        logger.info("{} Connected.".format(self.tag))
 
 
     def handle_close(self):
         Handler.handle_close(self)
         self.my_connected = False
-        logger.info("[Client] Disconnected.")
+        logger.info("{} Disconnected.".format(self.tag))
 
 
     def send_request(self, command, data=None):
@@ -775,7 +776,7 @@ class AbstractClient(Handler):
             response = self.execute(command, data)
         else:
             error_msg = "Trying to send and there is no connection with the server"
-            logger.error("[Transport-ClientHandler] {0}.".format(error_msg))
+            logger.error("{0} {1}.".format(self.tag, error_msg))
             response = "err " + error_msg
 
         return response
@@ -790,14 +791,15 @@ class AbstractClient(Handler):
         payload = msgbuild(counter, 'hello', self.my_fernet, self.connect_query)
         self.send(payload)
         self.my_connected = True
-        logger.info("[Client] Connected.")
+        logger.info("{} Connected.".format(self.tag))
 
 
 class ClientHandler(AbstractClient):
 
     def __init__(self, key, host, port, name, asyncore_map = {}):
         connect_query = '{} {} {}'.format(name, 'client', __version__)
-        AbstractClient.__init__(self, key, (host, port), name, socket.AF_INET, socket.SOCK_STREAM, connect_query, asyncore_map)
+        AbstractClient.__init__(self, key, (host, port), name, socket.AF_INET, socket.SOCK_STREAM, connect_query,
+                                "[Transport-ClientHandler]", asyncore_map)
         self.host = host
         self.port = port
         self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']

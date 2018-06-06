@@ -45,14 +45,14 @@ class InternalSocket(communication.AbstractServer):
 
 
     def create_socket(self, family=socket.AF_UNIX, type=socket.SOCK_STREAM):
-        logger.debug2("[Transport-InternalSocket] Creating.")
+        logger.debug2("{0} Creating.".format(self.tag))
 
         # Make sure the socket does not already exist
         try:
             os.unlink(self.socket_addr)
         except OSError:
             if os.path.exists(self.socket_addr):
-                logger.error("[Transport-InternalSocket] Error: '{}' already exits".format(self.socket_addr))
+                logger.error("{} Error: '{}' already exits".format(self.tag, self.socket_addr))
                 raise
 
         communication.AbstractServer.create_socket(self, family, type)
@@ -110,7 +110,8 @@ class InternalSocketClient(communication.AbstractClient):
         self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
         connect_query = str(random.randint(0, 2 ** 32 - 1))
         logger.debug("[InternalSocketClient] Client ID: {}".format(connect_query))
-        communication.AbstractClient.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM, connect_query, asyncore_map)
+        communication.AbstractClient.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM,
+                                              connect_query, "[InternalSocket-Client] [{}]".format(connect_query), asyncore_map)
         self.final_response = communication.Response()
 
 
