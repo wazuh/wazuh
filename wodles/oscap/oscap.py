@@ -32,10 +32,10 @@ FIFO_PATH = "wodles/oscap/oscap.fifo"
 
 tempfile.tempdir = "tmp"
 
-def execute_xsltproc(arguments, stdin=None, stderr=None, shell=False):
+def check_installed(arguments, stdin=None, stderr=None, shell=False):
 
-    ps = Popen(arguments,shell=shell, stdin=FIFO_PATH, stdout=PIPE, stderr=STDOUT)
-    cmd_output = ps.communicate(stdin)
+    ps = Popen(arguments,shell=shell, stdin=None, stdout=PIPE, stderr=STDOUT)
+    cmd_output = ps.communicate()[0]
     returncode = ps.returncode
 
     if returncode != 0:
