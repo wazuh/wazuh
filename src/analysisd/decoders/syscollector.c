@@ -85,47 +85,55 @@ int DecodeSyscollector(Eventinfo *lf)
     msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
     if (!msg_type) {
         mdebug1("Invalid message. Type not found.");
+        cJSON_Delete (logJSON);
         return (0);
     }
 
     if (strcmp(msg_type, "port") == 0 || strcmp(msg_type, "port_end") == 0) {
         if (decode_port(lf->agent_id, logJSON) < 0) {
             mdebug1("Unable to send ports information to Wazuh DB.");
+            cJSON_Delete (logJSON);
             return (0);
         }
     }
     else if (strcmp(msg_type, "program") == 0 || strcmp(msg_type, "program_end") == 0) {
         if (decode_package(lf->agent_id, logJSON) < 0) {
             mdebug1("Unable to send packages information to Wazuh DB.");
+            cJSON_Delete (logJSON);
             return (0);
         }
     }
     else if (strcmp(msg_type, "hardware") == 0) {
         if (decode_hardware(lf->agent_id, logJSON) < 0) {
             mdebug1("Unable to send hardware information to Wazuh DB.");
+            cJSON_Delete (logJSON);
             return (0);
         }
     }
     else if (strcmp(msg_type, "OS") == 0) {
         if (decode_osinfo(lf->agent_id, logJSON) < 0) {
             mdebug1("Unable to send osinfo message to Wazuh DB.");
+            cJSON_Delete (logJSON);
             return (0);
         }
     }
     else if (strcmp(msg_type, "network") == 0 || strcmp(msg_type, "network_end") == 0) {
         if (decode_netinfo(lf->agent_id, logJSON) < 0) {
             merror("Unable to send netinfo message to Wazuh DB.");
+            cJSON_Delete (logJSON);
             return (0);
         }
     }
     else if (strcmp(msg_type, "process") == 0 || strcmp(msg_type, "process_end") == 0) {
         if (decode_process(lf->agent_id, logJSON) < 0) {
             mdebug1("Unable to send processes information to Wazuh DB.");
+            cJSON_Delete (logJSON);
             return (0);
         }
     }
     else {
         mdebug1("Invalid message type: %s.", msg_type);
+        cJSON_Delete (logJSON);
         return (0);
     }
 
@@ -1030,7 +1038,7 @@ int decode_process(char *agent_id, cJSON * logJSON) {
             }
         }
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
-        cJSON * pid = cJSON_GetObjectItem(logJSON, "pid");
+        cJSON * pid = cJSON_GetObjectItem(inventory, "pid");
         cJSON * name = cJSON_GetObjectItem(inventory, "name");
         cJSON * state = cJSON_GetObjectItem(inventory, "state");
         cJSON * ppid = cJSON_GetObjectItem(inventory, "ppid");
