@@ -26,8 +26,8 @@ static int __counter = 0;
 static int read_file(const char *file_name, int opts, OSMatch *restriction)
 {
     char *buf;
-    char sha1s = '+';
-    char sha256s = '+';
+    char sha1s = '-';
+    char sha256s = '-';
     struct stat statbuf;
 
     /* Check if the file should be ignored */
@@ -130,8 +130,15 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
         strncpy(sf_sum3, "xxx", 4);
         strncpy(sf256_sum, "xxx", 4);
 
+        if (opts & CHECK_SHA1SUM) {
+            sha1s = '+';
+        }
+        if (opts & CHECK_SHA256SUM) {
+            sha256s = '+';
+        }
+
         /* Generate checksums */
-        if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM)) {
+        if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) || (opts & CHECK_SHA256SUM)) {
             /* If it is a link, check if dest is valid */
 #ifndef WIN32
             if (S_ISLNK(statbuf.st_mode)) {
@@ -186,9 +193,9 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_GROUP ? '+' : '-',
                      opts & CHECK_MD5SUM ? '+' : '-',
                      sha1s,
-                     sha256s,
                      opts & CHECK_MTIME ? '+' : '-',
                      opts & CHECK_INODE ? '+' : '-',
+                     sha256s,
                      opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                      opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
@@ -206,9 +213,9 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_GROUP ? '+' : '-',
                      opts & CHECK_MD5SUM ? '+' : '-',
                      sha1s,
-                     sha256s,
                      opts & CHECK_MTIME ? '+' : '-',
                      opts & CHECK_INODE ? '+' : '-',
+                     sha256s,
                      opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                      opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                      opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,

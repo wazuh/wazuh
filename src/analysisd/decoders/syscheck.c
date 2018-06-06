@@ -379,6 +379,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 if (strcmp(oldsum.size, newsum.size) == 0) {
                     sdb.size[0] = '\0';
                 } else {
+                    changes = 1;
                     snprintf(sdb.size, OS_FLSIZE,
                              "Size changed from '%s' to '%s'\n",
                              oldsum.size, newsum.size);
@@ -413,11 +414,9 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                         if (oldsum.uname && newsum.uname) {
                             snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.uname, oldsum.uid, newsum.uname, newsum.uid);
                             os_strdup(oldsum.uname, lf->uname_before);
-                        } else
-                            snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', "
-                                    "now it is '%s'\n",
-                                    oldsum.uid, newsum.uid);
-
+                        } else {
+                            snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum.uid, newsum.uid);
+                        }
                         os_strdup(oldsum.uid, lf->owner_before);
                     }
                 }
@@ -431,11 +430,9 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                         if (oldsum.gname && newsum.gname) {
                             snprintf(sdb.owner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.gname, oldsum.gid, newsum.gname, newsum.gid);
                             os_strdup(oldsum.gname, lf->gname_before);
-                        } else
-                            snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', "
-                                    "now it is '%s'\n",
-                                    oldsum.gid, newsum.gid);
-
+                        } else {
+                            snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', now it is '%s'\n", oldsum.gid, newsum.gid);
+                        }
                         os_strdup(oldsum.gid, lf->gowner_before);
                     }
                 }
@@ -444,8 +441,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     sdb.md5[0] = '\0';
                 } else {
                     changes = 1;
-                    snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\n"
-                             "New md5sum is : '%s'\n",
+                    snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
                              oldsum.md5, newsum.md5);
                     os_strdup(oldsum.md5, lf->md5_before);
                 }
@@ -455,8 +451,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     sdb.sha1[0] = '\0';
                 } else {
                     changes = 1;
-                    snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\n"
-                             "New sha1sum is : '%s'\n",
+                    snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
                              oldsum.sha1, newsum.sha1);
                     os_strdup(oldsum.sha1, lf->sha1_before);
                 }
@@ -469,15 +464,13 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                             sdb.sha256[0] = '\0';
                         } else {
                             changes = 1;
-                            snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\n"
-                                    "New sha256sum is : '%s'\n",
+                            snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
                                     oldsum.sha256, newsum.sha256);
                             os_strdup(oldsum.sha256, lf->sha256_before);
                         }
                     } else {
                         changes = 1;
-                        snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: 'n/a'\n"
-                                "New sha256sum is : '%s'\n", newsum.sha256);
+                        snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: 'xxx'\nNew sha256sum is : '%s'\n", newsum.sha256);
                         os_strdup(oldsum.sha256, lf->sha256_before);
                     }
                 }
@@ -509,26 +502,25 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
                 /* Provide information about the file */
                 comment_buf = snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
-                         "'%.756s'\n"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s%s",
-                         f_name,
-                         sdb.size,
-                         sdb.perm,
-                         sdb.owner,
-                         sdb.gowner,
-                         sdb.md5,
-                         sdb.sha1,
-                         sdb.sha256,
-                         lf->data ? "What changed:\n" : "",
-                         lf->data ? lf->data : ""
-                        );
+                        "'%.756s'\n"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s%s",
+                        f_name,
+                        sdb.size,
+                        sdb.perm,
+                        sdb.owner,
+                        sdb.gowner,
+                        sdb.md5,
+                        sdb.sha1,
+                        sdb.sha256,
+                        lf->data ? "What changed:\n" : "",
+                        lf->data ? lf->data : "");
 
                 if(!changes) {
                     lf->data = NULL;
