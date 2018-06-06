@@ -34,7 +34,7 @@ All notable changes to this project will be documented in this file.
     - Up to 16 parallel threads to decrypt messages from agents.
     - Limit the frequency of agent keys reloading.
     - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
-- Alert from deleted files with syscheck in frecuency mode ([#617](https://github.com/wazuh/wazuh/pull/617))
+- Alert from deleted files with syscheck in frequency mode ([#617](https://github.com/wazuh/wazuh/pull/617))
 - Add Syscheck improvements ([#605](https://github.com/wazuh/wazuh/pull/605))
 
 ### Changed
