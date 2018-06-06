@@ -196,12 +196,12 @@ void OS_LogOutput(Eventinfo *lf)
         if (lf->inode_after) {
             printf("Inode: %ld\n", lf->inode_after);
         }
-        if (lf->owner_after) {
+        if (lf->owner_after && lf->uname_after) {
             if (strcmp(lf->uname_after, "") != 0) {
                 printf("User: %s (%s)\n", lf->uname_after, lf->owner_after);
             }
         }
-        if (lf->gowner_after) {
+        if (lf->gowner_after && lf->gname_after) {
             if (strcmp(lf->gname_after, "") != 0) {
                 printf("Group: %s (%s)\n", lf->gname_after, lf->gowner_after);
             }
@@ -341,12 +341,12 @@ void OS_Log(Eventinfo *lf)
         if (lf->inode_after) {
             fprintf(_aflog, "Inode: %ld\n", lf->inode_after);
         }
-        if (lf->owner_after) {
+        if (lf->owner_after && lf->uname_after) {
             if (strcmp(lf->uname_after, "") != 0) {
                 fprintf(_aflog, "User: %s (%s)\n", lf->uname_after, lf->owner_after);
             }
         }
-        if (lf->gowner_after) {
+        if (lf->gowner_after && lf->gname_after) {
             if (strcmp(lf->gname_after, "") != 0) {
                 fprintf(_aflog, "Group: %s (%s)\n", lf->gname_after, lf->gowner_after);
             }
