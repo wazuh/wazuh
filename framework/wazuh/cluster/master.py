@@ -38,7 +38,7 @@ class APIRequestQueue(ClusterThread):
         self.manager = manager
 
     def run(self):
-        result = dapi.distribute_function(self.request)
+        result = dapi.distribute_function(input_json=self.request, from_master=True)
         self.manager.server.send_request(client_name=self.manager.name, command='dapi_res', data=self.id + ' ' + result)
 
 

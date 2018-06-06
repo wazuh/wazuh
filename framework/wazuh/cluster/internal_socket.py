@@ -26,7 +26,7 @@ class InternalSocketHandler(communication.ServerHandler):
 
     def process_request(self, command, data):
         if command == 'hello':
-            self.server.add_client(data, '', self)
+            self.name = self.server.add_client(data, '', self)
             return None
         else:
             return ['err', json.dumps({'err', "Received an unknown command '{}'".format(command)})]

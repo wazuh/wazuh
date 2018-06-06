@@ -13,7 +13,7 @@ from itertools import groupby
 from operator import itemgetter
 from multiprocessing.dummy import Pool as ThreadPool
 
-def distribute_function(input_json, pretty=False, debug=False):
+def distribute_function(input_json, pretty=False, debug=False, from_master=False):
     node_info = cluster.get_node()
     request_type = rq.functions[input_json['function']]['type']
 
@@ -24,7 +24,7 @@ def distribute_function(input_json, pretty=False, debug=False):
         return execute_local_request(input_json, pretty, debug)
 
     elif request_type == 'distributed_master' and node_info['type'] == 'master':
-        return forward_request(input_json, node_info['node'], pretty)
+        return forward_request(input_json, node_info['node'], pretty, from_master)
     else:
         return execute_remote_request(input_json, pretty)
 
@@ -75,24 +75,28 @@ def execute_remote_request(input_json, pretty):
     return print_json(data=data, pretty=pretty, error=error)
 
 
-def forward_request(input_json, master_name, pretty):
+def forward_request(input_json, master_name, pretty, from_master):
     def forward_list(item):
         name, agent_ids = item
         if agent_ids:
             input_json['arguments']['agent_id'] = agent_ids
         command = 'dapi_forward {}'.format(name) if name != master_name else 'dapi'
-        return i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+        if command == 'dapi' and from_master:
+            return json.loads(distribute_function(input_json))
+        else:
+            return i_s.execute('{} {}'.format(command, json.dumps(input_json)))
 
 
     node_name, is_list = get_solver_node(input_json, master_name)
     input_json['from_cluster'] = True
 
     if is_list:
-        pool = ThreadPool()
+        pool = ThreadPool(len(node_name))
         responses = pool.map(forward_list, node_name.items())
         pool.close()
         pool.join()
-        response = merge_results(responses)
+        final_json = {}
+        response = merge_results(responses, final_json)
     else:
         command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
         response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
@@ -120,10 +124,11 @@ def get_solver_node(input_json, master_name):
 
             # add non existing ids in the master's dictionary entry
             non_existent_ids = list(set(input_json['arguments']['agent_id']) - set(map(itemgetter('id'), agents)))
-            if master_name in node_name:
-                node_name[master_name].extend(non_existent_ids)
-            else:
-                node_name[master_name] = non_existent_ids
+            if non_existent_ids:
+                if master_name in node_name:
+                    node_name[master_name].extend(non_existent_ids)
+                else:
+                    node_name[master_name] = non_existent_ids
 
             return node_name, True
         # if the request is only for one agent
@@ -138,7 +143,7 @@ def get_solver_node(input_json, master_name):
         return node_name, True
 
 
-def merge_results(responses, final_json = {}):
+def merge_results(responses, final_json):
     """
     Merge results from an API call.
 
@@ -149,6 +154,7 @@ def merge_results(responses, final_json = {}):
     The priorities are defined in a list of tuples. The first item of the tuple is the element which has more priority.
 
     :param responses: list of results from each node
+    :param final_json: JSON to return.
     :return: single JSON with the final result
     """
     priorities = {
