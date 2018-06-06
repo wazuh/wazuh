@@ -191,12 +191,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
             } while (status < 0);
 
-        } else if (ciscat->state.next_time > time_start) {
-
-            mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", ciscat->state.next_time - time_start);
-            delay(1000 * ciscat->state.next_time - time_start);
-
         } else if (ciscat->scan_wday >= 0) {
 
             time_sleep = get_time_to_day(ciscat->scan_wday, ciscat->scan_time);
@@ -210,6 +204,12 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
             delay(1000 * time_sleep);
+
+        } else if (ciscat->state.next_time > time_start) {
+
+            mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", ciscat->state.next_time - time_start);
+            delay(1000 * ciscat->state.next_time - time_start);
 
         }
     }
