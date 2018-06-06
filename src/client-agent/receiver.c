@@ -20,6 +20,7 @@ static FILE *fp = NULL;
 static char file_sum[34] = "";
 static char file[OS_SIZE_1024 + 1] = "";
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
+static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge files";
 
 // TODO: Remove calls for WIN32
 
@@ -235,9 +236,12 @@ int receive_msg()
                                 }
 
                                 if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
-                                    char *error_msg = "Could not unmerge files.";
+                                    char msg_output[OS_MAXSTR];
+                                    char *error_msg = "Could not unmerge files";
+                                    
+                                    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s:",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);
                                     merror("%s",error_msg);
-                                    send_msg(error_msg, -1);
+                                    send_msg(msg_output, -1);
                                 }
                                 else if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                     if (agt->flags.auto_restart) {
