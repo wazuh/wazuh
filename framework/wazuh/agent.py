@@ -803,23 +803,54 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all",
-                            node_name="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                            version="all", older_than="all"):
+    def filter_agents_by_status(status, request, query):
+        limit_seconds = 1830  # 600*3 + 30
+        result = datetime.now() - timedelta(seconds=limit_seconds)
+        request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
+        list_status = status.split(',')
+        query += ' AND ('
+
+        for status in list_status:
+            status = status.lower()
+            if status == 'active':
+                query += '((last_keepalive >= :time_active AND version IS NOT NULL) or id = 0) OR '
+            elif status == 'disconnected':
+                query += 'last_keepalive < :time_active OR '
+            elif status == "never connected" or status == "neverconnected":
+                query += 'last_keepalive IS NULL AND id != 0 OR '
+            elif status == 'pending':
+                query += 'last_keepalive IS NOT NULL AND version IS NULL OR '
+            else:
+                raise WazuhException(1729, status)
+        query = query[:-3] + ")"  # Remove the last OR from query
+
+        return query
+
+
+    @staticmethod
+    def filter_agents_by_timeframe(older_than, request, query):
+        request['older_than'] = get_timeframe_in_seconds(older_than)
+        query += " AND ("
+        # If the status is not neverconnected, compare older_than with the last keepalive:
+        query += "(last_keepalive IS NOT NULL AND CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
+        query += "OR "
+        # If the status is neverconnected, compare older_than with the date add:
+        query += "(last_keepalive IS NULL AND id != 0 AND CAST(strftime('%s', date_Add) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
+        query += ")"
+        return query
+
+
+    @staticmethod
+    def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
         """
         Gets a list of available agents with basic attributes.
-        :param node_name: Filters by agents connected to the cluster node "node_name"
-        :param version: Filters by agent version.
-        :param status: Filters by agent status: Active, Disconnected or Never connected. Multiples statuses separated by commas.
-        :param os_platform: Filters by OS platform.
-        :param os_version: Filters by OS version.
-        :param manager_host: Filters by manager hostname to which agents are connected.
+
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
         :param search: Looks for items with the specified string.
-        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never connected agents, uses the register date.
+        :param filters: Defines field filters required by the user.
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
@@ -856,58 +887,25 @@ class Agent:
         # save the fields that the user has selected
         user_select_fields = (set(select['fields']) if select else min_select_fields.copy()) | {'id'}
 
-        if status != "all":
-            limit_seconds = 1830 # 600*3 + 30
-            result = datetime.now() - timedelta(seconds=limit_seconds)
-            request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-            list_status = status.split(',')
-            query += ' AND ('
-
-            for status in list_status:
-                status = status.lower()
-                if status == 'active':
-                    query += '((last_keepalive >= :time_active AND version IS NOT NULL) or id = 0) OR '
-                elif status == 'disconnected':
-                    query += 'last_keepalive < :time_active OR '
-                elif status == "never connected" or status == "neverconnected":
-                    query += 'last_keepalive IS NULL AND id != 0 OR '
-                elif status == 'pending':
-                    query += 'last_keepalive IS NOT NULL AND version IS NULL OR '
-                else:
-                    raise WazuhException(1729, status)
-            query = query[:-3] + ")" #Remove the last OR from query
-
-        if older_than != 'all':
-            request['older_than'] = get_timeframe_in_seconds(older_than)
-            query += " AND ("
-            # If the status is not neverconnected, compare older_than with the last keepalive:
-            query += "(last_keepalive IS NOT NULL AND CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
-            query += "OR "
-            # If the status is neverconnected, compare older_than with the date add:
-            query += "(last_keepalive IS NULL AND id != 0 AND CAST(strftime('%s', date_Add) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
-            query += ")"
-
-        if os_platform != "all":
-            request['os_platform'] = os_platform
-            query += ' AND os_platform = :os_platform'
-        if os_version != "all":
-            request['os_version'] = os_version
-            query += ' AND os_version = :os_version'
-        if manager_host != "all":
-            request['manager_host'] = manager_host
-            query += ' AND manager_host = :manager_host'
-        if version != "all":
-            request['version'] = re.sub( r'([a-zA-Z])([v])', r'\1 \2', version )
-            query += ' AND version = :version'
-        if node_name != "all":
-            if isinstance(node_name,list):
-                node_list = [name.lower() for name in node_name]
-                query += ' AND node_name COLLATE NOCASE IN ({})'.format(','.join([":node_name{}".format(x) for x in range(len(node_list))]))
-                key_list = [":node_name{}".format(x) for x in range(len(node_list))]
-                request.update({x[1:]: y for x, y in zip(key_list, node_list)})
+        # add special filters to the database query
+        for filter_name, db_filter in filters.items():
+            if filter_name == "status":
+                query = Agent.filter_agents_by_status(db_filter, request, query)
+            elif filter_name == "older_than":
+                query = Agent.filter_agents_by_timeframe(db_filter, request, query)
             else:
-                request['node_name'] = node_name.lower()
-                query += ' AND node_name = :node_name COLLATE NOCASE'
+                main_filter_name = filter_name if filter_name != "group" else "`group`"
+                if isinstance(db_filter, list):
+                    filter_list = [name.lower() if filter_name != "version"
+                                                else re.sub( r'([a-zA-Z])([v])', r'\1 \2', name)
+                                  for name in db_filter]
+                    query += ' AND {} COLLATE NOCASE IN ({})'.format(main_filter_name,
+                        ','.join([":{}{}".format(filter_name, x) for x in range(len(filter_list))]))
+                    key_list = [":{}{}".format(filter_name, x) for x in range(len(filter_list))]
+                    request.update({x[1:]: y for x, y in zip(key_list, filter_list)})
+                else: # str
+                    request[filter_name] = db_filter if filter_name != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', db_filter)
+                    query += ' AND {} = :{}'.format(main_filter_name, filter_name)
 
         # Search
         if search:
