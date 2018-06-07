@@ -103,7 +103,7 @@ def get_healthcheck(filter_node=None):
     request="get_health {}".format(filter_node)
     return __execute(request)
 
-def get_agents(filter_status=None, filter_node=None, offset=0, limit=None, sort=None, search=None):
+def get_agents(filter_status=None, filter_node=None):
     filter_status_f = "all"
     filter_node_f = "all"
 
@@ -123,16 +123,13 @@ def get_agents(filter_status=None, filter_node=None, offset=0, limit=None, sort=
     if filter_node:
         filter_node_f = [node_name.lower() for node_name in filter_node]
 
-    internal_limit = common.database_limit if limit > common.database_limit or not limit else limit
-    request = "get_agents {}%--%{}%--%{}%--%{}%--%{}%--%{}"
+    internal_limit = common.database_limit
+    request = "get_agents {}%--%{}%--%{}%--%{}"
     current_offset = 0
     continue_request = True
     while continue_request:
-        response = __execute(request.format(filter_status_f, filter_node_f, current_offset+offset, internal_limit, sort, search))
-        if not limit:
-            continue_request = (response and len(response['items']) > 0)
-        else:
-            continue_request = (current_offset < limit)
+        response = __execute(request.format(filter_status_f, filter_node_f, current_offset, internal_limit))
+        continue_request = (response and len(response['items']) > 0)
         current_offset += internal_limit
         yield response
 
