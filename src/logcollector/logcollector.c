@@ -283,6 +283,10 @@ void LogCollectorStart()
 
         /* Check which file is available */
         for (i = 0; i <= max_file; i++) {
+            if (logff[i].duplicated) {
+                continue;
+            }
+
             if (!logff[i].fp) {
                 /* Run the command */
                 if (logff[i].command && (f_check % 2)) {
