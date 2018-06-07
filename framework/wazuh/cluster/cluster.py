@@ -448,7 +448,9 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
     if search:
         sort=ast.literal_eval(search)
 
-    agents = Agent.get_agents_overview(status=filter_status, node_name=filter_nodes , select={'fields':['id','ip','name','status','node_name']}, limit=limit, offset=offset, sort=sort, search=search)
+    agents = Agent.get_agents_overview(filters={'status':filter_status, 'node_name':filter_nodes},
+                                       select={'fields':['id','ip','name','status','node_name']}, limit=limit,
+                                       offset=offset, sort=sort, search=search)
     return agents
 
 

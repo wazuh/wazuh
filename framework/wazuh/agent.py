@@ -1223,7 +1223,7 @@ class Agent:
         :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary (agents that cannot been removed), and a message.
         """
 
-        agents = Agent.get_agents_overview(status = status, older_than = older_than)
+        agents = Agent.get_agents_overview(filters={'status':status, 'older_than': older_than})
         id_purgeable_agents = [agent['id'] for agent in agents['items']]
 
         failed_ids = []
@@ -1595,7 +1595,7 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
         """
         Gets the agents in a group
 
@@ -1606,7 +1606,8 @@ class Agent:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Agent.get_agent_group(group_id=None, offset=offset, limit=limit, sort=sort, search=search, select=select)
+        return Agent.get_agent_group(group_id=None, offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                     filters=filters)
 
 
     @staticmethod
