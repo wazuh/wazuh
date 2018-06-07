@@ -841,6 +841,38 @@ class Agent:
 
 
     @staticmethod
+    def filter_query(filters, request, query):
+        """
+        Add filters to a database query
+
+        :param filters: Dictionary which key is the name of the field and the value is the value to filter.
+        :param request: Request dictionary for sqlite3
+        :param query: Database query
+        :return: Updated database query
+        """
+        for filter_name, db_filter in filters.items():
+            if filter_name == "status":
+                query = Agent.filter_agents_by_status(db_filter, request, query)
+            elif filter_name == "older_than":
+                query = Agent.filter_agents_by_timeframe(db_filter, request, query)
+            else:
+                main_filter_name = filter_name if filter_name != "group" else "`group`"
+                if isinstance(db_filter, list):
+                    filter_list = [name.lower() if filter_name != "version"
+                                                else re.sub( r'([a-zA-Z])([v])', r'\1 \2', name)
+                                  for name in db_filter]
+                    query += ' AND {} COLLATE NOCASE IN ({})'.format(main_filter_name,
+                        ','.join([":{}{}".format(filter_name, x) for x in range(len(filter_list))]))
+                    key_list = [":{}{}".format(filter_name, x) for x in range(len(filter_list))]
+                    request.update({x[1:]: y for x, y in zip(key_list, filter_list)})
+                else: # str
+                    request[filter_name] = db_filter if filter_name != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', db_filter)
+                    query += ' AND {} = :{}'.format(main_filter_name, filter_name)
+
+        return query
+
+
+    @staticmethod
     def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
         """
         Gets a list of available agents with basic attributes.
@@ -888,24 +920,7 @@ class Agent:
         user_select_fields = (set(select['fields']) if select else min_select_fields.copy()) | {'id'}
 
         # add special filters to the database query
-        for filter_name, db_filter in filters.items():
-            if filter_name == "status":
-                query = Agent.filter_agents_by_status(db_filter, request, query)
-            elif filter_name == "older_than":
-                query = Agent.filter_agents_by_timeframe(db_filter, request, query)
-            else:
-                main_filter_name = filter_name if filter_name != "group" else "`group`"
-                if isinstance(db_filter, list):
-                    filter_list = [name.lower() if filter_name != "version"
-                                                else re.sub( r'([a-zA-Z])([v])', r'\1 \2', name)
-                                  for name in db_filter]
-                    query += ' AND {} COLLATE NOCASE IN ({})'.format(main_filter_name,
-                        ','.join([":{}{}".format(filter_name, x) for x in range(len(filter_list))]))
-                    key_list = [":{}{}".format(filter_name, x) for x in range(len(filter_list))]
-                    request.update({x[1:]: y for x, y in zip(key_list, filter_list)})
-                else: # str
-                    request[filter_name] = db_filter if filter_name != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', db_filter)
-                    query += ' AND {} = :{}'.format(main_filter_name, filter_name)
+        query = Agent.filter_query(filters, request, query)
 
         # Search
         if search:
@@ -1488,7 +1503,7 @@ class Agent:
             return False
 
     @staticmethod
-    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
         """
         Gets the agents in a group
 
@@ -1536,6 +1551,8 @@ class Agent:
             if dependent in select_fields:
                 db_select_fields |= dependent_fields
         db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
+
+        query = Agent.filter_query(filters, request, query)
 
         # Search
         if search:
