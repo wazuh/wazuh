@@ -376,7 +376,7 @@ static void c_files()
         groups[p_size]->group = strdup(entry->d_name);
         groups[p_size + 1] = NULL;
         c_group(entry->d_name, subdir, &groups[p_size]->f_sum);
-        w_free_strings(subdir);
+        free_strarray(subdir);
         p_size++;
     }
 

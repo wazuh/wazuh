@@ -1,6 +1,25 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.3.0]
+
+### Added
+
+- Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
+- Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
+- Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
+- Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
+- Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
+
+### Changed
+
+- Add default value for option -x in agent_control tool.
+
+### Fixed
+
+- Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
+- Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
+
 ## [v3.2.4]
 
 ### Fixed
@@ -145,7 +164,7 @@ All notable changes to this project will be documented in this file.
 - Fixed predecoder hostname field in JSON event output.
 - Several fixes and improvements in cluster.
 
-## [v3.1.0]
+## [v3.1.0] 2017-12-22
 
 ### Added
 

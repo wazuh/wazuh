@@ -1230,7 +1230,9 @@ class Agent:
         :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary (agents that cannot been removed), and a message.
         """
 
-        agents = Agent.get_agents_overview(filters={'status':status, 'older_than': older_than})
+
+        agents = Agent.get_agents_overview(filters={'status':status, 'older_than': older_than}, limit = None)
+        
         id_purgeable_agents = [agent['id'] for agent in agents['items']]
 
         failed_ids = []
