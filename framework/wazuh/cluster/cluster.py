@@ -444,9 +444,12 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
     if not limit:
         limit = common.database_limit
 
-    return Agent.get_agents_overview(status=filter_status, node_name=filter_nodes , select={'fields':['id','ip','name','status','node_name']}, limit=limit, offset=offset)
+    agents = Agent.get_agents_overview(filters={'status':filter_status, 'node_name':filter_nodes},
+                                       select={'fields':['id','ip','name','status','node_name']}, limit=limit,
+                                       offset=offset)
+    return agents
 
-
+  
 def _check_removed_agents(new_client_keys):
     """
     Function to delete agents that have been deleted in a synchronized

@@ -560,7 +560,7 @@ class MasterManager(Server):
 
         # Get active agents by node
         for node_name in clients_info.keys():
-            clients_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(status='Active', node_name=node_name)['totalItems']
+            clients_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
 
         health_info = {"n_connected_nodes":n_connected_nodes, "nodes": clients_info}
         return health_info
