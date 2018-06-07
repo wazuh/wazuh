@@ -238,6 +238,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
                     logf = log_config->config;
                     memset(logf + pl, 0, 2 * sizeof(logreader));
+                    labels_z = 0;
                 }
 
 
@@ -395,7 +396,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             labels = logf[glob_set - 1].labels;
             logf[glob_set - 1].labels = NULL;
         } else {
-            return (OS_INVALID);
+            labels = NULL;
         }
 
         /* The last entry is always null on glob */
@@ -429,7 +430,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 os_strdup(outformat, logf[i].outformat);
             }
 
-            if (logf[i].labels == NULL) {
+            if (labels && !logf[i].labels) {
                 logf[i].labels = labels_dup(labels);
             }
         }
