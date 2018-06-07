@@ -15,13 +15,14 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, move
+from shutil import copyfile, move, copytree
 from time import time
 from platform import platform
 from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat
 from time import time, sleep
 import socket
 import hashlib
+from operator import setitem
 import re
 import fcntl
 from json import loads
