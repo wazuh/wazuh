@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+ #ifndef WIN32
+
 #include <shared.h>
 
 // Open a stream from a process without shell (execvp form)
@@ -134,3 +136,5 @@ int wpclose(wfd_t * wfd) {
     free(wfd);
     return pid == -1 ? -1 : wstatus;
 }
+
+#endif
