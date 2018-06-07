@@ -73,7 +73,7 @@ class Agent:
     OSSEC Agent object.
     """
 
-    fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive',
+    fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add',
               'group': 'group', 'merged_sum': 'merged_sum', 'config_sum': 'config_sum',
@@ -150,18 +150,19 @@ class Agent:
         query = "SELECT {0} FROM agent WHERE id = :id"
         request = {'id': self.id}
 
-        valid_select_fields = self.fields.values()
-        # we need to retrieve the fields that are used to compute other fields from the DB
-        select_fields = {'id', 'version', 'last_keepalive'}
+        valid_select_fields = set(self.fields.values())
 
         # Select
         if select:
             select['fields'] = list(map(lambda x: self.fields[x] if x in self.fields else x, select['fields']))
-            if not set(select['fields']).issubset(valid_select_fields):
-                incorrect_fields = list(map(lambda x: str(x), set(select['fields']) - valid_select_fields))
+            select_fields_set = set(select['fields'])
+            if not select_fields_set.issubset(valid_select_fields):
+                incorrect_fields = list(map(lambda x: str(x), select_fields_set - valid_select_fields))
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
-                        format(valid_select_fields, incorrect_fields))
-            select_fields |= set(select['fields'])
+                        format(self.fields.keys(), incorrect_fields))
+
+            select_fields = {'id'} | select_fields_set if 'status' not in select_fields_set \
+                                                       else select_fields_set | {'id', 'last_keepalive', 'version'}
         else:
             select_fields = valid_select_fields
 
