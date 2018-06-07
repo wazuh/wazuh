@@ -428,7 +428,7 @@ def clean_up(node_name=""):
 #
 # Agents
 #
-def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=common.database_limit, sort=None, search=None):
+def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=common.database_limit):
     """
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
@@ -443,13 +443,8 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
         filter_nodes=ast.literal_eval(filter_nodes)
     if not limit:
         limit = common.database_limit
-    if sort:
-        sort=ast.literal_eval(sort)
-    if search:
-        sort=ast.literal_eval(search)
 
-    agents = Agent.get_agents_overview(status=filter_status, node_name=filter_nodes , select={'fields':['id','ip','name','status','node_name']}, limit=limit, offset=offset, sort=sort, search=search)
-    return agents
+    return Agent.get_agents_overview(status=filter_status, node_name=filter_nodes , select={'fields':['id','ip','name','status','node_name']}, limit=limit, offset=offset)
 
 
 def _check_removed_agents(new_client_keys):

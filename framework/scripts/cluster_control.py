@@ -4,7 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from os.path import dirname, basename
-from sys import argv, exit, path
+from sys import argv, exit, path, stdout
 from itertools import chain
 import argparse
 import logging
@@ -245,14 +245,21 @@ def sync_master(filter_node):
 
 ### Get agents
 def print_agents(filter_status=None, filter_node=None):
-    agents = __execute(my_function=get_agents, my_args=(filter_status, filter_node,))
-    data = [[agent['id'], agent['ip'], agent['name'], agent['status'],agent['node_name']] for agent in agents['items']]
-    headers = ["ID", "Address", "Name", "Status", "Node"]
-    __print_table(data, headers, True)
+    gen_agents = get_agents(filter_status, filter_node)
+    total_agents = 0
+
+    for agents in gen_agents:
+        table_str = ""
+        total_agents += len(agents['items'])
+        for agent in agents['items']:
+            table_str += "  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}\n".format(agent['id'], agent['name'], agent['ip'], agent['status'], agent['node_name'])
+        stdout.write(table_str)
+        stdout.flush()
+
     if filter_status:
-        print ("Found {} agent(s) with status '{}'.".format(len(agents['items']), "".join(filter_status)))
+        print ("\nFound {} agent(s) with status '{}'.".format(total_agents, filter_status))
     else:
-        print ("Listing {} agent(s).".format(len(agents['items'])))
+        print ("\nListing {} agent(s).".format(total_agents))
 
 ### Get healthchech
 def print_healthcheck(conf, more=False, filter_node=None):
