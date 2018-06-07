@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.3.2]
+
+### Fixed
+
+- Fixed active-responses.log definition path on Windows configuration. ([#739](https://github.com/wazuh/wazuh/pull/739))
+
 ## [v3.3.1]
 
 ### Added
@@ -61,6 +67,7 @@ All notable changes to this project will be documented in this file.
 - Fixed bug getting the agents in cluster control. ([#741](https://github.com/wazuh/wazuh/pull/741))
 - Prevent Logcollector from reporting an error when a path with wildcards matches no files.
 - Fixes the feature to group with the option multi-line. ([#754](https://github.com/wazuh/wazuh/pull/754))
+
 
 ## [v3.2.4]
 
