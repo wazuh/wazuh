@@ -4,7 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from os.path import dirname, basename
-from sys import argv, exit, path
+from sys import argv, exit, path, stdout
 from itertools import chain
 import argparse
 import logging
@@ -33,8 +33,6 @@ try:
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
-
-import sys
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
@@ -255,8 +253,8 @@ def print_agents(filter_status=None, filter_node=None):
         total_agents += len(agents['items'])
         for agent in agents['items']:
             table_str += "   Node: {}, ID: {}, Name: {}, IP: {}, Status: {}\n".format(agent['node_name'], agent['id'], agent['name'], agent['ip'], agent['status'])
-        sys.stdout.write(table_str)
-        sys.stdout.flush()
+        stdout.write(table_str)
+        stdout.flush()
 
     if filter_status:
         print ("\nFound {} agent(s) with status '{}'.".format(total_agents, filter_status))
