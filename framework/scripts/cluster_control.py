@@ -252,7 +252,7 @@ def print_agents(filter_status=None, filter_node=None):
 
     for agents in gen_agents:
         table_str = ""
-        total_agents = agents['totalItems']
+        total_agents += len(agents['items'])
         for agent in agents['items']:
             table_str += "   Node: {}, ID: {}, Name: {}, IP: {}, Status: {}\n".format(agent['node_name'], agent['id'], agent['name'], agent['ip'], agent['status'])
         sys.stdout.write(table_str)
