@@ -855,6 +855,9 @@ class Agent:
         :return: Updated database query
         """
         for filter_name, db_filter in filters.items():
+            if db_filter == "all":
+                continue
+
             if filter_name == "status":
                 query = Agent.filter_agents_by_status(db_filter, request, query)
             elif filter_name == "older_than":
