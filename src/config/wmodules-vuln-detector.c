@@ -157,7 +157,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                                 if (version[k] == ',' || out) {
                                     version[k] = '\0';
                                     if (!strcmp(version, "12")) {
-                                        vulnerability_detector->flags.u_flags.precise = 1;
+                                        mwarn("Ubuntu 12 is not currrently supported for vulnerability-detector wodle.");
+                                        //vulnerability_detector->flags.u_flags.precise = 1;
                                     } else if (!strcmp(version, "14")) {
                                         vulnerability_detector->flags.u_flags.trusty = 1;
                                     } else if (!strcmp(version, "16")) {
@@ -200,7 +201,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                                 if (version[k] == ',' || out) {
                                     version[k] = '\0';
                                     if (!strcmp(version, "5")) {
-                                        vulnerability_detector->flags.u_flags.rh5 = 1;
+                                        mwarn("CentOS/RedHat 5 is not currrently supported for vulnerability-detector wodle.");
+                                        //vulnerability_detector->flags.u_flags.rh5 = 1;
                                     } else if (!strcmp(version, "6")) {
                                         vulnerability_detector->flags.u_flags.rh6 = 1;
                                     } else if (!strcmp(version, "7")) {

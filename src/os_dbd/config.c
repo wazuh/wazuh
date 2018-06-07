@@ -39,6 +39,7 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
 
     /* Read configuration */
     if (ReadConfig(modules, cfgfile, tmp_config, db_config) < 0) {
+        free(tmp_config);
         return (OS_INVALID);
     }
 
@@ -109,4 +110,3 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
 
     return (1);
 }
-

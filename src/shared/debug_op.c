@@ -477,3 +477,18 @@ int isChroot()
 {
     return (chroot_flag);
 }
+
+#ifdef WIN32
+char * win_strerror(unsigned long error) {
+    static TCHAR messageBuffer[4096];
+    LPSTR end;
+
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, messageBuffer, sizeof(messageBuffer) / sizeof(TCHAR), NULL);
+
+    if (end = strchr(messageBuffer, '\r'), end) {
+        *end = '\0';
+    }
+
+    return messageBuffer;
+}
+#endif

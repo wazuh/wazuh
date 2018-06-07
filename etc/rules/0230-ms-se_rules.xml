@@ -17,28 +17,28 @@
   <rule id="7710" level="12">
     <if_sid>7701</if_sid>
     <id>^1118$|^1119$</id>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Virus detected, but unable to remove.</description>
   </rule>
 
   <rule id="7711" level="7">
     <if_sid>7701</if_sid>
     <id>^1107$</id>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Virus detected and properly removed.</description>
   </rule>
 
   <rule id="7712" level="7">
     <if_sid>7701</if_sid>
     <id>^1119$|^1118$|^1117$|^1116$</id>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Virus detected.</description>
   </rule>
 
    <rule id="7713" level="7">
     <if_sid>7701</if_sid>
     <id>^1015$</id>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Suspicious activity detected.</description>
   </rule>
 
@@ -46,20 +46,20 @@
     <if_sid>7701</if_sid>
     <id>^5007$</id>
     <description>Microsoft Security Essentials - Configuration changed.</description>
-    <group>policy_changed,pci_dss_10.2.7,pci_dss_10.6.1,gpg13_4.4,</group>
+    <group>policy_changed,pci_dss_10.2.7,pci_dss_10.6.1,gpg13_4.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="7721" level="9">
     <if_sid>7701</if_sid>
     <id>^5008$</id>
-    <group>pci_dss_10.6.1,gpg13_4.14,</group>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Service failed.</description>
   </rule>
 
   <rule id="7722" level="9">
     <if_sid>7701</if_sid>
     <id>^3002$</id>
-    <group>pci_dss_10.6.1,gpg13_4.14,</group>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Real time protection failed.</description>
   </rule>
 
@@ -72,35 +72,35 @@
   <rule id="7724" level="8">
     <if_sid>7701</if_sid>
     <id>^2004$</id>
-    <group>pci_dss_10.6.1,gpg13_4.14,gpg13_4.4,gpg13_,</group>
+    <group>pci_dss_10.6.1,gpg13_4.14,gpg13_4.4,gpg13_,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Loading definitions failed. Using last good set.</description>
   </rule>
 
   <rule id="7725" level="8">
     <if_sid>7701</if_sid>
     <id>^2003$</id>
-    <group>pci_dss_10.6.1,gpg13_4.14,</group>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Engine update failed.</description>
   </rule>
 
   <rule id="7726" level="8">
     <if_sid>7701</if_sid>
     <id>^2001$</id>
-    <group>pci_dss_10.6.1,gpg13_4.14,</group>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Definitions update failed.</description>
   </rule>
 
   <rule id="7727" level="7">
     <if_sid>7701</if_sid>
     <id>^1005$</id>
-    <group>pci_dss_10.6.1,gpg13_4.4,</group>
+    <group>pci_dss_10.6.1,gpg13_4.4,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Scan error. Scan has stopped.</description>
   </rule>
 
   <rule id="7728" level="5">
     <if_sid>7701</if_sid>
     <id>^1002$</id>
-    <group>pci_dss_10.6.1,gpg13_4.14,</group>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,</group>
     <description>Microsoft Security Essentials - Scan stopped before completion.</description>
   </rule>
 
@@ -114,11 +114,13 @@
 
   <rule id="7750" level="10" frequency="6" timeframe="240">
     <if_matched_sid>7711</if_matched_sid>
+    <group>gdpr_IV_35.7.d,</group>
     <description>Multiple Microsoft Security Essentials AV warnings detected.</description>
   </rule>
 
   <rule id="7751" level="10" frequency="6" timeframe="240">
     <if_matched_sid>7712</if_matched_sid>
+    <group>gdpr_IV_35.7.d,</group>
     <description>Multiple Microsoft Security Essentials AV warnings detected.</description>
   </rule>
 </group>

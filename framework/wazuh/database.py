@@ -79,7 +79,7 @@ class Connection:
                     raise WazuhException(2003, error_text)
 
             except Exception as e:
-                raise Exception (str(e))
+                raise WazuhException (2003, str(e))
 
             if n_attempts > self.max_attempts:
                 raise WazuhException(2002, error_text)

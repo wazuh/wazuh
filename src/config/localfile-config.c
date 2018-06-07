@@ -96,7 +96,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             char *key_value = 0;
             int j;
-            for (j = 0; node[i]->attributes[j]; j++) {
+            for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                 if (strcmp(node[i]->attributes[j], "key") == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
                         key_value = node[i]->values[j];
@@ -294,35 +294,27 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, "full_command") == 0) {
             } else if (strcmp(logf[pl].logformat, "audit") == 0) {
             } else if (strncmp(logf[pl].logformat, "multi-line", 10) == 0) {
-                int x = 0;
-                logf[pl].logformat += 10;
 
-                while (logf[pl].logformat[0] == ' ') {
-                    logf[pl].logformat++;
+                char *p_lf = logf[pl].logformat;
+                p_lf += 10;
+
+                while (p_lf[0] == ' ') {
+                    p_lf++;
                 }
 
-                if (logf[pl].logformat[0] != ':') {
+                if (*p_lf != ':') {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
-                logf[pl].logformat++;
+                p_lf++;
 
-                while (*logf[pl].logformat == ' ') {
-                    logf[pl].logformat++;
-                }
+                char *end;
 
-                while (logf[pl].logformat[x] >= '0' && logf[pl].logformat[x] <= '9') {
-                    x++;
-                }
-
-                while (logf[pl].logformat[x] == ' ') {
-                    x++;
-                }
-
-                if (logf[pl].logformat[x] != '\0') {
+                if (logf[pl].linecount = strtol(p_lf, &end, 10), end == p_lf || logf[pl].linecount < 1 ) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
+
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
             } else {

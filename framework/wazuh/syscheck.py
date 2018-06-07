@@ -220,7 +220,7 @@ def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, s
             allowed_sort_fields = fields.keys()
              # Check if every element in sort['fields'] is in allowed_sort_fields
             if not set(sort['fields']).issubset(allowed_sort_fields):
-                uncorrect_fields = map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields))
+                uncorrect_fields = list(map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields)))
                 raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, uncorrect_fields))
 
             query += ' ORDER BY ' + ','.join(['{0} {1}'.format(fields[i], sort['order']) for i in sort['fields']])

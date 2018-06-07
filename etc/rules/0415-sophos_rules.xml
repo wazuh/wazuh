@@ -18,23 +18,27 @@
 		<if_sid>82100</if_sid>
 		<match>Scan 'Sophos Cloud Scheduled Scan' started</match>
 		<description>Sophos Cloud Scheduled Scan started</description>
+		<group></group>
 	</rule>
 
 	<rule id="82102" level="3">
 		<if_sid>82100</if_sid>
 		<match>Scan 'Sophos Cloud Scheduled Scan' completed</match>
 		<description>Sophos Cloud Scheduled Scan completed</description>
+		<group></group>
 	</rule>
 
 	<rule id="82103" level="3">
 		<if_sid>82100</if_sid>
 		<match>has started</match>
 		<description>User has started on-access scanning for this machine.</description>
+		<group></group>
 	</rule>
 	<rule id="82104" level="3">
 		<if_sid>82100</if_sid>
 		<match>has stopped</match>
 		<description>User has stopped on-access scanning for this machine.</description>
+		<group></group>
 	</rule>
 
 	<rule id="82105" level="3">

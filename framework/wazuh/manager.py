@@ -19,19 +19,27 @@ def status():
     :return: Array of dictionaries (keys: status, daemon).
     """
 
-    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted', 
-                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild', 
-                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd', 
+    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted',
+                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild',
+                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd',
                  'wazuh-clusterd']
 
     data = {}
     for process in processes:
-        process_path = glob("{0}/var/run/{1}-*.pid".format(common.ossec_path, process))
+        data[process] = 'stopped'
 
-        if process_path and exists(process_path[0]):
-            data[process] = 'running'
-        else:
-            data[process] = 'stopped'
+        process_pid_files = glob("{0}/var/run/{1}-*.pid".format(common.ossec_path, process))
+
+        for pid_file in process_pid_files:
+            m = re.match(r'.+\-(\d+)\.pid$', pid_file)
+
+            pid = "NA"
+            if m and m.group(1):
+                pid = m.group(1)
+
+            if exists(pid_file) and exists('/proc/{0}'.format(pid)):
+                data[process] = 'running'
+                break
 
     return data
 
@@ -76,36 +84,41 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     statfs_error = "ERROR: statfs('******') produced error: No such file or directory"
 
     for line in tail(common.ossec_log, 2000):
-        date, log_category, level, description = __get_ossec_log_fields(line)
+        log_fields = __get_ossec_log_fields(line)
+        if log_fields:
+            date, log_category, level, description = log_fields
 
-        try:
-            log_date = datetime.strptime(date, '%Y/%m/%d %H:%M:%S')
-        except ValueError as e:
-            continue
-
-        if log_date < first_date:
-            continue
-
-        if category != 'all':
-            if log_category:
-                if log_category != category:
-                    continue
-            else:
+            try:
+                log_date = datetime.strptime(date, '%Y/%m/%d %H:%M:%S')
+            except ValueError as e:
                 continue
 
-        log_line = {'timestamp': date, 'tag': log_category, 'level': level, 'description': description}
-        if type_log == 'all':
-            logs.append(log_line)
-        elif type_log.lower() == level.lower():
-            if "ERROR: statfs(" in line:
-                if statfs_error in logs:
-                    continue
+            if log_date < first_date:
+                continue
+
+            if category != 'all':
+                if log_category:
+                    if log_category != category:
+                        continue
                 else:
-                    logs.append(statfs_error)
-            else:
+                    continue
+
+            log_line = {'timestamp': date, 'tag': log_category, 'level': level, 'description': description}
+            if type_log == 'all':
                 logs.append(log_line)
+            elif type_log.lower() == level.lower():
+                if "ERROR: statfs(" in line:
+                    if statfs_error in logs:
+                        continue
+                    else:
+                        logs.append(statfs_error)
+                else:
+                    logs.append(log_line)
+            else:
+                continue
         else:
-            continue
+            if logs != []:
+                logs[-1]['description'] += "\n" + line
 
     if search:
         logs = search_array(logs, search['value'], search['negation'])

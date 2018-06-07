@@ -147,7 +147,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
 int wdb_update_agent_name(int id, const char *name);
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name);
+int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name);
 
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_keepalive(int id, long keepalive);
@@ -169,7 +169,7 @@ int wdb_create_agent_db2(const char * agent_id);
 int wdb_fill_metadata(sqlite3 * db);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
-int wdb_remove_agent_db(int id);
+int wdb_remove_agent_db(int id, const char * name);
 
 /* Prepare SQL query with availability waiting */
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);

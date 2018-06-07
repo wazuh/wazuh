@@ -30,8 +30,7 @@ address         = Replace(args(1), Chr(34), "") 'ADDRESS
 server_port     = Replace(args(2), Chr(34), "") 'SERVER_PORT
 protocol        = Replace(args(3), Chr(34), "") 'PROTOCOL
 notify_time     = Replace(args(4), Chr(34), "") 'NOTIFY_TIME
-time_reconnect  = Replace(args(5), Chr(34), "") 'TIME_RECONNECT
-
+time_reconnect  = Replace(args(5), Chr(34), "")
 ' Only try to set the configuration if variables are setted
 
 Set objFSO = CreateObject("Scripting.FileSystemObject")
@@ -58,13 +57,22 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
 
     If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or time_reconnect <> "" Then
         If address <> "" and InStr(address,";") > 0 Then 'list of address
-            list=Split(address,";")
-            formatted_list =""
-            for each ip in list
-                formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
+            ip_list=Split(address,";")
+            formatted_list ="    </server>" & vbCrLf
+            not_replaced = True
+            for each ip in ip_list
+                If not_replaced Then
+                  strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & ip & "</address>")
+                  not_replaced = False
+                Else
+                    formatted_list = formatted_list & "    <server>" & vbCrLf
+                    formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
+                    formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
+                    formatted_list = formatted_list & "      <protocol>udp</protocol>" & vbCrLf
+                    formatted_list = formatted_list & "    </server>" & vbCrLf
+                End If
             next
-            strNewText = Replace(strNewText, "      <address>0.0.0.0</address>", formatted_list)
-
+            strNewText = Replace(strNewText, "    </server>", formatted_list)
         ElseIf address <> "" and InStr(strText,"<address>") > 0 Then
             strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
 
@@ -82,10 +90,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
 
         If server_port <> "" Then ' manager server_port
             If InStr(strNewText, "<port>") > 0 Then
-                Set re = new regexp
-                re.Pattern = "<port>.*</port>"
-                re.Global = True
-                strNewText = re.Replace(strNewText, "<port>" & server_port & "</port>")
+                strNewText = Replace(strNewText, "<port>1514</port>", "<port>" & server_port & "</port>")
             Else
                 ' Fix for the legacy files (not including the key)
                 strNewText = Replace(strNewText, "</client>", "  <port>" & server_port & "</port>"& vbCrLf &"  </client>")
@@ -138,6 +143,19 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
     objFile.WriteLine strNewText
     objFile.Close
+
+	If Not objFSO.fileExists(home_dir & "local_internal_options.conf") Then
+		' Reading default-local_internal_options.conf file
+		Set objFile = objFSO.OpenTextFile(home_dir & "default-local_internal_options.conf", ForReading)
+		strText = objFile.ReadAll
+		objFile.Close
+
+		' Writing the local_internal_options.conf file
+		Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
+		objFile.WriteLine strText
+		objFile.Close
+
+	End If
 
 End If
 

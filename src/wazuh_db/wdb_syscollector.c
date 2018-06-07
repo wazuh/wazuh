@@ -22,7 +22,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     }
 
     /* Delete old OS information before insert the new scan */
-    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) < 0) {
         merror("at wdb_osinfo_save(): cannot cache statement");
         return -1;
     }
@@ -30,7 +30,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     stmt = wdb->stmt[WDB_STMT_OSINFO_DEL];
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_osinfo' table.");
+        merror("Deleting old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -50,7 +50,6 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         release,
         version) < 0) {
 
-        mdebug1("at wdb_osinfo_save(): cannot insert osinfo tuple.");
         return -1;
     }
 
@@ -61,7 +60,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) < 0) {
         merror("at wdb_osinfo_insert(): cannot cache statement");
         return -1;
     }
@@ -87,7 +86,7 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
         return 0;
     }
     else {
-        mdebug1("at wdb_osinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_osinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -111,7 +110,6 @@ int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         architecture,
         description) < 0) {
 
-        mdebug1("at wdb_program_save(): cannot insert program tuple.");
         return -1;
     }
 
@@ -122,7 +120,7 @@ int wdb_program_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 int wdb_program_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * vendor, const char * version, const char * architecture, const char * description) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_INSERT) < 0) {
         merror("at wdb_program_insert(): cannot cache statement");
         return -1;
     }
@@ -158,7 +156,7 @@ int wdb_program_delete(wdb_t * wdb, const char * scan_id) {
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_DEL) < 0) {
         merror("at wdb_program_delete(): cannot cache statement");
         return -1;
     }
@@ -168,7 +166,7 @@ int wdb_program_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_programs' table.");
+        merror("Deleting old information from 'sys_programs' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -186,7 +184,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
     }
 
     /* Delete old OS information before insert the new scan */
-    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_DEL) < 0) {
         merror("at wdb_hardware_save(): cannot cache statement");
         return -1;
     }
@@ -194,7 +192,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
     stmt = wdb->stmt[WDB_STMT_HWINFO_DEL];
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_hwinfo' table.");
+        merror("Deleting old information from 'sys_hwinfo' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -208,7 +206,6 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
         ram_total,
         ram_free) < 0) {
 
-        mdebug1("at wdb_hardware_save(): cannot insert hardware tuple.");
         return -1;
     }
 
@@ -219,7 +216,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
 int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) < 0) {
         merror("at wdb_hardware_insert(): cannot cache statement");
         return -1;
     }
@@ -255,7 +252,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
         return 0;
     }
     else {
-        mdebug1("at wdb_hardware_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_hardware_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -283,7 +280,6 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
         pid,
         process) < 0) {
 
-        mdebug1("at wdb_port_save(): cannot insert port tuple.");
         return -1;
     }
 
@@ -294,7 +290,7 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_INSERT) < 0) {
         merror("at wdb_port_insert(): cannot cache statement");
         return -1;
     }
@@ -350,7 +346,7 @@ int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         return 0;
     }
     else {
-        mdebug1("at wdb_port_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_port_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -365,7 +361,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PORT_DEL) < 0) {
         merror("at wdb_port_delete(): cannot cache statement");
         return -1;
     }
@@ -375,7 +371,7 @@ int wdb_port_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_ports' table.");
+        merror("Deleting old information from 'sys_ports' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -422,7 +418,6 @@ int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         tty,
         processor) < 0) {
 
-        mdebug1("at wdb_process_save(): cannot insert process tuple.");
         return -1;
     }
 
@@ -433,7 +428,7 @@ int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROC_INSERT) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROC_INSERT) < 0) {
         merror("at wdb_process_insert(): cannot cache statement");
         return -1;
     }
@@ -526,7 +521,7 @@ int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
         return 0;
     }
     else {
-        mdebug1("at wdb_process_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_process_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -541,7 +536,7 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_PROC_DEL) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_PROC_DEL) < 0) {
         merror("at wdb_process_delete(): cannot cache statement");
         return -1;
     }
@@ -551,7 +546,7 @@ int wdb_process_delete(wdb_t * wdb, const char * scan_id) {
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Unable to delete old information from 'sys_processes' table.");
+        merror("Deleting old information from 'sys_processes' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 

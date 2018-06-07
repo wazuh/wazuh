@@ -124,6 +124,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_smtpserver = "smtp_server";
     const char *xml_heloserver = "helo_server";
     const char *xml_mailmaxperhour = "email_maxperhour";
+    const char * xml_queue_size = "queue_size";
 
 #ifdef LIBGEOIP_ENABLED
     const char *xml_geoip_db_path = "geoip_db_path";
@@ -599,6 +600,22 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 default:
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
+            if (Config) {
+                char * end;
+
+                Config->queue_size = strtol(node[i]->content, &end, 10);
+
+                if (*end || Config->queue_size < 1) {
+                    merror("Invalid value for option '<%s>'", xml_queue_size);
+                    return OS_INVALID;
+                }
+
+                if (*end) {
+                    merror("Invalid value for option '<%s>'", xml_queue_size);
+                    return OS_INVALID;
                 }
             }
         } else {

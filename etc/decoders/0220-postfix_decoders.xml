@@ -45,6 +45,6 @@
   <use_own_name>true</use_own_name>
   <parent>postfix</parent>
   <prematch>^warning:</prematch>
-  <regex>^warning: (\S+):|warning: Illegal address syntax from unknown[(\S+)]</regex>
+  <regex>^warning: (\S+):|warning: Illegal address syntax from unknown[(\S+)]|warning: hostname \S+ does not resolve to address (\S+): </regex>
   <order>srcip</order>
 </decoder>

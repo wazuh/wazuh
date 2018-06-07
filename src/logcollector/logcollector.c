@@ -645,7 +645,8 @@ int handle_file(int i, int do_fseek, int do_log)
                             NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (logff[i].h == INVALID_HANDLE_VALUE) {
         if (do_log == 1) {
-            merror(FOPEN_ERROR, logff[i].file, errno, strerror(errno));
+            DWORD error = GetLastError();
+            merror(FOPEN_ERROR, logff[i].file, (int)error, win_strerror(error));
         }
         return (-1);
     }

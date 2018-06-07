@@ -158,7 +158,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
         } else if (strcmp(node[i]->element, xml_email_format) == 0) {
             if (strcmp(node[i]->content, "sms") == 0) {
                 Mail->gran_format[granto_size] = SMS_FORMAT;
-            } else if (strcmp(node[i]->content, "default") == 0) {
+            } else if (strcmp(node[i]->content, "default") == 0 || strcmp(node[i]->content, "full") == 0) {
                 /* Default is full format */
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
