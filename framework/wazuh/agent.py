@@ -837,7 +837,7 @@ class Agent:
                   'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add',
                    'group': 'group', 'merged_sum': 'merged_sum', 'config_sum': 'config_sum',
                    'os.codename': 'os_codename','os.major': 'os_major','os.uname': 'os_uname',
-                   'os.arch': 'os_arch', 'node_name': 'node_name'}
+                   'os.arch': 'os_arch', 'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive'}
         valid_select_fields = set(fields.values()) | {'status'}
         # at least, we should retrieve those fields since other fields depending on those
         search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
