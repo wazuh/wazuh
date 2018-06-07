@@ -161,6 +161,7 @@ class Agent:
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                         format(self.fields.keys(), incorrect_fields))
 
+            # to compute the status field, lastKeepAlive and version are necessary
             select_fields = {'id'} | select_fields_set if 'status' not in select_fields_set \
                                                        else select_fields_set | {'id', 'last_keepalive', 'version'}
         else:
@@ -859,8 +860,10 @@ class Agent:
                 continue
 
             if filter_name == "status":
+                # doesn't do += because query is a parameter of the function
                 query = Agent.filter_agents_by_status(db_filter, request, query)
             elif filter_name == "older_than":
+                # doesn't do += because query is a parameter of the function
                 query = Agent.filter_agents_by_timeframe(db_filter, request, query)
             else:
                 main_filter_name = filter_name if filter_name != "group" else "`group`"
@@ -888,8 +891,8 @@ class Agent:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string.
-        :param filters: Defines field filters required by the user.
+        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
