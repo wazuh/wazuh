@@ -182,7 +182,6 @@ typedef struct _RuleNode {
 } RuleNode;
 
 
-extern RuleInfo *currently_rule;
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
 int get_info_attributes(char **attributes, char **values);

@@ -20,6 +20,8 @@ int alert_only;
 
 #define OS_COMMENT_MAX 1024
 
+static pthread_mutex_t eventinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Search last times a signature fired
  * Will look for only that specific signature.
  */
@@ -193,8 +195,11 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
     }
 
     /* Get last node */
+    w_mutex_lock(&eventinfo_mutex);
     lf_node = OSList_GetLastNode(rule->group_search);
+    
     if (!lf_node) {
+        w_mutex_unlock(&eventinfo_mutex);
         return (NULL);
     }
 
@@ -203,6 +208,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time.tv_sec) > rule->timeframe) {
+            w_mutex_unlock(&eventinfo_mutex);
             return (NULL);
         }
 
@@ -297,6 +303,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
          * or rules with a lower level.
          */
         else if (lf->matched >= rule->level) {
+            w_mutex_unlock(&eventinfo_mutex);
             return (NULL);
         }
 
@@ -318,10 +325,12 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
         my_lf->matched = rule->level;
         lf->matched = rule->level;
 
+        w_mutex_unlock(&eventinfo_mutex);
         return (lf);
 
     } while ((lf_node = lf_node->prev) != NULL);
 
+    w_mutex_unlock(&eventinfo_mutex);
     return (NULL);
 }
 
