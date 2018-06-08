@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
 - Fixed bug getting the agents in cluster control. ([#741](https://github.com/wazuh/wazuh/pull/741))
 - Prevent Logcollector from reporting an error when a path with wildcards matches no files.
+- Fixes the feature to group with the option multi-line. ([#754](https://github.com/wazuh/wazuh/pull/754))
 
 ## [v3.2.4]
 
