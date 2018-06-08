@@ -121,9 +121,15 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             *c = '\0';
 
             for (i = 0; syscheck.dir[i]; i++) {
+                if (evt && !(syscheck.opts[i] & CHECK_WHODATA)) {
+                    continue;
+                }
                 if (strcmp(syscheck.dir[i], buf) == 0) {
                     mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, buf);
-                    read_dir(file_name, syscheck.opts[i], syscheck.filerestrict[i]);
+                    if (syscheck.opts[i] != CHECK_WHODATA) {
+                        minfo("~~~~ read_dir() -> '%s' -> '%s'", file_name, syscheck.dir[i]);
+                    }
+                    read_dir(file_name, syscheck.opts[i], syscheck.filerestrict[i], evt);
                     break;
                 }
             }
@@ -632,30 +638,32 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         switch(event_id) {
             // Open fd
             case 4656:
-                os_calloc(1, sizeof(whodata_evt), w_evt);
-                w_evt->user_name = user_name;
-                w_evt->type = type;
-                w_evt->path = path;
-                w_evt->process_name = process_name;
-                w_evt->process_id = process_id;
-                w_evt->handle_id = handle_id;
-                w_evt->mask = 0;
+                if (!strcmp(type, "File")) {
+                    os_calloc(1, sizeof(whodata_evt), w_evt);
+                    w_evt->user_name = user_name;
+                    w_evt->type = type;
+                    w_evt->path = path;
+                    w_evt->process_name = process_name;
+                    w_evt->process_id = process_id;
+                    w_evt->handle_id = handle_id;
+                    w_evt->mask = 0;
 
-                user_name = NULL;
-                type = NULL;
-                path = NULL;
-                process_name = NULL;
+                    user_name = NULL;
+                    type = NULL;
+                    path = NULL;
+                    process_name = NULL;
 
-                if (result = OSHash_Add(syscheck.wdata->fd, hash_id, w_evt), result != 2) {
-                    if (!result) {
-                        merror("The event could not be added to the whodata hash table.");
-                    } else if (result == 1) {
-                        merror("The event could not be added to the whodata hash table because is duplicated.");
+                    if (result = OSHash_Add(syscheck.wdata->fd, hash_id, w_evt), result != 2) {
+                        if (!result) {
+                            merror("The event could not be added to the whodata hash table.");
+                        } else if (result == 1) {
+                            merror("The event could not be added to the whodata hash table because is duplicated.");
+                        }
+                        retval = 1;
+                        goto clean;
                     }
-                    retval = 1;
-                    goto clean;
+                    minfo("OPEN '%ld'-'%s'-'%s'", GetCurrentThreadId(), hash_id, w_evt->path);
                 }
-                //minfo("OPEN '%ld'-'%s'-'%s'", GetCurrentThreadId(), hash_id, w_evt->path);
             break;
             // Write fd
             case 4663:
@@ -680,6 +688,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                             (mask & FILE_WRITE_DATA)? 1 : 0,
                             (mask & FILE_APPEND_DATA)? 1 : 0,
                             mask);
+                        realtime_checksumfile(w_evt->path, w_evt);
                     }
                     free(w_evt->user_name);
                     free(w_evt->type);

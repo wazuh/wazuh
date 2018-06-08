@@ -44,22 +44,24 @@ typedef struct _rtfim {
 #endif
 } rtfim;
 
-#ifdef WIN32
 
 typedef struct whodata_evt {
     char *user_name;
+#ifdef WIN32
     char *type;
     char *path;
     char *process_name;
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
     unsigned int mask;
+#endif
 } whodata_evt;
-
 
 typedef struct whodata {
     OSHash *fd; // Open file descriptors
 } whodata;
+
+#ifdef WIN32
 
 typedef struct registry {
     char *entry;

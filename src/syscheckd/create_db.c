@@ -16,14 +16,15 @@
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 
 /* Prototypes */
-static int read_file(const char *dir_name, int opts, OSMatch *restriction)  __attribute__((nonnull(1)));
+static int read_file(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt)  __attribute__((nonnull(1)));
+int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) __attribute__((nonnull));
 
 /* Global variables */
 static int __counter = 0;
 
 
 /* Read and generate the integrity data of a file */
-static int read_file(const char *file_name, int opts, OSMatch *restriction)
+static int read_file(const char *file_name, int opts, OSMatch *restriction, whodata_evt *evt)
 {
     char *buf;
     char sha1s = '+';
@@ -99,7 +100,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             return (-1);
         }
 #endif
-        return (read_dir(file_name, opts, restriction));
+        return (read_dir(file_name, opts, restriction, NULL));
     }
 
     /* Restrict file types */
@@ -208,7 +209,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             /* Send the new checksum to the analysis server */
             alert_msg[1172] = '\0';
 
-            snprintf(alert_msg, 1172, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s %s%s%s",
+            snprintf(alert_msg, 1172, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s:%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
@@ -220,6 +221,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                 opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
+                evt ? evt->user_name : "",
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -228,6 +230,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
         } else {
             char alert_msg[OS_MAXSTR + 1];
             char c_sum[512 + 2];
+            char wd_sum[OS_SIZE_1024];
 
             c_sum[0] = '\0';
             c_sum[512] = '\0';
@@ -240,6 +243,12 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             }
 
             if (strcmp(c_sum, buf + SK_DB_NATTR) != 0) {
+                // Extract the whodata sum here to not include it in the hash table
+                if (evt && extract_whodata_sum(evt, wd_sum, OS_SIZE_1024)) {
+                    merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                    *wd_sum = '\0';
+                }
+
                 // Update database
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
                 free(buf);
@@ -254,14 +263,14 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 if (buf[5] == 's' || buf[5] == 'n') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
-                        snprintf(alert_msg, OS_MAXSTR, "%s %s\n%s", c_sum, file_name, fullalert);
+                        snprintf(alert_msg, OS_MAXSTR, "%s:%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
                         free(fullalert);
                         fullalert = NULL;
                     } else {
-                        snprintf(alert_msg, 1172, "%s %s", c_sum, file_name);
+                        snprintf(alert_msg, 1172, "%s:%s %s", c_sum, wd_sum, file_name);
                     }
                 } else {
-                    snprintf(alert_msg, 1172, "%s %s", c_sum, file_name);
+                    snprintf(alert_msg, 1172, "%s:%s %s", c_sum, wd_sum, file_name);
                 }
                 send_syscheck_msg(alert_msg);
             }
@@ -286,7 +295,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
     return (0);
 }
 
-int read_dir(const char *dir_name, int opts, OSMatch *restriction)
+int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt)
 {
     size_t dir_size;
     char f_name[PATH_MAX + 2];
@@ -319,7 +328,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
     dp = opendir(dir_name);
     if (!dp) {
         if (errno == ENOTDIR) {
-            if (read_file(dir_name, opts, restriction) == 0) {
+            if (read_file(dir_name, opts, restriction, evt) == 0) {
                 return (0);
             }
         }
@@ -384,7 +393,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
 
         /* Check integrity of the file */
-        read_file(f_name, opts, restriction);
+        read_file(f_name, opts, restriction, NULL);
     }
 
     closedir(dp);
@@ -397,7 +406,7 @@ int run_dbcheck()
 
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
-        read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]);
+        read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i], NULL);
         i++;
     }
 
@@ -430,7 +439,7 @@ int create_db()
     /* Read all available directories */
     __counter = 0;
     do {
-        if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]) == 0) {
+        if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i], NULL) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
         /* Check for real time flag on windows*/
@@ -460,4 +469,11 @@ int create_db()
     }
     minfo("Finished creating syscheck database (pre-scan completed).");
     return (0);
+}
+
+int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
+    if (snprintf(wd_sum, size, "%s", evt->user_name) < size) {
+        return 0;
+    }
+    return 1;
 }
