@@ -10,15 +10,18 @@ All notable changes to this project will be documented in this file.
 - Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
 - Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
 - Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
+- Added the option to filter by any field in `get_agents_overview`, `get_agent_group` and `get_agents_without_group` functions of the Python framework. ([#743](https://github.com/wazuh/wazuh/pull/743))
 
 ### Changed
 
-- Add default value for option -x in agent_control tool.
+- Add default value for option -x in agent_control tool. ([#600](https://github.com/wazuh/wazuh/pull/600))
+- Changed output of agents in cluster control. ([#741](https://github.com/wazuh/wazuh/pull/741))
 
 ### Fixed
 
 - Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
 - Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
+- Fixed bug getting the agents in cluster control. ([#741](https://github.com/wazuh/wazuh/pull/741))
 
 ## [v3.2.4]
 
