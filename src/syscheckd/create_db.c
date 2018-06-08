@@ -213,7 +213,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 return (0);
             }
 
-            if (strcmp(c_sum, buf + 6) != 0) {
+            if (strcmp(c_sum, buf + 8) != 0) {
                 /* Send the new checksum to the analysis server */
                 alert_msg[OS_MAXSTR] = '\0';
                 char *fullalert = NULL;
