@@ -1389,7 +1389,7 @@ class Agent:
         return data
 
     @staticmethod
-    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
+    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets the existing groups.
 
