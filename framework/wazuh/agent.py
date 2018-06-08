@@ -1435,8 +1435,8 @@ class Agent:
             conn.execute(query.format('COUNT(*)'), request)
 
             # merged.mg and agent.conf sum
-            merged_sum = get_hash(entry + "/merged.mg")
-            conf_sum   = get_hash(entry + "/agent.conf")
+            merged_sum = get_hash(entry + "/merged.mg", hash_algorithm)
+            conf_sum   = get_hash(entry + "/agent.conf", hash_algorithm)
 
             item = {'count':conn.fetch()[0], 'name': entry}
 
