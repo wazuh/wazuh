@@ -8,16 +8,13 @@
 from re import compile
 from sys import argv, exit, version_info
 from os.path import isfile, isdir
-from xml.etree import ElementTree
-from os import remove, close as close, pipe, fork, mkfifo
-from subprocess import call, CalledProcessError, STDOUT, Popen, PIPE
+from os import mkfifo, unlink
+from subprocess import CalledProcessError, STDOUT, Popen, PIPE
 from getopt import getopt, GetoptError
 from signal import signal, SIGINT
 from random import randrange
-from time import time, sleep
+from time import time
 import tempfile
-import string
-import os, sys
 
 OSCAP_BIN = "oscap"
 XSLT_BIN = "xsltproc"
@@ -103,12 +100,12 @@ def oscap(profile=None):
 
     # If FIFO exists, delete it
     try:
-        os.unlink(FIFO_PATH)
+        unlink(FIFO_PATH)
     except OSError:
         pass
     
     # Create an unique FIFO file
-    os.mkfifo(FIFO_PATH, 0666)
+    mkfifo(FIFO_PATH, 0666)
 
     try:
         cmd = [OSCAP_BIN, arg_module, 'eval', '--fetch-remote-resources', '--results', FIFO_PATH]
@@ -141,7 +138,7 @@ def oscap(profile=None):
             # output = error.output
             print("{0} Executing profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
                                                                                                                error.output.replace('\r', '').split("\n")[0]))
-            os.unlink(FIFO_PATH)
+            unlink(FIFO_PATH)
             return
 
     try:
@@ -238,7 +235,7 @@ def oscap(profile=None):
         print("{0} Formatting data for profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
                                                                                                            error.output.replace('\r', '').split("\n")[0]))
 
-    os.unlink(FIFO_PATH)
+    unlink(FIFO_PATH)
 
 def signal_handler(n_signal, frame):
     print("\nExiting...({0})".format(n_signal))
