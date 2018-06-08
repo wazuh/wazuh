@@ -20,8 +20,10 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
+- Fix memory error in Logcollector when using wildcards.
 - Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
 - Fixed bug getting the agents in cluster control. ([#741](https://github.com/wazuh/wazuh/pull/741))
+- Prevent Logcollector from reporting an error when a path with wildcards matches no files.
 
 ## [v3.2.4]
 
