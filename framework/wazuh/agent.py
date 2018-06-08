@@ -75,8 +75,8 @@ class Agent:
 
     fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
-              'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add',
-              'group': 'group', 'merged_sum': 'merged_sum', 'config_sum': 'config_sum',
+              'version': 'version', 'manager_host': 'manager_host', 'dateAdd': 'date_add',
+              'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.uname': 'os_uname',
               'os.arch': 'os_arch', 'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive'}
 
@@ -785,24 +785,21 @@ class Agent:
 
     @staticmethod
     def get_agents_dict(conn, select_fields, user_select_fields):
-        select_fields = list(map(lambda x: x.replace('`',''), select_fields))
-        db_api_name = {name:name for name in select_fields}
-        db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
-        fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
+        db_api_name = {v:k for k,v in Agent.fields.items()}
+        fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'], '.')
 
-        agent_items = [{field:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in conn]
+        agent_items = [{db_api_name[field]:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in conn]
 
         if 'status' in user_select_fields:
             today = datetime.today()
-            agent_items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('last_keepalive'), item.get('version') is None, today)) for item in agent_items]
+            agent_items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('lastKeepAlive'), item.get('version') is None, today)) for item in agent_items]
         else:
             agent_items = [dict(item, id=str(item['id']).zfill(3)) for item in agent_items]
 
         if len(agent_items) > 0 and agent_items[0]['id'] == '000' and 'ip' in user_select_fields:
             agent_items[0]['ip'] = '127.0.0.1'
 
-        agent_items = [{db_api_name[key]:value for key,value in agent.items() if key in user_select_fields} for agent in agent_items]
-        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os']) for d in agent_items]
+        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
 
         return agent_items
 
@@ -951,7 +948,7 @@ class Agent:
         # Sorting
         if sort:
             if sort['fields']:
-                allowed_sort_fields = Agent.fields.keys()
+                allowed_sort_fields = set(Agent.fields.keys())
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
                 if not set(sort['fields']).issubset(allowed_sort_fields):
                     raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
@@ -981,10 +978,6 @@ class Agent:
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
-
-        if 'group' in min_select_fields:
-            min_select_fields.remove('group')
-            min_select_fields.add('`group`')
 
         conn.execute(query.format(','.join(min_select_fields)), request)
 
@@ -1573,13 +1566,13 @@ class Agent:
         # Sorting
         if sort:
             if sort['fields']:
-                allowed_sort_fields = Agent.fields.keys()
+                allowed_sort_fields = set(Agent.fields.keys())
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
                 if not set(sort['fields']).issubset(allowed_sort_fields):
                     raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.\
                         format(allowed_sort_fields, sort['fields']))
 
-                order_str_fields = ['{0} {1}'.format(i, sort['order']) for i in sort['fields']]
+                order_str_fields = ['{0} {1}'.format(Agent.fields[i], sort['order']) for i in sort['fields']]
                 query += ' ORDER BY ' + ','.join(order_str_fields)
             else:
                 query += ' ORDER BY id {0}'.format(sort['order'])
