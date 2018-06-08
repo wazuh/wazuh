@@ -214,7 +214,7 @@ void LogCollectorStart()
                     logff[i].file = NULL;
                 }
                 logff[i].read = read_djbmultilog;
-            } else if (strstr(logff[i].logformat, "multi-line:")) {
+            } else if (strncmp(logff[i].logformat, "multi-line:", 10) == 0) {
                 logff[i].read = read_multiline;
             } else if (strcmp("audit", logff[i].logformat) == 0) {
                 logff[i].read = read_audit;
