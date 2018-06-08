@@ -14,7 +14,6 @@ from getopt import getopt, GetoptError
 from signal import signal, SIGINT
 from random import randrange
 from time import time
-import tempfile
 
 OSCAP_BIN = "oscap"
 XSLT_BIN = "xsltproc"
@@ -26,8 +25,6 @@ TEMPLATE_XCCDF = "wodles/oscap/template_xccdf.xsl"
 TEMPLATE_OVAL = "wodles/oscap/template_oval.xsl"
 CONTENT_PATH = "wodles/oscap/content"
 FIFO_PATH = "wodles/oscap/oscap.fifo"
-
-tempfile.tempdir = "tmp"
 
 def check_installed(arguments, stdin=None, stderr=None, shell=False):
 
