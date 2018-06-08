@@ -908,7 +908,8 @@ class Agent:
 
         valid_select_fields = set(Agent.fields.values()) | {'status'}
         # at least, we should retrieve those fields since other fields depending on those
-        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
+        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version",
+                         "`group`", "node_name"}
         request = {}
         if select:
             select['fields'] = list(map(lambda x: Agent.fields[x] if x in Agent.fields else x, select['fields']))
