@@ -75,6 +75,8 @@ void *read_multiline(int pos, int *rc, int drop_it)
             continue;
         }
 
+        linesgot = 0;
+
         /* Send message to queue */
         if (drop_it == 0) {
             if (SendMSGtoSCK(logr_queue, buffer, logff[pos].file,
