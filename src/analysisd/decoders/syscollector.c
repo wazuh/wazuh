@@ -1077,6 +1077,7 @@ int decode_process(char *agent_id, cJSON * logJSON) {
                 wm_strcat(&args, cJSON_GetArrayItem(argvs,i)->valuestring, ',');
             }
             wm_strcat(&msg, args, '|');
+            free(args);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
