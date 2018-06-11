@@ -1856,6 +1856,7 @@ int wm_vulnerability_detector_socketconnect(char *url, in_port_t port) {
 		}
 	}
 
+    // https://bugzilla.redhat.com/show_bug.cgi?id=116526
 	freeaddrinfo(host_info);
 
     if (*ip_addr == '\0') {

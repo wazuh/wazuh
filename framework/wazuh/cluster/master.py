@@ -560,7 +560,7 @@ class MasterManager(Server):
 
         # Get active agents by node
         for node_name in clients_info.keys():
-            clients_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(status='Active', node_name=node_name)['totalItems']
+            clients_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
 
         health_info = {"n_connected_nodes":n_connected_nodes, "nodes": clients_info}
         return health_info
@@ -685,9 +685,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             filter_nodes = split_data[1] if split_data[1] != 'None' else None
             offset = split_data[2] if split_data[2] != 'None' else None
             limit = split_data[3] if split_data[3] != 'None' else None
-            sort = split_data[4] if split_data[4] != 'None' else None
-            search = split_data[5] if split_data[5] != 'None' else None
-            response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
+            response = get_agents_status(filter_status, filter_nodes, offset, limit)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 

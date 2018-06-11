@@ -224,9 +224,9 @@ int ReadDecodeXML(const char *file)
     }
 
     i = 0;
+
     while (node[i]) {
         int j = 0;
-        pi = NULL;
 
         if (!node[i]->element ||
                 strcasecmp(node[i]->element, xml_decoder) != 0) {
@@ -725,6 +725,7 @@ int ReadDecodeXML(const char *file)
             goto cleanup;
         }
 
+        pi = NULL;
         i++;
     } /* while (node[i]) */
 
@@ -741,9 +742,7 @@ cleanup:
     OS_ClearNode(node);
     OS_ClearXML(&xml);
 
-    if (retval == 0) {
-        FreeDecoderInfo(pi);
-    }
+    FreeDecoderInfo(pi);
 
     return retval;
 }

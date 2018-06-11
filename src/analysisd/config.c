@@ -66,7 +66,7 @@ int GlobalConf(const char *cfgfile)
     Config.rotate_interval = 0;
     Config.min_rotate_interval = 0;
     Config.max_output_size = 0;
-    Config.queue_size = 16384;
+    Config.queue_size = 131072;
 
     os_calloc(1, sizeof(wlabel_t), Config.labels);
 

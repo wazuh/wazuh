@@ -103,7 +103,7 @@ def get_healthcheck(filter_node=None):
     request="get_health {}".format(filter_node)
     return __execute(request)
 
-def get_agents(filter_status="all", filter_node="all", offset=0, limit=common.database_limit, sort=None, search=None):
+def get_agents(filter_status=None, filter_node=None):
     filter_status_f = "all"
     filter_node_f = "all"
 
@@ -123,8 +123,16 @@ def get_agents(filter_status="all", filter_node="all", offset=0, limit=common.da
     if filter_node:
         filter_node_f = [node_name.lower() for node_name in filter_node]
 
-    request="get_agents {}%--%{}%--%{}%--%{}%--%{}%--%{}".format(filter_status_f, filter_node_f, offset, limit, sort, search)
-    return __execute(request)
+    internal_limit = common.database_limit
+    request = "get_agents {}%--%{}%--%{}%--%{}"
+    current_offset = 0
+    continue_request = True
+    while continue_request:
+        response = __execute(request.format(filter_status_f, filter_node_f, current_offset, internal_limit))
+        continue_request = (response and len(response['items']) > 0)
+        current_offset += internal_limit
+        yield response
+
 
 def sync(filter_node=None):
     request = "sync {}".format(filter_node) if filter_node else "sync"

@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+ #ifndef WIN32
+
 #include <shared.h>
 #include <wazuh_modules/wmodules.h>
 
@@ -259,3 +261,5 @@ int wpclose(wfd_t * wfd) {
     return pid == -1 ? -1 : wstatus;
 #endif
 }
+
+#endif
