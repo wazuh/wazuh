@@ -11,6 +11,7 @@
 
 #include "shared.h"
 
+static pthread_mutex_t list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Create the list
  * Returns NULL on error
@@ -229,10 +230,13 @@ int OSList_AddData(OSList *list, void *data)
 {
     OSListNode *newnode;
 
+    w_mutex_lock(&list_mutex);
+
     /* Allocate memory for new node */
     newnode = (OSListNode *) calloc(1, sizeof(OSListNode));
     if (!newnode) {
         merror(MEM_ERROR, errno, strerror(errno));
+        w_mutex_unlock(&list_mutex);
         return (0);
     }
 
@@ -281,6 +285,8 @@ int OSList_AddData(OSList *list, void *data)
             list->currently_size--;
         }
     }
+
+    w_mutex_unlock(&list_mutex);
 
     return (1);
 }
