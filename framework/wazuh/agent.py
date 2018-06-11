@@ -1441,10 +1441,10 @@ class Agent:
             item = {'count':conn.fetch()[0], 'name': entry}
 
             if merged_sum:
-                item['merged_sum'] = merged_sum
+                item['mergedSum'] = merged_sum
 
             if conf_sum:
-                item['conf_sum'] = conf_sum
+                item['configSum'] = conf_sum
 
             data.append(item)
 
