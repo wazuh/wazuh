@@ -19,6 +19,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum) {
     char *c_perm;
     char *c_mtime;
     char *c_inode;
+    char *end;
 
     memset(sum, 0, sizeof(sk_sum_t));
 
@@ -76,9 +77,19 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum) {
     *(c_inode++) = '\0';
 
     sum->sha256 = NULL;
-    
+
     if ((sum->sha256 = strchr(c_inode, ':')))
-        *(sum->sha256++) = '\0'; 
+        *(sum->sha256++) = '\0';
+
+    if ((sum->user = strchr(sum->sha256, '!'))) {
+        *(sum->user++) = '\0';
+
+        if ((sum->process = strchr(sum->user, ':')))
+            *(sum->process++) = '\0';
+
+        if ((end = strchr(sum->process, '!')))
+            *end = '\0';
+    }
 
     sum->mtime = atol(c_mtime);
     sum->inode = atol(c_inode);
@@ -107,6 +118,12 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 
     if(sum->sha256)
         os_strdup(sum->sha256, lf->sha256_after);
+
+    if(sum->user)
+        os_strdup(sum->user, lf->user);
+
+    if(sum->process)
+        os_strdup(sum->process, lf->process);
 
     /* Fields */
 
@@ -137,6 +154,12 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 
     if(sum->sha256)
         os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
+
+    if(sum->user)
+        os_strdup(sum->user, lf->fields[SK_USER].value);
+
+    if(sum->process)
+        os_strdup(sum->process, lf->fields[SK_PROCESS].value);
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {

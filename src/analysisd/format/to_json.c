@@ -194,6 +194,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->sha256_after) {
             cJSON_AddStringToObject(file_diff, "sha256_after", lf->sha256_after);
         }
+        if (lf->user) {
+            cJSON_AddStringToObject(file_diff, "username", lf->user);
+        }
+        if (lf->process) {
+            cJSON_AddStringToObject(file_diff, "process", lf->process);
+        }
         if (lf->uname_before) {
             cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
         }

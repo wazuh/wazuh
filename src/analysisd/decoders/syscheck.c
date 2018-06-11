@@ -45,6 +45,8 @@ void SyscheckInit()
     memset(sdb.sha256, '\0', OS_FLSIZE + 1);
     memset(sdb.mtime, '\0', OS_FLSIZE + 1);
     memset(sdb.inode, '\0', OS_FLSIZE + 1);
+    memset(sdb.user, '\0', OS_FLSIZE + 1);
+    memset(sdb.process, '\0', OS_FLSIZE + 1);
 
     /* Create decoder */
     os_calloc(1, sizeof(OSDecoderInfo), sdb.syscheck_dec);
@@ -65,6 +67,8 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_UNAME] = "uname";
     sdb.syscheck_dec->fields[SK_GNAME] = "gname";
     sdb.syscheck_dec->fields[SK_INODE] = "inode";
+    sdb.syscheck_dec->fields[SK_USER] = "user";
+    sdb.syscheck_dec->fields[SK_PROCESS] = "process";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
@@ -456,6 +460,20 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     }
                 }
 
+                /* Whodata user */
+                if(newsum.user)
+                {
+                    snprintf(sdb.user, OS_FLSIZE, "Username: '%s'\n", newsum.user);
+                    os_strdup(oldsum.user, lf->user);
+                }
+
+                /* Whodata process */
+                if(newsum.process)
+                {
+                    snprintf(sdb.process, OS_FLSIZE, "Process: '%s'\n", newsum.process);
+                    os_strdup(oldsum.process, lf->process);
+                }
+
                 /* Modification time message */
                 if (oldsum.mtime && newsum.mtime && oldsum.mtime != newsum.mtime) {
                     char *old_ctime = strdup(ctime(&oldsum.mtime));
@@ -489,6 +507,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          "%s"
                          "%s"
                          "%s"
+                         "%s"
+                         "%s"
                          "%s%s",
                          f_name,
                          sdb.size,
@@ -498,6 +518,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          sdb.md5,
                          sdb.sha1,
                          sdb.sha256,
+                         sdb.user,
+                         sdb.process,
                          lf->data ? "What changed:\n" : "",
                          lf->data ? lf->data : ""
                         );

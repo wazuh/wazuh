@@ -47,10 +47,10 @@ typedef struct _rtfim {
 
 typedef struct whodata_evt {
     char *user_name;
+    char *process_name;
 #ifdef WIN32
     char *type;
     char *path;
-    char *process_name;
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
     unsigned int mask;

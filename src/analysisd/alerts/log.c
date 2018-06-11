@@ -235,6 +235,12 @@ void OS_LogOutput(Eventinfo *lf)
         if (lf->sha256_after)
             printf("New SHA256: %s\n", lf->sha256_after);
 
+        // Whodata values
+        if (lf->user)
+            printf("Username: %s\n", lf->user);
+        if (lf->process)
+                printf("Process: %s\n", lf->process);
+
         if (lf->mtime_before)
             printf("Old date: %s", ctime(&lf->mtime_before));
         if (lf->mtime_after)
@@ -406,6 +412,9 @@ void OS_Log(Eventinfo *lf)
             fprintf(_aflog, "Old SHA256: %s\n", lf->sha256_before);
         if (lf->sha256_after)
             fprintf(_aflog, "New SHA256: %s\n", lf->sha256_after);
+
+        if (lf->user)
+            fprintf(_aflog, "Username: %s\n", lf->user);
 
         if (lf->mtime_before)
             fprintf(_aflog, "Old date: %s", ctime(&lf->mtime_before));

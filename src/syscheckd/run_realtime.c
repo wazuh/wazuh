@@ -42,6 +42,7 @@
 
 /* Prototypes */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
+char *adapt_path(char *path);
 #ifdef WIN32
 int set_winsacl(const char *dir);
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
@@ -57,12 +58,13 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     buf = (char *) OSHash_Get(syscheck.fp, file_name);
     if (buf != NULL) {
         char c_sum[256 + 2];
+        size_t c_sum_size;
 
         c_sum[0] = '\0';
         c_sum[255] = '\0';
 
         /* If it returns < 0, we have already alerted */
-        if (c_read_file(file_name, buf, c_sum) < 0) {
+        if (c_read_file(file_name, buf, c_sum, evt) < 0) {
             // Update database
             snprintf(c_sum, sizeof(c_sum), "%.*s -1", SK_DB_NATTR, buf);
             free(buf);
@@ -74,12 +76,19 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             return (0);
         }
 
-        if (strcmp(c_sum, buf + SK_DB_NATTR) != 0) {
+        c_sum_size = strlen(buf + SK_DB_NATTR);
+        if (strncmp(c_sum, buf + SK_DB_NATTR, c_sum_size)) {
             char alert_msg[OS_MAXSTR + 1];
+            char wd_sum[OS_SIZE_1024];
+
+            // Extract the whodata sum here to not include it in the hash table
+            if (evt && extract_whodata_sum(evt, wd_sum, OS_SIZE_1024)) {
+                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                *wd_sum = '\0';
+            }
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
-
             if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
                 merror("Unable to update file to db: %s", file_name);
             }
@@ -90,14 +99,14 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if (buf[6] == 's' || buf[6] == 'n') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s %s\n%s", c_sum, file_name, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%s:%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+                    snprintf(alert_msg, 912, "%s:%s %s", c_sum, wd_sum, file_name);
                 }
             } else {
-                snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+                snprintf(alert_msg, 912, "%s:%s %s", c_sum, wd_sum, file_name);
             }
             send_syscheck_msg(alert_msg);
 
@@ -111,24 +120,29 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         return (0);
     } else {
         /* New file */
+        char bar = '/';
         char *c;
         int i;
         buf = strdup(file_name);
 
+#ifdef WIN32
+        if (evt) {
+            bar = '\\';
+        }
+#endif
+
         /* Find container directory */
 
-        while (c = strrchr(buf, '/'), c && c != buf) {
+        while (c = strrchr(buf, bar), c && c != buf) {
             *c = '\0';
 
             for (i = 0; syscheck.dir[i]; i++) {
+
                 if (evt && !(syscheck.opts[i] & CHECK_WHODATA)) {
                     continue;
                 }
                 if (strcmp(syscheck.dir[i], buf) == 0) {
                     mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, buf);
-                    if (syscheck.opts[i] != CHECK_WHODATA) {
-                        minfo("~~~~ read_dir() -> '%s' -> '%s'", file_name, syscheck.dir[i]);
-                    }
                     read_dir(file_name, syscheck.opts[i], syscheck.filerestrict[i], evt);
                     break;
                 }
@@ -143,6 +157,21 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     }
 
     return (0);
+}
+
+/* Adapt a path to be sent to the manager in the csum field */
+char *adapt_path(char *path) {
+    char *path_it;
+
+    // Replace ':' with '*'
+    for (path_it = path; path_it; path_it = strchr(path_it, ':')) {
+        *path_it = '*';
+    }
+
+    // Replace spaces with '?'
+    for (path_it = path; path_it; path_it = strchr(path_it, ' ')) {
+        *path_it = '?';
+    }
 }
 
 #ifdef INOTIFY_ENABLED
@@ -181,7 +210,6 @@ int realtime_adddir(const char *dir, int whodata)
     if (!syscheck.realtime) {
         realtime_start();
     }
-
 
     /* Check if it is ready to use */
     if (syscheck.realtime->fd < 0) {
@@ -387,12 +415,20 @@ int realtime_adddir(const char *dir, int whodata)
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
 
-    if (!syscheck.realtime) {
-        realtime_start();
+    if (whodata) {
+        if (!syscheck.wdata && whodata_audit_start()) {
+            return -1;
+        }
+
+        if (set_winsacl(dir)) {
+            merror("Unable to add directory to whodata monitoring: '%s'.", dir);
+            return 0;
+        }
+        return 1;
     }
 
-    if (whodata && !syscheck.wdata && whodata_audit_start()) {
-        return -1;
+    if (!syscheck.realtime) {
+        realtime_start();
     }
 
     /* Maximum limit for realtime on Windows */
@@ -408,39 +444,32 @@ int realtime_adddir(const char *dir, int whodata)
         mdebug2("Entry '%s' already exists in the RT hash.", wdchar);
     }
     else {
-        if (!whodata) {
-            os_calloc(1, sizeof(win32rtfim), rtlocald);
+        os_calloc(1, sizeof(win32rtfim), rtlocald);
 
-            rtlocald->h = CreateFile(dir,
-                                    FILE_LIST_DIRECTORY,
-                                    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                    NULL,
-                                    OPEN_EXISTING,
-                                    FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-                                    NULL);
+        rtlocald->h = CreateFile(dir,
+                                FILE_LIST_DIRECTORY,
+                                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                NULL,
+                                OPEN_EXISTING,
+                                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+                                NULL);
 
 
-            if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
-                free(rtlocald);
-                rtlocald = NULL;
-                merror("Unable to add directory to real time monitoring: '%s'.", dir);
-                return (0);
-            }
-            syscheck.realtime->fd++;
-
-            /* Add final elements to the hash */
-            os_strdup(dir, rtlocald->dir);
-            os_strdup(dir, rtlocald->overlap.Pointer);
-            OSHash_Add(syscheck.realtime->dirtb, wdchar, rtlocald);
-
-            /* Add directory to be monitored */
-            realtime_win32read(rtlocald);
-        } else {
-            if (set_winsacl(dir)) {
-                merror("Unable to add directory to whodata monitoring: '%s'.", dir);
-                return 0;
-            }
+        if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
+            free(rtlocald);
+            rtlocald = NULL;
+            merror("Unable to add directory to real time monitoring: '%s'.", dir);
+            return (0);
         }
+        syscheck.realtime->fd++;
+
+        /* Add final elements to the hash */
+        os_strdup(dir, rtlocald->dir);
+        os_strdup(dir, rtlocald->overlap.Pointer);
+        OSHash_Add(syscheck.realtime->dirtb, wdchar, rtlocald);
+
+        /* Add directory to be monitored */
+        realtime_win32read(rtlocald);
     }
 
     return (1);
@@ -630,9 +659,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         handle_id = buffer[6].UInt64Val;
         mask = buffer[7].UInt32Val;
 
-        //minfo("~~~~event_id:'%d'|user_name:'%s'|type:'%s'|path:'%s'|process_name:'%s'|process_id:'%I64x'|handle_id:'%I64x'|mask:'%x'",
-			//event_id, user_name, type, path, process_name, process_id, handle_id, mask);
-
         snprintf(hash_id, 21, "%llu", handle_id);
 
         switch(event_id) {
@@ -662,7 +688,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         retval = 1;
                         goto clean;
                     }
-                    minfo("OPEN '%ld'-'%s'-'%s'", GetCurrentThreadId(), hash_id, w_evt->path);
+                    //minfo("~~~OPEN '%ld'-'%s'-'%s'", GetCurrentThreadId(), hash_id, w_evt->path);
                 }
             break;
             // Write fd
@@ -671,7 +697,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 if (mask) {
                     if (w_evt = OSHash_Get(syscheck.wdata->fd, hash_id), w_evt) {
                         w_evt->mask |= mask;
-                        //minfo("UPDATED '%ld'-'%s'-'%s' to %x", GetCurrentThreadId(), hash_id, w_evt->path, w_evt->mask);
+                        //minfo("~~~UPDATED '%ld'-'%s'-'%s' to %x", GetCurrentThreadId(), hash_id, w_evt->path, w_evt->mask);
                     } else {
                         // The file was opened before Wazuh started Syscheck.
                     }
@@ -683,13 +709,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                     if (w_evt->mask) {
                         unsigned int mask = w_evt->mask;
                         // Valid for a file
-                        minfo("'%s' modified. Flags: |write:%d|append:%d|. Mask: %d",
-                            w_evt->path,
-                            (mask & FILE_WRITE_DATA)? 1 : 0,
-                            (mask & FILE_APPEND_DATA)? 1 : 0,
-                            mask);
-                        realtime_checksumfile(w_evt->path, w_evt);
+                        char wr = (mask & FILE_WRITE_DATA)? 1 : 0;
+                        char ap = (mask & FILE_APPEND_DATA)? 1 : 0;
+
+                        if (wr || ap) {
+                            realtime_checksumfile(w_evt->path, w_evt);
+                        }
                     }
+                    //minfo("~~~CLOSE '%s'-'%s'", hash_id, w_evt->path);
                     free(w_evt->user_name);
                     free(w_evt->type);
                     free(w_evt->path);

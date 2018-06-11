@@ -63,29 +63,28 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
 #endif
     {
         if(errno == ENOTDIR){
-		/*Deletion message sending*/
-        char * buf;
-		char alert_msg[PATH_MAX+4];
-		alert_msg[PATH_MAX + 3] = '\0';
-		snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
-		send_syscheck_msg(alert_msg);
+            /*Deletion message sending*/
+            char * buf;
+            char alert_msg[PATH_MAX+4];
+            alert_msg[PATH_MAX + 3] = '\0';
+            snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
+            send_syscheck_msg(alert_msg);
 
-        // Update database
+            // Update database
 
-        if (buf = (char *) OSHash_Get(syscheck.fp, file_name), buf) {
-            snprintf(alert_msg, sizeof(alert_msg), "%.*s -1", SK_DB_NATTR, buf);
-            free(buf);
-
-            if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
-                merror("Unable to update file to db: %s", file_name);
+            if (buf = (char *) OSHash_Get(syscheck.fp, file_name), buf) {
+                snprintf(alert_msg, sizeof(alert_msg), "%.*s -1", SK_DB_NATTR, buf);
+                free(buf);
+                if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
+                    merror("Unable to update file to db: %s", file_name);
+                }
             }
-        }
 
-		return (0);
-	}else{
-		merror("Error accessing '%s'.", file_name);
-		return (-1);
-	}
+            return (0);
+        }else{
+            merror("Error accessing '%s'.", file_name);
+            return (-1);
+        }
     }
 
     if (S_ISDIR(statbuf.st_mode)) {
@@ -209,7 +208,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             /* Send the new checksum to the analysis server */
             alert_msg[1172] = '\0';
 
-            snprintf(alert_msg, 1172, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s:%s %s%s%s",
+            snprintf(alert_msg, 1172, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s:%s:%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
@@ -222,6 +221,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                 opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
                 evt ? evt->user_name : "",
+                evt ? evt->process_name /*adapt_path(evt->process_name)*/ : "",
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -241,18 +241,15 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             if (c_read_file(file_name, buf, c_sum) < 0) {
                 return (0);
             }
-
-            if (strcmp(c_sum, buf + SK_DB_NATTR) != 0) {
+            if (strcmp(c_sum, buf + SK_DB_NATTR)) {
                 // Extract the whodata sum here to not include it in the hash table
                 if (evt && extract_whodata_sum(evt, wd_sum, OS_SIZE_1024)) {
                     merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
                     *wd_sum = '\0';
                 }
-
                 // Update database
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
                 free(buf);
-
                 if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
                     merror("Unable to update file to db: %s", file_name);
                 }
@@ -442,14 +439,15 @@ int create_db()
         if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i], NULL) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
-        /* Check for real time flag on windows*/
-        if (syscheck.opts[i] & CHECK_REALTIME) {
-#ifdef WIN32
-            int check_who = syscheck.opts[i] & CHECK_WHODATA;
-            realtime_adddir(syscheck.dir[i], check_who);
-            if (!enable_who_scan && check_who) {
+
+        if (syscheck.opts[i] & CHECK_WHODATA) {
+            realtime_adddir(syscheck.dir[i], 1);
+            if (!enable_who_scan) {
                 enable_who_scan = 1;
             }
+        } else if (syscheck.opts[i] & CHECK_REALTIME) {
+#ifdef WIN32
+            realtime_adddir(syscheck.dir[i], 0);
 #else
 #ifndef INOTIFY_ENABLED
             mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);
@@ -472,7 +470,7 @@ int create_db()
 }
 
 int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
-    if (snprintf(wd_sum, size, "%s", evt->user_name) < size) {
+    if (snprintf(wd_sum, size, "%s:%s", evt->user_name, evt->process_name) < size) {
         return 0;
     }
     return 1;
