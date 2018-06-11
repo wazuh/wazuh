@@ -47,10 +47,11 @@ typedef struct _rtfim {
 
 typedef struct whodata_evt {
     char *user_name;
-#ifdef WIN32
+    char *process_name;
     char *type;
     char *path;
-    char *process_name;
+    unsigned int process_id;
+#ifdef WIN32
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
     unsigned int mask;
@@ -123,6 +124,7 @@ typedef struct _config {
     char *prefilter_cmd;
 
 } syscheck_config;
+
 
 int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile) __attribute__((nonnull(1, 2)));
 

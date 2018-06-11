@@ -52,7 +52,7 @@ int realtime_start(void);
 int realtime_adddir(const char *dir, int whodata) __attribute__((nonnull(1)));
 
 /* Initializes the whodata scan mode */
-int run_whodata_scan();
+int run_whodata_scan(void);
 
 /* Process real time queue */
 int realtime_process(void);
@@ -68,5 +68,10 @@ int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
 const char* get_user(const char *path, int uid);
 const char* get_group(int gid);
+
+#ifndef WIN32
+int check_auditd_enabled(void);
+int check_auditd_config(void);
+#endif
 
 #endif

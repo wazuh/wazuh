@@ -444,16 +444,14 @@ int create_db()
         }
         /* Check for real time flag on windows*/
         if (syscheck.opts[i] & CHECK_REALTIME) {
-#ifdef WIN32
             int check_who = syscheck.opts[i] & CHECK_WHODATA;
             realtime_adddir(syscheck.dir[i], check_who);
             if (!enable_who_scan && check_who) {
                 enable_who_scan = 1;
             }
-#else
+
 #ifndef INOTIFY_ENABLED
             mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);
-#endif
 #endif
         }
         i++;

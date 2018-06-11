@@ -16,6 +16,10 @@
 #include <errno.h>
 #include "string_op.h"
 
+
+#define AUDIT_CONF_FILE "/etc/audisp/plugins.d/af_wazuh.conf"
+#define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
+
 #ifdef WIN32
 #define _WIN32_WINNT 0x600  // Windows Vista or later (must be included in the dll)
 #include <winsock2.h>
@@ -23,6 +27,12 @@
 #include <aclapi.h>
 #include <winevt.h>
 #define sleep(x) Sleep(x * 1000)
+#else
+#include "/usr/include/proc/readproc.h"
+#include <linux/audit.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include "shared.h"
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -182,45 +192,51 @@ int realtime_adddir(const char *dir, int whodata)
         realtime_start();
     }
 
+    if (whodata && (check_auditd_enabled() > 0) && check_auditd_config()) {
+        mdebug1("Directory added for real time monitoring with Audit: '%s'.", dir);
 
-    /* Check if it is ready to use */
-    if (syscheck.realtime->fd < 0) {
-        return (-1);
+        // configure audit rules
+
     } else {
-        int wd = 0;
-
-        if(syscheck.skip_nfs) {
-            short is_nfs = IsNFS(dir);
-            if( is_nfs == 1 ) {
-                merror("%s NFS Directories do not support iNotify.", dir);
-            	return(-1);
-            }
-            else {
-                mdebug2("syscheck.skip_nfs=%d, %s::is_nfs=%d", syscheck.skip_nfs, dir, is_nfs);
-            }
-        }
-
-        wd = inotify_add_watch(syscheck.realtime->fd,
-                               dir,
-                               REALTIME_MONITOR_FLAGS);
-        if (wd < 0) {
-            merror("Unable to add directory to real time monitoring: '%s'. %d %d", dir, wd, errno);
+        /* Check if it is ready to use */
+        if (syscheck.realtime->fd < 0) {
+            return (-1);
         } else {
-            char wdchar[32 + 1];
-            wdchar[32] = '\0';
-            snprintf(wdchar, 32, "%d", wd);
+            int wd = 0;
 
-            /* Entry not present */
-            if (!OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
-                char *ndir;
-
-                ndir = strdup(dir);
-                if (ndir == NULL) {
-                    merror_exit("Out of memory. Exiting.");
+            if(syscheck.skip_nfs) {
+                short is_nfs = IsNFS(dir);
+                if( is_nfs == 1 ) {
+                    merror("%s NFS Directories do not support iNotify.", dir);
+                	return(-1);
                 }
+                else {
+                    mdebug2("syscheck.skip_nfs=%d, %s::is_nfs=%d", syscheck.skip_nfs, dir, is_nfs);
+                }
+            }
 
-                OSHash_Add(syscheck.realtime->dirtb, wdchar, ndir);
-                mdebug1("Directory added for real time monitoring: '%s'.", ndir);
+            wd = inotify_add_watch(syscheck.realtime->fd,
+                                   dir,
+                                   REALTIME_MONITOR_FLAGS);
+            if (wd < 0) {
+                merror("Unable to add directory to real time monitoring: '%s'. %d %d", dir, wd, errno);
+            } else {
+                char wdchar[32 + 1];
+                wdchar[32] = '\0';
+                snprintf(wdchar, 32, "%d", wd);
+
+                /* Entry not present */
+                if (!OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
+                    char *ndir;
+
+                    ndir = strdup(dir);
+                    if (ndir == NULL) {
+                        merror_exit("Out of memory. Exiting.");
+                    }
+
+                    OSHash_Add(syscheck.realtime->dirtb, wdchar, ndir);
+                    mdebug1("Directory added for real time monitoring: '%s'.", ndir);
+                }
             }
         }
     }
@@ -275,9 +291,165 @@ int realtime_process()
     return (0);
 }
 
-int run_whodata_scan() {
+int run_whodata_scan(void) {
     return 0;
 }
+
+
+// Check if auditd is installed and running
+int check_auditd_enabled(void) {
+
+    PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
+    proc_t *proc_info;
+    int auditd_pid = -1;
+
+    while (proc_info = readproc(proc, NULL), proc_info != NULL) {
+        if(strcmp(proc_info->cmd,"auditd") == 0) {
+            auditd_pid = proc_info->tid;
+            break;
+        }
+    }
+
+    freeproc(proc_info);
+
+    return auditd_pid;
+}
+
+
+// Check audit socket configuration
+int check_auditd_config(void) {
+
+    if (IsFile(AUDIT_CONF_FILE) == 0){
+        minfo("Audit socket already configured: %s", AUDIT_CONF_FILE);
+    } else {
+        minfo("Generating audit socket configuration file: %s", AUDIT_CONF_FILE);
+
+        FILE *fp;
+        fp = fopen(AUDIT_CONF_FILE, "w");
+        if (!fp) return 0;
+
+        fprintf(fp, "active = yes\n");
+        fprintf(fp, "direction = out\n");
+        fprintf(fp, "path = builtin_af_unix\n");
+        fprintf(fp, "type = builtin\n");
+        fprintf(fp, "args = 0640 %s\n", AUDIT_SOCKET);
+        fprintf(fp, "format = binary\n");
+        fclose(fp);
+    }
+
+    return 1;
+}
+
+// Init audit socket
+int init_auditd_socket(void) {
+
+    int sfd;
+    struct sockaddr_un addr;
+
+    if ((sfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+        return -1;
+    }
+
+    memset(&addr, 0, sizeof(struct sockaddr_un));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, AUDIT_SOCKET, sizeof(addr.sun_path)-1);
+    /* Connect to the UNIX socket */
+    if (connect(sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) < 0) {
+        merror("Cannot connect to socket %s\n", AUDIT_SOCKET);
+        close(sfd);
+        return -1;
+    }
+
+    return sfd;
+}
+
+
+void read_audit_event(int audit_sock) {
+
+    regex_t regexCompiled_uid;
+    regex_t regexCompiled_pid;
+    regex_t regexCompiled_pname;
+    regex_t regexCompiled_path;
+    regmatch_t match[2];
+    int match_size;
+    char *uid;
+    char *pid;
+    char *pname;
+    char *path;
+    whodata_evt *w_evt;
+    os_calloc(1, sizeof(whodata_evt), w_evt);
+    char *buffer;
+
+    buffer = malloc(4096 * sizeof(char));
+
+    static const char *pattern_uid = " uid=([0-9]*) ";
+    if (regcomp(&regexCompiled_uid, pattern_uid, REG_EXTENDED)) {
+        merror("Cannot compile uid regular expression.");
+    }
+    static const char *pattern_pid = " pid=([0-9]*) ";
+    if (regcomp(&regexCompiled_pid, pattern_pid, REG_EXTENDED)) {
+        merror("Cannot compile pid regular expression.");
+    }
+    static const char *pattern_pname = " exe=\"([^ ]*)\" ";
+    if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
+        merror("Cannot compile pname regular expression.");
+    }
+    static const char *pattern_path = " name=\"([^ ]*)\" ";
+    if (regcomp(&regexCompiled_path, pattern_path, REG_EXTENDED)) {
+        merror("Cannot compile path regular expression.");
+    }
+
+    int byteRead = recv(audit_sock, buffer, 4096, 0);
+
+    if (byteRead > 0) {
+
+        os_calloc(1, sizeof(whodata_evt), w_evt);
+
+        buffer[byteRead] = '\0';
+        char *ret;
+        if (ret = strstr(buffer,"key=\"wazuh_fim\""), ret) {
+
+            if(regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                uid = malloc(match_size + 1);
+                snprintf (uid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                w_evt->user_name = get_user(NULL,atoi(uid));
+                free(uid);
+            }
+
+            if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                pid = malloc(match_size + 1);
+                snprintf (pid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                w_evt->process_id = atoi(pid);
+                free(pid);
+            }
+
+            if(regexec(&regexCompiled_path, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                path = malloc(match_size + 1);
+                snprintf (path, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                w_evt->path = path;
+            }
+
+            if(regexec(&regexCompiled_pname, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                pname = malloc(match_size + 1);
+                snprintf (pname, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                w_evt->process_name = pname;
+            }
+        }
+    }
+
+    free(buffer);
+
+    regfree(&regexCompiled_uid);
+    regfree(&regexCompiled_pid);
+    regfree(&regexCompiled_path);
+    regfree(&regexCompiled_pname);
+
+}
+
 
 #elif defined(WIN32)
 typedef struct _win32rtfim {
