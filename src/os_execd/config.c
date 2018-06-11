@@ -20,9 +20,12 @@ int ExecdConfig(const char *cfgfile)
     const char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
     const char *(blocks[]) = {"ossec_config", "active-response", "repeated_offenders", NULL};
     const char *(castore[]) = {"ossec_config", "active-response", "ca_store", NULL};
+    const char *(caverify[]) = {"ossec_config", "active-response", "ca_verification", NULL};
     char *disable_entry;
     char *repeated_t;
     char **repeated_a;
+    char ** ca_verification;
+    int enable_ca_verification = 1;
     int i;
 
     OS_XML xml;
@@ -94,12 +97,32 @@ int ExecdConfig(const char *cfgfile)
         free(repeated_a);
     }
 
-    if (wcom_ca_store = OS_GetContents(&xml, castore), wcom_ca_store) {
-        for (i = 0; wcom_ca_store[i]; i++) {
-            mdebug1("Added CA store '%s'.", wcom_ca_store[i]);
+    if (ca_verification = OS_GetContents(&xml, caverify), ca_verification) {
+        for (i = 0; ca_verification[i]; ++i) {
+            if (strcasecmp(ca_verification[i], "yes") == 0) {
+                enable_ca_verification = 1;
+            } else if (strcasecmp(ca_verification[i], "no") == 0) {
+                enable_ca_verification = 0;
+            } else {
+                mwarn("Invalid content for tag <%s>: '%s'", caverify[2], ca_verification[i]);
+            }
+        }
+
+        free_strarray(ca_verification);
+    }
+
+    if (enable_ca_verification) {
+        if (wcom_ca_store = OS_GetContents(&xml, castore), wcom_ca_store) {
+            for (i = 0; wcom_ca_store[i]; i++) {
+                mdebug1("Added CA store '%s'.", wcom_ca_store[i]);
+            }
+        } else {
+            minfo("No CA store defined. Using Wazuh default CA (%s).", DEF_CA_STORE);
+            os_calloc(2, sizeof(char *), wcom_ca_store);
+            os_strdup(DEF_CA_STORE, wcom_ca_store[0]);
         }
     } else {
-        mdebug1("No CA store defined.");
+        minfo("WPK verification with CA is disabled.");
     }
 
     OS_ClearXML(&xml);
