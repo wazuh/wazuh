@@ -119,6 +119,12 @@ void * w_read_msg_thread(__attribute__((unused)) void * args);
 /* Process decoded event threads */
 void * w_process_event_thread(__attribute__((unused)) void * args);
 
+/* Write logall json thread*/
+void * w_logall_json_writer(__attribute__((unused)) void * args);
+
+/* Write logall log thread */
+void * w_logall_log_writer(__attribute__((unused)) void * args);
+
 typedef struct _clean_msg {
     Eventinfo *lf;
     char *msg;
@@ -155,6 +161,12 @@ static w_queue_t * decode_queue_event_input;
 
 /* Decode pending event output */
 static w_queue_t * decode_queue_event_output;
+
+/* Archives log input */
+static w_queue_t * log_queue_input;
+
+/* Archives log json input */
+static w_queue_t * log_json_queue_input;
 
 /* Hourly alerts mutex */
 static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -1892,7 +1904,6 @@ void * w_read_msg_thread(__attribute__((unused)) void * args){
 
             /* Add cleanmsg to the queue */
             os_calloc(1,sizeof(clean_msg),clean_msg_lf);
-            os_calloc(strlen(msg)+1,sizeof(clean_msg_lf->msg),clean_msg_lf->msg);
             os_strdup(msg,clean_msg_lf->msg);
             clean_msg_lf->lf = lf;
 
@@ -2179,4 +2190,12 @@ void * w_process_event_thread(__attribute__((unused)) void * args){
             continue;
         }
     }
+}
+
+void * w_logall_json_writer(__attribute__((unused)) void * args){
+
+}
+
+void * w_logall_log_writer(__attribute__((unused)) void * args){
+
 }
