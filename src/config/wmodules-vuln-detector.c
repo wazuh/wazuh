@@ -103,6 +103,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
     module->context = &WM_VULNDETECTOR_CONTEXT;
     module->data = vulnerability_detector;
 
+    if (!nodes)
+        return 0;
 
     for (i = 0; nodes[i]; i++) {
         if (!nodes[i]->element) {

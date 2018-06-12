@@ -42,8 +42,12 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     os_calloc(1, sizeof(wm_oscap), oscap);
     oscap->flags.enabled = 1;
     oscap->flags.scan_on_start = 1;
+    oscap->interval = WM_OSCAP_DEF_INTERVAL;
     module->context = &WM_OSCAP_CONTEXT;
     module->data = oscap;
+
+    if (!nodes)
+        return 0;
 
     // Iterate over module subelements
 
@@ -257,9 +261,6 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             return OS_INVALID;
         }
     }
-
-    if (!oscap->interval)
-        oscap->interval = WM_OSCAP_DEF_INTERVAL;
 
     return 0;
 }
