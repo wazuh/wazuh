@@ -422,13 +422,13 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* Group ownership message */
-                if (newsum.uid && oldsum.uid) {
+                if (newsum.gid && oldsum.gid) {
                     if (strcmp(newsum.gid, oldsum.gid) == 0) {
                         sdb.gowner[0] = '\0';
                     } else {
                         changes = 1;
                         if (oldsum.gname && newsum.gname) {
-                            snprintf(sdb.owner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.gname, oldsum.gid, newsum.gname, newsum.gid);
+                            snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.gname, oldsum.gid, newsum.gname, newsum.gid);
                             os_strdup(oldsum.gname, lf->gname_before);
                         } else {
                             snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', now it is '%s'\n", oldsum.gid, newsum.gid);
