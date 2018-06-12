@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.3.1]
+
+### Fixed
+
+- Fixed missing "minor" field in agent data managed by the framework. ([#771](https://github.com/wazuh/wazuh/pull/771))
+
 ## [v3.3.0]
 
 ### Added
