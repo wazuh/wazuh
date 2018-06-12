@@ -64,6 +64,7 @@ All notable changes to this project will be documented in this file.
 
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
+- Added an output format option for Logcollector to build custom logs. ([#423](https://github.com/wazuh/wazuh/pull/423))
 - Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
 - Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
 - Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
@@ -71,7 +72,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Add default value for option -x in agent_control tool. ([#600](https://github.com/wazuh/wazuh/pull/600))
+- Add default value for option -x in agent_upgrade tool.
 - Changed output of agents in cluster control. ([#741](https://github.com/wazuh/wazuh/pull/741))
 
 ### Fixed
