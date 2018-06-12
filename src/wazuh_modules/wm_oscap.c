@@ -41,6 +41,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
 
     // Check configuration and show debug information
 
+#ifndef WIN32
     wm_oscap_setup(oscap);
     mtinfo(WM_OSCAP_LOGTAG, "Module started.");
 
@@ -86,6 +87,9 @@ void* wm_oscap_main(wm_oscap *oscap) {
         // If time_sleep=0, yield CPU
         sleep(time_sleep);
     }
+#else
+    mtinfo(WM_OSCAP_LOGTAG, "OPEN-SCAP module not compatible with Windows.");
+#endif
 
     return NULL;
 }
