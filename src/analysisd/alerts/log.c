@@ -239,7 +239,7 @@ void OS_LogOutput(Eventinfo *lf)
         if (lf->user)
             printf("Username: %s\n", lf->user);
         if (lf->process)
-                printf("Process: %s\n", lf->process);
+            printf("Process: %s\n", lf->process);
 
         if (lf->mtime_before)
             printf("Old date: %s", ctime(&lf->mtime_before));
@@ -415,6 +415,9 @@ void OS_Log(Eventinfo *lf)
 
         if (lf->user)
             fprintf(_aflog, "Username: %s\n", lf->user);
+
+        if (lf->process)
+            fprintf(_aflog, "Process: %s\n", lf->process);
 
         if (lf->mtime_before)
             fprintf(_aflog, "Old date: %s", ctime(&lf->mtime_before));

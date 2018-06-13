@@ -68,6 +68,11 @@ typedef struct __sdb {
 
 } _sdb; /* syscheck db information */
 
+typedef struct sk_sum_wdata {
+    char *user;
+    char *process;
+} sk_sum_wdata;
+
 /* File sum structure */
 typedef struct sk_sum_t {
     char *size;
@@ -77,19 +82,18 @@ typedef struct sk_sum_t {
     char *md5;
     char *sha1;
     char *sha256;
-    char *user;
-    char *process;
     char *uname;
     char *gname;
     long mtime;
     long inode;
+    sk_sum_wdata wdata;
 } sk_sum_t;
 
 extern _sdb sdb;
 
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
    or -1 on failure. */
-int sk_decode_sum(sk_sum_t *sum, char *c_sum);
+int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 

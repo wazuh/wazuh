@@ -42,7 +42,6 @@
 
 /* Prototypes */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
-char *adapt_path(char *path);
 #ifdef WIN32
 int set_winsacl(const char *dir);
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
@@ -64,7 +63,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[255] = '\0';
 
         /* If it returns < 0, we have already alerted */
-        if (c_read_file(file_name, buf, c_sum, evt) < 0) {
+        if (c_read_file(file_name, buf, c_sum) < 0) {
             // Update database
             snprintf(c_sum, sizeof(c_sum), "%.*s -1", SK_DB_NATTR, buf);
             free(buf);
@@ -79,10 +78,10 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum_size = strlen(buf + SK_DB_NATTR);
         if (strncmp(c_sum, buf + SK_DB_NATTR, c_sum_size)) {
             char alert_msg[OS_MAXSTR + 1];
-            char wd_sum[OS_SIZE_1024];
+            char wd_sum[OS_SIZE_6144 + 1];
 
             // Extract the whodata sum here to not include it in the hash table
-            if (evt && extract_whodata_sum(evt, wd_sum, OS_SIZE_1024)) {
+            if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
                 merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
                 *wd_sum = '\0';
             }
@@ -99,14 +98,14 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if (buf[6] == 's' || buf[6] == 'n') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s:%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, 912, "%s:%s %s", c_sum, wd_sum, file_name);
+                    snprintf(alert_msg, 912, "%s!%s %s", c_sum, wd_sum, file_name);
                 }
             } else {
-                snprintf(alert_msg, 912, "%s:%s %s", c_sum, wd_sum, file_name);
+                snprintf(alert_msg, 912, "%s!%s %s", c_sum, wd_sum, file_name);
             }
             send_syscheck_msg(alert_msg);
 
@@ -159,21 +158,6 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     return (0);
 }
 
-/* Adapt a path to be sent to the manager in the csum field */
-char *adapt_path(char *path) {
-    char *path_it;
-
-    // Replace ':' with '*'
-    for (path_it = path; path_it; path_it = strchr(path_it, ':')) {
-        *path_it = '*';
-    }
-
-    // Replace spaces with '?'
-    for (path_it = path; path_it; path_it = strchr(path_it, ' ')) {
-        *path_it = '?';
-    }
-}
-
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
@@ -205,7 +189,7 @@ int realtime_start()
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir, int whodata)
+int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
     if (!syscheck.realtime) {
         realtime_start();
@@ -679,7 +663,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                     path = NULL;
                     process_name = NULL;
 
-                    if (result = OSHash_Add(syscheck.wdata->fd, hash_id, w_evt), result != 2) {
+                    if (result = OSHash_Add(syscheck->wd_table, hash_id, w_evt), result != 2) {
                         if (!result) {
                             merror("The event could not be added to the whodata hash table.");
                         } else if (result == 1) {
@@ -688,16 +672,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         retval = 1;
                         goto clean;
                     }
-                    //minfo("~~~OPEN '%ld'-'%s'-'%s'", GetCurrentThreadId(), hash_id, w_evt->path);
                 }
             break;
             // Write fd
             case 4663:
                 // Check if the mask is relevant
                 if (mask) {
-                    if (w_evt = OSHash_Get(syscheck.wdata->fd, hash_id), w_evt) {
+                    if (w_evt = OSHash_Get(syscheck->wd_table, hash_id), w_evt) {
                         w_evt->mask |= mask;
-                        //minfo("~~~UPDATED '%ld'-'%s'-'%s' to %x", GetCurrentThreadId(), hash_id, w_evt->path, w_evt->mask);
                     } else {
                         // The file was opened before Wazuh started Syscheck.
                     }
@@ -705,7 +687,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             break;
             // Close fd
             case 4658:
-                if (w_evt = OSHash_Delete(syscheck.wdata->fd, hash_id), w_evt) {
+                if (w_evt = OSHash_Delete(syscheck->wd_table, hash_id), w_evt) {
                     if (w_evt->mask) {
                         unsigned int mask = w_evt->mask;
                         // Valid for a file
@@ -716,7 +698,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                             realtime_checksumfile(w_evt->path, w_evt);
                         }
                     }
-                    //minfo("~~~CLOSE '%s'-'%s'", hash_id, w_evt->path);
                     free(w_evt->user_name);
                     free(w_evt->type);
                     free(w_evt->path);
@@ -746,7 +727,7 @@ clean:
 
 int whodata_audit_start() {
     os_calloc(1, sizeof(whodata), syscheck.wdata);
-    if (syscheck.wdata->fd = OSHash_Create(), !syscheck.wdata->fd) {
+    if (syscheck->wd_table = OSHash_Create(), !syscheck->wd_table) {
         return 1;
     }
     return 0;

@@ -46,20 +46,19 @@ typedef struct _rtfim {
 
 
 typedef struct whodata_evt {
+    char *user_id;
     char *user_name;
     char *process_name;
-#ifdef WIN32
-    char *type;
     char *path;
+#ifndef WIN32
+    unsigned int process_id;
+#else
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
+    char *type;
     unsigned int mask;
 #endif
 } whodata_evt;
-
-typedef struct whodata {
-    OSHash *fd; // Open file descriptors
-} whodata;
 
 #ifdef WIN32
 
@@ -118,7 +117,7 @@ typedef struct _config {
 
     rtfim *realtime;
 
-    whodata *wdata;
+    OSHash *wd_table;
 
     char *prefilter_cmd;
 

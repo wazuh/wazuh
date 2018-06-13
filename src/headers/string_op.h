@@ -51,4 +51,10 @@ int w_str_in_array(const char * needle, const char ** haystack);
 /* Filter escape characters */
 char* filter_special_chars(const char *string);
 
+// Replace substrings
+char * wstr_replace(const char * string, const char * search, const char * replace);
+
+// Locate first occurrence of non escaped character in string
+char * wstr_chr(char * str, int character);
+
 #endif
