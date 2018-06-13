@@ -1,6 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.3.1]
+
+### Fixed
+- Fixed several bugs in upgrade agents: 
+    - Error upgrading an agent with status `Never Connected`. ([#784](https://github.com/wazuh/wazuh/pull/784))
+    - Fixed API support. ([#784](https://github.com/wazuh/wazuh/pull/784))
+    - Sockets were not closing properly. ([#784](https://github.com/wazuh/wazuh/pull/784))
+
+
 ## [v3.3.0]
 
 ### Added
