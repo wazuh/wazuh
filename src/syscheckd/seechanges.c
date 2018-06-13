@@ -249,7 +249,7 @@ static int seechanges_createpath(const char *filename)
     os_strdup(filename, buffer);
     newdir = buffer;
 #ifdef WIN32
-    tmpstr = strtok(buffer + PATH_OFFSET, "\\");
+    tmpstr = strtok(buffer + PATH_OFFSET, "/\\");
 #else
     tmpstr = strtok(buffer + PATH_OFFSET, "/");
 #endif
@@ -260,7 +260,7 @@ static int seechanges_createpath(const char *filename)
     }
 
 #ifdef WIN32
-    while (next = strtok(NULL, "\\"), next) {
+    while (next = strtok(NULL, "/\\"), next) {
 #else
     while (next = strtok(NULL, "/"), next) {
 #endif
