@@ -1,6 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.3.1]
+
+### Added
+
+### Changed
+
+### Fixed 
+
+- Windows prevents agent from renaming file. ([#773](https://github.com/wazuh/wazuh/pull/773))
+
+
 ## [v3.3.0]
 
 ### Added
