@@ -7,9 +7,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-### Fixed 
+### Fixed
 
 - Windows prevents agent from renaming file. ([#773](https://github.com/wazuh/wazuh/pull/773))
+- Fix invalid memory access when parsing ruleset configuration. ([#787](https://github.com/wazuh/wazuh/pull/787))
 
 
 ## [v3.3.0]
