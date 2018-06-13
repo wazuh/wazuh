@@ -75,7 +75,7 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     AUTHD_SOCKET = "{0}/queue/ossec/auth".format(ossec_path)
 
 # Agent upgrading variables
-wpk_repo_url = "https://packages.wazuh.com/wpk/"
+wpk_repo_url = "packages.wazuh.com/wpk/"
 
 wpk_chunk_size = 512
 
