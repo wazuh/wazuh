@@ -489,8 +489,6 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     if ((fp = fopen(channel->bookmark_filename, "w")) == NULL) {
-        mferror("------ Error open");
-
         mwarn(
             "Could not fopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
@@ -501,7 +499,6 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     if ((fwrite(buffer, 1, size, fp)) < size) {
-        mferror("------ Error write");
         mferror(
             "Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
