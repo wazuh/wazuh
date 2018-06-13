@@ -1997,8 +1997,6 @@ class Agent:
 
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))
-        else:
-            print("Downloading WPK file...")
 
         try:
             result = urlopen(wpk_url)
@@ -2022,8 +2020,6 @@ class Agent:
 
         if debug:
             print("WPK file downloaded: {0} - SHA1SUM: {1}".format(wpk_file_path, sha1hash))
-        else:
-            print("WPK file downloaded.")
 
         return [wpk_file, sha1hash]
 
