@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Windows prevents agent from renaming file. ([#773](https://github.com/wazuh/wazuh/pull/773))
 - Fix manager-agent version comparison in remote upgrades. ([#765](https://github.com/wazuh/wazuh/pull/765))
 - Fix log flooding when restarting agent while the merged file is being receiving. ([#788](https://github.com/wazuh/wazuh/pull/788))
+- Fix issue when overwriting rotated logs in Windows agents. ([#776](https://github.com/wazuh/wazuh/pull/776))
 
 
 ## [v3.3.0]
