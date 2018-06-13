@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 - Windows prevents agent from renaming file. ([#773](https://github.com/wazuh/wazuh/pull/773))
 - Fix manager-agent version comparison in remote upgrades ([#765](https://github.com/wazuh/wazuh/pull/765))
+- Cluster exits with error when an error occurs. ([#790](https://github.com/wazuh/wazuh/pull/790))
 
 
 ## [v3.3.0]
