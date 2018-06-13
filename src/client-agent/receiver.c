@@ -30,7 +30,7 @@ int receive_msg()
     uint32_t length;
     size_t msg_length;
     int reads = 0;
-    static int undefined_msg_logged = 0;
+    int undefined_msg_logged = 0;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;
