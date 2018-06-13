@@ -77,7 +77,7 @@ class Agent:
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager_host': 'manager_host', 'dateAdd': 'date_add',
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
-              'os.codename': 'os_codename', 'os.major': 'os_major', 'os.uname': 'os_uname',
+              'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor', 'os.uname': 'os_uname',
               'os.arch': 'os_arch', 'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive'}
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
