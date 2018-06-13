@@ -222,7 +222,7 @@ if __name__ == '__main__':
 
     if error_msg:
         logger.error(error_msg)
-        exit()
+        exit(1)
 
     # Signals
     signal(SIGINT, signal_handler)
