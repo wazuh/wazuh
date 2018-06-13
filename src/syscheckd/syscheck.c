@@ -105,7 +105,7 @@ int Start_win32_Syscheck()
         }
         syscheck.registry[0].entry = NULL;
 
-        mwarn("Syscheck disabled.");
+        minfo("Syscheck disabled.");
     }
 
     /* Rootcheck config */
@@ -113,7 +113,6 @@ int Start_win32_Syscheck()
         syscheck.rootcheck = 1;
     } else {
         syscheck.rootcheck = 0;
-        mwarn("Rootcheck module disabled.");
     }
 
     /* Print options */
@@ -254,7 +253,7 @@ int main(int argc, char **argv)
         }
 
         if (!test_config) {
-            mwarn("Syscheck disabled.");
+            minfo("Syscheck disabled.");
         }
     }
 
@@ -263,7 +262,6 @@ int main(int argc, char **argv)
         syscheck.rootcheck = 1;
     } else {
         syscheck.rootcheck = 0;
-        mwarn("Rootcheck module disabled.");
     }
 
     /* Exit if testing config */
