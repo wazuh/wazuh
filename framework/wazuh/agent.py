@@ -2156,6 +2156,10 @@ class Agent:
 
         self._load_info_from_DB()
 
+        # Check if agent is active.
+        if not self.status == 'Active':
+            raise WazuhException(1720)
+
         # Check if remote upgrade is available for the selected agent version
         if WazuhVersion(self.version.split(' ')[1]) < WazuhVersion("3.0.0-alpha4"):
             raise WazuhException(1719, version)
@@ -2168,10 +2172,6 @@ class Agent:
 
         if not wpk_repo.endswith('/'):
             wpk_repo = wpk_repo + '/'
-
-        # Check if agent is active.
-        if not self.status == 'Active':
-            raise WazuhException(1720)
 
         # Send file to agent
         sending_result = self._send_wpk_file(wpk_repo, debug, version, force, show_progress, chunk_size, rl_timeout)
