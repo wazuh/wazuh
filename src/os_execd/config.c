@@ -127,7 +127,7 @@ int ExecdConfig(const char *cfgfile)
 void CheckExecConfig() {
     if (enable_ca_verification) {
         if (!wcom_ca_store) {
-            minfo("No CA store defined. Using Wazuh default CA (%s).", DEF_CA_STORE);
+            minfo("No option <ca_store> defined. Using Wazuh default CA (%s).", DEF_CA_STORE);
             os_calloc(2, sizeof(char *), wcom_ca_store);
             os_strdup(DEF_CA_STORE, wcom_ca_store[0]);
         }
