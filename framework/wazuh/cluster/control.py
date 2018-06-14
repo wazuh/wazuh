@@ -59,6 +59,10 @@ def get_nodes(filter_list_nodes=None):
 def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
     request="get_nodes {}"
     nodes = __execute(request)
+
+    if nodes.get("err"):
+        raise WazuhException(3016, "{}".format(nodes['err']))
+
     valid_select_fiels = {"name", "version", "type", "ip"}
     valid_types = {"client", "master"}
     select_fields_param = {}

@@ -136,10 +136,7 @@ def __execute(my_function, my_args=()):
             print("Error: {}".format(response['err']))
             exit(1)
     except Exception as e:
-        if response:
-            print ("Error: {}".format(response))
-        else:
-            print ("{}".format(e))
+        print ("{}".format(e))
         exit(1)
 
     return response
