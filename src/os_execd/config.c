@@ -11,6 +11,7 @@
 #include "execd.h"
 
 char ** wcom_ca_store;
+static int enable_ca_verification = 1;
 
 /* Read the config file */
 int ExecdConfig(const char *cfgfile)
@@ -25,7 +26,6 @@ int ExecdConfig(const char *cfgfile)
     char *repeated_t;
     char **repeated_a;
     char ** ca_verification;
-    int enable_ca_verification = 1;
     int i;
 
     OS_XML xml;
@@ -116,7 +116,17 @@ int ExecdConfig(const char *cfgfile)
             for (i = 0; wcom_ca_store[i]; i++) {
                 mdebug1("Added CA store '%s'.", wcom_ca_store[i]);
             }
-        } else {
+        }
+    }
+
+    OS_ClearXML(&xml);
+
+    return (is_disabled);
+}
+
+void CheckExecConfig() {
+    if (enable_ca_verification) {
+        if (!wcom_ca_store) {
             minfo("No CA store defined. Using Wazuh default CA (%s).", DEF_CA_STORE);
             os_calloc(2, sizeof(char *), wcom_ca_store);
             os_strdup(DEF_CA_STORE, wcom_ca_store[0]);
@@ -124,8 +134,4 @@ int ExecdConfig(const char *cfgfile)
     } else {
         minfo("WPK verification with CA is disabled.");
     }
-
-    OS_ClearXML(&xml);
-
-    return (is_disabled);
 }
