@@ -16,6 +16,10 @@ All notable changes to this project will be documented in this file.
 - Prevent OpenSCAP module from running on Windows agents (incompatible). ([#777](https://github.com/wazuh/wazuh/pull/777))
 - Fix issue in file changes report for FIM on Linux when a directory contains a backslash. ([#775](https://github.com/wazuh/wazuh/pull/775))
 - Fixed missing "minor" field in agent data managed by the framework. ([#771](https://github.com/wazuh/wazuh/pull/771))
+- Fixed several bugs in upgrade agents ([#784](https://github.com/wazuh/wazuh/pull/784)): 
+    - Error upgrading an agent with status `Never Connected`.
+    - Fixed API support.
+    - Sockets were not closing properly.
 
 
 ## [v3.3.0]
