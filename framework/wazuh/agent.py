@@ -1889,11 +1889,10 @@ class Agent:
         return data
 
 
-    def _get_url_wpk_repo(self, wpk_repo=common.wpk_repo_url, secure=True):
+    def _get_url_wpk_repo(self, wpk_repo=common.wpk_repo_url, use_http=False):
         protocol = ""
         if "http://" not in wpk_repo and "https://" not in wpk_repo:
-            protocol = "https://" if secure else "http://"
-
+            protocol = "https://" if not use_http else "http://"
         if self.os['platform']=="windows":
             wpk_url = protocol + wpk_repo + "windows/"
         elif self.os['platform']=="ubuntu":
@@ -1903,18 +1902,18 @@ class Agent:
 
         return wpk_url
 
-    def _get_url_wpk_file(self, wpk_file, wpk_repo=common.wpk_repo_url, secure=True):
-        return self._get_url_wpk_repo(wpk_repo, secure) + wpk_file
+    def _get_url_wpk_file(self, wpk_file, wpk_repo=common.wpk_repo_url, use_http=False):
+        return self._get_url_wpk_repo(wpk_repo, use_http) + wpk_file
 
-    def _get_url_wpk_versions(self, wpk_repo=common.wpk_repo_url, secure=True):
-        return self._get_url_wpk_repo(wpk_repo, secure) + "versions"
+    def _get_url_wpk_versions(self, wpk_repo=common.wpk_repo_url, use_http=False):
+        return self._get_url_wpk_repo(wpk_repo, use_http) + "versions"
 
 
-    def _get_versions(self, wpk_repo=common.wpk_repo_url, secure=True):
+    def _get_versions(self, wpk_repo=common.wpk_repo_url, use_http=False):
         """
         Generates a list of available versions for its distribution and version.
         """
-        versions_url = self._get_url_wpk_versions(wpk_repo, secure)
+        versions_url = self._get_url_wpk_versions(wpk_repo, use_http)
 
         try:
             result = urlopen(versions_url)
@@ -1940,12 +1939,12 @@ class Agent:
         return versions
 
 
-    def _get_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, secure=True):
+    def _get_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, use_http=False):
         """
         Searchs latest Wazuh WPK file for its distribution and version. Downloads the WPK if it is not in the upgrade folder.
         """
         agent_new_ver = None
-        versions = self._get_versions(wpk_repo, secure)
+        versions = self._get_versions(wpk_repo, use_http)
         if not version:
             agent_new_ver = versions[0][0]
             agent_new_shasum = versions[0][1]
@@ -2002,7 +2001,7 @@ class Agent:
                 return [wpk_file, sha1hash]
 
         # Download WPK file
-        wpk_url = self._get_url_wpk_file(wpk_file, wpk_repo, secure)
+        wpk_url = self._get_url_wpk_file(wpk_file, wpk_repo, use_http)
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))
         else:
@@ -2036,14 +2035,14 @@ class Agent:
         return [wpk_file, sha1hash]
 
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries, secure=True):
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries, use_http=False):
         """
         Sends WPK file to agent.
         """
         if not chunk_size:
             chunk_size = common.wpk_chunk_size
         # Check WPK file
-        _get_wpk = self._get_wpk_file(wpk_repo=wpk_repo, debug=debug, version=version, force=force, secure=secure)
+        _get_wpk = self._get_wpk_file(wpk_repo=wpk_repo, debug=debug, version=version, force=force, use_http=use_http)
         wpk_file = _get_wpk[0]
         file_sha1 = _get_wpk[1]
         wpk_file_size = stat("{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)).st_size
@@ -2155,7 +2154,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
 
-    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, secure=True):
+    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, use_http=False):
         """
         Upgrade agent using a WPK file.
         """
@@ -2183,7 +2182,7 @@ class Agent:
 
         # Send file to agent
         sending_result = self._send_wpk_file(wpk_repo=wpk_repo, debug=debug, version=version, force=force,
-                                             show_progress=show_progress, chunk_size=chunk_size, rl_timeout=rl_timeout, secure=secure)
+                                             show_progress=show_progress, chunk_size=chunk_size, rl_timeout=rl_timeout, use_http=use_http)
         if debug:
             print(sending_result[0])
 
@@ -2212,7 +2211,7 @@ class Agent:
 
 
     @staticmethod
-    def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False, chunk_size=None, secure=True):
+    def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False, chunk_size=None, use_http=False):
         """
         Read upgrade result output from agent.
 
@@ -2220,7 +2219,7 @@ class Agent:
         :return: Upgrade message.
         """
 
-        return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force)==1 else False, chunk_size=chunk_size, secure=secure)
+        return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force)==1 else False, chunk_size=chunk_size, use_http=use_http)
 
 
     def upgrade_result(self, debug=False, timeout=common.upgrade_result_retries):

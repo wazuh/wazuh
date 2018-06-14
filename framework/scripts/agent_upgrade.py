@@ -62,9 +62,9 @@ def main():
     if args.silent:
         args.debug = False
 
-    secure = True
+    use_http = False
     if args.http:
-        secure = False
+        use_http = True
 
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
@@ -109,7 +109,7 @@ def main():
                                                force=args.force,
                                                show_progress=print_progress if not args.silent else None,
                                                chunk_size=args.chunk_size,
-                                               rl_timeout=-1 if args.timeout == None else args.timeout, secure=secure)
+                                               rl_timeout=-1 if args.timeout == None else args.timeout, use_http=use_http)
         if not args.silent:
             if not args.debug:
                 print("\n{0}... Please wait.".format(upgrade_command_result))
