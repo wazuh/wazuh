@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
     - Error upgrading an agent with status `Never Connected`.
     - Fixed API support.
     - Sockets were not closing properly.
+- Cluster exits showing an error when an error occurs. ([#790](https://github.com/wazuh/wazuh/pull/790))
 
 
 ## [v3.3.0]
