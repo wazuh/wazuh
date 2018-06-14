@@ -114,7 +114,9 @@ int ExecdConfig(const char *cfgfile)
     if (enable_ca_verification) {
         if (wcom_ca_store = OS_GetContents(&xml, castore), wcom_ca_store) {
             for (i = 0; wcom_ca_store[i]; i++) {
-                mdebug1("Added CA store '%s'.", wcom_ca_store[i]);
+                if (wcom_ca_store[i][0]) {
+                    mdebug1("Added CA store '%s'.", wcom_ca_store[i]);
+                }
             }
         }
     }
