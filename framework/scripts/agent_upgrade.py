@@ -62,6 +62,10 @@ def main():
     if args.silent:
         args.debug = False
 
+    secure = True
+    if args.http:
+        secure = False
+
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
 
@@ -71,7 +75,12 @@ def main():
 
     # Custom WPK file
     if args.file:
-        upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute if args.execute else "upgrade.sh", debug=args.debug, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
+        upgrade_command_result = agent.upgrade_custom(file_path=args.file,
+                                                      installer=args.execute if args.execute else "upgrade.sh",
+                                                      debug=args.debug,
+                                                      show_progress=print_progress if not args.silent else None,
+                                                      chunk_size=args.chunk_size,
+                                                      rl_timeout=-1 if args.timeout == None else args.timeout)
         if not args.silent:
             if not args.debug:
                 print("\n{0}... Please wait.".format(upgrade_command_result))
@@ -96,7 +105,11 @@ def main():
     # WPK upgrade file
     else:
         prev_ver = agent.version
-        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version, force=args.force, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
+        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version,
+                                               force=args.force,
+                                               show_progress=print_progress if not args.silent else None,
+                                               chunk_size=args.chunk_size,
+                                               rl_timeout=-1 if args.timeout == None else args.timeout, secure=secure)
         if not args.silent:
             if not args.debug:
                 print("\n{0}... Please wait.".format(upgrade_command_result))
@@ -138,6 +151,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("-t", "--timeout", type=int, help="Timeout until agent restart is unlocked.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
     arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
+    arg_parser.add_argument("--http", action="store_true", help="Uses http protocol instead of https.")
     args = arg_parser.parse_args()
 
     try:
