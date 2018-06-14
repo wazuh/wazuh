@@ -629,12 +629,16 @@ class ClientHandler(Handler):
 
     def __init__(self, key, host, port, name, asyncore_map = {}):
         Handler.__init__(self, key=key, asyncore_map=asyncore_map)
+        self.name = name
         self.map = asyncore_map
         self.host = host
         self.port = port
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        ok = self.connect( (host, port) )
-        self.name = name
+        try:
+            ok = self.connect( (host, port) )
+        except socket.error as e:
+            self.socket.close()
+            raise e
         self.my_connected = False
 
 

@@ -184,7 +184,9 @@ def client_main(cluster_configuration):
 
             manager.exit()
         except socket.gaierror as e:
-            logger.error("[Client] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(str(e), connection_retry_interval))
+            logger.error("[Client] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(e, connection_retry_interval))
+        except socket.error as e:
+            logger.error("[Client] Could not connect to master: {}. Trying to connect again in {}s.".format(e, connection_retry_interval))
 
         time.sleep(connection_retry_interval)
 

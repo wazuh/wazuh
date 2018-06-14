@@ -399,7 +399,7 @@ class ClientManager:
 
     # Private methods
     def _initiate_client_threads(self):
-        logger.debug("[Master] Creating threads.")
+        logger.debug("[Client] Creating threads.")
         # Sync integrity
         self.threads[ClientManager.SYNC_I_T] = SyncIntegrityThread(client_handler=self.handler, stopper=self.stopper)
         self.threads[ClientManager.SYNC_I_T].start()
