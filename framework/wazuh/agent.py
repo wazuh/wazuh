@@ -1255,9 +1255,12 @@ class Agent:
             message = 'Some agents were not removed'
 
         if failed_ids:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids, 'older_than': older_than}
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids,
+                          'older_than': older_than, 'total_affected_agents':len(affected_agents),
+                          'total_failed_ids':len(failed_ids)}
         else:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'older_than': older_than}
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'older_than': older_than,
+                          'total_affected_agents':len(affected_agents)}
 
         return final_dict
 
