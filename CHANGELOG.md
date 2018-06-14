@@ -22,7 +22,7 @@ All notable changes to this project will be documented in this file.
     - Sockets were not closing properly.
 - Cluster exits showing an error when an error occurs. ([#790](https://github.com/wazuh/wazuh/pull/790))
 - Fixed bug when cluster control or API cannot request the list of nodes to the master. ([#762](https://github.com/wazuh/wazuh/pull/762))
-- Verify WPK with Wazuh CA by default.
+- Verify WPK with Wazuh CA by default. ([#799](https://github.com/wazuh/wazuh/pull/799))
 
 ## [v3.3.0]
 
