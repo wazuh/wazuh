@@ -17,7 +17,7 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_file
     decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info, merge_agent_info
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
-from wazuh.cluster.communication import ClientHandler, ClusterThread, FragmentedFileReceiver, FragmentedStringReceiver
+from wazuh.cluster.communication import ClientHandler, ClusterThread, FragmentedFileReceiver, FragmentedStringReceiverClient
 from wazuh.cluster.internal_socket import InternalSocketHandler
 from wazuh.cluster.dapi import dapi
 
@@ -75,8 +75,9 @@ class ClientManagerHandler(ClientHandler):
             response = dapi.distribute_function(json.loads(data))
             return ['json', response]
         elif command == "dapi_res":
-            client_id, response = data.split(' ', 1)
-            return ['json', self.isocket_handler.send_request(client_id, command, response)]
+            string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
+            string_receiver.start()
+            return 'ack', self.set_worker(command, string_receiver)
         else:
             return ClientHandler.process_request(self, command, data)
 
@@ -357,14 +358,18 @@ class ClientManagerHandler(ClientHandler):
 # Threads (workers) created by ClientManagerHandler
 #
 
-class FragmentedStringReceiverClient(FragmentedStringReceiver):
+
+
+class FragmentedAPIResponseReceiver(FragmentedStringReceiverClient):
 
     def __init__(self, manager_handler, stopper):
-        FragmentedStringReceiver.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[Client] [{0}] [String-R     ]".format(self.manager_handler.name)
+        FragmentedStringReceiverClient.__init__(self, manager_handler, stopper)
+        self.thread_tag = "[APIResponseReceiver]"
 
 
-    def check_connection(self):
+    def process_received_data(self):
+        client_id, response = self.sting_received.split(' ',1)
+        self.manager_handler.isocket_handler.send_string(client_id, 'dapi_res', response)
         return True
 
 
@@ -376,10 +381,6 @@ class ClientProcessMasterFiles(FragmentedFileReceiver):
 
 
     def check_connection(self):
-        # if not self.manager_handler:
-        #     self.sleep(2)
-        #     return False
-
         if not self.manager_handler.is_connected():
             logger.info("{0}: Client is not connected. Waiting {1}s".format(self.thread_tag, 2))
             self.sleep(2)

@@ -566,6 +566,8 @@ class AbstractServer(asyncore.dispatcher):
         self.create_socket(socket_family, socket_type)
         self.bind(addr)
         self.listen(5)
+        self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
+        self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']
 
 
     def handle_accept(self):
@@ -656,13 +658,25 @@ class AbstractServer(asyncore.dispatcher):
         return response
 
 
+    def send_file(self, client_name, reason, file_to_send, remove = False):
+        return self.get_client_info(client_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
+
+
+    def send_string(self, client_name, reason, string_to_send):
+        if client_name in self.get_connected_clients():
+            response = self.get_client_info(client_name)['handler'].send_string(reason, string_to_send, self.interval_string_transfer_send)
+        else:
+            error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
+            logger.error("[Transport-Server] {0}.".format(error_msg))
+            response = "err " + error_msg
+        return response
+
+
 class Server(AbstractServer):
 
     def __init__(self, host, port, handle_type, asyncore_map = {}):
         AbstractServer.__init__(self, addr=(host,port), handle_type=handle_type, asyncore_map=asyncore_map,
                                 socket_family=socket.AF_INET, socket_type=socket.SOCK_STREAM, tag="[Transport-Server]")
-        self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
-        self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']
 
 
     def add_client(self, data, ip, handler):
@@ -707,40 +721,6 @@ class Server(AbstractServer):
                 }
             }
         return node_id
-
-
-    def send_file(self, client_name, reason, file_to_send, remove = False):
-        return self.get_client_info(client_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
-
-
-    def send_string(self, client_name, reason, string_to_send):
-        if client_name in self.get_connected_clients():
-            response = self.get_client_info(client_name)['handler'].send_string(reason, string_to_send, self.interval_string_transfer_send)
-        else:
-            error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
-            logger.error("[Transport-Server] {0}.".format(error_msg))
-            response = "err " + error_msg
-        return response
-
-
-    def send_request(self, client_name, command, data=None):
-
-        if client_name in self.get_connected_clients():
-            response = self.get_client_info(client_name)['handler'].execute(command, data)
-        else:
-            error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
-            logger.error("[Transport-Server] {0}.".format(error_msg))
-            response = "err " + error_msg
-
-        return response
-
-
-    def send_request_broadcast(self, command, data=None):
-
-        for c_name in self.get_connected_clients():
-            response = self.get_client_info(c_name)['handler'].execute(command, data)
-            yield c_name, response
-
 
 
 class AbstractClient(Handler):
@@ -1124,4 +1104,20 @@ class FragmentedStringReceiver(FragmentedRequestReceiver):
 
 
     def process_received_data(self):
+        return True
+
+
+class FragmentedStringReceiverClient(FragmentedStringReceiver):
+
+    def __init__(self, manager_handler, stopper):
+        FragmentedStringReceiver.__init__(self, manager_handler, stopper)
+        self.thread_tag = "[Client] [{0}] [String-R     ]".format(self.manager_handler.name)
+
+
+    def check_connection(self):
+        if not self.manager_handler.is_connected():
+            logger.info("{0}: Client is not connected. Waiting {1}s".format(self.thread_tag, 2))
+            self.sleep(2)
+            return False
+
         return True

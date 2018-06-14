@@ -137,10 +137,23 @@ class InternalSocketClient(communication.AbstractClient):
 
     def process_request(self, command, data):
         if command == 'dapi_res':
-            self.final_response.write(data)
-            return ['ack', 'response received']
+            string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
+            string_receiver.start()
+            return 'ack', self.set_worker(command, string_receiver)
         else:
             return communication.AbstractClient.process_request(self, command, data)
+
+
+class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverClient):
+
+    def __init__(self, manager_handler, stopper):
+        communication.FragmentedStringReceiverClient.__init__(self, manager_handler, stopper)
+        self.thread_tag = "[APIResponseReceiver]"
+
+
+    def process_received_data(self):
+        self.manager_handler.final_response.write(self.sting_received)
+        return True
 
 
 class InternalSocketClientThread(communication.ClusterThread):

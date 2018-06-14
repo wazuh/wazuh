@@ -45,7 +45,7 @@ class APIRequestQueue(ClusterThread):
         while not self.stopper.is_set() and self.running:
             name, id, request = self.request_queue.get(block=True).split(' ', 2)
             result = dapi.distribute_function(json.loads(request), from_master=True)
-            self.server.send_request(client_name=name, command='dapi_res', data=id + ' ' + result)
+            self.server.send_string(client_name=name, reason='dapi_res', string_to_send=id + ' ' + result)
 
 
     def set_request(self, request):
@@ -111,7 +111,7 @@ class MasterManagerHandler(ServerHandler):
             return 'ack', self.set_worker(command, string_sender_thread)
         elif command == 'dapi':
             self.server.add_api_request(self.name + ' ' + data.decode())
-            return ['ack', "Request is being processed"]
+            return 'ack', "Request is being processed"
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
