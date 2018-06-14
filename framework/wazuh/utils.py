@@ -500,21 +500,22 @@ class WazuhVersion:
     def __ge__(self, new_version):
         if self.__mayor < new_version.__mayor:
             return False
-        elif self.__minor < new_version.__minor:
-            return False
-        elif self.__patch < new_version.__patch:
-            return False
-        elif (self.__dev) and not (new_version.__dev):
-            return False
-        elif (self.__dev) and (new_version.__dev):
-            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+        elif self.__mayor == new_version.__mayor:
+            if self.__minor < new_version.__minor:
                 return False
-            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
-                return False
-            else:
-                return True
-        else:
-            return True
+            elif self.__minor == new_version.__minor:
+                if self.__patch < new_version.__patch:
+                    return False
+                elif self.__patch == new_version.__patch:
+                    if (self.__dev) and not (new_version.__dev):
+                        return False
+                    elif (self.__dev) and (new_version.__dev):
+                            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+                                return False
+                            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
+                                return False
+
+        return True
 
     def __lt__(self, new_version):
         return not (self >= new_version)
