@@ -28,7 +28,7 @@ try:
     from wazuh import common
 except Exception as e:
     print ("Error starting wazuh-clusterd: {0}".format(e))
-    exit()
+    exit(1)
 
 
 # Rest of imports. If an exception is raised, it will be logged using logging.
@@ -222,6 +222,8 @@ if __name__ == '__main__':
 
     if error_msg:
         logger.error(error_msg)
+        if not args.f:
+            print ("Error starting wazuh-clusterd: {0}".format(error_msg))
         exit(1)
 
     # Signals
