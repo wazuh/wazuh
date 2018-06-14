@@ -7,7 +7,7 @@ from sys import argv, exit, path, stdout, version_info
 
 if version_info[0] == 2 and version_info[1] < 7:
     print("Error: Minimal Python version required is 2.7. Found version is {0}.{1}.".format(version_info[0], version_info[1]))
-    exit()
+    exit(1)
 
 from os.path import dirname, basename
 from itertools import chain
