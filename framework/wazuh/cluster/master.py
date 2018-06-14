@@ -14,13 +14,16 @@ import threading
 import time
 from datetime import datetime
 from operator import itemgetter
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
 from wazuh import common, WazuhException
 from wazuh.agent import Agent
 from wazuh.cluster import __version__
 from wazuh.cluster.cluster import get_cluster_items, _update_file, \
     decompress_files, get_files_status, \
-    compress_files, compare_files, get_agents_status, \
-    read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
+    compress_files, compare_files, read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
 from wazuh.cluster.communication import FragmentedStringReceiver, FragmentedFileReceiver, Server, ServerHandler, ClusterThread
 from wazuh.cluster.internal_socket import InternalSocketHandler
 from wazuh.cluster.dapi import dapi
@@ -31,16 +34,23 @@ logger = logging.getLogger(__name__)
 
 
 class APIRequestQueue(ClusterThread):
-    def __init__(self, manager, request):
-        ClusterThread.__init__(self, stopper=manager.stopper)
-        self.id, self.request = request.split(' ', 1)
-        self.request = json.loads(self.request)
-        self.manager = manager
+    def __init__(self, server, stopper):
+        ClusterThread.__init__(self, stopper=stopper)
+        self.server = server
+        self.request_queue = Queue()
+        self.tag = "[DistributedAPI]"
+
 
     def run(self):
-        result = dapi.distribute_function(input_json=self.request, from_master=True)
-        self.manager.server.send_request(client_name=self.manager.name, command='dapi_res', data=self.id + ' ' + result)
+        while not self.stopper.is_set() and self.running:
+            name, id, request = self.request_queue.get(block=True).split(' ', 2)
+            result = dapi.distribute_function(json.loads(request), from_master=True)
+            self.server.send_request(client_name=name, command='dapi_res', data=id + ' ' + result)
 
+
+    def set_request(self, request):
+        logger.debug("{} Receiving request: {}".format(self.tag, request))
+        self.request_queue.put(request)
 
 #
 # Master Handler
@@ -100,9 +110,7 @@ class MasterManagerHandler(ServerHandler):
             string_sender_thread.start()
             return 'ack', self.set_worker(command, string_sender_thread)
         elif command == 'dapi':
-            data = data.decode()
-            api_thread = APIRequestQueue(manager=self, request=data)
-            api_thread.start()
+            self.server.add_api_request(self.name + ' ' + data.decode())
             return ['ack', "Request is being processed"]
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
@@ -484,6 +492,7 @@ class ProcessExtraValidFiles(ProcessClient):
 #
 class MasterManager(Server):
     Integrity_T = "Integrity_Thread"
+    APIRequests_T = "API_Requests_Thread"
 
     def __init__(self, cluster_config):
         Server.__init__(self, cluster_config['bind_addr'], cluster_config['port'], MasterManagerHandler)
@@ -519,7 +528,10 @@ class MasterManager(Server):
         logger.debug("[Master] Creating threads.")
 
         self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=self.interval_recalculate_integrity, stopper=self.stopper)
-        self.threads[MasterManager.Integrity_T].start()
+        self.threads[MasterManager.APIRequests_T] = APIRequestQueue(server=self, stopper=self.stopper)
+
+        for thread in self.threads.values():
+            thread.start()
 
         logger.debug("[Master] Threads created.")
 
@@ -611,6 +623,10 @@ class MasterManager(Server):
             self.remove_client(client_id=client)
 
         logger.debug("[Master] Cleaning threads. End.")
+
+
+    def add_api_request(self, request):
+        self.threads[self.APIRequests_T].set_request(request)
 
 
 #
