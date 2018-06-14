@@ -1,11 +1,22 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.3.1]
+## [v3.3.1]
+
+### Added
+
+### Changed
 
 ### Fixed
 
+- Windows prevents agent from renaming file. ([#773](https://github.com/wazuh/wazuh/pull/773))
+- Fix manager-agent version comparison in remote upgrades. ([#765](https://github.com/wazuh/wazuh/pull/765))
+- Fix log flooding when restarting agent while the merged file is being receiving. ([#788](https://github.com/wazuh/wazuh/pull/788))
+- Fix issue when overwriting rotated logs in Windows agents. ([#776](https://github.com/wazuh/wazuh/pull/776))
+- Prevent OpenSCAP module from running on Windows agents (incompatible). ([#777](https://github.com/wazuh/wazuh/pull/777))
+- Fix issue in file changes report for FIM on Linux when a directory contains a backslash. ([#775](https://github.com/wazuh/wazuh/pull/775))
 - Fixed missing "minor" field in agent data managed by the framework. ([#771](https://github.com/wazuh/wazuh/pull/771))
+
 
 ## [v3.3.0]
 
