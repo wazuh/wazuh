@@ -40,6 +40,9 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     module->context = &WM_SYS_CONTEXT;
     module->data = syscollector;
 
+    if (!node)
+        return 0;
+
     // Iterate over elements
 
     for (i = 0; node[i]; i++) {

@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Management of empty blocks in the configuration files. ([#781](https://github.com/wazuh/wazuh/pull/781))
+
 ### Fixed
 
 - Windows prevents agent from renaming file. ([#773](https://github.com/wazuh/wazuh/pull/773))

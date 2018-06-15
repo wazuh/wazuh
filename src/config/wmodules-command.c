@@ -26,6 +26,11 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
     int i;
     wm_command_t * command;
 
+    if (!nodes) {
+        mwarn("Tag <%s> not found at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
+        return OS_INVALID;
+    }
+
     // Create module
 
     os_calloc(1, sizeof(wm_command_t), command);
