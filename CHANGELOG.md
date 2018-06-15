@@ -1,6 +1,54 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.3.1]
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Windows prevents agent from renaming file. ([#773](https://github.com/wazuh/wazuh/pull/773))
+- Fix manager-agent version comparison in remote upgrades. ([#765](https://github.com/wazuh/wazuh/pull/765))
+- Fix log flooding when restarting agent while the merged file is being receiving. ([#788](https://github.com/wazuh/wazuh/pull/788))
+- Fix issue when overwriting rotated logs in Windows agents. ([#776](https://github.com/wazuh/wazuh/pull/776))
+- Prevent OpenSCAP module from running on Windows agents (incompatible). ([#777](https://github.com/wazuh/wazuh/pull/777))
+- Fix issue in file changes report for FIM on Linux when a directory contains a backslash. ([#775](https://github.com/wazuh/wazuh/pull/775))
+- Fixed missing "minor" field in agent data managed by the framework. ([#771](https://github.com/wazuh/wazuh/pull/771))
+- Fixed several bugs in upgrade agents ([#784](https://github.com/wazuh/wazuh/pull/784)): 
+    - Error upgrading an agent with status `Never Connected`.
+    - Fixed API support.
+    - Sockets were not closing properly.
+- Cluster exits showing an error when an error occurs. ([#790](https://github.com/wazuh/wazuh/pull/790))
+- Fixed bug when cluster control or API cannot request the list of nodes to the master. ([#762](https://github.com/wazuh/wazuh/pull/762))
+
+## [v3.3.0]
+
+### Added
+
+- Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
+- Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
+- Added an output format option for Logcollector to build custom logs. ([#423](https://github.com/wazuh/wazuh/pull/423))
+- Included millisecond timing in timestamp to JSON events. ([#467](https://github.com/wazuh/wazuh/pull/467))
+- Added an option in Analysisd to set input event offset for plugin decoders. ([#512](https://github.com/wazuh/wazuh/pull/512))
+- Allow decoders mix plugin and multiregex children. ([#602](https://github.com/wazuh/wazuh/pull/602))
+- Added the option to filter by any field in `get_agents_overview`, `get_agent_group` and `get_agents_without_group` functions of the Python framework. ([#743](https://github.com/wazuh/wazuh/pull/743))
+
+### Changed
+
+- Add default value for option -x in agent_upgrade tool.
+- Changed output of agents in cluster control. ([#741](https://github.com/wazuh/wazuh/pull/741))
+
+### Fixed
+
+- Fix bug in Logcollector when removing duplicate localfiles. ([#402](https://github.com/wazuh/wazuh/pull/402))
+- Fix memory error in Logcollector when using wildcards.
+- Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
+- Fixed bug getting the agents in cluster control. ([#741](https://github.com/wazuh/wazuh/pull/741))
+- Prevent Logcollector from reporting an error when a path with wildcards matches no files.
+- Fixes the feature to group with the option multi-line. ([#754](https://github.com/wazuh/wazuh/pull/754))
+
 ## [v3.2.4]
 
 ### Fixed
@@ -145,7 +193,7 @@ All notable changes to this project will be documented in this file.
 - Fixed predecoder hostname field in JSON event output.
 - Several fixes and improvements in cluster.
 
-## [v3.1.0]
+## [v3.1.0] 2017-12-22
 
 ### Added
 

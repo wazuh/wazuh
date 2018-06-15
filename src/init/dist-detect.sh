@@ -101,6 +101,12 @@ else
         DIST_VER=$(uname -r | cut -d\. -f2)
         DIST_SUBVER=$(uname -r | cut -d\. -f3)
 
+    # AIX
+    elif [ "$(uname)" = "AIX" ]; then
+        DIST_NAME="AIX"
+        DIST_VER=$(uname -r | cut -d\. -f2)
+        DIST_SUBVER=$(uname -r | cut -d\. -f3)
+
     # BSD
     elif [ "X$(uname)" = "XOpenBSD" -o "X$(uname)" = "XNetBSD" -o "X$(uname)" = "XFreeBSD" -o "X$(uname)" = "XDragonFly" ]; then
         DIST_NAME="bsd"

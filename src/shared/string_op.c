@@ -193,10 +193,25 @@ int w_str_in_array(const char * needle, const char ** haystack) {
     return 0;
 }
 
-// Free string array
+/* Filter escape characters */
 
-void w_free_strings(char ** array) {
-    unsigned int i;
+char* filter_special_chars(const char *string) {
+    int i, j = 0;
+    int n = strlen(string);
+    char *filtered = malloc(n + 1);
+
+    if (!filtered)
+        return NULL;
+
+    for (i = 0; i <= n; i++)
+        filtered[j++] = (string[i] == '\\') ? string[++i] : string[i];
+
+    return filtered;
+}
+
+// Free string array
+void free_strarray(char ** array) {
+    int i;
 
     if (array) {
         for (i = 0; array[i]; ++i) {

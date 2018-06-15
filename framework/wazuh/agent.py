@@ -87,6 +87,13 @@ class Agent:
     OSSEC Agent object.
     """
 
+    fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'status',
+              'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
+              'version': 'version', 'manager_host': 'manager_host', 'dateAdd': 'date_add',
+              'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
+              'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
+              'os.uname': 'os_uname', 'os.arch': 'os_arch', 'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive'}
+
     def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
         """
         Initialize an agent.
@@ -158,21 +165,20 @@ class Agent:
         query = "SELECT {0} FROM agent WHERE id = :id"
         request = {'id': self.id}
 
-        valid_select_fields = {"id", "name", "ip", "key", "version", "date_add",
-                               "last_keepalive", "config_sum", "merged_sum",
-                               "group", "manager_host", "os_name", "os_version",
-                               "os_major", "os_minor", "os_codename", "os_build",
-                               "os_platform", "os_uname", "os_arch", "node_name", "status"}
-        # we need to retrieve the fields that are used to compute other fields from the DB
-        select_fields = {'id', 'version', 'last_keepalive'}
+        valid_select_fields = set(self.fields.values())
 
         # Select
         if select:
-            if not set(select['fields']).issubset(valid_select_fields):
-                incorrect_fields = list(map(lambda x: str(x), set(select['fields']) - valid_select_fields))
+            select['fields'] = list(map(lambda x: self.fields[x] if x in self.fields else x, select['fields']))
+            select_fields_set = set(select['fields'])
+            if not select_fields_set.issubset(valid_select_fields):
+                incorrect_fields = list(map(lambda x: str(x), select_fields_set - valid_select_fields))
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
-                        format(valid_select_fields, incorrect_fields))
-            select_fields |= set(select['fields'])
+                        format(self.fields.keys(), incorrect_fields))
+
+            # to compute the status field, lastKeepAlive and version are necessary
+            select_fields = {'id'} | select_fields_set if 'status' not in select_fields_set \
+                                                       else select_fields_set | {'id', 'last_keepalive', 'version'}
         else:
             select_fields = valid_select_fields
 
@@ -730,47 +736,111 @@ class Agent:
 
     @staticmethod
     def get_agents_dict(conn, select_fields, user_select_fields):
-        select_fields = list(map(lambda x: x.replace('`',''), select_fields))
-        db_api_name = {name:name for name in select_fields}
-        db_api_name.update({"date_add":"dateAdd", "last_keepalive":"lastKeepAlive",'config_sum':'configSum','merged_sum':'mergedSum'})
-        fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'])
+        db_api_name = {v:k for k,v in Agent.fields.items()}
+        fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'], '.')
 
-        agent_items = [{field:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in conn]
+        agent_items = [{db_api_name[field]:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in conn]
 
         if 'status' in user_select_fields:
             today = datetime.today()
-            agent_items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('last_keepalive'), item.get('version') is None, today)) for item in agent_items]
+            agent_items = [dict(item, id=str(item['id']).zfill(3), status=Agent.calculate_status(item.get('lastKeepAlive'), item.get('version') is None, today)) for item in agent_items]
         else:
             agent_items = [dict(item, id=str(item['id']).zfill(3)) for item in agent_items]
 
         if len(agent_items) > 0 and agent_items[0]['id'] == '000' and 'ip' in user_select_fields:
             agent_items[0]['ip'] = '127.0.0.1'
 
-        agent_items = [{db_api_name[key]:value for key,value in agent.items() if key in user_select_fields} for agent in agent_items]
-        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os']) for d in agent_items]
+        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
 
         return agent_items
 
 
     @staticmethod
-    def get_agents_overview(status="all", os_platform="all", os_version="all", manager_host="all",
-                            node_name="all", offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                            version="all", older_than="all", ids="all"):
+    def filter_agents_by_status(status, request, query):
+        limit_seconds = 1830  # 600*3 + 30
+        result = datetime.now() - timedelta(seconds=limit_seconds)
+        request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
+        list_status = status.split(',')
+        query += ' AND ('
+
+        for status in list_status:
+            status = status.lower()
+            if status == 'active':
+                query += '((last_keepalive >= :time_active AND version IS NOT NULL) or id = 0) OR '
+            elif status == 'disconnected':
+                query += 'last_keepalive < :time_active OR '
+            elif status == "never connected" or status == "neverconnected":
+                query += 'last_keepalive IS NULL AND id != 0 OR '
+            elif status == 'pending':
+                query += 'last_keepalive IS NOT NULL AND version IS NULL OR '
+            else:
+                raise WazuhException(1729, status)
+        query = query[:-3] + ")"  # Remove the last OR from query
+
+        return query
+
+
+    @staticmethod
+    def filter_agents_by_timeframe(older_than, request, query):
+        request['older_than'] = get_timeframe_in_seconds(older_than)
+        query += " AND ("
+        # If the status is not neverconnected, compare older_than with the last keepalive:
+        query += "(last_keepalive IS NOT NULL AND CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
+        query += "OR "
+        # If the status is neverconnected, compare older_than with the date add:
+        query += "(last_keepalive IS NULL AND id != 0 AND CAST(strftime('%s', date_Add) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
+        query += ")"
+        return query
+
+
+    @staticmethod
+    def filter_query(filters, request, query):
+        """
+        Add filters to a database query
+
+        :param filters: Dictionary which key is the name of the field and the value is the value to filter.
+        :param request: Request dictionary for sqlite3
+        :param query: Database query
+        :return: Updated database query
+        """
+        for filter_name, db_filter in filters.items():
+            if db_filter == "all":
+                continue
+
+            if filter_name == "status":
+                # doesn't do += because query is a parameter of the function
+                query = Agent.filter_agents_by_status(db_filter, request, query)
+            elif filter_name == "older_than":
+                # doesn't do += because query is a parameter of the function
+                query = Agent.filter_agents_by_timeframe(db_filter, request, query)
+            else:
+                main_filter_name = filter_name if filter_name != "group" else "`group`"
+                if isinstance(db_filter, list):
+                    filter_list = [name.lower() if filter_name != "version"
+                                                else re.sub( r'([a-zA-Z])([v])', r'\1 \2', name)
+                                  for name in db_filter]
+                    query += ' AND {} COLLATE NOCASE IN ({})'.format(main_filter_name,
+                        ','.join([":{}{}".format(filter_name, x) for x in range(len(filter_list))]))
+                    key_list = [":{}{}".format(filter_name, x) for x in range(len(filter_list))]
+                    request.update({x[1:]: y for x, y in zip(key_list, filter_list)})
+                else: # str
+                    request[filter_name] = db_filter if filter_name != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', db_filter)
+                    query += ' AND {} = :{}'.format(main_filter_name, filter_name)
+
+        return query
+
+
+    @staticmethod
+    def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
         """
         Gets a list of available agents with basic attributes.
-        :param node_name: Filters by agents connected to the cluster node "node_name"
-        :param version: Filters by agent version.
-        :param status: Filters by agent status: Active, Disconnected or Never connected. Multiples statuses separated by commas.
-        :param os_platform: Filters by OS platform.
-        :param os_version: Filters by OS version.
-        :param manager_host: Filters by manager hostname to which agents are connected.
+
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string.
-        :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never connected agents, uses the register date.
-        :param ids: Return only agents with those ids.
+        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
@@ -782,21 +852,20 @@ class Agent:
 
         # Query
         query = "SELECT {0} FROM agent"
-        fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'last_keepalive',
-                  'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
-                  'version': 'version', 'manager_host': 'manager_host', 'date_add': 'date_add',
-                   'group': 'group', 'merged_sum': 'merged_sum', 'config_sum': 'config_sum',
-                   'os.codename': 'os_codename','os.major': 'os_major','os.uname': 'os_uname',
-                   'os.arch': 'os_arch', 'node_name': 'node_name'}
-        valid_select_fields = set(fields.values()) | {'status'}
+
+        valid_select_fields = set(Agent.fields.values()) | {'status'}
         # at least, we should retrieve those fields since other fields depending on those
-        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version", "`group`"}
+        search_fields = {"id", "name", "ip", "os_name", "os_version", "os_platform", "manager_host", "version",
+                         "`group`", "node_name"}
         request = {}
         if select:
+            select['fields'] = list(map(lambda x: Agent.fields[x] if x in Agent.fields else x, select['fields']))
+
             if not set(select['fields']).issubset(valid_select_fields):
                 incorrect_fields = list(map(lambda x: str(x), set(select['fields']) - valid_select_fields))
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
-                                    format(valid_select_fields, incorrect_fields))
+                                    format(Agent.fields.keys(), incorrect_fields))
+
             select_fields_set = set(select['fields'])
             min_select_fields = {'id'} | select_fields_set if 'status' not in select_fields_set\
                                         else select_fields_set | {'id', 'last_keepalive', 'version'}
@@ -806,54 +875,8 @@ class Agent:
         # save the fields that the user has selected
         user_select_fields = (set(select['fields']) if select else min_select_fields.copy()) | {'id'}
 
-        if status != "all":
-            limit_seconds = 1830 # 600*3 + 30
-            result = datetime.now() - timedelta(seconds=limit_seconds)
-            request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-            list_status = status.split(',')
-            query += ' AND ('
-
-            for status in list_status:
-                status = status.lower()
-                if status == 'active':
-                    query += '((last_keepalive >= :time_active AND version IS NOT NULL) or id = 0) OR '
-                elif status == 'disconnected':
-                    query += 'last_keepalive < :time_active OR '
-                elif status == "never connected" or status == "neverconnected":
-                    query += 'last_keepalive IS NULL AND id != 0 OR '
-                elif status == 'pending':
-                    query += 'last_keepalive IS NOT NULL AND version IS NULL OR '
-                else:
-                    raise WazuhException(1729, status)
-            query = query[:-3] + ")" #Remove the last OR from query
-
-        if older_than != 'all':
-            request['older_than'] = get_timeframe_in_seconds(older_than)
-            query += " AND ("
-            # If the status is not neverconnected, compare older_than with the last keepalive:
-            query += "(last_keepalive IS NOT NULL AND CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
-            query += "OR "
-            # If the status is neverconnected, compare older_than with the date add:
-            query += "(last_keepalive IS NULL AND id != 0 AND CAST(strftime('%s', date_Add) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
-            query += ")"
-
-        if os_platform != "all":
-            request['os_platform'] = os_platform
-            query += ' AND os_platform = :os_platform'
-        if os_version != "all":
-            request['os_version'] = os_version
-            query += ' AND os_version = :os_version'
-        if manager_host != "all":
-            request['manager_host'] = manager_host
-            query += ' AND manager_host = :manager_host'
-        if version != "all":
-            request['version'] = re.sub( r'([a-zA-Z])([v])', r'\1 \2', version )
-            query += ' AND version = :version'
-        if node_name != "all":
-            query = filter_list_or_string(node_name, 'node_name', request, query)
-        if ids != "all":
-            query = filter_list_or_string(ids, 'id', request, query)
-
+        # add special filters to the database query
+        query = Agent.filter_query(filters, request, query)
 
         # Search
         if search:
@@ -875,7 +898,7 @@ class Agent:
         # Sorting
         if sort:
             if sort['fields']:
-                allowed_sort_fields = fields.keys()
+                allowed_sort_fields = set(Agent.fields.keys())
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
                 if not set(sort['fields']).issubset(allowed_sort_fields):
                     raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, sort['fields']))
@@ -885,12 +908,12 @@ class Agent:
                     # Order by status ASC is the same that order by last_keepalive DESC.
                     if i == 'status':
                         str_order = "desc" if sort['order'] == 'asc' else "asc"
-                        order_str_field = '{0} {1}'.format(fields[i], str_order)
+                        order_str_field = '{0} {1}'.format(Agent.fields[i], str_order)
                     # Order by version is order by major and minor
                     elif i == 'os.version':
                         order_str_field = "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(sort['order'])
                     else:
-                        order_str_field = '{0} {1}'.format(fields[i], sort['order'])
+                        order_str_field = '{0} {1}'.format(Agent.fields[i], sort['order'])
 
                     order_str_fields.append(order_str_field)
 
@@ -905,10 +928,6 @@ class Agent:
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
-
-        if 'group' in min_select_fields:
-            min_select_fields.remove('group')
-            min_select_fields.add('`group`')
 
         conn.execute(query.format(','.join(min_select_fields)), request)
 
@@ -1155,7 +1174,9 @@ class Agent:
         :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary (agents that cannot been removed), and a message.
         """
 
-        agents = Agent.get_agents_overview(status = status, older_than = older_than)
+
+        agents = Agent.get_agents_overview(filters={'status':status, 'older_than': older_than}, limit = None)
+
         id_purgeable_agents = [agent['id'] for agent in agents['items']]
 
         failed_ids = []
@@ -1364,8 +1385,8 @@ class Agent:
             conn.execute(query.format('COUNT(*)'), request)
 
             # merged.mg and agent.conf sum
-            merged_sum = get_hash(entry + "/merged.mg")
-            conf_sum   = get_hash(entry + "/agent.conf")
+            merged_sum = get_hash(entry + "/merged.mg", hash_algorithm)
+            conf_sum   = get_hash(entry + "/agent.conf", hash_algorithm)
 
             item = {'count':conn.fetch()[0], 'name': entry}
 
@@ -1436,7 +1457,7 @@ class Agent:
             return False
 
     @staticmethod
-    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
         """
         Gets the agents in a group
 
@@ -1454,19 +1475,16 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
-        valid_select_fiels = {"id", "name", "ip", "last_keepalive", "os_name",
-                             "os_version", "os_platform", "os_uname", "version",
-                             "config_sum", "merged_sum", "manager_host", "status"}
-        # fields like status need to retrieve others to be properly computed.
-        dependent_select_fields = {'status': {'last_keepalive','version'}}
+        valid_select_fiels = set(Agent.fields.values()) | {'status'}
         search_fields = {"id", "name", "os_name", "ip", "status", "version", "os_platform", "manager_host"}
 
         # Init query
-        query = "SELECT {0} FROM agent WHERE `group` = :group_id"
+        query = "SELECT {0} FROM agent WHERE `group` = :group_id" if group_id is not None else "SELECT {0} FROM agent WHERE `group` IS NULL AND id != 0"
         request = {'group_id': group_id}
 
         # Select
         if select:
+            select['fields'] = list(map(lambda x: Agent.fields[x] if x in Agent.fields else x, select['fields']))
             select_fields_param = set(select['fields'])
 
             if not select_fields_param.issubset(valid_select_fiels):
@@ -1474,16 +1492,15 @@ class Agent:
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                         format(', '.join(list(valid_select_fiels)), ', '.join(uncorrect_fields)))
 
-            select_fields = select_fields_param
+            select_fields = {'id'} | select_fields_param if 'status' not in select_fields_param \
+                                                         else select_fields_param | {'id', 'last_keepalive', 'version'}
         else:
             select_fields = valid_select_fiels
 
-        # add dependent select fields to the database select query
-        db_select_fields = set()
-        for dependent, dependent_fields in dependent_select_fields.items():
-            if dependent in select_fields:
-                db_select_fields |= dependent_fields
-        db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
+        # save the fields that the user has selected
+        user_select_fields = (set(select['fields']) if select else select_fields.copy()) | {'id'}
+
+        query = Agent.filter_query(filters, request, query)
 
         # Search
         if search:
@@ -1499,13 +1516,13 @@ class Agent:
         # Sorting
         if sort:
             if sort['fields']:
-                allowed_sort_fields = db_select_fields
+                allowed_sort_fields = set(Agent.fields.keys())
                 # Check if every element in sort['fields'] is in allowed_sort_fields.
                 if not set(sort['fields']).issubset(allowed_sort_fields):
                     raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.\
                         format(allowed_sort_fields, sort['fields']))
 
-                order_str_fields = ['{0} {1}'.format(i, sort['order']) for i in sort['fields']]
+                order_str_fields = ['{0} {1}'.format(Agent.fields[i], sort['order']) for i in sort['fields']]
                 query += ' ORDER BY ' + ','.join(order_str_fields)
             else:
                 query += ' ORDER BY id {0}'.format(sort['order'])
@@ -1518,30 +1535,20 @@ class Agent:
             request['offset'] = offset
             request['limit'] = limit
 
+        if 'group' in select_fields:
+            select_fields.remove('group')
+            select_fields.add('`group`')
+
         # Data query
-        conn.execute(query.format(','.join(db_select_fields)), request)
+        conn.execute(query.format(','.join(select_fields)), request)
 
-        non_nested = [{field:tuple_elem for field,tuple_elem \
-                in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
-
-        if 'id' in select_fields:
-            list(map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested))
-
-        if 'status' in select_fields:
-            try:
-                list(map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested))
-            except KeyError:
-                pass
-
-        # return only the fields requested by the user (saved in select_fields) and not the dependent ones
-        non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
-
-        data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
+        data['items'] = Agent.get_agents_dict(conn, select_fields, user_select_fields)
 
         return data
 
+
     @staticmethod
-    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
         """
         Gets the agents in a group
 
@@ -1552,99 +1559,9 @@ class Agent:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        return Agent.get_agent_group(group_id=None, offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                     filters=filters)
 
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-        valid_select_fiels = {"id", "name", "ip", "last_keepalive", "os_name",
-                             "os_version", "os_platform", "os_uname", "version",
-                             "config_sum", "merged_sum", "manager_host", "status"}
-        # fields like status need to retrieve others to be properly computed.
-        dependent_select_fields = {'status': {'last_keepalive','version'}}
-        search_fields = {"id", "name", "os_name", "ip", "status", "version", "os_platform", "manager_host"}
-
-        # Init query
-        query = "SELECT {0} FROM agent WHERE `group` IS NULL AND id != 0"
-        fields = {'id': 'id', 'name': 'name'}  # field: db_column
-        request = {}
-
-        # Select
-        if select:
-            select_fields_param = set(select['fields'])
-
-            if not select_fields_param.issubset(valid_select_fiels):
-                uncorrect_fields = select_fields_param - valid_select_fiels
-                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
-                        format(', '.join(list(valid_select_fiels)), ', '.join(uncorrect_fields)))
-
-            select_fields = select_fields_param
-        else:
-            select_fields = valid_select_fiels
-
-        # add dependent select fields to the database select query
-        db_select_fields = set()
-        for dependent, dependent_fields in dependent_select_fields.items():
-            if dependent in select_fields:
-                db_select_fields |= dependent_fields
-        db_select_fields |= (select_fields - set(dependent_select_fields.keys()))
-
-        # Search
-        if search:
-            query += " AND NOT" if bool(search['negation']) else ' AND'
-            query += " (" + " OR ".join(x + ' LIKE :search' for x in search_fields) + " )"
-            request['search'] = '%{0}%'.format(int(search['value']) if search['value'].isdigit()
-                                                                    else search['value'])
-
-        # Count
-        conn.execute(query.format('COUNT(*)'), request)
-        data = {'totalItems': conn.fetch()[0]}
-
-        # Sorting
-        if sort:
-            if sort['fields']:
-                allowed_sort_fields = db_select_fields
-                # Check if every element in sort['fields'] is in allowed_sort_fields.
-                if not set(sort['fields']).issubset(allowed_sort_fields):
-                    raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.\
-                        format(allowed_sort_fields, sort['fields']))
-
-                order_str_fields = ['{0} {1}'.format(fields[i], sort['order']) for i in sort['fields']]
-                query += ' ORDER BY ' + ','.join(order_str_fields)
-            else:
-                query += ' ORDER BY id {0}'.format(sort['order'])
-        else:
-            query += ' ORDER BY id ASC'
-
-        # OFFSET - LIMIT
-        if limit:
-            query += ' LIMIT :offset,:limit'
-            request['offset'] = offset
-            request['limit'] = limit
-
-        # Data query
-        conn.execute(query.format(','.join(db_select_fields)), request)
-
-        non_nested = [{field:tuple_elem for field,tuple_elem \
-                in zip(db_select_fields, tuple) if tuple_elem} for tuple in conn]
-
-        if 'id' in select_fields:
-            list(map(lambda x: setitem(x, 'id', str(x['id']).zfill(3)), non_nested))
-
-        if 'status' in select_fields:
-            try:
-                list(map(lambda x: setitem(x, 'status', Agent.calculate_status(x['last_keepalive'], x['version'] == None)), non_nested))
-            except KeyError:
-                pass
-
-        # return only the fields requested by the user (saved in select_fields) and not the dependent ones
-        non_nested = [{k:v for k,v in d.items() if k in select_fields} for d in non_nested]
-
-        data['items'] = [plain_dict_to_nested_dict(d, ['os']) for d in non_nested]
-
-        return data
 
     @staticmethod
     def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -1701,6 +1618,7 @@ class Agent:
         except Exception as e:
             raise WazuhException(1727, str(e))
 
+
     @staticmethod
     def create_group(group_id):
         """
@@ -1730,6 +1648,7 @@ class Agent:
             raise WazuhException(1005, str(e))
 
         return msg
+
 
     @staticmethod
     def remove_group(group_id):
@@ -1781,6 +1700,7 @@ class Agent:
 
         return final_dict
 
+
     @staticmethod
     def set_group(agent_id, group_id, force=False):
         """
@@ -1823,6 +1743,7 @@ class Agent:
             Agent.create_group(group_id)
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
+
 
     @staticmethod
     def unset_group(agent_id, force=False):
@@ -2026,8 +1947,6 @@ class Agent:
 
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))
-        else:
-            print("Downloading WPK file...")
 
         try:
             result = urlopen(wpk_url)
@@ -2051,8 +1970,6 @@ class Agent:
 
         if debug:
             print("WPK file downloaded: {0} - SHA1SUM: {1}".format(wpk_file_path, sha1hash))
-        else:
-            print("WPK file downloaded.")
 
         return [wpk_file, sha1hash]
 
@@ -2185,6 +2102,10 @@ class Agent:
 
         self._load_info_from_DB()
 
+        # Check if agent is active.
+        if not self.status == 'Active':
+            raise WazuhException(1720)
+
         # Check if remote upgrade is available for the selected agent version
         if WazuhVersion(self.version.split(' ')[1]) < WazuhVersion("3.0.0-alpha4"):
             raise WazuhException(1719, version)
@@ -2197,10 +2118,6 @@ class Agent:
 
         if not wpk_repo.endswith('/'):
             wpk_repo = wpk_repo + '/'
-
-        # Check if agent is active.
-        if not self.status == 'Active':
-            raise WazuhException(1720)
 
         # Send file to agent
         sending_result = self._send_wpk_file(wpk_repo, debug, version, force, show_progress, chunk_size, rl_timeout)
@@ -2224,11 +2141,12 @@ class Agent:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok'):
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. Current version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             return "Upgrade procedure started"
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             raise WazuhException(1716, data.replace("err ",""))
-        s.close()
 
 
     @staticmethod
@@ -2276,14 +2194,16 @@ class Agent:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok 0'):
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): succeeded. New version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             return "Agent upgraded successfully"
         elif data.startswith('ok 2'):
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): failed: restored to previous version".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             raise WazuhException(1716, "Agent restored to previous version")
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): lost: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             raise WazuhException(1716, data.replace("err ",""))
-        s.close()
 
 
     @staticmethod
@@ -2449,11 +2369,12 @@ class Agent:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok'):
             s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}): started.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             return "Installation started"
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             raise WazuhException(1716, data.replace("err ",""))
-        s.close()
 
 
     @staticmethod

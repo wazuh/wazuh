@@ -362,17 +362,17 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def get_fields_to_nest(fields, force_fields=[]):
+def get_fields_to_nest(fields, force_fields=[], split_character="_"):
     nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
-             for k,g in groupby(map(lambda x: x.split('_'), sorted(fields)),
+             for k,g in groupby(map(lambda x: x.split(split_character), sorted(fields)),
              key=lambda x:x[0])}
     nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
-    nested = [(field,{(subfield, '_'.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
-    non_nested = set(filter(lambda x: x.split('_')[0] not in map(itemgetter(0), nested), fields))
+    nested = [(field,{(subfield, split_character.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
+    non_nested = set(filter(lambda x: x.split(split_character)[0] not in map(itemgetter(0), nested), fields))
     return nested, non_nested
 
 
-def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[]):
+def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[], split_character='_'):
     """
     Turns an input dictionary with "nested" fields in form
                 field_subfield
@@ -407,7 +407,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
     nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
-             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())),
+             for k,g in groupby(map(lambda x: x.split(split_character), sorted(data.keys())),
              key=lambda x:x[0])}
 
     # create a nested dictionary with those fields that have subfields
@@ -423,12 +423,12 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl
+    nested_dict = {f:{sf:data['{0}{2}{1}'.format(f,sf,split_character)] for sf in sfl} for f,sfl
                   in nested.items() if len(sfl) > 1 or f in force_fields}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0]
+    non_nested_dict = {f:data[f] for f in data.keys() if f.split(split_character)[0]
                        not in nested_dict.keys()}
 
     # append both dictonaries
@@ -500,21 +500,22 @@ class WazuhVersion:
     def __ge__(self, new_version):
         if self.__mayor < new_version.__mayor:
             return False
-        elif self.__minor < new_version.__minor:
-            return False
-        elif self.__patch < new_version.__patch:
-            return False
-        elif (self.__dev) and not (new_version.__dev):
-            return False
-        elif (self.__dev) and (new_version.__dev):
-            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+        elif self.__mayor == new_version.__mayor:
+            if self.__minor < new_version.__minor:
                 return False
-            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
-                return False
-            else:
-                return True
-        else:
-            return True
+            elif self.__minor == new_version.__minor:
+                if self.__patch < new_version.__patch:
+                    return False
+                elif self.__patch == new_version.__patch:
+                    if (self.__dev) and not (new_version.__dev):
+                        return False
+                    elif (self.__dev) and (new_version.__dev):
+                            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+                                return False
+                            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
+                                return False
+
+        return True
 
     def __lt__(self, new_version):
         return not (self >= new_version)
