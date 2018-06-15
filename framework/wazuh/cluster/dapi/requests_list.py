@@ -35,7 +35,7 @@ functions = {
     },
     '/agents/:agent_id/key': {
         'function': Agent.get_agent_key,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/agents': {
         'function': Agent.get_agents_overview,
@@ -55,15 +55,15 @@ functions = {
     },
     '/agents/:agent_id/upgrade_result': {
         'function': Agent.get_upgrade_result,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     'PUT/agents/:agent_id/upgrade': {
         'function': Agent.upgrade_agent,
-        'type': 'local_master'
+        'type': 'disitributed_master'
     },
     'PUT/agents/:agent_id/upgrade_custom': {
         'function': Agent.upgrade_agent_custom,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     'PUT/agents/:agent_id/restart': {
         'function': Agent.restart_agents,
@@ -151,41 +151,41 @@ functions = {
     },
     '/decoders/files': {
         'function': Decoder.get_decoders_files,
-        'type': 'local_master'
+        'type': 'local_any'
     },
 
     # Managers
     '/manager/info': {
         'function': Wazuh(common.ossec_path).get_ossec_init,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/manager/status': {
         'function': manager.status,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/manager/configuration': {
         'function': configuration.get_ossec_conf,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/manager/stats': {
         'function': stats.totals,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/manager/stats/hourly': {
         'function': stats.hourly,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/manager/stats/weekly': {
         'function': stats.weekly,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/manager/logs/summary': {
         'function': manager.ossec_log_summary,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/manager/logs': {
         'function': manager.ossec_log,
-        'type': 'local_master'
+        'type': 'local_any'
     },
 
     # Cluster
@@ -217,27 +217,27 @@ functions = {
     # Rootcheck
     '/rootcheck/:agent_id': {
         'function': rootcheck.print_db,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     '/rootcheck/:agent_id/pci': {
         'function': rootcheck.get_pci,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     '/rootcheck/:agent_id/cis': {
         'function': rootcheck.get_cis,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     '/rootcheck/:agent_id/last_scan': {
         'function': rootcheck.last_scan,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     'PUT/rootcheck': {
         'function': rootcheck.run,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     'DELETE/rootcheck': {
         'function': rootcheck.clear,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
 
     # Rules
@@ -265,45 +265,45 @@ functions = {
     # Syscheck
     '/syscheck/:agent_id': {
         'function': syscheck.files,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     '/syscheck/:agent_id/last_scan': {
         'function': syscheck.last_scan,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     'PUT/syscheck': {
         'function': syscheck.run,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     'DELETE/syscheck': {
         'function': syscheck.clear,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
 
     # Syscollector
     '/syscollector/:agent_id/os': {
         'function': syscollector.get_os_agent,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     '/syscollector/:agent_id/hardware': {
         'function': syscollector.get_hardware_agent,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     '/syscollector/:agent_id/packages': {
         'function': syscollector.get_packages_agent,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     '/syscollector/os': {
         'function': syscollector.get_os,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     '/syscollector/hardware': {
         'function': syscollector.get_hardware,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
     '/syscollector/packages': {
         'function': syscollector.get_packages,
-        'type': 'local_master'
+        'type': 'distributed_master'
     },
 
 }
