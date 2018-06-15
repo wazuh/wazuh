@@ -16,12 +16,13 @@ All notable changes to this project will be documented in this file.
 - Prevent OpenSCAP module from running on Windows agents (incompatible). ([#777](https://github.com/wazuh/wazuh/pull/777))
 - Fix issue in file changes report for FIM on Linux when a directory contains a backslash. ([#775](https://github.com/wazuh/wazuh/pull/775))
 - Fixed missing "minor" field in agent data managed by the framework. ([#771](https://github.com/wazuh/wazuh/pull/771))
-- Fixed several bugs in upgrade agents ([#784](https://github.com/wazuh/wazuh/pull/784)): 
+- Fixed several bugs in upgrade agents ([#784](https://github.com/wazuh/wazuh/pull/784)):
     - Error upgrading an agent with status `Never Connected`.
     - Fixed API support.
     - Sockets were not closing properly.
 - Cluster exits showing an error when an error occurs. ([#790](https://github.com/wazuh/wazuh/pull/790))
 - Fixed bug when cluster control or API cannot request the list of nodes to the master. ([#762](https://github.com/wazuh/wazuh/pull/762))
+- Verify WPK with Wazuh CA by default. ([#799](https://github.com/wazuh/wazuh/pull/799))
 - Fixed bug when `agent.conf` received a wrong configuration from manager and made it stop. ([#796](https://github.com/wazuh/wazuh/pull/796))
 
 ## [v3.3.0]

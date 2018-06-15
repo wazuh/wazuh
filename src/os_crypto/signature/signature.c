@@ -240,6 +240,12 @@ int wpk_verify_cert(X509 * cert, const char ** ca_store) {
     for (i = 0; ca_store[i]; i++) {
         int r;
 
+        // If empty string, ignore
+
+        if (ca_store[i][0] == '\0') {
+            continue;
+        }
+
         if (stat(ca_store[i], &statbuf) < 0) {
             merror(FSTAT_ERROR, ca_store[i], errno, strerror(errno));
             continue;
