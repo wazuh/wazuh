@@ -53,9 +53,11 @@
 /* Prototypes */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 #ifdef WIN32
-int set_winsacl(const char *dir);
+void restore_sacls();
+int set_winsacl(const char *dir, int position);
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int whodata_audit_start();
+int is_valid_sacl(PACL sacl);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
 #endif
 
@@ -567,17 +569,18 @@ int realtime_win32read(win32rtfim *rtlocald)
     return (0);
 }
 
+// In Windows the whodata parameter contains the directory position + 1 to be able to reference it
 int realtime_adddir(const char *dir, int whodata)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
 
     if (whodata) {
-        if (!syscheck.wdata && whodata_audit_start()) {
+        if (!syscheck.wdata.fd && whodata_audit_start()) {
             return -1;
         }
 
-        if (set_winsacl(dir)) {
+        if (set_winsacl(dir, whodata - 1)) {
             merror("Unable to add directory to whodata monitoring: '%s'.", dir);
             return 0;
         }
@@ -632,15 +635,15 @@ int realtime_adddir(const char *dir, int whodata)
     return (1);
 }
 
-int set_winsacl(const char *dir) {
+int set_winsacl(const char *dir, int position) {
     static LPCTSTR priv = "SeSecurityPrivilege";
+    static char *trustee = "Everyone";
 	DWORD result = 0;
 	PACL old_sacl = NULL, new_sacl = NULL;
 	PSECURITY_DESCRIPTOR security_descriptor = NULL;
 	EXPLICIT_ACCESS entry_access;
 	HANDLE hdle;
-
-    // Code for expand the obj dir
+    int retval = 1;
 
 	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
 		merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
@@ -654,46 +657,87 @@ int set_winsacl(const char *dir) {
 
 	if (result = GetNamedSecurityInfo(dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
 		merror("GetNamedSecurityInfo() failed. Error '%ld'", result);
-        goto error;
+        goto end;
 	}
+
+    // Check if the sacl has what the whodata scanner needs
+    if (is_valid_sacl(old_sacl)) {
+        syscheck.wdata.ignore[position] = 1;
+        mdebug2("It is not necessary to configure the SACL of '%s'.", dir);
+        retval = 0;
+        goto end;
+    }
 
 	// Configure the new ACE
 	SecureZeroMemory(&entry_access, sizeof(EXPLICIT_ACCESS));
-	entry_access.grfAccessPermissions = GENERIC_WRITE;
+	entry_access.grfAccessPermissions = FILE_WRITE_DATA;
 	entry_access.grfAccessMode = SET_AUDIT_SUCCESS;
 	entry_access.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
 	entry_access.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-	entry_access.Trustee.ptstrName = "Everyone";
+	entry_access.Trustee.ptstrName = trustee;
 
 	// Create a new ACL with the ACE
 	if (result = SetEntriesInAcl(1, &entry_access, old_sacl, &new_sacl), result != ERROR_SUCCESS) {
 		merror("SetEntriesInAcl() failed. Error: '%lu'", result);
-        goto error;
+        goto end;
 	}
 
 	// Set the SACL
 	if (result = SetNamedSecurityInfo((char *) dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
 		merror("SetNamedSecurityInfo() failed. Error: '%lu'", result);
-		goto error;
+        goto end;
 	}
 
 	// Disable the privilege
 	if (set_privilege(hdle, priv, 0)) {
 		merror("Failed to disable the privilege. Error '%lu'.", GetLastError());
-		return 1;
+        goto end;
 	}
 
 	CloseHandle(hdle);
-	return 0;
-error:
+	retval = 0;
+end:
     if (security_descriptor) {
         LocalFree((HLOCAL)security_descriptor);
+    }
+
+    if (old_sacl) {
+        LocalFree((HLOCAL)old_sacl);
     }
 
     if (new_sacl) {
         LocalFree((HLOCAL)new_sacl);
     }
-    return 1;
+    return retval;
+}
+
+int is_valid_sacl(PACL sacl) {
+    int i;
+    ACCESS_ALLOWED_ACE *ace;
+    static PSID everyone_sid = NULL;
+    SID_IDENTIFIER_AUTHORITY world_auth = SECURITY_WORLD_SID_AUTHORITY;
+    static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
+
+    if (!everyone_sid) {
+        if (!AllocateAndInitializeSid(&world_auth, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &everyone_sid)) {
+            merror("Could not obtain the sid of Everyone. Error '%lu'.", GetLastError());
+            return 0;
+        }
+    }
+
+    for (i = 0; i < sacl->AceCount; i++) {
+        if (!GetAce(sacl, i, (LPVOID*)&ace)) {
+            merror("Could not extract the ACE information. Error: '%lu'.", GetLastError());
+            return 0;
+        }
+        if ((ace->Header.AceFlags & inherit_flag) && // Check folder and subfolders
+            (ace->Header.AceFlags & SUCCESSFUL_ACCESS_ACE_FLAG) && // Check successful attemp
+            (ace->Mask & FILE_WRITE_DATA) && // Check write permission
+            (EqualSid((PSID)&ace->SidStart, everyone_sid))) { // Check everyone user
+            return 1;
+        }
+    }
+    return 0;
 }
 
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
@@ -731,11 +775,17 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 }
 
 int run_whodata_scan() {
+    atexit(restore_sacls);
     if (!EvtSubscribe(NULL, NULL, L"Security", L"Event[(System/EventID = 4656 or System/EventID = 4663 or System/EventID = 4658)]", NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
         merror("Event Channel subscription could not be made. Whodata scan is disabled.");
         return 1;
     }
     return 0;
+}
+
+/* Removes added security audit policies */
+void restore_sacls() {
+
 }
 
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event) {
@@ -836,7 +886,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                     path = NULL;
                     process_name = NULL;
 
-                    if (result = OSHash_Add(syscheck->wd_table, hash_id, w_evt), result != 2) {
+                    if (result = OSHash_Add(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
                         if (!result) {
                             merror("The event could not be added to the whodata hash table.");
                         } else if (result == 1) {
@@ -851,7 +901,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             case 4663:
                 // Check if the mask is relevant
                 if (mask) {
-                    if (w_evt = OSHash_Get(syscheck->wd_table, hash_id), w_evt) {
+                    if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                         w_evt->mask |= mask;
                     } else {
                         // The file was opened before Wazuh started Syscheck.
@@ -860,7 +910,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             break;
             // Close fd
             case 4658:
-                if (w_evt = OSHash_Delete(syscheck->wd_table, hash_id), w_evt) {
+                if (w_evt = OSHash_Delete(syscheck.wdata.fd, hash_id), w_evt) {
                     if (w_evt->mask) {
                         unsigned int mask = w_evt->mask;
                         // Valid for a file
@@ -899,8 +949,7 @@ clean:
 }
 
 int whodata_audit_start() {
-    os_calloc(1, sizeof(whodata), syscheck.wdata);
-    if (syscheck->wd_table = OSHash_Create(), !syscheck->wd_table) {
+    if (syscheck.wdata.fd = OSHash_Create(), !syscheck.wdata.fd) {
         return 1;
     }
     return 0;

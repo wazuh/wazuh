@@ -62,6 +62,11 @@ typedef struct whodata_evt {
 
 #ifdef WIN32
 
+typedef struct whodata {
+    OSHash *fd;        // Open file descriptors
+    int *ignore;       // List of directories whose SACL will not be restored
+} whodata;
+
 typedef struct registry {
     char *entry;
     int arch;
@@ -111,13 +116,12 @@ typedef struct _config {
     registry *registry;                         /* array of registry entries to be scanned */
     FILE *reg_fp;
     int max_fd_win_rt;
+    whodata wdata;
 #endif
 
     OSHash *fp;
 
     rtfim *realtime;
-
-    OSHash *wd_table;
 
     char *prefilter_cmd;
 

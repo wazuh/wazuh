@@ -20,7 +20,6 @@ static registry REGISTRY_EMPTY[] = { { NULL, 0 } };
 int Read_Syscheck_Config(const char *cfgfile)
 {
     int modules = 0;
-
     modules |= CSYSCHECK;
 
     syscheck.rootcheck      = 0;
@@ -38,6 +37,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.opts           = NULL;
     syscheck.realtime       = NULL;
 #ifdef WIN32
+    syscheck.wdata.fd      = NULL;
     syscheck.registry       = NULL;
     syscheck.reg_fp         = NULL;
     syscheck.max_fd_win_rt  = 0;
