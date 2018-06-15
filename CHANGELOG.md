@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Added `total_affected_agents` and `total_failed_ids` to the `DELETE/agents` API request. ([#795](https://github.com/wazuh/wazuh/pull/795))
+
 ### Changed
 
 - Management of empty blocks in the configuration files. ([#781](https://github.com/wazuh/wazuh/pull/781))
+- Verify WPK with Wazuh CA by default. ([#799](https://github.com/wazuh/wazuh/pull/799))
 
 ### Fixed
 
@@ -17,17 +20,21 @@ All notable changes to this project will be documented in this file.
 - Fix issue when overwriting rotated logs in Windows agents. ([#776](https://github.com/wazuh/wazuh/pull/776))
 - Prevent OpenSCAP module from running on Windows agents (incompatible). ([#777](https://github.com/wazuh/wazuh/pull/777))
 - Fix issue in file changes report for FIM on Linux when a directory contains a backslash. ([#775](https://github.com/wazuh/wazuh/pull/775))
-- Fixed missing "minor" field in agent data managed by the framework. ([#771](https://github.com/wazuh/wazuh/pull/771))
+- Fixed missing `minor` field in agent data managed by the framework. ([#771](https://github.com/wazuh/wazuh/pull/771))
+- Fixed missing `build` and `key` fields in agent data managed by the framework. ([#802](https://github.com/wazuh/wazuh/pull/802))
 - Fixed several bugs in upgrade agents ([#784](https://github.com/wazuh/wazuh/pull/784)):
     - Error upgrading an agent with status `Never Connected`.
     - Fixed API support.
     - Sockets were not closing properly.
 - Cluster exits showing an error when an error occurs. ([#790](https://github.com/wazuh/wazuh/pull/790))
 - Fixed bug when cluster control or API cannot request the list of nodes to the master. ([#762](https://github.com/wazuh/wazuh/pull/762))
-- Verify WPK with Wazuh CA by default. ([#799](https://github.com/wazuh/wazuh/pull/799))
-- Fixed bug when `agent.conf` received a wrong configuration from manager and made it stop. ([#796](https://github.com/wazuh/wazuh/pull/796))
+- Fixed bug when the `agent.conf` contains an unrecognized module. ([#796](https://github.com/wazuh/wazuh/pull/796))
 - Alert when unmerge files fails on agent. ([#731](https://github.com/wazuh/wazuh/pull/731))
 - Fix invalid memory access when parsing ruleset configuration. ([#787](https://github.com/wazuh/wazuh/pull/787))
+- Check version of python in cluster control. ([#760](https://github.com/wazuh/wazuh/pull/760))
+- Removed duplicated log message when Rootcheck is disabled. ([#783](https://github.com/wazuh/wazuh/pull/783))
+- Avoid infinite attempts to download CVE databases when it fails. ([#792](https://github.com/wazuh/wazuh/pull/792))
+
 
 ## [v3.3.0]
 
