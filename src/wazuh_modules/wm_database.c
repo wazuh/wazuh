@@ -899,7 +899,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
 
         *(f_name++) = '\0';
 
-        switch (sk_decode_sum(&sum, c_sum)) {
+        switch (sk_decode_sum(&sum, c_sum, NULL)) {
         case 0:
             switch (wdb_get_last_fim(db, f_name, type)) {
             case WDB_FIM_NOT_FOUND:

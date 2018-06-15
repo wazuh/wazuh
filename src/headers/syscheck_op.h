@@ -14,18 +14,22 @@
 #include "analysisd/eventinfo.h"
 
 /* Fields for rules */
-#define SK_FILE    0
-#define SK_SIZE    1
-#define SK_PERM    2
-#define SK_UID     3
-#define SK_GID     4
-#define SK_MD5     5
-#define SK_SHA1    6
-#define SK_UNAME   7
-#define SK_GNAME   8
-#define SK_INODE   9
-#define SK_SHA256  10
-#define SK_NFIELDS 11
+typedef enum sk_syscheck {
+    SK_FILE,
+    SK_SIZE,
+    SK_PERM,
+    SK_UID,
+    SK_GID,
+    SK_MD5,
+    SK_SHA1,
+    SK_UNAME,
+    SK_GNAME,
+    SK_INODE,
+    SK_SHA256,
+    SK_USER,
+    SK_PROCESS,
+    SK_NFIELDS
+} sk_syscheck;
 
 typedef struct __sdb {
     char buf[OS_MAXSTR + 1];
@@ -38,6 +42,8 @@ typedef struct __sdb {
     char md5[OS_FLSIZE + 1];
     char sha1[OS_FLSIZE + 1];
     char sha256[OS_FLSIZE + 1];
+    char user[OS_FLSIZE + 1];
+    char process[OS_FLSIZE + 1];
     char mtime[OS_FLSIZE + 1];
     char inode[OS_FLSIZE + 1];
 
@@ -62,6 +68,11 @@ typedef struct __sdb {
 
 } _sdb; /* syscheck db information */
 
+typedef struct sk_sum_wdata {
+    char *user;
+    char *process;
+} sk_sum_wdata;
+
 /* File sum structure */
 typedef struct sk_sum_t {
     char *size;
@@ -75,13 +86,14 @@ typedef struct sk_sum_t {
     char *gname;
     long mtime;
     long inode;
+    sk_sum_wdata wdata;
 } sk_sum_t;
 
 extern _sdb sdb;
 
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
    or -1 on failure. */
-int sk_decode_sum(sk_sum_t *sum, char *c_sum);
+int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 

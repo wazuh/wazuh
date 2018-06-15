@@ -306,7 +306,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file) {
     sk_sum_t sum;
 
-    if (sk_decode_sum(&sum, checksum) < 0) {
+    if (sk_decode_sum(&sum, checksum, NULL) < 0) {
         mdebug1("At wdb_syscheck_save(): at sk_decode_sum(): cannot decode checksum");
         mdebug2("Checksum: %s", checksum);
         return -1;

@@ -45,6 +45,8 @@ void SyscheckInit()
     memset(sdb.sha256, '\0', OS_FLSIZE + 1);
     memset(sdb.mtime, '\0', OS_FLSIZE + 1);
     memset(sdb.inode, '\0', OS_FLSIZE + 1);
+    memset(sdb.user, '\0', OS_FLSIZE + 1);
+    memset(sdb.process, '\0', OS_FLSIZE + 1);
 
     /* Create decoder */
     os_calloc(1, sizeof(OSDecoderInfo), sdb.syscheck_dec);
@@ -65,6 +67,8 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_UNAME] = "uname";
     sdb.syscheck_dec->fields[SK_GNAME] = "gname";
     sdb.syscheck_dec->fields[SK_INODE] = "inode";
+    sdb.syscheck_dec->fields[SK_USER] = "user";
+    sdb.syscheck_dec->fields[SK_PROCESS] = "process";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
@@ -202,7 +206,7 @@ static FILE *DB_File(const char *agent, int *agent_id)
 }
 
 /* Search the DB for any entry related to the file being received */
-static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
+static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf)
 {
     int p = 0;
     size_t sn_size;
@@ -343,14 +347,14 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 f_name);
         fflush(fp);
 
-        switch (sk_decode_sum(&newsum, c_sum)) {
+        switch (sk_decode_sum(&newsum, c_sum, w_sum)) {
         case -1:
             merror("Couldn't decode syscheck sum from log.");
             lf->data = NULL;
             return 0;
 
         case 0:
-            switch (sk_decode_sum(&oldsum, saved_sum)) {
+            switch (sk_decode_sum(&oldsum, saved_sum, NULL)) {
             case -1:
                 merror("Couldn't decode syscheck sum from database.");
                 lf->data = NULL;
@@ -456,6 +460,20 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     }
                 }
 
+                /* Whodata user */
+                if(newsum.wdata.user)
+                {
+                    snprintf(sdb.user, OS_FLSIZE, "Username: '%s'\n", newsum.wdata.user);
+                    os_strdup(newsum.wdata.user, lf->user);
+                }
+
+                /* Whodata process */
+                if(newsum.wdata.process)
+                {
+                    snprintf(sdb.process, OS_FLSIZE, "Process: '%s'\n", newsum.wdata.process);
+                    os_strdup(newsum.wdata.process, lf->process);
+                }
+
                 /* Modification time message */
                 if (oldsum.mtime && newsum.mtime && oldsum.mtime != newsum.mtime) {
                     char *old_ctime = strdup(ctime(&oldsum.mtime));
@@ -489,6 +507,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          "%s"
                          "%s"
                          "%s"
+                         "%s"
+                         "%s"
                          "%s%s",
                          f_name,
                          sdb.size,
@@ -498,6 +518,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                          sdb.md5,
                          sdb.sha1,
                          sdb.sha256,
+                         sdb.user,
+                         sdb.process,
                          lf->data ? "What changed:\n" : "",
                          lf->data ? lf->data : ""
                         );
@@ -551,7 +573,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
     /* Insert row in SQLite DB*/
 
-    switch (sk_decode_sum(&newsum, c_sum)) {
+    switch (sk_decode_sum(&newsum, c_sum, w_sum)) {
         case -1:
             merror("Couldn't decode syscheck sum from log.");
             break;
@@ -599,12 +621,15 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 int DecodeSyscheck(Eventinfo *lf)
 {
     char *c_sum;
+    char *w_sum;
     char *f_name;
 
     /* Every syscheck message must be in the following format:
      * checksum filename
+     * or
+     * checksum!whodatasum filename
      */
-    f_name = strchr(lf->log, ' ');
+    f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
         /* If we don't have a valid syscheck message, it may be
          * a database completed message
@@ -648,8 +673,13 @@ int DecodeSyscheck(Eventinfo *lf)
     /* Checksum is at the beginning of the log */
     c_sum = lf->log;
 
+    /* Get w_sum */
+    if (w_sum = strchr(c_sum, '!'), w_sum) {
+        *(w_sum++) = '\0';
+    }
+
     /* Search for file changes */
-    return (DB_Search(f_name, c_sum, lf));
+    return (DB_Search(f_name, c_sum, w_sum, lf));
 }
 
 /* Compare the first common fields between sum strings */

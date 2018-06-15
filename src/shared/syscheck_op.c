@@ -13,9 +13,11 @@
 /* Local variables */
 _sdb sdb;
 
+static char *unescape_whodata_sum(char *sum);
+
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
    or -1 on failure. */
-int sk_decode_sum(sk_sum_t *sum, char *c_sum) {
+int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_perm;
     char *c_mtime;
     char *c_inode;
@@ -76,13 +78,37 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum) {
     *(c_inode++) = '\0';
 
     sum->sha256 = NULL;
-    
+
     if ((sum->sha256 = strchr(c_inode, ':')))
-        *(sum->sha256++) = '\0'; 
+        *(sum->sha256++) = '\0';
+
+    // Get whodata
+    if (w_sum) {
+        sum->wdata.user = w_sum;
+
+        if ((sum->wdata.process = wstr_chr(w_sum, ':'))) {
+            *(sum->wdata.process++) = '\0';
+        }
+        sum->wdata.user = unescape_whodata_sum(sum->wdata.user);
+        sum->wdata.process = unescape_whodata_sum(sum->wdata.process);
+    }
 
     sum->mtime = atol(c_mtime);
     sum->inode = atol(c_inode);
     return 0;
+}
+
+char *unescape_whodata_sum(char *sum) {
+    char *esc_it;
+
+    if (*sum != '\0' ) {
+        // The parameter string is not released
+        esc_it = wstr_replace(sum, "\\ ", " ");
+        sum = wstr_replace(esc_it, "\\:", ":");
+        free(esc_it);
+        return sum;
+    }
+    return NULL;
 }
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
@@ -107,6 +133,14 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 
     if(sum->sha256)
         os_strdup(sum->sha256, lf->sha256_after);
+
+    if(sum->wdata.user) {
+        lf->user = sum->wdata.user;
+    }
+
+    if(sum->wdata.process) {
+        lf->process = sum->wdata.process;
+    }
 
     /* Fields */
 
@@ -137,6 +171,12 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 
     if(sum->sha256)
         os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
+
+    if(sum->wdata.user)
+        os_strdup(sum->wdata.user, lf->fields[SK_USER].value);
+
+    if(sum->wdata.process)
+        os_strdup(sum->wdata.process, lf->fields[SK_PROCESS].value);
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
