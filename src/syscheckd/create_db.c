@@ -440,7 +440,7 @@ int create_db()
         }
 
         if (syscheck.opts[i] & CHECK_WHODATA) {
-            realtime_adddir(syscheck.dir[i], 1);
+            realtime_adddir(syscheck.dir[i], i + 1);
             if (!enable_who_scan) {
                 enable_who_scan = 1;
             }

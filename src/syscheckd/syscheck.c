@@ -70,7 +70,6 @@ int Start_win32_Syscheck()
     int debug_level = 0;
     int r = 0;
     char *cfg = DEFAULTCPATH;
-
     /* Read internal options */
     read_internal(debug_level);
 
