@@ -248,21 +248,18 @@ def sync_master(filter_node):
 
 ### Get agents
 def print_agents(filter_status, filter_node):
-    gen_agents = get_agents(filter_status, filter_node)
-    total_agents = 0
+    agents = get_agents(filter_status, filter_node)
 
-    for agents in gen_agents:
-        table_str = ""
-        total_agents += len(agents['items'])
-        for agent in agents['items']:
-            table_str += "  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}\n".format(agent['id'], agent['name'], agent['ip'], agent['status'], agent['node_name'])
-        stdout.write(table_str)
-        stdout.flush()
+    table = ["  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}".format(agent['id'], agent['name'], agent['ip'],
+                                                                        agent['status'], agent['node_name'])
+             for agent in agents['items']]
+
+    print('\n'.join(table))
 
     if filter_status:
-        print ("\nFound {} agent(s) with status '{}'.".format(total_agents, filter_status))
+        print ("\nFound {} agent(s) with status '{}'.".format(agents['totalItems'], filter_status))
     else:
-        print ("\nListing {} agent(s).".format(total_agents))
+        print ("\nListing {} agent(s).".format(agents['totalItems']))
 
 
 ### Get healthchech

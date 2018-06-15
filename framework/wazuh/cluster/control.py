@@ -97,8 +97,8 @@ def get_agents(filter_status, filter_node):
     filter_status = "all" if not filter_status else filter_status
     filter_node = "all" if not filter_node else filter_node
 
-    input_json = {'function': '/agents', 'from_cluster': False,
-                  'arguments': {'status': filter_status, 'node_name': filter_node,
+    input_json = {'function': '/agents', 'from_cluster': False, 'limit': 0,
+                  'arguments': {'filters':{'status': filter_status, 'node_name': filter_node},
                                 'select': {'fields': ['id','ip','name','status','node_name']}}}
 
     request = "dapi {}".format(json.dumps(input_json))
