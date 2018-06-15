@@ -90,6 +90,7 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
+
 #ifdef INOTIFY_ENABLED
     /* To be used by select */
     struct timeval selecttime;
@@ -182,6 +183,15 @@ void start_daemon()
                 day_scanned = 1;
             }
         }
+    }
+
+    // Audit events thread
+    int audit_socket = audit_init();
+    if (audit_socket > 0) {
+        mdebug1("Stating Auditd events reading thread ...");
+        w_create_thread(audit_main, &audit_socket);
+    } else {
+        mdebug1("Cannot start Audit events reading thread.");
     }
 
     /* Check every SYSCHECK_WAIT */
