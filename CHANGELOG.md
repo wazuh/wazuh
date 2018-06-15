@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - Verify WPK with Wazuh CA by default. ([#799](https://github.com/wazuh/wazuh/pull/799))
 - Fixed bug when `agent.conf` received a wrong configuration from manager and made it stop. ([#796](https://github.com/wazuh/wazuh/pull/796))
 - Alert when unmerge files fails on agent. ([#731](https://github.com/wazuh/wazuh/pull/731))
+- Fix invalid memory access when parsing ruleset configuration. ([#787](https://github.com/wazuh/wazuh/pull/787))
 
 ## [v3.3.0]
 
