@@ -831,7 +831,7 @@ class FragmentedRequestReceiver(ClusterThread):
 
             if self.received_all_information:
                 logger.info("{0}: Reception completed: Time: {1:.2f}s.".format(self.thread_tag, self.total_time))
-                logger.debug("{0}: Reception completed: Size: {2}B.".format(self.thread_tag, self.total_time, self.size_received))
+                logger.debug("{0}: Reception completed: Size: {1}B.".format(self.thread_tag, self.size_received))
 
                 try:
                     result = self.process_received_data()
