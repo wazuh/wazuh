@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "3.3.1"
-!define REVISION "3320"
+!define REVISION "3321"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
