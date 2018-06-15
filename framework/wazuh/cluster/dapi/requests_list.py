@@ -59,7 +59,7 @@ functions = {
     },
     'PUT/agents/:agent_id/upgrade': {
         'function': Agent.upgrade_agent,
-        'type': 'disitributed_master'
+        'type': 'distributed_master'
     },
     'PUT/agents/:agent_id/upgrade_custom': {
         'function': Agent.upgrade_agent_custom,
