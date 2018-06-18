@@ -120,6 +120,15 @@ void start_daemon()
     memset(curr_hour, '\0', 12);
     sleep(syscheck.tsleep * 10);
 
+    // Audit events thread
+    int audit_socket = audit_init();
+    if (audit_socket > 0) {
+        mdebug1("Stating Auditd events reading thread ...");
+        w_create_thread(audit_main, &audit_socket);
+    } else {
+        mdebug1("Cannot start Audit events reading thread.");
+    }
+
     /* If the scan time/day is set, reset the
      * syscheck.time/rootcheck.time
      */
@@ -183,15 +192,6 @@ void start_daemon()
                 day_scanned = 1;
             }
         }
-    }
-
-    // Audit events thread
-    int audit_socket = audit_init();
-    if (audit_socket > 0) {
-        mdebug1("Stating Auditd events reading thread ...");
-        w_create_thread(audit_main, &audit_socket);
-    } else {
-        mdebug1("Cannot start Audit events reading thread.");
     }
 
     /* Check every SYSCHECK_WAIT */

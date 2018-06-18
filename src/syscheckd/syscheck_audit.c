@@ -42,11 +42,15 @@ int check_auditd_enabled(void) {
 // Set audit socket configuration
 int set_auditd_config(void) {
 
+    if (!IsFile(AUDIT_CONF_FILE)) {
+        return 0;
+    }
+
     minfo("Generating Auditd socket configuration file: %s", AUDIT_CONF_FILE);
 
     FILE *fp;
     fp = fopen(AUDIT_CONF_FILE, "w");
-    if (!fp) return 0;
+    if (!fp) return -1;
 
     fprintf(fp, "active = yes\n");
     fprintf(fp, "direction = out\n");
@@ -56,6 +60,7 @@ int set_auditd_config(void) {
     fprintf(fp, "format = string\n");
     fclose(fp);
 
+    mwarn("Auditsp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
     return 1;
 }
 
@@ -94,8 +99,13 @@ int audit_init(void) {
     }
 
     // Check audit socket configuration
-    if (!set_auditd_config()) {
+    switch (set_auditd_config()) {
+    case -1:
         mdebug1("Cannot generate Audit config.");
+        return (-1);
+    case 0:
+        break;
+    default:
         return (-1);
     }
 
