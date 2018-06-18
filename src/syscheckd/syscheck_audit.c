@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "external/procps/readproc.h"
 #include <linux/audit.h>
+#include <libaudit.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "syscheck.h"
@@ -18,7 +19,6 @@
 #define AUDIT_CONF_FILE "/etc/audisp/plugins.d/af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 4096
-
 
 // Check if auditd is installed and running
 int check_auditd_enabled(void) {
@@ -86,6 +86,103 @@ int init_auditd_socket(void) {
     }
 
     return sfd;
+}
+
+
+// Add / delete rules
+int audit_manage_rules(int action, const char *path, const char *key) {
+
+    int retval, output;
+    int type;
+    struct stat buf;
+    int audit_handler;
+
+    audit_handler = audit_open();
+    if (audit_handler < 0) {
+        return (-1);
+    }
+
+    struct audit_rule_data *myrule = NULL;
+    myrule = malloc(sizeof(struct audit_rule_data));
+    memset(myrule, 0, sizeof(struct audit_rule_data));
+
+    // Check path
+    if (stat(path, &buf) == 0) {
+        if (S_ISDIR(buf.st_mode)){
+            type = AUDIT_DIR;
+        }
+        else {
+            type = AUDIT_WATCH;
+        }
+    } else {
+        merror("audit_manage_rules(): Cannot stat %s", path);
+        retval = -1;
+        goto end;
+    }
+
+    // Set watcher
+    output = audit_add_watch_dir(type, &myrule, path);
+    if (output) {
+        mdebug2("audit_add_watch_dir = (%d) %s", output, audit_errno_to_name(abs(output)));
+        retval = -1;
+        goto end;
+    }
+
+    // Set permisions
+    int permisions = 0;
+    permisions |= AUDIT_PERM_WRITE;
+    permisions |= AUDIT_PERM_EXEC;
+    permisions |= AUDIT_PERM_ATTR;
+    output = audit_update_watch_perms(myrule, permisions);
+    if (output) {
+        mdebug2("audit_update_watch_perms = (%d) %s", output, audit_errno_to_name(abs(output)));
+        retval = -1;
+        goto end;
+    }
+
+    // Set key
+    int flags = AUDIT_FILTER_EXIT & AUDIT_FILTER_MASK;
+
+    if (strlen(key) > (AUDIT_MAX_KEY_LEN - 5)) {
+        retval = -1;
+        goto end;
+    }
+
+    char *cmd = malloc(sizeof(char) * AUDIT_MAX_KEY_LEN + 1);
+
+    if (snprintf(cmd, AUDIT_MAX_KEY_LEN, "key=%s", key) < 0) {
+        free(cmd);
+        retval = -1;
+        goto end;
+    } else {
+        output = audit_rule_fieldpair_data(&myrule, cmd, flags);
+        if (output) {
+            mdebug2("audit_rule_fieldpair_data = (%d) %s", output, audit_errno_to_name(abs(output)));
+            free(cmd);
+            retval = -1;
+            goto end;
+        }
+        free(cmd);
+    }
+
+    // Add/Delete rule
+    if (action == ADD_RULE) {
+        retval = abs(audit_add_rule_data(audit_handler, myrule, flags, AUDIT_ALWAYS));
+    } else if (action == DELETE_RULE){
+        retval = abs(audit_delete_rule_data(audit_handler, myrule, flags, AUDIT_ALWAYS));
+    } else {
+        retval = -1;
+        goto end;
+    }
+
+    if (retval != 1) {
+        mdebug2("audit_manage_rules(): Error adding/deleting rule (%d) = %s", retval, audit_errno_to_name(retval));
+    }
+
+end:
+    audit_rule_free_data(myrule);
+    audit_close(audit_handler);
+    return retval;
 }
 
 

@@ -201,6 +201,10 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         mdebug1("Directory added for real time monitoring with Audit: '%s'.", dir);
 
         // configure audit rules
+        int retval = audit_manage_rules(ADD_RULE, dir, AUDIT_KEY);
+        if (retval < 0) {
+            merror("Error adding Audit rule for %s : %i", dir, retval);
+        }
 
     } else {
         /* Check if it is ready to use */

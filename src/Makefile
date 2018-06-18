@@ -50,7 +50,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl -laudit
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
 else
