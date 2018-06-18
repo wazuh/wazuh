@@ -29,6 +29,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
     char sha1s = '+';
     char sha256s = '+';
     struct stat statbuf;
+    char wd_sum[OS_SIZE_6144 + 1];
 
     /* Check if the file should be ignored */
     if (syscheck.ignore) {
@@ -207,7 +208,13 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             /* Send the new checksum to the analysis server */
             alert_msg[OS_MAXSTR] = '\0';
 
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
+            /* Extract the whodata sum here to not include it in the hash table */
+            if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                *wd_sum = '\0';
+            }
+
+            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
@@ -219,8 +226,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                 opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
-                evt ? evt->user_name : "",
-                evt ? evt->process_name : "",
+                wd_sum,
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -229,7 +235,6 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
         } else {
             char alert_msg[OS_MAXSTR + 1];
             char c_sum[512 + 2];
-            char wd_sum[OS_SIZE_6144 + 1];
 
             c_sum[0] = '\0';
             c_sum[512] = '\0';

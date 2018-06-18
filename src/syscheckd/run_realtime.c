@@ -463,7 +463,7 @@ int realtime_adddir(const char *dir, int whodata)
 }
 
 int set_winsacl(const char *dir, int position) {
-    static LPCTSTR priv = "SeSecurityPrivilege";
+static LPCTSTR priv = "SeSecurityPrivilege";
     static char *trustee = "Everyone";
 	DWORD result = 0;
 	PACL old_sacl = NULL, new_sacl = NULL;
@@ -471,6 +471,7 @@ int set_winsacl(const char *dir, int position) {
 	EXPLICIT_ACCESS entry_access;
 	HANDLE hdle;
     int retval = 1;
+    int *ace_position = NULL;
 
 	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
 		merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
@@ -493,6 +494,9 @@ int set_winsacl(const char *dir, int position) {
         mdebug2("It is not necessary to configure the SACL of '%s'.", dir);
         retval = 0;
         goto end;
+    } else {
+        mdebug2("It is necessary to configure the SACL of '%s'.", dir);
+        ace_position = &syscheck.wdata.ignore[position];
     }
 
 	// Configure the new ACE
@@ -508,6 +512,10 @@ int set_winsacl(const char *dir, int position) {
 		merror("SetEntriesInAcl() failed. Error: '%lu'", result);
         goto end;
 	}
+
+  if (ace_position) {
+      *ace_position = new_sacl->AceCount - 1;
+  }
 
 	// Set the SACL
 	if (result = SetNamedSecurityInfo((char *) dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
@@ -612,7 +620,57 @@ int run_whodata_scan() {
 
 /* Removes added security audit policies */
 void restore_sacls() {
+    int i;
+    PACL sacl_it;
+    HANDLE hdle = NULL;
+    LPCTSTR priv = "SeSecurityPrivilege";
+    DWORD result = 0;
+    PSECURITY_DESCRIPTOR security_descriptor = NULL;
 
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
+        merror("OpenProcessToken() failed restoring the SACLs. Error '%lu'.", GetLastError());
+        return;
+    }
+
+    if (set_privilege(hdle, priv, TRUE)) {
+        merror("The privilege could not be activated restoring the SACLs. Error: '%ld'.", GetLastError());
+        return;
+    }
+
+    for (i = 0; syscheck.dir[i] != NULL; i++) {
+        if (syscheck.wdata.ignore[i] > -1) {
+            sacl_it = NULL;
+            if (result = GetNamedSecurityInfo(syscheck.dir[i], SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &sacl_it, &security_descriptor), result != ERROR_SUCCESS) {
+                merror("GetNamedSecurityInfo() failed restoring the SACLs. Error '%ld'.", result);
+                break;
+            }
+
+            // The ACE we added is in position 0
+            if (!DeleteAce(sacl_it, 0)) {
+                merror("DeleteAce() failed restoring the SACLs. Error '%ld'", GetLastError());
+                break;
+            }
+
+            // Set the SACL
+            if (result = SetNamedSecurityInfo((char *) syscheck.dir[i], SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, sacl_it), result != ERROR_SUCCESS) {
+                merror("SetNamedSecurityInfo() failed restoring the SACL. Error: '%lu'.", result);
+                break;
+            }
+
+            if (sacl_it) {
+                LocalFree((HLOCAL)sacl_it);
+            }
+            if (security_descriptor) {
+                LocalFree((HLOCAL)security_descriptor);
+            }
+        }
+    }
+
+    // Disable the privilege
+    if (set_privilege(hdle, priv, 0)) {
+        merror("Failed to disable the privilege while restoring the SACLs. Error '%lu'.", GetLastError());
+    }
+    CloseHandle(hdle);
 }
 
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event) {
@@ -624,10 +682,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     PEVT_VARIANT buffer = NULL;
     whodata_evt *w_evt;
     short event_id;
-    char *user_name;
-    char *type;
-    char *path;
-    char *process_name;
+    char *user_name = NULL;
+    char *type = NULL;
+    char *path = NULL;
+    char *process_name = NULL;
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
     unsigned int mask;
