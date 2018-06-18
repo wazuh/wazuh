@@ -139,7 +139,7 @@ class InternalSocketClient(communication.AbstractClient):
         if command == 'dapi_res':
             string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
             string_receiver.start()
-            return 'ack', self.set_worker(command, string_receiver)
+            return 'ok', self.set_worker(command, string_receiver)
         else:
             return communication.AbstractClient.process_request(self, command, data)
 

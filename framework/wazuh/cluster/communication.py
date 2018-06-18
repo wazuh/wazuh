@@ -286,7 +286,8 @@ class Handler(asyncore.dispatcher_with_send):
         return response
 
 
-    def send_string(self, reason, string_data=None, interval_string_transfer_send=0.1):
+    def send_string(self, reason, string_data=None, interval_string_transfer_send=0.1, new_req="new_f_r",
+                    upd_req="update_f_r", end_req="end_f_r", extra_data=""):
         """
         Every chunk sent, this function sleeps for interval_string_transfer_send seconds.
         This way, other network packages can be sent while a long string is being sent.
@@ -296,9 +297,13 @@ class Handler(asyncore.dispatcher_with_send):
 
         The max B that is possible to send is max_string_send_size.
 
+        :param end_req: Request for ending a request
+        :param upd_req: Request for string updating
+        :param new_req: Request name for new incoming request
         :param interval_string_transfer_send: Time to sleep between each chunk sent.
         :param reason: Command to send before starting to send the file_to_send.
         :param string_data: String data to send to the client.
+        :param extra_data: Extra information to add to the "reason" request.
         """
         try:
             # Check string size
@@ -308,7 +313,7 @@ class Handler(asyncore.dispatcher_with_send):
                     "String exceeds max allowed length. Received: {}. Max: {}".format(data_size, max_string_send_size))
 
             # Send reason
-            res, data = self.execute(reason, "").split(' ', 1)
+            res, data = self.execute(reason, extra_data).split(' ', 1)
             if res == "err":
                 raise Exception(data)
             else:
@@ -319,20 +324,20 @@ class Handler(asyncore.dispatcher_with_send):
             chunk_size = max_msg_size - len(base_msg)
 
             # Start to send
-            res, data = self.execute("new_f_r", "{}".format(worker_id)).split(' ', 1)
+            res, data = self.execute(new_req, "{}".format(worker_id)).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
             # Send string
             for current_size_read in range(0, data_size, chunk_size):
-                res, data = self.execute("update_f_r", "{}{}".format(base_msg,
+                res, data = self.execute(upd_req, "{}{}".format(base_msg,
                                             string_data[current_size_read:current_size_read+chunk_size])).split(' ', 1)
                 if res == "err":
                     raise Exception(data)
                 time.sleep(interval_string_transfer_send)
 
             # End
-            res, data = self.execute("end_f_r", "{} {}".format(worker_id, self.compute_string_md5(string_data))).split(' ', 1)
+            res, data = self.execute(end_req, "{} {}".format(worker_id, self.compute_string_md5(string_data))).split(' ', 1)
             if res == "err":
                 raise Exception(data)
             response = res + " " + data
@@ -468,7 +473,7 @@ class Handler(asyncore.dispatcher_with_send):
 
     def process_request(self, command, data):
 
-        fragmented_requests_commands = ["new_f_r", "update_f_r", "end_f_r"]
+        fragmented_requests_commands = {"new_f_r", "update_f_r", "end_f_r", "fwd_new", "fwd_upd", "fwd_end"}
 
         if command == 'echo':
             return 'ok ', data.decode()
@@ -488,7 +493,7 @@ class Handler(asyncore.dispatcher_with_send):
         answer, payload = Handler.split_data(response)
 
         if answer == 'ok':
-            final_response = 'answered: {}.'.format(payload)
+            final_response = payload
         elif answer == 'ack':
             final_response = 'Confirmation received: {}'.format(payload)
         elif answer == 'json':
@@ -662,9 +667,11 @@ class AbstractServer(asyncore.dispatcher):
         return self.get_client_info(client_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
 
 
-    def send_string(self, client_name, reason, string_to_send):
+    def send_string(self, client_name, reason, string_to_send, new_req="new_f_r", upd_req="update_f_r", end_req="end_f_r", extra_data=""):
         if client_name in self.get_connected_clients():
-            response = self.get_client_info(client_name)['handler'].send_string(reason, string_to_send, self.interval_string_transfer_send)
+            response = self.get_client_info(client_name)['handler'].send_string(reason, string_to_send,
+                                                                                self.interval_string_transfer_send,
+                                                                                new_req, upd_req, end_req, extra_data)
         else:
             error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
             logger.error("[Transport-Server] {0}.".format(error_msg))
@@ -910,6 +917,7 @@ class FragmentedRequestReceiver(ClusterThread):
         """
         Process the commands received in the command queue
         """
+        logger.debug("{} Received command: {}".format(self.thread_tag, command))
         try:
             if command == "new_f_r":
                 self.start_time = time.time()

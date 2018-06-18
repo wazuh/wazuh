@@ -45,7 +45,8 @@ class APIRequestQueue(ClusterThread):
         while not self.stopper.is_set() and self.running:
             name, id, request = self.request_queue.get(block=True).split(' ', 2)
             result = dapi.distribute_function(json.loads(request), from_master=True)
-            self.server.send_string(client_name=name, reason='dapi_res', string_to_send=id + ' ' + result)
+            self.server.send_string(client_name=name, reason='dapi_res', string_to_send=result, new_req="fwd_new",
+                                    upd_req="fwd_upd", end_req="fwd_end", extra_data=id)
 
 
     def set_request(self, request):

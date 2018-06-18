@@ -75,7 +75,7 @@ class ClientManagerHandler(ClientHandler):
             response = dapi.distribute_function(json.loads(data))
             return ['json', response]
         elif command == "dapi_res":
-            string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
+            string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper, client_id=data.decode())
             string_receiver.start()
             return 'ack', self.set_worker(command, string_receiver)
         else:
@@ -362,15 +362,47 @@ class ClientManagerHandler(ClientHandler):
 
 class FragmentedAPIResponseReceiver(FragmentedStringReceiverClient):
 
-    def __init__(self, manager_handler, stopper):
+    def __init__(self, manager_handler, stopper, client_id):
         FragmentedStringReceiverClient.__init__(self, manager_handler, stopper)
         self.thread_tag = "[APIResponseReceiver]"
+        self.client_id = client_id
+        # send request to the client
+        self.worker_id = self.manager_handler.process_response(self.manager_handler.isocket_handler.send_request(self.client_id, "dapi_res"))
 
 
     def process_received_data(self):
-        client_id, response = self.sting_received.split(' ',1)
-        self.manager_handler.isocket_handler.send_string(client_id, 'dapi_res', response)
         return True
+
+
+    def close_reception(self, md5_sum):
+        self.received_all_information = True
+
+
+    def forward_msg(self, command, data):
+        return self.manager_handler.isocket_handler.send_request(self.client_id, command,
+                                                                 self.worker_id if not data else self.worker_id + ' ' + data)
+
+
+    def update(self, chunk):
+        self.size_received += len(chunk)
+
+
+    def process_cmd(self, command, data):
+        requests = {'fwd_new':'new_f_r', 'fwd_upd':'update_f_r', 'fwd_end':'end_f_r'}
+
+        if command == 'fwd_new':
+            self.start_time = time.time()
+            return self.forward_msg(requests[command], data)
+        elif command == 'fwd_upd':
+            self.update(data)
+            return self.forward_msg(requests[command], data)
+        elif command == 'fwd_end':
+            self.close_reception(data)
+            self.end_time = time.time()
+            self.total_time = self.end_time - self.start_time
+            return self.forward_msg(requests[command], data)
+        else:
+            return FragmentedStringReceiverClient.process_cmd(self, command, data)
 
 
 class ClientProcessMasterFiles(FragmentedFileReceiver):
