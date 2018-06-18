@@ -1,0 +1,23 @@
+.TH "AUDIT_UPDATE_WATCH_PERMS" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_update_watch_perms \- update permissions field of watch command
+.SH "SYNOPSIS"
+.B #include <libaudit.h>
+.sp
+int audit_update_watch_perms(struct audit_rule_data *rule, int perms);
+
+.SH "DESCRIPTION"
+
+audit_update_watch_perms adds the permission checks to a watch command that is being built. The perms are a bitwise or'ing of: AUDIT_PERM_EXEC, AUDIT_PERM_WRITE, AUDIT_PERM_READ, AUDIT_PERM_ATTR.
+
+.SH "RETURN VALUE"
+
+Returns a number < 0 if an error occurs; otherwise, 0 for success.
+
+.SH "SEE ALSO"
+
+.BR audit_add_rule_data (3),
+.BR audit_add_watch (3).
+
+.SH AUTHOR
+Steve Grubb

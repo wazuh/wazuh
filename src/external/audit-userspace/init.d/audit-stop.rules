@@ -1,0 +1,8 @@
+# These rules are loaded when the audit daemon stops
+# if configured to do so.
+
+# Disable auditing
+-e 0
+
+# Delete all rules
+-D

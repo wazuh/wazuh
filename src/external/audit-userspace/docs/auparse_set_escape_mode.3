@@ -1,0 +1,40 @@
+.TH "AUPARSE_SET_ESCAPE_MODE" "3" "July 2016" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_set_escape_mode \- choose escape method
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+void auparse_set_escape_mode(auparse_state_t *au, auparse_esc_t mode);
+
+.SH "DESCRIPTION"
+
+auparse_set_escape_mode is used to set the escaping method that will be used to output interpretted text. The choices for the mode variable are:
+
+.RS
+.TP
+.B AUPARSE_ESC_RAW
+No escaping of any kind is done.
+.TP
+.B AUPARSE_ESC_TTY
+Escape TTY control characters so that they are harmless to display on a terminal. When any control character is found, they are displayed as octal numbers. This is the default mode that the auparse library is initialized with.
+.TP
+.B AUPARSE_ESC_SHELL
+Besides escaping control characters, this will escape some characters that can cause problems when used with shell scripting. Any escaped control characters are displayed as octal numbers. Other escaped characters are proceeded with a backslash. The additional characters it escapes are: " ' ` $ \\
+.TP
+.B AUPARSE_ESC_SHELL_QUOTE
+Similar to
+.I AUPARSE_ESC_SHELL
+but expands the character set to include shell operators. Any escaped control characters are displayed as octal numbers. Other escaped characters are proceeded with a backslash. The additional characters it escapes include: ; ' \ " ` # $ & * ? [ ] < > { } \\
+.RE
+
+
+.SH "RETURN VALUE"
+
+None
+
+.SH "SEE ALSO"
+
+.BR auparse_interpret_field (3).
+
+.SH AUTHOR
+Steve Grubb

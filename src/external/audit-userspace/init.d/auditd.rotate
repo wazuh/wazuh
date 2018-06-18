@@ -1,0 +1,16 @@
+#!/bin/sh
+# Helper script to provide legacy auditd service options not 
+# directly supported by systemd
+
+# Check that we are root ... so non-root users stop here
+test $EUID = 0  ||  exit 4
+
+PATH=/sbin:/bin:/usr/bin:/usr/sbin
+prog="auditd"
+. /etc/init.d/functions
+
+printf "Rotating logs: "
+killproc $prog -USR1
+RETVAL=$?
+echo
+exit $RETVAL

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+##########
+# This script can be installed to get a daily log rotation
+# based on a cron job.
+##########
+
+/sbin/service auditd rotate
+EXITVALUE=$?
+if [ $EXITVALUE != 0 ]; then
+    /usr/bin/logger -t auditd "ALERT exited abnormally with [$EXITVALUE]"
+fi
+exit 0
+

@@ -1,0 +1,22 @@
+.TH "AUPARSE_GET_RECORD_TEXT" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_record_text \- access unparsed record data 
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+const char *auparse_get_record_text(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_record_text returns a pointer to the full unparsed record.
+
+.SH "RETURN VALUE"
+
+Returns NULL if an error occurs; otherwise, a pointer to the record.
+
+.SH "SEE ALSO"
+
+.BR auparse_next_record (3).
+
+.SH AUTHOR
+Steve Grubb

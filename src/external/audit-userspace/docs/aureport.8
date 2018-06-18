@@ -1,0 +1,134 @@
+.TH AUREPORT: "8" "March 2017" "Red Hat" "System Administration Utilities"
+.SH NAME
+aureport \- a tool that produces summary reports of audit daemon logs
+.SH SYNOPSIS
+.B aureport
+.RI [ options ]
+.SH DESCRIPTION
+\fBaureport\fP is a tool that produces summary reports of the audit system logs. The aureport utility can also take input from stdin as long as the input is the raw log data. The reports have a column label at the top to help with interpretation of the various fields. Except for the main summary report, all reports have the audit event number. You can subsequently lookup the full event with ausearch \fB\-a\fP \fIevent number\fP. You may need to specify start & stop times if you get multiple hits. The reports produced by aureport can be used as building blocks for more complicated analysis.
+
+.SH OPTIONS
+.TP
+.BR \-au ,\  \-\-auth
+Report about authentication attempts
+.TP
+.BR \-a ,\  \-\-avc
+Report about avc messages
+.TP
+.BR \-\-comm
+Report about commands run
+.TP
+.BR \-c ,\  \-\-config
+Report about config changes
+.TP
+.BR \-cr ,\  \-\-crypto
+Report about crypto events
+.TP
+.BR \-e ,\  \-\-event
+Report about events
+.TP
+.BR \-\-escape \ \fIoption\fP
+This option determines if the output is escaped to make the content safer for certain uses. The options are \fIraw\fP , \fItty\fP , \fIshell\fP , and \fIshell_quote\fP. Each mode includes the characters of the preceding mode and escapes more characters. That is to say \fIshell\fP includes all characters escaped by \fItty\fP and adds more. \fItty\fP is the default.
+.TP
+.BR \-f ,\  \-\-file
+Report about files and af_unix sockets
+.TP
+.B \-\-failed
+Only select failed events for processing in the reports. The default is both success and failed events.
+.TP
+.BR \-h ,\  \-\-host
+Report about hosts
+.TP
+.BR \-\-help
+Print brief command summary
+.TP
+.BR \-i ,\  \-\-interpret
+Interpret  numeric  entities into text. For example, uid is converted to account name. The conversion is done using the current resources  of  the machine where the search is being run. If you have renamed the accounts, or don't have the  same  accounts  on your machine, you could get misleading results.
+.TP
+.BR \-if ,\  \-\-input \ \fIfile\fP\ |\ \fIdirectory\fP
+Use the given \fIfile\fP or \fIdirectory\fP instead of the logs. This is to aid analysis where the logs have been moved to another machine or only part of a log was saved.
+.TP
+.B \-\-input\-logs
+Use the log file location from auditd.conf as input for analysis. This is needed if you are using aureport from a cron job.
+.TP
+.BR \-\-integrity
+Report about integrity events
+.TP
+.BR \-k ,\  \-\-key
+Report about audit rule keys
+.TP
+.BR \-l ,\  \-\-login
+Report about logins
+.TP
+.BR \-m ,\  \-\-mods
+Report about account modifications
+.TP
+.BR \-ma ,\  \-\-mac
+Report about Mandatory Access Control (MAC) events
+.TP
+.BR \-n ,\  \-\-anomaly
+Report about anomaly events. These events include NIC going into promiscuous mode and programs segfaulting.
+.TP
+.BR \-\-node \ \fInode-name\fP
+Only select events originating from \fInode name\fP string for processing in the reports. The default is to include all nodes. Multiple nodes are allowed.
+.TP
+.BR \-nc ,\  \-\-no-config
+Do not include the CONFIG_CHANGE event. This is particularly useful for the key report because audit rules have key labels in many cases. Using this option gets rid of these false positives.
+.TP
+.BR \-p ,\  \-\-pid
+Report about processes
+.TP
+.BR \-r ,\  \-\-response
+Report about responses to anomaly events
+.TP
+.BR \-s ,\  \-\-syscall
+Report about syscalls
+.TP
+.B \-\-success
+Only select successful events for processing in the reports. The default is both success and failed events.
+.TP
+.B \-\-summary
+Run the summary report that gives a total of the elements of the main report. Not all reports have a summary.
+.TP
+.BR \-t ,\  \-\-log
+This option will output a report of the start and end times for each log.
+.TP
+.BR \-\-tty
+Report about tty keystrokes
+.TP
+.BR \-te ,\  \-\-end \ [\fIend-date\fP]\ [\fIend-time\fP]
+Search for events with time stamps equal to or before the given end time. The format of end time depends on your locale. If the date is omitted,
+.B today
+is assumed. If the time is omitted, 
+.B now
+is assumed. Use 24 hour clock time rather than AM or PM to specify time. An example date using the en_US.utf8 locale is 09/03/2009. An example of time is 18:00:00. The date format accepted is influenced by the LC_TIME environmental variable.
+
+You may also use the word: \fBnow\fP, \fBrecent\fP, \fBboot\fP, \fBtoday\fP, \fByesterday\fP, \fBthis\-week\fP, \fBweek\-ago\fP, \fBthis\-month\fP, \fBthis\-year\fP. \fBNow\fP means starting now. \fBRecent\fP is 10 minutes ago. \fBBoot\fP means the time of day to the second when the system last booted. \fBToday\fP means now. \fBYesterday\fP is 1 second after midnight the previous day. \fBThis\-week\fP means starting 1 second after midnight on day 0 of the week determined by your locale (see \fBlocaltime\fP). \fBWeek\-ago\fP means 1 second after midnight exactly 7 days ago. \fBThis\-month\fP means 1 second after midnight on day 1 of the month. \fBThis\-year\fP means the 1 second after midnight on the first day of the first month.
+.TP
+.BR \-tm ,\  \-\-terminal
+Report about terminals
+.TP
+.BR \-ts ,\  \-\-start \ [\fIstart-date\fP]\ [\fIstart-time\fP]
+Search for events with time stamps equal to or after the given end time. The format of end time depends on your locale. If the date is omitted, 
+.B today
+is assumed. If the time is omitted, 
+.B midnight
+is assumed. Use 24 hour clock time rather than AM or PM to specify time. An example date using the en_US.utf8 locale is 09/03/2009. An example of time is 18:00:00. The date format accepted is influenced by the LC_TIME environmental variable.
+
+You may also use the word: \fBnow\fP, \fBrecent\fP, \fBboot\fP, \fBtoday\fP, \fByesterday\fP, \fBthis\-week\fP, \fBweek\-ago\fP, \fBthis\-month\fP, \fBthis\-year\fP. \fBBoot\fP means the time of day to the second when the system last booted. \fBToday\fP means starting at 1 second after midnight. \fBRecent\fP is 10 minutes ago. \fBYesterday\fP is 1 second after midnight the previous day. \fBThis\-week\fP means starting 1 second after midnight on day 0 of the week determined by your locale (see \fBlocaltime\fP). \fBWeek\-ago\fP means starting 1 second after midnight exactly 7 days ago. \fBThis\-month\fP means 1 second after midnight on day 1 of the month. \fBThis\-year\fP means the 1 second after midnight on the first day of the first month.
+.TP
+.BR \-u ,\  \-\-user
+Report about users
+.TP
+.BR \-v ,\  \-\-version
+Print the version and exit
+.TP
+.BR \-\-virt
+Report about Virtualization events
+.TP
+.BR \-x ,\  \-\-executable
+Report about executables
+
+.SH "SEE ALSO"
+.BR ausearch (8),
+.BR auditd (8).

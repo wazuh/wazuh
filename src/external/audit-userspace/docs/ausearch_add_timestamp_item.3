@@ -1,0 +1,57 @@
+.TH "AUSEARCH_ADD_TIMESTAMP_ITEM" "3" "Aug 2014" "Red Hat" "Linux Audit API"
+.SH NAME
+ausearch_add_timestamp_item \- build up search rule
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int ausearch_add_timestamp_item(auparse_state_t *au, const char *op, time_t sec, unsigned milli, ausearch_rule_t how)
+
+.SH "DESCRIPTION"
+
+ausearch_add_timestamp_item adds an event time condition to the current audit search expression. The search conditions can then be used to scan logs, files, or buffers for something of interest. The op parameter specifies the desired comparison. Legal op values are \fI<\fR, \fI<=\fR, \fI>=\fR, \fI>\fR and \fI=\fR.  The left operand of the comparison operator is the timestamp of the examined event, the right operand is specified by the sec and milli parameters.
+
+The how value determines how this search condition will affect the existing search expression if one is already defined. The possible values are:
+.RS
+.TP
+.I AUSEARCH_RULE_CLEAR
+Clear the current search expression, if any, and use only this search condition.
+.TP
+.I AUSEARCH_RULE_OR
+If a search expression
+.I E
+is already configured, replace it by \fB(\fIE\fB || \fIthis_search_condition\fB)\fR.
+.TP
+.I AUSEARCH_RULE_AND
+If a search expression
+.I E
+is already configured, replace it by \fB(\fIE\fB && \fIthis_search_condition\fB)\fR.
+.RE
+
+.SH "RETURN VALUE"
+
+Returns \-1 if an error occurs; otherwise, 0 for success.
+
+.SH APPLICATION USAGE
+
+Use
+.BR ausearch_add_item (3)
+and
+.BR ausearch_add_interpreted_item (3)
+to add conditions that check audit record fields.
+Use
+.BR ausearch_add_expression (3)
+to add complex search expressions using a single function call.
+
+.SH "SEE ALSO"
+
+.BR ausearch_add_expression (3),
+.BR ausearch_add_item (3),
+.BR ausearch_add_interpreted_item (3),
+.BR ausearch_add_regex (3),
+.BR ausearch_set_stop (3),
+.BR ausearch_clear (3),
+.BR ausearch_next_event (3),
+.BR ausearch\-expression (5).
+
+.SH AUTHOR
+Miloslav Trmac

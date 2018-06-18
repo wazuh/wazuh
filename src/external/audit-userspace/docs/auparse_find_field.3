@@ -1,0 +1,23 @@
+.TH "AUPARSE_FIND_FIELD" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_find_field \- search for field name
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+const char *auparse_find_field(auparse_state_t *au, const char *name);
+
+.SH "DESCRIPTION"
+
+auparse_find_field will scan all records in an event to find the first occurrence of the field name passed to it. Searching begins from the cursor's current position. The field name is stored for subsequent searching.
+
+.SH "RETURN VALUE"
+
+Returns NULL field not found. If an error occurs errno will be set. Otherwise, it returns a pointer to the text value associated with the field.
+
+.SH "SEE ALSO"
+
+.BR auparse_first_record (3),
+.BR auparse_find_field_next (3).
+
+.SH AUTHOR
+Steve Grubb

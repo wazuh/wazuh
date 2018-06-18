@@ -1,0 +1,3 @@
+## This rule suppresses the time-change event when chrony does time updates
+-a never,exit -F arch=b64 -S adjtimex -F auid=unset -Fuid=chrony -F subj_type=chronyd_t
+-a never,exit -F arch=b32 -S adjtimex -F auid=unset -Fuid=chrony -F subj_type=chronyd_t

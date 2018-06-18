@@ -1,0 +1,23 @@
+.TH "AUPARSE_RESET" "3" "Sep 2014" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_reset \- reset audit parser instance
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int auparse_reset(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_reset resets all internal cursors to the beginning. It closes files, descriptors, and frees memory buffers.
+
+.SH "RETURN VALUE"
+
+Returns \-1 if an error occurs; otherwise, 0 for success.
+
+.SH "SEE ALSO"
+
+.BR auparse_init (3), 
+.BR auparse_destroy (3).
+
+.SH AUTHOR
+Steve Grubb

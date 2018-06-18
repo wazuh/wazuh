@@ -1,0 +1,22 @@
+.TH "AUPARSE_GET_NUM_FIELDS" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_num_fields \- get the number of fields
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+unsigned int auparse_get_num_fields(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_num_fields gets the number of fields in the current record of the current event.
+
+.SH "RETURN VALUE"
+
+Returns 0 if an error occurs; otherwise, the number of fields.
+
+.SH "SEE ALSO"
+
+.BR auparse_next_record (3).
+
+.SH AUTHOR
+Steve Grubb

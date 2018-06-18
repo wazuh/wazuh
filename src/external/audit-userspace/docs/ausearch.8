@@ -1,0 +1,230 @@
+.TH AUSEARCH: "8" "March 2017" "Red Hat" "System Administration Utilities"
+.SH NAME
+ausearch \- a tool to query audit daemon logs
+.SH SYNOPSIS
+.B ausearch
+.RI [ options ]
+.SH DESCRIPTION
+\fBausearch\fP is a tool that can query the audit daemon logs based for events based on different search criteria. The ausearch utility can also take input from stdin as long as the input is the raw log data. Each commandline option given forms an "and" statement. For example, searching with \fB\-m\fP and \fB\-ui\fP means return events that have both the requested type and match the user id given. An exception is the \fB\-m\fP  and \fB\-n\fP options; multiple record types and nodes are allowed in a search which will return any matching node and record.
+
+It should also be noted that each syscall excursion from user space into the kernel and back into user space has one event ID that is unique. Any auditable event that is triggered during this trip share this ID so that they may be correlated.
+
+Different parts of the kernel may add supplemental records. For example, an audit event on the syscall "open" will also cause the kernel to emit a PATH record with the file name. The ausearch utility will present all records that make up one event together. This could mean that even though you search for a specific kind of record, the resulting events may contain SYSCALL records.
+
+Also be aware that not all record types have the requested information. For example, a PATH record does not have a hostname or a loginuid.
+
+.SH OPTIONS
+.TP
+.BR \-a ,\  \-\-event \ \fIaudit-event-id\fP
+Search for an event based on the given \fIevent ID\fP. Messages always start with something like msg=audit(1116360555.329:2401771). The event ID is the number after the ':'. All audit events that are recorded from one application's syscall have the same audit event ID. A second syscall made by the same application will have a different event ID. This way they are unique.
+.TP
+.BR \-\-arch \ \fICPU\fP
+Search for events based on a specific CPU architecture.  If you do not know the arch of your machine but you want to use the 32 bit syscall table and your machine supports 32 bits, you can also use
+.B b32
+for the arch. The same applies to the 64 bit syscall table, you can use
+.B b64.
+The arch of your machine can be found by doing 'uname -m'.
+.TP
+.BR \-c ,\  \-\-comm \ \fIcomm-name\fP
+Search for an event based on the given \fIcomm name\fP. The comm name is the executable's name from the task structure.
+.TP
+.BR \-\-debug
+Write malformed events that are skipped to stderr.
+.TP
+.BR \-\-checkpoint \ \fIcheckpoint-file\fP
+Checkpoint the output between successive invocations of ausearch such that only events not
+previously output will print in subsequent invocations.
+
+An auditd event is made up of one or more records. When processing events, ausearch defines
+events as either complete or in-complete.  A complete event is either a single record event or
+one whose event time occurred 2 seconds in the past compared to the event being currently
+processed.
+
+A checkpoint is achieved by recording the last completed event output along with the device
+number and inode of the file the last completed event appeared in \fIcheckpoint-file\fP. On a subsequent invocation,
+ausearch will load this checkpoint data and as it processes the log files, it will discard all
+complete events until it matches the checkpointed one. At this point, it will start
+outputting complete events.
+
+Should the file or the last checkpointed event not be found, one of a number of errors will result and ausearch will terminate. See \fBEXIT STATUS\fP for detail.
+
+.TP
+.BR \-e,\  \-\-exit \ \fIexit-code-or-errno\fP
+Search for an event based on the given syscall \fIexit code or errno\fP.
+.TP
+.BR \-\-escape \ \fIoption\fP
+This option determines if the output is escaped to make the content safer for certain uses. The options are \fIraw\fP , \fItty\fP , \fIshell\fP , and \fIshell_quote\fP. Each mode includes the characters of the preceding mode and escapes more characters. That is to say \fIshell\fP includes all characters escaped by \fItty\fP and adds more. \fItty\fP is the default.
+.TP
+.BR \-\-extra-keys \ 
+When the \fIformat\fP mode is \fIcsv\fP, this option will add a final column with key information if its exists for the event. This would only occur on SYSCALL records which were the result of triggering an audit rule that defines a key.
+.TP
+.BR \-\-extra-labels \ 
+When the \fIformat\fP mode is \fIcsv\fP, this option will add columns of information about subject and object labels when they exist.
+.TP
+.BR \-\-extra-obj2 \ 
+When the \fIformat\fP mode is \fIcsv\fP, this option will add columns of information about a second object when it exists. It's rare that a second object is part of a record. Some examples are when a file is renamed from one name to another or when a device is mounted to a path.
+.TP
+.BR \-\-extra-time \ 
+When the \fIformat\fP mode is \fIcsv\fP, this option will add columns of information about broken down time to make subsetting easier.
+.TP
+.BR \-f ,\  \-\-file \ \fIfile-name\fP
+Search for an event based on the given \fIfilename\fP. The argument will match normal files as well as af_unix sockets.
+.TP
+.BR \-\-format \ \fIoption\fP
+Events that match the search criteria are formatted using this option. The supported formats are: raw, default, interpret, csv, and text. The \fIraw\fP option is described under the \fI\-\-raw\fP command line option. The \fIdefault\fP option is what you get when no formatting options are passed. It includes one line as a visual separator which indicates the time stamp and then the records of the event follow. The \fIinterpret\fP option is explained under the \fI\-i\fP command line option. The \fIcsv\fP option outputs the results of the search as a normalized event in comma separated value (CSV) format suitable for import into analytical programs. The \fItext\fP option turns the event into an English sentence that is easier to understand than other options, but it comes at the expense of loss of detail. In most cases this is perfectly fine since the original event still retains all the original information.
+.TP
+.BR \-ga ,\  \-\-gid\-all \ \fIall-group-id\fP
+Search for an event with either effective group ID or group ID matching the given \fIgroup ID\fP.
+.TP
+.BR \-ge ,\  \-\-gid\-effective \ \fIeffective-group-id\fP
+Search for an event with the given \fIeffective group ID\fP or group name.
+.TP
+.BR \-gi ,\  \-\-gid \ \fIgroup-id\fP
+Search for an event with the given \fIgroup ID\fP or group name.
+.TP
+.BR \-h ,\  \-\-help
+Help
+.TP
+.BR \-hn ,\  \-\-host \ \fIhost-name\fP
+Search for an event with the given \fIhost name\fP. The hostname can be either a hostname, fully qualified domain name, or numeric network address. No attempt is made to resolve numeric addresses to domain names or aliases. This search typically correlates to the addr or host field of audit events. Also see the \-\-node command which searches the node field.
+.TP
+.BR \-i ,\  \-\-interpret
+Interpret numeric entities into text. For example, uid is converted to account name. If the audit logs are unenriched, the conversion is done using the current resources of the machine where the search is being run. If you have renamed the accounts, or don't have the same accounts on your machine, you could get misleading results. If the logs are enriched, it uses the supplemental data to do the conversion. This allows accurate log reporting even when run on a different machine than the original logs came from.
+.TP
+.BR \-if ,\  \-\-input \ \fIfile-name\fP\ |\ \fIdirectory\fP
+Use the given \fIfile\fP or \fIdirectory\fP instead of the logs. This is to aid analysis where the logs have been moved to another machine or only part of a log was saved.
+.TP
+.BR \-\-input\-logs
+Use the log file location from auditd.conf as input for searching. This is needed if you are using ausearch from a cron job.
+.TP
+.BR \-\-just\-one
+Stop after emitting the first event that matches the search criteria.
+.TP
+.BR \-k ,\  \-\-key \ \fIkey-string\fP
+Search for an event based on the given \fIkey string\fP.
+.TP
+.BR \-l ,\  \-\-line\-buffered
+Flush output on every line. Most useful when stdout is connected to a pipe and the default block buffering strategy is undesirable. May impose a performance penalty.
+.TP
+.BR \-m ,\  \-\-message \ \fImessage-type\fP\ |\ \fIcomma-sep-message-type-list\fP
+Search for an event matching the given \fImessage type\fP. (Message types are also known as record types.) You may also enter a \fIcomma separated list of message types\fP or multiple individual message types each with its own \fI-m\fP option. There is an \fBALL\fP message type that doesn't exist in the actual logs. It allows you to get all messages in the system. The list of valid messages types is long. The program will display the list whenever no message type is passed with this parameter. The message type can be either text or numeric. If you enter a list, there can be only commas and no spaces separating the list.
+.TP
+.BR \-n ,\  \-\-node \
+Search for events originating from a specific machine. Multiple nodes are allowed, and if any nodes match, the event is matched. This search uses the node field in audit events. Also see the \-\-host command which search for events related to host information in the audit trail.
+.TP
+.BR \-o ,\  \-\-object \ \fISE-Linux-context-string\fP
+Search for event with \fItcontext\fP (object) matching the string.
+.TP
+.BR \-p ,\  \-\-pid \ \fIprocess-id\fP
+Search for an event matching the given \fIprocess ID\fP.
+.TP
+.BR \-pp ,\  \-\-ppid \ \fIparent-process-id\fP
+Search for an event matching the given \fIparent process ID\fP.
+.TP
+.BR \-r ,\  \-\-raw
+Output is completely unformatted. This is useful for extracting records to a file that can still be interpreted by audit tools or when piping to other audit tools.
+.TP
+.BR \-sc ,\  \-\-syscall \ \fIsyscall-name-or-value\fP
+Search for an event matching the given \fIsyscall\fP. You may either give the numeric syscall value or the syscall name. If you give the syscall name, it will use the syscall table for the machine that you are using. 
+.TP
+.BR \-se ,\  \-\-context \ \fISE-Linux-context-string\fP
+Search for event with either \fIscontext\fP/subject or \fItcontext\fP/object matching the string.
+.TP
+.BR \-\-session \ \fILogin-Session-ID\fP
+Search for events matching the given Login Session ID. This process attribute is set when a user logs in and can tie any process to a particular user login.
+.TP
+.BR \-su ,\  \-\-subject \ \fISE-Linux-context-string\fP
+Search for event with \fIscontext\fP (subject) matching the string.
+.TP
+.BR \-sv ,\  \-\-success \ \fIsuccess-value\fP
+Search for an event matching the given \fIsuccess value\fP. Legal values are 
+.B yes
+and
+.BR no .
+.TP
+.BR \-te ,\  \-\-end \ [\fIend-date\fP]\ [\fIend-time\fP]
+Search for events with time stamps equal to or before the given end time. The format of end time depends on your locale. You can check the format of your locale by running
+.B date \(aq+%x\(aq.
+If the date is omitted,
+.B today
+is assumed. If the time is omitted, 
+.B now
+is assumed. Use 24 hour clock time rather than AM or PM to specify time. An example date using the en_US.utf8 locale is 09/03/2009. An example of time is 18:00:00. The date format accepted is influenced by the LC_TIME environmental variable.
+
+You may also use the word: \fBnow\fP, \fBrecent\fP, \fBboot\fP, \fBtoday\fP, \fByesterday\fP, \fBthis\-week\fP, \fBweek\-ago\fP, \fBthis\-month\fP, or \fBthis\-year\fP. \fBNow\fP means starting now. \fBRecent\fP is 10 minutes ago. \fBBoot\fP means the time of day to the second when the system last booted. \fBToday\fP means now. \fBYesterday\fP is 1 second after midnight the previous day. \fBThis\-week\fP means starting 1 second after midnight on day 0 of the week determined by your locale (see \fBlocaltime\fP). \fBWeek\-ago\fP means 1 second after midnight exactly 7 days ago. \fBThis\-month\fP means 1 second after midnight on day 1 of the month. \fBThis\-year\fP means the 1 second after midnight on the first day of the first month.
+.TP
+.BR \-ts ,\  \-\-start \ [\fIstart-date\fP]\ [\fIstart-time\fP]
+Search for events with time stamps equal to or after the given start time. The format of start time depends on your locale. You can check the format of your locale by running
+.B date \(aq+%x\(aq.
+If the date is omitted, 
+.B today
+is assumed. If the time is omitted, 
+.B midnight
+is assumed. Use 24 hour clock time rather than AM or PM to specify time. An example date using the en_US.utf8 locale is 09/03/2009. An example of time is 18:00:00. The date format accepted is influenced by the LC_TIME environmental variable.
+
+You may also use the word: \fBnow\fP, \fBrecent\fP, \fBboot\fP, \fBtoday\fP, \fByesterday\fP, \fBthis\-week\fP, \fBweek\-ago\fP, \fBthis\-month\fP, \fBthis\-year\fP, or \fBcheckpoint\fP. \fBBoot\fP means the time of day to the second when the system last booted. \fBToday\fP means starting at 1 second after midnight. \fBRecent\fP is 10 minutes ago. \fBYesterday\fP is 1 second after midnight the previous day. \fBThis\-week\fP means starting 1 second after midnight on day 0 of the week determined by your locale (see \fBlocaltime\fP). \fBWeek\-ago\fP means starting 1 second after midnight exactly 7 days ago. \fBThis\-month\fP means 1 second after midnight on day 1 of the month. \fBThis\-year\fP means the 1 second after midnight on the first day of the first month.
+.sp
+\fBcheckpoint\fP means \fIausearch\fP will use the timestamp found within a valid checkpoint file ignoring the recorded inode, device, serial, node and event type also found within a checkpoint file. Essentially, this is the recovery action should an invocation of \fIausearch\fP with a checkpoint option fail with an exit status of 10, 11 or 12. It could be used in a shell script something like:
+.sp
+.in +5
+.nf
+.na
+ausearch --checkpoint /etc/audit/auditd_checkpoint.txt -i
+_au_status=$?
+if test ${_au_status} eq 10 -o ${_au_status} eq 11 -o ${_au_status} eq 12
+then
+  ausearch --checkpoint /etc/audit/auditd_checkpoint.txt --start checkpoint -i
+fi
+.ad
+.fi
+.in -5
+.TP
+.BR \-tm ,\  \-\-terminal \ \fIterminal\fP
+Search for an event matching the given \fIterminal\fP value. Some daemons such as cron and atd use the daemon name for the terminal.
+.TP
+.BR \-ua ,\  \-\-uid\-all \ \fIall-user-id\fP
+Search for an event with either user ID, effective user ID, or login user ID (auid) matching the given \fIuser ID\fP.
+.TP
+.BR \-ue ,\  \-\-uid\-effective \ \fIeffective-user-id\fP
+Search for an event with the given \fIeffective user ID\fP.
+.TP
+.BR \-ui ,\  \-\-uid \ \fIuser-id\fP
+Search for an event with the given \fIuser ID\fP.
+.TP
+.BR \-ul ,\  \-\-loginuid \ \fIlogin-id\fP
+Search for an event with the given \fIlogin user ID\fP. All entry point programs that are pamified need to be configured with pam_loginuid required for the session for searching on loginuid (auid) to be accurate.
+.TP
+.BR \-uu ,\  \-\-uuid \ \fIguest-uuid\fP
+Search for an event with the given \fIguest UUID\fP.
+.TP
+.BR \-v ,\  \-\-version
+Print the version and exit
+.TP
+.BR \-vm ,\  \-\-vm-name \ \fIguest-name\fP
+Search for an event with the given \fIguest name\fP.
+.TP
+.BR \-w ,\  \-\-word
+String based matches must match the whole word. This category of matches include: filename, hostname, terminal, keys, and SE Linux context.
+.TP
+.BR \-x ,\  \-\-executable \ \fIexecutable\fP
+Search for an event matching the given \fIexecutable\fP name.
+
+.SH "EXIT STATUS"
+.TP 5
+0
+if OK,
+.TP
+1
+if nothing found, or argument errors or minor file acces/read errors,
+.TP
+10
+invalid checkpoint data found in checkpoint file,
+.TP
+11
+checkpoint processing error
+.TP
+12
+checkpoint event not found in matching log file
+.SH "SEE ALSO"
+.BR auditd (8),
+.BR pam_loginuid (8).

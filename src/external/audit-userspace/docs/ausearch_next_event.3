@@ -1,0 +1,24 @@
+.TH "AUSEARCH_NEXT_EVENT" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+ausearch_next_event \- find the next event that meets search criteria
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int ausearch_next_event(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+ausearch_next_event will scan the input source and evaluate whether any record in an event contains the data being searched for. Evaluation is done at the record level.
+
+.SH "RETURN VALUE"
+
+Returns \-1 if an error occurs, 0 if no matches, and 1 for success.
+
+.SH "SEE ALSO"
+
+.BR ausearch_add_item (3), 
+.BR ausearch_add_regex (3), 
+.BR ausearch_set_stop (3).
+
+.SH AUTHOR
+Steve Grubb

@@ -1,0 +1,61 @@
+.TH AUDISPD: "8" "Sept 2007" "Red Hat" "System Administration Utilities"
+.SH NAME
+audispd \- an event multiplexor
+.SH SYNOPSIS
+.B audispd
+.RB  [ \-c\ <config_dir> ]\
+.SH DESCRIPTION
+\fBaudispd\fP is an audit event multiplexor. It has to be started by the audit daemon in order to get events. It takes audit events and distributes them to child programs that want to analyze events in realtime. When the audit daemon receives a SIGTERM or SIGHUP, it passes that signal to the dispatcher, too. The dispatcher in turn passes those signals to its child processes.
+
+The child programs install a configuration file in a plugins directory, \fI/etc/audisp/plugins.d\fP. Filenames are not allowed to have more than one '.' in the name or it will be treated as a backup copy and skipped. Options are given one per line with an equal sign between the keyword and its value. The available options are as follows:
+
+.TP
+.I active
+The options for this are 
+.IR yes
+or
+.IR no.
+.TP
+.I direction
+The option is dictated by the plugin.
+.IR In
+or
+.IR out
+are the only choices. You cannot make a plugin operate in a way it wasn't designed just by changing this option.This option is to give a clue to the event dispatcher about which direction events flow. NOTE: inbound events are not supported yet.
+.TP
+.I path
+This is the absolute path to the plugin executable. In the case of internal plugins, it would be the name of the plugin.
+.TP
+.I type
+This tells the dispatcher how the plugin wants to be run. Choices are
+.IR builtin
+and
+.IR always.
+.IR Builtin
+should always be given for plugins that are internal to the audit event dispatcher. These are af_unix and syslog. The option
+.IR always
+should be given for most if not all plugins. The default setting is
+.IR always.
+.TP
+.I args
+This allows you to pass arguments to the child program. Generally plugins do not take arguments and have their own config file that instructs them how they should be configured. At the moment, there is a limit of 2 args.
+.TP
+.I format
+The valid options for this are
+.IR binary
+and
+.IR string.
+.IR Binary
+passes the data exactly as the audit event dispatcher gets it from the audit daemon. The
+.IR string
+option tells the dispatcher to completely change the event into a string suitable for parsing with the audit parsing library. The default value is
+.IR string.
+ 
+.SH FILES
+/etc/audisp/audispd.conf
+/etc/audisp/plugins.d
+.SH "SEE ALSO"
+.BR audispd.conf (5),
+.BR auditd (8).
+.SH AUTHOR
+Steve Grubb

@@ -1,0 +1,24 @@
+.TH "AUPARSE_GET_FIELD_NAME" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_field_name \- get current field's name
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+const char *auparse_get_field_name(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_field_name allows access to the current field name of the current record in the current event.
+
+.SH "RETURN VALUE"
+
+Returns NULL if an error occurs; otherwise, a pointer to the field's name.
+
+.SH "SEE ALSO"
+
+.BR auparse_get_field_str (3),
+.BR auparse_interpret_field (3),
+.BR auparse_next_field (3).
+
+.SH AUTHOR
+Steve Grubb

@@ -1,0 +1,34 @@
+.TH "AUDIT_OPEN" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_open \- Open a audit netlink socket connection
+.SH "SYNOPSIS"
+.B #include <libaudit.h>
+.sp
+int audit_open (void);
+
+.SH "DESCRIPTION"
+
+audit_open creates a NETLINK_AUDIT socket for communication with the kernel part of the Linux Audit Subsystem. The audit system uses the ACK feature of netlink. This means that every message to the kernel will return a netlink status packet even if the operation succeeds.
+
+.SH "RETURN VALUE"
+
+Returns \-1 if an error occurs; otherwise, the return value is a descriptor referencing the socket.
+
+.SH ERRORS
+
+The
+.BR audit_open ()
+function may fail and set
+.I errno
+for any of the errors specified for the
+.BR socket (2)
+and
+.BR fcntl (2)
+routines.
+
+.SH "SEE ALSO"
+
+.BR netlink (7).
+
+.SH AUTHOR
+Steve Grubb

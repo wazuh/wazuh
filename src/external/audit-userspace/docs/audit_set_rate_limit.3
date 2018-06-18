@@ -1,0 +1,24 @@
+.TH "AUDIT_SET_RATE_LIMIT" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_set_rate_limit \- Set audit rate limit
+.SH "SYNOPSIS"
+
+.B #include <libaudit.h>
+.sp
+int audit_set_rate_limit (int fd, int limit);
+
+.SH "DESCRIPTION"
+
+audit_set_rate_limit will set the maximum number of messages that the kernel will send per second. This can be used to throttle the rate if systems become unresponsive. Of course the trade off is that events will be dropped. The default value is 0, meaning no limit.
+
+.SH "RETURN VALUE"
+
+The return value is <= 0 on error, otherwise it is the netlink sequence id number. This function can have any error that sendto would encounter.
+
+.SH "SEE ALSO"
+
+.BR audit_open (3),
+.BR auditd (8).
+
+.SH AUTHOR
+Steve Grubb

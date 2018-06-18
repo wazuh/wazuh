@@ -1,0 +1,41 @@
+.TH "AUDIT_LOG_USER_COMM_MESSAGE" "3" "July 2016" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_log_user_comm_message \- log a user message from a console app
+.SH SYNOPSIS
+.B #include <libaudit.h>
+.sp
+int audit_log_user_comm_message(int audit_fd, int type, const char *message,
+const char *comm, const char *hostname, const char *addr, const char *tty,
+int result)
+
+.SH DESCRIPTION
+This function will log a message to the audit system using a predefined message format. This function should be used by all non-ELF console apps that do not manipulate accounts, groups, or need to log execution of a script. An example would be a Python script recording an event. The function parameters are as follows:
+
+.nf
+audit_fd - The fd returned by audit_open
+type - type of message, ex: AUDIT_USYS_CONFIG, AUDIT_USER_LOGIN
+message - the message text being sent
+comm - the program command line name, NULL if unknown
+hostname - the hostname if known, NULL if unknown
+addr - The network address of the user, NULL if unknown
+tty - The tty of the user, if NULL will attempt to figure out
+result - 1 is "success" and 0 is "failed"
+.fi
+
+.SH "RETURN VALUE"
+
+It returns the sequence number which is > 0 on success or <= 0 on error.
+
+.SH "ERRORS"
+
+This function returns \-1 on failure. Examine errno for more info.
+
+.SH "SEE ALSO"
+
+.BR audit_log_user_message (3),
+.BR audit_log_acct_message (3),
+.BR audit_log_user_avc_message (3),
+.BR audit_log_semanage_message (3).
+
+.SH AUTHOR
+Steve Grubb

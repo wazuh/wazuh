@@ -1,0 +1,23 @@
+.TH "AUDIT_DETECT_MACHINE" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_detect_machine \- Detects the current machine type
+.SH "SYNOPSIS"
+.B #include <libaudit.h>
+.sp
+int audit_detect_machine (void);
+
+.SH "DESCRIPTION"
+
+audit_detect_machine queries uname and converts the kernel machine string to an enum value defined in machine_t. The machine type is needed for any use of the audit_name_to_syscall function.
+
+.SH "RETURN VALUE"
+
+Returns \-1 if an error occurs; otherwise, the return value is the machine's type.
+
+.SH "SEE ALSO"
+
+.BR uname (3),
+.BR audit_name_to_syscall (3).
+
+.SH AUTHOR
+Steve Grubb

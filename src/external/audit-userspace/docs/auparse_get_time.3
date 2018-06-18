@@ -1,0 +1,26 @@
+.TH "AUPARSE_GET_TIME" "3" "Sept 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_time \- get event's time
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+time_t auparse_get_time(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_time will access just the time portion of the timestamp data structure for the current event.
+
+.SH "RETURN VALUE"
+
+Returns 0 if an error occurs; otherwise, the valid time value in time_t format.
+
+.SH "SEE ALSO"
+
+.BR time (3), 
+.BR auparse_get_timestamp (3), 
+.BR auparse_get_milli (3).
+.BR auparse_get_serial (3).
+.BR auparse_get_node (3).
+
+.SH AUTHOR
+Steve Grubb

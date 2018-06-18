@@ -1,0 +1,49 @@
+.TH "AUPARSE_NORMALIZE_FUNCTIONS" "3" "March 2017" "Red Hat" "Linux Audit API"
+.SH NAME
+.nf
+auparse_normalize_get_event_kind, auparse_normalize_subject_kind, auparse_normalize_get_action, auparse_normalize_object_kind, auparse_normalize_how, auparse_normalize_session, auparse_normalize_subject_primary, auparse_normalize_subject_secondary, auparse_normalize_subject_first_attribute, auparse_normalize_subject_next_attribute, auparse_normalize_object_primary, auparse_normalize_object_secondary, auparse_normalize_object_primary2, auparse_normalize_object_first_attribute, auparse_normalize_object_next_attribute, auparse_normalize_get_results, auparse_normalize_key \- Access normalized fields
+.fi
+.SH "SYNOPSIS"
+.nf
+.B #include <auparse.h>
+.sp
+Metadata Functions:
+.B const char *auparse_normalize_get_event_kind(auparse_state_t *au);
+.B const char *auparse_normalize_subject_kind(auparse_state_t *au);
+.B const char *auparse_normalize_get_action(auparse_state_t *au);
+.B const char *auparse_normalize_object_kind(auparse_state_t *au);
+.B const char *auparse_normalize_how(auparse_state_t *au);
+.sp
+Positioning Functions:
+.B int auparse_normalize_session(auparse_state_t *au);
+.B int auparse_normalize_subject_primary(auparse_state_t *au);
+.B int auparse_normalize_subject_secondary(auparse_state_t *au);
+.B int auparse_normalize_subject_first_attribute(auparse_state_t *au);
+.B int auparse_normalize_subject_next_attribute(auparse_state_t *au);
+.B int auparse_normalize_object_primary(auparse_state_t *au);
+.B int auparse_normalize_object_secondary(auparse_state_t *au);
+.B int auparse_normalize_object_primary2(auparse_state_t *au);
+.B int auparse_normalize_object_first_attribute(auparse_state_t *au);
+.B int auparse_normalize_object_next_attribute(auparse_state_t *au);
+.B int auparse_normalize_get_results(auparse_state_t *au);
+.B int auparse_normalize_key(auparse_state_t *au);
+.fi
+.SH "DESCRIPTION"
+After calling the 
+.B auparse_normalize
+function, you will probably want to access the audit event data. These function provide access to the results of the normalization. There are 2 kinds of function, metadata and positioning.
+
+The metadata functions all return a pointer to a string that describes something about the event. This data does not live inside the event but is kept in lookup tables inside the auparse library.
+
+The positioning function are different in that they move the internal cursor of auparse to the record and field that contains the information you want. You then use field accessor functions to retrieve the values.
+
+.SH "RETURN VALUE"
+The positioning functions return < 0 on error, 0 if uninitialized, and 1 on success. The metadata functions return NULL on error and a pointer to a string on success.
+
+.SH "SEE ALSO"
+auparse_normalize(3), auparse_get_field_str(3), auparse_interpret_field(3).
+
+.BR 
+
+.SH AUTHOR
+Steve Grubb

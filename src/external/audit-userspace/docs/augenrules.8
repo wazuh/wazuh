@@ -1,0 +1,41 @@
+.TH AUGENRULES: "8" "Apr 2013" "Red Hat" "System Administration Utilities"
+.SH NAME
+augenrules \- a script that merges component audit rule files
+.SH SYNOPSIS
+.B augenrules
+.RI [ \-\-check ]\ [ \-\-load ]
+.SH DESCRIPTION
+\fBaugenrules\fP is a script that merges all component audit rules files,
+found in the audit rules directory, \fI/etc/audit/rules.d\fP, placing the
+merged file in \fI/etc/audit/audit.rules\fP. Component audit rule files, must
+end in \fI.rules\fP in order to be processed. All other files in
+\fI/etc/audit/rules.d\fP are ignored.
+.P
+The files are concatenated in order, based on their natural sort (see -v option of ls(1)) and stripped of empty and comment (#) lines.
+.P
+The last processed -\fID\fP directive without an option, if present, is always
+emitted as the first line in the resultant file. Those with an option are
+replicated in place.
+The last processed -\fIb\fP directive, if present, is always
+emitted as the second line in the resultant file.
+The last processed -\fIf\fP directive, if present, is always
+emitted as the third line in the resultant file.
+The last processed -\fIe\fP directive, if present, is always
+emitted as the last line in the resultant file.
+.P
+The generated file is only copied to \fI/etc/audit/audit.rules\fP, if it differs.
+.SH OPTIONS
+.TP
+.B \-\-check
+test if rules have changed and need updating without overwriting audit.rules.
+.TP
+.B \-\-load
+load old or newly built rules into the kernel.
+
+.SH FILES
+/etc/audit/rules.d/
+/etc/audit/audit.rules
+.SH "SEE ALSO"
+.BR audit.rules (8),
+.BR auditctl (8),
+.BR auditd (8).

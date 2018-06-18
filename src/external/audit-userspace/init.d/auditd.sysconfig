@@ -1,0 +1,21 @@
+# Add extra options here
+EXTRAOPTIONS=""
+#
+# This is the locale information that audit uses. Its defaulted to en_US.
+# To remove all locale information from audit's environment, set
+# AUDITD_LANG to the empty string or the string "none".
+AUDITD_LANG="en_US"
+#
+# This option is used to determine if rules & watches should be deleted on
+# shutdown by loading the audit-stop file. This is beneficial in most cases
+# so that a watch doesn't linger on a drive that is being unmounted. If
+# set to no, it will NOT be cleaned up.
+AUDITD_CLEAN_STOP="yes"
+#
+# This option determines whether or not to call augenrules to compile the
+# audit.rule file from /etc/audit/rules.d. The default is "no" so that nothing
+# happens to existing rules. When setting this up, any existing rules need to
+# be copied into /etc/audit/rules.d or it will be lost when audit.rule gets
+# overwritten.
+USE_AUGENRULES="no"
+

@@ -1,0 +1,90 @@
+#! /usr/bin/env python
+import os, string, select, struct, syslog
+import audit, avc, traceback
+import AuditMsg
+from setroubleshoot.signature import *
+from setroubleshoot.util import LoadPlugins
+
+class avc_snap:
+    def __init__(self):
+        self.audit_list = []
+        self.cur_sig = ""
+        self.plugins = LoadPlugins()
+        syslog.syslog( "Number of Plugins = %d" % len(self.plugins))
+
+    def is_avc(self):
+        for i in self.audit_list:
+            if i[0] == audit.AUDIT_AVC:
+                return True
+        return False
+        
+    def out(self):
+        if self.is_avc():
+            rules=avc.SERules()
+            l=[]
+            for ( type, data_list ) in self.audit_list:
+                l  += data_list
+
+            if "granted" in l:
+                self.audit_list = []
+                return
+
+            rules.translate(l)
+            myavc = AVC(rules.AVCS[0])
+            for plugin in self.plugins:
+                try:
+                    if plugin.analyze(myavc):
+                        plugin.report()
+                        break;
+                    
+                except TypeError, e:
+                    syslog.syslog("Type exception %s: %s " % ( plugin.analysisID, e.args))
+                except:
+                    syslog.syslog("Plugin Exception %s " % plugin.analysisID) 
+                
+        self.audit_list = []
+
+    def process(self, type, data):
+        data_list=data.split()
+        new_sig=data_list[0]
+
+        if len(self.audit_list) > 0 and new_sig != self.cur_sig:
+            self.out()
+            self.cur_sig = new_sig
+
+        self.audit_list.append((type, data_list[1:]))
+
+    def run(self):
+        while 1:
+            input,output, err = select.select([0],[], [], 5)
+            try:
+                if 0 in input:
+                    msg = AuditMsg.AuditMsg()
+                    if not msg.read_from_fd(0):
+                        syslog.syslog("Connection closing")
+                        return
+                    self.process(msg.get_type(), msg.get_body())
+                else:
+                    self.out()
+
+            except struct.error, e:
+                syslog.syslog("struct exception %s " % e.args)
+                return
+            except TypeError, e:
+                syslog.syslog("Type exception %s " % e.args)
+
+try:
+    syslog.openlog("avc_snap")
+    snap=avc_snap()
+    snap.run()
+
+except IOError,e:
+    syslog.syslog("IOError exception %s" % e.args)
+
+except Exception, e:
+    syslog.syslog("Unexpected exception %s " % e.args)
+    syslog.syslog(traceback.format_exc())
+   
+except:
+    syslog.syslog("Caught Exception")
+    syslog.syslog(traceback.format_exc())

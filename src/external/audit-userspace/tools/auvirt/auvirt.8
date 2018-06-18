@@ -1,0 +1,121 @@
+.TH AUVIRT 8 "Dec 2011" "IBM Corp" "System Administration Utilities"
+.SH NAME
+auvirt - a program that shows data related to virtual machines
+
+.SH SYNOPSIS
+.B auvirt
+[ \fIOPTIONS\fP ]
+
+.SH DESCRIPTION
+\fBauvirt\fP shows a list of guest sessions found in the audit logs. If a guest
+is specified, only the events related to that guest is considered. To specify a
+guest, both UUID or VM name can be given.
+
+For each guest session the tool prints a record with the domain name, the user
+that started the guest, the time when the guest was started and the time when
+the guest was stopped.
+
+If the option "\-\-all\-events" is given a more detailed output is shown. In this
+mode other records are shown for guest's stops, resource
+assignments, AVC and anomaly events. The first field
+indicates the event type and can have the following values: start, stop,
+res, avc, and anom.
+
+Resource assignments have the additional fields: resource type, reason and
+resource. And AVC records have the following additional fields: operation,
+result, command and target.
+
+By default, auvirt reads records from the system audit log file. But
+\fB--stdin\fP and \fB--file\fP options can be specified to change this
+behavior.
+
+.SH OPTIONS
+.TP
+\fB--all-events\fP
+Show records for all virtualization related events.
+.TP
+\fB--debug\fP
+Print debug messages to standard output.
+.TP
+\fB-f\fP, \fB--file\fP \fIfile\fP
+Read records from the given \fIfile\fP instead from the system audit log file.
+.TP
+\fB-h\fP, \fB--help\fP
+Print help message and exit.
+.TP
+\fB--proof\fP
+Add after each event a line containing all the identifiers of the audit records
+used to calculate the event. Each identifier consists of unix time,
+milliseconds and serial number.
+.TP
+\fB--show-uuid\fP
+Add the guest's UUID to each record.
+.TP
+\fB--stdin\fP
+Read records from the standard input instead from the system audit log file.
+This option cannot be specified with \fB--file\fP. The audit events must be in the raw format.
+.TP
+\fB--summary\fP
+Print a summary with information about the events found. The summary contains
+the considered range of time, the number of guest starts and stops, the number
+of resource assignments, the number of AVC and anomaly events, and the number
+of failed operations.
+.TP
+.BR \-te ,\  \-\-end \ [\fIend-date\fP]\ [\fIend-time\fP]
+Search for events with time stamps equal to or before the given end time. The
+format of end time depends on your locale. If the date is omitted,
+.B today
+is assumed. If the time is omitted,
+.B now
+is assumed. Use 24 hour clock time rather than AM or PM to specify time.
+An example date using the en_US.utf8 locale is 09/03/2009. An example of time
+is 18:00:00. The date format accepted is influenced by the LC_TIME
+environmental variable.
+
+You may also use the word: \fBnow\fP, \fBrecent\fP, \fBtoday\fP,
+\fByesterday\fP, \fBthis\-week\fP, \fBweek\-ago\fP, \fBthis\-month\fP,
+\fBthis\-year\fP. \fBToday\fP means starting now. \fBRecent\fP is 10 minutes
+ago. \fBYesterday\fP is 1 second after midnight the previous day.
+\fBThis\-week\fP means starting 1 second after midnight on day 0 of the week
+determined by your locale (see \fBlocaltime\fP). \fBThis\-month\fP means 1
+second after midnight on day 1 of the month. \fBThis\-year\fP means the 1
+second after midnight on the first day of the first month.
+.TP
+.BR \-ts ,\  \-\-start \ [\fIstart-date\fP]\ [\fIstart-time\fP]
+Search for events with time stamps equal to or after the given end time. The
+format of end time depends on your locale. If the date is omitted,
+.B today
+is assumed. If the time is omitted,
+.B midnight
+is assumed. Use 24 hour clock time rather than AM or PM to specify time. An
+example date using the en_US.utf8 locale is 09/03/2009. An example of time is
+18:00:00. The date format accepted is influenced by the LC_TIME environmental
+variable.
+
+You may also use the word: \fBnow\fP, \fBrecent\fP, \fBtoday\fP,
+\fByesterday\fP, \fBthis\-week\fP, \fBthis\-month\fP, \fBthis\-year\fP.
+\fBToday\fP means starting at 1 second after midnight. \fBRecent\fP is 10
+minutes ago. \fBYesterday\fP is 1 second after midnight the previous day.
+\fBThis\-week\fP means starting 1 second after midnight on day 0 of the week
+determined by your locale (see \fBlocaltime\fP). \fBThis\-month\fP means 1
+second after midnight on day 1 of the month. \fBThis\-year\fP means the 1
+second after midnight on the first day of the first month.
+.TP
+\fB-u\fP, \fB--uuid\fP \ \fIUUID\fP
+Only show events related to the guest with the given UUID.
+.TP
+\fB-v\fP, \fB--vm\fP \ \fIname\fP
+Only show events related to the guest with the given name.
+
+.SH EXAMPLES
+To see all the records in this month for a guest
+
+\fBauvirt \-\-start this\-month \-\-vm GuestVmName \-\-all\-events\fP
+
+.SH SEE ALSO
+.BR aulast (8),
+.BR ausearch (8),
+.BR aureport (8).
+
+.SH AUTHOR
+Marcelo Cerri

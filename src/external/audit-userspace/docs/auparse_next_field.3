@@ -1,0 +1,22 @@
+.TH "AUPARSE_NEXT_FIELD" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_next_field \- move field cursor
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int auparse_next_field(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_next_field moves the library's internal cursor to point to the next field in the current record of the current event.
+
+.SH "RETURN VALUE"
+
+Returns 0 if no more fields exist and 1 for success.
+
+.SH "SEE ALSO"
+
+.BR auparse_next_record (3).
+
+.SH AUTHOR
+Steve Grubb

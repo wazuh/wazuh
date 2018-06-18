@@ -1,0 +1,241 @@
+.\" Copyright (c) International Business Machines  Corp., 2007
+.\"
+.\" This program is free software;  you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY;  without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+.\" the GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program;  if not, write to the Free Software
+.\" Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+.\" MA 02111-1307 USA
+.\"
+.\" Changelog:
+.\" 2007-10-06, created by Klaus Heinrich Kiwi <klausk@br.ibm.com>
+.\"
+.TH AUDISP-RACF 8 "Oct 2007" "IBM" "System Administration Utilities"
+.SH NAME
+audispd\-zos\-remote \- z/OS Remote-services Audit dispatcher plugin
+.SH SYNOPSIS
+.B audispd\-zos\-remote [
+.I config-file
+.B ]
+.SH DESCRIPTION
+.B audispd\-zos\-remote
+is a remote-auditing plugin for the Audit subsystem. It should be started by the
+.BR audispd (8)
+daemon and will forward all incoming audit events, as they happen, to a configured z/OS SMF (Service Management Facility) database, through an IBM Tivoli Directory Server (ITDS) set for Remote Audit service.
+See
+.B SMF MAPPING
+section below for more information about the resulting SMF record format.
+
+.BR audispd (8)
+must be configured to start the plugin. This is done by a configuration file usually located at
+.IR /etc/audisp/plugins.d/audispd\-zos\-remote.conf ,
+but multiple instances can be spawned by having multiple configuration files in
+.I /etc/audisp/plugins.d
+for the same plugin executable (see
+.BR audispd (8)).
+
+Each instance needs a configuration file, located by default at
+.IR /etc/audisp/zos\-remote.conf .
+Check
+.BR zos\-remote.conf (5)
+for details about the plugin configuration.
+
+.SH OPTIONS
+.IP config-file
+Use an alternate configuration file instead of
+.IR /etc/audisp/zos\-remote.conf .
+
+.SH SIGNALS
+.B audispd\-zos\-remote
+reacts to SIGTERM and SIGHUP signals (according to the
+.BR audispd (8)
+specification):
+.TP
+.B SIGHUP
+Instructs the
+.B audispd\-zos\-remote
+plugin to re-read it's configuration and flush existing network connections.
+.TP
+.B SIGTERM
+Performs a clean exit.
+.B audispd\-zos\-remote
+will wait up to 10 seconds if there are queued events to be delivered, dropping any remaining queued events after that time.
+
+.SH IBM z/OS ITDS Server and RACF configuration
+In order to use this plugin, you must have an IBM z/OS v1R8 (or higher) server with IBM Tivoli Directory Server (ITDS) configured for Remote Audit service. For more detailed information about how to configure the z/OS server for Remote Auditing, refer to
+.B z/OS V1R8.0-9.0 Intergrated Security Services Enterprise Identity Mapping (EIM) Guide and Reference
+.nf
+.RI ( http://publibz.boulder.ibm.com/cgi\-bin/bookmgr_OS390/FRAMESET/EIMA1140/CCONTENTS?DT=20070827115119 ),
+chapter "2.0 - Working with remote services".
+.fi
+
+.SS Enable ITDS to process Remote Audit requests
+To enable ITSD to process Remote Audit requests, the user ID associated with ITDS must be granted READ access to the IRR.AUDITX FACILITY Class profile (the profile used to protect the R_Auditx service). This user ID can usually be found in the STARTED Class profile for the ITDS started procedure. If the identity associated with ITDS is
+.IR ITDSUSER ,
+the administrator can configure RACF to grant Remote Auditing processing to ITDS with the following TSO commands:
+.TP
+.I TSO Commands: Grant ITDSUSER READ access to IRR.AUDITX FACILITY Class profile
+.nf
+rdefine FACILITY IRR.RAUDITX uacc(none)
+permit IRR.RAUDITX class(FACILITY) id(ITDSUSER) access(READ)
+.fi
+
+.SS Create/enable RACF user ID to perform Remote Audit requests
+A z/OS RACF user ID is needed by the plugin - Every Audit request performed by the plugin will use a RACF user ID, as configured in the plugin configuration
+.BR zos\-remote.conf (5).
+This user ID needs READ access to FACILITY Class resource IRR.LDAP.REMOTE.AUDIT. If the user ID is
+.IR BINDUSER ,
+the administrator can configure RACF to enable this user to perform Remote Auditing requests with the following TSO commands:
+.TP
+.I TSO Commands: Enable BINDUSER to perform Remote Audit requests
+.nf
+rdefine FACILITY IRR.LDAP.REMOTE.AUDIT uacc(none)
+permit IRR.LDAP.REMOTE.AUDIT class(FACILITY) id(BINDUSER) access(READ)
+.fi
+
+.SS Add @LINUX Class to RACF
+When performing remote auditing requests, the
+.B audispd\-zos\-remote
+plugin will use the special
+.B @LINUX 
+.I CDT Class 
+and the audit record type (eg.:
+.BR SYSCALL ,
+.BR AVC ,
+.BR PATH ...)
+as the 
+.I CDT Resource Class
+for all events processed.
+To make sure events are logged, the RACF server must be configured with a Dynamic CDT Class named
+.B @LINUX
+with correct sizes and attributes. The following TSO commands can be used to add this class:
+.TP
+.I TSO Commands: Add @LINUX CDT Class
+.nf
+rdefine cdt @LINUX cdtinfo(posit(493) FIRST(alpha,national,numeric,special) OTHER(alpha,national,numeric,special) RACLIST(REQUIRED) case(asis) generic(allowed) defaultuacc(none) maxlength(246))
+setr classact(cdt)
+setr raclist(cdt)
+setr raclist(cdt) refresh
+setr classact(@LINUX)
+setr raclist(@LINUX)
+setr generic(@LINUX)
+.fi
+
+.SS Add profiles to the @LINUX Class
+Once the CDT Class has been defined, you can add profiles to it, specifying resources (wildcards allowed) to log or ignore. The following are examples:
+.TP
+.I  TSO Commands: Log only AVC records (One generic and one discrete profile):
+.nf
+rdefine @LINUX * uacc(none) audit(none(read)) 
+rdefine @LINUX AVC uacc(none) audit(all(read)) 
+setr raclist(@LINUX) refresh
+.fi
+
+.TP
+.I TSO Commands: Log everything (One generic profile):
+.nf
+rdefine @LINUX * uacc(none) audit(all(read))
+setr raclist(@LINUX) refresh
+.fi
+
+.P
+Resources always match the single profile with the
+.I best
+match.
+
+There are many other ways to define logging in RACF. Please refer to the server documentation for more details.
+
+.SH SMF Mapping
+The ITDS Remote Audit service will cut SMF records of type 83 subtype 4 everytime it processes a request. This plugin will issue a remote audit request for every incoming Linux Audit record (meaning that one Linux record will map to one SMF record), and fill this type's records with the following:
+.SS Link Value
+The Linux event serial number, encoded in network-byte order hexadecimal representation. Records within the same Event share the same Link Value.
+.SS Violation
+Always zero (0) -
+.I False
+.SS Event Code
+Always two (2) -
+.I Authorization
+event
+.SS Event Qualifier
+Zero (0) -
+.IR Success ,
+if the event reported
+.B success=yes
+or
+.BR res=success ,
+Three (3) -
+.IR Fail ,
+if the event reported
+.B success=no
+or
+.BR res=failed ,
+or One (1) -
+.I Info
+otherwise.
+.SS Class
+Always
+.I @LINUX
+.SS Resource
+The Linux record type for the processed record. e.g.:
+.IR SYSCALL , AVC , PATH , CWD
+etc.
+.SS Log String
+Textual message bringing the RACF user ID used to perform the request, plus the Linux hostname and the record type for the first record in the processed event. e.g.:
+.I Remote audit request from RACFUSER. Linux (hostname.localdomain):USER_AUTH 
+.SS Data Field List
+Also known as
+.IR relocates ,
+this list will bring all the field names and values in a
+.B fieldname=value
+format, as a type 114
+.RB ( "Appication specific Data" )
+relocate. The plug-in will try to interpret those fields (i.e.: use human-readable username
+.B root
+instead of numeric userid
+.BR 0 ) 
+whenever possible. Currently, this plugin will also add a relocate type 113
+.RB ( "Date And Time Security Event Occurred" )
+with the Event Timestamp in the format as returned by
+.BR ctime (3).
+
+.SH ERRORS
+Errors and warnings are reported to syslog (under DAEMON facility). In situations where the event was submitted but the z/OS server returned an error condition, the logged message brings a name followed by a human-readable description. Below are some common errors conditions:
+
+.TP
+.B NOTREQ - No logging required
+Resource (audit record type) is not set to be logged in the RACF server - The @LINUX Class profile governing this audit record type is set to ignore. See
+.B IBM z/OS RACF Server configuration
+.TP
+.B UNDETERMINED - Undetermined result
+No profile found for specified resource. There is no @LINUX Class configured or no @LINUX Class profile associated with this audit record type. See
+.B IBM z/OS RACF Server configuration
+.TP
+.B UNAUTHORIZED - The user does not have authority the R_auditx service
+The user ID associated with the ITDS doesn't have READ access to the IRR.AUDITX FACILITY Class profile. See
+.B IBM z/OS RACF Server configuration
+.TP
+.B UNSUF_AUTH - The user has unsuficient authority for the requested function
+The RACF user ID used to perform Remote Audit requests (as configured in
+.BR zos-remote.conf (5))
+don't have access to the IRR.LDAP.REMOTE.AUDIT FACILITY Class profile. See
+.B IBM z/OS RACF Server configuration
+
+.SH BUGS
+The plugin currently does remote auditing in a best-effort basis, and will dischard events in case the z/OS server cannot be contacted (network failures) or in any other case that event submission fails. 
+
+.SH FILES
+/etc/audisp/plugins.d/audispd\-zos\-remote.conf
+/etc/audisp/zos\-remote.conf
+.SH "SEE ALSO"
+.BR auditd (8),
+.BR zos\-remote.conf (5).
+.SH AUTHOR
+Klaus Heinrich Kiwi <klausk@br.ibm.com>

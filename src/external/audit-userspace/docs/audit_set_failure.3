@@ -1,0 +1,38 @@
+.TH "AUDIT_SET_FAILURE" "3" "June 2015" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_set_failure \- Set audit failure flag
+.SH "SYNOPSIS"
+
+.B #include <libaudit.h>
+.sp
+int audit_set_failure(int fd, int failure);
+
+.SH "DESCRIPTION"
+
+audit_set_failure sets the action that the kernel will perform when the backlog limit is reached or when it encounters an error and cannot proceed. Possible values are:
+
+.TP
+0 - AUDIT_FAIL_SILENT
+Do nothing, report nothing, skip logging the record and continue.
+
+.TP
+1 - AUDIT_FAIL_PRINTK [default]
+Log the audit record using printk which will cause subsequent events to get written to syslog.
+
+.TP
+2 - AUDIT_FAIL_PANIC
+Call the panic function. This would be used to prevent use of the machine upon loss of audit events.
+
+.SH "RETURN VALUE"
+
+The return value is <= 0 on error, otherwise it is the netlink sequence id number. This function can have any error that sendto would encounter.
+
+.SH "SEE ALSO"
+
+.BR audit_set_backlog (3),
+.BR audit_open (3),
+.BR auditd (8),
+.BR auditctl (8).
+
+.SH AUTHOR
+Steve Grubb

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Helper script to provide legacy auditd service options not
+# directly supported by systemd.
+
+test -f /etc/audit/auditd.conf  || exit 6
+
+/usr/libexec/initscripts/legacy-actions/auditd/stop
+sleep 1
+echo "Redirecting start to /bin/systemctl start auditd.service"
+/bin/systemctl start auditd.service
+RETVAL="$?"
+
+exit $RETVAL

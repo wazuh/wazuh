@@ -1,0 +1,37 @@
+.TH "AUSEARCH_SET_STOP" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+ ausearch_set_stop \- set the cursor position
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int ausearch_set_stop(auparse_state_t *au, austop_t where);
+
+.SH "DESCRIPTION"
+
+ausearch_set_stop determines where the internal cursor will stop when a search condition is met. The possible values are:
+
+.RS
+.TP
+.I AUSEARCH_STOP_EVENT
+This one repositions the cursors to the first field of the first record of the event containing the items searched for.
+.TP
+.I AUSEARCH_STOP_RECORD
+This one repositions the cursors to the first field of the record containing the items searched for.
+.TP
+.I AUSEARCH_STOP_FIELD
+This one simply stops on the current field when the evaluation of the rules becomes true.
+.RE
+
+.SH "RETURN VALUE"
+
+Returns \-1 if an error occurs; otherwise, 0 for success.
+
+.SH "SEE ALSO"
+
+.BR ausearch_add_item (3), 
+.BR ausearch_add_regex (3), 
+.BR ausearch_clear (3), 
+.BR ausearch_next_event (3).
+
+.SH AUTHOR
+Steve Grubb

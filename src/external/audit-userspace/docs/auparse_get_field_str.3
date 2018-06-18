@@ -1,0 +1,25 @@
+.TH "AUPARSE_GET_FIELD_STR" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_field_str \- get current field's value
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+const char *auparse_get_field_str(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_field_str allows access to the value in the current field of the current record in the current event.
+
+.SH "RETURN VALUE"
+
+Returns NULL if an error occurs; otherwise, a pointer to the field's value.
+
+.SH "SEE ALSO"
+
+.BR auparse_get_field_name (3),
+.BR auparse_get_field_int (3),
+.BR auparse_interpret_field (3),
+.BR auparse_next_field (3).
+
+.SH AUTHOR
+Steve Grubb

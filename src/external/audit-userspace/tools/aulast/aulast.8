@@ -1,0 +1,55 @@
+.TH AULAST: "8" "June 2016" "Red Hat" "System Administration Utilities"
+.SH NAME
+aulast \- a program similar to last
+.SH SYNOPSIS
+.B aulast [ options ] 
+
+.SH DESCRIPTION
+\fBaulast\fP is a program that prints out a listing of the last logged in users similarly to the program \fBlast\fP and \fBlastb\fP. Aulast searches back through the audit logs or the given audit log file and displays a list of all users logged in (and out) based on the range of time in the audit logs. Names of users and tty’s can be given, in which case aulast will show only those entries matching the arguments.
+
+The pseudo user reboot logs in each time the system is rebooted. Thus last reboot will show a log of all reboots since the log file was created.
+
+The main difference that a user will notice is that \fBaulast\fP print events from oldest to newest, while \fBlast\fP prints records from newest to oldest. Also, the audit system is not notified each time a tty or pty is allocated, so you may not see quite as many records indicating users and their tty's.
+
+.SH OPTIONS
+.TP
+.B \-\-bad
+Report on the bad logins.
+
+.TP
+.B \-\-extract
+Write raw audit records used to create the displayed report into a file aulast.log in the current working directory.
+
+.TP
+.BI \-f file
+Use the file instead of the audit logs for input.
+
+.TP
+.B \-\-proof
+Print out the audit event serial numbers used to determine the preceding line of the report. A Serial number of 0 is a place holder and not an actual event serial number. The serial numbers can be used to examine the actual audit records in more detail. Also an ausearch query is printed that will let you find the audit records associated with that session.
+
+.TP
+.B \-\-stdin
+Take audit records from stdin. The audit events must be in the raw format.
+
+.TP
+.BI \-\-tty
+Limit the report to a specific tty's activity. The names of ttys can be abbreviated. For example, 0 is the same as tty0.
+
+.TP
+.BI \-\-user name
+Limit the report to a specific user.
+
+.SH "EXAMPLES"
+.nf
+To see this month's logins
+.B ausearch \-\-start this-month \-\-raw | aulast \-\-stdin
+
+.SH "SEE ALSO"
+.BR last (1),
+.BR lastb (1),
+.BR ausearch (8),
+.BR aureport (8).
+
+.SH AUTHOR
+Steve Grubb

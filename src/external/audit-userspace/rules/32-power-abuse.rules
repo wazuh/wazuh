@@ -1,0 +1,4 @@
+## The purpose of this rule is to detect when an admin may be abusing power
+## by looking in user's home dir.
+-a always,exit -F dir=/home -F uid=0 -F auid>=1000 -F auid!=4294967295 -C auid!=obj_uid -F key=power-abuse
+

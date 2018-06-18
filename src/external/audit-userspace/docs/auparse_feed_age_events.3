@@ -1,0 +1,25 @@
+.TH "AUPARSE_FEED_AGE_EVENTS" "3" "Apr 2016" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_feed_age_events \- check events for complete based on time.
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+void auparse_feed_age_events(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+.I auparse_feed_age_events
+should be called to see if any events are complete based on the current clock time. Any newly complete events will be passed to the callback function.
+
+.SH "RETURN VALUE"
+
+None.
+
+.SH "SEE ALSO"
+
+.BR auparse_feed (3),
+.BR auparse_flush_feed (3),
+.BR auparse_feed_has_data (3)
+
+.SH AUTHOR
+Steve Grubb

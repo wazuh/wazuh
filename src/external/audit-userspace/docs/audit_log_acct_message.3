@@ -1,0 +1,54 @@
+.TH "AUDIT_LOG_ACCT_MESSAGE" "3" "Nov 2015" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_log_acct_message \- log a user account message
+.SH SYNOPSIS
+.B #include <libaudit.h>
+.sp
+int audit_log_acct_message(int audit_fd, int type, const char *pgname,
+const char *op, const char *name, unsigned int id, const char *host,
+const char *addr, const char *tty, int result)
+
+.SH DESCRIPTION
+This function will log a message to the audit system using a predefined message format. It should be used for all account manipulation operations. The function
+parameters are as follows:
+
+.RS
+.TP
+audit_fd - The fd returned by audit_open
+.TP
+type - type of message: AUDIT_USER_CHAUTHTOK for changing any account attributes.
+.TP
+pgname - program's name, if NULL will attempt to figure out
+.TP
+op  -  operation. Ex: "adding-user", "changing-finger-info", "deleting-group". This value should have a dash or underscore between the words so that report parsers group them together.
+.TP
+name - user's account or group name. If not available use NULL.
+.TP
+id  -  uid or gid that the operation is being performed on. If the user is unknown, pass a \-1 and fill in the name parameter. This is used only when user is NULL.
+.TP
+host - The hostname if known. If not available pass a NULL.
+.TP
+addr - The network address of the user. If not available pass a NULL.
+.TP
+tty  - The tty of the user, if NULL will attempt to figure out
+.TP
+result - 1 is "success" and 0 is "failed"
+.RE
+
+.SH "RETURN VALUE"
+
+It returns the sequence number which is > 0 on success or <= 0 on error.
+
+.SH "ERRORS"
+
+This function returns \-1 on failure. Examine errno for more info.
+
+.SH "SEE ALSO"
+
+.BR audit_log_user_message (3),
+.BR audit_log_user_comm_message (3),
+.BR audit_log_user_avc_message (3),
+.BR audit_log_semanage_message (3).
+
+.SH AUTHOR
+Steve Grubb

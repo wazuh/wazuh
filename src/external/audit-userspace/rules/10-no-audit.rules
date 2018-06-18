@@ -1,0 +1,9 @@
+## This set of rules is to suppress the performance effects of the
+## audit system. The result is that you only get hardwired events.
+-D
+
+## This suppresses syscall auditing for all tasks started
+## with this rule in effect.  Remove it if you need syscall
+## auditing.
+-a task,never
+
