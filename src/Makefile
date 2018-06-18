@@ -7,6 +7,7 @@ EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
+EXTERNAL_AUDIT=external/audit-userspace/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 endif
@@ -50,9 +51,9 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl -laudit
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl -L$(EXTERNAL_AUDIT)lib/.libs -laudit
 #		OSSEC_LDFLAGS+=-lmagic
-		CFLAGS+=-Wl,--start-group
+		CFLAGS+=-I$(EXTERNAL_AUDIT)lib -Wl,--start-group
 else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
@@ -513,7 +514,7 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 
 .PHONY: external lua
 ifeq (${uname_S},Linux)
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
+external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a ${EXTERNAL_AUDIT}lib/.libs/libaudit.a
 else
 external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
 endif
@@ -611,6 +612,12 @@ libproc.a: ${procps_o}
 	${OSSEC_RANLIB} $@
 endif
 endif
+
+$(EXTERNAL_AUDIT)lib/.libs/libaudit.a: $(EXTERNAL_AUDIT)Makefile
+	make -C $(EXTERNAL_AUDIT)lib
+
+$(EXTERNAL_AUDIT)Makefile:
+	cd $(EXTERNAL_AUDIT) && ./configure
 
 ####################
 #### OSSEC Libs ####
