@@ -180,6 +180,29 @@ GenerateAuthCert()
 }
 
 ##########
+# Install configuration for Auditd
+##########
+InstallAuditConfig()
+{
+    if [ ${NUNAME} = "Linux" ]
+    then
+        if [ -d "/etc/audisp/plugins.d" ]
+        then
+            cat > /etc/audisp/plugins.d/af_wazuh.conf << EOF
+active = yes
+direction = out
+path = builtin_af_unix
+type = builtin
+args = 0640 ${INSTALLDIR}/queue/ossec/audit
+format = string
+EOF
+        else
+            echo "INFO: Audisp not detected. Who-data for FIM will be disabled."
+        fi
+    fi
+}
+
+##########
 # WriteLogs()
 ##########
 WriteLogs()
@@ -655,6 +678,9 @@ InstallCommon(){
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
+
+  hash chcon && chcon -t var_run_t ${PREFIX}/queue/ossec 2> /dev/null
+
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
@@ -731,6 +757,7 @@ InstallCommon(){
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
 
       ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
+    InstallAuditConfig
 
   ./init/fw-check.sh execute
 }
