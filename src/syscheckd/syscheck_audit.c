@@ -131,7 +131,6 @@ int audit_manage_rules(int action, const char *path, const char *key) {
     // Set permisions
     int permisions = 0;
     permisions |= AUDIT_PERM_WRITE;
-    permisions |= AUDIT_PERM_EXEC;
     permisions |= AUDIT_PERM_ATTR;
     output = audit_update_watch_perms(myrule, permisions);
     if (output) {
