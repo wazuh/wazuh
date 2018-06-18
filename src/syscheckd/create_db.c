@@ -357,7 +357,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
     }
 
     /* Check for real time flag */
-    if (opts & CHECK_REALTIME) {
+    if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
 #ifdef INOTIFY_ENABLED
         realtime_adddir(dir_name, opts & CHECK_WHODATA);
 #else
