@@ -35,7 +35,7 @@ functions = {
     },
     '/agents/:agent_id/key': {
         'function': Agent.get_agent_key,
-        'type': 'local_any'
+        'type': 'local_master'
     },
     '/agents': {
         'function': Agent.get_agents_overview,
@@ -199,7 +199,7 @@ functions = {
     },
     '/cluster/node': {
         'function': cluster.get_node,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/cluster/nodes': {
         'function': cluster_control.get_nodes_api,
