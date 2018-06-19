@@ -93,7 +93,7 @@ int connect_server(int initial_id)
 
         if (agt->sock < 0) {
             agt->sock = -1;
-            merror(CONNS_ERROR, tmp_str);
+            merror(CONNS_ERROR, tmp_str, strerror(errno));
             rc++;
 
             if (agt->server[rc].rip == NULL) {

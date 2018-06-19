@@ -485,7 +485,7 @@ int main(int argc, char **argv)
     /* Connect via TCP */
     remote_sock = OS_Bindporttcp(config.port, NULL, 0);
     if (remote_sock <= 0) {
-        merror("Unable to bind to port %d", config.port);
+        merror(BIND_ERROR, config.port, errno, strerror(errno));
         exit(1);
     }
 

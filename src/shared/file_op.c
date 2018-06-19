@@ -530,7 +530,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
 
     finalfp = fopen(finalpath, mode == OS_BINARY ? "rb" : "r");
     if (!finalfp) {
-        merror("Unable to read merged file: '%s'.", finalpath);
+        merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
         return (0);
     }
 
@@ -591,7 +591,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
         if (state_ok) {
             if (fp = fopen(final_name, mode == OS_BINARY ? "wb" : "w"), !fp) {
                 ret = 0;
-                merror("Unable to unmerge file '%s'.", final_name);
+                merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", final_name, errno, strerror(errno));
             }
         } else {
             fp = NULL;
@@ -648,7 +648,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
     if (files == NULL) {
         finalfp = fopen(finalpath, "w");
         if (!finalfp) {
-            merror("Unable to create merged file: '%s'.", finalpath);
+            merror("Unable to create merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
             return (0);
         }
 
@@ -668,13 +668,13 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag)
 
     finalfp = fopen(finalpath, "a");
     if (!finalfp) {
-        merror("Unable to append merged file: '%s'.", finalpath);
+        merror("Unable to append merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
         return (0);
     }
 
     fp = fopen(files, "r");
     if (!fp) {
-        merror("Unable to merge file '%s'.", files);
+        merror("Unable to merge file '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
         fclose(finalfp);
         return (0);
     }
@@ -721,7 +721,7 @@ int MergeFiles(const char *finalpath, char **files, const char *tag)
 
     finalfp = fopen(finalpath, "w");
     if (!finalfp) {
-        merror("Unable to create merged file: '%s'.", finalpath);
+        merror("Unable to create merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
         return (0);
     }
 
@@ -732,7 +732,7 @@ int MergeFiles(const char *finalpath, char **files, const char *tag)
     while (files[i]) {
         fp = fopen(files[i], "r");
         if (!fp) {
-            merror("Unable to merge file '%s'.", files[i]);
+            merror("Unable to merge file '%s' due to [(%d)-(%s)].", files[i], errno, strerror(errno));
             i++;
             ret = 0;
             continue;
