@@ -25,6 +25,10 @@
 // Global variables
 volatile int audit_thread_active;
 W_Vector *audit_added_rules;
+static regex_t regexCompiled_uid;
+static regex_t regexCompiled_pid;
+static regex_t regexCompiled_pname;
+static regex_t regexCompiled_path;
 
 // Check if auditd is installed and running
 int check_auditd_enabled(void) {
@@ -223,93 +227,216 @@ int audit_init(void) {
         return (-1);
     }
 
+    // Initialize regular expressions
+
+    static const char *pattern_uid = " uid=([0-9]*) ";
+    if (regcomp(&regexCompiled_uid, pattern_uid, REG_EXTENDED)) {
+        merror("Cannot compile uid regular expression.");
+        return -1;
+    }
+    static const char *pattern_pid = " pid=([0-9]*) ";
+    if (regcomp(&regexCompiled_pid, pattern_pid, REG_EXTENDED)) {
+        merror("Cannot compile pid regular expression.");
+        return -1;
+    }
+    static const char *pattern_pname = " exe=\"([^ ]*)\" ";
+    if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
+        merror("Cannot compile pname regular expression.");
+        return -1;
+    }
+    static const char *pattern_path = " item=1 name=\"([^ ]*)\" ";
+    if (regcomp(&regexCompiled_path, pattern_path, REG_EXTENDED)) {
+        merror("Cannot compile path regular expression.");
+        return -1;
+    }
+
     return init_auditd_socket();
 }
 
+// Extract id: node=... type=CWD msg=audit(1529332881.955:3867): cwd="..."
 
-void * audit_main(int * audit_sock) {
+char * audit_get_id(const char * event) {
+    char * begin;
+    char * end;
+    char * id;
+    size_t len;
 
-    regex_t regexCompiled_uid;
-    regex_t regexCompiled_pid;
-    regex_t regexCompiled_pname;
-    regex_t regexCompiled_path;
+    if (begin = strstr(event, "msg=audit("), !begin) {
+        return NULL;
+    }
+
+    begin += 10;
+
+    if (end = strchr(begin, ')'), !end) {
+        return NULL;
+    }
+
+    len = end - begin;
+    os_malloc(len + 1, id);
+    memcpy(id, begin, len);
+    id[len] = '\0';
+    return id;
+}
+
+void audit_parse(char * buffer) {
+    char *ret;
     regmatch_t match[2];
     int match_size;
     char *uid = NULL;
     char *pid = NULL;
     char *pname = NULL;
     char *path = NULL;
-    int byteRead = 0;
-
     whodata_evt *w_evt;
+
     os_calloc(1, sizeof(whodata_evt), w_evt);
+
+    if (ret = strstr(buffer,"key=\"wazuh_fim\""), ret) {
+        if(regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            uid = malloc(match_size + 1);
+            snprintf (uid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            w_evt->user_name = (char *)get_user("",atoi(uid));
+            w_evt->user_id = strdup(uid);
+            free(uid);
+        }
+
+        if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            pid = malloc(match_size + 1);
+            snprintf (pid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            w_evt->process_id = atoi(pid);
+            free(pid);
+        }
+
+        if(regexec(&regexCompiled_path, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            path = malloc(match_size + 1);
+            snprintf (path, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            w_evt->path = strdup(path);
+            free(path);
+        }
+
+        if(regexec(&regexCompiled_pname, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            pname = malloc(match_size + 1);
+            snprintf (pname, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            w_evt->process_name = strdup(pname);
+            free(pname);
+        }
+
+        if (w_evt->path) {
+            mdebug1("audit_event: uid=%s, pid=%i, path=%s, pname=%s", w_evt->user_name, w_evt->process_id, w_evt->path, w_evt->process_name);
+            realtime_checksumfile(w_evt->path, w_evt);
+        }
+    }
+
+    free(w_evt);
+}
+
+void * audit_main(int * audit_sock) {
+    size_t byteRead;
+    char * cache;
+    char * cache_id = NULL;
+    char * line;
+    char * endline;
+    size_t cache_i = 0;
+    size_t buffer_i = 0; // Buffer offset
+    size_t len;
+    fd_set fdset;
+    struct timeval timeout;
 
     char *buffer;
     buffer = malloc(BUF_SIZE * sizeof(char));
-
-    static const char *pattern_uid = " uid=([0-9]*) ";
-    if (regcomp(&regexCompiled_uid, pattern_uid, REG_EXTENDED)) {
-        merror("Cannot compile uid regular expression.");
-    }
-    static const char *pattern_pid = " pid=([0-9]*) ";
-    if (regcomp(&regexCompiled_pid, pattern_pid, REG_EXTENDED)) {
-        merror("Cannot compile pid regular expression.");
-    }
-    static const char *pattern_pname = " exe=\"([^ ]*)\" ";
-    if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
-        merror("Cannot compile pname regular expression.");
-    }
-    static const char *pattern_path = " item=1 name=\"([^ ]*)\" ";
-    if (regcomp(&regexCompiled_path, pattern_path, REG_EXTENDED)) {
-        merror("Cannot compile path regular expression.");
-    }
+    os_malloc(BUF_SIZE, cache);
 
     mdebug1("Reading events from Audit socket ...");
     audit_thread_active = 1;
 
-    while ((byteRead = recv(*audit_sock, buffer, BUF_SIZE, 0)) > 0 && audit_thread_active) {
+    while (audit_thread_active) {
+        FD_ZERO(&fdset);
+        FD_SET(*audit_sock, &fdset);
 
-        buffer[byteRead] = '\0';
-        char *ret;
-        if (ret = strstr(buffer,"key=\"wazuh_fim\""), ret) {
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
 
-            if(regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                uid = malloc(match_size + 1);
-                snprintf (uid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->user_name = (char *)get_user("",atoi(uid));
-                w_evt->user_id = strdup(uid);
-                free(uid);
+        switch (select(*audit_sock + 1, &fdset, NULL, NULL, &timeout)) {
+        case -1:
+            merror(SELECT_ERROR, errno, strerror(errno));
+            sleep(1);
+            continue;
+
+        case 0:
+            if (cache_i) {
+                // Flush cache
+                audit_parse(cache);
+                cache_i = 0;
             }
 
-            if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                pid = malloc(match_size + 1);
-                snprintf (pid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->process_id = atoi(pid);
-                free(pid);
+            continue;
+
+        default:
+            break;
+        }
+
+        if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), !byteRead) {
+            // Connection closed
+            minfo("Audit: connection closed.");
+            break;
+        }
+
+        buffer[buffer_i += byteRead] = '\0';
+
+        // Find first endline
+
+        if (endline = strchr(buffer, '\n'), !endline) {
+            // No complete line yet.
+            continue;
+        }
+
+        // Get all the lines
+        line = buffer;
+
+        char * id;
+
+        do {
+            *endline = '\0';
+
+            if (id = audit_get_id(line), id) {
+                // If there was cached data and the ID is different, parse cache first
+
+                if (cache_id && strcmp(cache_id, id) && cache_i) {
+                    audit_parse(cache);
+                    cache_i = 0;
+                }
+
+                // Append to cache
+                len = endline - line;
+                if (cache_i + len + 1 > sizeof(cache)) {
+                    strncpy(cache + cache_i, line, len);
+                    cache_i += len;
+                    cache[cache_i++] = '\n';
+                    cache[cache_i] = '\0';
+                } else {
+                    merror("Caching Audit message: event too long.");
+                }
+
+                free(cache_id);
+                cache_id = id;
+            } else {
+                merror("Couldn't get event ID from Audit message.");
+                mdebug1("Line: '%s'", line);
             }
 
-            if(regexec(&regexCompiled_path, buffer, 2, match, 0) == 0) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                path = malloc(match_size + 1);
-                snprintf (path, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->path = strdup(path);
-                free(path);
-            }
+            line = endline + 1;
+        } while (*line && (endline = strchr(line, '\n'), endline));
 
-            if(regexec(&regexCompiled_pname, buffer, 2, match, 0) == 0) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                pname = malloc(match_size + 1);
-                snprintf (pname, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->process_name = strdup(pname);
-                free(pname);
-            }
+        // If some data remains in the buffer, move it to the beginning
 
-            if (w_evt->path) {
-                mdebug1("audit_event: uid=%s, pid=%i, path=%s, pname=%s", w_evt->user_name, w_evt->process_id, w_evt->path, w_evt->process_name);
-                realtime_checksumfile(w_evt->path, w_evt);
-            }
+        if (*line) {
+            buffer_i = strlen(line);
+            memmove(buffer, line, buffer_i);
+        } else {
+            buffer_i = 0;
         }
     }
 
