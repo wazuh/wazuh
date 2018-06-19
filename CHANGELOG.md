@@ -52,7 +52,7 @@ All notable changes to this project will be documented in this file.
 
 - Deleted Lua language support.
 
-## [v3.4.0]
+## [v3.4.0]
 
 ### Added
 
@@ -102,7 +102,6 @@ All notable changes to this project will be documented in this file.
 - Check version of python in cluster control. ([#760](https://github.com/wazuh/wazuh/pull/760))
 - Removed duplicated log message when Rootcheck is disabled. ([#783](https://github.com/wazuh/wazuh/pull/783))
 - Avoid infinite attempts to download CVE databases when it fails. ([#792](https://github.com/wazuh/wazuh/pull/792))
->>>>>>> 3.4
 
 
 ## [v3.3.0]
