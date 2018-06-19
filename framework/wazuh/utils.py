@@ -140,9 +140,13 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         if type(array[0]) is dict:
             check_sort_fields(set(array[0].keys()), set(sort_by))
 
-            return sorted(array, key=lambda o: tuple(o.get(a) for a in sort_by), reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) is str else o.get(a) for a in sort_by),
+                          reverse=order_desc)
         else:
-            return sorted(array, key=lambda o: tuple(getattr(o, a) for a in sort_by), reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) is str else getattr(o, a) for a in sort_by),
+                          reverse=order_desc)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
