@@ -41,9 +41,9 @@ def pyDaemon():
     # Redirect standard file descriptors
     sys.stdout.flush()
     sys.stderr.flush()
-    si = file('/dev/null', 'r')
-    so = file('/dev/null', 'a+')
-    se = file('/dev/null', 'a+', 0)
+    si = open('/dev/null', 'r')
+    so = open('/dev/null', 'a+')
+    se = open('/dev/null', 'ab+', 0)
     os.dup2(si.fileno(), sys.stdin.fileno())
     os.dup2(so.fileno(), sys.stdout.fileno())
     os.dup2(se.fileno(), sys.stderr.fileno())
@@ -57,13 +57,14 @@ def create_pid(name, pid):
     with open(filename, 'a') as fp:
         try:
             fp.write("{0}\n".format(pid))
-            os.chmod(filename, 0640)
+            os.chmod(filename, 0o640)
         except OSError as e:
             raise WazuhException(3002, str(e))
 
 def delete_pid(name, pid):
     filename = "{0}{1}/{2}-{3}.pid".format(common.ossec_path, common.os_pidfile, name, pid)
     try:
-        os.unlink(filename)
+        if os.path.exists(filename):
+            os.unlink(filename)
     except OSError as e:
         raise WazuhException(3003, str(e))

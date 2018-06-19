@@ -6,8 +6,16 @@
 from os import listdir, path as os_path
 import re
 from wazuh.exception import WazuhException
+from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array, load_wazuh_xml
+# Python 2/3 compability
+try:
+    from ConfigParser import RawConfigParser, NoOptionError
+    from StringIO import StringIO
+except ImportError:
+    from configparser import RawConfigParser, NoOptionError
+    from io import StringIO
 
 # Aux functions
 
@@ -413,12 +421,19 @@ def get_ossec_conf(section=None, field=None):
     return data
 
 
-def get_agent_conf_from_path(agent_conf, offset=0, limit=common.database_limit, filename=None):
+def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None):
     """
     Returns agent.conf as dictionary.
 
     :return: agent.conf as dictionary.
     """
+
+    if group_id:
+        if not Agent.group_exists(group_id):
+            raise WazuhException(1710, group_id)
+
+        agent_conf = "{0}/{1}".format(common.shared_path, group_id)
+
     if filename:
         agent_conf_name = filename
     else:
@@ -442,18 +457,28 @@ def get_agent_conf_from_path(agent_conf, offset=0, limit=common.database_limit, 
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
 
 
-def get_file_conf_path(filename, file_path, type_conf=None):
+def get_file_conf(filename, group_id=None, type_conf=None):
     """
     Returns the configuration file as dictionary.
 
     :return: configuration file as dictionary.
     """
 
+    if group_id:
+        if not Agent.group_exists(group_id):
+            raise WazuhException(1710, group_id)
+
+        file_path = "{0}/{1}".format(common.shared_path, filename) \
+                    if filename == 'ar.conf' else \
+                    "{0}/{1}/{2}".format(common.shared_path, group_id, filename)
+    else:
+        file_path = "{0}/{1}".format(common.shared_path, filename)
+
     if not os_path.exists(file_path):
         raise WazuhException(1006, file_path)
 
     types = {
-        'conf': get_agent_conf_from_path,
+        'conf': get_agent_conf,
         'rootkit_files': _rootkit_files2json,
         'rootkit_trojans': _rootkit_trojans2json,
         'rcl': _rcl2json
@@ -470,7 +495,7 @@ def get_file_conf_path(filename, file_path, type_conf=None):
             raise WazuhException(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
     else:
         if filename == "agent.conf":
-            data = get_agent_conf_from_path(agent_conf=os_path.dirname(file_path), limit=0, filename=filename)
+            data = get_agent_conf(group_id, limit=0, filename=filename)
         elif filename == "rootkit_files.txt":
             data = _rootkit_files2json(file_path)
         elif filename == "rootkit_trojans.txt":
@@ -481,3 +506,44 @@ def get_file_conf_path(filename, file_path, type_conf=None):
             data = _rcl2json(file_path)
 
     return data
+
+
+def parse_internal_options(high_name, low_name):
+    def get_config(config_path):
+        with open(config_path) as f:
+            str_config = StringIO('[root]\n' + f.read())
+
+        config = RawConfigParser()
+        config.readfp(str_config)
+
+        return config
+
+
+    if not os_path.exists(common.internal_options):
+        raise WazuhException(1107)
+
+    # Check if the option exists at local internal options
+    if os_path.exists(common.local_internal_options):
+        try:
+            return get_config(common.local_internal_options).get('root',
+                                    '{0}.{1}'.format(high_name, low_name))
+        except NoOptionError:
+            pass
+
+    try:
+        return get_config(common.internal_options).get('root',
+                            '{0}.{1}'.format(high_name, low_name))
+    except NoOptionError as e:
+        raise WazuhException(1108, e.args[0])
+
+
+def get_internal_options_value(high_name, low_name, max, min):
+    option = parse_internal_options(high_name, low_name)
+    if not option.isdigit():
+        raise WazuhException(1109, 'Option: {}.{}. Value: {}'.format(high_name, low_name, option))
+
+    option = int(option)
+    if option < min or option > max:
+        raise WazuhException(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max, min, option))
+
+    return option
