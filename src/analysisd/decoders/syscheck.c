@@ -211,6 +211,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
     int p = 0;
     size_t sn_size;
     int agent_id;
+    int result;
 
     char *saved_sum;
     char *saved_name;
@@ -347,7 +348,21 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 f_name);
         fflush(fp);
 
-        switch (sk_decode_sum(&newsum, c_sum, w_sum)) {
+        if (result = sk_decode_sum(&newsum, c_sum, w_sum), result != -1) {
+            /* Whodata user */
+            if(newsum.wdata.user) {
+                snprintf(sdb.user, OS_FLSIZE, "Username: '%s'\n", newsum.wdata.user);
+                os_strdup(newsum.wdata.user, lf->user);
+            }
+
+            /* Whodata process */
+            if(newsum.wdata.process) {
+                snprintf(sdb.process, OS_FLSIZE, "Process: '%s'\n", newsum.wdata.process);
+                os_strdup(newsum.wdata.process, lf->process);
+            }
+        }
+
+        switch (result) {
         case -1:
             merror("Couldn't decode syscheck sum from log.");
             lf->data = NULL;
@@ -460,20 +475,6 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                     }
                 }
 
-                /* Whodata user */
-                if(newsum.wdata.user)
-                {
-                    snprintf(sdb.user, OS_FLSIZE, "Username: '%s'\n", newsum.wdata.user);
-                    os_strdup(newsum.wdata.user, lf->user);
-                }
-
-                /* Whodata process */
-                if(newsum.wdata.process)
-                {
-                    snprintf(sdb.process, OS_FLSIZE, "Process: '%s'\n", newsum.wdata.process);
-                    os_strdup(newsum.wdata.process, lf->process);
-                }
-
                 /* Modification time message */
                 if (oldsum.mtime && newsum.mtime && oldsum.mtime != newsum.mtime) {
                     char *old_ctime = strdup(ctime(&oldsum.mtime));
@@ -536,8 +537,14 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 lf->event_type = FIM_READDED;
                 sk_fill_event(lf, f_name, &newsum);
                 snprintf(sdb.comment, OS_MAXSTR,
-                     "File '%.756s' was re-added.", f_name);
-
+                     "File '%.756s' was re-added."
+                     "%s"
+                     "%s"
+                     "%s",
+                     f_name,
+                     (sdb.user || sdb.process) ? "\n" : "",
+                     sdb.user,
+                     sdb.process);
                 break;
             }
 
@@ -548,9 +555,17 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
             sdb.syscheck_dec->id = sdb.idd;
             os_strdup(f_name, lf->filename);
             lf->event_type = FIM_DELETED;
+
             snprintf(sdb.comment, OS_MAXSTR,
-                 "File '%.756s' was deleted. Unable to retrieve "
-                 "checksum.", f_name);
+                 "File '%.756s' was deleted."
+                 "%s"
+                 "%s"
+                 "%s",
+                 f_name,
+                 (sdb.user || sdb.process) ? "\n" : "",
+                 sdb.user,
+                 sdb.process);
+            break;
         }
 
         /* Create a new log message */
@@ -566,10 +581,6 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
 
     } /* Continue */
 
-    /* If we reach here, this file is not present in our database */
-    fseek(fp, 0, SEEK_END);
-    fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time, f_name);
-    fflush(fp);
 
     /* Insert row in SQLite DB*/
 
@@ -579,6 +590,11 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
             break;
 
         case 0:
+            /* If we reach here, this file is not present in our database */
+            fseek(fp, 0, SEEK_END);
+            fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time, f_name);
+            fflush(fp);
+
             lf->event_type = FIM_ADDED;
 
             /* Alert if configured to notify on new files */

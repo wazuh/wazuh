@@ -444,20 +444,23 @@ int create_db()
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
 
+#ifdef WIN32
         if (syscheck.opts[i] & CHECK_WHODATA) {
             realtime_adddir(syscheck.dir[i], i + 1);
             if (!enable_who_scan) {
                 enable_who_scan = 1;
             }
         } else if (syscheck.opts[i] & CHECK_REALTIME) {
-#ifdef WIN32
             realtime_adddir(syscheck.dir[i], 0);
+        }
 #else
 #ifndef INOTIFY_ENABLED
+        if (syscheck.opts[i] & CHECK_REALTIME) {
             mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);
-#endif
-#endif
         }
+#endif
+#endif
+
         i++;
     } while (syscheck.dir[i] != NULL);
 

@@ -55,8 +55,9 @@ typedef struct whodata_evt {
 #else
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
-    char *type;
     unsigned int mask;
+    int dir_position;
+    char deleted;
 #endif
 } whodata_evt;
 
