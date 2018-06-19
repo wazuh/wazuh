@@ -213,6 +213,38 @@ functions = {
         'function': cluster_control.get_healthcheck,
         'type': 'local_master'
     },
+    '/cluster/:node_id/info': {
+        'function': Wazuh(common.ossec_path).get_ossec_init,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/status': {
+        'function': manager.status,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/configuration': {
+        'function': configuration.get_ossec_conf,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/stats': {
+        'function': stats.totals,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/stats/hourly': {
+        'function': stats.hourly,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/stats/weekly': {
+        'function': stats.weekly,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/logs/summary': {
+        'function': manager.ossec_log_summary,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/logs': {
+        'function': manager.ossec_log,
+        'type': 'distributed_master'
+    },
 
     # Rootcheck
     '/rootcheck/:agent_id': {

@@ -118,7 +118,7 @@ def get_solver_node(input_json, master_name):
     if 'agent_id' in input_json['arguments']:
         # the request is for multiple agents
         if isinstance(input_json['arguments']['agent_id'], list):
-            agents = Agent.get_agents_overview(select=select_node, ids=input_json['arguments']['agent_id'],
+            agents = Agent.get_agents_overview(select=select_node, filters={'id':input_json['arguments']['agent_id']},
                                                   sort={'fields':['node_name'], 'order':'desc'})['items']
             node_name = {k:list(map(itemgetter('id'), g)) for k,g in groupby(agents, key=itemgetter('node_name'))}
 
@@ -141,6 +141,11 @@ def get_solver_node(input_json, master_name):
         agents = Agent.get_agents_overview(select=select_node, sort={'fields': ['node_name'], 'order': 'desc'})['items']
         node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node_name'))}
         return node_name, True
+
+    elif 'node_id' in input_json['arguments']:
+        node_id = input_json['arguments']['node_id']
+        del input_json['arguments']['node_id']
+        return node_id, False
 
 
 def merge_results(responses, final_json):
