@@ -21,6 +21,7 @@ typedef struct queue_t {
     size_t size;
     pthread_mutex_t mutex;
     pthread_cond_t available;
+    pthread_cond_t available_block;
 } w_queue_t;
 
 w_queue_t * queue_init(size_t n);
