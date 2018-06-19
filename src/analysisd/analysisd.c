@@ -87,8 +87,6 @@ static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
-static w_queue_t * input_queue;
-
 void w_free_event_info(Eventinfo *lf);
 
 /* Output threads */
@@ -124,7 +122,7 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args);
 /* Decode event threads */
 void * w_decode_event_thread(__attribute__((unused)) void * args);
 
-/* Process decoded event threads */
+/* Process decoded event - rule matching threads */
 void * w_process_event_thread(__attribute__((unused)) void * args);
 
 /* Do log rotation thread */
@@ -151,12 +149,6 @@ static w_queue_t * writer_queue_log_statistical;
 
 /* Firewall log writer queue */
 static w_queue_t * writer_queue_log_firewall;
-
-/* CleanMSG input queue */
-static w_queue_t * cleanmsg_queue_input;
-
-/* CleanMSG output queue */
-static w_queue_t * cleanmsg_queue_output;
 
 /* Decode syscheck input queue */
 static w_queue_t * decode_queue_syscheck_input;
@@ -822,8 +814,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 
-    // Create input buffer and thread
-    input_queue = queue_init(Config.queue_size);
     w_create_thread(ad_input_main, &m_queue);
 
     mdebug1("Startup completed. Waiting for new messages..");
@@ -833,42 +823,42 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Init the archives writer queue */
-    writer_queue = queue_init(getDefine_Int("analysisd", "writer_queue_size", 0, 2000000));
+    writer_queue = queue_init(getDefine_Int("analysisd", "archives_queue_size", 0, 2000000));
 
     /* Init the log writer queue */
-    writer_queue_log = queue_init(getDefine_Int("analysisd", "writer_queue_size", 0, 2000000));
+    writer_queue_log = queue_init(getDefine_Int("analysisd", "alerts_queue_size", 0, 2000000));
 
-    /* Init the log writer queue */
-    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "writer_queue_size", 0, 2000000));
+    /* Init statistical the log writer queue */
+    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "statistical_queue_size", 0, 2000000));
 
     /* Init the firewall log writer queue */
-    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "writer_queue_size", 0, 2000000));
-
-    /* Init the cleanmsg input queue */
-    cleanmsg_queue_input = queue_init(getDefine_Int("analysisd", "clean_queue_size", 0, 2000000));
-
-    /* Init the cleanmsg output queue */
-    cleanmsg_queue_output = queue_init(getDefine_Int("analysisd", "clean_queue_size", 0, 2000000));
+    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "firewall_queue_size", 0, 2000000));
 
     /* Init the decode syscheck queue input */
-    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decoders_queue_size", 0, 2000000));
+    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decode_syscheck_queue_size", 0, 2000000));
 
     /* Init the decode syscollector queue input */
-    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decoders_queue_size", 0, 2000000));
+    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decode_syscollector_queue_size", 0, 2000000));
 
     /* Init the decode rootcheck queue input */
-    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decoders_queue_size", 0, 2000000));
+    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
 
-     /* Init the decode hostinfo queue input */
-    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decoders_queue_size", 0, 2000000));
+    /* Init the decode hostinfo queue input */
+    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
 
     /* Init the decode event queue input */
-    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decoders_queue_size", 0, 2000000));
+    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));
 
     /* Init the decode event queue output */
-    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "output_queue_size", 0, 2000000));
+    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
 
-    int num_output_threads = getDefine_Int("analysisd", "threads", 1, 32);
+    int num_decode_event_threads = getDefine_Int("analysisd", "event_threads", 1, 32);
+    int num_decode_syscheck_threads = getDefine_Int("analysisd", "syscheck_threads", 1, 32);
+    int num_decode_syscollector_threads = getDefine_Int("analysisd", "syscollector_threads", 1, 32);
+    int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 1, 32);
+    int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 1, 32);
+    int num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 1, 32);
+    
     int i;
 
     sleep(10);
@@ -889,35 +879,34 @@ void OS_ReadMSG_analysisd(int m_queue)
     w_create_thread(w_log_rotate_thread,NULL);
 
     /* Create decode syscheck threads */
-    for(i = 0; i < num_output_threads;i++){
+    for(i = 0; i < num_decode_syscheck_threads;i++){
         w_create_thread(w_decode_syscheck_thread,NULL);
     }
 
     /* Create decode syscollector threads */
-    for(i = 0; i < 1;i++){
+    for(i = 0; i < num_decode_syscollector_threads;i++){
         w_create_thread(w_decode_syscollector_thread,NULL);
     }
 
     /* Create decode hostinfo threads */
-    for(i = 0; i < 1;i++){
+    for(i = 0; i < num_decode_hostinfo_threads;i++){
         w_create_thread(w_decode_hostinfo_thread,NULL);
     }
 
     /* Create decode rootcheck threads */
-    for(i = 0; i < 1;i++){
+    for(i = 0; i < num_decode_rootcheck_threads;i++){
         w_create_thread(w_decode_rootcheck_thread,NULL);
     }
     
     /* Create decode event threads */
-    for(i = 0; i < 4;i++){
+    for(i = 0; i < num_decode_event_threads;i++){
         w_create_thread(w_decode_event_thread,NULL);
     }
 
     /* Create the process event threads */
-    for(i = 0; i < 4;i++){
+    for(i = 0; i < num_rule_matching_threads;i++){
         w_create_thread(w_process_event_thread,NULL);
     }
-
 
     while (1) {
         sleep(1);
@@ -1489,7 +1478,6 @@ void * ad_input_main(void * args) {
     char buffer[OS_MAXSTR + 1] = "";
     char * copy;
     char *msg;
-    int reported = 0;
     int result;
 
     mdebug1("Input message handler thread started.");
