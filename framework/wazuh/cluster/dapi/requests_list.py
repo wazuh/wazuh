@@ -275,23 +275,23 @@ functions = {
     # Rules
     '/rules': {
         'function': Rule.get_rules,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/rules/groups': {
         'function': Rule.get_groups,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/rules/pci': {
         'function': Rule.get_pci,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/rules/gdpr': {
         'function': Rule.get_gdpr,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/rules/files': {
         'function': Rule.get_rules_files,
-        'type': 'local_master'
+        'type': 'local_any'
     },
 
     # Syscheck
