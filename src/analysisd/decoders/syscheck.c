@@ -204,12 +204,17 @@ static FILE *DB_File(const char *agent, int *agent_id)
 /* Search the DB for any entry related to the file being received */
 static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 {
-    int p = 0;
     size_t sn_size;
     int agent_id;
-
+    int changes = 0;
+    int st = 0;
+    int sf = 0;
+    int comment_buf = 0;
+    
     char *saved_sum;
     char *saved_name;
+    char *saved_time;
+    char *saved_frec;
 
     FILE *fp;
 
@@ -251,13 +256,25 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
         /* New format - with a timestamp */
         if (*saved_name == '!') {
+            /* Get time */
+            saved_time = saved_name;
+            saved_time++;
+
             saved_name = strchr(saved_name, ' ');
             if (saved_name == NULL) {
                 merror("Invalid integrity message in the database");
                 fgetpos(fp, &sdb.init_pos); /* Get next location */
                 continue;
             }
+            *saved_name = '\0';
             saved_name++;
+            st = atoi(saved_time);
+        }
+
+        if (saved_time == NULL) {
+            merror("Invalid integrity message in the database");
+            fgetpos(fp, &sdb.init_pos); /* Get next location */
+            continue;
         }
 
         /* Remove newline from saved_name */
@@ -284,43 +301,44 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
             lf->data = NULL;
             return (0);
         }
+        /* Get frec */
+        saved_frec = sdb.buf;
+        saved_frec[2] = '\0';
+        sf = atoi(saved_frec);
+
+        if (sf > 99) {
+            sf = 0;
+        }
+
+        if (saved_frec == NULL) {
+            merror("Invalid integrity message in the database");
+            fgetpos(fp, &sdb.init_pos); /* Get next location */
+            continue;
+        }
 
         mdebug2("Agent: %d, location: <%s>, file: <%s>, sum: <%s>, saved: <%s>", agent_id, lf->location, f_name, c_sum, saved_sum);
 
-        /* If we reached here, the checksum of the file has changed */
-        if (saved_sum[-3] == '!') {
-            p++;
-            if (saved_sum[-2] == '!') {
-                p++;
-                if (saved_sum[-1] == '!') {
-                    p++;
-                } else if (saved_sum[-1] == '?') {
-                    p += 2;
-                }
-            }
-        }
-
-        /* Check the number of changes */
         if (!Config.syscheck_auto_ignore) {
             sdb.syscheck_dec->id = sdb.id1;
         } else {
-            switch (p) {
-                case 0:
-                    sdb.syscheck_dec->id = sdb.id1;
-                    break;
-
-                case 1:
-                    sdb.syscheck_dec->id = sdb.id2;
-                    break;
-
-                case 2:
-                    sdb.syscheck_dec->id = sdb.id3;
-                    break;
-
-                default:
+            if (lf->time.tv_sec - st < Config.syscheck_ignore_time) {
+                if (sf >= Config.syscheck_ignore_frequency) {
+                    /* No send alert */
                     lf->data = NULL;
                     return (0);
-                    break;
+                }
+                else {
+                    sdb.syscheck_dec->id = sdb.id1;
+                    sf++;
+                    if (sf > 99) {
+                        sf = 99;
+                    }
+                }
+            }
+            else {
+                sdb.syscheck_dec->id = sdb.id1;
+                sf = 1;
+                st = lf->time.tv_sec;
             }
         }
 
@@ -334,12 +352,10 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
         /* Add the new entry at the end of the file */
         fseek(fp, 0, SEEK_END);
-        fprintf(fp, "%c%c%c%s !%ld %s\n",
-                '!',
-                p >= 1 ? '!' : '+',
-                p == 2 ? '!' : (p > 2) ? '?' : '+',
+        fprintf(fp, "%02u:%s !%ld %s\n",
+                sf,
                 c_sum,
-                (long int)lf->time.tv_sec,
+                (long int)st,
                 f_name);
         fflush(fp);
 
@@ -363,6 +379,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 if (strcmp(oldsum.size, newsum.size) == 0) {
                     sdb.size[0] = '\0';
                 } else {
+                    changes = 1;
                     snprintf(sdb.size, OS_FLSIZE,
                              "Size changed from '%s' to '%s'\n",
                              oldsum.size, newsum.size);
@@ -374,6 +391,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 if (oldsum.perm == newsum.perm) {
                     sdb.perm[0] = '\0';
                 } else if (oldsum.perm > 0 && newsum.perm > 0) {
+                    changes = 1;
                     char opstr[10];
                     char npstr[10];
 
@@ -388,41 +406,42 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* Ownership message */
-                if (strcmp(newsum.uid, oldsum.uid) == 0) {
-                    sdb.owner[0] = '\0';
-                } else {
-                    if (oldsum.uname && newsum.uname) {
-                        snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.uname, oldsum.uid, newsum.uname, newsum.uid);
-                        os_strdup(oldsum.uname, lf->uname_before);
-                    } else
-                        snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', "
-                                 "now it is '%s'\n",
-                                 oldsum.uid, newsum.uid);
-
-                    os_strdup(oldsum.uid, lf->owner_before);
+                if (newsum.uid && oldsum.uid) {
+                    if (strcmp(newsum.uid, oldsum.uid) == 0) {
+                        sdb.owner[0] = '\0';
+                    } else {
+                        changes = 1;
+                        if (oldsum.uname && newsum.uname) {
+                            snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.uname, oldsum.uid, newsum.uname, newsum.uid);
+                            os_strdup(oldsum.uname, lf->uname_before);
+                        } else {
+                            snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum.uid, newsum.uid);
+                        }
+                        os_strdup(oldsum.uid, lf->owner_before);
+                    }
                 }
 
                 /* Group ownership message */
-                if (strcmp(newsum.gid, oldsum.gid) == 0) {
-                    sdb.gowner[0] = '\0';
-                } else {
-                    if (oldsum.gname && newsum.gname) {
-                        snprintf(sdb.owner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.gname, oldsum.gid, newsum.gname, newsum.gid);
-                        os_strdup(oldsum.gname, lf->gname_before);
-                    } else
-                        snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', "
-                                 "now it is '%s'\n",
-                                 oldsum.gid, newsum.gid);
-
-                    os_strdup(oldsum.gid, lf->gowner_before);
+                if (newsum.gid && oldsum.gid) {
+                    if (strcmp(newsum.gid, oldsum.gid) == 0) {
+                        sdb.gowner[0] = '\0';
+                    } else {
+                        changes = 1;
+                        if (oldsum.gname && newsum.gname) {
+                            snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.gname, oldsum.gid, newsum.gname, newsum.gid);
+                            os_strdup(oldsum.gname, lf->gname_before);
+                        } else {
+                            snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s', now it is '%s'\n", oldsum.gid, newsum.gid);
+                        }
+                        os_strdup(oldsum.gid, lf->gowner_before);
+                    }
                 }
-
                 /* MD5 message */
                 if (strcmp(newsum.md5, oldsum.md5) == 0) {
                     sdb.md5[0] = '\0';
                 } else {
-                    snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\n"
-                             "New md5sum is : '%s'\n",
+                    changes = 1;
+                    snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
                              oldsum.md5, newsum.md5);
                     os_strdup(oldsum.md5, lf->md5_before);
                 }
@@ -431,8 +450,8 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 if (strcmp(newsum.sha1, oldsum.sha1) == 0) {
                     sdb.sha1[0] = '\0';
                 } else {
-                    snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\n"
-                             "New sha1sum is : '%s'\n",
+                    changes = 1;
+                    snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
                              oldsum.sha1, newsum.sha1);
                     os_strdup(oldsum.sha1, lf->sha1_before);
                 }
@@ -444,20 +463,21 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                         if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
                             sdb.sha256[0] = '\0';
                         } else {
-                            snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\n"
-                                    "New sha256sum is : '%s'\n",
+                            changes = 1;
+                            snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
                                     oldsum.sha256, newsum.sha256);
                             os_strdup(oldsum.sha256, lf->sha256_before);
                         }
                     } else {
-                        snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: 'n/a'\n"
-                                "New sha256sum is : '%s'\n", newsum.sha256);
+                        changes = 1;
+                        snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: 'xxx'\nNew sha256sum is : '%s'\n", newsum.sha256);
                         os_strdup(oldsum.sha256, lf->sha256_before);
                     }
                 }
 
                 /* Modification time message */
                 if (oldsum.mtime && newsum.mtime && oldsum.mtime != newsum.mtime) {
+                    changes = 1;
                     char *old_ctime = strdup(ctime(&oldsum.mtime));
                     char *new_ctime = strdup(ctime(&newsum.mtime));
                     old_ctime[strlen(old_ctime) - 1] = '\0';
@@ -473,6 +493,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
                 /* Inode message */
                 if (oldsum.inode && newsum.inode && oldsum.inode != newsum.inode) {
+                    changes = 1;
                     snprintf(sdb.mtime, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum.inode, newsum.inode);
                     lf->inode_before = oldsum.inode;
                 } else {
@@ -480,30 +501,38 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* Provide information about the file */
-                snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
-                         "'%.756s'\n"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s"
-                         "%s%s",
-                         f_name,
-                         sdb.size,
-                         sdb.perm,
-                         sdb.owner,
-                         sdb.gowner,
-                         sdb.md5,
-                         sdb.sha1,
-                         sdb.sha256,
-                         lf->data ? "What changed:\n" : "",
-                         lf->data ? lf->data : ""
-                        );
+                comment_buf = snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
+                        "'%.756s'\n"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s%s",
+                        f_name,
+                        sdb.size,
+                        sdb.perm,
+                        sdb.owner,
+                        sdb.gowner,
+                        sdb.md5,
+                        sdb.sha1,
+                        sdb.sha256,
+                        lf->data ? "What changed:\n" : "",
+                        lf->data ? lf->data : "");
 
-                if (lf->data)
-                    os_strdup(lf->data, lf->diff);
+                if(!changes) {
+                    lf->data = NULL;
+                    return 0;
+                } else {
+                    os_strdup(sdb.comment, lf->changes_msg);
+                }
+
+                if(lf->data) {
+                    snprintf(sdb.comment+comment_buf, OS_MAXSTR-comment_buf, "What changed:\n%s", lf->data);
+                    os_strdup(sdb.comment+comment_buf, lf->diff);
+                }
 
                 lf->event_type = FIM_MODIFIED;
                 break;
@@ -546,7 +575,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
 
     /* If we reach here, this file is not present in our database */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time.tv_sec, f_name);
+    fprintf(fp, "00:%s !%ld %s\n", c_sum, (long int)lf->time.tv_sec, f_name);
     fflush(fp);
 
     /* Insert row in SQLite DB*/
