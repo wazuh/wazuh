@@ -105,28 +105,35 @@ UpdateStartOSSEC()
 
 UpdateStopOSSEC()
 {
-   . ${OSSEC_INIT}
+    if [ -f ${OSSEC_INIT} ]
+    then
+        . ${OSSEC_INIT}
 
-   if [ "X$TYPE" != "Xagent" ]; then
-       TYPE="manager"
-   fi
+        if [ "X$TYPE" != "Xagent" ]; then
+            TYPE="manager"
+        fi
 
-   if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
-       systemctl stop wazuh-$TYPE
-   elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
-       service wazuh-$TYPE stop
-   fi
+        if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
+            systemctl stop wazuh-$TYPE
+        elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
+            service wazuh-$TYPE stop
+        fi
+    else
+        echo "      WARN: No such file ${OSSEC_INIT}. Trying to stop Wazuh..."
+        DIRECTORY=${INSTALLDIR}
+    fi
 
-   # Make sure Wazuh is stopped
-   $DIRECTORY/bin/ossec-control stop
-   sleep 2
+    # Make sure Wazuh is stopped
+    $DIRECTORY/bin/ossec-control stop > /dev/null 2>&1
+    sleep 2
 
    # We also need to remove all syscheck queue file (format changed)
-   if [ "X$VERSION" = "X0.9-3" ]; then
+    if [ "X$VERSION" = "X0.9-3" ]; then
         rm -f $DIRECTORY/queue/syscheck/* > /dev/null 2>&1
         rm -f $DIRECTORY/queue/agent-info/* > /dev/null 2>&1
-   fi
-   rm -f $DIRECTORY/queue/syscheck/.* > /dev/null 2>&1
+    fi
+    rm -f $DIRECTORY/queue/syscheck/.* > /dev/null 2>&1
+    rm -rf $DIRECTORY/framework/* > /dev/null 2>&1
 }
 
 UpdateOldVersions()

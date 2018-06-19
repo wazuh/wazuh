@@ -134,11 +134,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AR_BINDIR       "/active-response/bin"
 #define AGENTCONFIGINT  "/etc/shared/agent.conf"
 #define AGENTCONFIG     DEFAULTDIR "/etc/shared/agent.conf"
+#define DEF_CA_STORE    DEFAULTDIR "/etc/wpk_root.pem"
 #else
 #define DEFAULTAR       "shared/" DEFAULTAR_FILE
 #define AR_BINDIR       "active-response/bin"
 #define AGENTCONFIG     "shared/agent.conf"
 #define AGENTCONFIGINT  "shared/agent.conf"
+#define DEF_CA_STORE    "wpk_root.pem"
 #endif
 
 /* Exec queue */

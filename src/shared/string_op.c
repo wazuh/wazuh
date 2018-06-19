@@ -208,3 +208,16 @@ char* filter_special_chars(const char *string) {
 
     return filtered;
 }
+
+// Free string array
+void free_strarray(char ** array) {
+    int i;
+
+    if (array) {
+        for (i = 0; array[i]; ++i) {
+            free(array[i]);
+        }
+
+        free(array);
+    }
+}

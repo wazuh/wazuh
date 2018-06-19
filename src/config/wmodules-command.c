@@ -17,6 +17,7 @@ static const char *XML_COMMAND = "command";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_IGNORE_OUTPUT = "ignore_output";
 static const char *XML_RUN_ON_START = "run_on_start";
+static const char *XML_TIMEOUT = "timeout";
 
 // Parse XML
 
@@ -24,6 +25,11 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 {
     int i;
     wm_command_t * command;
+
+    if (!nodes) {
+        mwarn("Tag <%s> not found at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
+        return OS_INVALID;
+    }
 
     // Create module
 
@@ -108,6 +114,14 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
                 command->ignore_output = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_IGNORE_OUTPUT, WM_COMMAND_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
+            char *endptr;
+            command->timeout = strtol(nodes[i]->content, &endptr, 0);
+
+            if (*endptr || command->timeout < 0) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_TIMEOUT, WM_COMMAND_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {

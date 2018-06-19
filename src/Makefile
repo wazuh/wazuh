@@ -11,7 +11,7 @@ ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 endif
 LUA_PLAT=posix
-MAXAGENTS?=8000
+MAXAGENTS?=14000
 REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
@@ -525,6 +525,7 @@ lua:
 
 OPENSSL_LIB=${EXTERNAL_OPENSSL}libssl.a
 CRYPTO_LIB=${EXTERNAL_OPENSSL}libcrypto.a
+OPENSSL_FLAGS = no-shared enable-weak-ssl-ciphers
 
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
 ifeq (${TARGET},winagent)
@@ -533,23 +534,23 @@ endif
 
 ${OPENSSL_LIB}:
 ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} ./Configure no-shared mingw && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} ./Configure ${OPENSSL_FLAGS} mingw && ${MAKE} build_libs
 	${OSSEC_RANLIB} ${OPENSSL_LIB}
 else
 ifeq (${uname_S},Darwin)
-	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared darwin64-x86_64-cc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./Configure ${OPENSSL_FLAGS} darwin64-x86_64-cc && ${MAKE} build_libs
 else
 ifeq (${uname_S},HP-UX)
-	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure no-shared hpux-ia64-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure ${OPENSSL_FLAGS} hpux-ia64-gcc && ${MAKE} build_libs
 else
 ifeq (${uname_S},SunOS)
 ifeq ($(uname_M),i86pc)
-	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared solaris-x86-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./Configure ${OPENSSL_FLAGS} solaris-x86-gcc && ${MAKE} build_libs
 else
-	cd ${EXTERNAL_OPENSSL} && ./Configure no-shared solaris-sparcv9-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./Configure ${OPENSSL_FLAGS} solaris-sparcv9-gcc && ${MAKE} build_libs
 endif
 else
-	cd ${EXTERNAL_OPENSSL} && ./config no-shared && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ./config ${OPENSSL_FLAGS} && ${MAKE} build_libs
 endif
 endif
 endif

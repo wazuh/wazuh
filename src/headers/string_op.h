@@ -39,4 +39,7 @@ int w_str_in_array(const char * needle, const char ** haystack);
 /* Filter escape characters */
 char* filter_special_chars(const char *string);
 
+// Free string array
+void free_strarray(char ** array);
+
 #endif

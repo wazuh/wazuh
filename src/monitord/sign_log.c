@@ -41,6 +41,9 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     FILE *fp;
 
+    unsigned char md5_digest[16];
+    unsigned char md[SHA_DIGEST_LENGTH];
+
     /* Clear the memory */
     memset(logfilesum, '\0', OS_FLSIZE + 1);
     memset(logfilesum_old, '\0', OS_FLSIZE + 1);
@@ -103,6 +106,20 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
                 merror(FOPEN_ERROR, logfile_r, errno, strerror(errno));
                 break;
             }
+        }
+
+        MD5_Final(md5_digest, &md5_ctx);
+        char *mpos = mf_sum;
+        for (n = 0; n < 16; n++) {
+            snprintf(mpos, 3, "%02x", md5_digest[n]);
+            mpos += 2;
+        }
+
+        SHA1_Final(&(md[0]), &sha1_ctx);
+        char *spos = sf_sum;
+        for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+            snprintf(spos, 3, "%02x", md[n]);
+            spos += 2;
         }
     } else {
         strncpy(mf_sum, "none", 6);

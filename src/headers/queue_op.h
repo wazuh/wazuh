@@ -12,11 +12,15 @@
 #ifndef QUEUE_OP_H
 #define QUEUE_OP_H
 
+#include <pthread.h>
+
 typedef struct queue_t {
     void ** data;
     size_t begin;
     size_t end;
     size_t size;
+    pthread_mutex_t mutex;
+    pthread_cond_t available;
 } w_queue_t;
 
 w_queue_t * queue_init(size_t n);
@@ -24,6 +28,8 @@ void queue_free(w_queue_t * queue);
 int queue_full(const w_queue_t * queue);
 int queue_empty(const w_queue_t * queue);
 int queue_push(w_queue_t * queue, void * data);
+int queue_push_ex(w_queue_t * queue, void * data);
 void * queue_pop(w_queue_t * queue);
+void * queue_pop_ex(w_queue_t * queue);
 
 #endif // QUEUE_OP_H

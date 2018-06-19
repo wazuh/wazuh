@@ -158,6 +158,8 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
+    CheckExecConfig();
+
     /* Start exec queue */
     if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));

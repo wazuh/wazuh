@@ -33,16 +33,7 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     if (!log_config->socket_list) {
         os_calloc(2, sizeof(logsocket), log_config->socket_list);
         logf = log_config->socket_list;
-        logf[0].name = NULL;
-        logf[0].location = NULL;
-        logf[0].mode = 0;
-        logf[0].prefix = NULL;
-        logf[0].socket = 0;
-        logf[1].name = NULL;
-        logf[1].location = NULL;
-        logf[1].mode = 0;
-        logf[1].prefix = NULL;
-        logf[1].socket = 0;
+        memset(logf, 0, 2 * sizeof(logsocket));
     } else {
         logf = log_config->socket_list;
         while (logf[pl].name != NULL) {
@@ -52,11 +43,7 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         /* Allocate more memory */
         os_realloc(logf, (pl + 2)*sizeof(logsocket), log_config->socket_list);
         logf = log_config->socket_list;
-        logf[pl + 1].name = NULL;
-        logf[pl + 1].location = NULL;
-        logf[pl + 1].mode = 0;
-        logf[pl + 1].prefix = NULL;
-        logf[pl + 1].socket = 0;
+        memset(logf + pl + 1, 0, sizeof(logsocket));
     }
     logf[pl].name = NULL;
     logf[pl].location = NULL;

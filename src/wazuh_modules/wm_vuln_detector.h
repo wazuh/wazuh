@@ -41,6 +41,7 @@
 #define VU_XENIAL     "XENIAL"
 #define VU_RHEL       "RED HAT"
 #define VU_CENTOS     "CENTOS"
+#define VU_AMAZL      "AMAZON LINUX"
 #define VU_RHEL5      "RHEL5"
 #define VU_RHEL6      "RHEL6"
 #define VU_RHEL7      "RHEL7"
@@ -51,11 +52,20 @@
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
+typedef enum vu_logic {
+    VU_VULNERABLE,
+    VU_NOT_VULNERABLE,
+    VU_EQUAL,
+    VU_NOT_FIXED
+} vu_logic;
+
 typedef struct update_flags {
     unsigned int update:1;
     unsigned int update_nvd:1;
     unsigned int update_ubuntu:1;
     unsigned int update_redhat:1;
+    unsigned int attempted_ubuntu:1;
+    unsigned int attempted_redhat:1;
     // Ubuntu versions
     unsigned int precise:1; // 12.04
     unsigned int trusty:1;  // 14.04

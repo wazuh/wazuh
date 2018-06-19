@@ -526,6 +526,7 @@ os_info *get_unix_version()
                   if(fgets(buff, sizeof(buff) - 1, os_release) == NULL){
                       merror("Cannot read from /etc/release.");
                       fclose(os_release);
+                      pclose(cmd_output);
                       goto free_os_info;
                   } else {
                       char *base;
@@ -540,10 +541,12 @@ os_info *get_unix_version()
                       } else {
                           merror("Cannot get the Solaris version.");
                           fclose(os_release);
+                          pclose(cmd_output);
                           goto free_os_info;
                       }
                   }
                 } else {
+                    pclose(cmd_output);
                   goto free_os_info;
                 }
             } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
