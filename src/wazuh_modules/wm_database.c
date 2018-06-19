@@ -481,6 +481,7 @@ char * wm_get_os_arch(char * os_header) {
     return os_arch;
 }
 
+
 int wm_sync_agentinfo(int id_agent, const char *path) {
     char header[OS_MAXSTR];
     char files[OS_MAXSTR];

@@ -11,18 +11,8 @@
 
 #include "wmodules.h"
 
-static wm_oscap *oscap;                             // Pointer to configuration
-static int queue_fd;                                // Output queue file descriptor
-
 static void* wm_oscap_main(wm_oscap *oscap);        // Module main function. It won't return
-static void wm_oscap_setup(wm_oscap *_oscap);       // Setup module
-static void wm_oscap_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
-static void wm_oscap_check();                       // Check configuration, disable flag
-static void wm_oscap_run(wm_oscap_eval *eval);      // Run an OpenSCAP policy
-static void wm_oscap_info();                        // Show module info
 static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
-
-const char *WM_OSCAP_LOCATION = "wodle_open-scap";  // Location field for event sending
 
 // OpenSCAP module context definition
 
@@ -32,15 +22,28 @@ const wm_context WM_OSCAP_CONTEXT = {
     (wm_routine)wm_oscap_destroy
 };
 
+#ifndef WIN32
+
+static wm_oscap *oscap;                             // Pointer to configuration
+static int queue_fd;                                // Output queue file descriptor
+
+static void wm_oscap_setup(wm_oscap *_oscap);       // Setup module
+static void wm_oscap_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
+static void wm_oscap_check();                       // Check configuration, disable flag
+static void wm_oscap_run(wm_oscap_eval *eval);      // Run an OpenSCAP policy
+static void wm_oscap_info();                        // Show module info
+
+const char *WM_OSCAP_LOCATION = "wodle_open-scap";  // Location field for event sending
+
 // OpenSCAP module main function. It won't return.
 
 void* wm_oscap_main(wm_oscap *oscap) {
+
     wm_oscap_eval *eval;
     time_t time_start = 0;
     time_t time_sleep = 0;
 
     // Check configuration and show debug information
-
     wm_oscap_setup(oscap);
     mtinfo(WM_OSCAP_LOGTAG, "Module started.");
 
@@ -284,6 +287,14 @@ void wm_oscap_info() {
 
     mtinfo(WM_OSCAP_LOGTAG, "SHOW_MODULE_OSCAP: ----");
 }
+
+#else
+
+void* wm_oscap_main(__attribute__((unused)) wm_oscap *oscap) {
+    mtinfo(WM_OSCAP_LOGTAG, "OPEN-SCAP module not compatible with Windows.");
+    return NULL;
+}
+#endif
 
 // Destroy data
 

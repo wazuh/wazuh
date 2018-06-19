@@ -1,14 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.4.0]
+## [v3.5.0]
 
 ### Added
 
 - Improved configuration of OVAL updates. ([#416](https://github.com/wazuh/wazuh/pull/416))
 - Added selective agent software request in vulnerability-detector. ([#404](https://github.com/wazuh/wazuh/pull/404))
-- Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
-- Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
 - Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
 - Get Windows packages inventory natively. ([#471](https://github.com/wazuh/wazuh/pull/471))
 - Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
@@ -33,9 +31,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Add default value for option -x in agent_control tool.
-- Syscheck RT process granularized to make frequency option more accurate.
 - External libraries moved to an external repository.
-- Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
 - Ignore OverlayFS directories on Rootcheck system scan.
 - Extracts agent's OS from the database instead of the agent-info.
 - Increases the maximum size of XML parser to 20KB.
@@ -44,9 +40,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
 - Fixed invalid alerts reported by Syscollector when the event contains the word "error". ([#461](https://github.com/wazuh/wazuh/pull/461))
-- Fixed registry_ignore problem on syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
 - Silenced Vuls integration starting and ending alerts. ([#541](https://github.com/wazuh/wazuh/pull/541))
 - Fix problem comparing releases of ubuntu packages. ([#556](https://github.com/wazuh/wazuh/pull/556))
 - Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
@@ -56,6 +50,58 @@ All notable changes to this project will be documented in this file.
 ### Removed
 
 - Deleted Lua language support.
+
+## [v3.4.0]
+
+### Added
+
+- Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
+- Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
+
+### Changed
+
+- Syscheck RT process granularized to make frequency option more accurate. ([#434](https://github.com/wazuh/wazuh/pull/434))
+
+### Fixed
+
+- Fixed registry_ignore problem on Syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
+- Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
+- Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
+
+## [v3.3.1]
+
+### Added
+
+- Added `total_affected_agents` and `total_failed_ids` to the `DELETE/agents` API request. ([#795](https://github.com/wazuh/wazuh/pull/795))
+
+### Changed
+
+- Management of empty blocks in the configuration files. ([#781](https://github.com/wazuh/wazuh/pull/781))
+- Verify WPK with Wazuh CA by default. ([#799](https://github.com/wazuh/wazuh/pull/799))
+
+### Fixed
+
+- Windows prevents agent from renaming file. ([#773](https://github.com/wazuh/wazuh/pull/773))
+- Fix manager-agent version comparison in remote upgrades. ([#765](https://github.com/wazuh/wazuh/pull/765))
+- Fix log flooding when restarting agent while the merged file is being receiving. ([#788](https://github.com/wazuh/wazuh/pull/788))
+- Fix issue when overwriting rotated logs in Windows agents. ([#776](https://github.com/wazuh/wazuh/pull/776))
+- Prevent OpenSCAP module from running on Windows agents (incompatible). ([#777](https://github.com/wazuh/wazuh/pull/777))
+- Fix issue in file changes report for FIM on Linux when a directory contains a backslash. ([#775](https://github.com/wazuh/wazuh/pull/775))
+- Fixed missing `minor` field in agent data managed by the framework. ([#771](https://github.com/wazuh/wazuh/pull/771))
+- Fixed missing `build` and `key` fields in agent data managed by the framework. ([#802](https://github.com/wazuh/wazuh/pull/802))
+- Fixed several bugs in upgrade agents ([#784](https://github.com/wazuh/wazuh/pull/784)):
+    - Error upgrading an agent with status `Never Connected`.
+    - Fixed API support.
+    - Sockets were not closing properly.
+- Cluster exits showing an error when an error occurs. ([#790](https://github.com/wazuh/wazuh/pull/790))
+- Fixed bug when cluster control or API cannot request the list of nodes to the master. ([#762](https://github.com/wazuh/wazuh/pull/762))
+- Fixed bug when the `agent.conf` contains an unrecognized module. ([#796](https://github.com/wazuh/wazuh/pull/796))
+- Alert when unmerge files fails on agent. ([#731](https://github.com/wazuh/wazuh/pull/731))
+- Fix invalid memory access when parsing ruleset configuration. ([#787](https://github.com/wazuh/wazuh/pull/787))
+- Check version of python in cluster control. ([#760](https://github.com/wazuh/wazuh/pull/760))
+- Removed duplicated log message when Rootcheck is disabled. ([#783](https://github.com/wazuh/wazuh/pull/783))
+- Avoid infinite attempts to download CVE databases when it fails. ([#792](https://github.com/wazuh/wazuh/pull/792))
+>>>>>>> 3.4
 
 
 ## [v3.3.0]

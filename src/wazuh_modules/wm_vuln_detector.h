@@ -17,6 +17,7 @@
 #define VU_WM_NAME "vulnerability-detector"
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
 #define WM_VULNDETECTOR_DEFAULT_INTERVAL 60 // 1M
+#define WM_VULNDETECTOR_RETRY_UPDATE  300 // 5 minutes
 #define VU_DEF_IGNORE_TIME 21600 // 6H
 #define CVE_TEMP_FILE TMP_PATH "/cve"
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
@@ -176,6 +177,7 @@ typedef struct update_node {
     char *path;
     char **allowed_OS_list;
     char **allowed_ver_list;
+    unsigned int attempted:1;
 } update_node;
 
 typedef struct wm_vulnerability_detector_t {

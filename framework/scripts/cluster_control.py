@@ -3,8 +3,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from sys import argv, exit, path, stdout, version_info
+
+if version_info[0] == 2 and version_info[1] < 7:
+    print("Error: Minimal Python version required is 2.7. Found version is {0}.{1}.".format(version_info[0], version_info[1]))
+    exit(1)
+
 from os.path import dirname, basename
-from sys import argv, exit, path, stdout
 from itertools import chain
 import argparse
 import logging
@@ -136,10 +141,7 @@ def __execute(my_function, my_args=()):
             print("Error: {}".format(response['err']))
             exit(1)
     except Exception as e:
-        if response:
-            print ("Error: {}".format(response))
-        else:
-            print ("{}".format(e))
+        print ("{}".format(e))
         exit(1)
 
     return response
