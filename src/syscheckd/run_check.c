@@ -25,6 +25,9 @@
 static void send_sk_db(void);
 static void log_realtime_status(int);
 
+// Global variables
+W_Vector *audit_added_rules;
+
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
 {
@@ -123,10 +126,12 @@ void start_daemon()
     // Audit events thread
     int audit_socket = audit_init();
     if (audit_socket > 0) {
-        mdebug1("Stating Auditd events reading thread ...");
+        mdebug1("Starting Auditd events reader thread...");
+        audit_added_rules = W_Vector_init(10);
+        atexit(StopAuditThread);
         w_create_thread(audit_main, &audit_socket);
     } else {
-        mdebug1("Cannot start Audit events reading thread.");
+        mdebug1("Cannot start Audit events reader thread.");
     }
 
     /* If the scan time/day is set, reset the

@@ -76,15 +76,17 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__
 
 #ifndef WIN32
 #define AUDIT_KEY "wazuh_fim"
-#define ADD_RULE 1
-#define DELETE_RULE 2
 int audit_init(void);
 int check_auditd_enabled(void);
 int set_auditd_config(void);
 int init_auditd_socket(void);
-int add_audit_rule(const char *dir);
-int audit_manage_rules(int action, const char *path, const char *key);
-void * audit_main(int *audit_sock);
+int audit_add_rule(const char *path, const char *key);
+int audit_delete_rule(const char *path, const char *key);
+void *audit_main(int *audit_sock);
+extern W_Vector *audit_added_rules;
+extern volatile int audit_thread_active;
+void clean_rules(void);
+void StopAuditThread(void);
 #endif
 
 #endif

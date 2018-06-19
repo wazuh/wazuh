@@ -25,6 +25,8 @@
 #include <aclapi.h>
 #include <winevt.h>
 #define sleep(x) Sleep(x * 1000)
+#else
+volatile int audit_thread_active;
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -197,13 +199,16 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         realtime_start();
     }
 
-    if (whodata) {
+    if (whodata && audit_thread_active) {
         mdebug1("Directory added for real time monitoring with Audit: '%s'.", dir);
 
         // configure audit rules
-        int retval = audit_manage_rules(ADD_RULE, dir, AUDIT_KEY);
+        int retval = audit_add_rule(dir, AUDIT_KEY);
         if (retval < 0) {
             merror("Error adding Audit rule for %s : %i", dir, retval);
+        } else {
+            // Save dir into saved rules list
+            W_Vector_insert(audit_added_rules, dir);
         }
 
     } else {

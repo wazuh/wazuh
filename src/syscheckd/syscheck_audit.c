@@ -16,9 +16,15 @@
 #include <sys/un.h>
 #include "syscheck.h"
 
+#define ADD_RULE 1
+#define DELETE_RULE 2
 #define AUDIT_CONF_FILE "/etc/audisp/plugins.d/af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 4096
+
+// Global variables
+volatile int audit_thread_active;
+W_Vector *audit_added_rules;
 
 // Check if auditd is installed and running
 int check_auditd_enabled(void) {
@@ -185,6 +191,18 @@ end:
 }
 
 
+// Add rule
+int audit_add_rule(const char *path, const char *key) {
+    return audit_manage_rules(ADD_RULE, path, key);
+}
+
+
+// Delete rule
+int audit_delete_rule(const char *path, const char *key) {
+    return audit_manage_rules(DELETE_RULE, path, key);
+}
+
+
 int audit_init(void) {
 
     // Check if auditd is installed and running.
@@ -247,8 +265,9 @@ void * audit_main(int * audit_sock) {
     }
 
     mdebug1("Reading events from Audit socket ...");
+    audit_thread_active = 1;
 
-    while ((byteRead = recv(*audit_sock, buffer, BUF_SIZE, 0)) > 0) {
+    while ((byteRead = recv(*audit_sock, buffer, BUF_SIZE, 0)) > 0 && audit_thread_active) {
 
         buffer[byteRead] = '\0';
         char *ret;
@@ -302,14 +321,24 @@ void * audit_main(int * audit_sock) {
     regfree(&regexCompiled_pid);
     regfree(&regexCompiled_path);
     regfree(&regexCompiled_pname);
+    clean_rules();
 
     return NULL;
 }
 
 
-// Add rule to kernel
-int add_audit_rule(const char *dir) {
-    if (dir)
-        return 1;
-    else return 0;
+void StopAuditThread(void) {
+    audit_thread_active = 0;
+}
+
+
+void clean_rules(void) {
+
+    if (audit_added_rules) {
+        mdebug2("Deleting Audit rules...");
+        for (int i = 0; i < W_Vector_length(audit_added_rules); i++) {
+            audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
+        }
+        W_Vector_free(audit_added_rules);
+    }
 }
