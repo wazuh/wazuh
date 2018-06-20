@@ -446,11 +446,15 @@ int CreatePID(const char *name, int pid)
     fprintf(fp, "%d\n", pid);
 
     if (chmod(file, 0640) != 0) {
+        merror(CHMOD_ERROR, file, errno, strerror(errno));
         fclose(fp);
         return (-1);
     }
 
-    fclose(fp);
+    if (fclose(fp)) {
+        merror("Could not write PID file '%s': %s (%d)", file, strerror(errno), errno);
+        return -1;
+    }
 
     return (0);
 }
