@@ -48,7 +48,7 @@ try:
     from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
     from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
-    from wazuh.cluster.client import ClientManager, ClientInternalSocketHandler
+    from wazuh.cluster.worker import WorkerManager, WorkerInternalSocketHandler
     from wazuh.cluster.communication import InternalSocketThread
     from wazuh import configuration as config
     from wazuh.manager import status
@@ -161,22 +161,22 @@ def master_main(cluster_configuration):
 
 
 #
-# Client main
+# Worker main
 #
 def client_main(cluster_configuration):
     global manager
     connection_retry_interval = get_cluster_items()['intervals']['client']['connection_retry']
 
     # Internal socket
-    internal_socket_thread = InternalSocketThread("c-internal", tag="[Client]")
+    internal_socket_thread = InternalSocketThread("c-internal", tag="[Worker]")
     internal_socket_thread.start()
 
     # Loop
     while True:
         try:
-            manager = ClientManager(cluster_config=cluster_configuration)
+            manager = WorkerManager(cluster_config=cluster_configuration)
 
-            internal_socket_thread.setmanager(manager, ClientInternalSocketHandler)
+            internal_socket_thread.setmanager(manager, WorkerInternalSocketHandler)
 
             asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 
@@ -184,7 +184,7 @@ def client_main(cluster_configuration):
 
             manager.exit()
         except socket.gaierror as e:
-            logger.error("[Client] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(str(e), connection_retry_interval))
+            logger.error("[Worker] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(str(e), connection_retry_interval))
 
         time.sleep(connection_retry_interval)
 
@@ -280,7 +280,7 @@ if __name__ == '__main__':
                     logger.error("{0}".format(str(e)))
 
         elif cluster_config['node_type'] == "client":
-            manager_tag = "Client"
+            manager_tag = "Worker"
             logger.info("[{0}] PID: {1}".format(manager_tag, getpid()))
 
             client_main(cluster_config)

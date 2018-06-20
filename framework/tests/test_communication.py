@@ -19,7 +19,7 @@ try:
     from wazuh import common
     from wazuh.cluster import cluster
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
-    from wazuh.cluster.client import ClientManager
+    from wazuh.cluster.worker import WorkerManager
     from wazuh.cluster.communication import InternalSocketThread
 except Exception as e:
     print("Error importing 'Wazuh' package: {0}".format(e))
@@ -111,7 +111,7 @@ def test_cluster_master_requests(thread, my_master):
     for req, data, expected_res in requests_list:
         print("Testing request {}".format(req))
         for c_name, res in my_master.send_request_broadcast(command=req, data=data):
-            print("Client {}".format(c_name))
+            print("Worker {}".format(c_name))
             local_res = my_master.handler.process_response(res)
             if expected_res != local_res:
                 print("Request {} failed. Expected response: '{}', response: '{}'".format(req, expected_res, local_res))
@@ -155,9 +155,9 @@ class MasterTest(threading.Thread):
         self.running = False
 
 #
-# Client threads
+# Worker threads
 #
-class ClientTest(threading.Thread):
+class WorkerTest(threading.Thread):
 
     def __init__(self, t_name, test_name, test_size=0, filepath=""):
         threading.Thread.__init__(self)
@@ -240,7 +240,7 @@ def master_main(test_name, test_size):
     print("Exiting...")
 
 #
-# Client main
+# Worker main
 #
 def client_main(test_name, test_size, filepath):
     c_config = cluster.read_config()
@@ -251,24 +251,24 @@ def client_main(test_name, test_size, filepath):
         print("Just connect")
         while True:
             print("Test: just listening")
-            client = ClientManager(c_config)
+            client = WorkerManager(c_config)
             asyncore.loop(timeout=1, map=client.map)
             time.sleep(1)
         asyncore.loop(timeout=1, map=client.map)
     elif test_name == 'test1':
-        client = ClientManager(c_config)
+        client = WorkerManager(c_config)
 
-        c_test_thread = ClientTest('trehad 0', test_name, test_size)
+        c_test_thread = WorkerTest('trehad 0', test_name, test_size)
         c_test_thread.start()
         c_test_thread.setclient(client)
 
         asyncore.loop(timeout=1, map=client.map)
     elif test_name == 'test2':
-        client = ClientManager(c_config)
+        client = WorkerManager(c_config)
 
         thread_pool = []
         for i in range(10):
-            thread_pool.append(ClientTest('thread {0}'.format(i), 'test1', test_size))
+            thread_pool.append(WorkerTest('thread {0}'.format(i), 'test1', test_size))
             thread_pool[i].setclient(client)
 
         for i in range(10):
@@ -276,14 +276,14 @@ def client_main(test_name, test_size, filepath):
 
         asyncore.loop(timeout=1, map=client.map)
     elif test_name == 'testf':
-        client = ClientManager(c_config)
-        thread_test = ClientTest(t_name='thread0', test_name='testf', filepath=filepath)
+        client = WorkerManager(c_config)
+        thread_test = WorkerTest(t_name='thread0', test_name='testf', filepath=filepath)
         thread_test.setclient(client)
         thread_test.start()
         asyncore.loop(timeout=1, map=client.map)
     elif test_name == 'testc':
-        client = ClientManager(c_config)
-        thread_test = ClientTest(t_name='thread0', test_name='testc')
+        client = WorkerManager(c_config)
+        thread_test = WorkerTest(t_name='thread0', test_name='testc')
         thread_test.setclient(client)
         thread_test.start()
         asyncore.loop(timeout=1, map=client.map)

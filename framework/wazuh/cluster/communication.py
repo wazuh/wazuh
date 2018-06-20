@@ -501,7 +501,7 @@ class Server(asyncore.dispatcher):
 
             if self.find_client_by_ip(addr[0]):
                 sock.close()
-                logger.warning("[Transport-Server] Incoming connection from '{0}' rejected: Client is already connected.".format(repr(addr)))
+                logger.warning("[Transport-Server] Incoming connection from '{0}' rejected: Worker is already connected.".format(repr(addr)))
                 return
 
             # addr is a tuple of form (ip, port)
@@ -584,7 +584,7 @@ class Server(asyncore.dispatcher):
 
                 del self._clients[client_id]
             except KeyError:
-                logger.error("[Transport-Server] Client '{}'' is already disconnected.".format(client_id))
+                logger.error("[Transport-Server] Worker '{}'' is already disconnected.".format(client_id))
 
 
     def get_connected_clients(self):
@@ -597,7 +597,7 @@ class Server(asyncore.dispatcher):
             try:
                 return self._clients[client_name]
             except KeyError:
-                error_msg = "Client {} is disconnected.".format(client_name)
+                error_msg = "Worker {} is disconnected.".format(client_name)
                 logger.error("[Transport-Server] {}".format(error_msg))
                 raise Exception(error_msg)
 
@@ -625,7 +625,7 @@ class Server(asyncore.dispatcher):
             yield c_name, response
 
 
-class ClientHandler(Handler):
+class WorkerHandler(Handler):
 
     def __init__(self, key, host, port, name, asyncore_map = {}):
         Handler.__init__(self, key=key, asyncore_map=asyncore_map)
@@ -639,18 +639,18 @@ class ClientHandler(Handler):
 
 
     def handle_connect(self):
-        logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
+        logger.info("[Worker] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
         payload = msgbuild(counter, 'hello', self.my_fernet, '{} {} {}'.format(self.name, 'client', __version__))
         self.send(payload)
         self.my_connected = True
-        logger.info("[Client] Connected.")
+        logger.info("[Worker] Connected.")
 
 
     def handle_close(self):
         Handler.handle_close(self)
         self.my_connected = False
-        logger.info("[Client] Disconnected.")
+        logger.info("[Worker] Disconnected.")
 
 
     def send_request(self, command, data=None):
@@ -659,7 +659,7 @@ class ClientHandler(Handler):
             response = self.execute(command, data)
         else:
             error_msg = "Trying to send and there is no connection with the server"
-            logger.error("[Transport-ClientHandler] {0}.".format(error_msg))
+            logger.error("[Transport-WorkerHandler] {0}.".format(error_msg))
             response = "err " + error_msg
 
         return response

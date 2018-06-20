@@ -91,7 +91,7 @@ Others:
     else:
         class WazuhHelpFormatter(argparse.ArgumentParser):
             def format_help(self):
-                msg = """Wazuh cluster control - Client node
+                msg = """Wazuh cluster control - Worker node
 
 Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
@@ -221,7 +221,7 @@ def print_file_status_client(filter_file_list, node_name):
             data.append(my_file)
 
     __print_table(data, headers, True)
-    print ("(*) Clients only show their own files.")
+    print ("(*) Workers only show their own files.")
 
 
 ### Get nodes

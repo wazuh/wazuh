@@ -53,15 +53,15 @@ class MasterManagerHandler(ServerHandler):
             return 'ack', str(self.manager.get_client_status(client_id=self.name, key='sync_agentinfo_free'))
         elif command == 'sync_ev_c_mp':
             return 'ack', str(self.manager.get_client_status(client_id=self.name, key='sync_extravalid_free'))
-        elif command == 'sync_i_c_m':  # Client syncs integrity
+        elif command == 'sync_i_c_m':  # Worker syncs integrity
             data = data.decode()
-            pci_thread = ProcessClientIntegrity(manager=self.manager, manager_handler=self, filename=data, stopper=self.stopper)
+            pci_thread = ProcessWorkerIntegrity(manager=self.manager, manager_handler=self, filename=data, stopper=self.stopper)
             pci_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker_thread(command, pci_thread, data)
         elif command == 'sync_ai_c_m':
             data = data.decode()
-            mcf_thread = ProcessClientFiles(manager_handler=self, filename=data, stopper=self.stopper)
+            mcf_thread = ProcessWorkerFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
             # data will contain the filename
             return 'ack', self.set_worker_thread(command, mcf_thread, data)
@@ -105,7 +105,7 @@ class MasterManagerHandler(ServerHandler):
         logger.debug("[Master] [{0}] [Response-R]: '{1}'.".format(self.name, answer))
 
         if answer == 'ok-m':  # test
-            response_data = '[response_only_for_master] Client answered: {}.'.format(payload)
+            response_data = '[response_only_for_master] Worker answered: {}.'.format(payload)
         else:
             response_data = ServerHandler.process_response(self, response)
 
@@ -347,7 +347,7 @@ class MasterManagerHandler(ServerHandler):
 #
 
 
-class ProcessClient(ProcessFiles):
+class ProcessWorker(ProcessFiles):
 
     def __init__(self, manager_handler, filename, stopper):
         ProcessFiles.__init__(self, manager_handler, filename,
@@ -373,10 +373,10 @@ class ProcessClient(ProcessFiles):
         ProcessFiles.unlock_and_stop(self, reason, send_err_request)
 
 
-class ProcessClientIntegrity(ProcessClient):
+class ProcessWorkerIntegrity(ProcessWorker):
 
     def __init__(self, manager, manager_handler, filename, stopper):
-        ProcessClient.__init__(self, manager_handler, filename, stopper)
+        ProcessWorker.__init__(self, manager_handler, filename, stopper)
         self.manager = manager
         self.thread_tag = "[Master] [{0}] [Integrity-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_integrity_free"
@@ -435,13 +435,13 @@ class ProcessClientIntegrity(ProcessClient):
                 logger.error("{0}: Sync error reported by the client.".format(self.thread_tag))
 
         # Unlock and stop
-        ProcessClient.unlock_and_stop(self, reason)
+        ProcessWorker.unlock_and_stop(self, reason)
 
 
-class ProcessClientFiles(ProcessClient):
+class ProcessWorkerFiles(ProcessWorker):
 
    def __init__(self, manager_handler, filename, stopper):
-        ProcessClient.__init__(self, manager_handler, filename, stopper)
+        ProcessWorker.__init__(self, manager_handler, filename, stopper)
         self.thread_tag = "[Master] [{0}] [AgentInfo-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_agentinfo_free"
         self.function = self.manager_handler.process_files_from_client
@@ -449,10 +449,10 @@ class ProcessClientFiles(ProcessClient):
         self.cluster_control_subkey = "total_agentinfo"
 
 
-class ProcessExtraValidFiles(ProcessClient):
+class ProcessExtraValidFiles(ProcessWorker):
 
     def __init__(self, manager_handler, filename, stopper):
-        ProcessClient.__init__(self, manager_handler, filename, stopper)
+        ProcessWorker.__init__(self, manager_handler, filename, stopper)
         self.thread_tag = "[Master] [{0}] [AgentGroup-R ]".format(self.manager_handler.name)
         self.status_type = "sync_extravalid_free"
         self.function = self.manager_handler.process_files_from_client
