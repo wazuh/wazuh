@@ -50,7 +50,7 @@ class ClientManagerHandler(ClientHandler):
         elif command == 'sync_m_c':
             cmf_thread = ClientProcessMasterFiles(manager_handler=self, filename=data, stopper=self.stopper)
             cmf_thread.start()
-            return 'ack', self.set_worker(command, cmf_thread, data)
+            return 'ack', self.set_worker_thread(command, cmf_thread, data)
         elif command == 'sync_m_c_ok':
             logger.info("[Client] [Integrity    ]: The master has verified that the integrity is right.")
             self.integrity_received_and_processed.set()
@@ -342,7 +342,7 @@ class ClientManagerHandler(ClientHandler):
 
 
 #
-# Threads (workers) created by ClientManagerHandler
+# Threads (worker_threads) created by ClientManagerHandler
 #
 class ClientProcessMasterFiles(ProcessFiles):
 

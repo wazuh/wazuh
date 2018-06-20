@@ -160,8 +160,8 @@ class Handler(asyncore.dispatcher_with_send):
         self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
         self.inbuffer = b''
         self.lock = threading.Lock()  # Box lock
-        self.workers_lock = threading.Lock()
-        self.workers = {}
+        self.worker_threads_lock = threading.Lock()
+        self.worker_threads = {}
         self.stopper = threading.Event()
         self.my_fernet = Fernet(base64_encoding(key)) if key else None
 
@@ -170,50 +170,50 @@ class Handler(asyncore.dispatcher_with_send):
         logger.debug("[Transport-Handler] Cleaning handler threads. Start.")
         self.stopper.set()
 
-        with self.workers_lock:
-            worker_ids = self.workers.keys()
+        with self.worker_threads_lock:
+            worker_thread_ids = self.worker_threads.keys()
 
-        for worker_id in worker_ids:
-            logger.debug2("[Transport-Handler] Cleaning handler thread: '{0}'.".format(worker_id))
+        for worker_thread_id in worker_thread_ids:
+            logger.debug2("[Transport-Handler] Cleaning handler thread: '{0}'.".format(worker_thread_id))
 
-            with self.workers_lock:
-                my_worker = self.workers[worker_id]
+            with self.worker_threads_lock:
+                my_worker_thread = self.worker_threads[worker_thread_id]
 
             try:
-                my_worker.join(timeout=2)
+                my_worker_thread.join(timeout=2)
             except Exception as e:
-                logger.error("[Transport-Handler] Cleaning '{0}' thread. Error: '{1}'.".format(worker_id, str(e)))
+                logger.error("[Transport-Handler] Cleaning '{0}' thread. Error: '{1}'.".format(worker_thread_id, str(e)))
 
-            if my_worker.isAlive():
-                logger.warning("[Transport-Handler] Cleaning '{0}' thread. Timeout.".format(worker_id))
+            if my_worker_thread.isAlive():
+                logger.warning("[Transport-Handler] Cleaning '{0}' thread. Timeout.".format(worker_thread_id))
             else:
-                logger.debug2("[Transport-Handler] Cleaning '{0}' thread. Terminated.".format(worker_id))
+                logger.debug2("[Transport-Handler] Cleaning '{0}' thread. Terminated.".format(worker_thread_id))
 
         logger.debug("[Transport-Handler] Cleaning handler threads. End.")
 
 
-    def set_worker(self, command, worker, filename):
-        thread_id = '{}-{}-{}'.format(command, worker.ident, os.path.basename(filename))
-        with self.workers_lock:
-            self.workers[thread_id] = worker
-        worker.id = thread_id
+    def set_worker_thread(self, command, worker_thread, filename):
+        thread_id = '{}-{}-{}'.format(command, worker_thread.ident, os.path.basename(filename))
+        with self.worker_threads_lock:
+            self.worker_threads[thread_id] = worker_thread
+        worker_thread.id = thread_id
         return thread_id
 
 
-    def del_worker(self, worker_id):
-        with self.workers_lock:
-            if worker_id in self.workers:
-                del self.workers[worker_id]
+    def del_worker_thread(self, worker_thread_id):
+        with self.worker_threads_lock:
+            if worker_thread_id in self.worker_threads:
+                del self.worker_threads[worker_thread_id]
 
 
-    def get_worker(self, data):
-        # the worker worker_id will be the first element spliting the data by spaces
-        worker_id = data.split(b' ', 1)[0].decode()
-        with self.workers_lock:
-            if worker_id in self.workers:
-                return self.workers[worker_id], 'ack', 'Command received for {}'.format(worker_id)
+    def get_worker_thread(self, data):
+        # the worker_thread worker_thread_id will be the first element spliting the data by spaces
+        worker_thread_id = data.split(b' ', 1)[0].decode()
+        with self.worker_threads_lock:
+            if worker_thread_id in self.worker_threads:
+                return self.worker_threads[worker_thread_id], 'ack', 'Command received for {}'.format(worker_thread_id)
             else:
-                return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(worker_id)
+                return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(worker_thread_id)
 
 
     def compute_md5(self, my_file, blocksize=2 ** 20):
@@ -243,15 +243,15 @@ class Handler(asyncore.dispatcher_with_send):
         :param reason: command to send before starting to send the file_to_send
         :param remove: whether to remove the file_to_send after sending it or not
         """
-        # response will be of form 'ack worker_id'
-        _, worker_id = self.execute(reason, os.path.basename(file_to_send)).split(' ', 1)
+        # response will be of form 'ack worker_thread_id'
+        _, worker_thread_id = self.execute(reason, os.path.basename(file_to_send)).split(' ', 1)
 
         try:
-            res, data = self.execute("file_open", "{}".format(worker_id)).split(' ', 1)
+            res, data = self.execute("file_open", "{}".format(worker_thread_id)).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
-            base_msg = "{} ".format(worker_id).encode()
+            base_msg = "{} ".format(worker_thread_id).encode()
             chunk_size = max_msg_size - len(base_msg)
 
             with open(file_to_send, 'rb') as f:
@@ -261,7 +261,7 @@ class Handler(asyncore.dispatcher_with_send):
                         raise Exception(data)
                     time.sleep(interval_file_transfer_send)
 
-            res, data = self.execute("file_close", "{} {}".format(worker_id, self.compute_md5(file_to_send))).split(' ', 1)
+            res, data = self.execute("file_close", "{} {}".format(worker_thread_id, self.compute_md5(file_to_send))).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
@@ -397,9 +397,9 @@ class Handler(asyncore.dispatcher_with_send):
             return 'ok ', data.decode()
         elif command == "file_open" or command == "file_update" or command == "file_close":
             # At this moment, the thread should exists
-            worker, cmd, message = self.get_worker(data)
-            if worker:
-                worker.set_command(command, data)
+            worker_thread, cmd, message = self.get_worker_thread(data)
+            if worker_thread:
+                worker_thread.set_command(command, data)
             return cmd, message
         else:
             message = "'{0}' - Unknown command received '{1}'.".format(self.name, command)
@@ -854,7 +854,7 @@ class ProcessFiles(ClusterThread):
         Stops the thread
         """
         if self.id:
-            self.manager_handler.del_worker(self.id)
+            self.manager_handler.del_worker_thread(self.id)
         ClusterThread.stop(self)
 
 

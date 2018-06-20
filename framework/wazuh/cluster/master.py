@@ -58,18 +58,18 @@ class MasterManagerHandler(ServerHandler):
             pci_thread = ProcessClientIntegrity(manager=self.manager, manager_handler=self, filename=data, stopper=self.stopper)
             pci_thread.start()
             # data will contain the filename
-            return 'ack', self.set_worker(command, pci_thread, data)
+            return 'ack', self.set_worker_thread(command, pci_thread, data)
         elif command == 'sync_ai_c_m':
             data = data.decode()
             mcf_thread = ProcessClientFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
             # data will contain the filename
-            return 'ack', self.set_worker(command, mcf_thread, data)
+            return 'ack', self.set_worker_thread(command, mcf_thread, data)
         elif command == 'sync_ev_c_m':
             data = data.decode()
             mcf_thread = ProcessExtraValidFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
-            return 'ack', self.set_worker(command, mcf_thread, data)
+            return 'ack', self.set_worker_thread(command, mcf_thread, data)
         elif command == 'get_nodes':
             data = data.decode()
             response = {name:data['info'] for name,data in self.server.get_connected_clients().items()}
@@ -343,7 +343,7 @@ class MasterManagerHandler(ServerHandler):
 
 
 #
-# Threads (workers) created by MasterManagerHandler
+# Threads (worker_threads) created by MasterManagerHandler
 #
 
 
