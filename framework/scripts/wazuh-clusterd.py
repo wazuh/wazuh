@@ -163,9 +163,9 @@ def master_main(cluster_configuration):
 #
 # Worker main
 #
-def client_main(cluster_configuration):
+def worker_main(cluster_configuration):
     global manager
-    connection_retry_interval = get_cluster_items()['intervals']['client']['connection_retry']
+    connection_retry_interval = get_cluster_items()['intervals']['worker']['connection_retry']
 
     # Internal socket
     internal_socket_thread = InternalSocketThread("c-internal", tag="[Worker]")
@@ -279,11 +279,11 @@ if __name__ == '__main__':
                 else:
                     logger.error("{0}".format(str(e)))
 
-        elif cluster_config['node_type'] == "client":
+        elif cluster_config['node_type'] == "worker":
             manager_tag = "Worker"
             logger.info("[{0}] PID: {1}".format(manager_tag, getpid()))
 
-            client_main(cluster_config)
+            worker_main(cluster_config)
         else:
             clean_exit(reason="Node type '{0}' not valid.".format(cluster_config['node_type']), error=True)
 

@@ -212,7 +212,7 @@ def print_file_status_master(filter_file_list, filter_node_list):
             print (" - {}: {}".format(node, error))
 
 
-def print_file_status_client(filter_file_list, node_name):
+def print_file_status_worker(filter_file_list, node_name):
     my_files = __execute(my_function=get_files, my_args=(filter_file_list, node_name,))
     headers = ["Node", "File name", "Modification time", "MD5"]
     data = []
@@ -332,8 +332,8 @@ if __name__ == '__main__':
     cluster_config = None
     try:
         cluster_config = read_config()
-        if 'node_type' not in cluster_config or (cluster_config['node_type'] != 'master' and cluster_config['node_type'] != 'client'):
-            raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(cluster_config['node_type']))
+        if 'node_type' not in cluster_config or (cluster_config['node_type'] != 'master' and cluster_config['node_type'] != 'worker'):
+            raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(cluster_config['node_type']))
     except WazuhException as e:
         print( "Invalid configuration: '{0}'".format(str(e)))
         exit(1)
@@ -370,11 +370,11 @@ if __name__ == '__main__':
             exit()
 
         #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
+        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_worker(args.filter_file, cluster_config['node_name'])
         #elif is_master and args.sync is not None:
         #    sync_master(args.filter_node)
         #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
+        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_worker(args.filter_file, cluster_config['node_name'])
 
     except Exception as e:
         logging.error(str(e))

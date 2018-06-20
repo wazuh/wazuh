@@ -64,7 +64,7 @@ def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.dat
         raise WazuhException(3016, "{}".format(nodes['err']))
 
     valid_select_fiels = {"name", "version", "type", "ip"}
-    valid_types = {"client", "master"}
+    valid_types = {"worker", "master"}
     select_fields_param = {}
 
     if select:

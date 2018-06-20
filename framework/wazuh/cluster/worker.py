@@ -14,7 +14,7 @@ from operator import itemgetter
 import errno
 import fnmatch
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_files, decompress_files, get_files_status, get_cluster_items_client_intervals, unmerge_agent_info, merge_agent_info
+from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_files, decompress_files, get_files_status, get_cluster_items_worker_intervals, unmerge_agent_info, merge_agent_info
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
 from wazuh.cluster.communication import WorkerHandler, ProcessFiles, ClusterThread, InternalSocketHandler
@@ -61,9 +61,9 @@ class WorkerManagerHandler(WorkerHandler):
             return 'ack', "Thanks!"
         elif command == 'file_status':
             master_files = get_files_status('master', get_md5=True)
-            client_files = get_files_status('client', get_md5=True)
+            worker_files = get_files_status('worker', get_md5=True)
             files = master_files
-            files.update(client_files)
+            files.update(worker_files)
             return 'json', json.dumps(files)
         else:
             return WorkerHandler.process_request(self, command, data)
@@ -75,14 +75,14 @@ class WorkerManagerHandler(WorkerHandler):
         logger.debug("[Worker] [Response-R ]: '{0}'.".format(answer))
 
         if answer == 'ok-c':  # test
-            response_data = '[response_only_for_client] Master answered: {}.'.format(payload)
+            response_data = '[response_only_for_worker] Master answered: {}.'.format(payload)
         else:
             response_data = WorkerHandler.process_response(self, response)
 
         return response_data
 
     # Private methods
-    def _update_master_files_in_client(self, wrong_files, zip_path_dir, tag=None):
+    def _update_master_files_in_worker(self, wrong_files, zip_path_dir, tag=None):
         def overwrite_or_create_files(filename, data, content=None):
             # Cluster items information: write mode and umask
             cluster_item_key = data['cluster_item_key']
@@ -102,7 +102,7 @@ class WorkerManagerHandler(WorkerHandler):
             tmp_path='/queue/cluster/tmp_files'
 
             _update_file(file_path=filename, new_content=file_data,
-                         umask_int=umask, w_mode=w_mode, tmp_dir=tmp_path, whoami='client')
+                         umask_int=umask, w_mode=w_mode, tmp_dir=tmp_path, whoami='worker')
 
         if not tag:
             tag = "[Worker] [Sync process]"
@@ -214,7 +214,7 @@ class WorkerManagerHandler(WorkerHandler):
         logger.info("{0}: Gathering files.".format(tag))
 
         master_files = get_files_status('master')
-        cluster_control_json = {'master_files': master_files, 'client_files': None}
+        cluster_control_json = {'master_files': master_files, 'worker_files': None}
 
         logger.info("{0}: Gathered files: {1}.".format(tag, len(cluster_control_json['master_files'])))
 
@@ -227,7 +227,7 @@ class WorkerManagerHandler(WorkerHandler):
         return compressed_data_path
 
 
-    def send_client_files_to_master(self, reason=None, tag=None):
+    def send_worker_files_to_master(self, reason=None, tag=None):
         data_for_master = None
 
         if not tag:
@@ -243,19 +243,19 @@ class WorkerManagerHandler(WorkerHandler):
 
         logger.info("{0}: Gathering files.".format(tag))
 
-        client_files = get_files_status('client', get_md5=False)
-        cluster_control_json = {'master_files': {}, 'client_files': client_files}
+        worker_files = get_files_status('worker', get_md5=False)
+        cluster_control_json = {'master_files': {}, 'worker_files': worker_files}
 
-        # Getting client file paths: agent-info, agent-groups.
-        client_files_paths = client_files.keys()
+        # Getting worker file paths: agent-info, agent-groups.
+        worker_files_paths = worker_files.keys()
 
-        logger.debug("{0}: Files gathered: {1}.".format(tag, len(client_files_paths)))
+        logger.debug("{0}: Files gathered: {1}.".format(tag, len(worker_files_paths)))
 
-        if len(client_files_paths) != 0:
+        if len(worker_files_paths) != 0:
             logger.info("{0}: There are agent-info files to send.".format(tag))
 
-            # Compress data: client files + control json
-            compressed_data_path = compress_files(self.name, client_files_paths, cluster_control_json)
+            # Compress data: worker files + control json
+            compressed_data_path = compress_files(self.name, worker_files_paths, cluster_control_json)
 
             data_for_master = compressed_data_path
 
@@ -289,7 +289,7 @@ class WorkerManagerHandler(WorkerHandler):
                                             'merge_type': 'agent-groups',
                                             'cluster_item_key': '/queue/agent-groups/'}})
 
-        compressed_data_path = compress_files(self.name, files, {'client_files': files})
+        compressed_data_path = compress_files(self.name, files, {'worker_files': files})
 
         return compressed_data_path
 
@@ -318,7 +318,7 @@ class WorkerManagerHandler(WorkerHandler):
 
         # Update files
         if ko_files['extra_valid']:
-            logger.info("{0}: Master requires some client files. Sending.".format(tag))
+            logger.info("{0}: Master requires some worker files. Sending.".format(tag))
             if not "SyncExtraValidFilesThread" in set(map(lambda x: type(x).__name__, threading.enumerate())):
                 req_files_thread = SyncExtraValidFilesThread(self, self.stopper, ko_files['extra_valid'])
                 req_files_thread.start()
@@ -332,7 +332,7 @@ class WorkerManagerHandler(WorkerHandler):
             logger.info("{0}: Worker does not meet integrity checks. Actions required.".format(tag))
 
             logger.info("{0}: Updating files: Start.".format(tag))
-            sync_result = self._update_master_files_in_client(ko_files, zip_path, tag)
+            sync_result = self._update_master_files_in_worker(ko_files, zip_path, tag)
             logger.info("{0}: Updating files: End.".format(tag))
 
         # remove temporal zip file directory
@@ -365,7 +365,7 @@ class WorkerProcessMasterFiles(ProcessFiles):
 
 
     def lock_status(self, status):
-        # the client only needs to do the unlock
+        # the worker only needs to do the unlock
         # because the lock was performed in the Integrity thread
         if not status:
             self.manager_handler.integrity_received_and_processed.set()
@@ -395,28 +395,28 @@ class WorkerManager:
         # Threads
         self.stopper = threading.Event()
         self.threads = {}
-        self._initiate_client_threads()
+        self._initiate_worker_threads()
 
     # Private methods
-    def _initiate_client_threads(self):
+    def _initiate_worker_threads(self):
         logger.debug("[Master] Creating threads.")
         # Sync integrity
-        self.threads[WorkerManager.SYNC_I_T] = SyncIntegrityThread(client_handler=self.handler, stopper=self.stopper)
+        self.threads[WorkerManager.SYNC_I_T] = SyncIntegrityThread(worker_handler=self.handler, stopper=self.stopper)
         self.threads[WorkerManager.SYNC_I_T].start()
 
         # Sync AgentInfo
-        self.threads[WorkerManager.SYNC_AI_T] = SyncAgentInfoThread(client_handler=self.handler, stopper=self.stopper)
+        self.threads[WorkerManager.SYNC_AI_T] = SyncAgentInfoThread(worker_handler=self.handler, stopper=self.stopper)
         self.threads[WorkerManager.SYNC_AI_T].start()
 
         # KA
-        self.threads[WorkerManager.KA_T] = KeepAliveThread(client_handler=self.handler, stopper=self.stopper)
+        self.threads[WorkerManager.KA_T] = KeepAliveThread(worker_handler=self.handler, stopper=self.stopper)
         self.threads[WorkerManager.KA_T].start()
 
     # New methods
     def exit(self):
         logger.debug("[Worker] Cleaning threads. Start.")
 
-        # Cleaning client threads
+        # Cleaning worker threads
         logger.debug("[Worker] Cleaning main threads")
         self.stopper.set()
 
@@ -445,9 +445,9 @@ class WorkerManager:
 #
 class WorkerThread(ClusterThread):
 
-    def __init__(self, client_handler, stopper):
+    def __init__(self, worker_handler, stopper):
         ClusterThread.__init__(self, stopper)
-        self.client_handler = client_handler
+        self.worker_handler = worker_handler
 
         # Intervals
         self.init_interval = 30
@@ -458,8 +458,8 @@ class WorkerThread(ClusterThread):
 
         while not self.stopper.is_set() and self.running:
 
-            # Wait until client is set and connected
-            if not self.client_handler or not self.client_handler.is_connected():
+            # Wait until worker is set and connected
+            if not self.worker_handler or not self.worker_handler.is_connected():
                 logger.debug2("{0}: Worker is not set or connected. Waiting: {1}s.".format(self.thread_tag, 2))
                 self.sleep(2)
                 continue
@@ -504,11 +504,11 @@ class WorkerThread(ClusterThread):
 
 class KeepAliveThread(WorkerThread):
 
-    def __init__(self, client_handler, stopper):
-        WorkerThread.__init__(self, client_handler, stopper)
+    def __init__(self, worker_handler, stopper):
+        WorkerThread.__init__(self, worker_handler, stopper)
         self.thread_tag = "[Worker] [KeepAlive-S  ]"
         # Intervals
-        self.init_interval = get_cluster_items_client_intervals()['keep_alive']
+        self.init_interval = get_cluster_items_worker_intervals()['keep_alive']
         self.interval = self.init_interval
 
 
@@ -522,7 +522,7 @@ class KeepAliveThread(WorkerThread):
 
 
     def job(self):
-        return self.client_handler.send_request('echo-c', 'Keep-alive from client!')
+        return self.worker_handler.send_request('echo-c', 'Keep-alive from worker!')
 
 
     def process_result(self):
@@ -530,14 +530,14 @@ class KeepAliveThread(WorkerThread):
 
 
 class SyncWorkerThread(WorkerThread):
-    def __init__(self, client_handler, stopper):
-        WorkerThread.__init__(self, client_handler, stopper)
+    def __init__(self, worker_handler, stopper):
+        WorkerThread.__init__(self, worker_handler, stopper)
 
         #Intervals
-        self.init_interval = get_cluster_items_client_intervals()['sync_files']
+        self.init_interval = get_cluster_items_worker_intervals()['sync_files']
         self.interval = self.init_interval
 
-        self.interval_ask_for_permission = get_cluster_items_client_intervals()['ask_for_permission']
+        self.interval_ask_for_permission = get_cluster_items_worker_intervals()['ask_for_permission']
 
 
     def ask_for_permission(self):
@@ -547,8 +547,8 @@ class SyncWorkerThread(WorkerThread):
         logger.info("{0}: Asking permission to sync.".format(self.thread_tag))
         waiting_count = 0
         while wait_for_permission and not self.stopper.is_set() and self.running:
-            response = self.client_handler.send_request(self.request_type)
-            processed_response = self.client_handler.process_response(response)
+            response = self.worker_handler.send_request(self.request_type)
+            processed_response = self.worker_handler.process_response(response)
 
             if processed_response:
                 if 'True' in processed_response:
@@ -573,9 +573,9 @@ class SyncWorkerThread(WorkerThread):
         if compressed_data_path:
             logger.info("{0}: Sending files to master.".format(self.thread_tag))
 
-            response = self.client_handler.send_file(reason = self.reason, file_to_send= compressed_data_path, remove = True)
+            response = self.worker_handler.send_file(reason = self.reason, file_to_send= compressed_data_path, remove = True)
 
-            processed_response = self.client_handler.process_response(response)
+            processed_response = self.worker_handler.process_response(response)
             if processed_response:
                 logger.info("{0}: Sync accepted by the master.".format(self.thread_tag))
             else:
@@ -591,27 +591,27 @@ class SyncWorkerThread(WorkerThread):
 
 class SyncIntegrityThread(SyncWorkerThread):
 
-    def __init__(self, client_handler, stopper):
-        SyncWorkerThread.__init__(self, client_handler, stopper)
-        self.init_interval = get_cluster_items_client_intervals()['sync_integrity']
+    def __init__(self, worker_handler, stopper):
+        SyncWorkerThread.__init__(self, worker_handler, stopper)
+        self.init_interval = get_cluster_items_worker_intervals()['sync_integrity']
         self.interval = self.init_interval
 
         self.request_type = "sync_i_c_m_p"
         self.reason = "sync_i_c_m"
-        self.function = self.client_handler.send_integrity_to_master
+        self.function = self.worker_handler.send_integrity_to_master
         self.thread_tag = "[Worker] [Integrity-S  ]"
 
 
     def job(self):
-        # The client is going to send the integrity, so it is not received and processed
-        self.client_handler.integrity_received_and_processed.clear()
+        # The worker is going to send the integrity, so it is not received and processed
+        self.worker_handler.integrity_received_and_processed.clear()
         return SyncWorkerThread.job(self)
 
 
     def process_result(self):
-        # The client sent the integrity.
+        # The worker sent the integrity.
         # It must wait until integrity_received_and_processed is set:
-        #  - Master sends files: sync_m_c AND the client processes the integrity.
+        #  - Master sends files: sync_m_c AND the worker processes the integrity.
         #  - Master sends error: sync_m_c_err
         #  - Master sends error: sync_m_c_ok
         #  - Thread is stopped (all threads - stopper, just this thread - running)
@@ -619,8 +619,8 @@ class SyncIntegrityThread(SyncWorkerThread):
         logger.info("{0}: Locking: Waiting for receiving Master response and process the integrity if necessary.".format(self.thread_tag))
 
         n_seconds = 0
-        while not self.client_handler.integrity_received_and_processed.isSet() and not self.stopper.is_set() and self.running:
-            event_is_set = self.client_handler.integrity_received_and_processed.wait(1)
+        while not self.worker_handler.integrity_received_and_processed.isSet() and not self.stopper.is_set() and self.running:
+            event_is_set = self.worker_handler.integrity_received_and_processed.wait(1)
             n_seconds += 1
 
             if event_is_set:  # No timeout -> Free
@@ -634,27 +634,27 @@ class SyncIntegrityThread(SyncWorkerThread):
 
     def clean(self):
         SyncWorkerThread.clean(self)
-        self.client_handler.integrity_received_and_processed.clear()
+        self.worker_handler.integrity_received_and_processed.clear()
 
 
 class SyncAgentInfoThread(SyncWorkerThread):
 
-    def __init__(self, client_handler, stopper):
-        SyncWorkerThread.__init__(self, client_handler, stopper)
+    def __init__(self, worker_handler, stopper):
+        SyncWorkerThread.__init__(self, worker_handler, stopper)
         self.thread_tag = "[Worker] [AgentInfo-S  ]"
         self.request_type = "sync_ai_c_mp"
         self.reason = "sync_ai_c_m"
-        self.function = self.client_handler.send_client_files_to_master
+        self.function = self.worker_handler.send_worker_files_to_master
 
 
 class SyncExtraValidFilesThread(SyncWorkerThread):
 
-    def __init__(self, client_handler, stopper, files):
-        SyncWorkerThread.__init__(self, client_handler, stopper)
+    def __init__(self, worker_handler, stopper, files):
+        SyncWorkerThread.__init__(self, worker_handler, stopper)
         self.thread_tag = "[Worker] [AgentGroup-S ]"
         self.request_type = "sync_ev_c_mp"
         self.reason = "sync_ev_c_m"
-        self.function = self.client_handler.send_extra_valid_files_to_master
+        self.function = self.worker_handler.send_extra_valid_files_to_master
         self.files = files
 
     def job(self):
@@ -664,10 +664,10 @@ class SyncExtraValidFilesThread(SyncWorkerThread):
 
         logger.info("{0}: Sending files to master.".format(self.thread_tag))
 
-        response = self.client_handler.send_file(reason = self.reason,
+        response = self.worker_handler.send_file(reason = self.reason,
                                                  file_to_send= compressed_data_path, remove = True)
 
-        processed_response = self.client_handler.process_response(response)
+        processed_response = self.worker_handler.process_response(response)
         if processed_response:
             logger.info("{0}: ExtraValid files accepted by the master.".format(self.thread_tag))
             result = True
@@ -686,7 +686,7 @@ class WorkerInternalSocketHandler(InternalSocketHandler):
         InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
 
     def process_request(self, command, data):
-        logger.debug("[Transport-I] Forwarding request to cluster clients '{0}' - '{1}'".format(command, data))
+        logger.debug("[Transport-I] Forwarding request to cluster workers '{0}' - '{1}'".format(command, data))
 
         if command == "get_files":
             split_data = data.split(' ', 1)

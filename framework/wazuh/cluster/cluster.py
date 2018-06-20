@@ -61,8 +61,8 @@ def check_cluster_config(config):
 
     if 'node_type' not in config:
         raise WazuhException(3004, "Node type not present in cluster configuration")
-    elif config['node_type'] != 'master' and config['node_type'] != 'client':
-        raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
+    elif config['node_type'] != 'master' and config['node_type'] != 'worker':
+        raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(config['node_type']))
 
     if 'nodes' not in config or len(config['nodes']) == 0:
         raise WazuhException(3004, 'No nodes defined in cluster configuration.')
@@ -95,8 +95,8 @@ def get_cluster_items_communication_intervals():
     return get_cluster_items()['intervals']['communication']
 
 
-def get_cluster_items_client_intervals():
-    return get_cluster_items()['intervals']['client']
+def get_cluster_items_worker_intervals():
+    return get_cluster_items()['intervals']['worker']
 
 
 def read_config():
@@ -180,7 +180,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
             if not path.isdir(full_path):
                 file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
 
-                if whoami == 'client' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
+                if whoami == 'worker' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
                     continue
 
                 new_key = full_path.replace(common.ossec_path, "")
@@ -277,7 +277,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
 
     dst_path = common.ossec_path + file_path
     if path.basename(dst_path) == 'client.keys':
-        if whoami =='client':
+        if whoami =='worker':
             _check_removed_agents(new_content.split('\n'))
         else:
             logger.warning("[Cluster] Client.keys file received in a master node.")
@@ -312,7 +312,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
                     logger.debug2("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
                     return
         elif is_agent_info:
-            logger.warning("[Cluster] Agent-info received in a client node.")
+            logger.warning("[Cluster] Agent-info received in a worker node.")
             raise WazuhException(3011)
 
     # Write
