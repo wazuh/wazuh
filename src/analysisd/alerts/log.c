@@ -181,46 +181,46 @@ void OS_LogOutput(Eventinfo *lf)
     /* FIM events */
 
     if (lf->filename) {
-        printf("File: %s\n", lf->filename);
+        printf("Attributes:\n");
 
         if (lf->size_after){
-            printf("Size: %s\n", lf->size_after);
+            printf(" - Size: %s\n", lf->size_after);
         }
 
         if (lf->perm_after){
-            printf("Permissions: %6o\n", lf->perm_after);
+            printf(" - Permissions: %6o\n", lf->perm_after);
         }
         if (lf->mtime_after) {
-            printf("Date: %s", ctime(&lf->mtime_after));
+            printf(" - Date: %s", ctime(&lf->mtime_after));
         }
         if (lf->inode_after) {
-            printf("Inode: %ld\n", lf->inode_after);
+            printf(" - Inode: %ld\n", lf->inode_after);
         }
         if (lf->owner_after && lf->uname_after) {
             if (strcmp(lf->uname_after, "") != 0) {
-                printf("User: %s (%s)\n", lf->uname_after, lf->owner_after);
+                printf(" - User: %s (%s)\n", lf->uname_after, lf->owner_after);
             }
         }
         if (lf->gowner_after && lf->gname_after) {
             if (strcmp(lf->gname_after, "") != 0) {
-                printf("Group: %s (%s)\n", lf->gname_after, lf->gowner_after);
+                printf(" - Group: %s (%s)\n", lf->gname_after, lf->gowner_after);
             }
         }
         if (lf->md5_after) {
             if (strcmp(lf->md5_after, "xxx") != 0) {
-                printf("MD5: %s\n", lf->md5_after);
+                printf(" - MD5: %s\n", lf->md5_after);
             }
         }
         
         if (lf->sha1_after) {
             if (strcmp(lf->sha1_after, "xxx") != 0) {
-                printf("SHA1: %s\n", lf->sha1_after);
+                printf(" - SHA1: %s\n", lf->sha1_after);
             }
         }
 
         if (lf->sha256_after) {
             if (strcmp(lf->sha256_after, "xxx") != 0) {
-                printf("SHA256: %s\n", lf->sha256_after);
+                printf(" - SHA256: %s\n", lf->sha256_after);
             }
         }
     }
@@ -331,47 +331,47 @@ void OS_Log(Eventinfo *lf)
 
     /* FIM events */
 
-    if (lf->filename) {
-        fprintf(_aflog, "File: %s\n", lf->filename);
+    if (lf->filename && lf->event_type != FIM_DELETED) {
+        fprintf(_aflog, "Attributes:\n");
 
         if (lf->size_after){
-            fprintf(_aflog, "Size: %s\n", lf->size_after);
+            fprintf(_aflog, " - Size: %s\n", lf->size_after);
         }
 
         if (lf->perm_after){
-            fprintf(_aflog, "Permissions: %6o\n", lf->perm_after);
+            fprintf(_aflog, " - Permissions: %6o\n", lf->perm_after);
         }
         if (lf->mtime_after) {
-            fprintf(_aflog, "Date: %s", ctime(&lf->mtime_after));
+            fprintf(_aflog, " - Date: %s", ctime(&lf->mtime_after));
         }
         if (lf->inode_after) {
-            fprintf(_aflog, "Inode: %ld\n", lf->inode_after);
+            fprintf(_aflog, " - Inode: %ld\n", lf->inode_after);
         }
         if (lf->owner_after && lf->uname_after) {
             if (strcmp(lf->uname_after, "") != 0) {
-                fprintf(_aflog, "User: %s (%s)\n", lf->uname_after, lf->owner_after);
+                fprintf(_aflog, " - User: %s (%s)\n", lf->uname_after, lf->owner_after);
             }
         }
         if (lf->gowner_after && lf->gname_after) {
             if (strcmp(lf->gname_after, "") != 0) {
-                fprintf(_aflog, "Group: %s (%s)\n", lf->gname_after, lf->gowner_after);
+                fprintf(_aflog, " - Group: %s (%s)\n", lf->gname_after, lf->gowner_after);
             }
         }
         if (lf->md5_after) {
             if (strcmp(lf->md5_after, "xxx") != 0) {
-                fprintf(_aflog, "MD5: %s\n", lf->md5_after);
+                fprintf(_aflog, " - MD5: %s\n", lf->md5_after);
             }
         }
         
         if (lf->sha1_after) {
             if (strcmp(lf->sha1_after, "xxx") != 0) {
-                fprintf(_aflog, "SHA1: %s\n", lf->sha1_after);
+                fprintf(_aflog, " - SHA1: %s\n", lf->sha1_after);
             }
         }
 
         if (lf->sha256_after) {
             if (strcmp(lf->sha256_after, "xxx") != 0) {
-                fprintf(_aflog, "SHA256: %s\n", lf->sha256_after);
+                fprintf(_aflog, " - SHA256: %s\n", lf->sha256_after);
             }
         }
     }
