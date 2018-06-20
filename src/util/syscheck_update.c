@@ -120,7 +120,7 @@ int main(int argc, char **argv)
         closedir(sys_dir);
         wdb_delete_fim_all();
 
-        printf("\n** Integrity check database updated.\n\n");
+        printf("\n** Integrity check database updated. Restart the manager to apply changes.\n\n");
         exit(0);
     } else {
         printf("\n** Invalid option '%s'.\n", argv[1]);
@@ -169,6 +169,6 @@ int main(int argc, char **argv)
         wdb_delete_fim(atoi(keys.keyentries[i]->id));
     }
 
-    printf("\n** Integrity check database updated.\n\n");
+    printf("\n** Integrity check database updated. Restart the manager to apply changes.\n\n");
     return (0);
 }
