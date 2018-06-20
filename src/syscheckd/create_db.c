@@ -447,19 +447,22 @@ int run_dbcheck()
         read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]);
         i++;
     }
-    /* Check for deleted files */
-    for (i = 0; i <= syscheck.last_check->rows; i++) {
-        curr_node = syscheck.last_check->table[i];
-        if(curr_node && curr_node->key) {
-            mdebug2("Sending delete msg for file: %s", curr_node->key);
-            snprintf(alert_msg, PATH_MAX + 4, "-1 %s", curr_node->key);
-            send_syscheck_msg(alert_msg);
-            OSHash_Delete(syscheck.fp, curr_node->key);
+
+    if (syscheck.dir[0]) {
+        /* Check for deleted files */
+        for (i = 0; i <= syscheck.last_check->rows; i++) {
+            curr_node = syscheck.last_check->table[i];
+            if(curr_node && curr_node->key) {
+                mdebug2("Sending delete msg for file: %s", curr_node->key);
+                snprintf(alert_msg, PATH_MAX + 4, "-1 %s", curr_node->key);
+                send_syscheck_msg(alert_msg);
+                OSHash_Delete(syscheck.fp, curr_node->key);
+            }
         }
+        /* Duplicate hash table to check for deleted files */
+        syscheck.last_check = OSHash_Duplicate(syscheck.fp);
     }
 
-    /* Duplicate hash table to check for deleted files */
-    syscheck.last_check = OSHash_Duplicate(syscheck.fp);
     return (0);
 }
 
