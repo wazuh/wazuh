@@ -259,9 +259,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddStringToObject(file_diff, "diff", lf->diff);
             }
         }
-        if(lf->changes_msg) {
-            if (strcmp(lf->changes_msg, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "changes_msg", lf->changes_msg);
+        if(lf->changed_fields) {
+            if (strcmp(lf->changed_fields, "") != 0) {
+                cJSON_AddStringToObject(file_diff, "changed_fields", lf->changed_fields);
             }
         }
 
