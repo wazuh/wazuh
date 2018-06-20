@@ -80,9 +80,9 @@ def test_send_file(thread, my_client, file_path):
     before = time.time()
     print("Sending file: {}".format(file_path))
     response = my_client.send_file('sync_c_m', file_path)
-    print "Response: {}".format(response)
+    print("Response: {}".format(response))
     after = time.time()
-    print "Total time: {}".format(after - before)
+    print("Total time: {}".format(after - before))
     thread.stop()
 
 
