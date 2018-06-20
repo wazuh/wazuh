@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
 
 - Fixed active-responses.log definition path on Windows configuration. ([#739](https://github.com/wazuh/wazuh/pull/739))
 - Added warning message when updating Syscheck/Rootcheck database to restart the manager. ([#817](https://github.com/wazuh/wazuh/pull/817))
+- Fix PID file creation checking. ([#822](https://github.com/wazuh/wazuh/pull/822))
+  - Check that the PID file was created and written.
+  - This would prevent service from running multiple processes of the same daemon.
+
 
 ## [v3.3.1]
 
