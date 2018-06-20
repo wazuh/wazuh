@@ -98,7 +98,7 @@ functions = {
         'type': 'local_master'
     },
     'DELETE/agents/': {
-        'function': Agent.remove_agent,
+        'function': Agent.remove_agents,
         'type': 'local_master'
     },
 
