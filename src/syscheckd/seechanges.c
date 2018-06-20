@@ -204,12 +204,12 @@ static int seechanges_dupfile(const char *old, const char *current)
 
     buf[2048] = '\0';
 
-    fpr = fopen(old, "r");
+    fpr = fopen(old, "rb");
     if (!fpr) {
         return (0);
     }
 
-    fpw = fopen(current, "w");
+    fpw = fopen(current, "wb");
     if (!fpw) {
         fclose(fpr);
         return (0);
