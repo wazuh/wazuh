@@ -91,7 +91,6 @@ int intcheck_file(const char *file_name, const char *dir)
             dir,
             file_name);
 #endif
-    minfo("~~~ sending integrity for config: %s", newsum);
     send_msg(newsum, -1);
     return (1);
 }
