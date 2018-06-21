@@ -409,7 +409,7 @@ void audit_parse(char * buffer) {
             match_size = match[1].rm_eo - match[1].rm_so;
             uid = malloc(match_size + 1);
             snprintf (uid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            w_evt->user_name = (char *)get_user("",atoi(uid));
+            w_evt->user_name = strdup(get_user("",atoi(uid)));
             w_evt->user_id = strdup(uid);
             free(uid);
         }
@@ -418,7 +418,7 @@ void audit_parse(char * buffer) {
             match_size = match[1].rm_eo - match[1].rm_so;
             auid = malloc(match_size + 1);
             snprintf (auid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            w_evt->audit_name = (char *)get_user("",atoi(auid));
+            w_evt->audit_name = strdup(get_user("",atoi(auid)));
             w_evt->audit_uid = strdup(auid);
             free(auid);
         }
@@ -427,7 +427,7 @@ void audit_parse(char * buffer) {
             match_size = match[1].rm_eo - match[1].rm_so;
             euid = malloc(match_size + 1);
             snprintf (euid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            w_evt->effective_name = (char *)get_user("",atoi(euid));
+            w_evt->effective_name = strdup(get_user("",atoi(euid)));
             w_evt->effective_uid = strdup(euid);
             free(euid);
         }
@@ -436,7 +436,7 @@ void audit_parse(char * buffer) {
             match_size = match[1].rm_eo - match[1].rm_so;
             gid = malloc(match_size + 1);
             snprintf (gid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            w_evt->group_name = (char *)get_group(atoi(gid));
+            w_evt->group_name = strdup(get_group(atoi(gid)));
             w_evt->group_id = strdup(gid);
             free(gid);
         }
