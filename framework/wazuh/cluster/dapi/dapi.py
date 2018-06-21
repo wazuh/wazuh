@@ -6,7 +6,7 @@
 import wazuh.cluster.dapi.requests_list as rq
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.internal_socket as i_s
-from wazuh.agent import Agent
+from wazuh.agent import Agent, create_exception_dic
 from wazuh.exception import WazuhException
 import json
 from itertools import groupby
@@ -82,14 +82,19 @@ def execute_remote_request(input_json, pretty):
 
 def forward_request(input_json, master_name, pretty, from_master):
     def forward_list(item):
-        name, agent_ids = item
-        if agent_ids:
-            input_json['arguments']['agent_id'] = agent_ids
-        command = 'dapi_forward {}'.format(name) if name != master_name else 'dapi'
-        if command == 'dapi' and from_master:
-            return json.loads(distribute_function(input_json))
-        else:
-            return i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+        try:
+            name, agent_ids = item
+            if name == 'unknown' or name == '':
+                raise WazuhException(3017)
+            if agent_ids:
+                input_json['arguments']['agent_id'] = agent_ids
+            command = 'dapi_forward {}'.format(name) if name != master_name else 'dapi'
+            if command == 'dapi' and from_master:
+                return json.loads(distribute_function(input_json))
+            else:
+                return i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+        except WazuhException as e:
+            return {'error':0, 'data':{'failed_ids':[create_exception_dic(a_id, e) for a_id in agent_ids]}}
 
 
     node_name, is_list = get_solver_node(input_json, master_name)
@@ -103,6 +108,8 @@ def forward_request(input_json, master_name, pretty, from_master):
         final_json = {}
         response = merge_results(responses, final_json)
     else:
+        if node_name == 'unknown' or node_name == '':
+            raise WazuhException(3017)
         command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
         response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
 
