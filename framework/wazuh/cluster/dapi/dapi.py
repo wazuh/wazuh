@@ -94,7 +94,10 @@ def forward_request(input_json, master_name, pretty, from_master):
             else:
                 return i_s.execute('{} {}'.format(command, json.dumps(input_json)))
         except WazuhException as e:
-            return {'error':0, 'data':{'failed_ids':[create_exception_dic(a_id, e) for a_id in agent_ids]}}
+            if agent_ids:
+                return {'error':0, 'data':{'failed_ids':[create_exception_dic(a_id, e) for a_id in agent_ids]}}
+            else:
+                return {}
 
 
     node_name, is_list = get_solver_node(input_json, master_name)
@@ -149,15 +152,15 @@ def get_solver_node(input_json, master_name):
             node_name = Agent.get_agent(input_json['arguments']['agent_id'], select=select_node)['node_name']
             return node_name, False
 
-    elif 'agents' in input_json['function']:
-        agents = Agent.get_agents_overview(select=select_node, sort={'fields': ['node_name'], 'order': 'desc'})['items']
-        node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node_name'))}
-        return node_name, True
-
     elif 'node_id' in input_json['arguments']:
         node_id = input_json['arguments']['node_id']
         del input_json['arguments']['node_id']
         return node_id, False
+
+    else: # agents, syscheck, rootcheck and syscollector
+        agents = Agent.get_agents_overview(select=select_node, sort={'fields': ['node_name'], 'order': 'desc'})['items']
+        node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node_name'))}
+        return node_name, True
 
 
 def merge_results(responses, final_json):
@@ -190,8 +193,7 @@ def merge_results(responses, final_json):
                     final_json[key] = field
             elif field_type == int:
                 if key in final_json:
-                    if field > final_json[key]:
-                        final_json[key] = field
+                    final_json[key] += field
                 else:
                     final_json[key] = field
             else: # str

@@ -143,6 +143,19 @@ class InternalSocketClient(communication.AbstractClient):
         else:
             return communication.AbstractClient.process_request(self, command, data)
 
+    def handle_error(self):
+        nil, t, v, tbinfo = asyncore.compact_traceback()
+
+        try:
+            self_repr = repr(self)
+        except:
+            self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
+
+        self.final_response.write(str(v))
+        logger.error("{} Error: '{}'.".format(self.tag, v))
+        logger.debug("{} Error: '{}' - '{}'.".format(self.tag, t, tbinfo))
+
+
 
 class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverClient):
 
