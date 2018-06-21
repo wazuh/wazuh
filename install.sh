@@ -136,9 +136,6 @@ Install()
         WazuhSetup
     fi
 
-    # Restart Auditd, only in Linux
-    RestartAuditd
-
     # If update, start OSSEC
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade

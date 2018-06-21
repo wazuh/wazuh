@@ -219,16 +219,3 @@ UpdateOldVersions()
         ./add_localfiles.sh $DIRECTORY >> $OSSEC_CONF_FILE
     fi
 }
-
-RestartAuditd()
-{
-    if [ "$NUNAME" = "Linux" ]
-    then
-        if service auditd status > /dev/null 2>&1
-        then
-            service auditd restart
-        else
-            echo "INFO: Auditd is not installed. Who-data for FIM will be disabled."
-        fi
-    fi
-}
