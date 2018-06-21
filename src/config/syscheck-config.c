@@ -91,6 +91,10 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
                 syscheck->filerestrict[pl] = NULL;
             }
         }
+
+        if (vals & CHECK_WHODATA) {
+            syscheck->enable_whodata = 1;
+        }
     }
 
     return (1);

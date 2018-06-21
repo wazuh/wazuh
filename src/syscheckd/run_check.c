@@ -93,6 +93,7 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
+    int audit_socket;
 
 #ifdef INOTIFY_ENABLED
     /* To be used by select */
@@ -124,14 +125,16 @@ void start_daemon()
     sleep(syscheck.tsleep * 10);
 
     // Audit events thread
-    int audit_socket = audit_init();
-    if (audit_socket > 0) {
-        mdebug1("Starting Auditd events reader thread...");
-        audit_added_rules = W_Vector_init(10);
-        atexit(StopAuditThread);
-        w_create_thread(audit_main, &audit_socket);
-    } else {
-        merror("Cannot start Audit events reader thread.");
+    if (syscheck.enable_whodata) {
+        audit_socket = audit_init();
+        if (audit_socket > 0) {
+            mdebug1("Starting Auditd events reader thread...");
+            audit_added_rules = W_Vector_init(10);
+            atexit(StopAuditThread);
+            w_create_thread(audit_main, &audit_socket);
+        } else {
+            merror("Cannot start Audit events reader thread.");
+        }
     }
 
     /* If the scan time/day is set, reset the
