@@ -27,7 +27,10 @@ volatile int audit_thread_active;
 W_Vector *audit_added_rules;
 static regex_t regexCompiled_uid;
 static regex_t regexCompiled_pid;
+static regex_t regexCompiled_ppid;
+static regex_t regexCompiled_gid;
 static regex_t regexCompiled_auid;
+static regex_t regexCompiled_euid;
 static regex_t regexCompiled_cwd;
 static regex_t regexCompiled_pname;
 static regex_t regexCompiled_path0;
@@ -260,19 +263,34 @@ int audit_init(void) {
 
     // Initialize regular expressions
 
-    static const char *pattern_uid = " uid=([0-9]*) ";
+    static const char *pattern_uid = " uid=([^ 0-9]*)";
     if (regcomp(&regexCompiled_uid, pattern_uid, REG_EXTENDED)) {
         merror("Cannot compile uid regular expression.");
         return -1;
     }
-    static const char *pattern_auid = " auid=([0-9]*) ";
+    static const char *pattern_gid = " gid=([^ 0-9]*)";
+    if (regcomp(&regexCompiled_gid, pattern_gid, REG_EXTENDED)) {
+        merror("Cannot compile gid regular expression.");
+        return -1;
+    }
+    static const char *pattern_auid = " auid=([^ 0-9]*)";
     if (regcomp(&regexCompiled_auid, pattern_auid, REG_EXTENDED)) {
         merror("Cannot compile auid regular expression.");
         return -1;
     }
-    static const char *pattern_pid = " pid=([0-9]*) ";
+    static const char *pattern_euid = " euid=([^ 0-9]*)";
+    if (regcomp(&regexCompiled_euid, pattern_euid, REG_EXTENDED)) {
+        merror("Cannot compile euid regular expression.");
+        return -1;
+    }
+    static const char *pattern_pid = " pid=([^ 0-9]*)";
     if (regcomp(&regexCompiled_pid, pattern_pid, REG_EXTENDED)) {
         merror("Cannot compile pid regular expression.");
+        return -1;
+    }
+    static const char *pattern_ppid = " ppid=([^ 0-9]*)";
+    if (regcomp(&regexCompiled_ppid, pattern_ppid, REG_EXTENDED)) {
+        merror("Cannot compile ppid regular expression.");
         return -1;
     }
     static const char *pattern_pname = " exe=\"([^ ]*)\"";
@@ -329,8 +347,11 @@ void audit_parse(char * buffer) {
     regmatch_t match[2];
     int match_size;
     char *uid = NULL;
+    char *gid = NULL;
     char *auid = NULL;
+    char *euid = NULL;
     char *pid = NULL;
+    char *ppid = NULL;
     char *pname = NULL;
     char *path0 = NULL;
     char *path1 = NULL;
@@ -359,6 +380,24 @@ void audit_parse(char * buffer) {
             free(auid);
         }
 
+        if(regexec(&regexCompiled_euid, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            euid = malloc(match_size + 1);
+            snprintf (euid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            w_evt->effective_name = (char *)get_user("",atoi(euid));
+            w_evt->effective_uid = strdup(euid);
+            free(euid);
+        }
+
+        if(regexec(&regexCompiled_gid, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            gid = malloc(match_size + 1);
+            snprintf (gid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            w_evt->group_name = (char *)get_group(atoi(gid));
+            w_evt->group_id = strdup(gid);
+            free(euid);
+        }
+
         if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
             pid = malloc(match_size + 1);
@@ -367,25 +406,30 @@ void audit_parse(char * buffer) {
             free(pid);
         }
 
+        if(regexec(&regexCompiled_ppid, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            ppid = malloc(match_size + 1);
+            snprintf (ppid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            w_evt->ppid = atoi(ppid);
+            free(ppid);
+        }
+
         if(regexec(&regexCompiled_cwd, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
             cwd = malloc(match_size + 1);
             snprintf (cwd, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            mdebug1("CWD: %s",cwd);
         }
 
         if(regexec(&regexCompiled_path0, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
             path0 = malloc(match_size + 1);
             snprintf (path0, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            mdebug1("PATH0: %s",path0);
         }
 
         if(regexec(&regexCompiled_path1, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
             path1 = malloc(match_size + 1);
             snprintf (path1, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            mdebug1("PATH1: %s",path1);
         }
 
         if(regexec(&regexCompiled_pname, buffer, 2, match, 0) == 0) {
@@ -405,7 +449,6 @@ void audit_parse(char * buffer) {
                 w_evt->path = strdup(full_path);
                 free(full_path);
             } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
-                // Get upper folder.
                 w_evt->path = clean_audit_path(cwd, path1);
             } else {
                 full_path = malloc(strlen(path0) + strlen(path1) + 2);
@@ -417,7 +460,15 @@ void audit_parse(char * buffer) {
             free(path0);
             free(path1);
 
-            mdebug1("audit_event: uid=%s, auid=%s, pid=%i, path=%s, pname=%s", w_evt->user_name, w_evt->audit_name, w_evt->process_id, w_evt->path, w_evt->process_name);
+            mdebug1("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                w_evt->user_name,
+                w_evt->audit_name,
+                w_evt->effective_name,
+                w_evt->group_name,
+                w_evt->process_id,
+                w_evt->ppid,
+                w_evt->path,
+                w_evt->process_name);
             realtime_checksumfile(w_evt->path, w_evt);
         }
     }
@@ -554,11 +605,10 @@ void StopAuditThread(void) {
 
 
 void clean_rules(void) {
-    int i;
 
     if (audit_added_rules) {
         mdebug2("Deleting Audit rules...");
-        for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
+        for (int i = 0; i < W_Vector_length(audit_added_rules); i++) {
             audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
         }
         W_Vector_free(audit_added_rules);
