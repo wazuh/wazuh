@@ -48,11 +48,11 @@
 #define CHDIR_ERROR   "(1133): Unable to chdir to directory '%s' due to [(%d)-(%s)]."
 #define LINK_ERROR    "(1134): Unable to link from '%s' to '%s' due to [(%d)-(%s)]."
 #define CHOWN_ERROR   "(1135): Could not chown object '%s' due to [(%d)-(%s)]."
-#define CHOWN_ERROR   "(1135): Could not chown object '%s' due to [(%d)-(%s)]."
 #define EPOLL_ERROR   "(1136): Could not handle epoll descriptor."
 #define LOST_ERROR   "(1137): Lost connection with manager. Setting lock."
 #define KQUEUE_ERROR   "(1138): Could not handle kqueue descriptor."
 #define FTELL_ERROR     "(1139): Could not get position from file '%s' due to [(%d)-(%s)]."
+#define FCLOSE_ERROR  "(1140): Could not close file '%s' due to [(%d)-(%s)]."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."

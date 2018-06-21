@@ -588,6 +588,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_prefilter_cmd = "prefilter_cmd";
     const char *xml_skip_nfs = "skip_nfs";
     const char *xml_nodiff = "nodiff";
+    const char *xml_restart_audit = "restart_audit";
 
 #ifdef WIN32
     const char *xml_arch = "arch";
@@ -945,6 +946,16 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
+            }
+        } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
+            if(strcmp(node[i]->content, "yes") == 0)
+                syscheck->restart_audit = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                syscheck->restart_audit = 0;
+            else
+            {
+                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                return(OS_INVALID);
             }
         } else {
             merror(XML_INVELEM, node[i]->element);

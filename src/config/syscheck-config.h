@@ -99,6 +99,7 @@ typedef struct _config {
 
     int time;                       /* frequency (secs) for syscheck to run */
     int queue;                      /* file descriptor of socket to write to queue */
+    unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
 
     int *opts;                      /* attributes set in the <directories> tag element */
 

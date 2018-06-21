@@ -131,7 +131,7 @@ void start_daemon()
         atexit(StopAuditThread);
         w_create_thread(audit_main, &audit_socket);
     } else {
-        mdebug1("Cannot start Audit events reader thread.");
+        merror("Cannot start Audit events reader thread.");
     }
 
     /* If the scan time/day is set, reset the

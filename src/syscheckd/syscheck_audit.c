@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "syscheck.h"
+#include <os_net/os_net.h>
 
 #define ADD_RULE 1
 #define DELETE_RULE 2
@@ -85,6 +86,9 @@ int check_auditd_enabled(void) {
 
 // Set audit socket configuration
 int set_auditd_config(void) {
+    wfd_t * wfd;
+    int status;
+    char buffer[4096];
 
     if (!IsFile(AUDIT_CONF_FILE)) {
         return 0;
@@ -94,7 +98,10 @@ int set_auditd_config(void) {
 
     FILE *fp;
     fp = fopen(AUDIT_CONF_FILE, "w");
-    if (!fp) return -1;
+    if (!fp) {
+        merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        return -1;
+    }
 
     fprintf(fp, "active = yes\n");
     fprintf(fp, "direction = out\n");
@@ -102,30 +109,52 @@ int set_auditd_config(void) {
     fprintf(fp, "type = builtin\n");
     fprintf(fp, "args = 0640 %s\n", AUDIT_SOCKET);
     fprintf(fp, "format = string\n");
-    fclose(fp);
 
-    mwarn("Auditsp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
+    if (fclose(fp)) {
+        merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+    }
+
+    if (syscheck.restart_audit) {
+        char * command[] = { "service", "auditd", "restart", NULL };
+
+        minfo("Restarting Auditd service.");
+
+        if (wfd = wpopenv(*command, command, W_BIND_STDERR), !wfd) {
+            merror("Could not launch command to restart Auditd: %s (%d)", strerror(errno), errno);
+            return -1;
+        }
+
+        // Print stderr
+
+        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+            mdebug1("auditd: %s", buffer);
+        }
+
+        switch (status = wpclose(wfd), WEXITSTATUS(status)) {
+        case 0:
+            return 0;
+        case 127:
+            // exec error
+            merror("Could not launch command to restart Auditd.");
+            return -1;
+        default:
+            merror("Could not restart Auditd service.");
+            return -1;
+        }
+    } else {
+        mwarn("Auditsp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
+    }
+
     return 1;
 }
 
 
 // Init audit socket
 int init_auditd_socket(void) {
-
     int sfd;
-    struct sockaddr_un addr;
 
-    if ((sfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-        return (-1);
-    }
-
-    memset(&addr, 0, sizeof(struct sockaddr_un));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, AUDIT_SOCKET, sizeof(addr.sun_path)-1);
-
-    if (connect(sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) < 0) {
-        mdebug1("Cannot connect to socket %s\n", AUDIT_SOCKET);
-        close(sfd);
+    if (sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR), sfd < 0) {
+        merror("Cannot connect to socket %s", AUDIT_SOCKET);
         return (-1);
     }
 
@@ -253,7 +282,7 @@ int audit_init(void) {
     // Check audit socket configuration
     switch (set_auditd_config()) {
     case -1:
-        mdebug1("Cannot generate Audit config.");
+        mdebug1("Cannot apply Audit config.");
         return (-1);
     case 0:
         break;
@@ -605,10 +634,11 @@ void StopAuditThread(void) {
 
 
 void clean_rules(void) {
+    int i;
 
     if (audit_added_rules) {
         mdebug2("Deleting Audit rules...");
-        for (int i = 0; i < W_Vector_length(audit_added_rules); i++) {
+        for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
             audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
         }
         W_Vector_free(audit_added_rules);
