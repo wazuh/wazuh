@@ -29,6 +29,8 @@ All notable changes to this project will be documented in this file.
 - Fixed bug in configuration when reading the `repeated_offenders` option in Active Response. ([#873](https://github.com/wazuh/wazuh/pull/873))
 - Fixed variables parser when loading rules. ([#855](https://github.com/wazuh/wazuh/pull/855))
 - Fixed parser files names in the Rootcheck scan. ([#840](https://github.com/wazuh/wazuh/pull/840))
+- Removed frequency offset in rules. ([#827](https://github.com/wazuh/wazuh/pull/827)).
+
 
 ## [v3.3.1]
 
