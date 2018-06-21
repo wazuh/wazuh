@@ -20,6 +20,7 @@
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
+#include "syscheck_op.h"
 
 /* Prototypes */
 static void send_sk_db(void);
