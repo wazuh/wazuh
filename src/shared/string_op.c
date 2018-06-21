@@ -332,3 +332,16 @@ char *convert_windows_string(LPCWSTR string)
 }
 
 #endif
+
+// Free string array
+void free_strarray(char ** array) {
+    int i;
+
+    if (array) {
+        for (i = 0; array[i]; ++i) {
+            free(array[i]);
+        }
+
+        free(array);
+    }
+}

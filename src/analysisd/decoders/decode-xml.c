@@ -224,9 +224,9 @@ int ReadDecodeXML(const char *file)
     }
 
     i = 0;
+
     while (node[i]) {
         int j = 0;
-        pi = NULL;
 
         if (!node[i]->element ||
                 strcasecmp(node[i]->element, xml_decoder) != 0) {
@@ -406,6 +406,12 @@ int ReadDecodeXML(const char *file)
                     merror(INV_DECOPTION, elements[j]->element,
                            elements[j]->content);
                     goto cleanup;
+                }
+
+                pi->plugin_offset = ReadDecodeAttrs(elements[j]->attributes, elements[j]->values);
+
+                if (pi->plugin_offset & AFTER_ERROR) {
+                    merror_exit(DEC_REGEX_ERROR, pi->name);
                 }
             }
 
@@ -652,6 +658,19 @@ int ReadDecodeXML(const char *file)
             }
         }
 
+        // Check the plugin offset
+        if ((pi->plugin_offset & AFTER_PARENT) && !pi->parent) {
+            merror(INV_OFFSET, "after_parent");
+            merror(DEC_REGEX_ERROR, pi->name);
+            goto cleanup;
+        }
+
+        if (pi->plugin_offset & AFTER_PREMATCH && !prematch) {
+            merror(INV_OFFSET, "after_prematch");
+            merror(DEC_REGEX_ERROR, pi->name);
+            goto cleanup;
+        }
+
         /* Compile the regex/prematch */
         if (prematch) {
             os_calloc(1, sizeof(OSRegex), pi->prematch);
@@ -706,6 +725,7 @@ int ReadDecodeXML(const char *file)
             goto cleanup;
         }
 
+        pi = NULL;
         i++;
     } /* while (node[i]) */
 
@@ -722,9 +742,7 @@ cleanup:
     OS_ClearNode(node);
     OS_ClearXML(&xml);
 
-    if (retval == 0) {
-        FreeDecoderInfo(pi);
-    }
+    FreeDecoderInfo(pi);
 
     return retval;
 }

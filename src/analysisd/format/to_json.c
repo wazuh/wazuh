@@ -41,11 +41,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON_AddItemToObject(root, "manager", manager = cJSON_CreateObject());
     data = cJSON_CreateObject();
 
-    if ( lf->time ) {
+    if ( lf->time.tv_sec ) {
 
         char alert_id[19];
         alert_id[18] = '\0';
-        if((snprintf(alert_id, 18, "%ld.%ld", (long int)lf->time, __crt_ftell)) < 0) {
+        if((snprintf(alert_id, 18, "%ld.%ld", (long int)lf->time.tv_sec, __crt_ftell)) < 0) {
             merror("snprintf failed");
         }
 

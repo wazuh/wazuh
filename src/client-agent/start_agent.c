@@ -68,7 +68,7 @@ int connect_server(int initial_id)
 
                 tmp_str++;
             } else {
-                mwarn("Unable to get hostname for '%s'.",
+                mwarn("Unable to reload hostname for '%s'. Using previous address.",
                        agt->server[rc].rip);
                 *tmp_str = '/';
                 tmp_str++;

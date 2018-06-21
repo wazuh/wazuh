@@ -22,6 +22,7 @@ typedef struct _xml_node {
 } xml_node;
 
 #define XML_ERR_LENGTH  128
+#define XML_STASH_LEN   2
 typedef enum _XML_TYPE { XML_ATTR, XML_ELEM, XML_VARIABLE_BEGIN = '$' } XML_TYPE;
 
 /* XML structure */
@@ -36,6 +37,9 @@ typedef struct _OS_XML {
     char **ct;                  /* Content is stored */
     char **el;                  /* The element/attribute name is stored */
     char err[XML_ERR_LENGTH];   /* Error messages are stored in here */
+    unsigned int line;          /* Current line */
+    char stash[XML_STASH_LEN];  /* Ungot characters stash */
+    int stash_i;                /* Stash index */
 } OS_XML;
 
 typedef xml_node **XML_NODE;
@@ -93,4 +97,3 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
                 const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
 
 #endif /* __OS_XML_H */
-

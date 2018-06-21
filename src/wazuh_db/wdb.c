@@ -212,6 +212,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
         if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
+            unlink(path);
             result = -1;
             break;
         }
@@ -220,11 +221,14 @@ int wdb_create_agent_db2(const char * agent_id) {
     fclose(source);
     fclose(dest);
 
-    if (result < 0)
+    if (result < 0) {
+        unlink(path);
         return -1;
+    }
 
     if (chmod(path, 0640) < 0) {
         merror(CHMOD_ERROR, path, errno, strerror(errno));
+        unlink(path);
         return -1;
     }
 
@@ -631,10 +635,13 @@ void wdb_commit_old() {
 
 void wdb_close_old() {
     wdb_t * node;
+    wdb_t * next;
 
     w_mutex_lock(&pool_mutex);
 
-    for (node = db_pool_begin; node && db_pool_size > config.open_db_limit; node = node->next) {
+    for (node = db_pool_begin; node && db_pool_size > config.open_db_limit; node = next) {
+        next = node->next;
+
         if (node->refcount == 0 && !node->transaction) {
             mdebug2("Closing database for agent %s", node->agent_id);
             wdb_close(node);

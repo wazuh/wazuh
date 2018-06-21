@@ -151,14 +151,12 @@ Install()
     fi
 
     # Calling the init script  to start ossec hids during boot
-    if [ "X${update_only}" = "X" ]; then
-        runInit $INSTYPE
-        if [ $? = 1 ]; then
-            notmodified="yes"
-        elif [ "X$START_WAZUH" = "Xyes" ]; then
-            echo "Starting Wazuh..."
-            UpdateStartOSSEC
-        fi
+    runInit $INSTYPE ${update_only}
+    if [ $? = 1 ]; then
+        notmodified="yes"
+    elif [ "X$START_WAZUH" = "Xyes" ]; then
+        echo "Starting Wazuh..."
+        UpdateStartOSSEC
     fi
 
 }
@@ -599,7 +597,7 @@ setEnv()
         case $ANSWER in
             $yesmatch)
                 echo "      Stopping Wazuh..."
-                UpdateStopOSSEC > /dev/null 2>&1
+                UpdateStopOSSEC
                 rm -rf $INSTALLDIR
                 if [ ! $? = 0 ]; then
                     echo "Error deleting ${INSTALLDIR}"

@@ -214,7 +214,7 @@ void LogCollectorStart()
                     logff[i].file = NULL;
                 }
                 logff[i].read = read_djbmultilog;
-            } else if (logff[i].logformat[0] >= '0' && logff[i].logformat[0] <= '9') {
+            } else if (strncmp(logff[i].logformat, "multi-line:", 10) == 0) {
                 logff[i].read = read_multiline;
             } else if (strcmp("audit", logff[i].logformat) == 0) {
                 logff[i].read = read_audit;
@@ -283,6 +283,10 @@ void LogCollectorStart()
 
         /* Check which file is available */
         for (i = 0; i <= max_file; i++) {
+            if (logff[i].duplicated) {
+                continue;
+            }
+
             if (!logff[i].fp) {
                 /* Run the command */
                 if (logff[i].command && (f_check % 2)) {
@@ -645,7 +649,8 @@ int handle_file(int i, int do_fseek, int do_log)
                             NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (logff[i].h == INVALID_HANDLE_VALUE) {
         if (do_log == 1) {
-            merror(FOPEN_ERROR, logff[i].file, errno, strerror(errno));
+            DWORD error = GetLastError();
+            merror(FOPEN_ERROR, logff[i].file, (int)error, win_strerror(error));
         }
         return (-1);
     }

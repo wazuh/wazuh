@@ -263,7 +263,11 @@ void * run_worker(__attribute__((unused)) void * args) {
     int * peer;
     int status;
     int terminal;
-    fd_set fdset;
+    wnotify_t * notify;
+
+    if (notify = wnotify_init(1), !notify) {
+        merror_exit("at run_worker(): wnotify_init(): %s (%d)", strerror(errno), errno);
+    }
 
     while (running) {
         // Dequeue peer
@@ -286,23 +290,26 @@ void * run_worker(__attribute__((unused)) void * args) {
         peer = queue_pop(sock_queue);
         w_mutex_unlock(&queue_mutex);
 
-        mdebug1("Dispatching new client.");
+        mdebug1("Dispatching new client (%d)", *peer);
+
+        if (wnotify_add(notify, *peer) < 0) {
+            merror("at run_worker(): wnotify_add(%d): %s (%d)", *peer, strerror(errno), errno);
+            goto error;
+        }
+
         status = 0;
 
         while (running && !status) {
-            struct timeval timeout = { 1, 0 };
 
             // Wait for socket
 
-            FD_ZERO(&fdset);
-            FD_SET(*peer, &fdset);
-
-            switch (select(*peer + 1, &fdset, NULL, NULL, &timeout)) {
+            switch (wnotify_wait(notify, 1000)) {
             case -1:
                 if (errno == EINTR) {
-                    minfo("at run_worker(): select(): %s", strerror(EINTR));
+                    mdebug1("at run_worker(): wnotify_wait(): %s", strerror(EINTR));
                 } else {
-                    merror_exit("at run_worker(): select(): %s", strerror(errno));
+                    merror("at run_worker(): wnotify_wait(%d): %s", *peer, strerror(errno));
+                    status = 1;
                 }
 
                 continue;
@@ -318,7 +325,7 @@ void * run_worker(__attribute__((unused)) void * args) {
                 break;
 
             case 0:
-                mdebug1("Client disconnected.");
+                mdebug1("Client %d disconnected.", *peer);
                 status = 1;
                 break;
 
@@ -343,10 +350,16 @@ void * run_worker(__attribute__((unused)) void * args) {
             }
         }
 
+        if (wnotify_delete(notify, *peer) < 0) {
+            merror("at run_worker(): wnotify_delete(%d): %s (%d)", *peer, strerror(errno), errno);
+        }
+
+error:
         close(*peer);
         free(peer);
     }
 
+    wnotify_close(notify);
     return NULL;
 }
 

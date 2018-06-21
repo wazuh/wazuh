@@ -359,7 +359,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
     if (syslog_config->group) {
         int found = 0;
 
-        if (!(rule && (groups = cJSON_GetObjectItem(json_data, "groups"), groups))) {
+        if (!(rule && (groups = cJSON_GetObjectItem(rule, "groups"), groups))) {
             return 0;
         }
 

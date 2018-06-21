@@ -90,6 +90,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
     vulnerability_detector->flags.u_flags.update_nvd = 0;
     vulnerability_detector->flags.u_flags.update_ubuntu = 0;
     vulnerability_detector->flags.u_flags.update_redhat = 0;
+    vulnerability_detector->flags.u_flags.attempted_ubuntu = 0;
+    vulnerability_detector->flags.u_flags.attempted_redhat = 0;
     vulnerability_detector->flags.u_flags.precise = 0;
     vulnerability_detector->flags.u_flags.trusty = 0;
     vulnerability_detector->flags.u_flags.xenial = 0;
@@ -103,6 +105,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
     module->context = &WM_VULNDETECTOR_CONTEXT;
     module->data = vulnerability_detector;
 
+    if (!nodes)
+        return 0;
 
     for (i = 0; nodes[i]; i++) {
         if (!nodes[i]->element) {
@@ -157,7 +161,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                                 if (version[k] == ',' || out) {
                                     version[k] = '\0';
                                     if (!strcmp(version, "12")) {
-                                        vulnerability_detector->flags.u_flags.precise = 1;
+                                        mwarn("Ubuntu 12 is not currrently supported for vulnerability-detector wodle.");
+                                        //vulnerability_detector->flags.u_flags.precise = 1;
                                     } else if (!strcmp(version, "14")) {
                                         vulnerability_detector->flags.u_flags.trusty = 1;
                                     } else if (!strcmp(version, "16")) {
@@ -200,7 +205,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
                                 if (version[k] == ',' || out) {
                                     version[k] = '\0';
                                     if (!strcmp(version, "5")) {
-                                        vulnerability_detector->flags.u_flags.rh5 = 1;
+                                        mwarn("CentOS/RedHat 5 is not currrently supported for vulnerability-detector wodle.");
+                                        //vulnerability_detector->flags.u_flags.rh5 = 1;
                                     } else if (!strcmp(version, "6")) {
                                         vulnerability_detector->flags.u_flags.rh6 = 1;
                                     } else if (!strcmp(version, "7")) {

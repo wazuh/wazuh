@@ -31,6 +31,7 @@ class Rule:
         self.status = None
         self.groups = []
         self.pci = []
+        self.gdpr = []
         self.details = {}
 
     def __str__(self):
@@ -60,9 +61,11 @@ class Rule:
         else:
             raise WazuhException(1204)
 
+
     def to_dict(self):
-        dictionary = {'file': self.file, 'path': self.path, 'id': self.id, 'level': self.level, 'description': self.description, 'status': self.status, 'groups': self.groups, 'pci': self.pci, 'details': self.details}
-        return dictionary
+        return {'file': self.file, 'path': self.path, 'id': self.id, 'level': self.level, 'description': self.description,
+                'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr, 'details': self.details}
+
 
     def set_group(self, group):
         """
@@ -72,6 +75,7 @@ class Rule:
 
         Rule.__add_unique_element(self.groups, group)
 
+
     def set_pci(self, pci):
         """
         Adds a pci requirement to the pci list.
@@ -79,6 +83,15 @@ class Rule:
         """
 
         Rule.__add_unique_element(self.pci, pci)
+
+
+    def set_gdpr(self, gdpr):
+        """
+        Adds a gdpr requirement to the gdpr list.
+        :param gdpr: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.gdpr, gdpr)
+
 
     def add_detail(self, detail, value):
         """
@@ -97,6 +110,7 @@ class Rule:
         else:
             self.details[detail] = value
 
+
     @staticmethod
     def __add_unique_element(src_list, element):
         new_list = []
@@ -112,6 +126,7 @@ class Rule:
                 if i not in src_list:
                     src_list.append(i)
 
+
     @staticmethod
     def __check_status(status):
         if status is None:
@@ -120,6 +135,7 @@ class Rule:
             return status
         else:
             raise WazuhException(1202)
+
 
     @staticmethod
     def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -212,14 +228,16 @@ class Rule:
 
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
+
     @staticmethod
-    def get_rules(status=None, group=None, pci=None, path=None, file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_rules(status=None, group=None, pci=None, gdpr=None, path=None, file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets a list of rules.
 
         :param status: Filters by status: enabled, disabled, all.
         :param group: Filters by group.
         :param pci: Filters by pci requirement.
+        :param gdpr: Filter by gdpr requirement.
         :param file: Filters by file of the rule.
         :param path: Filters by file of the path.
         :param id: Filters by rule ID.
@@ -246,6 +264,9 @@ class Rule:
                 rules.remove(r)
                 continue
             elif pci and pci not in r.pci:
+                rules.remove(r)
+                continue
+            elif gdpr and gdpr not in r.gdpr:
                 rules.remove(r)
                 continue
             elif path and path != r.path:
@@ -276,6 +297,7 @@ class Rule:
 
         return {'items': cut_array(rules, offset, limit), 'totalItems': len(rules)}
 
+
     @staticmethod
     def get_groups(offset=0, limit=common.database_limit, sort=None, search=None):
         """
@@ -303,6 +325,35 @@ class Rule:
 
         return {'items': cut_array(groups, offset, limit), 'totalItems': len(groups)}
 
+
+    @staticmethod
+    def _get_requirement(offset, limit, sort, search, requirement):
+        """
+        Get the requirements used in the rules
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :param requirement: requirement to get (pci or dgpr)
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        if requirement != 'pci' and requirement != 'gdpr':
+            raise WazuhException(1205, requirement)
+
+        req = list({req for rule in Rule.get_rules(limit=0)['items'] for req in rule.to_dict()[requirement]})
+
+        if search:
+            req = search_array(req, search['value'], search['negation'])
+
+        if sort:
+            req = sort_array(req, order=sort['order'])
+        else:
+            req = sort_array(req)
+
+        return {'items': cut_array(req, offset, limit), 'totalItems': len(req)}
+
+
     @staticmethod
     def get_pci(offset=0, limit=common.database_limit, sort=None, search=None):
         """
@@ -314,21 +365,22 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        pci = set()
+        return Rule._get_requirement(offset, limit, sort, search, 'pci')
 
-        for rule in Rule.get_rules(limit=0)['items']:
-            for pci_item in rule.pci:
-                pci.add(pci_item)
 
-        if search:
-            pci = search_array(pci, search['value'], search['negation'])
+    @staticmethod
+    def get_gdpr(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Get all the GDPR requirements used in the rules.
 
-        if sort:
-            pci = sort_array(pci, order=sort['order'])
-        else:
-            pci = sort_array(pci)
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement(offset, limit, sort, search, 'gdpr')
 
-        return {'items': cut_array(pci, offset, limit), 'totalItems': len(pci)}
 
     @staticmethod
     def __load_rules_from_file(rule_file, rule_path, rule_status):
@@ -373,15 +425,19 @@ class Rule:
                             groups.extend(general_groups)
 
                             pci_groups = []
+                            gdpr_groups = []
                             ossec_groups = []
                             for g in groups:
                                 if 'pci_dss_' in g:
                                     pci_groups.append(g.strip()[8:])
+                                elif 'gdpr_' in g:
+                                    gdpr_groups.append(g.strip()[5:])
                                 else:
                                     ossec_groups.append(g)
 
                             rule.set_group(ossec_groups)
                             rule.set_pci(pci_groups)
+                            rule.set_gdpr(gdpr_groups)
 
                             rules.append(rule)
         except Exception as e:

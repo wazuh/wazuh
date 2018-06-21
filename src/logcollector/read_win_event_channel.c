@@ -366,17 +366,8 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     wchar_t *buffer = NULL;
     int result = 0;
     int status = 0;
-    int clean_tmp = 0;
     EVT_HANDLE bookmark = NULL;
     FILE *fp = NULL;
-    char tmp_file[OS_MAXSTR];
-
-    /* Create temporary bookmark file name */
-    snprintf(tmp_file,
-             sizeof(tmp_file),
-             "%s/%s-XXXXXX",
-             TMP_DIR,
-             channel->bookmark_name);
 
     if ((bookmark = EvtCreateBookmark(NULL)) == NULL) {
         mferror(
@@ -437,33 +428,20 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if (mkstemp_ex(tmp_file)) {
-        mferror(
-            "Could not mkstemp_ex() temporary bookmark (%s) for (%s)",
-            tmp_file,
-            channel->evt_log);
-        goto cleanup;
-    }
-
-    if ((fp = fopen(tmp_file, "w")) == NULL) {
-        mferror(
-            "Could not fopen() temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            tmp_file,
+    if ((fp = fopen(channel->bookmark_filename, "w")) == NULL) {
+        mwarn(
+            "Could not fopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
             channel->evt_log,
             errno,
             strerror(errno));
         goto cleanup;
     }
 
-    /* Help to determine whether or not temporary file needs to be removed when
-     * function cleans up after itself
-     */
-    clean_tmp = 1;
-
     if ((fwrite(buffer, 1, size, fp)) < size) {
         mferror(
-            "Could not fwrite() to temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            tmp_file,
+            "Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
             channel->evt_log,
             errno,
             strerror(errno));
@@ -471,15 +449,6 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     fclose(fp);
-
-    if (rename_ex(tmp_file, channel->bookmark_filename)) {
-        mferror(
-            "Could not rename_ex() temporary bookmark (%s) to (%s) for (%s)",
-            tmp_file,
-            channel->bookmark_filename,
-            channel->evt_log);
-        goto cleanup;
-    }
 
     /* Success */
     status = 1;
@@ -493,13 +462,6 @@ cleanup:
 
     if (fp) {
         fclose(fp);
-    }
-
-    if (status == 0 && clean_tmp == 1 && unlink(tmp_file)) {
-        mferror(DELETE_ERROR,
-                 tmp_file,
-                 errno,
-                 strerror(errno));
     }
 
     return (status);

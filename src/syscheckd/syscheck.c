@@ -105,7 +105,7 @@ int Start_win32_Syscheck()
         }
         syscheck.registry[0].entry = NULL;
 
-        mwarn("Syscheck disabled.");
+        minfo("Syscheck disabled.");
     }
 
     /* Rootcheck config */
@@ -113,7 +113,6 @@ int Start_win32_Syscheck()
         syscheck.rootcheck = 1;
     } else {
         syscheck.rootcheck = 0;
-        mwarn("Rootcheck module disabled.");
     }
 
     /* Print options */
@@ -255,7 +254,7 @@ int main(int argc, char **argv)
         }
 
         if (!test_config) {
-            mwarn("Syscheck disabled.");
+            minfo("Syscheck disabled.");
         }
     }
 
@@ -264,7 +263,6 @@ int main(int argc, char **argv)
         syscheck.rootcheck = 1;
     } else {
         syscheck.rootcheck = 0;
-        mwarn("Rootcheck module disabled.");
     }
 
     /* Exit if testing config */
@@ -280,6 +278,14 @@ int main(int argc, char **argv)
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
+    }
+
+    /* Start signal handling */
+    StartSIG(ARGV0);
+
+    /* Create pid */
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        merror_exit(PID_ERROR);
     }
 
     /* Initial time to settle */
@@ -298,14 +304,6 @@ int main(int argc, char **argv)
                 merror_exit(QUEUE_FATAL, DEFAULTQPATH);
             }
         }
-    }
-
-    /* Start signal handling */
-    StartSIG(ARGV0);
-
-    /* Create pid */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
     }
 
     /* Start up message */

@@ -244,7 +244,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
     const char * s_changes;
     sk_sum_t sum;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_LOAD) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_LOAD) < 0) {
         merror("at wdb_syscheck_load(): cannot cache statement");
         return -1;
     }
@@ -348,7 +348,7 @@ int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file
 int wdb_fim_find_entry(wdb_t * wdb, const char * path) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_FIND_ENTRY) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_FIND_ENTRY) < 0) {
         merror("at wdb_find_file2(): cannot cache statement");
         return -1;
     }
@@ -387,7 +387,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
         return -1;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_INSERT_ENTRY) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_INSERT_ENTRY) < 0) {
         merror("at wdb_find_file2(): cannot cache statement");
         return -1;
     }
@@ -420,7 +420,7 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_stmt *stmt = NULL;
     char s_perm[16];
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_UPDATE_ENTRY) > 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_UPDATE_ENTRY) < 0) {
         merror("at wdb_find_file2(): cannot cache statement");
         return -1;
     }

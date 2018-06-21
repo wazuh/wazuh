@@ -57,4 +57,7 @@ char * wstr_replace(const char * string, const char * search, const char * repla
 // Locate first occurrence of non escaped character in string
 char * wstr_chr(char * str, int character);
 
+// Free string array
+void free_strarray(char ** array);
+
 #endif

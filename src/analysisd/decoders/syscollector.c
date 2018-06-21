@@ -114,10 +114,6 @@ int DecodeSyscollector(Eventinfo *lf)
 
 int decode_osinfo(char *agent_id, cJSON * logJSON) {
 
-    char * msg = NULL;
-
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
-
     cJSON * inventory;
 
     if (inventory = cJSON_GetObjectItem(logJSON, "inventory"), inventory) {
@@ -135,6 +131,9 @@ int decode_osinfo(char *agent_id, cJSON * logJSON) {
         cJSON * sysname = cJSON_GetObjectItem(inventory, "sysname");
         cJSON * release = cJSON_GetObjectItem(inventory, "release");
         cJSON * version = cJSON_GetObjectItem(inventory, "version");
+
+        char * msg = NULL;
+        os_calloc(OS_MAXSTR, sizeof(char), msg);
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s osinfo save", agent_id);
 
@@ -226,7 +225,6 @@ int decode_osinfo(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
-            free(msg);
             return -1;
         }
 
@@ -238,7 +236,6 @@ int decode_osinfo(char *agent_id, cJSON * logJSON) {
 int decode_port(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
-
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
     cJSON * inventory;
@@ -353,7 +350,6 @@ int decode_port(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
-            free(msg);
             return -1;
         }
 
@@ -373,9 +369,10 @@ int decode_port(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s port del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
-                free(msg);
                 return -1;
             }
+        } else {
+            free(msg);
         }
     }
 
@@ -383,10 +380,6 @@ int decode_port(char *agent_id, cJSON * logJSON) {
 }
 
 int decode_hardware(char *agent_id, cJSON * logJSON) {
-
-    char * msg = NULL;
-
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
 
     cJSON * inventory;
 
@@ -399,6 +392,9 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
         cJSON * cpu_mhz = cJSON_GetObjectItem(inventory, "cpu_mhz");
         cJSON * ram_total = cJSON_GetObjectItem(inventory, "ram_total");
         cJSON * ram_free = cJSON_GetObjectItem(inventory, "ram_free");
+
+        char * msg = NULL;
+        os_calloc(OS_MAXSTR, sizeof(char), msg);
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s hardware save", agent_id);
 
@@ -462,7 +458,6 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
-            free(msg);
             return -1;
         }
     }
@@ -473,7 +468,6 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
 int decode_program(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
-
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
     cJSON * program;
@@ -562,9 +556,10 @@ int decode_program(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s program del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
-                free(msg);
                 return -1;
             }
+        } else {
+            free(msg);
         }
     }
 
@@ -573,9 +568,8 @@ int decode_program(char *agent_id, cJSON * logJSON) {
 
 int decode_process(char *agent_id, cJSON * logJSON) {
 
-    char * msg = NULL;
     int i;
-
+    char * msg = NULL;
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
     cJSON * inventory;
@@ -835,7 +829,6 @@ int decode_process(char *agent_id, cJSON * logJSON) {
         }
 
         if (sc_send_db(msg) < 0) {
-            free(msg);
             return -1;
         }
 
@@ -855,9 +848,10 @@ int decode_process(char *agent_id, cJSON * logJSON) {
             snprintf(msg, OS_MAXSTR - 1, "agent %s process del %d", agent_id, scan_id->valueint);
 
             if (sc_send_db(msg) < 0) {
-                free(msg);
                 return -1;
             }
+        } else {
+            free(msg);
         }
     }
 

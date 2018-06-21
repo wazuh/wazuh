@@ -18,49 +18,42 @@
 #include "os_xml.h"
 #include "os_xml_internal.h"
 
-#define STASH_LENGTH 2
-
 /* Prototypes */
-static int _oscomment(FILE *fp) __attribute__((nonnull));
+static int _oscomment(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
 static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _writememory(const char *str, XML_TYPE type, size_t size,
                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
-static int _xml_fgetc(FILE *fp) __attribute__((nonnull));
+static int _xml_fgetc(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
 static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static void xml_error(OS_XML *_lxml, const char *msg, ...) __attribute__((format(printf, 2, 3), nonnull));
 
-/* Current line */
-static unsigned int _line;
-static char _stash[STASH_LENGTH];
-static int _stash_i;
-
 /* Local fgetc */
-static int _xml_fgetc(FILE *fp)
+static int _xml_fgetc(FILE *fp, OS_XML *_lxml)
 {
     int c;
 
     // If there is any character in the stash, get it
-    c = (_stash_i > 0) ? _stash[--_stash_i] : fgetc(fp);
+    c = (_lxml->stash_i > 0) ? _lxml->stash[--_lxml->stash_i] : fgetc(fp);
 
     if (c == '\n') { /* add newline */
-        _line++;
+        _lxml->line++;
     }
 
     return (c);
 }
 
-static int _xml_ungetc(int c)
+static int _xml_ungetc(int c, OS_XML *_lxml)
 {
     // If stash is full, give up
-    if (_stash_i >= STASH_LENGTH) {
+    if (_lxml->stash_i >= XML_STASH_LEN) {
         return -1;
     }
 
-    _stash[_stash_i++] = c;
+    _lxml->stash[_lxml->stash_i++] = c;
 
     if (c == '\n') { /* substract newline */
-        _line--;
+        _lxml->line--;
     }
 
     return 0;
@@ -74,7 +67,7 @@ static void xml_error(OS_XML *_lxml, const char *msg, ...)
     memset(_lxml->err, '\0', XML_ERR_LENGTH);
     vsnprintf(_lxml->err, XML_ERR_LENGTH - 1, msg, args);
     va_end(args);
-    _lxml->err_line = _line;
+    _lxml->err_line = _lxml->line;
 }
 
 /* Clear memory */
@@ -108,6 +101,8 @@ void OS_ClearXML(OS_XML *_lxml)
     _lxml->ln = NULL;
 
     memset(_lxml->err, '\0', XML_ERR_LENGTH);
+    _lxml->line = 0;
+    _lxml->stash_i = 0;
 }
 
 /* Read na XML file and generate the necessary structs */
@@ -137,10 +132,10 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
     }
 
     /* Zero the line */
-    _line = 1;
+    _lxml->line = 1;
 
     // Reset stash
-    _stash_i = 0;
+    _lxml->stash_i = 0;
 
     if ((r = _ReadElem(fp, 0, _lxml)) < 0) { /* First position */
         if (r != LEOF) {
@@ -161,31 +156,31 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
     return (0);
 }
 
-static int _oscomment(FILE *fp)
+static int _oscomment(FILE *fp, OS_XML *_lxml)
 {
     int c;
-    if ((c = _xml_fgetc(fp)) == _R_COM) {
-        while ((c = _xml_fgetc(fp)) != EOF) {
+    if ((c = _xml_fgetc(fp, _lxml)) == _R_COM) {
+        while ((c = _xml_fgetc(fp, _lxml)) != EOF) {
             if (c == _R_COM) {
-                if ((c = _xml_fgetc(fp)) == _R_CONFE) {
+                if ((c = _xml_fgetc(fp, _lxml)) == _R_CONFE) {
                     return (1);
                 }
-                _xml_ungetc(c);
+                _xml_ungetc(c, _lxml);
             } else if (c == '-') {  /* W3C way of finishing comments */
-                if ((c = _xml_fgetc(fp)) == '-') {
-                    if ((c = _xml_fgetc(fp)) == _R_CONFE) {
+                if ((c = _xml_fgetc(fp, _lxml)) == '-') {
+                    if ((c = _xml_fgetc(fp, _lxml)) == _R_CONFE) {
                         return (1);
                     }
-                    _xml_ungetc(c);
+                    _xml_ungetc(c, _lxml);
                 }
-                _xml_ungetc(c);
+                _xml_ungetc(c, _lxml);
             } else {
                 continue;
             }
         }
         return (-1);
     } else {
-        _xml_ungetc(c);
+        _xml_ungetc(c, _lxml);
     }
     return (0);
 }
@@ -206,7 +201,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
     memset(cont, '\0', XML_MAXSIZE + 1);
     memset(closedelim, '\0', XML_MAXSIZE + 1);
 
-    while ((c = _xml_fgetc(fp)) != EOF) {
+    while ((c = _xml_fgetc(fp, _lxml)) != EOF) {
         if (c == '\\') {
             prevv = c;
         } else if (prevv == '\\') {
@@ -224,7 +219,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
         /* Check for comments */
         if (c == _R_CONFS) {
             int r = 0;
-            if ((r = _oscomment(fp)) < 0) {
+            if ((r = _oscomment(fp, _lxml)) < 0) {
                 xml_error(_lxml, "XMLERR: Comment not closed.");
                 return (-1);
             } else if (r == 1) {
@@ -235,11 +230,11 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
         /* Real checking */
         if ((location == -1) && (prevv == 0)) {
             if (c == _R_CONFS) {
-                if ((c = _xml_fgetc(fp)) == '/') {
+                if ((c = _xml_fgetc(fp, _lxml)) == '/') {
                     xml_error(_lxml, "XMLERR: Element not opened.");
                     return (-1);
                 } else {
-                    _xml_ungetc(c);
+                    _xml_ungetc(c, _lxml);
                 }
                 location = 0;
             } else {
@@ -311,13 +306,13 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 return (0);
             }
         } else if ((location == 1) && (c == _R_CONFS) && (prevv == 0)) {
-            if ((c = _xml_fgetc(fp)) == '/') {
+            if ((c = _xml_fgetc(fp, _lxml)) == '/') {
                 cont[count] = '\0';
                 count = 0;
                 location = 2;
             } else {
-                _xml_ungetc(c);
-                _xml_ungetc(_R_CONFS);
+                _xml_ungetc(c, _lxml);
+                _xml_ungetc(_R_CONFS, _lxml);
 
                 if (_ReadElem(fp, parent + 1, _lxml) < 0) {
                     return (-1);
@@ -404,7 +399,7 @@ static int _writememory(const char *str, XML_TYPE type, size_t size,
         goto fail;
     }
     _lxml->ln = tmp3;
-    _lxml->ln[_lxml->cur] = _line;
+    _lxml->ln[_lxml->cur] = _lxml->line;
 
     /* Attributes does not need to be closed */
     if (type == XML_ATTR) {
@@ -450,7 +445,7 @@ static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml)
     memset(attr, '\0', XML_MAXSIZE + 1);
     memset(value, '\0', XML_MAXSIZE + 1);
 
-    while ((c = _xml_fgetc(fp)) != EOF) {
+    while ((c = _xml_fgetc(fp, _lxml)) != EOF) {
         if (count >= XML_MAXSIZE) {
             attr[count - 1] = '\0';
             xml_error(_lxml,
@@ -491,11 +486,11 @@ static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 i--;
             }
 
-            c = _xml_fgetc(fp);
+            c = _xml_fgetc(fp, _lxml);
             if ((c != '"') && (c != '\'')) {
                 unsigned short int _err = 1;
                 if (isspace(c)) {
-                    while ((c = _xml_fgetc(fp)) != EOF) {
+                    while ((c = _xml_fgetc(fp, _lxml)) != EOF) {
                         if (isspace(c)) {
                             continue;
                         } else if ((c == '"') || (c == '\'')) {
@@ -533,7 +528,7 @@ static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml)
             if (_writecontent(value, count + 1, _lxml->cur - 1, _lxml) < 0) {
                 return (-1);
             }
-            c = _xml_fgetc(fp);
+            c = _xml_fgetc(fp, _lxml);
             if (isspace(c)) {
                 return (_getattributes(fp, parent, _lxml));
             } else if (c == _R_CONFE) {

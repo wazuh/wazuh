@@ -57,6 +57,9 @@ int DecodeSyscollector(Eventinfo *lf);
 /* For stats */
 static void DumpLogstats(void);
 
+// Message handler thread
+void * ad_input_main(void * args);
+
 /** Global definitions **/
 int today;
 int thishour;
@@ -64,7 +67,7 @@ int prev_year;
 char prev_month[4];
 int __crt_hour;
 int __crt_wday;
-time_t c_time;
+struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 
@@ -79,6 +82,7 @@ static int hourly_events;
 static int hourly_syscheck;
 static int hourly_firewall;
 
+static w_queue_t * input_queue;
 
 /* Print help statement */
 __attribute__((noreturn))
@@ -543,8 +547,7 @@ __attribute__((noreturn))
 void OS_ReadMSG_analysisd(int m_queue)
 #endif
 {
-    int i;
-    char msg[OS_MAXSTR + 1];
+    char * msg = NULL;
     Eventinfo *lf;
 
     RuleInfo *stats_rule = NULL;
@@ -630,7 +633,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     mdebug1("Active response Init completed.");
 
     /* Get current time before starting */
-    c_time = time(NULL);
+    gettime(&c_timespec);
 
     /* Start the hourly/weekly stats */
     if (Start_Hour() < 0) {
@@ -648,9 +651,6 @@ void OS_ReadMSG_analysisd(int m_queue)
         stats_rule->group = "stats,";
         stats_rule->comment = "Excessive number of events (above normal).";
     }
-
-    /* Do some cleanup */
-    memset(msg, '\0', OS_MAXSTR + 1);
 
     /* Initialize the logs */
     {
@@ -672,6 +672,11 @@ void OS_ReadMSG_analysisd(int m_queue)
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 
+    // Create input buffer and thread
+
+    input_queue = queue_init(Config.queue_size);
+    w_create_thread(ad_input_main, &m_queue);
+
     mdebug1("Startup completed. Waiting for new messages..");
 
     if (Config.custom_alert_output) {
@@ -682,21 +687,23 @@ void OS_ReadMSG_analysisd(int m_queue)
     while (1) {
         os_calloc(1, sizeof(Eventinfo), lf);
         os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+        free(msg);
+        msg = NULL;
 
         DEBUG_MSG("%s: DEBUG: Waiting for msgs - %d ", ARGV0, (int)time(0));
 
         /* Receive message from queue */
-        if ((i = OS_RecvUnix(m_queue, OS_MAXSTR, msg))) {
+        if (msg = queue_pop_ex(input_queue), msg) {
             RuleNode *rulenode_pt;
 
             /* Get the time we received the event */
-            c_time = time(NULL);
+            gettime(&c_timespec);
 
             /* Default values for the log info */
             Zero_Eventinfo(lf);
 
             /* Check for a valid message */
-            if (i < 4) {
+            if (strlen(msg) < 4) {
                 merror(IMSG_ERROR, msg);
                 Free_Eventinfo(lf);
                 continue;
@@ -896,17 +903,17 @@ void OS_ReadMSG_analysisd(int m_queue)
                 /* Check ignore time */
                 if (currently_rule->ignore_time) {
                     if (currently_rule->time_ignored == 0) {
-                        currently_rule->time_ignored = lf->time;
+                        currently_rule->time_ignored = lf->time.tv_sec;
                     }
                     /* If the current time - the time the rule was ignored
                      * is less than the time it should be ignored,
                      * leave (do not alert again)
                      */
-                    else if ((lf->time - currently_rule->time_ignored)
+                    else if ((lf->time.tv_sec - currently_rule->time_ignored)
                              < currently_rule->ignore_time) {
                         break;
                     } else {
-                        currently_rule->time_ignored = lf->time;
+                        currently_rule->time_ignored = lf->time.tv_sec;
                     }
                 }
 
@@ -1600,4 +1607,37 @@ static void DumpLogstats()
     hourly_firewall = 0;
 
     fclose(flog);
+}
+
+// Message handler thread
+void * ad_input_main(void * args) {
+    int m_queue = *(int *)args;
+    char buffer[OS_MAXSTR + 1] = "";
+    char * copy;
+    int reported = 0;
+
+    mdebug1("Input message handler thread started.");
+
+    while (1) {
+        if (OS_RecvUnix(m_queue, OS_MAXSTR, buffer)) {
+            w_mutex_lock(&input_queue->mutex);
+
+            if (queue_full(input_queue)) {
+                mdebug2("Discarding input event, head='%c'", buffer[0]);
+
+                if (!reported) {
+                    reported = 1;
+                    mwarn("Input buffer is full (%zu). Events may be lost.", input_queue->size);
+                }
+            } else {
+                os_strdup(buffer, copy);
+                queue_push(input_queue, copy);
+                w_cond_signal(&input_queue->available);
+            }
+
+            w_mutex_unlock(&input_queue->mutex);
+        }
+    }
+
+    return NULL;
 }
