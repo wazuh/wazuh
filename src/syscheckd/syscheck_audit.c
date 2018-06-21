@@ -38,7 +38,21 @@ static regex_t regexCompiled_path0;
 static regex_t regexCompiled_path1;
 
 
-// Covert audit relative paths into absolute paths
+void free_audit_event(whodata_evt *w_evt) {
+    free(w_evt->user_name);
+    free(w_evt->user_id);
+    free(w_evt->audit_name);
+    free(w_evt->audit_uid);
+    free(w_evt->effective_name);
+    free(w_evt->effective_uid);
+    free(w_evt->group_name);
+    free(w_evt->group_id);
+    free(w_evt->path);
+    free(w_evt->process_name);
+    free(w_evt);
+}
+
+// Convert audit relative paths into absolute paths
 char *clean_audit_path(char *cwd, char *path) {
 
     char *file_ptr = path;
@@ -424,7 +438,7 @@ void audit_parse(char * buffer) {
             snprintf (gid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             w_evt->group_name = (char *)get_group(atoi(gid));
             w_evt->group_id = strdup(gid);
-            free(euid);
+            free(gid);
         }
 
         if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
@@ -500,9 +514,8 @@ void audit_parse(char * buffer) {
                 w_evt->process_name);
             realtime_checksumfile(w_evt->path, w_evt);
         }
+        free_audit_event(w_evt);
     }
-
-    free(w_evt);
 }
 
 void * audit_main(int * audit_sock) {
