@@ -137,7 +137,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             }
 #ifdef WIN32
         } else {
-            if (pos = evt->dir_position, pos > 0) {
+            if (pos = evt->dir_position, pos >= 0) {
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
                 read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt);
             } else {
