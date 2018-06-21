@@ -365,12 +365,15 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Open fd
             case 4656:
                 // Check if it is a known file
+                w_mutex_lock(mutex_ht);
                 if (!OSHash_Get(syscheck.fp, path)) {
+                    w_mutex_unlock(mutex_ht);
                     if (position = find_dir_pos(path, 1), position < 0) {
                         // Discard the file if its monitoring has not been activated
                         break;
                     }
                 } else {
+                    w_mutex_unlock(mutex_ht);
                     position = -1;
                 }
                 os_calloc(1, sizeof(whodata_evt), w_evt);
@@ -428,7 +431,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                             char wd_sum[OS_SIZE_6144 + 1];
 
                             // Remove the file from the syscheck hash table
+                            w_mutex_lock(mutex_ht);
                             OSHash_Delete(syscheck.fp, w_evt->path);
+                            w_mutex_unlock(mutex_ht);
 
                             if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
                                 merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);

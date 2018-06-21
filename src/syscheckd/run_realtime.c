@@ -41,7 +41,10 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 {
     char *buf;
 
+    w_mutex_lock(mutex_ht);
     buf = (char *) OSHash_Get(syscheck.fp, file_name);
+    w_mutex_unlock(mutex_ht);
+
     if (buf != NULL) {
         char c_sum[256 + 2];
         size_t c_sum_size;
@@ -55,9 +58,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             snprintf(c_sum, sizeof(c_sum), "%.*s -1", SK_DB_NATTR, buf);
             free(buf);
 
+            w_mutex_lock(mutex_ht);
             if (!OSHash_Update(syscheck.fp, file_name, strdup(c_sum))) {
                 merror("Unable to update file to db: %s", file_name);
             }
+            w_mutex_unlock(mutex_ht);
 
             return (0);
         }
@@ -75,9 +80,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
+            w_mutex_lock(mutex_ht);
             if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
                 merror("Unable to update file to db: %s", file_name);
             }
+            w_mutex_unlock(mutex_ht);
 
             alert_msg[OS_MAXSTR] = '\0';
             char *fullalert = NULL;

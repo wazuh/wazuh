@@ -22,6 +22,9 @@
 /* Global config */
 extern syscheck_config syscheck;
 
+/* Hash table mutex */
+extern pthread_mutex_t mutex_ht;
+
 /** Function Prototypes **/
 
 /* Check the integrity of the files against the saved database */

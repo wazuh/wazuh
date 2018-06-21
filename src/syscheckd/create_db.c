@@ -72,6 +72,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
 
             // Update database
 
+            w_mutex_lock(mutex_ht);
             if (buf = (char *) OSHash_Get(syscheck.fp, file_name), buf) {
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s -1", SK_DB_NATTR, buf);
                 free(buf);
@@ -79,6 +80,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                     merror("Unable to update file to db: %s", file_name);
                 }
             }
+            w_mutex_unlock(mutex_ht);
 
             return (0);
         }else{
@@ -169,7 +171,10 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             }
         }
 
+        w_mutex_lock(mutex_ht);
         buf = (char *) OSHash_Get(syscheck.fp, file_name);
+        w_mutex_unlock(mutex_ht);
+
         if (!buf) {
             char alert_msg[OS_MAXSTR + 1];    /* to accommodate a long */
             alert_msg[OS_MAXSTR] = '\0';
@@ -201,9 +206,11 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                      opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 
+            w_mutex_lock(mutex_ht);
             if (OSHash_Add(syscheck.fp, file_name, strdup(alert_msg)) <= 0) {
                 merror("Unable to add file to db: %s", file_name);
             }
+            w_mutex_unlock(mutex_ht);
 
             /* Send the new checksum to the analysis server */
             alert_msg[OS_MAXSTR] = '\0';
@@ -254,9 +261,11 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 // Update database
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
                 free(buf);
+                w_mutex_lock(mutex_ht);
                 if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
                     merror("Unable to update file to db: %s", file_name);
                 }
+                w_mutex_unlock(mutex_ht);
 
                 /* Send the new checksum to the analysis server */
                 alert_msg[OS_MAXSTR] = '\0';
