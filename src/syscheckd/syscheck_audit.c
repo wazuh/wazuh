@@ -27,8 +27,39 @@ volatile int audit_thread_active;
 W_Vector *audit_added_rules;
 static regex_t regexCompiled_uid;
 static regex_t regexCompiled_pid;
+static regex_t regexCompiled_auid;
+static regex_t regexCompiled_cwd;
 static regex_t regexCompiled_pname;
-static regex_t regexCompiled_path;
+static regex_t regexCompiled_path0;
+static regex_t regexCompiled_path1;
+
+
+// Covert audit relative paths into absolute paths
+char *clean_audit_path(char *cwd, char *path) {
+
+    char *file_ptr = path;
+    char *cwd_ptr = strdup(cwd);
+
+    int j, ptr = 0;
+
+    while (file_ptr[ptr] != '\0' && strlen(file_ptr) >= 3) {
+        if (file_ptr[ptr] == '.' && file_ptr[ptr + 1] == '.' && file_ptr[ptr + 2] == '/') {
+            file_ptr += 3;
+            ptr = 0;
+            for(j = strlen(cwd_ptr); cwd_ptr[j] != '/' && j >= 0; j--);
+            cwd_ptr[j] = '\0';
+        } else
+            ptr++;
+    }
+
+    char *full_path = malloc(strlen(cwd) + strlen(path) + 2);
+    snprintf(full_path, strlen(cwd) + strlen(path) + 2, "%s/%s", cwd_ptr, file_ptr);
+
+    free(cwd_ptr);
+
+    return full_path;
+}
+
 
 // Check if auditd is installed and running
 int check_auditd_enabled(void) {
@@ -234,19 +265,34 @@ int audit_init(void) {
         merror("Cannot compile uid regular expression.");
         return -1;
     }
+    static const char *pattern_auid = " auid=([0-9]*) ";
+    if (regcomp(&regexCompiled_auid, pattern_auid, REG_EXTENDED)) {
+        merror("Cannot compile auid regular expression.");
+        return -1;
+    }
     static const char *pattern_pid = " pid=([0-9]*) ";
     if (regcomp(&regexCompiled_pid, pattern_pid, REG_EXTENDED)) {
         merror("Cannot compile pid regular expression.");
         return -1;
     }
-    static const char *pattern_pname = " exe=\"([^ ]*)\" ";
+    static const char *pattern_pname = " exe=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
         merror("Cannot compile pname regular expression.");
         return -1;
     }
-    static const char *pattern_path = " item=1 name=\"([^ ]*)\" ";
-    if (regcomp(&regexCompiled_path, pattern_path, REG_EXTENDED)) {
-        merror("Cannot compile path regular expression.");
+    static const char *pattern_cwd = " cwd=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_cwd, pattern_cwd, REG_EXTENDED)) {
+        merror("Cannot compile cwd regular expression.");
+        return -1;
+    }
+    static const char *pattern_path0 = " item=0 name=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_path0, pattern_path0, REG_EXTENDED)) {
+        merror("Cannot compile path0 regular expression.");
+        return -1;
+    }
+    static const char *pattern_path1 = " item=1 name=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_path1, pattern_path1, REG_EXTENDED)) {
+        merror("Cannot compile path1 regular expression.");
         return -1;
     }
 
@@ -283,9 +329,13 @@ void audit_parse(char * buffer) {
     regmatch_t match[2];
     int match_size;
     char *uid = NULL;
+    char *auid = NULL;
     char *pid = NULL;
     char *pname = NULL;
-    char *path = NULL;
+    char *path0 = NULL;
+    char *path1 = NULL;
+    char *cwd = NULL;
+    char *full_path = NULL;
     whodata_evt *w_evt;
 
     os_calloc(1, sizeof(whodata_evt), w_evt);
@@ -300,6 +350,15 @@ void audit_parse(char * buffer) {
             free(uid);
         }
 
+        if(regexec(&regexCompiled_auid, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            auid = malloc(match_size + 1);
+            snprintf (auid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            w_evt->audit_name = (char *)get_user("",atoi(auid));
+            w_evt->audit_uid = strdup(auid);
+            free(auid);
+        }
+
         if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
             pid = malloc(match_size + 1);
@@ -308,12 +367,25 @@ void audit_parse(char * buffer) {
             free(pid);
         }
 
-        if(regexec(&regexCompiled_path, buffer, 2, match, 0) == 0) {
+        if(regexec(&regexCompiled_cwd, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
-            path = malloc(match_size + 1);
-            snprintf (path, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            w_evt->path = strdup(path);
-            free(path);
+            cwd = malloc(match_size + 1);
+            snprintf (cwd, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            mdebug1("CWD: %s",cwd);
+        }
+
+        if(regexec(&regexCompiled_path0, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            path0 = malloc(match_size + 1);
+            snprintf (path0, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            mdebug1("PATH0: %s",path0);
+        }
+
+        if(regexec(&regexCompiled_path1, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            path1 = malloc(match_size + 1);
+            snprintf (path1, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            mdebug1("PATH1: %s",path1);
         }
 
         if(regexec(&regexCompiled_pname, buffer, 2, match, 0) == 0) {
@@ -324,8 +396,28 @@ void audit_parse(char * buffer) {
             free(pname);
         }
 
-        if (w_evt->path) {
-            mdebug1("audit_event: uid=%s, pid=%i, path=%s, pname=%s", w_evt->user_name, w_evt->process_id, w_evt->path, w_evt->process_name);
+        if (path0 && path1 && cwd) {
+            if (path1[0] == '/') {
+                w_evt->path = strdup(path1);
+            } else if (path1[0] == '.' && path1[1] == '/') {
+                full_path = malloc(strlen(cwd) + strlen(path1) + 2);
+                snprintf(full_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, (path1+2));
+                w_evt->path = strdup(full_path);
+                free(full_path);
+            } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
+                // Get upper folder.
+                w_evt->path = clean_audit_path(cwd, path1);
+            } else {
+                full_path = malloc(strlen(path0) + strlen(path1) + 2);
+                snprintf(full_path, strlen(path0) + strlen(path1) + 2, "%s/%s", path0, path1);
+                w_evt->path = strdup(full_path);
+                free(full_path);
+            }
+            free(cwd);
+            free(path0);
+            free(path1);
+
+            mdebug1("audit_event: uid=%s, auid=%s, pid=%i, path=%s, pname=%s", w_evt->user_name, w_evt->audit_name, w_evt->process_id, w_evt->path, w_evt->process_name);
             realtime_checksumfile(w_evt->path, w_evt);
         }
     }
@@ -445,8 +537,10 @@ void * audit_main(int * audit_sock) {
     free(buffer);
     close(*audit_sock);
     regfree(&regexCompiled_uid);
+    regfree(&regexCompiled_auid);
     regfree(&regexCompiled_pid);
-    regfree(&regexCompiled_path);
+    regfree(&regexCompiled_path0);
+    regfree(&regexCompiled_path1);
     regfree(&regexCompiled_pname);
     clean_rules();
 

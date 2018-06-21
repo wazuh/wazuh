@@ -51,6 +51,8 @@ typedef struct whodata_evt {
     char *process_name;
     char *path;
 #ifndef WIN32
+    char *audit_uid;
+    char *audit_name;
     unsigned int process_id;
 #else
     unsigned __int64 process_id;
