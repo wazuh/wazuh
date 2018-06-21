@@ -102,4 +102,8 @@ def get_agents(filter_status, filter_node):
                                 'select': {'fields': ['id','ip','name','status','node_name']}}}
 
     request = "dapi {}".format(json.dumps(input_json))
-    return execute(request)['data']
+    response = execute(request)
+    if response['error'] == 0:
+        return execute(request)['data']
+    else:
+        raise Exception(response['message'])

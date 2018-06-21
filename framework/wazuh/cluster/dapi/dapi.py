@@ -14,19 +14,24 @@ from operator import itemgetter
 from multiprocessing.dummy import Pool as ThreadPool
 
 def distribute_function(input_json, pretty=False, debug=False, from_master=False):
-    node_info = cluster.get_node()
-    request_type = rq.functions[input_json['function']]['type']
+    try:
+        node_info = cluster.get_node()
+        request_type = rq.functions[input_json['function']]['type']
 
-    if not cluster.check_cluster_status() or request_type == 'local_any' or\
-            (request_type == 'local_master' and node_info['type'] == 'master')   or\
-            (request_type == 'distributed_master' and input_json['from_cluster']):
+        if not cluster.check_cluster_status() or request_type == 'local_any' or\
+                (request_type == 'local_master' and node_info['type'] == 'master')   or\
+                (request_type == 'distributed_master' and input_json['from_cluster']):
 
-        return execute_local_request(input_json, pretty, debug)
+            return execute_local_request(input_json, pretty, debug)
 
-    elif request_type == 'distributed_master' and node_info['type'] == 'master':
-        return forward_request(input_json, node_info['node'], pretty, from_master)
-    else:
-        return execute_remote_request(input_json, pretty)
+        elif request_type == 'distributed_master' and node_info['type'] == 'master':
+            return forward_request(input_json, node_info['node'], pretty, from_master)
+        else:
+            return execute_remote_request(input_json, pretty)
+    except WazuhException as e:
+        return print_json(data=e.message, error=e.code, pretty=pretty)
+    except Exception as e:
+        return print_json(data=str(e), error=1000, pretty=pretty)
 
 
 def get_functions():
