@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 
 - Delete temporary files when stopping Wazuh. ([#732](https://github.com/wazuh/wazuh/pull/732))
 - Send OpenSCAP checks results to a FIFO queue instead of temporary files. ([#732](https://github.com/wazuh/wazuh/pull/732))
+- Default behavior when starting Syscheck and Rootcheck components. ([#829](https://github.com/wazuh/wazuh/pull/829))
+  - They are disabled if not appear in the configuration.
+  - They can be set up as empty blocks in the configuration, applying their default values.
+  - Improvements of error and information messages when they start.
 
 ### Fixed
 
@@ -22,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - Fix reading of Windows platform for 64 bits systems. ([#832](https://github.com/wazuh/wazuh/pull/832))
 - Fixed Syslog output parser when reading the timestamp from the alerts in JSON format. ([#843](https://github.com/wazuh/wazuh/pull/843))
 - Fixed filter for `gpg-pubkey` packages in Syscollector. ([#847](https://github.com/wazuh/wazuh/pull/847))
+- Improvements  error messages when Rootcheck and Syscheck start.
 
 
 ## [v3.3.1]
