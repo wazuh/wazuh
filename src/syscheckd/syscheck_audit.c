@@ -554,10 +554,11 @@ void StopAuditThread(void) {
 
 
 void clean_rules(void) {
+    int i;
 
     if (audit_added_rules) {
         mdebug2("Deleting Audit rules...");
-        for (int i = 0; i < W_Vector_length(audit_added_rules); i++) {
+        for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
             audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
         }
         W_Vector_free(audit_added_rules);

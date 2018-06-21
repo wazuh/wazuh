@@ -47,8 +47,9 @@ int W_Vector_length(W_Vector *v) {
 
 
 void W_Vector_free(W_Vector *v) {
+    int i;
 
-    for (int i=0; i < v->used; i++) {
+    for (i=0; i < v->used; i++) {
         free(v->vector[i]);
     }
     free (v->vector);
