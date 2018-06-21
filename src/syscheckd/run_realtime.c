@@ -51,6 +51,9 @@ int set_winsacl(const char *dir, int position);
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int whodata_audit_start();
 int is_valid_sacl(PACL sacl);
+static PSID everyone_sid = NULL;
+static size_t ev_sid_size = 0;
+static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
 #endif
 
@@ -146,7 +149,6 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
     return (0);
 }
-
 
 /* Find container directory */
 int find_dir_pos(const char *filename, char is_whodata) {
@@ -505,17 +507,19 @@ int realtime_adddir(const char *dir, int whodata)
 }
 
 int set_winsacl(const char *dir, int position) {
-static LPCTSTR priv = "SeSecurityPrivilege";
-    static char *trustee = "Everyone";
+    static LPCTSTR priv = "SeSecurityPrivilege";
 	DWORD result = 0;
 	PACL old_sacl = NULL, new_sacl = NULL;
 	PSECURITY_DESCRIPTOR security_descriptor = NULL;
-	EXPLICIT_ACCESS entry_access;
+    SYSTEM_AUDIT_ACE *ace = NULL;
+    PVOID entry_access_it = NULL;
 	HANDLE hdle;
+    unsigned int i;
+    ACL_SIZE_INFORMATION old_sacl_info;
+    unsigned long new_sacl_size;
     int retval = 1;
-    int *ace_position = NULL;
 
-	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES /*| ACCESS_SYSTEM_SECURITY*/, &hdle)) {
 		merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
 		return 1;
 	}
@@ -530,40 +534,88 @@ static LPCTSTR priv = "SeSecurityPrivilege";
         goto end;
 	}
 
+    ZeroMemory(&old_sacl_info, sizeof(ACL_SIZE_INFORMATION));
+
     // Check if the sacl has what the whodata scanner needs
-    if (is_valid_sacl(old_sacl)) {
-        syscheck.wdata.ignore[position] = 1;
-        mdebug2("It is not necessary to configure the SACL of '%s'.", dir);
-        retval = 0;
-        goto end;
-    } else {
-        mdebug2("It is necessary to configure the SACL of '%s'.", dir);
-        ace_position = &syscheck.wdata.ignore[position];
+    switch(is_valid_sacl(old_sacl)) {
+        case 0:
+            mdebug2("It is necessary to configure the SACL of '%s'.", dir);
+            syscheck.wdata.ignore_rest[position] = 1;
+
+            // Get SACL size
+            if (!GetAclInformation(old_sacl, (LPVOID)&old_sacl_info, sizeof(ACL_SIZE_INFORMATION), AclSizeInformation)) {
+                merror("The size of the '%s' SACL could not be obtained.", dir);
+                goto end;
+            }
+        break;
+        case 1:
+            mdebug2("It is not necessary to configure the SACL of '%s'.", dir);
+            retval = 0;
+            goto end;
+        case 2:
+            // Empty SACL
+            old_sacl_info.AclBytesInUse = sizeof(ACL);
+            goto end;
+    }
+    if (!ev_sid_size) {
+        ev_sid_size = GetLengthSid(everyone_sid);
     }
 
-	// Configure the new ACE
-	SecureZeroMemory(&entry_access, sizeof(EXPLICIT_ACCESS));
-	entry_access.grfAccessPermissions = FILE_WRITE_DATA | DELETE;
-	entry_access.grfAccessMode = SET_AUDIT_SUCCESS;
-	entry_access.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
-	entry_access.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-	entry_access.Trustee.ptstrName = trustee;
+    // Set the new ACL size
+    new_sacl_size = old_sacl_info.AclBytesInUse + sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(unsigned long);
 
-	// Create a new ACL with the ACE
-	if (result = SetEntriesInAcl(1, &entry_access, old_sacl, &new_sacl), result != ERROR_SUCCESS) {
-		merror("SetEntriesInAcl() failed. Error: '%lu'", result);
+    if (new_sacl = (PACL)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, new_sacl_size), !new_sacl) {
+        merror("No memory could be reserved for the new SACL of '%s'.", dir);
         goto end;
+    }
+
+    if (!InitializeAcl(new_sacl, new_sacl_size, ACL_REVISION)) {
+        merror("The new SACL for '%s' could not be created.", dir);
+        goto end;
+    }
+
+    // If SACL is present, copy it to a new SACL
+    if (old_sacl) {
+        if (old_sacl_info.AceCount) {
+            for (i = 0; i < old_sacl_info.AceCount; i++) {
+               if (!GetAce(old_sacl, i, &entry_access_it)) {
+                   merror("The ACE number %i for '%s' could not be obtained.", i, dir);
+                   goto end;
+               }
+
+               if (!AddAce(new_sacl, ACL_REVISION, MAXDWORD, entry_access_it, ((PACE_HEADER)entry_access_it)->AceSize)) {
+                   merror("The ACE number %i of '%s' could not be copied to the new ACL.", i, dir);
+                   goto end;
+               }
+           }
+        }
+    }
+
+    // Build the new ACE
+    if (ace = (SYSTEM_AUDIT_ACE *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD)), !ace) {
+        merror("No memory could be reserved for the new ACE of '%s'.", dir);
+        goto end;
+    }
+
+    ace->Header.AceType  = SYSTEM_AUDIT_ACE_TYPE;
+    ace->Header.AceFlags = inherit_flag | SUCCESSFUL_ACCESS_ACE_FLAG;
+    ace->Header.AceSize  = LOWORD(sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD));
+    ace->Mask            = FILE_WRITE_DATA | DELETE;
+    if (!CopySid(ev_sid_size, &ace->SidStart, everyone_sid)) {
+        goto end;
+    }
+
+    // Add the new ACE
+    if (!AddAce(new_sacl, ACL_REVISION, 0, (LPVOID)ace, ace->Header.AceSize)) {
+		wprintf(L"The new ACE could not be added to '%s'.", dir);
+		goto end;
 	}
 
-  if (ace_position) {
-      *ace_position = new_sacl->AceCount - 1;
-  }
-
-	// Set the SACL
-	if (result = SetNamedSecurityInfo((char *) dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
-		merror("SetNamedSecurityInfo() failed. Error: '%lu'", result);
+    // Set a new ACL for the security descriptor
+    if (result = SetNamedSecurityInfo((char *) dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
+        merror("SetNamedSecurityInfo() failed. Error: '%lu'", result);
         goto end;
-	}
+    }
 
 	// Disable the privilege
 	if (set_privilege(hdle, priv, 0)) {
@@ -591,9 +643,12 @@ end:
 int is_valid_sacl(PACL sacl) {
     int i;
     ACCESS_ALLOWED_ACE *ace;
-    static PSID everyone_sid = NULL;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
-    static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
+
+    if (!sacl) {
+        merror("An invalid SACL cannot be validated.");
+        return 2;
+    }
 
     if (!everyone_sid) {
         if (!AllocateAndInitializeSid(&world_auth, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &everyone_sid)) {
@@ -609,7 +664,7 @@ int is_valid_sacl(PACL sacl) {
         }
         if ((ace->Header.AceFlags & inherit_flag) && // Check folder and subfolders
             (ace->Header.AceFlags & SUCCESSFUL_ACCESS_ACE_FLAG) && // Check successful attemp
-            (ace->Mask & FILE_WRITE_DATA) && // Check write permission
+            (ace->Mask & (FILE_WRITE_DATA | DELETE)) && // Check write and delete permission
             (EqualSid((PSID)&ace->SidStart, everyone_sid))) { // Check everyone user
             return 1;
         }
@@ -682,7 +737,7 @@ void restore_sacls() {
     }
 
     for (i = 0; syscheck.dir[i] != NULL; i++) {
-        if (syscheck.wdata.ignore[i] > -1) {
+        if (syscheck.wdata.ignore_rest[i]) {
             sacl_it = NULL;
             if (result = GetNamedSecurityInfo(syscheck.dir[i], SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &sacl_it, &security_descriptor), result != ERROR_SUCCESS) {
                 merror("GetNamedSecurityInfo() failed restoring the SACLs. Error '%ld'.", result);
@@ -704,6 +759,7 @@ void restore_sacls() {
             if (sacl_it) {
                 LocalFree((HLOCAL)sacl_it);
             }
+
             if (security_descriptor) {
                 LocalFree((HLOCAL)security_descriptor);
             }

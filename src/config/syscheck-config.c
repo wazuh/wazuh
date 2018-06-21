@@ -44,8 +44,8 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             os_strdup(entry, syscheck->dir[pl]);
 
 #ifdef WIN32
-            os_calloc(2, sizeof(int), syscheck->wdata.ignore);
-            memset(syscheck->wdata.ignore + pl, -1, 2 * sizeof(int));
+            os_calloc(2, sizeof(int), syscheck->wdata.ignore_rest);
+            memset(syscheck->wdata.ignore_rest + pl, 0, 2 * sizeof(int));
 #endif
             os_calloc(2, sizeof(int), syscheck->opts);
             syscheck->opts[pl + 1] = 0;
@@ -64,9 +64,9 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             os_strdup(entry, syscheck->dir[pl]);
 
 #ifdef WIN32
-            os_realloc(syscheck->wdata.ignore, (pl + 2) * sizeof(int),
-                       syscheck->wdata.ignore);
-            memset(syscheck->wdata.ignore + pl, -1, 2 * sizeof(int));
+            os_realloc(syscheck->wdata.ignore_rest, (pl + 2) * sizeof(int),
+                       syscheck->wdata.ignore_rest);
+            memset(syscheck->wdata.ignore_rest + pl, 0, 2 * sizeof(int));
 #endif
             os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
                        syscheck->opts);

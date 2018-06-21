@@ -72,7 +72,7 @@ typedef struct whodata_evt {
 
 typedef struct whodata {
     OSHash *fd;        // Open file descriptors
-    int *ignore;       // List of directories whose SACL will not be restored
+    int *ignore_rest;       // List of directories whose SACL will not be restored
 } whodata;
 
 typedef struct registry {
