@@ -243,7 +243,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_report_changes = "report_changes";
     const char *xml_restrict = "restrict";
     const char *xml_check_sha256sum = "check_sha256sum";
-    const char *xml_check_whodata = "check_whodata";
+    const char *xml_whodata = "whodata";
 
     char *restrictfile = NULL;
     char **dir;
@@ -309,10 +309,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_GROUP;
                     opts |= CHECK_MTIME;
                     opts |= CHECK_INODE;
-                    opts |= CHECK_WHODATA;
                 } else if (strcmp(*values, "no") == 0) {
 		    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM
-		       | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_WHODATA );
+		       | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
                 } else {
                     merror(SK_INV_OPT, *values, *attrs);
                     ret = 0;
@@ -370,7 +369,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
             }
             /* Check whodata */
-            else if (strcmp(*attrs, xml_check_whodata) == 0) {
+            else if (strcmp(*attrs, xml_whodata) == 0) {
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_WHODATA;
                 } else if (strcmp(*values, "no") == 0) {

@@ -199,7 +199,7 @@
   <rule id="553" level="7">
     <category>ossec</category>
     <decoded_as>syscheck_deleted</decoded_as>
-    <description>File deleted. Unable to retrieve checksum.</description>
+    <description>File deleted.</description>
     <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,</group>
   </rule>
 
@@ -284,7 +284,7 @@
     <if_sid>553</if_sid>
     <hostname>syscheck-registry</hostname>
     <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,</group>
-    <description>Registry Entry Deleted. Unable to Retrieve Checksum</description>
+    <description>Registry Entry Deleted.</description>
   </rule>
 
   <rule id="598" level="5">

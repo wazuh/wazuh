@@ -44,6 +44,7 @@ volatile int audit_thread_active;
 
 /* Prototypes */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
+int find_dir_pos(const char *filename, char is_whodata) __attribute__((nonnull(1)));
 #ifdef WIN32
 void restore_sacls();
 int set_winsacl(const char *dir, int position);
@@ -123,43 +124,66 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         return (0);
     } else {
         /* New file */
-        char bar = '/';
-        char *c;
-        int i;
-        buf = strdup(file_name);
+        int pos;
+#ifdef WIN32
+        if (!evt) {
+#endif
+            if (pos = find_dir_pos(file_name, 0), pos > -1) {
+                mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
+                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt);
+            }
+#ifdef WIN32
+        } else {
+            if (pos = evt->dir_position, pos > 0) {
+                mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
+                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt);
+            } else {
+                mdebug1("'%s' has been deleted while another file was writing to it.", file_name);
+            }
+        }
+#endif
+    }
+
+    return (0);
+}
+
+
+/* Find container directory */
+int find_dir_pos(const char *filename, char is_whodata) {
+    char *buf = strdup(filename);
+    char bar = '/';
+    int i;
+    char *c;
+    int retval = -1;
 
 #ifdef WIN32
-        if (evt) {
+        // In whodata for Windows all routes will have '\'
+        if (is_whodata) {
             bar = '\\';
         }
 #endif
 
-        /* Find container directory */
+    while (c = strrchr(buf, bar), c && c != buf) {
+        *c = '\0';
 
-        while (c = strrchr(buf, bar), c && c != buf) {
-            *c = '\0';
-
-            for (i = 0; syscheck.dir[i]; i++) {
-
-                if (evt && !(syscheck.opts[i] & CHECK_WHODATA)) {
-                    continue;
-                }
-                if (strcmp(syscheck.dir[i], buf) == 0) {
-                    mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, buf);
-                    read_dir(file_name, syscheck.opts[i], syscheck.filerestrict[i], evt);
-                    break;
-                }
+        for (i = 0; syscheck.dir[i]; i++) {
+            if (is_whodata && !(syscheck.opts[i] & CHECK_WHODATA)) {
+                continue;
             }
-
-            if (syscheck.dir[i]) {
+            if (!strcmp(syscheck.dir[i], buf)) {
+                retval = i;
                 break;
             }
         }
 
-        free(buf);
+        if (syscheck.dir[i]) {
+            // The directory has been found
+            break;
+        }
     }
 
-    return (0);
+    free(buf);
+    return retval;
 }
 
 #ifdef INOTIFY_ENABLED
@@ -431,6 +455,7 @@ int realtime_adddir(const char *dir, int whodata)
         return 1;
     }
 
+
     if (!syscheck.realtime) {
         realtime_start();
     }
@@ -480,7 +505,7 @@ int realtime_adddir(const char *dir, int whodata)
 }
 
 int set_winsacl(const char *dir, int position) {
-    static LPCTSTR priv = "SeSecurityPrivilege";
+static LPCTSTR priv = "SeSecurityPrivilege";
     static char *trustee = "Everyone";
 	DWORD result = 0;
 	PACL old_sacl = NULL, new_sacl = NULL;
@@ -488,6 +513,7 @@ int set_winsacl(const char *dir, int position) {
 	EXPLICIT_ACCESS entry_access;
 	HANDLE hdle;
     int retval = 1;
+    int *ace_position = NULL;
 
 	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
 		merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
@@ -510,11 +536,14 @@ int set_winsacl(const char *dir, int position) {
         mdebug2("It is not necessary to configure the SACL of '%s'.", dir);
         retval = 0;
         goto end;
+    } else {
+        mdebug2("It is necessary to configure the SACL of '%s'.", dir);
+        ace_position = &syscheck.wdata.ignore[position];
     }
 
 	// Configure the new ACE
 	SecureZeroMemory(&entry_access, sizeof(EXPLICIT_ACCESS));
-	entry_access.grfAccessPermissions = FILE_WRITE_DATA;
+	entry_access.grfAccessPermissions = FILE_WRITE_DATA | DELETE;
 	entry_access.grfAccessMode = SET_AUDIT_SUCCESS;
 	entry_access.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
 	entry_access.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
@@ -525,6 +554,10 @@ int set_winsacl(const char *dir, int position) {
 		merror("SetEntriesInAcl() failed. Error: '%lu'", result);
         goto end;
 	}
+
+  if (ace_position) {
+      *ace_position = new_sacl->AceCount - 1;
+  }
 
 	// Set the SACL
 	if (result = SetNamedSecurityInfo((char *) dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
@@ -559,7 +592,7 @@ int is_valid_sacl(PACL sacl) {
     int i;
     ACCESS_ALLOWED_ACE *ace;
     static PSID everyone_sid = NULL;
-    SID_IDENTIFIER_AUTHORITY world_auth = SECURITY_WORLD_SID_AUTHORITY;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
 
     if (!everyone_sid) {
@@ -619,8 +652,10 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 }
 
 int run_whodata_scan() {
+    // Set the signal handler to restore the policies
     atexit(restore_sacls);
-    if (!EvtSubscribe(NULL, NULL, L"Security", L"Event[(System/EventID = 4656 or System/EventID = 4663 or System/EventID = 4658)]", NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
+    // Set the whodata callback
+    if (!EvtSubscribe(NULL, NULL, L"Security", L"Event[(((System/EventID = 4656 or System/EventID = 4663) and (EventData/Data[@Name='ObjectType'] = 'File')) or System/EventID = 4658 or System/EventID = 4660)]", NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
         merror("Event Channel subscription could not be made. Whodata scan is disabled.");
         return 1;
     }
@@ -629,7 +664,57 @@ int run_whodata_scan() {
 
 /* Removes added security audit policies */
 void restore_sacls() {
+    int i;
+    PACL sacl_it;
+    HANDLE hdle = NULL;
+    LPCTSTR priv = "SeSecurityPrivilege";
+    DWORD result = 0;
+    PSECURITY_DESCRIPTOR security_descriptor = NULL;
 
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
+        merror("OpenProcessToken() failed restoring the SACLs. Error '%lu'.", GetLastError());
+        return;
+    }
+
+    if (set_privilege(hdle, priv, TRUE)) {
+        merror("The privilege could not be activated restoring the SACLs. Error: '%ld'.", GetLastError());
+        return;
+    }
+
+    for (i = 0; syscheck.dir[i] != NULL; i++) {
+        if (syscheck.wdata.ignore[i] > -1) {
+            sacl_it = NULL;
+            if (result = GetNamedSecurityInfo(syscheck.dir[i], SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &sacl_it, &security_descriptor), result != ERROR_SUCCESS) {
+                merror("GetNamedSecurityInfo() failed restoring the SACLs. Error '%ld'.", result);
+                break;
+            }
+
+            // The ACE we added is in position 0
+            if (!DeleteAce(sacl_it, 0)) {
+                merror("DeleteAce() failed restoring the SACLs. Error '%ld'", GetLastError());
+                break;
+            }
+
+            // Set the SACL
+            if (result = SetNamedSecurityInfo((char *) syscheck.dir[i], SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, sacl_it), result != ERROR_SUCCESS) {
+                merror("SetNamedSecurityInfo() failed restoring the SACL. Error: '%lu'.", result);
+                break;
+            }
+
+            if (sacl_it) {
+                LocalFree((HLOCAL)sacl_it);
+            }
+            if (security_descriptor) {
+                LocalFree((HLOCAL)security_descriptor);
+            }
+        }
+    }
+
+    // Disable the privilege
+    if (set_privilege(hdle, priv, 0)) {
+        merror("Failed to disable the privilege while restoring the SACLs. Error '%lu'.", GetLastError());
+    }
+    CloseHandle(hdle);
 }
 
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event) {
@@ -641,17 +726,16 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     PEVT_VARIANT buffer = NULL;
     whodata_evt *w_evt;
     short event_id;
-    char *user_name;
-    char *type;
-    char *path;
-    char *process_name;
+    char *user_name = NULL;
+    char *path = NULL;
+    char *process_name = NULL;
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
     unsigned int mask;
+    int position;
     static const wchar_t* event_fields[] = {
         L"Event/System/EventID",
         L"Event/EventData/Data[@Name='SubjectUserName']",
-        L"Event/EventData/Data[@Name='ObjectType']",
         L"Event/EventData/Data[@Name='ObjectName']",
         L"Event/EventData/Data[@Name='ProcessName']",
         L"Event/EventData/Data[@Name='ProcessId']",
@@ -660,7 +744,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     };
     static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
     UNREFERENCED_PARAMETER(_void);
-
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
 
@@ -692,10 +775,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             (buffer[1].Type != EvtVarTypeString && buffer[1].Type != EvtVarTypeNull)   ||
             (buffer[2].Type != EvtVarTypeString && buffer[2].Type != EvtVarTypeNull)   ||
             (buffer[3].Type != EvtVarTypeString && buffer[3].Type != EvtVarTypeNull)   ||
-            (buffer[4].Type != EvtVarTypeString && buffer[4].Type != EvtVarTypeNull)   ||
+            (buffer[4].Type != EvtVarTypeHexInt64 && buffer[4].Type != EvtVarTypeNull) ||
             (buffer[5].Type != EvtVarTypeHexInt64 && buffer[5].Type != EvtVarTypeNull) ||
-            (buffer[6].Type != EvtVarTypeHexInt64 && buffer[6].Type != EvtVarTypeNull) ||
-            (buffer[7].Type != EvtVarTypeHexInt32 && buffer[7].Type != EvtVarTypeNull)) {
+            (buffer[6].Type != EvtVarTypeHexInt32 && buffer[6].Type != EvtVarTypeNull)) {
             merror("Invalid parameter type after rendering the event.");
             retval = 1;
             goto clean;
@@ -703,42 +785,48 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
 
         event_id = buffer[0].Int16Val;
         user_name = convert_windows_string(buffer[1].XmlVal);
-        type = convert_windows_string(buffer[2].XmlVal);
-        path = convert_windows_string(buffer[3].XmlVal);
-        process_name = convert_windows_string(buffer[4].XmlVal);
-        process_id = buffer[5].UInt64Val;
-        handle_id = buffer[6].UInt64Val;
-        mask = buffer[7].UInt32Val;
+        path = convert_windows_string(buffer[2].XmlVal);
+        process_name = convert_windows_string(buffer[3].XmlVal);
+        process_id = buffer[4].UInt64Val;
+        handle_id = buffer[5].UInt64Val;
+        mask = buffer[6].UInt32Val;
 
         snprintf(hash_id, 21, "%llu", handle_id);
 
         switch(event_id) {
             // Open fd
             case 4656:
-                if (!strcmp(type, "File")) {
-                    os_calloc(1, sizeof(whodata_evt), w_evt);
-                    w_evt->user_name = user_name;
-                    w_evt->type = type;
-                    w_evt->path = path;
-                    w_evt->process_name = process_name;
-                    w_evt->process_id = process_id;
-                    w_evt->handle_id = handle_id;
-                    w_evt->mask = 0;
-
-                    user_name = NULL;
-                    type = NULL;
-                    path = NULL;
-                    process_name = NULL;
-
-                    if (result = OSHash_Add(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
-                        if (!result) {
-                            merror("The event could not be added to the whodata hash table.");
-                        } else if (result == 1) {
-                            merror("The event could not be added to the whodata hash table because is duplicated.");
-                        }
-                        retval = 1;
-                        goto clean;
+                // Check if it is a known file
+                if (!OSHash_Get(syscheck.fp, path)) {
+                    if (position = find_dir_pos(path, 1), position < 0) {
+                        // Discard the file if its monitoring has not been activated
+                        break;
                     }
+                } else {
+                    position = -1;
+                }
+                os_calloc(1, sizeof(whodata_evt), w_evt);
+                w_evt->user_name = user_name;
+                w_evt->path = path;
+                w_evt->dir_position = position;
+                w_evt->process_name = process_name;
+                w_evt->process_id = process_id;
+                w_evt->handle_id = handle_id;
+                w_evt->mask = 0;
+                w_evt->deleted = 0;
+
+                user_name = NULL;
+                path = NULL;
+                process_name = NULL;
+
+                if (result = OSHash_Add(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
+                    if (!result) {
+                        merror("The event could not be added to the whodata hash table.");
+                    } else if (result == 1) {
+                        merror("The event could not be added to the whodata hash table because is duplicated.");
+                    }
+                    retval = 1;
+                    goto clean;
                 }
             break;
             // Write fd
@@ -752,21 +840,39 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                     }
                 }
             break;
+            // Deleted file
+            case 4660:
+                if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
+                    w_evt->deleted = 1;
+                } else {
+                    // The file was opened before Wazuh started Syscheck.
+                }
+            break;
             // Close fd
             case 4658:
                 if (w_evt = OSHash_Delete(syscheck.wdata.fd, hash_id), w_evt) {
                     if (w_evt->mask) {
                         unsigned int mask = w_evt->mask;
-                        // Valid for a file
-                        char wr = (mask & FILE_WRITE_DATA)? 1 : 0;
-                        char ap = (mask & FILE_APPEND_DATA)? 1 : 0;
 
-                        if (wr || ap) {
+                        // Check if the file has been written or deleted
+                        if (w_evt->deleted) {
+                            char del_msg[PATH_MAX + OS_SIZE_6144 + 6];
+                            char wd_sum[OS_SIZE_6144 + 1];
+
+                            // Remove the file from the syscheck hash table
+                            OSHash_Delete(syscheck.fp, w_evt->path);
+
+                            if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
+                                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);
+                                *wd_sum = '\0';
+                            }
+                            snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s", wd_sum, w_evt->path);
+                            send_syscheck_msg(del_msg);
+                        } else if (mask & FILE_WRITE_DATA) {
                             realtime_checksumfile(w_evt->path, w_evt);
                         }
                     }
                     free(w_evt->user_name);
-                    free(w_evt->type);
                     free(w_evt->path);
                     free(w_evt->process_name);
                     free(w_evt);
@@ -783,7 +889,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     retval = 0;
 clean:
     free(user_name);
-    free(type);
     free(path);
     free(process_name);
     if (buffer) {
