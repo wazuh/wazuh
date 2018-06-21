@@ -106,8 +106,7 @@ def get_distinct_agents(offset=0, limit=common.database_limit, select={}, search
                            'manager_host': 'manager_host', 'os.codename': 'os_codename',
                            'os.major': 'os_major', 'os.minor': 'os_minor', 'os.uname': 'os_uname',
                            'os.arch': 'os_arch', 'os.build':'os_build','os.name': 'os_name',
-                           'os.version': 'os_version', 'os.platform': 'os_platform',
-                           }
+                           'os.version': 'os_version', 'os.platform': 'os_platform'}
     table = 'agent'
 
     return _get_distinct_items(table=table, valid_select_fields=valid_select_fields,
