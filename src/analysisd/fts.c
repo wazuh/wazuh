@@ -192,8 +192,12 @@ void AddtoIGnore(Eventinfo *lf)
 /* Check if the event is to be ignored.
  * Only after an event is matched (generated_rule must be set).
  */
-int IGnore(Eventinfo *lf)
+int IGnore(Eventinfo *lf,FILE *fp_ig)
 {
+    if(!fp_ig){
+        fp_ig = fp_ignore;
+    }
+
     char _line[OS_FLSIZE + 1];
     char _fline[OS_FLSIZE + 1];
 
@@ -229,13 +233,13 @@ int IGnore(Eventinfo *lf)
         }
     }
 
-    fprintf(fp_ignore, "\n");
+    fprintf(fp_ig, "\n");
     _fline[OS_FLSIZE] = '\0';
 
     /** Check if the ignore is present **/
     /* Point to the beginning of the file */
-    fseek(fp_ignore, 0, SEEK_SET);
-    while (fgets(_fline, OS_FLSIZE , fp_ignore) != NULL) {
+    fseek(fp_ig, 0, SEEK_SET);
+    while (fgets(_fline, OS_FLSIZE , fp_ig) != NULL) {
         if (strcmp(_fline, _line) != 0) {
             continue;
         }
@@ -250,7 +254,7 @@ int IGnore(Eventinfo *lf)
 /*  Check if the word "msg" is present on the "queue".
  *  If it is not, write it there.
  */
-int FTS(Eventinfo *lf)
+char * FTS(Eventinfo *lf)
 {
     int i;
     int number_of_matches = 0;
@@ -281,8 +285,8 @@ int FTS(Eventinfo *lf)
     }
 
     /** Check if FTS is already present **/
-    if (OSHash_Get(fts_store, _line)) {
-        return (0);
+    if (OSHash_Get_ex(fts_store, _line)) {
+        return NULL;
     }
 
     /* Check if from the last FTS events, we had at least 3 "similars" before.
@@ -314,19 +318,28 @@ int FTS(Eventinfo *lf)
         os_strdup(_line, line_for_list);
     }
 
-    if (OSHash_Add(fts_store, line_for_list, line_for_list) <= 1) {
-        return (0);
+    if (OSHash_Add_ex(fts_store, line_for_list, line_for_list) <= 1) {
+        return NULL;
     }
 
 
 #ifdef TESTRULE
-    return (1);
+    return _line;
 #endif
 
+    return _line;
+}
+
+FILE * w_get_fp_ignore(){
+    return fp_ignore;
+}
+
+void FTS_Fprintf(char * _line){
     /* Save to fts fp */
     fseek(fp_list, 0, SEEK_END);
     fprintf(fp_list, "%s\n", _line);
-    fflush(fp_list);
+}
 
-    return (1);
+void FTS_Flush(){
+    fflush(fp_list);
 }

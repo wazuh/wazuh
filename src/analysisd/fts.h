@@ -23,8 +23,11 @@
 
 int FTS_Init(void);
 void AddtoIGnore(Eventinfo *lf);
-int IGnore(Eventinfo *lf);
-int FTS(Eventinfo *lf);
+int IGnore(Eventinfo *lf,FILE *fp_ig);
+char * FTS(Eventinfo *lf);
+FILE * w_get_fp_ignore();
+void FTS_Fprintf(char * _line);
+void FTS_Flush();
 
 /* Global variables */
 extern unsigned int fts_minsize_for_str;

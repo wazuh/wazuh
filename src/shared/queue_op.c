@@ -18,7 +18,7 @@ w_queue_t * queue_init(size_t size) {
     queue->size = size;
     pthread_mutex_init(&queue->mutex, NULL);
     pthread_cond_init(&queue->available, NULL);
-    pthread_cond_init(&queue->available_block, NULL);
+    pthread_cond_init(&queue->available_not_empty, NULL);
     return queue;
 }
 
@@ -27,7 +27,7 @@ void queue_free(w_queue_t * queue) {
         free(queue->data);
         pthread_mutex_destroy(&queue->mutex);
         pthread_cond_destroy(&queue->available);
-        pthread_cond_destroy(&queue->available_block);
+        pthread_cond_destroy(&queue->available_not_empty);
         free(queue);
     }
 }
@@ -69,11 +69,13 @@ int queue_push_ex_block(w_queue_t * queue, void * data) {
     w_mutex_lock(&queue->mutex);
 
     while (result = queue_full(queue), result) {
-        w_cond_wait(&queue->available_block, &queue->mutex);
+        w_cond_wait(&queue->available_not_empty, &queue->mutex);
     }
 
     result = queue_push(queue,data);
 
+    w_cond_signal(&queue->available_not_empty);
+    w_cond_signal(&queue->available);
     w_mutex_unlock(&queue->mutex);
 
     return result;
@@ -101,6 +103,8 @@ void * queue_pop_ex(w_queue_t * queue) {
         w_cond_wait(&queue->available, &queue->mutex);
     }
 
+    w_cond_signal(&queue->available_not_empty);
     w_mutex_unlock(&queue->mutex);
+
     return data;
 }
