@@ -7,7 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
+#ifndef WIN32
 #include "shared.h"
 #include "external/procps/readproc.h"
 #include <linux/audit.h>
@@ -614,3 +614,4 @@ void clean_rules(void) {
         W_Vector_free(audit_added_rules);
     }
 }
+#endif
