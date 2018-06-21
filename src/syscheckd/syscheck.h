@@ -74,6 +74,9 @@ const char* get_group(int gid);
 
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
+/* Find container directory */
+int find_dir_pos(const char *filename, char is_whodata) __attribute__((nonnull(1)));
+
 #ifndef WIN32
 #define AUDIT_KEY "wazuh_fim"
 int audit_init(void);
@@ -87,6 +90,9 @@ extern W_Vector *audit_added_rules;
 extern volatile int audit_thread_active;
 void clean_rules(void);
 void StopAuditThread(void);
+#else
+int whodata_audit_start();
+int set_winsacl(const char *dir, int position);
 #endif
 
 #endif

@@ -17,6 +17,7 @@
 
 syscheck_config syscheck;
 
+
 #ifdef USE_MAGIC
 #include <magic.h>
 magic_t magic_cookie = 0;
