@@ -1683,7 +1683,12 @@ static int getattributes(char **attributes, char **values,
         /* Get frequency */
         else if (strcasecmp(attributes[k], xml_frequency) == 0) {
             if (OS_StrIsNum(values[k])) {
-                sscanf(values[k], "%4d", frequency);
+                *frequency = atoi(values[k]);
+                if (*frequency < 2 || *frequency > 9999) {
+                    merror("rules_op: Invalid frequency: %d. Must be higher than 1 and lower than 10000.", *frequency);
+                    return (-1);
+                }
+                *frequency = *frequency - 2;
             } else {
                 merror("rules_op: Invalid frequency: %s. "
                        "Must be integer" ,
