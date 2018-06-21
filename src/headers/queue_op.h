@@ -21,7 +21,7 @@ typedef struct queue_t {
     size_t size;
     pthread_mutex_t mutex;
     pthread_cond_t available;
-    pthread_cond_t available_block;
+    pthread_cond_t available_not_empty;
 } w_queue_t;
 
 w_queue_t * queue_init(size_t n);
@@ -30,7 +30,9 @@ int queue_full(const w_queue_t * queue);
 int queue_empty(const w_queue_t * queue);
 int queue_push(w_queue_t * queue, void * data);
 int queue_push_ex(w_queue_t * queue, void * data);
+int queue_push_ex_block(w_queue_t * queue, void * data);
 void * queue_pop(w_queue_t * queue);
 void * queue_pop_ex(w_queue_t * queue);
+void * queue_pop_ex_block(w_queue_t * queue);
 
 #endif // QUEUE_OP_H

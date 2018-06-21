@@ -538,7 +538,7 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check if we should ignore it */
-                if (currently_rule->ckignore && IGnore(lf)) {
+                if (currently_rule->ckignore && IGnore(lf,NULL)) {
                     lf->generated_rule = NULL;
                     break;
                 }
