@@ -1,0 +1,1 @@
+{"timestamp":"2018-06-22T14:20:27.446+0000","rule":{},"agent":{"id":"000","name":"wazuh-manager"},"manager":{"name":"wazuh-manager"},"id":"xxx.xxx","cluster":{"name":"wazuh","node":"node01"},"full_log":"ossec: output: 'df -P': /dev/sda2         20508240 6003832  13439604      31% /","decoder":{"name":"ossec"},"predecoder":{"hostname":"wazuh-manager"},"location":"df -P"}
