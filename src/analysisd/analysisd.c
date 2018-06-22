@@ -127,7 +127,7 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args);
 void * w_decode_event_thread(__attribute__((unused)) void * args);
 
 /* Process decoded event - rule matching threads */
-void * w_process_event_thread(__attribute__((unused)) void * args);
+void * w_process_event_thread(__attribute__((unused)) void * id);
 
 /* Do log rotation thread */
 void * w_log_rotate_thread(__attribute__((unused)) void * args);
@@ -188,6 +188,7 @@ static int reported_hostinfo = 0;
 static int reported_rootcheck = 0;
 static int reported_event = 0;
 static int reported_writer = 0;
+
 
 /* Mutexes */
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -876,9 +877,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Create log rotation thread */
     w_create_thread(w_log_rotate_thread,NULL);
 
-    /* Create State thread */
-    w_create_thread(w_analysisd_state_main,NULL);
-
     /* Create decode syscheck threads */
     for(i = 0; i < num_decode_syscheck_threads;i++){
         w_create_thread(w_decode_syscheck_thread,NULL);
@@ -906,18 +904,13 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Create the process event threads */
     for(i = 0; i < num_rule_matching_threads;i++){
-        w_create_thread(w_process_event_thread,i);
+        w_create_thread(w_process_event_thread,(void *) (intptr_t)i);
     }
 
-    int seconds = 0;
+    /* Create State thread */
+    w_create_thread(w_analysisd_state_main,NULL);
 
     while (1) {
-        /*seconds++;
-
-        if(seconds >= 80)
-        {
-            merror_exit("*********EVENTS PROCESSED PARALLEL: %d",s_events_processed);
-        }*/
         sleep(1);
     }
 }
@@ -1706,8 +1699,8 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
             if (lf = queue_pop_ex(writer_queue_log), lf) {
 
                 w_mutex_lock(&writer_threads_mutex);
-                w_inc_alerts_writed();
-                
+                w_inc_alerts_written();
+
                 if (Config.custom_alert_output) {
                     __crt_ftell = ftell(_aflog);
                     OS_CustomLog(lf, Config.custom_alert_output_format);
@@ -1785,7 +1778,6 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             w_mutex_unlock(&decode_syscheck_mutex);
 
             w_inc_syscheck_decoded_events();
-            s_syscheck_queue = decode_queue_syscheck_input->size;
         }    
     }
 }
@@ -1826,8 +1818,6 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
             }
 
             w_inc_syscollector_decoded_events();
-            s_syscollector_queue = decode_queue_syscollector_input->size;
-           
         }    
     }
 }
@@ -1868,7 +1858,6 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
             }
 
             w_inc_rootcheck_decoded_events();
-            s_rootcheck_queue = decode_queue_rootcheck_input->size;
         }    
     }
 }
@@ -1908,8 +1897,6 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
             }
 
             w_inc_hostinfo_decoded_events();
-            s_hostinfo_queue = decode_queue_hostinfo_input->size;
-            
         }
     }
 }
@@ -1944,17 +1931,16 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             queue_push_ex_block(decode_queue_event_output,lf);
             
             w_inc_decoded_events();
-            s_event_queue = decode_queue_event_input->size;
         }    
     }
 }
 
-void * w_process_event_thread(__attribute__((unused)) void * args){
+void * w_process_event_thread(__attribute__((unused)) void * id){
 
     Eventinfo *lf = NULL;
     RuleInfo *currently_rule = NULL;
     int result;
-    int t_id = args;
+    int t_id = (intptr_t)id;
 
     while(1){
 
@@ -2187,7 +2173,6 @@ void * w_process_event_thread(__attribute__((unused)) void * args){
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
         w_inc_processed_events();
-        s_process_event_queue = decode_queue_event_output->size;
 
         if (Config.logall || Config.logall_json){
 
@@ -2295,7 +2280,7 @@ void * w_writer_log_firewall_thread(__attribute__((unused)) void * args ){
         if (lf = queue_pop_ex(writer_queue_log_firewall), lf) {
 
             w_mutex_lock(&writer_threads_mutex);
-            s_firewall_writed++;
+            s_firewall_written++;
             FW_Log(lf);
             w_mutex_unlock(&writer_threads_mutex);
 
@@ -2351,15 +2336,15 @@ void * w_writer_log_fts_thread(__attribute__((unused)) void * args ){
 
 void w_get_queues_size(){
 
-    s_syscheck_queue = decode_queue_syscheck_input->size;
-    s_syscollector_queue = decode_queue_syscollector_input->size;
-    s_rootcheck_queue = decode_queue_rootcheck_input->size;
-    s_hostinfo_queue = decode_queue_hostinfo_input->size;
-    s_event_queue = decode_queue_event_input->size;
-    s_process_event_queue = decode_queue_event_output->size;
+    s_syscheck_queue = ((decode_queue_syscheck_input->elements / (float)decode_queue_syscheck_input->size)) * 100;
+    s_syscollector_queue = ((decode_queue_syscollector_input->elements / (float)decode_queue_syscollector_input->size)) * 100;
+    s_rootcheck_queue = ((decode_queue_rootcheck_input->elements / (float)decode_queue_rootcheck_input->size)) * 100;
+    s_hostinfo_queue = ((decode_queue_hostinfo_input->elements / (float)decode_queue_hostinfo_input->size)) * 100;
+    s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size)) * 100;
+    s_process_event_queue = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size)) * 100;
 
-    s_writer_archives_queue = writer_queue->size;
-    s_writer_alerts_queue = writer_queue_log->size;
-    s_writer_statistical_queue = writer_queue_log_statistical->size;
-    s_writer_archives_queue = writer_queue->size;
+    s_writer_archives_queue = ((writer_queue->elements / (float)writer_queue->size)) * 100;
+    s_writer_alerts_queue = ((writer_queue_log->elements / (float)writer_queue_log->size)) * 100;
+    s_writer_statistical_queue = ((writer_queue_log_statistical->elements / (float)writer_queue_log_statistical->size)) * 100;
+    //s_writer_archives_queue = ((writer_queue->elements / (float)writer_queue->size)) * 100 ;
 }

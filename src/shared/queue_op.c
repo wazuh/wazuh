@@ -16,6 +16,7 @@ w_queue_t * queue_init(size_t size) {
     os_calloc(1, sizeof(w_queue_t), queue);
     os_malloc(size * sizeof(void *), queue->data);
     queue->size = size;
+    queue->elements = 0;
     pthread_mutex_init(&queue->mutex, NULL);
     pthread_cond_init(&queue->available, NULL);
     pthread_cond_init(&queue->available_not_empty, NULL);
@@ -46,6 +47,7 @@ int queue_push(w_queue_t * queue, void * data) {
     } else {
         queue->data[queue->begin] = data;
         queue->begin = (queue->begin + 1) % queue->size;
+        queue->elements++;
         return 0;
     }
 }
@@ -90,6 +92,7 @@ void * queue_pop(w_queue_t * queue) {
         data = queue->data[queue->end];
         queue->data[queue->begin] = data;
         queue->end = (queue->end + 1) % queue->size;
+        queue->elements--;
         return data;
     }
 }

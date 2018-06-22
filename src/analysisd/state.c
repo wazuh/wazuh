@@ -8,8 +8,8 @@
  */
 
 #include "shared.h"
-#include "state.h"
 #include "analysisd.h"
+#include "state.h"
 
 unsigned int s_events_syscheck_decoded = 0;
 unsigned int s_events_syscollector_decoded  = 0;
@@ -18,8 +18,8 @@ unsigned int s_events_hostinfo_decoded  = 0;
 unsigned int s_events_decoded = 0;
 unsigned int s_events_processed = 0;
 unsigned int s_events_dropped = 0 ;
-unsigned int s_alerts_writed  = 0; 
-unsigned int s_firewall_writed = 0;
+unsigned int s_alerts_written  = 0; 
+unsigned int s_firewall_written = 0;
 
 unsigned int s_syscheck_queue = 0;
 unsigned int s_syscollector_queue = 0;
@@ -40,12 +40,13 @@ pthread_mutex_t s_hostinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_event_dropped_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_alerts_writed_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_firewall_writed_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t s_alerts_written_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t s_firewall_written_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+int interval;
 
 void * w_analysisd_state_main(){
-    int interval = getDefine_Int("analysisd", "state_interval", 0, 86400);
+    interval = getDefine_Int("analysisd", "state_interval", 0, 86400);
 
     if (!interval) {
         minfo("State file is disabled.");
@@ -84,40 +85,75 @@ int w_analysisd_write_state(){
         return -1;
     }
 
-    //w_get_queues_size();
+    w_get_queues_size();
 
     fprintf(fp,
         "# State file for %s\n"
         "\n"
         "# Total events decoded\n"
-        "events_decoded:'%u'\n"
+        "events_decoded='%u'\n"
         "\n"
         "# Syscheck events decoded\n"
-        "syscheck_events_decoded:'%u'\n"
+        "syscheck_events_decoded='%u'\n"
+        "syscheck_edps='%u'\n"
         "\n"
         "# Syscollector events decoded\n"
-        "syscollector_events_decoded:'%u'\n"
+        "syscollector_events_decoded='%u'\n"
+        "syscollector_edps='%u'\n"
         "\n"
         "# Rootcheck events decoded\n"
-        "rootcheck_events_decoded:'%u'\n"
+        "rootcheck_events_decoded='%u'\n"
+        "rootcheck_edps='%u'\n"
         "\n"
         "# Hostinfo events decoded\n"
-        "hostinfo_events_decoded:'%u'\n"
+        "hostinfo_events_decoded='%u'\n"
+        "hostinfo_edps='%u'\n"
         "\n"
         "# Other events decoded\n"
-        "other_events_decoded:'%u'\n"
+        "other_events_decoded='%u'\n"
+        "other_events_edps='%u'\n"
         "\n"
-        "# Events processed - rule matching\n"
-        "events_processed:'%u'\n"
+        "# Events processed (Rule matching)\n"
+        "events_processed='%u'\n"
+        "events_edps='%u'\n"
         "\n"
         "# Events dropped\n"
-        "events_dropped:'%u'\n"
+        "events_dropped='%u'\n"
         "\n"
-        "# Alerts writed to disk\n"
-        "alerts_writed:'%u'\n"
-        "# Firewall alerts writed to disk\n"
-        "firewall_writed:'%u'\n",
-        __local_name, s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded ,s_events_syscheck_decoded, s_events_syscollector_decoded,s_events_rootcheck_decoded,s_events_hostinfo_decoded,s_events_decoded,s_events_processed,s_events_dropped, s_alerts_writed,s_firewall_writed);
+        "# Alerts written to disk\n"
+        "alerts_written='%u'\n"
+        "\n"
+        "# Firewall alerts written to disk\n"
+        "firewall_written='%u'\n"
+        "\n"
+        "# Syscheck queue\n"
+        "syscheck_queue='%u%'\n"
+        "\n"
+        "# Syscollector queue\n"
+        "syscollector_queue='%u%'\n"
+        "\n"
+        "# Rootcheck queue\n"
+        "rootcheck_queue='%u%'\n"
+        "\n"
+        "# Hostinfo queue\n"
+        "hostinfo_queue='%u%'\n"
+        "\n"
+        "# Event queue\n"
+        "event_queue='%u%'\n"
+        "\n"
+        "# Rule matching queue\n"
+        "rule_matching_queue='%u%'\n"
+        "\n"
+        "# Alerts log queue\n"
+        "alerts_queue='%u%'\n"
+        "\n"
+        "# Firewall log queue\n"
+        "firewall_queue='%u%'\n"
+        "\n"
+        "# Statistical log queue\n"
+        "statistical_queue='%u%'\n"
+        "\n",
+        __local_name, s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded ,s_events_syscheck_decoded,s_events_syscheck_decoded / interval ,s_events_syscollector_decoded,s_events_syscollector_decoded / interval,s_events_rootcheck_decoded,s_events_rootcheck_decoded / interval,s_events_hostinfo_decoded,s_events_hostinfo_decoded / interval,s_events_decoded,s_events_decoded / interval,s_events_processed,s_events_processed / interval,s_events_dropped, s_alerts_written,s_firewall_written,s_syscheck_queue,s_syscollector_queue,s_rootcheck_queue,s_hostinfo_queue,s_event_queue,s_process_event_queue,s_writer_alerts_queue,s_writer_firewall_queue,s_writer_statistical_queue);
     fclose(fp);
 
     w_reset_stats();
@@ -175,16 +211,16 @@ void w_inc_dropped_events(){
     w_mutex_unlock(&s_event_dropped_mutex);
 }
 
-void w_inc_alerts_writed(){
-    w_mutex_lock(&s_alerts_writed_mutex);
-    s_alerts_writed++;
-    w_mutex_unlock(&s_alerts_writed_mutex);
+void w_inc_alerts_written(){
+    w_mutex_lock(&s_alerts_written_mutex);
+    s_alerts_written++;
+    w_mutex_unlock(&s_alerts_written_mutex);
 }
 
-void w_inc_firewall_writed(){
-    w_mutex_lock(&s_firewall_writed_mutex);
-    s_firewall_writed++;
-    w_mutex_unlock(&s_firewall_writed_mutex);
+void w_inc_firewall_written(){
+    w_mutex_lock(&s_firewall_written_mutex);
+    s_firewall_written++;
+    w_mutex_unlock(&s_firewall_written_mutex);
 }
 
 void w_reset_stats(){
@@ -216,14 +252,13 @@ void w_reset_stats(){
     s_events_dropped = 0;
     w_mutex_unlock(&s_event_dropped_mutex);
 
-    w_mutex_lock(&s_alerts_writed_mutex);
-    s_alerts_writed = 0;
-    w_mutex_unlock(&s_alerts_writed_mutex);
+    w_mutex_lock(&s_alerts_written_mutex);
+    s_alerts_written = 0;
+    w_mutex_unlock(&s_alerts_written_mutex);
 
-    w_mutex_lock(&s_firewall_writed_mutex);
-    s_firewall_writed = 0;
-    w_mutex_unlock(&s_firewall_writed_mutex);
-
+    w_mutex_lock(&s_firewall_written_mutex);
+    s_firewall_written = 0;
+    w_mutex_unlock(&s_firewall_written_mutex);
 }
 
 
