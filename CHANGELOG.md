@@ -32,7 +32,7 @@ All notable changes to this project will be documented in this file.
 - Add `172.0.0.1` as manager IP when creating `global.db`. ([#970](https://github.com/wazuh/wazuh/pull/970))
 - New requests for Syscollector. ([#728](https://github.com/wazuh/wazuh/pull/728))
 - `cluster_control` shows an error if the status does not exist. ([#1002](https://github.com/wazuh/wazuh/pull/1002))
-
+- Get Windows hardware inventory natively. ([#831](https://github.com/wazuh/wazuh/pull/831))
 
 ### Changed
 
