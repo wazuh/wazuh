@@ -371,6 +371,7 @@ failtarget:
 	@echo "   make TARGET=hybrid     - hybrid version of server"
 	@echo "   make TARGET=agent    to build the unix agent"
 	@echo "   make TARGET=winagent to build the windows agent"
+	@echo "   make TARGET=logcollector to build only logcollector Binary"
 
 .PHONY: help
 help: failtarget
@@ -465,6 +466,8 @@ BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
 
+BUILD_LOGCOLLECTOR+=ossec-logcollector
+
 .PHONY: server local hybrid agent
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
@@ -489,6 +492,12 @@ $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
 agent: external
 	${MAKE} ${BUILD_AGENT}
+
+ifeq (${MAKECMDGOALS},logcollector)
+$(error Do not use 'logcollector' directly, use 'TARGET=logcollector')
+endif
+logcollector: external
+	${MAKE} ${BUILD_LOGCOLLECTOR}
 
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
