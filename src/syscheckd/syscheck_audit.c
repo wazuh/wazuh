@@ -480,6 +480,9 @@ void audit_parse(char * buffer) {
                 free(full_path);
             } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
                 w_evt->path = clean_audit_path(cwd, path1);
+            } else if (strncmp(path0, path1, strlen(path0)) == 0) {
+                w_evt->path = malloc(strlen(cwd) + strlen(path1) + 2);
+                snprintf(w_evt->path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
             } else {
                 full_path = malloc(strlen(path0) + strlen(path1) + 2);
                 snprintf(full_path, strlen(path0) + strlen(path1) + 2, "%s/%s", path0, path1);
