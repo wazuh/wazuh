@@ -135,6 +135,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         snprintf(lf->fields[SK_INODE].value, 20, "%ld", sum->inode);
     }
 
+    if (sum->mtime) {
+        os_calloc(20, sizeof(char), lf->fields[SK_MTIME].value);
+        snprintf(lf->fields[SK_MTIME].value, 20, "%ld", sum->mtime);
+    }
+
     if(sum->sha256)
         os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
 }

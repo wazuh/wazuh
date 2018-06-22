@@ -66,6 +66,7 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_UNAME] = "uname";
     sdb.syscheck_dec->fields[SK_GNAME] = "gname";
     sdb.syscheck_dec->fields[SK_INODE] = "inode";
+    sdb.syscheck_dec->fields[SK_MTIME] = "mtime";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);

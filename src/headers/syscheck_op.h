@@ -40,7 +40,8 @@
 #define SK_GNAME   8
 #define SK_INODE   9
 #define SK_SHA256  10
-#define SK_NFIELDS 11
+#define SK_MTIME   11
+#define SK_NFIELDS 12
 
 typedef struct __sdb {
     char buf[OS_MAXSTR + 1];
