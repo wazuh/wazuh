@@ -69,6 +69,9 @@ def execute_local_request(input_json, pretty, debug):
 
 
 def __split_response_data(response):
+    if response.get('err'):
+        raise WazuhException(3018, response['err'])
+
     error = response['error']
     data = response['data' if not error else 'message']
     return data, error

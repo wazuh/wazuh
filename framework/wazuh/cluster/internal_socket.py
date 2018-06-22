@@ -132,7 +132,11 @@ class InternalSocketClient(communication.AbstractClient):
             return False
         elif command == 'err':
             self.final_response.write(data)
-            return True
+            try:
+                json.loads(data)
+                return False
+            except ValueError:
+                return True
 
 
     def process_request(self, command, data):

@@ -103,6 +103,9 @@ def get_agents(filter_status, filter_node):
 
     request = "dapi {}".format(json.dumps(input_json))
     response = execute(request)
+    if response.get('err'):
+        raise Exception(response['err'])
+
     if response['error'] == 0:
         return execute(request)['data']
     else:

@@ -130,7 +130,8 @@ class WazuhException(Exception):
         3013: 'Cluster is disabled',
         3015: 'Cannot access directory',
         3016: 'Received an error response',
-        3017: 'The agent is not reporting to any manager'
+        3017: 'The agent is not reporting to any manager',
+        3018: 'Error sending request to the master'
 
         # > 9000: Authd
     }
