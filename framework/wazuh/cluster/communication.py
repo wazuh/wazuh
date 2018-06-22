@@ -569,6 +569,7 @@ class AbstractServer(asyncore.dispatcher):
         self.tag = tag
         self._clients_lock = threading.Lock()
         self.create_socket(socket_family, socket_type)
+        self.set_reuse_addr()
         self.bind(addr)
         self.listen(5)
         self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
