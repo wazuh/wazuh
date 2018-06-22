@@ -36,6 +36,14 @@
 
 #include "os_regex/os_regex.h"
 
+#ifdef WIN32
+typedef struct whodata_event_node {
+    struct whodata_event_node *next;
+    struct whodata_event_node *previous;
+    char *handle_id;
+} whodata_event_node;
+#endif
+
 typedef struct _rtfim {
     int fd;
     OSHash *dirtb;
@@ -64,10 +72,19 @@ typedef struct whodata_evt {
     unsigned int mask;
     int dir_position;
     char deleted;
+    whodata_event_node *wnode;
 #endif
 } whodata_evt;
 
 #ifdef WIN32
+
+typedef struct whodata_event_list {
+    whodata_event_node *nodes;
+    whodata_event_node *first;
+    whodata_event_node *last;
+    size_t current_size;
+    size_t max_size;
+} whodata_event_list;
 
 typedef struct whodata {
     OSHash *fd;        // Open file descriptors
@@ -124,6 +141,7 @@ typedef struct _config {
     FILE *reg_fp;
     int max_fd_win_rt;
     whodata wdata;
+    whodata_event_list wlist;
 #endif
 
     OSHash *fp;

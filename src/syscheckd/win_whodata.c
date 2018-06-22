@@ -18,6 +18,8 @@ static size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
+whodata_event_node *whodata_list_add(char *id);
+void whodata_list_remove(whodata_event_node *node);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -426,12 +428,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 w_evt->process_id = process_id;
                 w_evt->mask = 0;
                 w_evt->deleted = 0;
+                w_evt->wnode = whodata_list_add(strdup(hash_id));
 
                 user_name = NULL;
                 path = NULL;
                 process_name = NULL;
 
-                if (result = OSHash_Add(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
+                if (result = OSHash_Add_ex(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
                     if (!result) {
                         merror("The event could not be added to the whodata hash table.");
                     } else if (result == 1) {
@@ -462,7 +465,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             break;
             // Close fd
             case 4658:
-                if (w_evt = OSHash_Delete(syscheck.wdata.fd, hash_id), w_evt) {
+                if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
                     if (w_evt->mask) {
                         unsigned int mask = w_evt->mask;
 
@@ -484,6 +487,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                             realtime_checksumfile(w_evt->path, w_evt);
                         }
                     }
+                    whodata_list_remove(w_evt->wnode);
                     free(w_evt->user_name);
                     free(w_evt->path);
                     free(w_evt->process_name);
@@ -517,7 +521,53 @@ int whodata_audit_start() {
     if (syscheck.wdata.fd = OSHash_Create(), !syscheck.wdata.fd) {
         return 1;
     }
+    OSHash_setSize_ex(syscheck.wdata.fd, OS_SIZE_1024);
+    memset(&syscheck.wlist, 0, sizeof(whodata_event_list));
+    syscheck.wlist.max_size = OS_SIZE_1024;
     return 0;
+}
+
+whodata_event_node *whodata_list_add(char *id) {
+    whodata_event_node *node = NULL;
+    if (syscheck.wlist.current_size < syscheck.wlist.max_size) {
+        os_calloc(sizeof(whodata_event_node), 1, node);
+        if (syscheck.wlist.last) {
+            node->next = NULL;
+            node->previous = syscheck.wlist.last;
+            syscheck.wlist.last = node->next;
+        } else {
+            node->next = node->previous = NULL;
+            syscheck.wlist.last = syscheck.wlist.first = node;
+        }
+        node->handle_id = id;
+        syscheck.wlist.current_size++;
+    } else {
+        // Increment control
+    }
+    return node;
+}
+
+void whodata_list_remove(whodata_event_node *node) {
+    if (node->next) {
+        if (node->previous) {
+            node->next->previous = node->previous;
+        } else {
+            node->next->previous = NULL;
+            syscheck.wlist.first = node->next;
+        }
+    }
+
+    if (node->previous) {
+        if (node->next) {
+            node->previous->next = node->next;
+        } else {
+            node->previous->next = NULL;
+            syscheck.wlist.last = node->previous;
+        }
+    }
+    free(node->handle_id);
+    free(node);
+    syscheck.wlist.current_size--;
 }
 
 #endif
