@@ -19,8 +19,8 @@ extern unsigned int s_events_hostinfo_decoded;
 extern unsigned int s_events_decoded;
 extern unsigned int s_events_processed;
 extern unsigned int s_events_dropped;
-extern unsigned int s_alerts_writed; 
-extern unsigned int s_firewall_writed;
+extern unsigned int s_alerts_written; 
+extern unsigned int s_firewall_written;
 
 extern unsigned int s_syscheck_queue;
 extern unsigned int s_syscollector_queue;
@@ -44,8 +44,8 @@ void w_inc_hostinfo_decoded_events();
 void w_inc_decoded_events();
 void w_inc_processed_events();
 void w_inc_dropped_events();
-void w_inc_alerts_writed();
-void w_inc_firewall_writed();
+void w_inc_alerts_written();
+void w_inc_firewall_written();
 void w_reset_stats();
 
 #endif /* _STATE_A__H */

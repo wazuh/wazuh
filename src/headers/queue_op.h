@@ -22,6 +22,7 @@ typedef struct queue_t {
     pthread_mutex_t mutex;
     pthread_cond_t available;
     pthread_cond_t available_not_empty;
+    unsigned int elements;
 } w_queue_t;
 
 w_queue_t * queue_init(size_t n);
