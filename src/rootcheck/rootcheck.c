@@ -185,12 +185,12 @@ int rootcheck_init(int test_config)
         return (1);
     }
 
-    /* Check if Unix audit file is configured */
-    if (!rootcheck.unixaudit) {
 #ifndef WIN32
+    /* Check if Unix audit file is configured */
+    if (rootcheck.checks.rc_unixaudit && !rootcheck.unixaudit) {
         mtferror(ARGV0, "System audit file not configured.");
-#endif
     }
+#endif
 
     /* Set default values */
     if (rootcheck.workdir == NULL) {
