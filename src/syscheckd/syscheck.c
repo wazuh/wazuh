@@ -16,7 +16,6 @@
 #include "rootcheck/rootcheck.h"
 
 syscheck_config syscheck;
-pthread_mutex_t mutex_ht = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef USE_MAGIC
 #include <magic.h>

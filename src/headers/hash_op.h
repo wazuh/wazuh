@@ -11,6 +11,7 @@
 
 #ifndef _OS_HASHOP
 #define _OS_HASHOP
+#include <pthread.h>
 
 /* Node structure */
 typedef struct _OSHashNode {
@@ -58,6 +59,7 @@ void *OSHash_Get(const OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Get_ex(const OSHash *self, const char *key) __attribute__((nonnull));
 
 int OSHash_setSize(OSHash *self, unsigned int new_size) __attribute__((nonnull));
+int OSHash_setSize_ex(OSHash *self, unsigned int new_size) __attribute__((nonnull));
 
 OSHash *OSHash_Duplicate(const OSHash *hash);
 OSHash *OSHash_Duplicate_ex(const OSHash *hash);

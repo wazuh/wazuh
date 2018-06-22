@@ -72,15 +72,13 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
 
             // Update database
 
-            w_mutex_lock(mutex_ht);
-            if (buf = (char *) OSHash_Get(syscheck.fp, file_name), buf) {
+            if (buf = (char *) OSHash_Get_ex(syscheck.fp, file_name), buf) {
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s -1", SK_DB_NATTR, buf);
                 free(buf);
-                if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
+                if (!OSHash_Update_ex(syscheck.fp, file_name, strdup(alert_msg))) {
                     merror("Unable to update file to db: %s", file_name);
                 }
             }
-            w_mutex_unlock(mutex_ht);
 
             return (0);
         }else{
@@ -171,9 +169,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             }
         }
 
-        w_mutex_lock(mutex_ht);
-        buf = (char *) OSHash_Get(syscheck.fp, file_name);
-        w_mutex_unlock(mutex_ht);
+        buf = (char *) OSHash_Get_ex(syscheck.fp, file_name);
 
         if (!buf) {
             char alert_msg[OS_MAXSTR + 1];    /* to accommodate a long */
@@ -206,11 +202,9 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                      opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 
-            w_mutex_lock(mutex_ht);
-            if (OSHash_Add(syscheck.fp, file_name, strdup(alert_msg)) <= 0) {
+            if (OSHash_Add_ex(syscheck.fp, file_name, strdup(alert_msg)) <= 0) {
                 merror("Unable to add file to db: %s", file_name);
             }
-            w_mutex_unlock(mutex_ht);
 
             /* Send the new checksum to the analysis server */
             alert_msg[OS_MAXSTR] = '\0';
@@ -261,11 +255,9 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 // Update database
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
                 free(buf);
-                w_mutex_lock(mutex_ht);
-                if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
+                if (!OSHash_Update_ex(syscheck.fp, file_name, strdup(alert_msg))) {
                     merror("Unable to update file to db: %s", file_name);
                 }
-                w_mutex_unlock(mutex_ht);
 
                 /* Send the new checksum to the analysis server */
                 alert_msg[OS_MAXSTR] = '\0';
@@ -434,7 +426,7 @@ int create_db()
         merror_exit("Unable to create syscheck database. Exiting.");
     }
 
-    if (!OSHash_setSize(syscheck.fp, 2048)) {
+    if (!OSHash_setSize_ex(syscheck.fp, 2048)) {
         merror(LIST_ERROR);
         return (0);
     }

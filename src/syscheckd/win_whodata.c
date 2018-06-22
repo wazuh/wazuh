@@ -17,7 +17,6 @@ static size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
 
-
 int set_winsacl(const char *dir, int position) {
     static LPCTSTR priv = "SeSecurityPrivilege";
 	DWORD result = 0;
@@ -51,7 +50,7 @@ int set_winsacl(const char *dir, int position) {
     // Check if the sacl has what the whodata scanner needs
     switch(is_valid_sacl(old_sacl)) {
         case 0:
-            mdebug2("It is necessary to configure the SACL of '%s'.", dir);
+            mdebug1("It is necessary to configure the SACL of '%s'.", dir);
             syscheck.wdata.ignore_rest[position] = 1;
 
             // Get SACL size
@@ -61,7 +60,7 @@ int set_winsacl(const char *dir, int position) {
             }
         break;
         case 1:
-            mdebug2("It is not necessary to configure the SACL of '%s'.", dir);
+            mdebug1("It is not necessary to configure the SACL of '%s'.", dir);
             retval = 0;
             goto end;
         case 2:
@@ -299,6 +298,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     char *process_name = NULL;
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
+    unsigned __int64 keywords;
+    static unsigned __int64 audit_success = 0x20000000000000;
+
     unsigned int mask;
     int position;
     static const wchar_t* event_fields[] = {
@@ -308,7 +310,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         L"Event/EventData/Data[@Name='ProcessName']",
         L"Event/EventData/Data[@Name='ProcessId']",
         L"Event/EventData/Data[@Name='HandleId']",
-        L"Event/EventData/Data[@Name='AccessMask']"
+        L"Event/EventData/Data[@Name='AccessMask']",
+        L"Event/System/Keywords"
     };
     static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
     UNREFERENCED_PARAMETER(_void);
@@ -345,7 +348,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             (buffer[3].Type != EvtVarTypeString && buffer[3].Type != EvtVarTypeNull)   ||
             (buffer[4].Type != EvtVarTypeHexInt64 && buffer[4].Type != EvtVarTypeNull) ||
             (buffer[5].Type != EvtVarTypeHexInt64 && buffer[5].Type != EvtVarTypeNull) ||
-            (buffer[6].Type != EvtVarTypeHexInt32 && buffer[6].Type != EvtVarTypeNull)) {
+            (buffer[6].Type != EvtVarTypeHexInt32 && buffer[6].Type != EvtVarTypeNull) ||
+            (buffer[7].Type != EvtVarTypeHexInt64 && buffer[7].Type != EvtVarTypeNull)) {
             merror("Invalid parameter type after rendering the event.");
             retval = 1;
             goto clean;
@@ -358,6 +362,12 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         process_id = buffer[4].UInt64Val;
         handle_id = buffer[5].UInt64Val;
         mask = buffer[6].UInt32Val;
+        keywords = buffer[7].UInt64Val;
+
+        // Discards unsuccessful attempts
+        if (!(keywords & audit_success)) {
+            goto clean;
+        }
 
         snprintf(hash_id, 21, "%llu", handle_id);
 
@@ -365,15 +375,12 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Open fd
             case 4656:
                 // Check if it is a known file
-                w_mutex_lock(mutex_ht);
-                if (!OSHash_Get(syscheck.fp, path)) {
-                    w_mutex_unlock(mutex_ht);
+                if (!OSHash_Get_ex(syscheck.fp, path)) {
                     if (position = find_dir_pos(path, 1), position < 0) {
                         // Discard the file if its monitoring has not been activated
                         break;
                     }
                 } else {
-                    w_mutex_unlock(mutex_ht);
                     position = -1;
                 }
                 os_calloc(1, sizeof(whodata_evt), w_evt);
@@ -382,7 +389,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 w_evt->dir_position = position;
                 w_evt->process_name = process_name;
                 w_evt->process_id = process_id;
-                w_evt->handle_id = handle_id;
                 w_evt->mask = 0;
                 w_evt->deleted = 0;
 
@@ -431,9 +437,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                             char wd_sum[OS_SIZE_6144 + 1];
 
                             // Remove the file from the syscheck hash table
-                            w_mutex_lock(mutex_ht);
-                            OSHash_Delete(syscheck.fp, w_evt->path);
-                            w_mutex_unlock(mutex_ht);
+                            OSHash_Delete_ex(syscheck.fp, w_evt->path);
 
                             if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
                                 merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);
