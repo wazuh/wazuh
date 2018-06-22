@@ -95,15 +95,14 @@ class MasterManagerHandler(ServerHandler):
             mcf_thread.start()
             return 'ack', self.set_worker(command, mcf_thread, data)
         elif command == 'get_nodes':
-            data = data.decode()
             response = {name:data['info'] for name,data in self.server.get_connected_clients().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master",  "version": __version__}})
             serialized_response = ['json', json.dumps(response)]
             return serialized_response
         elif command == 'get_health':
-            filter_nodes = data.decode()
-            response = self.manager.get_healthcheck(filter_nodes)
+            _, filter_nodes = data.decode().split(' ',1)
+            response = self.manager.get_healthcheck(filter_nodes if filter_nodes != 'None' else None)
             serialized_response = ['json', json.dumps(response)]
             return serialized_response
         elif command == 'string':
