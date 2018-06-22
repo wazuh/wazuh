@@ -386,7 +386,8 @@ char * audit_get_id(const char * event) {
 }
 
 void audit_parse(char * buffer) {
-    char *ret;
+    char *pkey;
+    char *psuccess;
     regmatch_t match[2];
     int match_size;
     char *uid = NULL;
@@ -404,7 +405,7 @@ void audit_parse(char * buffer) {
 
     os_calloc(1, sizeof(whodata_evt), w_evt);
 
-    if (ret = strstr(buffer,"key=\"wazuh_fim\""), ret) {
+    if ((pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) &&  (psuccess = strstr(buffer,"success=yes"), psuccess)){
         if(regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
             uid = malloc(match_size + 1);
