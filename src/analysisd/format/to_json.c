@@ -20,6 +20,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* root;
     cJSON* rule;
     cJSON* file_diff;
+    cJSON* changed_fields;
     cJSON* manager;
 	cJSON* agent;
     cJSON* predecoder;
@@ -145,12 +146,15 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     if(lf->filename) {
         file_diff = cJSON_CreateObject();
+        changed_fields = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "syscheck", file_diff);
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
+        cJSON_AddItemToObject(file_diff, "changed_fields", changed_fields);
 
         if(lf->size_before) {
             if (strcmp(lf->size_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "size_before", lf->size_before);
+                cJSON_AddStringToObject(changed_fields, "size", "Size");
             }
         }
         if(lf->size_after) {
@@ -162,6 +166,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             char perm[7];
             snprintf(perm, 7, "%6o", lf->perm_before);
             cJSON_AddStringToObject(file_diff, "perm_before", perm);
+            cJSON_AddStringToObject(changed_fields, "perm", "Permissions");
         }
         if (lf->perm_after) {
             char perm[7];
@@ -171,6 +176,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->owner_before) {
             if (strcmp(lf->owner_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "uid_before", lf->owner_before);
+                cJSON_AddStringToObject(changed_fields, "uid", "User ID");
             }
         }
         if(lf->owner_after) {
@@ -181,6 +187,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->gowner_before) {
             if (strcmp(lf->gowner_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "gid_before", lf->gowner_before);
+                cJSON_AddStringToObject(changed_fields, "gid", "Group ID");
             }
         }
         if(lf->gowner_after) {
@@ -191,6 +198,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->md5_before) {
             if (strcmp(lf->md5_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "md5_before", lf->md5_before);
+                cJSON_AddStringToObject(changed_fields, "md5", "MD5 Hash");
             }
         }
         if(lf->md5_after) {
@@ -201,6 +209,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->sha1_before) {
             if (strcmp(lf->sha1_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "sha1_before", lf->sha1_before);
+                cJSON_AddStringToObject(changed_fields, "sha1", "SHA1 Hash");
             }
         }
         if(lf->sha1_after) {
@@ -211,6 +220,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->sha256_before) {
             if (strcmp(lf->sha256_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "sha256_before", lf->sha256_before);
+                cJSON_AddStringToObject(changed_fields, "sha256", "SHA256 Hash");
             }
         }
         if(lf->sha256_after) {
@@ -221,6 +231,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->uname_before) {
             if (strcmp(lf->uname_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
+                cJSON_AddStringToObject(changed_fields, "uname", "User name");
             }
         }
         if(lf->uname_after) {
@@ -231,6 +242,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->gname_before) {
             if (strcmp(lf->gname_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "gname_before", lf->gname_before);
+                cJSON_AddStringToObject(changed_fields, "gname", "Group name");
             }
         }
         if(lf->gname_after) {
@@ -242,6 +254,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             char mtime[25];
             strftime(mtime, 20, "%FT%T%z", localtime(&lf->mtime_before));
             cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
+            cJSON_AddStringToObject(changed_fields, "mtime", "Last modified");
         }
         if (lf->mtime_after) {
             char mtime[25];
@@ -250,6 +263,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
         if (lf->inode_before) {
             cJSON_AddNumberToObject(file_diff, "inode_before", lf->inode_before);
+            cJSON_AddStringToObject(file_diff, "inode", "Inode");
         }
         if (lf->inode_after) {
             cJSON_AddNumberToObject(file_diff, "inode_after", lf->inode_after);
@@ -257,11 +271,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->diff) {
             if (strcmp(lf->diff, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "diff", lf->diff);
-            }
-        }
-        if(lf->changed_fields) {
-            if (strcmp(lf->changed_fields, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "changed_fields", lf->changed_fields);
             }
         }
 
