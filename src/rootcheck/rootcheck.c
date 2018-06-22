@@ -107,7 +107,7 @@ int rootcheck_init(int test_config)
     }
 
 #ifndef OSSECHIDS
-    rootcheck.notify = SYSLOG;
+    rootcheck.notify = SYSLOG_RK;
     rootcheck.daemon = 0;
     while ((c = getopt(argc, argv, "VstrdhD:c:")) != -1) {
         switch (c) {

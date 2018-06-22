@@ -15,8 +15,8 @@
 extern rkconfig rootcheck;
 
 /* Output types */
-#define QUEUE   101
-#define SYSLOG  102
+#define QUEUE       101
+#define SYSLOG_RK   102
 
 /* Maximum files to search on the whole system */
 #define MAX_RK_SYS      512
