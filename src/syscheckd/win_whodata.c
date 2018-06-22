@@ -4,6 +4,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <aclapi.h>
+#include <sddl.h>
 #include <winevt.h>
 #include "shared.h"
 #include "hash_op.h"
@@ -16,6 +17,21 @@ static PSID everyone_sid = NULL;
 static size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
+char *guid_to_string(GUID *guid);
+
+char *guid_to_string(GUID *guid) {
+    char *string_guid;
+    os_calloc(40, sizeof(char *), string_guid);
+
+    snprintf(string_guid, 40, "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+    guid->Data1,
+    guid->Data2,
+    guid->Data3,
+    guid->Data4[0], guid->Data4[1],
+    guid->Data4[2], guid->Data4[3],guid->Data4[4], guid->Data4[5],guid->Data4[6], guid->Data4[7]);
+
+    return string_guid;
+}
 
 int set_winsacl(const char *dir, int position) {
     static LPCTSTR priv = "SeSecurityPrivilege";
@@ -299,6 +315,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
     unsigned __int64 keywords;
+    char *user_id;
+    char *user_guid;
     static unsigned __int64 audit_success = 0x20000000000000;
 
     unsigned int mask;
@@ -311,7 +329,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         L"Event/EventData/Data[@Name='ProcessId']",
         L"Event/EventData/Data[@Name='HandleId']",
         L"Event/EventData/Data[@Name='AccessMask']",
-        L"Event/System/Keywords"
+        L"Event/System/Keywords",
+        L"Event/EventData/Data[@Name='SubjectUserSid']",
+        L"Event/System/Provider/@Guid"
     };
     static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
     UNREFERENCED_PARAMETER(_void);
@@ -341,6 +361,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             goto clean;
         }
 
+
         // Check types
         if ((buffer[0].Type != EvtVarTypeUInt16 && buffer[0].Type != EvtVarTypeNull)   ||
             (buffer[1].Type != EvtVarTypeString && buffer[1].Type != EvtVarTypeNull)   ||
@@ -349,7 +370,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             (buffer[4].Type != EvtVarTypeHexInt64 && buffer[4].Type != EvtVarTypeNull) ||
             (buffer[5].Type != EvtVarTypeHexInt64 && buffer[5].Type != EvtVarTypeNull) ||
             (buffer[6].Type != EvtVarTypeHexInt32 && buffer[6].Type != EvtVarTypeNull) ||
-            (buffer[7].Type != EvtVarTypeHexInt64 && buffer[7].Type != EvtVarTypeNull)) {
+            (buffer[7].Type != EvtVarTypeHexInt64 && buffer[7].Type != EvtVarTypeNull) ||
+            (buffer[8].Type != EvtVarTypeSid && buffer[8].Type != EvtVarTypeNull)      ||
+            (buffer[9].Type != EvtVarTypeGuid && buffer[9].Type != EvtVarTypeNull)) {
             merror("Invalid parameter type after rendering the event.");
             retval = 1;
             goto clean;
@@ -363,6 +386,17 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         handle_id = buffer[5].UInt64Val;
         mask = buffer[6].UInt32Val;
         keywords = buffer[7].UInt64Val;
+        user_id = NULL;
+        user_guid = NULL;
+        if (!ConvertSidToStringSid(buffer[8].SidVal, &user_id)) {
+            mdebug1("Invalid identifier for user '%s'", user_name);
+            goto clean;
+        }
+
+        if (user_guid = guid_to_string(buffer[9].GuidVal), !user_guid) {
+            mdebug1("Invalid GUID for user '%s'", user_name);
+            goto clean;
+        }
 
         // Discards unsuccessful attempts
         if (!(keywords & audit_success)) {
@@ -385,6 +419,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 }
                 os_calloc(1, sizeof(whodata_evt), w_evt);
                 w_evt->user_name = user_name;
+                w_evt->user_id = user_id;
                 w_evt->path = path;
                 w_evt->dir_position = position;
                 w_evt->process_name = process_name;
@@ -468,6 +503,10 @@ clean:
     free(user_name);
     free(path);
     free(process_name);
+    free(user_guid);
+    if (user_id) {
+        free(user_id);
+    }
     if (buffer) {
         free(buffer);
     }
