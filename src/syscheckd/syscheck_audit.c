@@ -38,20 +38,6 @@ static regex_t regexCompiled_path0;
 static regex_t regexCompiled_path1;
 
 
-void free_audit_event(whodata_evt *w_evt) {
-    free(w_evt->user_name);
-    free(w_evt->user_id);
-    free(w_evt->audit_name);
-    free(w_evt->audit_uid);
-    free(w_evt->effective_name);
-    free(w_evt->effective_uid);
-    free(w_evt->group_name);
-    free(w_evt->group_id);
-    free(w_evt->path);
-    free(w_evt->process_name);
-    free(w_evt);
-}
-
 // Convert audit relative paths into absolute paths
 char *clean_audit_path(char *cwd, char *path) {
 
@@ -515,7 +501,7 @@ void audit_parse(char * buffer) {
                 w_evt->process_name);
             realtime_checksumfile(w_evt->path, w_evt);
         }
-        free_audit_event(w_evt);
+        free_whodata_event(w_evt);
     }
 }
 

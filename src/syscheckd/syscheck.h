@@ -62,6 +62,8 @@ char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
 /* Generate the whodata csum */
 int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size);
+void init_whodata_event(whodata_evt *w_evt);
+void free_whodata_event(whodata_evt *w_evt);
 
 /* Get checksum changes */
 int c_read_file(const char *file_name, const char *oldsum, char *newsum) __attribute__((nonnull));

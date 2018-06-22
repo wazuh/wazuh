@@ -515,8 +515,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->sha1_after = NULL;
     lf->sha256_before = NULL;
     lf->sha256_after = NULL;
-    lf->user = NULL;
-    lf->process = NULL;
+    lf->user_id = NULL;
+    lf->process_id = NULL;
     lf->size_before = NULL;
     lf->size_after = NULL;
     lf->owner_before = NULL;
@@ -678,11 +678,11 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->gname_after) {
         free(lf->gname_after);
     }
-    if (lf->user) {
-        free(lf->user);
+    if (lf->user_id) {
+        free(lf->user_id);
     }
-    if (lf->process) {
-        free(lf->process);
+    if (lf->process_id) {
+        free(lf->process_id);
     }
     if (lf->diff) {
         free(lf->diff);
