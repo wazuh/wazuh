@@ -510,20 +510,21 @@ class Handler(asyncore.dispatcher_with_send):
 
 class ServerHandler(Handler):
 
-    def __init__(self, sock, server, asyncore_map, addr=None):
+    def __init__(self, sock, server, asyncore_map, addr=None, tag="[Master]"):
         Handler.__init__(self, server.config['key'], sock, asyncore_map)
         self.map = asyncore_map
         self.name = None
         self.server = server
         self.addr = addr[0] if addr else addr
+        self.tag = tag
 
 
     def handle_close(self):
         if self.name:
             self.server.remove_client(self.name)
-            logger.info("[Master] [{0}]: Disconnected.".format(self.name))
+            logger.info("{1} [{0}]: Disconnected.".format(self.name, self.tag))
         else:
-            logger.info("[Master] Connection with {} closed.".format(self.addr))
+            logger.info("{} Connection with {} closed.".format(self.tag, self.addr))
 
         Handler.handle_close(self)
 

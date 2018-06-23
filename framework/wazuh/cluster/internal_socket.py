@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class InternalSocketHandler(communication.ServerHandler):
 
     def __init__(self, sock, server, asyncore_map, addr):
-        communication.ServerHandler.__init__(self, server=server, sock=sock, asyncore_map=asyncore_map, addr=addr)
+        communication.ServerHandler.__init__(self, server=server, sock=sock, asyncore_map=asyncore_map, addr=addr, tag="[InternalSocketServer]")
 
 
     def process_request(self, command, data):
