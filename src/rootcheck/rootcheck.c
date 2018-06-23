@@ -201,29 +201,6 @@ int rootcheck_init(int test_config)
     /* Start up message */
 #ifdef WIN32
     mtinfo(ARGV0, STARTUP_MSG, getpid());
-#else
-
-    /* Connect to the queue if configured to do so */
-    if (rootcheck.notify == QUEUE) {
-        mtdebug1(ARGV0, "Starting queue ...");
-
-        /* Start the queue */
-        if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            mterror(ARGV0, QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
-
-            /* 5 seconds to see if the agent starts */
-            sleep(5);
-            if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                /* Wait 10 more seconds */
-                mterror(ARGV0, QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
-                sleep(10);
-                if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
-                }
-            }
-        }
-    }
-
 #endif /* WIN32 */
 
 #endif /* OSSECHIDS */
@@ -241,6 +218,7 @@ int rootcheck_init(int test_config)
 #ifndef WIN32
     /* Start signal handling */
     StartSIG(ARGV0);
+    rootcheck_connect();
 #endif
     mtdebug1(ARGV0, "Running run_rk_check");
     run_rk_check();
@@ -248,4 +226,18 @@ int rootcheck_init(int test_config)
     mtdebug1(ARGV0, "Leaving...");
 #endif /* OSSECHIDS */
     return (0);
+}
+
+void rootcheck_connect() {
+#ifndef WIN32
+    /* Connect to the queue if configured to do so */
+    if (rootcheck.notify == QUEUE) {
+        mtdebug1(ARGV0, "Starting queue ...");
+
+        /* Start the queue */
+        if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+        }
+    }
+#endif
 }
