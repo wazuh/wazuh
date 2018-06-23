@@ -287,6 +287,10 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
+    if (syscheck.rootcheck) {
+        rootcheck_connect();
+    }
+
     /* Initial time to settle */
     sleep(syscheck.tsleep + 2);
 
