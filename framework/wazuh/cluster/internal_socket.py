@@ -177,7 +177,8 @@ class InternalSocketClientThread(communication.ClusterThread):
 
     def __init__(self, socket_name, stopper = threading.Event()):
         communication.ClusterThread.__init__(self, stopper)
-        self.manager = InternalSocketClient(socket_name)
+        asyncore_map = {}
+        self.manager = InternalSocketClient(socket_name=socket_name, asyncore_map=asyncore_map)
 
 
     def run(self):
