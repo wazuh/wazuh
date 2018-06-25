@@ -301,7 +301,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON* auser = cJSON_CreateObject();
             cJSON_AddStringToObject(auser, "id", lf->audit_uid);
             if (lf->audit_name) cJSON_AddStringToObject(auser, "name", lf->audit_name);
-            cJSON_AddItemToObject(audit, "audit_user", auser);
+            cJSON_AddItemToObject(audit, "login_user", auser);
         }
 
         if (lf->effective_uid) {
