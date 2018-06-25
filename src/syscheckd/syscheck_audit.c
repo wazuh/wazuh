@@ -84,14 +84,55 @@ int check_auditd_enabled(void) {
     return auditd_pid;
 }
 
-// Set audit socket configuration
-int set_auditd_config(void) {
+int audit_restart() {
     wfd_t * wfd;
     int status;
     char buffer[4096];
+    char * command[] = { "service", "auditd", "restart", NULL };
+
+    if (wfd = wpopenv(*command, command, W_BIND_STDERR), !wfd) {
+        merror("Could not launch command to restart Auditd: %s (%d)", strerror(errno), errno);
+        return -1;
+    }
+
+    // Print stderr
+
+    while (fgets(buffer, sizeof(buffer), wfd->file)) {
+        mdebug1("auditd: %s", buffer);
+    }
+
+    switch (status = wpclose(wfd), WEXITSTATUS(status)) {
+    case 0:
+        return 0;
+    case 127:
+        // exec error
+        merror("Could not launch command to restart Auditd.");
+        return -1;
+    default:
+        merror("Could not restart Auditd service.");
+        return -1;
+    }
+}
+
+// Set audit socket configuration
+int set_auditd_config(void) {
+
+    // Check that the plugin file is installed
 
     if (!IsFile(AUDIT_CONF_FILE)) {
-        return 0;
+        // Check that the socket exists
+
+        if (!IsSocket(AUDIT_SOCKET)) {
+            return 0;
+        }
+
+        if (syscheck.restart_audit) {
+            minfo("No socket found at '%s'. Restarting Auditd service.", AUDIT_SOCKET);
+            return audit_restart();
+        } else {
+            mwarn("Audit socket (%s) does not exist. You need to restart Auditd. Who-data will be disabled.", AUDIT_SOCKET);
+            return 1;
+        }
     }
 
     minfo("Generating Auditd socket configuration file: %s", AUDIT_CONF_FILE);
@@ -112,35 +153,12 @@ int set_auditd_config(void) {
 
     if (fclose(fp)) {
         merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        return -1;
     }
 
     if (syscheck.restart_audit) {
-        char * command[] = { "service", "auditd", "restart", NULL };
-
-        minfo("Restarting Auditd service.");
-
-        if (wfd = wpopenv(*command, command, W_BIND_STDERR), !wfd) {
-            merror("Could not launch command to restart Auditd: %s (%d)", strerror(errno), errno);
-            return -1;
-        }
-
-        // Print stderr
-
-        while (fgets(buffer, sizeof(buffer), wfd->file)) {
-            mdebug1("auditd: %s", buffer);
-        }
-
-        switch (status = wpclose(wfd), WEXITSTATUS(status)) {
-        case 0:
-            return 0;
-        case 127:
-            // exec error
-            merror("Could not launch command to restart Auditd.");
-            return -1;
-        default:
-            merror("Could not restart Auditd service.");
-            return -1;
-        }
+        minfo("Auditsp configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
+        return audit_restart();
     } else {
         mwarn("Auditsp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
     }

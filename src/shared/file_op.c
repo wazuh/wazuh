@@ -421,6 +421,11 @@ int IsFile(const char *file)
 	return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
 }
 
+int IsSocket(const char * file) {
+    struct stat buf;
+	return (!stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
+}
+
 off_t FileSize(const char * path) {
     struct stat buf;
     return stat(path, &buf) ? -1 : buf.st_size;
