@@ -371,6 +371,8 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 snprintf(sdb.user_name, OS_FLSIZE, "(Audit) User: '%s (%s)'\n", newsum.wdata.user_name, newsum.wdata.user_id);
                 os_strdup(newsum.wdata.user_id, lf->user_id);
                 os_strdup(newsum.wdata.user_name, lf->user_name);
+            } else {
+                *sdb.user_name = '\0';
             }
 
             /* Whodata effective user */
@@ -378,6 +380,8 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 snprintf(sdb.effective_name, OS_FLSIZE, "(Audit) Effective user: '%s (%s)'\n", newsum.wdata.effective_name, newsum.wdata.effective_uid);
                 os_strdup(newsum.wdata.effective_uid, lf->effective_uid);
                 os_strdup(newsum.wdata.effective_name, lf->effective_name);
+            } else {
+                *sdb.effective_name = '\0';
             }
 
             /* Whodata Audit user */
@@ -385,6 +389,8 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 snprintf(sdb.audit_name, OS_FLSIZE, "(Audit) Login user: '%s (%s)'\n", newsum.wdata.audit_name, newsum.wdata.audit_uid);
                 os_strdup(newsum.wdata.audit_uid, lf->audit_uid);
                 os_strdup(newsum.wdata.audit_name, lf->audit_name);
+            } else {
+                *sdb.audit_name = '\0';
             }
 
             /* Whodata Group */
@@ -392,16 +398,23 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 snprintf(sdb.group_name, OS_FLSIZE, "(Audit) Group: '%s (%s)'\n", newsum.wdata.group_name, newsum.wdata.group_id);
                 os_strdup(newsum.wdata.group_id, lf->group_id);
                 os_strdup(newsum.wdata.group_name, lf->group_name);
+            } else {
+                *sdb.group_name = '\0';
             }
 
             /* Whodata process */
             if(newsum.wdata.process_id) {
                 snprintf(sdb.process_id, OS_FLSIZE, "(Audit) Process id: '%s'\n", newsum.wdata.process_id);
                 os_strdup(newsum.wdata.process_id, lf->process_id);
+            } else {
+                *sdb.process_id = '\0';
             }
+
             if(newsum.wdata.process_name) {
                 snprintf(sdb.process_name, OS_FLSIZE, "(Audit) Process name: '%s'\n", newsum.wdata.process_name);
                 os_strdup(newsum.wdata.process_name, lf->process_name);
+            } else {
+                *sdb.process_name = '\0';
             }
         }
 
