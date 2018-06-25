@@ -19,7 +19,8 @@
 
 #define ADD_RULE 1
 #define DELETE_RULE 2
-#define AUDIT_CONF_FILE "/etc/audisp/plugins.d/af_wazuh.conf"
+#define AUDIT_CONF_FILE DEFAULTDIR "/etc/af_wazuh.conf"
+#define AUDIT_CONF_LINK "/etc/audisp/plugins.d/af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 4096
 
@@ -116,10 +117,11 @@ int audit_restart() {
 
 // Set audit socket configuration
 int set_auditd_config(void) {
+    FILE *fp;
 
     // Check that the plugin file is installed
 
-    if (!IsFile(AUDIT_CONF_FILE)) {
+    if (!IsLink(AUDIT_CONF_LINK) && !IsFile(AUDIT_CONF_LINK)) {
         // Check that the socket exists
 
         if (!IsSocket(AUDIT_SOCKET)) {
@@ -137,7 +139,6 @@ int set_auditd_config(void) {
 
     minfo("Generating Auditd socket configuration file: %s", AUDIT_CONF_FILE);
 
-    FILE *fp;
     fp = fopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
         merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
@@ -156,14 +157,33 @@ int set_auditd_config(void) {
         return -1;
     }
 
+    if (symlink(AUDIT_CONF_FILE, AUDIT_CONF_LINK) < 0) {
+        switch (errno) {
+        case EEXIST:
+            if (unlink(AUDIT_CONF_LINK) < 0) {
+                merror(UNLINK_ERROR, AUDIT_CONF_LINK, errno, strerror(errno));
+                return -1;
+            }
+
+            if (symlink(AUDIT_CONF_FILE, AUDIT_CONF_LINK) == 0) {
+                break;
+            }
+
+            break;
+
+        default: // Fallthrough
+            merror(LINK_ERROR, AUDIT_CONF_LINK, AUDIT_CONF_FILE, errno, strerror(errno));
+            return -1;
+        }
+    }
+
     if (syscheck.restart_audit) {
         minfo("Audisp configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
         return audit_restart();
     } else {
         mwarn("Audisp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
+        return 1;
     }
-
-    return 1;
 }
 
 
