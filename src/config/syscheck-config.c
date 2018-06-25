@@ -16,6 +16,8 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 {
     unsigned int pl = 0;
 
+
+
     if (reg == 1) {
 #ifdef WIN32
         if (syscheck->registry == NULL) {
@@ -38,6 +40,19 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
     }
 
     else {
+#ifdef WIN32
+        char *ptfile;
+
+        /* Change forward slashes to backslashes on entry */
+        ptfile = strchr(entry, '\\');
+        while (ptfile) {
+            *ptfile = '/';
+            ptfile++;
+
+            ptfile = strchr(ptfile, '\\');
+        }
+        merror("----------- %s", entry);
+#endif
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
             syscheck->dir[pl + 1] = NULL;

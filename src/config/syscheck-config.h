@@ -98,6 +98,7 @@ typedef struct _config {
 
     OSHash *fp;
     OSHash *last_check;
+    OSHash *local_hash;
 
     rtfim *realtime;
 
