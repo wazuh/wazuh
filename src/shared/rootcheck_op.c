@@ -50,26 +50,34 @@ char* rk_get_title(const char *log) {
 /* Get rootcheck file from log */
 char* rk_get_file(const char *log) {
     char *c;
-    char *file;
+    char *file, *found;
 
-    if ((file = strstr(log, "File: "))) {
-        file += 6;
+    os_strdup(log, file);
 
+    if ((found = strstr(file, "File: "))) {
+        found += 6;
+        file = found;
         if ((c = strstr(file, ". "))) {
             *c = '\0';
-            return strdup(file);
+            return file;
         } else
-            return NULL;
-    } else if ((file = strstr(log, "File '")) || (file = strstr(log, "file '"))) {
-        file += 6;
+            goto end;
+    } else if ((found = strstr(file, "File '")) || (found = strstr(file, "file '"))) {
+        found += 6;
+        file = found;
 
         if ((c = strstr(file, "' "))) {
             *c = '\0';
-            return strdup(file);
+            return file;
         } else
-            return NULL;
+            goto end;
+
     } else
-        return NULL;
+        goto end;
+
+end:
+    free(file);
+    return NULL;
 }
 
 /* Extract time and event from Rootcheck log. It doesn't reserve memory. */
