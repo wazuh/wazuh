@@ -37,11 +37,7 @@
 #include "os_regex/os_regex.h"
 
 #ifdef WIN32
-typedef struct whodata_event_node {
-    struct whodata_event_node *next;
-    struct whodata_event_node *previous;
-    char *handle_id;
-} whodata_event_node;
+typedef struct whodata_event_node whodata_event_node;
 #endif
 
 typedef struct _rtfim {
@@ -78,12 +74,21 @@ typedef struct whodata_evt {
 
 #ifdef WIN32
 
+typedef struct whodata_event_node {
+    struct whodata_event_node *next;
+    struct whodata_event_node *previous;
+    char *handle_id;
+} whodata_event_node;
+
 typedef struct whodata_event_list {
     whodata_event_node *nodes;
     whodata_event_node *first;
     whodata_event_node *last;
     size_t current_size;
     size_t max_size;
+    size_t alert_threshold;
+    size_t max_remove;
+    char alerted;
 } whodata_event_list;
 
 typedef struct whodata {

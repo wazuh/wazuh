@@ -10,16 +10,26 @@
 #include "hash_op.h"
 #include "syscheck.h"
 
-void restore_sacls();
-int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
-int is_valid_sacl(PACL sacl);
+#define WLIST_ALERT_THRESHOLD 80 // 80%
+#define WLIST_REMOVE_MAX 10 // 10%
+#define WLIST_MAX_SIZE OS_SIZE_1024
+
 static PSID everyone_sid = NULL;
 static size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
+
+void restore_sacls();
+int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
+int is_valid_sacl(PACL sacl);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
+void free_whodata_event(whodata_evt *w_evt);
+
+// Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
 void whodata_list_remove(whodata_event_node *node);
+void whodata_list_set_values();
+void whodata_list_remove_multiple(size_t quantity);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -303,7 +313,7 @@ void restore_sacls() {
 }
 
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event) {
-    unsigned int retval;
+    unsigned int retval = 1;
     int result;
     unsigned long p_count = 0;
     unsigned long used_size;
@@ -318,8 +328,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     unsigned __int64 handle_id;
     unsigned __int64 keywords;
     char *user_id;
-    char *user_guid;
-    static unsigned __int64 audit_success = 0x20000000000000;
+    static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 
     unsigned int mask;
     int position;
@@ -332,8 +341,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         L"Event/EventData/Data[@Name='HandleId']",
         L"Event/EventData/Data[@Name='AccessMask']",
         L"Event/System/Keywords",
-        L"Event/EventData/Data[@Name='SubjectUserSid']",
-        L"Event/System/Provider/@Guid"
+        L"Event/EventData/Data[@Name='SubjectUserSid']"
     };
     static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
     UNREFERENCED_PARAMETER(_void);
@@ -353,60 +361,86 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
 
         if (!EvtRender(context, event, EvtRenderEventValues, used_size, buffer, &used_size, &p_count)) {
 			merror("Error rendering the event. Error %lu.", GetLastError());
-            retval = 1;
             goto clean;
 		}
 
         if (fields_number != p_count) {
 			merror("Invalid number of rendered parameters.");
-            retval = 1;
             goto clean;
         }
-
 
         // Check types
-        if ((buffer[0].Type != EvtVarTypeUInt16 && buffer[0].Type != EvtVarTypeNull)   ||
-            (buffer[1].Type != EvtVarTypeString && buffer[1].Type != EvtVarTypeNull)   ||
-            (buffer[2].Type != EvtVarTypeString && buffer[2].Type != EvtVarTypeNull)   ||
-            (buffer[3].Type != EvtVarTypeString && buffer[3].Type != EvtVarTypeNull)   ||
-            (buffer[4].Type != EvtVarTypeHexInt64 && buffer[4].Type != EvtVarTypeNull) ||
-            (buffer[5].Type != EvtVarTypeHexInt64 && buffer[5].Type != EvtVarTypeNull) ||
-            (buffer[6].Type != EvtVarTypeHexInt32 && buffer[6].Type != EvtVarTypeNull) ||
-            (buffer[7].Type != EvtVarTypeHexInt64 && buffer[7].Type != EvtVarTypeNull) ||
-            (buffer[8].Type != EvtVarTypeSid && buffer[8].Type != EvtVarTypeNull)      ||
-            (buffer[9].Type != EvtVarTypeGuid && buffer[9].Type != EvtVarTypeNull)) {
-            merror("Invalid parameter type after rendering the event.");
-            retval = 1;
+        if (buffer[0].Type != EvtVarTypeUInt16) {
+            merror("Invalid parameter type (%ld) for 'event_id'.", buffer[0].Type);
             goto clean;
         }
-
         event_id = buffer[0].Int16Val;
+
+        if (buffer[1].Type != EvtVarTypeString) {
+            merror("Invalid parameter type (%ld) for 'user_name'.", buffer[1].Type);
+            goto clean;
+        }
         user_name = convert_windows_string(buffer[1].XmlVal);
-        path = convert_windows_string(buffer[2].XmlVal);
+
+        if (buffer[2].Type != EvtVarTypeString) {
+            if (event_id == 4658) {
+                path = NULL;
+            } else {
+                merror("Invalid parameter type (%ld) for 'path'.", buffer[2].Type);
+                goto clean;
+            }
+        }  else {
+            path = convert_windows_string(buffer[2].XmlVal);
+        }
+
+        if (buffer[3].Type != EvtVarTypeString) {
+            merror("Invalid parameter type (%ld) for 'process_name'.", buffer[3].Type);
+            goto clean;
+        }
         process_name = convert_windows_string(buffer[3].XmlVal);
+
+        if (buffer[4].Type != EvtVarTypeHexInt64) {
+            merror("Invalid parameter type (%ld) for 'process_id'.", buffer[4].Type);
+            goto clean;
+        }
         process_id = buffer[4].UInt64Val;
+
+        if (buffer[5].Type != EvtVarTypeHexInt64) {
+            merror("Invalid parameter type (%ld) for 'handle_id'.", buffer[5].Type);
+            goto clean;
+        }
         handle_id = buffer[5].UInt64Val;
-        mask = buffer[6].UInt32Val;
+
+        if (buffer[6].Type != EvtVarTypeHexInt32) {
+            if (event_id == 4658) {
+                mask = 0;
+            } else {
+                merror("Invalid parameter type (%ld) for 'mask'.", buffer[6].Type);
+                goto clean;
+            }
+        } else {
+            mask = buffer[6].UInt32Val;
+        }
+
+        if (buffer[7].Type != EvtVarTypeHexInt64) {
+            merror("Invalid parameter type (%ld) for 'keywords'.", buffer[7].Type);
+            goto clean;
+        }
         keywords = buffer[7].UInt64Val;
-        user_id = NULL;
-        user_guid = NULL;
-        if (!ConvertSidToStringSid(buffer[8].SidVal, &user_id)) {
+
+        if (buffer[8].Type != EvtVarTypeSid) {
+            merror("Invalid parameter type (%ld) for 'user_id'.", buffer[8].Type);
+            goto clean;
+        } else if (!ConvertSidToStringSid(buffer[8].SidVal, &user_id)) {
             mdebug1("Invalid identifier for user '%s'", user_name);
             goto clean;
         }
 
-        if (user_guid = guid_to_string(buffer[9].GuidVal), !user_guid) {
-            mdebug1("Invalid GUID for user '%s'", user_name);
-            goto clean;
-        }
-
         // Discards unsuccessful attempts
-        if (!(keywords & audit_success)) {
+        if (!(keywords & AUDIT_SUCCESS)) {
             goto clean;
         }
-
         snprintf(hash_id, 21, "%llu", handle_id);
-
         switch(event_id) {
             // Open fd
             case 4656:
@@ -431,6 +465,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
                 user_name = NULL;
+                user_id = NULL;
                 path = NULL;
                 process_name = NULL;
 
@@ -466,6 +501,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Close fd
             case 4658:
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
+
                     if (w_evt->mask) {
                         unsigned int mask = w_evt->mask;
 
@@ -481,6 +517,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                                 merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);
                                 *wd_sum = '\0';
                             }
+
                             snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s", wd_sum, w_evt->path);
                             send_syscheck_msg(del_msg);
                         } else if (mask & FILE_WRITE_DATA) {
@@ -488,10 +525,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         }
                     }
                     whodata_list_remove(w_evt->wnode);
-                    free(w_evt->user_name);
-                    free(w_evt->path);
-                    free(w_evt->process_name);
-                    free(w_evt);
+                    free_whodata_event(w_evt);
                 } else {
                     // The file was opened before Wazuh started Syscheck.
                 }
@@ -507,9 +541,8 @@ clean:
     free(user_name);
     free(path);
     free(process_name);
-    free(user_guid);
     if (user_id) {
-        free(user_id);
+        LocalFree(user_id);
     }
     if (buffer) {
         free(buffer);
@@ -521,30 +554,48 @@ int whodata_audit_start() {
     if (syscheck.wdata.fd = OSHash_Create(), !syscheck.wdata.fd) {
         return 1;
     }
-    OSHash_setSize_ex(syscheck.wdata.fd, OS_SIZE_1024);
+    OSHash_setSize_ex(syscheck.wdata.fd, WLIST_MAX_SIZE);
     memset(&syscheck.wlist, 0, sizeof(whodata_event_list));
-    syscheck.wlist.max_size = OS_SIZE_1024;
+    whodata_list_set_values();
     return 0;
 }
 
 whodata_event_node *whodata_list_add(char *id) {
     whodata_event_node *node = NULL;
     if (syscheck.wlist.current_size < syscheck.wlist.max_size) {
-        os_calloc(sizeof(whodata_event_node), 1, node);
-        if (syscheck.wlist.last) {
-            node->next = NULL;
-            node->previous = syscheck.wlist.last;
-            syscheck.wlist.last = node->next;
-        } else {
-            node->next = node->previous = NULL;
-            syscheck.wlist.last = syscheck.wlist.first = node;
+        if (!syscheck.wlist.alerted && syscheck.wlist.alert_threshold < syscheck.wlist.current_size) {
+            syscheck.wlist.alerted = 1;
+            mwarn("Whodata events queue for Windows has more than %d elements.", syscheck.wlist.alert_threshold);
         }
-        node->handle_id = id;
-        syscheck.wlist.current_size++;
     } else {
-        // Increment control
+        mdebug1("Whodata events queue for Windows is full. Removing the first %d...", syscheck.wlist.max_remove);
+        whodata_list_remove_multiple(syscheck.wlist.max_remove);
     }
+    os_calloc(sizeof(whodata_event_node), 1, node);
+    if (syscheck.wlist.last) {
+        node->next = NULL;
+        node->previous = syscheck.wlist.last;
+        syscheck.wlist.last = node->next;
+    } else {
+        node->next = node->previous = NULL;
+        syscheck.wlist.last = syscheck.wlist.first = node;
+    }
+    node->handle_id = id;
+    syscheck.wlist.current_size++;
+
     return node;
+}
+
+void whodata_list_remove_multiple(size_t quantity) {
+    size_t i;
+    whodata_evt *w_evt;
+    for (i = 0; i < quantity && syscheck.wlist.first; i++) {
+        if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, syscheck.wlist.first->handle_id), w_evt) {
+            free_whodata_event(w_evt);
+        }
+        whodata_list_remove(syscheck.wlist.first);
+    }
+    mdebug2("%d events have been deleted from the whodata list.", quantity);
 }
 
 void whodata_list_remove(whodata_event_node *node) {
@@ -568,6 +619,30 @@ void whodata_list_remove(whodata_event_node *node) {
     free(node->handle_id);
     free(node);
     syscheck.wlist.current_size--;
+
+    if (syscheck.wlist.alerted && syscheck.wlist.alert_threshold > syscheck.wlist.current_size) {
+        syscheck.wlist.alerted = 0;
+    }
+}
+
+void whodata_list_set_values() {
+    syscheck.wlist.max_size = WLIST_MAX_SIZE;
+    syscheck.wlist.max_remove = syscheck.wlist.max_size * WLIST_REMOVE_MAX * 0.01;
+    syscheck.wlist.alert_threshold = syscheck.wlist.max_size * WLIST_ALERT_THRESHOLD * 0.01;
+    mdebug1("Whodata event queue values for Windows -> max_size:'%d' | max_remove:'%d' | alert_threshold:'%d'.",
+    syscheck.wlist.max_size, syscheck.wlist.max_remove, syscheck.wlist.alert_threshold);
+}
+
+void free_whodata_event(whodata_evt *w_evt) {
+    if (w_evt) {
+        LocalFree(w_evt->user_id);
+        free(w_evt->user_name);
+        free(w_evt->group_id);
+        free(w_evt->group_name);
+        free(w_evt->process_name);
+        free(w_evt->path);
+        free(w_evt);
+    }
 }
 
 #endif
