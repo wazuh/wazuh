@@ -92,33 +92,62 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
         if ((sum->wdata.user_name = wstr_chr(w_sum, ':'))) {
             *(sum->wdata.user_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.group_id = wstr_chr(sum->wdata.user_name, ':'))) {
             *(sum->wdata.group_id++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.group_name = wstr_chr(sum->wdata.group_id, ':'))) {
             *(sum->wdata.group_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.process_name = wstr_chr(sum->wdata.group_name, ':'))) {
             *(sum->wdata.process_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.audit_uid = wstr_chr(sum->wdata.process_name, ':'))) {
             *(sum->wdata.audit_uid++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.audit_name = wstr_chr(sum->wdata.audit_uid, ':'))) {
             *(sum->wdata.audit_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.effective_uid = wstr_chr(sum->wdata.audit_name, ':'))) {
             *(sum->wdata.effective_uid++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.effective_name = wstr_chr(sum->wdata.effective_uid, ':'))) {
             *(sum->wdata.effective_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.ppid = wstr_chr(sum->wdata.effective_name, ':'))) {
             *(sum->wdata.ppid++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.process_id = wstr_chr(sum->wdata.ppid, ':'))) {
             *(sum->wdata.process_id++) = '\0';
+        } else {
+            return -1;
         }
 
         sum->wdata.user_name = unescape_whodata_sum(sum->wdata.user_name);
