@@ -123,19 +123,6 @@ void start_daemon()
     memset(curr_hour, '\0', 12);
     sleep(syscheck.tsleep * 10);
 
-    // Audit events thread
-    if (syscheck.enable_whodata) {
-        int audit_socket = audit_init();
-        if (audit_socket > 0) {
-            mdebug1("Starting Auditd events reader thread...");
-            audit_added_rules = W_Vector_init(10);
-            atexit(clean_rules);
-            w_create_thread(audit_main, &audit_socket);
-        } else {
-            merror("Cannot start Audit events reader thread.");
-        }
-    }
-
     /* If the scan time/day is set, reset the
      * syscheck.time/rootcheck.time
      */
