@@ -130,7 +130,7 @@ void start_daemon()
         if (audit_socket > 0) {
             mdebug1("Starting Auditd events reader thread...");
             audit_added_rules = W_Vector_init(10);
-            atexit(StopAuditThread);
+            atexit(clean_rules);
             w_create_thread(audit_main, &audit_socket);
         } else {
             merror("Cannot start Audit events reader thread.");

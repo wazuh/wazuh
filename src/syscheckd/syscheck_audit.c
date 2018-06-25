@@ -37,6 +37,7 @@ static regex_t regexCompiled_cwd;
 static regex_t regexCompiled_pname;
 static regex_t regexCompiled_path0;
 static regex_t regexCompiled_path1;
+pthread_mutex_t syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 // Convert audit relative paths into absolute paths
@@ -665,6 +666,7 @@ void * audit_main(int * audit_sock) {
     regfree(&regexCompiled_pname);
     // Change Audit monitored folders to Inotify.
     int i;
+    w_mutex_lock(&syscheck_mutex);
     if (audit_added_rules) {
         for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
             realtime_adddir(W_Vector_get(audit_added_rules, i), 0);
@@ -672,19 +674,15 @@ void * audit_main(int * audit_sock) {
     }
     // Clean Audit added rules.
     clean_rules();
+    w_mutex_unlock(&syscheck_mutex);
 
     return NULL;
 }
 
 
-void StopAuditThread(void) {
-    audit_thread_active = 0;
-}
-
-
 void clean_rules(void) {
     int i;
-
+    w_mutex_lock(&syscheck_mutex);
     if (audit_added_rules) {
         mdebug2("Deleting Audit rules...");
         for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
@@ -692,4 +690,5 @@ void clean_rules(void) {
         }
         W_Vector_free(audit_added_rules);
     }
+    w_mutex_unlock(&syscheck_mutex);
 }
