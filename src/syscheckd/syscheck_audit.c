@@ -663,6 +663,14 @@ void * audit_main(int * audit_sock) {
     regfree(&regexCompiled_path0);
     regfree(&regexCompiled_path1);
     regfree(&regexCompiled_pname);
+    // Change Audit monitored folders to Inotify.
+    int i;
+    if (audit_added_rules) {
+        for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
+            realtime_adddir(W_Vector_get(audit_added_rules, i), 0);
+        }
+    }
+    // Clean Audit added rules.
     clean_rules();
 
     return NULL;
