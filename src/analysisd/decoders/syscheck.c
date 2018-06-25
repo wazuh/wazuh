@@ -45,8 +45,15 @@ void SyscheckInit()
     memset(sdb.sha256, '\0', OS_FLSIZE + 1);
     memset(sdb.mtime, '\0', OS_FLSIZE + 1);
     memset(sdb.inode, '\0', OS_FLSIZE + 1);
-    memset(sdb.user, '\0', OS_FLSIZE + 1);
-    memset(sdb.process, '\0', OS_FLSIZE + 1);
+    // Whodata fields
+
+    memset(sdb.user_name, '\0', OS_FLSIZE + 1);
+    memset(sdb.group_name, '\0', OS_FLSIZE + 1);
+    memset(sdb.process_name, '\0', OS_FLSIZE + 1);
+    memset(sdb.audit_name, '\0', OS_FLSIZE + 1);
+    memset(sdb.effective_name, '\0', OS_FLSIZE + 1);
+    memset(sdb.ppid, '\0', OS_FLSIZE + 1);
+    memset(sdb.process_id, '\0', OS_FLSIZE + 1);
 
     /* Create decoder */
     os_calloc(1, sizeof(OSDecoderInfo), sdb.syscheck_dec);
@@ -67,8 +74,18 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_UNAME] = "uname";
     sdb.syscheck_dec->fields[SK_GNAME] = "gname";
     sdb.syscheck_dec->fields[SK_INODE] = "inode";
-    sdb.syscheck_dec->fields[SK_USER] = "user";
-    sdb.syscheck_dec->fields[SK_PROCESS] = "process";
+
+    sdb.syscheck_dec->fields[SK_USER_ID] = "user_id";
+    sdb.syscheck_dec->fields[SK_USER_NAME] = "user_name";
+    sdb.syscheck_dec->fields[SK_GROUP_ID] = "group_id";
+    sdb.syscheck_dec->fields[SK_GROUP_NAME] = "group_name";
+    sdb.syscheck_dec->fields[SK_PROC_NAME] = "process_name";
+    sdb.syscheck_dec->fields[SK_AUDIT_ID] = "audit_uid";
+    sdb.syscheck_dec->fields[SK_AUDIT_NAME] = "audit_name";
+    sdb.syscheck_dec->fields[SK_EFFECTIVE_UID] = "effective_uid";
+    sdb.syscheck_dec->fields[SK_EFFECTIVE_NAME] = "effective_name";
+    sdb.syscheck_dec->fields[SK_PPID] = "ppid";
+    sdb.syscheck_dec->fields[SK_PROC_ID] = "process_id";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
@@ -350,15 +367,41 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
 
         if (result = sk_decode_sum(&newsum, c_sum, w_sum), result != -1) {
             /* Whodata user */
-            if(newsum.wdata.user) {
-                snprintf(sdb.user, OS_FLSIZE, "Username: '%s'\n", newsum.wdata.user);
-                os_strdup(newsum.wdata.user, lf->user);
+            if(newsum.wdata.user_id && newsum.wdata.user_name) {
+                snprintf(sdb.user_name, OS_FLSIZE, "(Audit) User: '%s (%s)'\n", newsum.wdata.user_name, newsum.wdata.user_id);
+                os_strdup(newsum.wdata.user_id, lf->user_id);
+                os_strdup(newsum.wdata.user_name, lf->user_name);
+            }
+
+            /* Whodata effective user */
+            if(newsum.wdata.effective_uid && newsum.wdata.effective_name) {
+                snprintf(sdb.effective_name, OS_FLSIZE, "(Audit) Effective user: '%s (%s)'\n", newsum.wdata.effective_name, newsum.wdata.effective_uid);
+                os_strdup(newsum.wdata.effective_uid, lf->effective_uid);
+                os_strdup(newsum.wdata.effective_name, lf->effective_name);
+            }
+
+            /* Whodata Audit user */
+            if(newsum.wdata.audit_uid && newsum.wdata.audit_name) {
+                snprintf(sdb.audit_name, OS_FLSIZE, "(Audit) Login user: '%s (%s)'\n", newsum.wdata.audit_name, newsum.wdata.audit_uid);
+                os_strdup(newsum.wdata.audit_uid, lf->audit_uid);
+                os_strdup(newsum.wdata.audit_name, lf->audit_name);
+            }
+
+            /* Whodata Group */
+            if(newsum.wdata.group_id && newsum.wdata.group_name) {
+                snprintf(sdb.group_name, OS_FLSIZE, "(Audit) Group: '%s (%s)'\n", newsum.wdata.group_name, newsum.wdata.group_id);
+                os_strdup(newsum.wdata.group_id, lf->group_id);
+                os_strdup(newsum.wdata.group_name, lf->group_name);
             }
 
             /* Whodata process */
-            if(newsum.wdata.process) {
-                snprintf(sdb.process, OS_FLSIZE, "Process: '%s'\n", newsum.wdata.process);
-                os_strdup(newsum.wdata.process, lf->process);
+            if(newsum.wdata.process_id) {
+                snprintf(sdb.process_id, OS_FLSIZE, "(Audit) Process id: '%s'\n", newsum.wdata.process_id);
+                os_strdup(newsum.wdata.process_id, lf->process_id);
+            }
+            if(newsum.wdata.process_name) {
+                snprintf(sdb.process_name, OS_FLSIZE, "(Audit) Process name: '%s'\n", newsum.wdata.process_name);
+                os_strdup(newsum.wdata.process_name, lf->process_name);
             }
         }
 
@@ -510,6 +553,10 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                          "%s"
                          "%s"
                          "%s"
+                         "%s"
+                         "%s"
+                         "%s"
+                         "%s"
                          "%s%s",
                          f_name,
                          sdb.size,
@@ -519,8 +566,12 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                          sdb.md5,
                          sdb.sha1,
                          sdb.sha256,
-                         sdb.user,
-                         sdb.process,
+                         sdb.user_name,
+                         sdb.audit_name,
+                         sdb.effective_name,
+                         sdb.group_name,
+                         sdb.process_id,
+                         sdb.process_name,
                          lf->data ? "What changed:\n" : "",
                          lf->data ? lf->data : ""
                         );
@@ -540,11 +591,19 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                      "File '%.756s' was re-added."
                      "%s"
                      "%s"
+                     "%s"
+                     "%s"
+                     "%s"
+                     "%s"
                      "%s",
                      f_name,
-                     (sdb.user || sdb.process) ? "\n" : "",
-                     sdb.user,
-                     sdb.process);
+                     (sdb.user_name || sdb.process_name) ? "\n" : "",
+                     sdb.user_name,
+                     sdb.audit_name,
+                     sdb.effective_name,
+                     sdb.group_name,
+                     sdb.process_id,
+                     sdb.process_name);
                 break;
             }
 
@@ -560,11 +619,19 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                  "File '%.756s' was deleted."
                  "%s"
                  "%s"
+                 "%s"
+                 "%s"
+                 "%s"
+                 "%s"
                  "%s",
                  f_name,
-                 (sdb.user || sdb.process) ? "\n" : "",
-                 sdb.user,
-                 sdb.process);
+                 (sdb.user_name) ? "\n" : "",
+                 sdb.user_name,
+                 sdb.audit_name,
+                 sdb.effective_name,
+                 sdb.group_name,
+                 sdb.process_id,
+                 sdb.process_name);
             break;
         }
 

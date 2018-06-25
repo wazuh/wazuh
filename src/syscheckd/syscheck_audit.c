@@ -15,10 +15,12 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "syscheck.h"
+#include <os_net/os_net.h>
 
 #define ADD_RULE 1
 #define DELETE_RULE 2
-#define AUDIT_CONF_FILE "/etc/audisp/plugins.d/af_wazuh.conf"
+#define AUDIT_CONF_FILE DEFAULTDIR "/etc/af_wazuh.conf"
+#define AUDIT_CONF_LINK "/etc/audisp/plugins.d/af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 4096
 
@@ -35,9 +37,10 @@ static regex_t regexCompiled_cwd;
 static regex_t regexCompiled_pname;
 static regex_t regexCompiled_path0;
 static regex_t regexCompiled_path1;
+pthread_mutex_t syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
-// Covert audit relative paths into absolute paths
+// Convert audit relative paths into absolute paths
 char *clean_audit_path(char *cwd, char *path) {
 
     char *file_ptr = path;
@@ -83,18 +86,65 @@ int check_auditd_enabled(void) {
     return auditd_pid;
 }
 
+int audit_restart() {
+    wfd_t * wfd;
+    int status;
+    char buffer[4096];
+    char * command[] = { "service", "auditd", "restart", NULL };
+
+    if (wfd = wpopenv(*command, command, W_BIND_STDERR), !wfd) {
+        merror("Could not launch command to restart Auditd: %s (%d)", strerror(errno), errno);
+        return -1;
+    }
+
+    // Print stderr
+
+    while (fgets(buffer, sizeof(buffer), wfd->file)) {
+        mdebug1("auditd: %s", buffer);
+    }
+
+    switch (status = wpclose(wfd), WEXITSTATUS(status)) {
+    case 0:
+        return 0;
+    case 127:
+        // exec error
+        merror("Could not launch command to restart Auditd.");
+        return -1;
+    default:
+        merror("Could not restart Auditd service.");
+        return -1;
+    }
+}
+
 // Set audit socket configuration
 int set_auditd_config(void) {
+    FILE *fp;
 
-    if (!IsFile(AUDIT_CONF_FILE)) {
-        return 0;
+    // Check that the plugin file is installed
+
+    if (!IsLink(AUDIT_CONF_LINK) && !IsFile(AUDIT_CONF_LINK)) {
+        // Check that the socket exists
+
+        if (!IsSocket(AUDIT_SOCKET)) {
+            return 0;
+        }
+
+        if (syscheck.restart_audit) {
+            minfo("No socket found at '%s'. Restarting Auditd service.", AUDIT_SOCKET);
+            return audit_restart();
+        } else {
+            mwarn("Audit socket (%s) does not exist. You need to restart Auditd. Who-data will be disabled.", AUDIT_SOCKET);
+            return 1;
+        }
     }
 
     minfo("Generating Auditd socket configuration file: %s", AUDIT_CONF_FILE);
 
-    FILE *fp;
     fp = fopen(AUDIT_CONF_FILE, "w");
-    if (!fp) return -1;
+    if (!fp) {
+        merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        return -1;
+    }
 
     fprintf(fp, "active = yes\n");
     fprintf(fp, "direction = out\n");
@@ -102,30 +152,48 @@ int set_auditd_config(void) {
     fprintf(fp, "type = builtin\n");
     fprintf(fp, "args = 0640 %s\n", AUDIT_SOCKET);
     fprintf(fp, "format = string\n");
-    fclose(fp);
 
-    mwarn("Auditsp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
-    return 1;
+    if (fclose(fp)) {
+        merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        return -1;
+    }
+
+    if (symlink(AUDIT_CONF_FILE, AUDIT_CONF_LINK) < 0) {
+        switch (errno) {
+        case EEXIST:
+            if (unlink(AUDIT_CONF_LINK) < 0) {
+                merror(UNLINK_ERROR, AUDIT_CONF_LINK, errno, strerror(errno));
+                return -1;
+            }
+
+            if (symlink(AUDIT_CONF_FILE, AUDIT_CONF_LINK) == 0) {
+                break;
+            }
+
+            break;
+
+        default: // Fallthrough
+            merror(LINK_ERROR, AUDIT_CONF_LINK, AUDIT_CONF_FILE, errno, strerror(errno));
+            return -1;
+        }
+    }
+
+    if (syscheck.restart_audit) {
+        minfo("Audisp configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
+        return audit_restart();
+    } else {
+        mwarn("Audisp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
+        return 1;
+    }
 }
 
 
 // Init audit socket
 int init_auditd_socket(void) {
-
     int sfd;
-    struct sockaddr_un addr;
 
-    if ((sfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-        return (-1);
-    }
-
-    memset(&addr, 0, sizeof(struct sockaddr_un));
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, AUDIT_SOCKET, sizeof(addr.sun_path)-1);
-
-    if (connect(sfd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) < 0) {
-        mdebug1("Cannot connect to socket %s\n", AUDIT_SOCKET);
-        close(sfd);
+    if (sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR), sfd < 0) {
+        merror("Cannot connect to socket %s", AUDIT_SOCKET);
         return (-1);
     }
 
@@ -253,7 +321,7 @@ int audit_init(void) {
     // Check audit socket configuration
     switch (set_auditd_config()) {
     case -1:
-        mdebug1("Cannot generate Audit config.");
+        mdebug1("Cannot apply Audit config.");
         return (-1);
     case 0:
         break;
@@ -263,32 +331,32 @@ int audit_init(void) {
 
     // Initialize regular expressions
 
-    static const char *pattern_uid = " uid=([^ 0-9]*)";
+    static const char *pattern_uid = " uid=([0-9]*) ";
     if (regcomp(&regexCompiled_uid, pattern_uid, REG_EXTENDED)) {
         merror("Cannot compile uid regular expression.");
         return -1;
     }
-    static const char *pattern_gid = " gid=([^ 0-9]*)";
+    static const char *pattern_gid = " gid=([0-9]*) ";
     if (regcomp(&regexCompiled_gid, pattern_gid, REG_EXTENDED)) {
         merror("Cannot compile gid regular expression.");
         return -1;
     }
-    static const char *pattern_auid = " auid=([^ 0-9]*)";
+    static const char *pattern_auid = " auid=([0-9]*) ";
     if (regcomp(&regexCompiled_auid, pattern_auid, REG_EXTENDED)) {
         merror("Cannot compile auid regular expression.");
         return -1;
     }
-    static const char *pattern_euid = " euid=([^ 0-9]*)";
+    static const char *pattern_euid = " euid=([0-9]*) ";
     if (regcomp(&regexCompiled_euid, pattern_euid, REG_EXTENDED)) {
         merror("Cannot compile euid regular expression.");
         return -1;
     }
-    static const char *pattern_pid = " pid=([^ 0-9]*)";
+    static const char *pattern_pid = " pid=([0-9]*) ";
     if (regcomp(&regexCompiled_pid, pattern_pid, REG_EXTENDED)) {
         merror("Cannot compile pid regular expression.");
         return -1;
     }
-    static const char *pattern_ppid = " ppid=([^ 0-9]*)";
+    static const char *pattern_ppid = " ppid=([0-9]*) ";
     if (regcomp(&regexCompiled_ppid, pattern_ppid, REG_EXTENDED)) {
         merror("Cannot compile ppid regular expression.");
         return -1;
@@ -343,7 +411,8 @@ char * audit_get_id(const char * event) {
 }
 
 void audit_parse(char * buffer) {
-    char *ret;
+    char *pkey;
+    char *psuccess;
     regmatch_t match[2];
     int match_size;
     char *uid = NULL;
@@ -361,12 +430,12 @@ void audit_parse(char * buffer) {
 
     os_calloc(1, sizeof(whodata_evt), w_evt);
 
-    if (ret = strstr(buffer,"key=\"wazuh_fim\""), ret) {
+    if ((pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) &&  (psuccess = strstr(buffer,"success=yes"), psuccess)){
         if(regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
             match_size = match[1].rm_eo - match[1].rm_so;
             uid = malloc(match_size + 1);
             snprintf (uid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            w_evt->user_name = (char *)get_user("",atoi(uid));
+            w_evt->user_name = strdup(get_user("",atoi(uid)));
             w_evt->user_id = strdup(uid);
             free(uid);
         }
@@ -375,7 +444,7 @@ void audit_parse(char * buffer) {
             match_size = match[1].rm_eo - match[1].rm_so;
             auid = malloc(match_size + 1);
             snprintf (auid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            w_evt->audit_name = (char *)get_user("",atoi(auid));
+            w_evt->audit_name = strdup(get_user("",atoi(auid)));
             w_evt->audit_uid = strdup(auid);
             free(auid);
         }
@@ -384,7 +453,7 @@ void audit_parse(char * buffer) {
             match_size = match[1].rm_eo - match[1].rm_so;
             euid = malloc(match_size + 1);
             snprintf (euid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            w_evt->effective_name = (char *)get_user("",atoi(euid));
+            w_evt->effective_name = strdup(get_user("",atoi(euid)));
             w_evt->effective_uid = strdup(euid);
             free(euid);
         }
@@ -393,9 +462,9 @@ void audit_parse(char * buffer) {
             match_size = match[1].rm_eo - match[1].rm_so;
             gid = malloc(match_size + 1);
             snprintf (gid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            w_evt->group_name = (char *)get_group(atoi(gid));
+            w_evt->group_name = strdup(get_group(atoi(gid)));
             w_evt->group_id = strdup(gid);
-            free(euid);
+            free(gid);
         }
 
         if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
@@ -450,6 +519,9 @@ void audit_parse(char * buffer) {
                 free(full_path);
             } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
                 w_evt->path = clean_audit_path(cwd, path1);
+            } else if (strncmp(path0, path1, strlen(path0)) == 0) {
+                w_evt->path = malloc(strlen(cwd) + strlen(path1) + 2);
+                snprintf(w_evt->path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
             } else {
                 full_path = malloc(strlen(path0) + strlen(path1) + 2);
                 snprintf(full_path, strlen(path0) + strlen(path1) + 2, "%s/%s", path0, path1);
@@ -471,9 +543,8 @@ void audit_parse(char * buffer) {
                 w_evt->process_name);
             realtime_checksumfile(w_evt->path, w_evt);
         }
+        free_whodata_event(w_evt);
     }
-
-    free(w_evt);
 }
 
 void * audit_main(int * audit_sock) {
@@ -593,25 +664,32 @@ void * audit_main(int * audit_sock) {
     regfree(&regexCompiled_path0);
     regfree(&regexCompiled_path1);
     regfree(&regexCompiled_pname);
+    // Change Audit monitored folders to Inotify.
+    int i;
+    w_mutex_lock(&syscheck_mutex);
+    if (audit_added_rules) {
+        for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
+            realtime_adddir(W_Vector_get(audit_added_rules, i), 0);
+        }
+    }
+    // Clean Audit added rules.
     clean_rules();
+    w_mutex_unlock(&syscheck_mutex);
 
     return NULL;
 }
 
 
-void StopAuditThread(void) {
-    audit_thread_active = 0;
-}
-
-
 void clean_rules(void) {
-
+    int i;
+    w_mutex_lock(&syscheck_mutex);
     if (audit_added_rules) {
         mdebug2("Deleting Audit rules...");
-        for (int i = 0; i < W_Vector_length(audit_added_rules); i++) {
+        for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
             audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
         }
         W_Vector_free(audit_added_rules);
     }
+    w_mutex_unlock(&syscheck_mutex);
 }
 #endif

@@ -214,7 +214,9 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
             merror("Error adding Audit rule for %s : %i", dir, retval);
         } else {
             // Save dir into saved rules list
+            w_mutex_lock(&syscheck_mutex);
             W_Vector_insert(audit_added_rules, dir);
+            w_mutex_unlock(&syscheck_mutex);
         }
 
     } else {

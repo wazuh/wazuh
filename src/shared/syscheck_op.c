@@ -84,13 +84,41 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
     // Get whodata
     if (w_sum) {
-        sum->wdata.user = w_sum;
+        sum->wdata.user_id = w_sum;
 
-        if ((sum->wdata.process = wstr_chr(w_sum, ':'))) {
-            *(sum->wdata.process++) = '\0';
+        if ((sum->wdata.user_name = wstr_chr(w_sum, ':'))) {
+            *(sum->wdata.user_name++) = '\0';
         }
-        sum->wdata.user = unescape_whodata_sum(sum->wdata.user);
-        sum->wdata.process = unescape_whodata_sum(sum->wdata.process);
+        if ((sum->wdata.group_id = wstr_chr(sum->wdata.user_name, ':'))) {
+            *(sum->wdata.group_id++) = '\0';
+        }
+        if ((sum->wdata.group_name = wstr_chr(sum->wdata.group_id, ':'))) {
+            *(sum->wdata.group_name++) = '\0';
+        }
+        if ((sum->wdata.process_name = wstr_chr(sum->wdata.group_name, ':'))) {
+            *(sum->wdata.process_name++) = '\0';
+        }
+        if ((sum->wdata.audit_uid = wstr_chr(sum->wdata.process_name, ':'))) {
+            *(sum->wdata.audit_uid++) = '\0';
+        }
+        if ((sum->wdata.audit_name = wstr_chr(sum->wdata.audit_uid, ':'))) {
+            *(sum->wdata.audit_name++) = '\0';
+        }
+        if ((sum->wdata.effective_uid = wstr_chr(sum->wdata.audit_name, ':'))) {
+            *(sum->wdata.effective_uid++) = '\0';
+        }
+        if ((sum->wdata.effective_name = wstr_chr(sum->wdata.effective_uid, ':'))) {
+            *(sum->wdata.effective_name++) = '\0';
+        }
+        if ((sum->wdata.ppid = wstr_chr(sum->wdata.effective_name, ':'))) {
+            *(sum->wdata.ppid++) = '\0';
+        }
+        if ((sum->wdata.process_id = wstr_chr(sum->wdata.ppid, ':'))) {
+            *(sum->wdata.process_id++) = '\0';
+        }
+
+        sum->wdata.user_name = unescape_whodata_sum(sum->wdata.user_name);
+        sum->wdata.process_id = unescape_whodata_sum(sum->wdata.process_id);
     }
 
     sum->mtime = atol(c_mtime);
@@ -134,12 +162,48 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     if(sum->sha256)
         os_strdup(sum->sha256, lf->sha256_after);
 
-    if(sum->wdata.user) {
-        lf->user = sum->wdata.user;
+    if(sum->wdata.user_id) {
+        lf->user_id = sum->wdata.user_id;
     }
 
-    if(sum->wdata.process) {
-        lf->process = sum->wdata.process;
+    if(sum->wdata.user_name) {
+        lf->user_name = sum->wdata.user_name;
+    }
+
+    if(sum->wdata.group_id) {
+        lf->group_id = sum->wdata.group_id;
+    }
+
+    if(sum->wdata.group_name) {
+        lf->group_name = sum->wdata.group_name;
+    }
+
+    if(sum->wdata.process_name) {
+        lf->process_name = sum->wdata.process_name;
+    }
+
+    if(sum->wdata.audit_uid) {
+        lf->audit_uid = sum->wdata.audit_uid;
+    }
+
+    if(sum->wdata.audit_name) {
+        lf->audit_name = sum->wdata.audit_name;
+    }
+
+    if(sum->wdata.effective_uid) {
+        lf->effective_uid = sum->wdata.effective_uid;
+    }
+
+    if(sum->wdata.effective_name) {
+        lf->effective_name = sum->wdata.effective_name;
+    }
+
+    if(sum->wdata.ppid) {
+        lf->ppid = sum->wdata.ppid;
+    }
+
+    if(sum->wdata.process_id) {
+        lf->process_id = sum->wdata.process_id;
     }
 
     /* Fields */
@@ -172,11 +236,38 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     if(sum->sha256)
         os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
 
-    if(sum->wdata.user)
-        os_strdup(sum->wdata.user, lf->fields[SK_USER].value);
+    if(sum->wdata.user_id)
+        os_strdup(sum->wdata.user_id, lf->fields[SK_USER_ID].value);
 
-    if(sum->wdata.process)
-        os_strdup(sum->wdata.process, lf->fields[SK_PROCESS].value);
+    if(sum->wdata.user_name)
+        os_strdup(sum->wdata.user_name, lf->fields[SK_USER_NAME].value);
+
+    if(sum->wdata.process_id)
+        os_strdup(sum->wdata.process_id, lf->fields[SK_PROC_ID].value);
+
+    if(sum->wdata.ppid)
+        os_strdup(sum->wdata.ppid, lf->fields[SK_PPID].value);
+
+    if(sum->wdata.process_name)
+        os_strdup(sum->wdata.process_name, lf->fields[SK_PROC_NAME].value);
+
+    if(sum->wdata.group_id)
+        os_strdup(sum->wdata.group_id, lf->fields[SK_GROUP_ID].value);
+
+    if(sum->wdata.group_name)
+        os_strdup(sum->wdata.group_name, lf->fields[SK_GROUP_NAME].value);
+
+    if(sum->wdata.audit_uid)
+        os_strdup(sum->wdata.audit_uid, lf->fields[SK_AUDIT_ID].value);
+
+    if(sum->wdata.audit_name)
+        os_strdup(sum->wdata.audit_name, lf->fields[SK_AUDIT_NAME].value);
+
+    if(sum->wdata.effective_uid)
+        os_strdup(sum->wdata.effective_uid, lf->fields[SK_EFFECTIVE_UID].value);
+
+    if(sum->wdata.effective_name)
+        os_strdup(sum->wdata.effective_name, lf->fields[SK_EFFECTIVE_NAME].value);
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {

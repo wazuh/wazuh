@@ -23,7 +23,6 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int is_valid_sacl(PACL sacl);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
-void free_whodata_event(whodata_evt *w_evt);
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
@@ -631,18 +630,6 @@ void whodata_list_set_values() {
     syscheck.wlist.alert_threshold = syscheck.wlist.max_size * WLIST_ALERT_THRESHOLD * 0.01;
     mdebug1("Whodata event queue values for Windows -> max_size:'%d' | max_remove:'%d' | alert_threshold:'%d'.",
     syscheck.wlist.max_size, syscheck.wlist.max_remove, syscheck.wlist.alert_threshold);
-}
-
-void free_whodata_event(whodata_evt *w_evt) {
-    if (w_evt) {
-        LocalFree(w_evt->user_id);
-        free(w_evt->user_name);
-        free(w_evt->group_id);
-        free(w_evt->group_name);
-        free(w_evt->process_name);
-        free(w_evt->path);
-        free(w_evt);
-    }
 }
 
 #endif

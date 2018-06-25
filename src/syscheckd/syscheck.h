@@ -62,6 +62,8 @@ char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
 /* Generate the whodata csum */
 int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size);
+void init_whodata_event(whodata_evt *w_evt);
+void free_whodata_event(whodata_evt *w_evt);
 
 /* Get checksum changes */
 int c_read_file(const char *file_name, const char *oldsum, char *newsum) __attribute__((nonnull));
@@ -88,8 +90,8 @@ int audit_delete_rule(const char *path, const char *key);
 void *audit_main(int *audit_sock);
 extern W_Vector *audit_added_rules;
 extern volatile int audit_thread_active;
+extern pthread_mutex_t syscheck_mutex;
 void clean_rules(void);
-void StopAuditThread(void);
 #else
 int whodata_audit_start();
 int set_winsacl(const char *dir, int position);

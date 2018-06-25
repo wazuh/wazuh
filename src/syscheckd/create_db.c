@@ -479,7 +479,7 @@ int create_db()
 int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
     int retval = 0;
     if (!evt) {
-        if (snprintf(wd_sum, size, ":") >= size) {
+        if (snprintf(wd_sum, size, "::::::::::") >= size) {
             retval = 1;
         }
     } else {
@@ -495,9 +495,22 @@ int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
         // Only Windows agents can have spaces in their names
         name_esc = wstr_replace(evt->user_name, " ", "\\ ");
 #endif
-        if (snprintf(wd_sum, size, "%s:%s", name_esc, process_esc) >= size) {
+        if (snprintf(wd_sum, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%i:%lli",
+                evt->user_id,
+                name_esc,
+                (evt->group_id)?evt->group_id:"",
+                (evt->group_name)?evt->group_name:"",
+                process_esc,
+                (evt->audit_uid)?evt->audit_uid:"",
+                (evt->audit_name)?evt->audit_name:"",
+                (evt->effective_uid)?evt->effective_uid:"",
+                (evt->effective_name)?evt->effective_name:"",
+                evt->ppid,
+                (long long unsigned int) evt->process_id
+            ) >= size) {
             retval = 1;
         }
+
 #ifdef WIN32
         free(name_esc);
 #endif

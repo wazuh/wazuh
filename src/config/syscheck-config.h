@@ -52,17 +52,17 @@ typedef struct _rtfim {
 typedef struct whodata_evt {
     char *user_id;
     char *user_name;
-    char *group_id;
-    char *group_name;
+    char *group_id;  // Linux
+    char *group_name;  // Linux
     char *process_name;
     char *path;
+    char *audit_uid;  // Linux
+    char *audit_name;  // Linux
+    char *effective_uid;  // Linux
+    char *effective_name;  // Linux
+    int ppid;  // Linux
 #ifndef WIN32
-    char *audit_uid;
-    char *audit_name;
-    char *effective_uid;
-    char *effective_name;
     unsigned int process_id;
-    unsigned int ppid;
 #else
     unsigned __int64 process_id;
     unsigned int mask;
@@ -120,6 +120,8 @@ typedef struct _config {
 
     int time;                       /* frequency (secs) for syscheck to run */
     int queue;                      /* file descriptor of socket to write to queue */
+    unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
+    unsigned int enable_whodata:1;  /* At less one directory configured with whodata */
 
     int *opts;                      /* attributes set in the <directories> tag element */
 

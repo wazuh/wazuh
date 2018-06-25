@@ -26,9 +26,18 @@ typedef enum sk_syscheck {
     SK_GNAME,
     SK_INODE,
     SK_SHA256,
-    SK_USER,
-    SK_PROCESS,
-    SK_NFIELDS
+    SK_NFIELDS,
+    SK_USER_ID,
+    SK_USER_NAME,
+    SK_GROUP_ID,
+    SK_GROUP_NAME,
+    SK_PROC_NAME,
+    SK_AUDIT_ID,
+    SK_AUDIT_NAME,
+    SK_EFFECTIVE_UID,
+    SK_EFFECTIVE_NAME,
+    SK_PPID,
+    SK_PROC_ID
 } sk_syscheck;
 
 typedef struct __sdb {
@@ -42,14 +51,25 @@ typedef struct __sdb {
     char md5[OS_FLSIZE + 1];
     char sha1[OS_FLSIZE + 1];
     char sha256[OS_FLSIZE + 1];
-    char user[OS_FLSIZE + 1];
-    char process[OS_FLSIZE + 1];
     char mtime[OS_FLSIZE + 1];
     char inode[OS_FLSIZE + 1];
 
     char agent_cp[MAX_AGENTS + 1][1];
     char *agent_ips[MAX_AGENTS + 1];
     FILE *agent_fps[MAX_AGENTS + 1];
+
+    // Whodata fields
+    char user_id[OS_FLSIZE + 1];
+    char user_name[OS_FLSIZE + 1];
+    char group_id[OS_FLSIZE + 1];
+    char group_name[OS_FLSIZE + 1];
+    char process_name[OS_FLSIZE + 1];
+    char audit_uid[OS_FLSIZE + 1];
+    char audit_name[OS_FLSIZE + 1];
+    char effective_uid[OS_FLSIZE + 1];
+    char effective_name[OS_FLSIZE + 1];
+    char ppid[OS_FLSIZE + 1];
+    char process_id[OS_FLSIZE + 1];
 
     int db_err;
 
@@ -69,8 +89,17 @@ typedef struct __sdb {
 } _sdb; /* syscheck db information */
 
 typedef struct sk_sum_wdata {
-    char *user;
-    char *process;
+    char *user_id;
+    char *user_name;
+    char *group_id;
+    char *group_name;
+    char *process_name;
+    char *audit_uid;
+    char *audit_name;
+    char *effective_uid;
+    char *effective_name;
+    char *ppid;
+    char *process_id;
 } sk_sum_wdata;
 
 /* File sum structure */
