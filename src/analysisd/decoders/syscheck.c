@@ -553,6 +553,10 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                          "%s"
                          "%s"
                          "%s"
+                         "%s"
+                         "%s"
+                         "%s"
+                         "%s"
                          "%s%s",
                          f_name,
                          sdb.size,
@@ -563,6 +567,10 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                          sdb.sha1,
                          sdb.sha256,
                          sdb.user_name,
+                         sdb.audit_name,
+                         sdb.effective_name,
+                         sdb.group_name,
+                         sdb.process_id,
                          sdb.process_name,
                          lf->data ? "What changed:\n" : "",
                          lf->data ? lf->data : ""
@@ -583,10 +591,18 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                      "File '%.756s' was re-added."
                      "%s"
                      "%s"
+                     "%s"
+                     "%s"
+                     "%s"
+                     "%s"
                      "%s",
                      f_name,
                      (sdb.user_name || sdb.process_name) ? "\n" : "",
                      sdb.user_name,
+                     sdb.audit_name,
+                     sdb.effective_name,
+                     sdb.group_name,
+                     sdb.process_id,
                      sdb.process_name);
                 break;
             }
@@ -603,10 +619,18 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                  "File '%.756s' was deleted."
                  "%s"
                  "%s"
+                 "%s"
+                 "%s"
+                 "%s"
+                 "%s"
                  "%s",
                  f_name,
-                 (sdb.user_name || sdb.process_name) ? "\n" : "",
+                 (sdb.user_name) ? "\n" : "",
                  sdb.user_name,
+                 sdb.audit_name,
+                 sdb.effective_name,
+                 sdb.group_name,
+                 sdb.process_id,
                  sdb.process_name);
             break;
         }
