@@ -157,10 +157,10 @@ int set_auditd_config(void) {
     }
 
     if (syscheck.restart_audit) {
-        minfo("Auditsp configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
+        minfo("Audisp configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
         return audit_restart();
     } else {
-        mwarn("Auditsp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
+        mwarn("Audisp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
     }
 
     return 1;
@@ -310,32 +310,32 @@ int audit_init(void) {
 
     // Initialize regular expressions
 
-    static const char *pattern_uid = " uid=([^ 0-9]*)";
+    static const char *pattern_uid = " uid=([0-9]*) ";
     if (regcomp(&regexCompiled_uid, pattern_uid, REG_EXTENDED)) {
         merror("Cannot compile uid regular expression.");
         return -1;
     }
-    static const char *pattern_gid = " gid=([^ 0-9]*)";
+    static const char *pattern_gid = " gid=([0-9]*) ";
     if (regcomp(&regexCompiled_gid, pattern_gid, REG_EXTENDED)) {
         merror("Cannot compile gid regular expression.");
         return -1;
     }
-    static const char *pattern_auid = " auid=([^ 0-9]*)";
+    static const char *pattern_auid = " auid=([0-9]*) ";
     if (regcomp(&regexCompiled_auid, pattern_auid, REG_EXTENDED)) {
         merror("Cannot compile auid regular expression.");
         return -1;
     }
-    static const char *pattern_euid = " euid=([^ 0-9]*)";
+    static const char *pattern_euid = " euid=([0-9]*) ";
     if (regcomp(&regexCompiled_euid, pattern_euid, REG_EXTENDED)) {
         merror("Cannot compile euid regular expression.");
         return -1;
     }
-    static const char *pattern_pid = " pid=([^ 0-9]*)";
+    static const char *pattern_pid = " pid=([0-9]*) ";
     if (regcomp(&regexCompiled_pid, pattern_pid, REG_EXTENDED)) {
         merror("Cannot compile pid regular expression.");
         return -1;
     }
-    static const char *pattern_ppid = " ppid=([^ 0-9]*)";
+    static const char *pattern_ppid = " ppid=([0-9]*) ";
     if (regcomp(&regexCompiled_ppid, pattern_ppid, REG_EXTENDED)) {
         merror("Cannot compile ppid regular expression.");
         return -1;

@@ -515,8 +515,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->sha1_after = NULL;
     lf->sha256_before = NULL;
     lf->sha256_after = NULL;
-    lf->user_id = NULL;
-    lf->process_id = NULL;
     lf->size_before = NULL;
     lf->size_after = NULL;
     lf->owner_before = NULL;
@@ -534,6 +532,18 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->diff = NULL;
     lf->previous = NULL;
     lf->labels = NULL;
+
+    lf->user_id = NULL;
+    lf->user_name = NULL;
+    lf->group_id = NULL;
+    lf->group_name = NULL;
+    lf->process_name = NULL;
+    lf->audit_uid = NULL;
+    lf->audit_name = NULL;
+    lf->effective_uid = NULL;
+    lf->effective_name = NULL;
+    lf->ppid = NULL;
+    lf->process_id = NULL;
 
     return;
 }

@@ -194,12 +194,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if (lf->sha256_after) {
             cJSON_AddStringToObject(file_diff, "sha256_after", lf->sha256_after);
         }
-        if (lf->user_id) {
-            cJSON_AddStringToObject(file_diff, "user_id", lf->user_id);
-        }
-        if (lf->process_id) {
-            cJSON_AddStringToObject(file_diff, "process_id", lf->process_id);
-        }
         if (lf->uname_before) {
             cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
         }
@@ -278,6 +272,47 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     if(lf->systemname)
         cJSON_AddStringToObject(data, "system_name", lf->systemname);
+
+    // Whodata fields
+    if (lf->user_id && lf->user_name) {
+        cJSON* audit = cJSON_CreateObject();
+
+        cJSON* user = cJSON_CreateObject();
+        cJSON_AddStringToObject(user, "id", lf->user_id);
+        cJSON_AddStringToObject(user, "name", lf->user_name);
+        cJSON_AddItemToObject(audit, "user", user);
+
+        if (lf->group_id) {
+            cJSON* group = cJSON_CreateObject();
+            cJSON_AddStringToObject(group, "id", lf->group_id);
+            if (lf->group_name) cJSON_AddStringToObject(group, "name", lf->group_name);
+            cJSON_AddItemToObject(audit, "group", group);
+        }
+
+        if (lf->process_id) {
+            cJSON* proc = cJSON_CreateObject();
+            cJSON_AddStringToObject(proc, "id", lf->process_id);
+            if (lf->process_name) cJSON_AddStringToObject(proc, "name", lf->process_name);
+            if (lf->ppid) cJSON_AddStringToObject(proc, "ppid", lf->ppid);
+            cJSON_AddItemToObject(audit, "proccess", proc);
+        }
+
+        if (lf->audit_uid) {
+            cJSON* auser = cJSON_CreateObject();
+            cJSON_AddStringToObject(auser, "id", lf->audit_uid);
+            if (lf->audit_name) cJSON_AddStringToObject(auser, "name", lf->audit_name);
+            cJSON_AddItemToObject(audit, "audit_user", auser);
+        }
+
+        if (lf->effective_uid) {
+            cJSON* euser = cJSON_CreateObject();
+            cJSON_AddStringToObject(euser, "id", lf->effective_uid);
+            if (lf->effective_name) cJSON_AddStringToObject(euser, "name", lf->effective_name);
+            cJSON_AddItemToObject(audit, "effective_user", euser);
+        }
+
+        cJSON_AddItemToObject(root, "audit", audit);
+    }
 
     // DecoderInfo
     if(lf->decoder_info) {
