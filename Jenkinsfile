@@ -1,32 +1,24 @@
-def labels = ['centos-7-slave']
+#!/usr/bin/env groovy
+/** 
+	* Groovy Jenkinsfile to test Wazuh modules
+	* from https://github.com/okynos/wazuh.git
+	* by José Fernandez Aguilera
 
+*/
 
-//Stage standard ossec compilations
-def  standard_compilations(label){
-    dir ('src') {
-        if(  label != 'centos-5-slave'){
-            sh 'sudo make --warn-undefined-variables V=1 TARGET=agent install'
-            sh 'sudo make clean && sudo rm -rf /var/ossec/'
-            sh 'sudo make --warn-undefined-variables V=1 TARGET=server install'
-            sh 'sudo make clean'
-        } else{
-            sh 'sudo make --warn-undefined-variables USE_LEGACY_SSL=yes V=1 TARGET=agent install'
-            sh 'sudo make clean && sudo rm -rf /var/ossec/'
-            sh 'sudo make --warn-undefined-variables USE_LEGACY_SSL=yes V=1 TARGET=server install'
-            sh 'sudo make clean'
-        }
-    }
+try{
+node{
+	stage 'Cloning code'
+	def workspace = pwd()	
+	echo "workspace=${workspace}"
+	
+	sh 'git clone https://github.com/okynos/wazuh.git'	
+
+	stage 'testing...'
+	echo "everything cloned :)"
+
 }
+}
+catch(exc){
 
-
-for (label in labels) {
-
-    stage (label){
-
-        node(label) {
-            stage ('Standard Compilations'){
-                standard_compilations(label)
-            }
-        }
-    }
 }
