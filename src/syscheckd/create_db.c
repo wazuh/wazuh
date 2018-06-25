@@ -242,7 +242,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             alert_msg[OS_MAXSTR] = '\0';
 
             /* If it returns < 0, we have already alerted */
-            if (c_read_file(file_name, buf, c_sum) < 0) {
+            if (c_read_file(file_name, buf, c_sum, NULL) < 0) {
                 return (0);
             }
             if (strcmp(c_sum, buf + SK_DB_NATTR)) {

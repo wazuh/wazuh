@@ -338,7 +338,7 @@ void start_daemon()
 }
 
 /* Read file information and return a pointer to the checksum */
-int c_read_file(const char *file_name, const char *oldsum, char *newsum)
+int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata_evt * evt)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
@@ -358,10 +358,18 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
-        char alert_msg[PATH_MAX+4];
+        char alert_msg[OS_SIZE_6144 + 1];
+        char wd_sum[OS_SIZE_6144 + 1];
 
-        alert_msg[PATH_MAX + 3] = '\0';
-        snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
+        alert_msg[sizeof(alert_msg) - 1] = '\0';
+
+        // Extract the whodata sum here to not include it in the hash table
+        if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+            merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+            *wd_sum = '\0';
+        }
+
+        snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s", wd_sum, file_name);
         send_syscheck_msg(alert_msg);
 
         return (-1);
