@@ -93,7 +93,6 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
-    int audit_socket;
 
 #ifdef INOTIFY_ENABLED
     /* To be used by select */
