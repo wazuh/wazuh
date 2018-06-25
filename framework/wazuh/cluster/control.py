@@ -6,8 +6,8 @@
 import json
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
 from wazuh.cluster.internal_socket import execute
+from wazuh.agent import Agent
 from wazuh.utils import sort_array, search_array, cut_array
 
 ## Requests
@@ -93,20 +93,22 @@ def get_files(filter_file_list=None, filter_node_list=None):
     return execute(request)
 
 
-def get_agents(filter_status, filter_node):
+def get_agents(filter_status, filter_node, is_master):
     filter_status = "all" if not filter_status else filter_status
     filter_node = "all" if not filter_node else filter_node
 
-    input_json = {'function': '/agents', 'from_cluster': False,
-                  'arguments': {'filters':{'status': filter_status, 'node_name': filter_node}, 'limit': 0,
-                                'select': {'fields': ['id','ip','name','status','node_name']}}}
-
-    request = "dapi {}".format(json.dumps(input_json))
-    response = execute(request)
-    if not isinstance(response, dict):
-        raise WazuhException(1000, response)
-
-    if response['error'] == 0:
-        return response['data']
+    if is_master:
+        return Agent.get_agents_overview(limit=0, filters={'status': filter_status, 'node_name':filter_node},
+                                         select={'fields':['id','ip','name','status','node_name']})
     else:
-        raise Exception(response['message'])
+        input_json = {'function': '/agents', 'from_cluster': False,
+                      'arguments': {'filters': {'status': filter_status, 'node_name': filter_node}, 'limit': 0,
+                                    'select': {'fields': ['id', 'ip', 'name', 'status', 'node_name']}}}
+
+        request = "dapi {}".format(json.dumps(input_json))
+        response = execute(request)
+        if not isinstance(response, dict):
+            raise WazuhException(1000, response)
+
+        if response['error'] == 0:
+            return response['data']

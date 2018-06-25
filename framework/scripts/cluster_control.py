@@ -247,8 +247,8 @@ def sync_master(filter_node):
 
 
 ### Get agents
-def print_agents(filter_status, filter_node):
-    agents = get_agents(filter_status, filter_node)
+def print_agents(filter_status, filter_node, is_master):
+    agents = get_agents(filter_status, filter_node, is_master)
 
     table = ["  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}".format(agent['id'], agent['name'], agent['ip'],
                                                                         agent['status'], agent['node_name'])
@@ -351,7 +351,7 @@ if __name__ == '__main__':
             print ("Wrong arguments.")
             parser.print_help()
         elif args.list_agents:
-            print_agents(args.filter_status, args.filter_node)
+            print_agents(args.filter_status, args.filter_node, is_master)
 
         elif args.list_nodes:
             print_nodes_status(args.filter_node)
