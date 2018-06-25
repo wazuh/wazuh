@@ -25,7 +25,7 @@
 #define BUF_SIZE 4096
 
 // Global variables
-volatile int audit_thread_active;
+static int audit_thread_active;
 W_Vector *audit_added_rules;
 static regex_t regexCompiled_uid;
 static regex_t regexCompiled_pid;
