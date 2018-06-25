@@ -118,7 +118,10 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
 
         sum->wdata.user_name = unescape_whodata_sum(sum->wdata.user_name);
-        sum->wdata.process_id = unescape_whodata_sum(sum->wdata.process_id);
+        sum->wdata.process_name = unescape_whodata_sum(sum->wdata.process_name);
+        if (*sum->wdata.ppid == '-') {
+            sum->wdata.ppid = NULL;
+        }
     }
 
     sum->mtime = atol(c_mtime);

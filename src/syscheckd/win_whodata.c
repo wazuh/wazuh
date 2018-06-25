@@ -447,6 +447,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 if (!OSHash_Get_ex(syscheck.fp, path)) {
                     if (position = find_dir_pos(path, 1), position < 0) {
                         // Discard the file if its monitoring has not been activated
+                        mdebug2("'%s' is discarded because its monitoring is not activated.", path);
                         break;
                     }
                 } else {
@@ -461,6 +462,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 w_evt->process_id = process_id;
                 w_evt->mask = 0;
                 w_evt->deleted = 0;
+                w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
                 user_name = NULL;
