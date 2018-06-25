@@ -123,6 +123,19 @@ void start_daemon()
     memset(curr_hour, '\0', 12);
     sleep(syscheck.tsleep * 10);
 
+    // Audit events thread
+    if (syscheck.enable_whodata) {
+        int audit_socket = audit_init();
+        if (audit_socket > 0) {
+            mdebug1("Starting Auditd events reader thread...");
+            audit_added_rules = W_Vector_init(10);
+            atexit(clean_rules);
+            w_create_thread(audit_main, &audit_socket);
+        } else {
+            merror("Cannot start Audit events reader thread.");
+        }
+    }
+
     /* If the scan time/day is set, reset the
      * syscheck.time/rootcheck.time
      */
@@ -324,7 +337,7 @@ void start_daemon()
 }
 
 /* Read file information and return a pointer to the checksum */
-int c_read_file(const char *file_name, const char *oldsum, char *newsum)
+int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata_evt * evt)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
@@ -344,10 +357,18 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
-        char alert_msg[PATH_MAX+4];
+        char alert_msg[OS_SIZE_6144 + 1];
+        char wd_sum[OS_SIZE_6144 + 1];
 
-        alert_msg[PATH_MAX + 3] = '\0';
-        snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
+        alert_msg[sizeof(alert_msg) - 1] = '\0';
+
+        // Extract the whodata sum here to not include it in the hash table
+        if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+            merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+            *wd_sum = '\0';
+        }
+
+        snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s", wd_sum, file_name);
         send_syscheck_msg(alert_msg);
 
         return (-1);

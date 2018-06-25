@@ -51,7 +51,18 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[255] = '\0';
 
         /* If it returns < 0, we have already alerted */
-        if (c_read_file(file_name, buf, c_sum) < 0) {
+        if (c_read_file(file_name, buf, c_sum, evt) < 0) {
+            char alert_msg[OS_MAXSTR + 1];
+            char wd_sum[OS_SIZE_6144 + 1];
+
+            // Extract the whodata sum here to not include it in the hash table
+            if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                *wd_sum = '\0';
+            }
+
+            snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s", wd_sum, file_name);
+
             // Update database
             snprintf(c_sum, sizeof(c_sum), "%.*s -1", SK_DB_NATTR, buf);
             free(buf);
@@ -60,6 +71,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 merror("Unable to update file to db: %s", file_name);
             }
 
+            send_syscheck_msg(alert_msg);
             return (0);
         }
 

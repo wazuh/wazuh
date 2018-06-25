@@ -66,7 +66,7 @@ void init_whodata_event(whodata_evt *w_evt);
 void free_whodata_event(whodata_evt *w_evt);
 
 /* Get checksum changes */
-int c_read_file(const char *file_name, const char *oldsum, char *newsum) __attribute__((nonnull));
+int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata_evt * evt) __attribute__((nonnull(1,2,3)));
 
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));

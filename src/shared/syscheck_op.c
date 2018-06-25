@@ -21,66 +21,70 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_perm;
     char *c_mtime;
     char *c_inode;
+    int retval = 0;
 
     memset(sum, 0, sizeof(sk_sum_t));
 
-    if (c_sum[0] == '-' && c_sum[1] == '1')
-        return 1;
+    if (c_sum[0] == '-' && c_sum[1] == '1') {
+        retval = 1;
+    } else {
+        sum->size = c_sum;
 
-    sum->size = c_sum;
+        if (!(c_perm = strchr(c_sum, ':')))
+            return -1;
 
-    if (!(c_perm = strchr(c_sum, ':')))
-        return -1;
+        *(c_perm++) = '\0';
 
-    *(c_perm++) = '\0';
+        if (!(sum->uid = strchr(c_perm, ':')))
+            return -1;
 
-    if (!(sum->uid = strchr(c_perm, ':')))
-        return -1;
+        *(sum->uid++) = '\0';
+        sum->perm = atoi(c_perm);
 
-    *(sum->uid++) = '\0';
-    sum->perm = atoi(c_perm);
+        if (!(sum->gid = strchr(sum->uid, ':')))
+            return -1;
 
-    if (!(sum->gid = strchr(sum->uid, ':')))
-        return -1;
+        *(sum->gid++) = '\0';
 
-    *(sum->gid++) = '\0';
+        if (!(sum->md5 = strchr(sum->gid, ':')))
+            return -1;
 
-    if (!(sum->md5 = strchr(sum->gid, ':')))
-        return -1;
+        *(sum->md5++) = '\0';
 
-    *(sum->md5++) = '\0';
+        if (!(sum->sha1 = strchr(sum->md5, ':')))
+            return -1;
 
-    if (!(sum->sha1 = strchr(sum->md5, ':')))
-        return -1;
+        *(sum->sha1++) = '\0';
 
-    *(sum->sha1++) = '\0';
+        // New fields: user name, group name, modification time and inode
 
-    // New fields: user name, group name, modification time and inode
+        if ((sum->uname = strchr(sum->sha1, ':'))) {
+            *(sum->uname++) = '\0';
 
-    if (!(sum->uname = strchr(sum->sha1, ':')))
-        return 0;
+            if (!(sum->gname = strchr(sum->uname, ':')))
+                return -1;
 
-    *(sum->uname++) = '\0';
+            *(sum->gname++) = '\0';
 
-    if (!(sum->gname = strchr(sum->uname, ':')))
-        return -1;
+            if (!(c_mtime = strchr(sum->gname, ':')))
+                return -1;
 
-    *(sum->gname++) = '\0';
+            *(c_mtime++) = '\0';
 
-    if (!(c_mtime = strchr(sum->gname, ':')))
-        return -1;
+            if (!(c_inode = strchr(c_mtime, ':')))
+                return -1;
 
-    *(c_mtime++) = '\0';
+            *(c_inode++) = '\0';
 
-    if (!(c_inode = strchr(c_mtime, ':')))
-        return -1;
+            sum->sha256 = NULL;
 
-    *(c_inode++) = '\0';
+            if ((sum->sha256 = strchr(c_inode, ':')))
+                *(sum->sha256++) = '\0';
 
-    sum->sha256 = NULL;
-
-    if ((sum->sha256 = strchr(c_inode, ':')))
-        *(sum->sha256++) = '\0';
+            sum->mtime = atol(c_mtime);
+            sum->inode = atol(c_inode);
+        }
+    }
 
     // Get whodata
     if (w_sum) {
@@ -88,33 +92,62 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
         if ((sum->wdata.user_name = wstr_chr(w_sum, ':'))) {
             *(sum->wdata.user_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.group_id = wstr_chr(sum->wdata.user_name, ':'))) {
             *(sum->wdata.group_id++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.group_name = wstr_chr(sum->wdata.group_id, ':'))) {
             *(sum->wdata.group_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.process_name = wstr_chr(sum->wdata.group_name, ':'))) {
             *(sum->wdata.process_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.audit_uid = wstr_chr(sum->wdata.process_name, ':'))) {
             *(sum->wdata.audit_uid++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.audit_name = wstr_chr(sum->wdata.audit_uid, ':'))) {
             *(sum->wdata.audit_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.effective_uid = wstr_chr(sum->wdata.audit_name, ':'))) {
             *(sum->wdata.effective_uid++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.effective_name = wstr_chr(sum->wdata.effective_uid, ':'))) {
             *(sum->wdata.effective_name++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.ppid = wstr_chr(sum->wdata.effective_name, ':'))) {
             *(sum->wdata.ppid++) = '\0';
+        } else {
+            return -1;
         }
+
         if ((sum->wdata.process_id = wstr_chr(sum->wdata.ppid, ':'))) {
             *(sum->wdata.process_id++) = '\0';
+        } else {
+            return -1;
         }
 
         sum->wdata.user_name = unescape_whodata_sum(sum->wdata.user_name);
@@ -124,9 +157,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
     }
 
-    sum->mtime = atol(c_mtime);
-    sum->inode = atol(c_inode);
-    return 0;
+    return retval;
 }
 
 char *unescape_whodata_sum(char *sum) {
