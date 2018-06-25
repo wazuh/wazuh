@@ -131,11 +131,12 @@ class InternalSocketClient(communication.AbstractClient):
             self.final_response.write(data)
             return False
         elif command == 'err':
-            self.final_response.write(data)
             try:
                 json.loads(data)
-                return False
+                self.final_response.write(data['err'])
+                return True
             except ValueError:
+                self.final_response.write(data)
                 return True
 
 
