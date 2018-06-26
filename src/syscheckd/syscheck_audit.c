@@ -415,6 +415,7 @@ void audit_parse(char * buffer) {
     char *psuccess;
     char *pconfig;
     char *pdelete;
+    char *psyscall;
     regmatch_t match[2];
     int match_size;
     char *uid = NULL;
@@ -430,16 +431,17 @@ void audit_parse(char * buffer) {
     char *full_path = NULL;
     whodata_evt *w_evt;
 
-    os_calloc(1, sizeof(whodata_evt), w_evt);
-
     if (pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) { // Parse only 'wazuh_fim' events.
 
         if ((pconfig = strstr(buffer,"type=CONFIG_CHANGE"), pconfig)
         && (pdelete = strstr(buffer,"op=remove_rule"), pdelete)) { // Detect rules modification.
             audit_thread_active = 0;
             mwarn("Detected Audit rules manipulation: Rule removed.");
-
+        } else if (psyscall = strstr(buffer,"syscall=257"), psyscall) {
+            return; // Skip sys_openat syscall
         } else if (psuccess = strstr(buffer,"success=yes"), psuccess) {
+
+            os_calloc(1, sizeof(whodata_evt), w_evt);
 
             if(regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
@@ -519,28 +521,32 @@ void audit_parse(char * buffer) {
                 free(pname);
             }
 
-            if (path0 && path1 && cwd) {
-                if (path1[0] == '/') {
-                    w_evt->path = strdup(path1);
-                } else if (path1[0] == '.' && path1[1] == '/') {
-                    full_path = malloc(strlen(cwd) + strlen(path1) + 2);
-                    snprintf(full_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, (path1+2));
-                    w_evt->path = strdup(full_path);
-                    free(full_path);
-                } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
-                    w_evt->path = clean_audit_path(cwd, path1);
-                } else if (strncmp(path0, path1, strlen(path0)) == 0) {
-                    w_evt->path = malloc(strlen(cwd) + strlen(path1) + 2);
-                    snprintf(w_evt->path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
+            if (path0 && cwd) {
+                if (path1) {
+                    if (path1[0] == '/') {
+                        w_evt->path = strdup(path1);
+                    } else if (path1[0] == '.' && path1[1] == '/') {
+                        full_path = malloc(strlen(cwd) + strlen(path1) + 2);
+                        snprintf(full_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, (path1+2));
+                        w_evt->path = strdup(full_path);
+                        free(full_path);
+                    } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
+                        w_evt->path = clean_audit_path(cwd, path1);
+                    } else if (strncmp(path0, path1, strlen(path0)) == 0) {
+                        w_evt->path = malloc(strlen(cwd) + strlen(path1) + 2);
+                        snprintf(w_evt->path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
+                    } else {
+                        full_path = malloc(strlen(path0) + strlen(path1) + 2);
+                        snprintf(full_path, strlen(path0) + strlen(path1) + 2, "%s/%s", path0, path1);
+                        w_evt->path = strdup(full_path);
+                        free(full_path);
+                    }
+                    free(path1);
                 } else {
-                    full_path = malloc(strlen(path0) + strlen(path1) + 2);
-                    snprintf(full_path, strlen(path0) + strlen(path1) + 2, "%s/%s", path0, path1);
-                    w_evt->path = strdup(full_path);
-                    free(full_path);
+                    w_evt->path = clean_audit_path(cwd, path0);
                 }
                 free(cwd);
                 free(path0);
-                free(path1);
 
                 mdebug1("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
                     w_evt->user_name,
