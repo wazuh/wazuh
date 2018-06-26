@@ -197,47 +197,47 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->sha256, lf->sha256_after);
 
     if(sum->wdata.user_id) {
-        lf->user_id = sum->wdata.user_id;
+        os_strdup(sum->wdata.user_id, lf->user_id);
     }
 
     if(sum->wdata.user_name) {
-        lf->user_name = sum->wdata.user_name;
+        os_strdup(sum->wdata.user_name, lf->user_name);
     }
 
     if(sum->wdata.group_id) {
-        lf->group_id = sum->wdata.group_id;
+        os_strdup(sum->wdata.group_id, lf->group_id);
     }
 
     if(sum->wdata.group_name) {
-        lf->group_name = sum->wdata.group_name;
+        os_strdup(sum->wdata.group_name, lf->group_name);
     }
 
     if(sum->wdata.process_name) {
-        lf->process_name = sum->wdata.process_name;
+        os_strdup(sum->wdata.process_name, lf->process_name);
     }
 
     if(sum->wdata.audit_uid) {
-        lf->audit_uid = sum->wdata.audit_uid;
+        os_strdup(sum->wdata.audit_uid, lf->audit_uid);
     }
 
     if(sum->wdata.audit_name) {
-        lf->audit_name = sum->wdata.audit_name;
+        os_strdup(sum->wdata.audit_name, lf->audit_name);
     }
 
     if(sum->wdata.effective_uid) {
-        lf->effective_uid = sum->wdata.effective_uid;
+        os_strdup(sum->wdata.effective_uid, lf->effective_uid);
     }
 
     if(sum->wdata.effective_name) {
-        lf->effective_name = sum->wdata.effective_name;
+        os_strdup(sum->wdata.effective_name, lf->effective_name);
     }
 
     if(sum->wdata.ppid) {
-        lf->ppid = sum->wdata.ppid;
+        os_strdup(sum->wdata.ppid, lf->ppid);
     }
 
     if(sum->wdata.process_id) {
-        lf->process_id = sum->wdata.process_id;
+        os_strdup(sum->wdata.process_id, lf->process_id);
     }
 
     /* Fields */

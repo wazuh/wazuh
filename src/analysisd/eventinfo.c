@@ -691,6 +691,33 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->user_id) {
         free(lf->user_id);
     }
+    if (lf->user_name) {
+        free(lf->user_name);
+    }
+    if (lf->group_id) {
+        free(lf->group_id);
+    }
+    if (lf->group_name) {
+        free(lf->group_name);
+    }
+    if (lf->process_name) {
+        free(lf->process_name);
+    }
+    if (lf->audit_uid) {
+        free(lf->audit_uid);
+    }
+    if (lf->audit_name) {
+        free(lf->audit_name);
+    }
+    if (lf->effective_uid) {
+        free(lf->effective_uid);
+    }
+    if (lf->effective_name) {
+        free(lf->effective_name);
+    }
+    if (lf->ppid) {
+        free(lf->ppid);
+    }
     if (lf->process_id) {
         free(lf->process_id);
     }
