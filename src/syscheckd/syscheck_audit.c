@@ -566,6 +566,10 @@ void audit_parse(char * buffer) {
                     w_evt->ppid,
                     w_evt->path,
                     w_evt->process_name);
+
+                struct timeval timeout = {0, syscheck.rt_delay * 1000};
+                select(0, NULL, NULL, NULL, &timeout);
+
                 realtime_checksumfile(w_evt->path, w_evt);
             }
             free_whodata_event(w_evt);
