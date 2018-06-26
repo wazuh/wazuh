@@ -42,7 +42,16 @@ void * syscom_main(__attribute__((unused)) void * arg) ;
 size_t syscom_dispatch(char * command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
 
+#define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
+
+typedef struct cpu_info {
+    char *cpu_name;
+    int cpu_cores;
+    double cpu_MHz;
+} cpu_info;
+
 void w_get_queues_size();
+void w_get_initial_queues_size();
 
 #define OSSEC_SERVER    "ossec-server"
 #define MAX_DECODER_ORDER_SIZE  1024
