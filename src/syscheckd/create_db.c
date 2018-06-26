@@ -187,7 +187,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 alertdump = seechanges_addfile(file_name);
             }
 #ifdef WIN32
-            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:::%s:%s:%s:%s:%s:%ld:%ld",
+            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s",
                      opts & CHECK_SIZE ? '+' : '-',
                      opts & CHECK_PERM ? '+' : '-',
                      opts & CHECK_OWNER ? '+' : '-',
@@ -207,7 +207,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                      opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 #else
-            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%s:%ld:%ld",
+            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
                      opts & CHECK_SIZE ? '+' : '-',
                      opts & CHECK_PERM ? '+' : '-',
                      opts & CHECK_OWNER ? '+' : '-',
@@ -228,6 +228,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                      opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
+#endif
 
             if (OSHash_Add(syscheck.fp, file_name, strdup(alert_msg)) <= 0) {
                 merror("Unable to add file to db: %s", file_name);
