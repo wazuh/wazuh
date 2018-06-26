@@ -224,6 +224,9 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
                   };
 
+/* CPU Info*/
+static cpu_info *cpu_information;
+
 /* Print help statement */
 __attribute__((noreturn))
 static void help_analysisd(void)
@@ -448,6 +451,12 @@ int main_analysisd(int argc, char **argv)
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
+
+
+    /* Check the CPU INFO */
+    /* If we have the threads set to 0 on internal_options.conf, then */
+    /* we assign them automatically based on the number of cores */
+    cpu_information = get_cpu_info();
 
     /* Chroot */
     if (Privsep_Chroot(dir) < 0) {
@@ -876,13 +885,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
     
     sleep(1);
-
-    /* Check the CPU INFO */
-    /* If we have the threads set to 0 on internal_options.conf, then */
-    /* we assign them automatically based on the number of cores */
-    cpu_info *cpu_information;
-
-    cpu_information = get_cpu_info();
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_information->cpu_cores;
@@ -2439,7 +2441,7 @@ cpu_info *get_cpu_info_linux(){
     os_calloc(1, sizeof(cpu_info), info);
 
     if (!(fp = fopen("/proc/cpuinfo", "r"))) {
-        mterror(WM_SYS_LOGTAG, "Unable to read cpuinfo file.");
+        mterror(WM_ANALYSISD_LOGTAG, "Unable to read cpuinfo file.");
         info->cpu_name = strdup("unknown");
     } else {
         char *aux_string = NULL;
@@ -2500,7 +2502,7 @@ cpu_info *get_cpu_info_bsd(){
         info->cpu_name = strdup(cpu_name);
     }else{
         info->cpu_name = strdup("unknown");
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU name due to (%s)", strerror(errno));
+        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU name due to (%s)", strerror(errno));
     }
 
     /* Number of cores */
@@ -2511,7 +2513,7 @@ cpu_info *get_cpu_info_bsd(){
     if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)){
         info->cpu_cores = (int)cpu_cores;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU cores due to (%s)", strerror(errno));
+        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU cores due to (%s)", strerror(errno));
     }
 
     /* CPU clockrate (MHz) */
@@ -2524,7 +2526,7 @@ cpu_info *get_cpu_info_bsd(){
     if (!sysctl(mib, 2, &cpu_MHz, &len, NULL, 0)){
         info->cpu_MHz = (double)cpu_MHz/1000000.0;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
+        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
     }
 
 #elif defined(__FreeBSD__) || defined(__MACH__)
@@ -2543,7 +2545,7 @@ cpu_info *get_cpu_info_bsd(){
     if (!sysctlbyname(clockrate, &cpu_MHz, &len, NULL, 0)){
         info->cpu_MHz = (double)cpu_MHz/1000000.0;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
+        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
     }
 
     free(clockrate);
