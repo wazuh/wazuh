@@ -415,7 +415,6 @@ void audit_parse(char * buffer) {
     char *psuccess;
     char *pconfig;
     char *pdelete;
-    char *psyscall;
     regmatch_t match[2];
     int match_size;
     char *uid = NULL;
@@ -437,8 +436,6 @@ void audit_parse(char * buffer) {
         && (pdelete = strstr(buffer,"op=remove_rule"), pdelete)) { // Detect rules modification.
             audit_thread_active = 0;
             mwarn("Detected Audit rules manipulation: Rule removed.");
-        } else if (psyscall = strstr(buffer,"syscall=257"), psyscall) {
-            return; // Skip sys_openat syscall
         } else if (psuccess = strstr(buffer,"success=yes"), psuccess) {
 
             os_calloc(1, sizeof(whodata_evt), w_evt);
@@ -543,7 +540,19 @@ void audit_parse(char * buffer) {
                     }
                     free(path1);
                 } else {
-                    w_evt->path = clean_audit_path(cwd, path0);
+                    if (path0[0] == '/') {
+                        w_evt->path = strdup(path0);
+                    } else if (path0[0] == '.' && path0[1] == '/') {
+                        full_path = malloc(strlen(cwd) + strlen(path0) + 2);
+                        snprintf(full_path, strlen(cwd) + strlen(path0) + 2, "%s/%s", cwd, (path0+2));
+                        w_evt->path = strdup(full_path);
+                        free(full_path);
+                    } else if (path0[0] == '.' && path0[1] == '.' && path0[2] == '/') {
+                        w_evt->path = clean_audit_path(cwd, path0);
+                    } else {
+                        w_evt->path = malloc(strlen(cwd) + strlen(path0) + 2);
+                        snprintf(w_evt->path, strlen(cwd) + strlen(path0) + 2, "%s/%s", cwd, path0);
+                    }
                 }
                 free(cwd);
                 free(path0);
