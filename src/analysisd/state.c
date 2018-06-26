@@ -20,6 +20,7 @@ unsigned int s_events_processed = 0;
 unsigned int s_events_dropped = 0 ;
 unsigned int s_alerts_written  = 0; 
 unsigned int s_firewall_written = 0;
+unsigned int s_fts_written = 0;
 
 unsigned int s_syscheck_queue = 0;
 unsigned int s_syscollector_queue = 0;
@@ -28,10 +29,22 @@ unsigned int s_hostinfo_queue = 0;
 unsigned int s_event_queue = 0;
 unsigned int s_process_event_queue = 0;
 
+unsigned int s_syscheck_queue_size = 0;
+unsigned int s_syscollector_queue_size = 0;
+unsigned int s_rootcheck_queue_size = 0;
+unsigned int s_hostinfo_queue_size = 0;
+unsigned int s_event_queue_size = 0;
+unsigned int s_process_event_queue_size = 0;
+
 unsigned int s_writer_alerts_queue = 0;
 unsigned int s_writer_archives_queue = 0;
 unsigned int s_writer_firewall_queue = 0;
 unsigned int s_writer_statistical_queue = 0;
+
+unsigned int s_writer_alerts_queue_size = 0;
+unsigned int s_writer_archives_queue_size = 0;
+unsigned int s_writer_firewall_queue_size = 0;
+unsigned int s_writer_statistical_queue_size = 0;
 
 pthread_mutex_t s_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -42,6 +55,7 @@ pthread_mutex_t s_process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_event_dropped_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_alerts_written_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_firewall_written_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t s_fts_written_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int interval;
 
@@ -59,8 +73,6 @@ void * w_analysisd_state_main(){
         w_analysisd_write_state();
         sleep(interval);
     }
-
-   
 
     return NULL;
 }
@@ -126,34 +138,70 @@ int w_analysisd_write_state(){
         "# Firewall alerts written to disk\n"
         "firewall_written='%u'\n"
         "\n"
+        "# FTS alerts written to disk\n"
+        "fts_written='%u'\n"
+        "\n"
         "# Syscheck queue\n"
-        "syscheck_queue='%u%'\n"
+        "syscheck_queue='%u%%'\n"
+        "\n"
+        "# Syscheck queue size\n"
+        "syscheck_queue_size='%u'\n"
         "\n"
         "# Syscollector queue\n"
-        "syscollector_queue='%u%'\n"
+        "syscollector_queue='%u%%'\n"
+        "\n"
+        "# Syscollector queue size\n"
+        "syscollector_queue_size='%u'\n"
         "\n"
         "# Rootcheck queue\n"
-        "rootcheck_queue='%u%'\n"
+        "rootcheck_queue='%u%%'\n"
+        "\n"
+        "# Rootcheck queue size\n"
+        "rootcheck_queue_size='%u'\n"
         "\n"
         "# Hostinfo queue\n"
-        "hostinfo_queue='%u%'\n"
+        "hostinfo_queue='%u%%'\n"
+        "\n"
+        "# Hostinfo queue size\n"
+        "hostinfo_queue_size='%u'\n"
         "\n"
         "# Event queue\n"
-        "event_queue='%u%'\n"
+        "event_queue='%u%%'\n"
+        "\n"
+        "# Event queue size\n"
+        "event_queue_size='%u'\n"
         "\n"
         "# Rule matching queue\n"
-        "rule_matching_queue='%u%'\n"
+        "rule_matching_queue='%u%%'\n"
+        "\n"
+        "# Rule matching queue size\n"
+        "rule_matching_queue_size='%u'\n"
         "\n"
         "# Alerts log queue\n"
-        "alerts_queue='%u%'\n"
+        "alerts_queue='%u%%'\n"
+        "\n"
+        "# Alerts log queue size\n"
+        "alerts_queue_size='%u'\n"
         "\n"
         "# Firewall log queue\n"
-        "firewall_queue='%u%'\n"
+        "firewall_queue='%u%%'\n"
+        "\n"
+        "# Firewall log queue size\n"
+        "firewall_queue_size='%u'\n"
         "\n"
         "# Statistical log queue\n"
-        "statistical_queue='%u%'\n"
+        "statistical_queue='%u%%'\n"
+        "\n"
+        "# Statistical log queue size\n"
+        "statistical_queue_size='%u'\n"
+        "\n"
+        "# Archives log queue\n"
+        "archives_queue='%u%%'\n"
+        "\n"
+        "# Archives log queue size\n"
+        "archives_queue_size='%u'\n"
         "\n",
-        __local_name, s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded ,s_events_syscheck_decoded,s_events_syscheck_decoded / interval ,s_events_syscollector_decoded,s_events_syscollector_decoded / interval,s_events_rootcheck_decoded,s_events_rootcheck_decoded / interval,s_events_hostinfo_decoded,s_events_hostinfo_decoded / interval,s_events_decoded,s_events_decoded / interval,s_events_processed,s_events_processed / interval,s_events_dropped, s_alerts_written,s_firewall_written,s_syscheck_queue,s_syscollector_queue,s_rootcheck_queue,s_hostinfo_queue,s_event_queue,s_process_event_queue,s_writer_alerts_queue,s_writer_firewall_queue,s_writer_statistical_queue);
+        __local_name, s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded ,s_events_syscheck_decoded,s_events_syscheck_decoded / interval ,s_events_syscollector_decoded,s_events_syscollector_decoded / interval,s_events_rootcheck_decoded,s_events_rootcheck_decoded / interval,s_events_hostinfo_decoded,s_events_hostinfo_decoded / interval,s_events_decoded,s_events_decoded / interval,s_events_processed,s_events_processed / interval,s_events_dropped, s_alerts_written,s_firewall_written,s_fts_written,s_syscheck_queue,s_syscheck_queue_size,s_syscollector_queue,s_syscollector_queue_size,s_rootcheck_queue,s_rootcheck_queue_size,s_hostinfo_queue,s_hostinfo_queue_size,s_event_queue,s_event_queue_size,s_process_event_queue,s_process_event_queue_size,s_writer_alerts_queue,s_writer_alerts_queue_size,s_writer_firewall_queue,s_writer_firewall_queue_size,s_writer_statistical_queue,s_writer_statistical_queue_size,s_writer_archives_queue,s_writer_archives_queue_size);
     fclose(fp);
 
     w_reset_stats();
@@ -223,13 +271,19 @@ void w_inc_firewall_written(){
     w_mutex_unlock(&s_firewall_written_mutex);
 }
 
+void w_inc_fts_written(){
+    w_mutex_lock(&s_fts_written_mutex);
+    s_fts_written++;
+    w_mutex_unlock(&s_fts_written_mutex);
+}
+
 void w_reset_stats(){
     w_mutex_lock(&s_syscheck_mutex);
     s_events_syscheck_decoded = 0;
     w_mutex_unlock(&s_syscheck_mutex);
 
     w_mutex_lock(&s_syscollector_mutex);
-    s_events_syscheck_decoded = 0;
+    s_events_syscollector_decoded = 0;
     w_mutex_unlock(&s_syscollector_mutex);
 
     w_mutex_lock(&s_rootcheck_mutex);
@@ -259,6 +313,10 @@ void w_reset_stats(){
     w_mutex_lock(&s_firewall_written_mutex);
     s_firewall_written = 0;
     w_mutex_unlock(&s_firewall_written_mutex);
+
+    w_mutex_lock(&s_fts_written_mutex);
+    s_fts_written = 0;
+    w_mutex_unlock(&s_fts_written_mutex);
 }
 
 
