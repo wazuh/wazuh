@@ -42,7 +42,7 @@ void * syscom_main(__attribute__((unused)) void * arg) ;
 size_t syscom_dispatch(char * command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
 
-#define WM_SYS_LOGTAG ARGV0 ":syscollector" // Tag for log messages
+#define WM_ANALYSISD_LOGTAG ARGV0 "" // Tag for log messages
 
 typedef struct cpu_info {
     char *cpu_name;
