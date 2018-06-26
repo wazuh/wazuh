@@ -222,55 +222,57 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 
         // configure audit rules
         int retval = audit_add_rule(dir, AUDIT_KEY);
-        if (retval < 0) {
+
+        switch (retval) {
+        case -2:
+            merror("Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d).", dir, syscheck.max_audit_entries);
+            break;
+        case -1:
             merror("Error adding Audit rule for %s : %i", dir, retval);
-        } else {
-            // Save dir into saved rules list
-            w_mutex_lock(&syscheck_mutex);
-            W_Vector_insert(audit_added_rules, dir);
-            w_mutex_unlock(&syscheck_mutex);
+            break;
+        case 0:
+            return 1;
+        }
+    }
+
+    /* Check if it is ready to use */
+    if (syscheck.realtime->fd < 0) {
+        return (-1);
+    } else {
+        int wd = 0;
+
+        if(syscheck.skip_nfs) {
+            short is_nfs = IsNFS(dir);
+            if( is_nfs == 1 ) {
+                merror("%s NFS Directories do not support iNotify.", dir);
+            	return(-1);
+            }
+            else {
+                mdebug2("syscheck.skip_nfs=%d, %s::is_nfs=%d", syscheck.skip_nfs, dir, is_nfs);
+            }
         }
 
-    } else {
-        /* Check if it is ready to use */
-        if (syscheck.realtime->fd < 0) {
-            return (-1);
+        wd = inotify_add_watch(syscheck.realtime->fd,
+                               dir,
+                               REALTIME_MONITOR_FLAGS);
+        if (wd < 0) {
+            merror("Unable to add directory to real time monitoring: '%s'. %d %d", dir, wd, errno);
         } else {
-            int wd = 0;
+            char wdchar[32 + 1];
+            wdchar[32] = '\0';
+            snprintf(wdchar, 32, "%d", wd);
 
-            if(syscheck.skip_nfs) {
-                short is_nfs = IsNFS(dir);
-                if( is_nfs == 1 ) {
-                    merror("%s NFS Directories do not support iNotify.", dir);
-                	return(-1);
+            /* Entry not present */
+            if (!OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
+                char *ndir;
+
+                ndir = strdup(dir);
+                if (ndir == NULL) {
+                    merror_exit("Out of memory. Exiting.");
                 }
-                else {
-                    mdebug2("syscheck.skip_nfs=%d, %s::is_nfs=%d", syscheck.skip_nfs, dir, is_nfs);
-                }
-            }
 
-            wd = inotify_add_watch(syscheck.realtime->fd,
-                                   dir,
-                                   REALTIME_MONITOR_FLAGS);
-            if (wd < 0) {
-                merror("Unable to add directory to real time monitoring: '%s'. %d %d", dir, wd, errno);
-            } else {
-                char wdchar[32 + 1];
-                wdchar[32] = '\0';
-                snprintf(wdchar, 32, "%d", wd);
-
-                /* Entry not present */
-                if (!OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
-                    char *ndir;
-
-                    ndir = strdup(dir);
-                    if (ndir == NULL) {
-                        merror_exit("Out of memory. Exiting.");
-                    }
-
-                    OSHash_Add(syscheck.realtime->dirtb, wdchar, ndir);
-                    mdebug1("Directory added for real time monitoring: '%s'.", ndir);
-                }
+                OSHash_Add(syscheck.realtime->dirtb, wdchar, ndir);
+                mdebug1("Directory added for real time monitoring: '%s'.", ndir);
             }
         }
     }
