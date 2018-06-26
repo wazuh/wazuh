@@ -97,10 +97,8 @@ def forward_request(input_json, master_name, pretty, from_master):
             else:
                 return i_s.execute('{} {}'.format(command, json.dumps(input_json)))
         except WazuhException as e:
-            if agent_ids:
-                return {'error':0, 'data':{'failed_ids':[create_exception_dic(a_id, e) for a_id in agent_ids]}}
-            else:
-                return {}
+            # if the agent is not reporting to any node, execute the request in local to get the error
+            return json.loads(distribute_function(input_json))
 
 
     node_name, is_list = get_solver_node(input_json, master_name)
