@@ -51,7 +51,6 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 
             ptfile = strchr(ptfile, '\\');
         }
-        merror("----------- %s", entry);
 #endif
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);

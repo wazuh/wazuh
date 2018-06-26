@@ -21,6 +21,7 @@ static int read_file(const char *dir_name, int opts, OSMatch *restriction)
     __attribute__((nonnull(1)));
     
 int read_dir_diff(char *dir_name);
+int remove_empty_folders(char *path);
 
 /* Global variables */
 static int __counter = 0;
@@ -81,11 +82,7 @@ int read_dir_diff(char *dir_name) {
             }
         }
     }
-
-    if (*wreaddir(dir_name) == NULL) {
-        minfo("Deleting '%s'. Empty folder.", dir_name);
-        rmdir_ex(dir_name);
-    }
+    
  
     while ((entry = readdir(dp)) != NULL) {
         char *s_name;
@@ -111,13 +108,12 @@ int read_dir_diff(char *dir_name) {
         if (strcmp(DIFF_LAST_FILE, s_name) == 0) {
             memset(file_name, 0, strlen(file_name));
             memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
-            merror("F_name: %s  File name: %s", f_name, file_name);
-            merror("diff: %s", DIFF_DIR_PATH);
             if (OSHash_Add(syscheck.local_hash, file_name, NULL) <= 0) {
                 merror("Unable to add file to db: %s", file_name);
             }
         }
         read_file_diff(f_name);
+        remove_empty_folders(dir_name);
     }
 
     closedir(dp);
@@ -130,6 +126,7 @@ void remove_local_diff(){
     /* Fill hash table with the content of DIFF_DIR_PATH/local */
     char local_path[PATH_MAX] = DIFF_DIR_PATH;
     char full_path[PATH_MAX];
+    char *windows_path;
 
     strcat(local_path, "/local");
     read_dir_diff(local_path);
@@ -146,9 +143,15 @@ void remove_local_diff(){
             strcpy(full_path, local_path);
             if (curr_node_monitoring && curr_node_monitoring->key &&
                 curr_node_local && curr_node_local->key) {
+#ifdef WIN32
+                windows_path = strchr(curr_node_monitoring->key, ':');
+                strcat(full_path, (windows_path+1));
+#else
                 strcat(full_path, curr_node_monitoring->key);
-                merror("local: %s   monit: %s   full: %s", curr_node_local->key, curr_node_monitoring->key, full_path);
+#endif
+                // merror("local: %s   full: %s", curr_node_local->key, full_path);
                 if (strcmp(full_path, curr_node_local->key) == 0) {
+                    merror("deleting of hash: %s", curr_node_local->key);
                     OSHash_Delete(syscheck.local_hash, curr_node_local->key);
                 }
             }
@@ -161,8 +164,26 @@ void remove_local_diff(){
         if (curr_node_local && curr_node_local->key) {
             minfo("Deleting '%s'. Not monitorized anymore.", curr_node_local->key);
             if (rmdir_ex(curr_node_local->key) != 0) {
-                mwarn("Could not delete '%s'", curr_node_local->key);
+                mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
             }
+            if (OSHash_Delete(syscheck.local_hash, curr_node_local->key) != 0) {
+                mwarn("Could not delete from hash table '%s'", curr_node_local->key);
+            }
+        }
+    }
+}
+
+int remove_empty_folders(char* path){
+    char *parent;
+    if (*wreaddir(path) == NULL) {
+        minfo("Deleting '%s'. Empty folder.", path);
+        rmdir_ex(path);
+        //Check parent 
+            parent=strchr(path, '/');
+            merror("----- %s", parent);
+        while(parent != NULL){
+            parent=strchr(path, '/');
+            merror("-----!--------- %s", parent);
         }
     }
 }
@@ -529,7 +550,6 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction) {
             }
             di++;
         }
-
         if (defaultfilesn[di] == NULL) {
             mwarn("Error opening directory: '%s': %s ", dir_name,
                   strerror(errno));
