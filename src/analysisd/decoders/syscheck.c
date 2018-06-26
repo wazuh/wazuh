@@ -661,6 +661,10 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
 
     } /* Continue */
 
+    /* If we reach here, this file is not present in our database */
+    fseek(fp, 0, SEEK_END);
+    fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time.tv_sec, f_name);
+    fflush(fp);
 
     /* Insert row in SQLite DB*/
 
@@ -670,11 +674,6 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
             break;
 
         case 0:
-            /* If we reach here, this file is not present in our database */
-            fseek(fp, 0, SEEK_END);
-            fprintf(fp, "+++%s !%ld %s\n", c_sum, (long int)lf->time.tv_sec, f_name);
-            fflush(fp);
-
             lf->event_type = FIM_ADDED;
 
             /* Alert if configured to notify on new files */
