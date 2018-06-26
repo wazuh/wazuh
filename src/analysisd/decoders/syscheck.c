@@ -758,7 +758,7 @@ int SumCompare(const char *s1, const char *s2) {
 
 void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum) {
     /* Whodata user */
-    if(sum->wdata.user_id && sum->wdata.user_name) {
+    if(sum->wdata.user_id && sum->wdata.user_name && *sum->wdata.user_id != '\0') {
         snprintf(sdb.user_name, OS_FLSIZE, "(Audit) User: '%s (%s)'\n", sum->wdata.user_name, sum->wdata.user_id);
         os_strdup(sum->wdata.user_id, lf->user_id);
         os_strdup(sum->wdata.user_name, lf->user_name);
@@ -794,14 +794,14 @@ void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum) {
     }
 
     /* Whodata process */
-    if(sum->wdata.process_id) {
+    if(sum->wdata.process_id && *sum->wdata.process_id != '\0') {
         snprintf(sdb.process_id, OS_FLSIZE, "(Audit) Process id: '%s'\n", sum->wdata.process_id);
         os_strdup(sum->wdata.process_id, lf->process_id);
     } else {
         *sdb.process_id = '\0';
     }
 
-    if(sum->wdata.process_name) {
+    if(sum->wdata.process_name && *sum->wdata.process_name != '\0') {
         snprintf(sdb.process_name, OS_FLSIZE, "(Audit) Process name: '%s'\n", sum->wdata.process_name);
         os_strdup(sum->wdata.process_name, lf->process_name);
     } else {
