@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
   - This would prevent service from running multiple processes of the same daemon.
 - Fix reading of Windows platform for 64 bits systems. ([#832](https://github.com/wazuh/wazuh/pull/832))
 - Fixed Syslog output parser when reading the timestamp from the alerts in JSON format. ([#843](https://github.com/wazuh/wazuh/pull/843))
+- Fixed filter for `gpg-pubkey` packages in Syscollector. ([#847](https://github.com/wazuh/wazuh/pull/847))
 
 ## [v3.3.1]
 
