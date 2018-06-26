@@ -532,7 +532,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->diff = NULL;
     lf->previous = NULL;
     lf->labels = NULL;
-    lf->changed_fields = NULL;
 
     return;
 }
@@ -679,9 +678,6 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->diff) {
         free(lf->diff);
-    }
-    if (lf->changed_fields) {
-        free(lf->changed_fields);
     }
 
     /* Free node to delete */

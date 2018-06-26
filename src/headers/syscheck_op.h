@@ -29,19 +29,20 @@
 #endif
 
 /* Fields for rules */
-#define SK_FILE    0
-#define SK_SIZE    1
-#define SK_PERM    2
-#define SK_UID     3
-#define SK_GID     4
-#define SK_MD5     5
-#define SK_SHA1    6
-#define SK_UNAME   7
-#define SK_GNAME   8
-#define SK_INODE   9
-#define SK_SHA256  10
-#define SK_MTIME   11
-#define SK_NFIELDS 12
+#define SK_FILE     0
+#define SK_SIZE     1
+#define SK_PERM     2
+#define SK_UID      3
+#define SK_GID      4
+#define SK_MD5      5
+#define SK_SHA1     6
+#define SK_UNAME    7
+#define SK_GNAME    8
+#define SK_INODE    9
+#define SK_SHA256   10
+#define SK_MTIME    11
+#define SK_CHFIELDS 12
+#define SK_NFIELDS  13
 
 typedef struct __sdb {
     char buf[OS_MAXSTR + 1];

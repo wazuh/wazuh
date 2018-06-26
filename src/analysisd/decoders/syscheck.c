@@ -67,6 +67,7 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_GNAME] = "gname";
     sdb.syscheck_dec->fields[SK_INODE] = "inode";
     sdb.syscheck_dec->fields[SK_MTIME] = "mtime";
+    sdb.syscheck_dec->fields[SK_CHFIELDS] = "changed_fields";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
@@ -382,7 +383,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     sdb.size[0] = '\0';
                 } else {
                     changes = 1;
-                    wm_strcat(&lf->changed_fields, "size", ',');
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "size", ',');
                     snprintf(sdb.size, OS_FLSIZE,
                              "Size changed from '%s' to '%s'\n",
                              oldsum.size, newsum.size);
@@ -395,7 +396,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     sdb.perm[0] = '\0';
                 } else if (oldsum.perm > 0 && newsum.perm > 0) {
                     changes = 1;
-                    wm_strcat(&lf->changed_fields, "perm", ',');
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
                     char opstr[10];
                     char npstr[10];
 
@@ -415,7 +416,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                         sdb.owner[0] = '\0';
                     } else {
                         changes = 1;
-                        wm_strcat(&lf->changed_fields, "uid", ',');
+                        wm_strcat(&lf->fields[SK_CHFIELDS].value, "uid", ',');
                         if (oldsum.uname && newsum.uname) {
                             snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.uname, oldsum.uid, newsum.uname, newsum.uid);
                             os_strdup(oldsum.uname, lf->uname_before);
@@ -432,7 +433,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                         sdb.gowner[0] = '\0';
                     } else {
                         changes = 1;
-                        wm_strcat(&lf->changed_fields, "gid", ',');
+                        wm_strcat(&lf->fields[SK_CHFIELDS].value, "gid", ',');
                         if (oldsum.gname && newsum.gname) {
                             snprintf(sdb.gowner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.gname, oldsum.gid, newsum.gname, newsum.gid);
                             os_strdup(oldsum.gname, lf->gname_before);
@@ -447,7 +448,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     sdb.md5[0] = '\0';
                 } else {
                     changes = 1;
-                    wm_strcat(&lf->changed_fields, "md5", ',');
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "md5", ',');
                     snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
                              oldsum.md5, newsum.md5);
                     os_strdup(oldsum.md5, lf->md5_before);
@@ -458,7 +459,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     sdb.sha1[0] = '\0';
                 } else {
                     changes = 1;
-                    wm_strcat(&lf->changed_fields, "sha1", ',');
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha1", ',');
                     snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
                              oldsum.sha1, newsum.sha1);
                     os_strdup(oldsum.sha1, lf->sha1_before);
@@ -472,14 +473,14 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                             sdb.sha256[0] = '\0';
                         } else {
                             changes = 1;
-                            wm_strcat(&lf->changed_fields, "sha256", ',');
+                            wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
                             snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
                                     oldsum.sha256, newsum.sha256);
                             os_strdup(oldsum.sha256, lf->sha256_before);
                         }
                     } else {
                         changes = 1;
-                        wm_strcat(&lf->changed_fields, "sha256", ',');
+                        wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
                         snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: 'xxx'\nNew sha256sum is : '%s'\n", newsum.sha256);
                         os_strdup(oldsum.sha256, lf->sha256_before);
                     }
@@ -488,7 +489,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 /* Modification time message */
                 if (oldsum.mtime && newsum.mtime && oldsum.mtime != newsum.mtime) {
                     changes = 1;
-                    wm_strcat(&lf->changed_fields, "mtime", ',');
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "mtime", ',');
                     char *old_ctime = strdup(ctime(&oldsum.mtime));
                     char *new_ctime = strdup(ctime(&newsum.mtime));
                     old_ctime[strlen(old_ctime) - 1] = '\0';
@@ -505,7 +506,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 /* Inode message */
                 if (oldsum.inode && newsum.inode && oldsum.inode != newsum.inode) {
                     changes = 1;
-                    wm_strcat(&lf->changed_fields, "inode", ',');
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "inode", ',');
                     snprintf(sdb.mtime, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum.inode, newsum.inode);
                     lf->inode_before = oldsum.inode;
                 } else {
@@ -515,6 +516,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                 /* Provide information about the file */
                 comment_buf = snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
                         "'%.756s'\n"
+                        "Attributes changed: %s\n"
                         "%s"
                         "%s"
                         "%s"
@@ -524,6 +526,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                         "%s"
                         "%s%s",
                         f_name,
+                        lf->fields[SK_CHFIELDS].value,
                         sdb.size,
                         sdb.perm,
                         sdb.owner,
@@ -538,7 +541,7 @@ static int DB_Search(const char *f_name, char *c_sum, Eventinfo *lf)
                     lf->data = NULL;
                     return 0;
                 } else {
-                    wm_strcat(&lf->changed_fields, ",", '\0');
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, ",", '\0');
                 }
 
                 if(lf->data) {
