@@ -29,7 +29,7 @@ class InternalSocketHandler(communication.ServerHandler):
             self.name = self.server.add_client(data, '', self)
             return None
         else:
-            return ['err', json.dumps({'err', "Received an unknown command '{}'".format(command)})]
+            return 'err',"Received an unknown command '{}'".format(command)
 
 
 class InternalSocket(communication.AbstractServer):

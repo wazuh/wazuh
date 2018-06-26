@@ -736,6 +736,9 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                 serialized_response = ['json', json.dumps({node:data for node,data in response})]
             return serialized_response
 
+        elif command == 'dapi':
+            return ['json', dapi.distribute_function(json.loads(data.split(' ', 1)[1]))]
+
         elif command == 'dapi_forward':
             client_id, node_name, input_json = data.split(' ', 2)
             response = self.server.manager.send_request(client_name=node_name, command='dapi', data=input_json)
