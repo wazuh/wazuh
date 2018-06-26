@@ -454,7 +454,6 @@ int create_db()
             realtime_adddir(syscheck.dir[i], 0);
         }
 #else
-
 #ifndef INOTIFY_ENABLED
         if (syscheck.opts[i] & CHECK_REALTIME) {
             mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);

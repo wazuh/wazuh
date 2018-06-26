@@ -57,6 +57,8 @@ int set_winsacl(const char *dir, int position) {
     unsigned long new_sacl_size;
     int retval = 1;
 
+    mdebug2("The SACL of '%s' will be configured.", dir);
+
 	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES /*| ACCESS_SYSTEM_SECURITY*/, &hdle)) {
 		merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
 		return 1;
@@ -92,8 +94,9 @@ int set_winsacl(const char *dir, int position) {
             goto end;
         case 2:
             // Empty SACL
+            syscheck.wdata.ignore_rest[position] = 1;
             old_sacl_info.AclBytesInUse = sizeof(ACL);
-            goto end;
+            break;
     }
     if (!ev_sid_size) {
         ev_sid_size = GetLengthSid(everyone_sid);
@@ -128,7 +131,6 @@ int set_winsacl(const char *dir, int position) {
            }
         }
     }
-
     // Build the new ACE
     if (ace = (SYSTEM_AUDIT_ACE *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD)), !ace) {
         merror("No memory could be reserved for the new ACE of '%s'.", dir);
@@ -183,16 +185,16 @@ int is_valid_sacl(PACL sacl) {
     ACCESS_ALLOWED_ACE *ace;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
 
-    if (!sacl) {
-        merror("An invalid SACL cannot be validated.");
-        return 2;
-    }
-
     if (!everyone_sid) {
         if (!AllocateAndInitializeSid(&world_auth, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &everyone_sid)) {
             merror("Could not obtain the sid of Everyone. Error '%lu'.", GetLastError());
             return 0;
         }
+    }
+
+    if (!sacl) {
+        mdebug2("No SACL found on target. A new one will be created.");
+        return 2;
     }
 
     for (i = 0; i < sacl->AceCount; i++) {
@@ -301,6 +303,7 @@ void restore_sacls() {
             if (security_descriptor) {
                 LocalFree((HLOCAL)security_descriptor);
             }
+            mdebug1("The SACL of '%s' has been restored correctly.", syscheck.dir[i]);
         }
     }
 
@@ -398,13 +401,15 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         }
         process_name = convert_windows_string(buffer[3].XmlVal);
 
-        if (buffer[4].Type != EvtVarTypeHexInt64) {
+        // In 32-bit Windows we find EvtVarTypeSizeT
+        if (buffer[4].Type != EvtVarTypeHexInt64 && buffer[4].Type !=  EvtVarTypeSizeT) {
             merror("Invalid parameter type (%ld) for 'process_id'.", buffer[4].Type);
             goto clean;
         }
         process_id = buffer[4].UInt64Val;
 
-        if (buffer[5].Type != EvtVarTypeHexInt64) {
+        // In 32-bit Windows we find EvtVarTypeSizeT
+        if (buffer[5].Type != EvtVarTypeHexInt64 && buffer[5].Type !=  EvtVarTypeSizeT) {
             merror("Invalid parameter type (%ld) for 'handle_id'.", buffer[5].Type);
             goto clean;
         }
