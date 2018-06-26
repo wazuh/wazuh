@@ -2255,6 +2255,10 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
         year = p->tm_year + 1900;
         strncpy(mon, month[p->tm_mon], 3);
 
+        /* Set the global hour/weekday */
+        __crt_hour = p->tm_hour;
+        __crt_wday = p->tm_wday;
+
         w_mutex_lock(&writer_threads_mutex);
 
         w_log_flush();
