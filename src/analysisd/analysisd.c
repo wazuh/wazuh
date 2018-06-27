@@ -884,7 +884,6 @@ void OS_ReadMSG_analysisd(int m_queue)
         fp_ignore[i] = w_get_fp_ignore();
     }
     
-    sleep(1);
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_information->cpu_cores;
@@ -1811,17 +1810,15 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
                 continue;
             }
 
+            free(msg);
+            
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
-
-            /** Check the date/hour changes **/
-
 
             w_mutex_lock(&decode_syscheck_mutex);
             if (!DecodeSyscheck(lf)) {
                 /* We don't process syscheck events further */
                 w_mutex_unlock(&decode_syscheck_mutex);
-                free(msg);
                 w_free_event_info(lf);
                 continue;
             }
@@ -1856,14 +1853,15 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
                 continue;
             }
 
-             /* Msg cleaned */
+            free(msg);
+
+            /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
             /** Check the date/hour changes **/
 
             if (!DecodeSyscollector(lf)) {
                 /* We don't process syscheck events further */
-                free(msg);
                 w_free_event_info(lf);
             }
             else{
@@ -1897,13 +1895,13 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
                 continue;
             }
 
+            free(msg);
+
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
-
             
             if (!DecodeRootcheck(lf)) {
                 /* We don't process rootcheck events further */
-                free(msg);
                 w_free_event_info(lf);
             }
             else{
@@ -1936,16 +1934,15 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
                 continue;
             }
 
+            free(msg);
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
             if (!DecodeHostinfo(lf)) {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
-                free(msg);
             }
             else{
-
                 queue_push_ex_block(decode_queue_event_output,lf);
             }
 
@@ -1976,6 +1973,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 continue;
             }
 
+            free(msg);
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
@@ -2003,7 +2001,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         if(lf = queue_pop_ex(decode_queue_event_output), lf) {
             mdebug2("Taking out from the queue");
         }
-
+        
         currently_rule = NULL;
 
         lf->size = strlen(lf->log);
@@ -2091,13 +2089,11 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 /* Process the alert */
                 currently_rule = lf->generated_rule;
             }
-
             /* Categories must match */
             else if (rulenode_pt->ruleinfo->category !=
                         lf->decoder_info->type) {
                 continue;
             }
-
             /* Check each rule */
             else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt))
                         == NULL) {
@@ -2335,7 +2331,7 @@ void * w_writer_log_firewall_thread(__attribute__((unused)) void * args ){
         if (lf = queue_pop_ex(writer_queue_log_firewall), lf) {
 
             w_mutex_lock(&writer_threads_mutex);
-            s_firewall_written++;
+            w_inc_firewall_written();
             FW_Log(lf);
             w_mutex_unlock(&writer_threads_mutex);
 
