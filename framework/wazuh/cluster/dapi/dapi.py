@@ -189,7 +189,9 @@ def merge_results(responses, final_json):
                 final_json[key] = merge_results([field], {} if key not in final_json else final_json[key])
             elif field_type == list:
                 if key in final_json:
-                    final_json[key].extend(field)
+                    for elem in field:
+                        if elem not in final_json[key]:
+                            final_json[key].append(field)
                 else:
                     final_json[key] = field
             elif field_type == int:
