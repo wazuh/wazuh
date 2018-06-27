@@ -57,7 +57,7 @@ pthread_mutex_t s_alerts_written_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_firewall_written_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_fts_written_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int interval;
+static int interval;
 
 void * w_analysisd_state_main(){
     interval = getDefine_Int("analysisd", "state_interval", 0, 86400);
