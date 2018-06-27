@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fixed active-responses.log definition path on Windows configuration. ([#739](https://github.com/wazuh/wazuh/pull/739))
+- Fixed variables parser when loading rules. ([#855](https://github.com/wazuh/wazuh/pull/855))
 
 ## [v3.3.1]
 
