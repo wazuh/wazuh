@@ -44,7 +44,7 @@ def status():
     return data
 
 def __get_ossec_log_fields(log):
-    regex_category = re.compile("^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.+)$")
+    regex_category = re.compile("^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
 
     match = re.search(regex_category, log)
 
