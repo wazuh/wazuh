@@ -1,7 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.3.2]
+## [TBD]
+
+### Fixed
+
+- Fixed bugs reading logs in framework. ([#856](https://github.com/wazuh/wazuh/pull/856))
+
+## [v3.3.2]
 
 ### Fixed
 
