@@ -105,7 +105,7 @@ def oscap(profile=None):
     mkfifo(FIFO_PATH, 0666)
 
     try:
-        cmd = [OSCAP_BIN, arg_module, 'eval', '--fetch-remote-resources', '--results', FIFO_PATH]
+        cmd = [OSCAP_BIN, arg_module, 'eval', '--results', FIFO_PATH]
 
         if profile:
             cmd.extend(["--profile", profile])
@@ -156,16 +156,19 @@ def oscap(profile=None):
 
         if arg_module == 'xccdf':
 
-            ps_xsltproc = Popen([XSLT_BIN, TEMPLATE_XCCDF, FIFO_PATH],stdin=None, stdout=PIPE, stderr=STDOUT)
+            ps_xsltproc = Popen([XSLT_BIN, TEMPLATE_XCCDF, FIFO_PATH], stdin=None, stdout=None, stderr=STDOUT)
             ps.wait()
             output = ps.communicate()[0]
-            returncode = ps.returncode
+            ps_xsltproc.wait()
+            returncode = ps_xsltproc.returncode
+
 
             if returncode != 0:
                 error_cmd = CalledProcessError(returncode, [XSLT_BIN, TEMPLATE_XCCDF, FIFO_PATH])
                 error_cmd.output = output
                 raise error_cmd
             else:
+                unlink(FIFO_PATH)
                 return output
                 
             if version_info[0] >= 3:
