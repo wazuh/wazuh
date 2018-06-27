@@ -67,7 +67,7 @@ char* rk_get_file(const char *log) {
         found += 6;
         os_strdup(found, file);
 
-        if ((c = strstr(file, "' "))) {
+        if ((c = strstr(file, "' ")) || (c = strstr(file, "'\0"))) {
             *c = '\0';
             return file;
         } else {
