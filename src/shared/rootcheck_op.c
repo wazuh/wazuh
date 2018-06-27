@@ -52,31 +52,30 @@ char* rk_get_file(const char *log) {
     char *c;
     char *file, *found;
 
-    os_strdup(log, file);
-
-    if ((found = strstr(file, "File: "))) {
+    if ((found = strstr(log, "File: "))) {
         found += 6;
-        file = found;
-        if ((c = strstr(file, ". "))) {
+        os_strdup(found, file);
+
+        if ((c = strstr(file, ". ")) || (c = strstr(file, ".\0"))) {
             *c = '\0';
             return file;
-        } else
-            goto end;
-    } else if ((found = strstr(file, "File '")) || (found = strstr(file, "file '"))) {
+        } else{
+            free(file);
+            return NULL;
+        }
+    } else if ((found = strstr(log, "File '")) || (found = strstr(log, "file '"))) {
         found += 6;
-        file = found;
+        os_strdup(found, file);
 
         if ((c = strstr(file, "' "))) {
             *c = '\0';
             return file;
-        } else
-            goto end;
+        } else {
+            free(file);
+            return NULL;
+        }
+    }
 
-    } else
-        goto end;
-
-end:
-    free(file);
     return NULL;
 }
 
