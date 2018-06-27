@@ -15,7 +15,11 @@
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
 
+// Global variables
 syscheck_config syscheck;
+W_Vector *audit_added_rules;
+W_Vector *audit_added_dirs;
+volatile int added_rules_error;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -357,9 +361,11 @@ int main(int argc, char **argv)
     // Audit events thread
     if (syscheck.enable_whodata) {
         int audit_socket = audit_init();
+        added_rules_error = 0;
         if (audit_socket > 0) {
             mdebug1("Starting Auditd events reader thread...");
             audit_added_rules = W_Vector_init(10);
+            audit_added_dirs = W_Vector_init(20);
             atexit(clean_rules);
             w_create_thread(audit_main, &audit_socket);
         } else {

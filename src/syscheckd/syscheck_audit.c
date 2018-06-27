@@ -25,8 +25,8 @@
 #define BUF_SIZE 4096
 
 // Global variables
-
 W_Vector *audit_added_rules;
+W_Vector *audit_added_dirs;
 static regex_t regexCompiled_uid;
 static regex_t regexCompiled_pid;
 static regex_t regexCompiled_ppid;
@@ -38,7 +38,7 @@ static regex_t regexCompiled_pname;
 static regex_t regexCompiled_path0;
 static regex_t regexCompiled_path1;
 pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
-
+pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Convert audit relative paths into absolute paths
 char *clean_audit_path(char *cwd, char *path) {
@@ -607,7 +607,7 @@ void * audit_main(int * audit_sock) {
     buffer = malloc(BUF_SIZE * sizeof(char));
     os_malloc(BUF_SIZE, cache);
 
-    mdebug1("Reading events from Audit socket ...");
+    mdebug1("Reading events from Audit socket...");
     audit_thread_active = 1;
 
     while (audit_thread_active) {
@@ -710,15 +710,17 @@ void * audit_main(int * audit_sock) {
     regfree(&regexCompiled_pname);
     // Change Audit monitored folders to Inotify.
     int i;
-    w_mutex_lock(&audit_mutex);
-    if (audit_added_rules) {
-        for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
-            realtime_adddir(W_Vector_get(audit_added_rules, i), 0);
+    w_mutex_lock(&audit_rules_mutex);
+    if (audit_added_dirs) {
+        for (i = 0; i < W_Vector_length(audit_added_dirs); i++) {
+            realtime_adddir(W_Vector_get(audit_added_dirs, i), 0);
         }
+        W_Vector_free(audit_added_dirs);
     }
+    w_mutex_unlock(&audit_rules_mutex);
+
     // Clean Audit added rules.
     clean_rules();
-    w_mutex_unlock(&audit_mutex);
 
     return NULL;
 }
