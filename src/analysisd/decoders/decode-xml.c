@@ -286,7 +286,7 @@ int ReadDecodeXML(const char *file)
         pi->get_next = 0;
         pi->regex_offset = 0;
         pi->prematch_offset = 0;
-        pi->flags = DISCARD;
+        pi->flags = SHOW_STRING;
 
         regex = NULL;
         prematch = NULL;
