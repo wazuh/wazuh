@@ -149,7 +149,6 @@ void remove_local_diff(){
                 strcat(full_path, curr_node_monitoring->key);
 #endif
                 if (strcmp(full_path, curr_node_local->key) == 0) {
-                    merror("deleting of hash: %s", curr_node_local->key);
                     OSHash_Delete(syscheck.local_hash, curr_node_local->key);
                 }
             }
@@ -603,7 +602,6 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction) {
 
         *s_name = '\0';
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
-        // merror("F_NAME: %s", f_name);
 
         /* Check integrity of the file */
         read_file(f_name, opts, restriction);
