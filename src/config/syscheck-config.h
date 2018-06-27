@@ -64,6 +64,9 @@ typedef struct _config {
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;
     int realtime_count;
+
+    int remove_old_diff;            /* delete not monitorized files history */
+
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */
 
