@@ -87,7 +87,7 @@ void *read_json(int pos, int *rc, int drop_it)
         /* Send message to queue */
         if (drop_it == 0) {
             if (SendMSGtoSCK(logr_queue, jsonParsed, logff[pos].file,
-                        LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
+                        LOCALFILE_MQ, logff[pos].log_target) < 0) {
                 merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                     merror_exit(QUEUE_FATAL, DEFAULTQPATH);
