@@ -1,7 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.3.2]
+## [v3.3.2]
+
+### Added
+
+- New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
 
 ### Fixed
 
