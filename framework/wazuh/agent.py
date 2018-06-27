@@ -1920,14 +1920,16 @@ class Agent:
         return data
 
 
-    def _get_versions(self, wpk_repo=common.wpk_repo_url):
+    def _get_versions(self, wpk_repo=common.wpk_repo_url, desired_version=None):
         """
         Generates a list of available versions for its distribution and version.
         """
-        if self.os['platform']=="windows":
-            versions_url = wpk_repo + "windows/versions"
+        if desired_version is None or desired_version[:4] >= "v3.4" and self.os['platform'] != "windows":
+            versions_url = wpk_repo + "linux/" + self.os['arch'] + "/versions"
         else:
-            if self.os['platform']=="ubuntu":
+            if self.os['platform']=="windows":
+                versions_url = wpk_repo + "windows/versions"
+            elif self.os['platform']=="ubuntu":
                 versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/versions"
             else:
                 versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
@@ -1961,12 +1963,12 @@ class Agent:
         Searchs latest Wazuh WPK file for its distribution and version. Downloads the WPK if it is not in the upgrade folder.
         """
         agent_new_ver = None
-        if not version:
-            versions = self._get_versions(wpk_repo)
+        if version is None:
+            versions = self._get_versions(wpk_repo, version)
             agent_new_ver = versions[0][0]
             agent_new_shasum = versions[0][1]
         else:
-            for versions in self._get_versions(wpk_repo):
+            for versions in self._get_versions(wpk_repo, version):
                 if versions[0] == version:
                     agent_new_ver = versions[0]
                     agent_new_shasum = versions[1]
@@ -1996,11 +1998,20 @@ class Agent:
         # Generating file name
         if self.os['platform']=="windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
+            wpk_url = wpk_repo + "windows/" + wpk_file
+            
         else:
-            if self.os['platform']=="ubuntu":
-                wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
+            if version is None or version[:4] >= "v3.4":
+                wpk_file = "wazuh_agent_{0}_linux_{1}.wpk".format(agent_new_ver, self.os['arch'])
+                wpk_url = wpk_repo + "linux/" + self.os['arch'] + "/" + wpk_file
+
             else:
-                wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
+                if self.os['platform']=="ubuntu":
+                    wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
+                    wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
+                else:
+                    wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
+                    wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/" + wpk_file
 
         wpk_file_path = "{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)
 
@@ -2018,14 +2029,6 @@ class Agent:
                 return [wpk_file, sha1hash]
 
         # Download WPK file
-        if self.os['platform']=="windows":
-            wpk_url = wpk_repo + "windows/" + wpk_file
-        else:
-            if self.os['platform']=="ubuntu":
-                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
-            else:
-                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/" + wpk_file
-
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))
 
