@@ -61,8 +61,10 @@ def check_cluster_config(config):
 
     if 'node_type' not in config:
         raise WazuhException(3004, "Node type not present in cluster configuration")
-    elif config['node_type'] != 'master' and config['node_type'] != 'worker':
+    elif config['node_type'] != 'master' and config['node_type'] != 'worker' and config['node_type'] != 'client':
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(config['node_type']))
+    elif config['node_type'] == 'client':
+        logger.warning("[ClusterConfiguration] Deprecated node type 'client'. It has been renamed to 'worker'.")
 
     if 'nodes' not in config or len(config['nodes']) == 0:
         raise WazuhException(3004, 'No nodes defined in cluster configuration.')

@@ -332,7 +332,9 @@ if __name__ == '__main__':
     cluster_config = None
     try:
         cluster_config = read_config()
-        if 'node_type' not in cluster_config or (cluster_config['node_type'] != 'master' and cluster_config['node_type'] != 'worker'):
+        if 'node_type' not in cluster_config or (cluster_config['node_type'] != 'master' and
+                                                 cluster_config['node_type'] != 'worker' and
+                                                 cluster_config['node_type'] != 'client'):
             raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(cluster_config['node_type']))
     except WazuhException as e:
         print( "Invalid configuration: '{0}'".format(str(e)))
