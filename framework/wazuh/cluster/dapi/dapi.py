@@ -6,13 +6,21 @@
 import wazuh.cluster.dapi.requests_list as rq
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.internal_socket as i_s
+import wazuh.cluster.communication as communication
 from wazuh import common
-from wazuh.agent import Agent, create_exception_dic
+from wazuh.agent import Agent
 from wazuh.exception import WazuhException
 import json
 from itertools import groupby
 from operator import itemgetter
 from multiprocessing.dummy import Pool as ThreadPool
+import logging
+try:
+    from Queue import Queue
+except ImportError:
+    from queue import Queue
+
+logger = logging.getLogger(__name__)
 
 def distribute_function(input_json, pretty=False, debug=False, from_master=False):
     try:
@@ -96,7 +104,11 @@ def forward_request(input_json, master_name, pretty, from_master):
             if command == 'dapi' and from_master:
                 return json.loads(distribute_function(input_json))
             else:
-                return i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+                result = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+                if not isinstance(result, dict):
+                    # there has been an error
+                    return None if not agent_ids else {'error':1000, 'message':result}
+                return result
         except WazuhException as e:
             if agent_ids:
                 # if the agent is not reporting to any node, execute the request in local to get the error
@@ -122,7 +134,13 @@ def forward_request(input_json, master_name, pretty, from_master):
         if node_name == 'unknown' or node_name == '':
             raise WazuhException(3017)
         command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
-        response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+        if command == 'dapi' and from_master:
+            response = json.loads(distribute_function(input_json))
+        else:
+            response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+            if not isinstance(response, dict):
+                # there has been an error
+                response = {'error':1000, 'message':response}
 
     data, error = __split_response_data(response)
     return print_json(data=data, pretty=pretty, error=error)
@@ -216,3 +234,32 @@ def merge_results(responses, final_json, input_json):
         final_json['data']['items'] = final_json['data']['items'][offset:offset+limit]
 
     return final_json
+
+
+class APIRequestQueue(communication.ClusterThread):
+    def __init__(self, server, stopper):
+        communication.ClusterThread.__init__(self, stopper=stopper)
+        self.server = server
+        self.request_queue = Queue()
+        self.tag = "[DistributedAPI]"
+
+
+    def run(self):
+        while not self.stopper.is_set() and self.running:
+            name, id, request = self.request_queue.get(block=True).split(' ', 2)
+            result = distribute_function(json.loads(request), from_master=True)
+            self.send_string(result, id, name)
+
+
+    def send_string(self, result, id, name):
+        if name == 'None':
+            self.server.send_string(reason='dapi_res', string_data=result, new_req="fwd_new", upd_req="fwd_upd",
+                                    end_req="fwd_end", extra_data=id)
+        else:
+            self.server.send_string(client_name=name, reason='dapi_res', string_to_send=result, new_req="fwd_new",
+                                    upd_req="fwd_upd", end_req="fwd_end", extra_data=id)
+
+
+    def set_request(self, request):
+        logger.debug("{} Receiving request: {}".format(self.tag, request))
+        self.request_queue.put(request)

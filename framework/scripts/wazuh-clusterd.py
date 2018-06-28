@@ -155,6 +155,7 @@ def master_main(cluster_configuration):
     internal_socket_thread = InternalSocketThread("c-internal", tag="[Master]")
     internal_socket_thread.start()
     internal_socket_thread.setmanager(manager, MasterInternalSocketHandler)
+    manager.handler.isocket_handler = internal_socket_thread.internal_socket
 
     # Loop
     asyncore.loop(timeout=1, use_poll=False, map=manager.map, count=None)

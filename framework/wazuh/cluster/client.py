@@ -29,12 +29,13 @@ logger = logging.getLogger(__name__)
 #
 class ClientManagerHandler(ClientHandler):
 
-    def __init__(self, cluster_config):
+    def __init__(self, manager, cluster_config):
         ClientHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'])
 
         self.config = cluster_config
         self.integrity_received_and_processed = threading.Event()
         self.integrity_received_and_processed.clear()  # False
+        self.manager = manager
 
     # Overridden methods
     def handle_connect(self):
@@ -72,8 +73,8 @@ class ClientManagerHandler(ClientHandler):
             string_sender_thread.start()
             return 'ack', self.set_worker(command, string_sender_thread)
         elif command == 'dapi':
-            response = dapi.distribute_function(json.loads(data))
-            return ['json', response]
+            self.manager.add_api_request('None ' + data.decode())
+            return 'ack', 'Request is being processed'
         elif command == "dapi_res":
             string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper, client_id=data.decode())
             string_receiver.start()
@@ -444,9 +445,10 @@ class ClientManager:
     SYNC_I_T = "Sync_I_Thread"
     SYNC_AI_T = "Sync_AI_Thread"
     KA_T = "KeepAlive_Thread"
+    APIRequests_T = "API_Requests_Thread"
 
     def __init__(self, cluster_config):
-        self.handler = ClientManagerHandler(cluster_config=cluster_config)
+        self.handler = ClientManagerHandler(cluster_config=cluster_config, manager=self)
         self.cluster_config = cluster_config
 
         # Threads
@@ -454,22 +456,31 @@ class ClientManager:
         self.threads = {}
         self._initiate_client_threads()
 
+
     # Private methods
     def _initiate_client_threads(self):
         logger.debug("[Master] Creating threads.")
         # Sync integrity
         self.threads[ClientManager.SYNC_I_T] = SyncIntegrityThread(client_handler=self.handler, stopper=self.stopper)
-        self.threads[ClientManager.SYNC_I_T].start()
 
         # Sync AgentInfo
         self.threads[ClientManager.SYNC_AI_T] = SyncAgentInfoThread(client_handler=self.handler, stopper=self.stopper)
-        self.threads[ClientManager.SYNC_AI_T].start()
 
         # KA
         self.threads[ClientManager.KA_T] = KeepAliveThread(client_handler=self.handler, stopper=self.stopper)
-        self.threads[ClientManager.KA_T].start()
+
+        # API requests
+        self.threads[ClientManager.APIRequests_T] = dapi.APIRequestQueue(server=self.handler, stopper=self.stopper)
+
+        for thread in self.threads.values():
+            thread.start()
+
 
     # New methods
+    def add_api_request(self, request):
+        self.threads[self.APIRequests_T].set_request(request)
+
+
     def exit(self):
         logger.debug("[Client] Cleaning threads. Start.")
 

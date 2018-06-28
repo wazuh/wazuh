@@ -14,10 +14,6 @@ import threading
 import time
 from datetime import datetime
 from operator import itemgetter
-try:
-    from queue import Queue
-except ImportError:
-    from Queue import Queue
 from wazuh import common, WazuhException
 from wazuh.agent import Agent
 from wazuh.cluster import __version__
@@ -31,27 +27,6 @@ from wazuh.utils import mkdir_with_mode
 
 
 logger = logging.getLogger(__name__)
-
-
-class APIRequestQueue(ClusterThread):
-    def __init__(self, server, stopper):
-        ClusterThread.__init__(self, stopper=stopper)
-        self.server = server
-        self.request_queue = Queue()
-        self.tag = "[DistributedAPI]"
-
-
-    def run(self):
-        while not self.stopper.is_set() and self.running:
-            name, id, request = self.request_queue.get(block=True).split(' ', 2)
-            result = dapi.distribute_function(json.loads(request), from_master=True)
-            self.server.send_string(client_name=name, reason='dapi_res', string_to_send=result, new_req="fwd_new",
-                                    upd_req="fwd_upd", end_req="fwd_end", extra_data=id)
-
-
-    def set_request(self, request):
-        logger.debug("{} Receiving request: {}".format(self.tag, request))
-        self.request_queue.put(request)
 
 #
 # Master Handler
@@ -112,6 +87,10 @@ class MasterManagerHandler(ServerHandler):
         elif command == 'dapi':
             self.server.add_api_request(self.name + ' ' + data.decode())
             return 'ack', "Request is being processed"
+        elif command == "dapi_res":
+            string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper, client_id=data.decode())
+            string_receiver.start()
+            return 'ack', self.set_worker(command, string_receiver)
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
@@ -363,7 +342,6 @@ class MasterManagerHandler(ServerHandler):
 #
 # Threads (workers) created by MasterManagerHandler
 #
-
 class FragmentedStringReceiverMaster(FragmentedStringReceiver):
 
     def __init__(self, manager_handler, stopper):
@@ -372,6 +350,51 @@ class FragmentedStringReceiverMaster(FragmentedStringReceiver):
 
     def check_connection(self):
         return True
+
+
+class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
+
+    def __init__(self, manager_handler, stopper, client_id):
+        FragmentedStringReceiverMaster.__init__(self, manager_handler, stopper)
+        self.thread_tag = "[APIResponseReceiver]"
+        self.client_id = client_id
+        # send request to the client
+        self.worker_id = self.manager_handler.process_response(self.manager_handler.isocket_handler.send_request(self.client_id, "dapi_res"))
+
+
+    def process_received_data(self):
+        return True
+
+
+    def close_reception(self, md5_sum):
+        self.received_all_information = True
+
+
+    def forward_msg(self, command, data):
+        return self.manager_handler.isocket_handler.send_request(self.client_id, command,
+                                                                 self.worker_id if not data else self.worker_id + ' ' + data)
+
+
+    def update(self, chunk):
+        self.size_received += len(chunk)
+
+
+    def process_cmd(self, command, data):
+        requests = {'fwd_new':'new_f_r', 'fwd_upd':'update_f_r', 'fwd_end':'end_f_r'}
+
+        if command == 'fwd_new':
+            self.start_time = time.time()
+            return self.forward_msg(requests[command], data)
+        elif command == 'fwd_upd':
+            self.update(data)
+            return self.forward_msg(requests[command], data)
+        elif command == 'fwd_end':
+            self.close_reception(data)
+            self.end_time = time.time()
+            self.total_time = self.end_time - self.start_time
+            return self.forward_msg(requests[command], data)
+        else:
+            return FragmentedStringReceiverMaster.process_cmd(self, command, data)
 
 
 class ProcessClient(FragmentedFileReceiver):
@@ -528,7 +551,7 @@ class MasterManager(Server):
         logger.debug("[Master] Creating threads.")
 
         self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=self.interval_recalculate_integrity, stopper=self.stopper)
-        self.threads[MasterManager.APIRequests_T] = APIRequestQueue(server=self, stopper=self.stopper)
+        self.threads[MasterManager.APIRequests_T] = dapi.APIRequestQueue(server=self, stopper=self.stopper)
 
         for thread in self.threads.values():
             thread.start()
@@ -741,7 +764,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
         elif command == 'dapi_forward':
             client_id, node_name, input_json = data.split(' ', 2)
-            response = self.server.manager.send_request(client_name=node_name, command='dapi', data=input_json)
+            response = self.server.manager.send_request(client_name=node_name, command='dapi', data=client_id + ' ' + input_json)
             return response.split(' ',1)
 
         else:
