@@ -339,7 +339,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 {
     int lcount;
     size_t offset = 0;
-    char *ptfile;
     char wdchar[260 + 1];
     char final_path[MAX_LINE + 1];
     win32rtfim *rtlocald;

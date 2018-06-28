@@ -385,7 +385,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         user_name = convert_windows_string(buffer[1].XmlVal);
 
         if (buffer[2].Type != EvtVarTypeString) {
-            if (event_id == 4658) {
+            if (event_id == 4658 || event_id == 4660) {
                 path = NULL;
             } else {
                 merror("Invalid parameter type (%ld) for 'path'.", buffer[2].Type);
@@ -416,7 +416,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         handle_id = buffer[5].UInt64Val;
 
         if (buffer[6].Type != EvtVarTypeHexInt32) {
-            if (event_id == 4658) {
+            if (event_id == 4658 || event_id == 4660) {
                 mask = 0;
             } else {
                 merror("Invalid parameter type (%ld) for 'mask'.", buffer[6].Type);
@@ -507,7 +507,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Close fd
             case 4658:
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
-
                     if (w_evt->mask) {
                         unsigned int mask = w_evt->mask;
 
