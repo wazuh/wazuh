@@ -330,6 +330,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     unsigned __int64 handle_id;
     unsigned __int64 keywords;
     char *user_id;
+    char force_send;
     static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 
     unsigned int mask;
@@ -448,6 +449,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         switch(event_id) {
             // Open fd
             case 4656:
+                force_send = 0;
                 // Check if it is a known file
                 if (!OSHash_Get_ex(syscheck.fp, path)) {
                     if (position = find_dir_pos(path, 1), position < 0) {
@@ -455,6 +457,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         mdebug2("'%s' is discarded because its monitoring is not activated.", path);
                         break;
                     }
+                    force_send = 1;
                 } else {
                     position = -1;
                 }
@@ -467,6 +470,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 w_evt->process_id = process_id;
                 w_evt->mask = 0;
                 w_evt->deleted = 0;
+                w_evt->force_send = force_send;
                 w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
@@ -507,7 +511,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Close fd
             case 4658:
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
-                    if (w_evt->mask) {
+                    if (w_evt->mask || w_evt->force_send) {
                         unsigned int mask = w_evt->mask;
 
                         // Check if the file has been written or deleted
@@ -525,7 +529,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
 
                             snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s", wd_sum, w_evt->path);
                             send_syscheck_msg(del_msg);
-                        } else if (mask & FILE_WRITE_DATA) {
+                        } else if (mask & FILE_WRITE_DATA || w_evt->force_send) {
                             realtime_checksumfile(w_evt->path, w_evt);
                         }
                     }
