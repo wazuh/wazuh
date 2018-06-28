@@ -152,10 +152,8 @@ int find_dir_pos(const char *filename, char is_whodata) {
     int retval = -1;
 
 #ifdef WIN32
-        // In whodata for Windows all routes will have '\'
-        if (is_whodata) {
-            bar = '\\';
-        }
+    // In Windows all routes will have '\'
+    bar = '\\';
 #endif
 
     while (c = strrchr(buf, bar), c && c != buf) {
@@ -376,17 +374,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
                                      finalfile, MAX_PATH - 1, NULL, NULL);
         finalfile[lcount] = TEXT('\0');
 
-        /* Change forward slashes to backslashes on finalfile */
-        ptfile = strchr(finalfile, '\\');
-        while (ptfile) {
-            *ptfile = '/';
-            ptfile++;
-
-            ptfile = strchr(ptfile, '\\');
-        }
-
         final_path[MAX_LINE] = '\0';
-        snprintf(final_path, MAX_LINE, "%s/%s", rtlocald->dir, finalfile);
+        snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
 
         /* Check the change */
         realtime_checksumfile(final_path, NULL);

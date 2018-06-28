@@ -387,9 +387,15 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
         s_name += dir_size;
 
         /* Check if the file name is already null terminated */
+#ifdef WIN32
+        if (*(s_name - 1) != '\\') {
+            *s_name++ = '\\';
+        }
+#else
         if (*(s_name - 1) != '/') {
             *s_name++ = '/';
         }
+#endif
 
         *s_name = '\0';
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
