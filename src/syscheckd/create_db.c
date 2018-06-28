@@ -454,6 +454,24 @@ int create_db()
             realtime_adddir(syscheck.dir[i], 0);
         }
 #else
+        if ((syscheck.opts[i] & CHECK_WHODATA) && audit_thread_active) {
+            // Insert Audit rule
+            int retval;
+            if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
+                if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
+                    mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
+                    w_mutex_lock(&audit_rules_mutex);
+                    W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                    w_mutex_unlock(&audit_rules_mutex);
+                } else {
+                    merror("Error adding Audit rule for %s : %i", syscheck.dir[i], retval);
+                    added_rules_error = 1;
+                }
+            } else {
+                merror("Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d).", syscheck.dir[i], syscheck.max_audit_entries);
+            }
+        }
+
 #ifndef INOTIFY_ENABLED
         if (syscheck.opts[i] & CHECK_REALTIME) {
             mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);

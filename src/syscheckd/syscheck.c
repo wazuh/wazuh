@@ -15,7 +15,11 @@
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
 
+// Global variables
 syscheck_config syscheck;
+W_Vector *audit_added_rules;
+W_Vector *audit_added_dirs;
+volatile int added_rules_error;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -48,6 +52,7 @@ static void read_internal(int debug_level)
     syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
     syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
+    syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 256, 4096);
 
     /* Check current debug_level
      * Command line setting takes precedence
@@ -356,9 +361,11 @@ int main(int argc, char **argv)
     // Audit events thread
     if (syscheck.enable_whodata) {
         int audit_socket = audit_init();
+        added_rules_error = 0;
         if (audit_socket > 0) {
             mdebug1("Starting Auditd events reader thread...");
             audit_added_rules = W_Vector_init(10);
+            audit_added_dirs = W_Vector_init(20);
             atexit(clean_rules);
             w_create_thread(audit_main, &audit_socket);
         } else {

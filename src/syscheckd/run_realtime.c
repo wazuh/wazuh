@@ -20,6 +20,7 @@
 
 #ifndef WIN32
 volatile int audit_thread_active;
+volatile int added_rules_error;
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -217,21 +218,16 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         realtime_start();
     }
 
-    if (whodata && audit_thread_active) {
-        mdebug1("Directory added for real time monitoring with Audit: '%s'.", dir);
+    if (whodata && audit_thread_active && !added_rules_error) {
+        mdebug1("Monitoring with Audit: '%s'.", dir);
 
-        // configure audit rules
-        int retval = audit_add_rule(dir, AUDIT_KEY);
-        if (retval < 0) {
-            merror("Error adding Audit rule for %s : %i", dir, retval);
-        } else {
-            // Save dir into saved rules list
-            w_mutex_lock(&syscheck_mutex);
-            W_Vector_insert(audit_added_rules, dir);
-            w_mutex_unlock(&syscheck_mutex);
-        }
+        // Save dir into saved rules list
+        w_mutex_lock(&audit_mutex);
+        W_Vector_insert(audit_added_dirs, dir);
+        w_mutex_unlock(&audit_mutex);
 
     } else {
+
         /* Check if it is ready to use */
         if (syscheck.realtime->fd < 0) {
             return (-1);

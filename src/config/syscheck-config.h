@@ -117,6 +117,7 @@ typedef struct _config {
     int realtime_count;
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */
+    int max_audit_entries;          /* Maximum entries for Audit (whodata) */
 
     int time;                       /* frequency (secs) for syscheck to run */
     int queue;                      /* file descriptor of socket to write to queue */

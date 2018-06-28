@@ -25,9 +25,6 @@
 static void send_sk_db(void);
 static void log_realtime_status(int);
 
-// Global variables
-W_Vector *audit_added_rules;
-
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
 {
@@ -116,7 +113,7 @@ void start_daemon()
 #endif
 
 #ifdef DEBUG
-    minfo("Starting daemon ..");
+    minfo("Starting daemon...");
 #endif
 
     /* Some time to settle */
