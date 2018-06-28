@@ -32,14 +32,14 @@ try:
     myWazuh = Wazuh(get_init=True)
 
     # Import cluster
-    from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
-    from wazuh.cluster.control import check_cluster_status, get_nodes, get_healthcheck, get_agents, sync, get_files
+    from wazuh.cluster.cluster import read_config, get_status_json
+    from wazuh.cluster.control import get_nodes, get_healthcheck, get_agents, sync, get_files
 
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.CRITICAL, format='%(levelname)s: %(message)s')
 
 def get_parser(type):
     if type == "master":
