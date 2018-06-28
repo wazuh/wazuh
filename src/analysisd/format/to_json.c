@@ -347,7 +347,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddItemToObject(audit, "effective_user", euser);
         }
 
-        cJSON_AddItemToObject(root, "audit", audit);
+        cJSON_AddItemToObject(file_diff, "audit", audit);
     }
 
     // DecoderInfo
