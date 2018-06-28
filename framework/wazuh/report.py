@@ -7,6 +7,7 @@ from wazuh import common
 from wazuh.exception import WazuhException
 from glob import glob
 from wazuh.database import Connection
+from wazuh.utils import get_fields_to_nest, plain_dict_to_nested_dict
 
 def _get_response_from_conn(conn, dict_name_fields=None):
     if not dict_name_fields:
@@ -76,7 +77,7 @@ def _get_group_distinct(select_fields, table, offset=0, limit=common.database_li
 
 
 def _get_distinct_items(valid_select_fields, table, select={}, offset=0, limit=common.database_limit,
-                        search={}, sort={}):
+                        search={}, sort={}, nest=[]):
     offset = int(offset)
     limit = int(limit)
 
@@ -98,6 +99,10 @@ def _get_distinct_items(valid_select_fields, table, select={}, offset=0, limit=c
     items, total_items = _get_group_distinct(select_fields=select_fields, table=table, offset=offset,
                                              limit=limit, sort=sort, search=search)
 
+    if nest:
+        fields_to_nest, non_nested = get_fields_to_nest(select_fields.values(), nest, '.')
+        items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, nest, '.') for d in items]
+
     return {'items': items, 'totalItems': total_items}
 
 
@@ -110,4 +115,4 @@ def get_distinct_agents(offset=0, limit=common.database_limit, select={}, search
     table = 'agent'
 
     return _get_distinct_items(table=table, valid_select_fields=valid_select_fields,
-                               offset=offset, limit=limit, select=select, search=search, sort=sort)
+                               offset=offset, limit=limit, select=select, search=search, sort=sort, nest=['os'])
