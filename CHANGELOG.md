@@ -1,7 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.3.2]
+## [TBD]
+
+### Fixed
+
+- Added exception when no agents are selected to restart. ([#870](https://github.com/wazuh/wazuh/pull/870))
+
+## [v3.3.2]
 
 ### Fixed
 
