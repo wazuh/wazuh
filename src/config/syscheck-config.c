@@ -38,6 +38,17 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
     }
 
     else {
+#ifdef WIN32
+        char *ptfile;
+        /* Change forward slashes to backslashes on entry */
+        ptfile = strchr(entry, '/');
+        while (ptfile) {
+            *ptfile = '\\';
+            ptfile++;
+
+            ptfile = strchr(ptfile, '/');
+        }
+#endif
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
             syscheck->dir[pl + 1] = NULL;
