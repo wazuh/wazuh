@@ -1110,6 +1110,8 @@ class Agent:
             oq.close()
             return ret_msg
         else:
+            if not agent_id:
+                raise WazuhException(1732)
             failed_ids = list()
             affected_agents = list()
             if isinstance(agent_id, list):
