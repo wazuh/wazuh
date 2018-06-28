@@ -117,7 +117,7 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
         
         
         for item in items:
-            if limit + 1 <= len(result):
+            if limit > 0 and limit + 1 <= len(result):
                 found_limit = True
                 break;
             item['agent_id'] = agent['id']

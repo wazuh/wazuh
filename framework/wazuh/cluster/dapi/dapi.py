@@ -6,6 +6,7 @@
 import wazuh.cluster.dapi.requests_list as rq
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.internal_socket as i_s
+from wazuh import common
 from wazuh.agent import Agent, create_exception_dic
 from wazuh.exception import WazuhException
 import json
@@ -97,20 +98,26 @@ def forward_request(input_json, master_name, pretty, from_master):
             else:
                 return i_s.execute('{} {}'.format(command, json.dumps(input_json)))
         except WazuhException as e:
-            # if the agent is not reporting to any node, execute the request in local to get the error
-            return json.loads(distribute_function(input_json))
+            if agent_ids:
+                # if the agent is not reporting to any node, execute the request in local to get the error
+                return json.loads(distribute_function(input_json))
 
 
     node_name, is_list = get_solver_node(input_json, master_name)
     input_json['from_cluster'] = True
 
     if is_list:
+        old_offset = 0 if 'offset' not in input_json['arguments'] else input_json['arguments']['offset']
+        old_limit = common.database_limit if 'limit' not in input_json['arguments'] else input_json['arguments']['limit']
+        if old_offset > 0:
+            input_json['arguments']['offset'] = input_json['arguments']['limit'] = 0
         pool = ThreadPool(len(node_name))
-        responses = pool.map(forward_list, node_name.items())
+        responses = list(filter(lambda x: x is not None, pool.map(forward_list, node_name.items())))
         pool.close()
         pool.join()
         final_json = {}
-        response = merge_results(responses, final_json)
+        input_json['arguments']['offset'], input_json['arguments']['limit'] = old_offset, old_limit
+        response = merge_results(responses, final_json, input_json)
     else:
         if node_name == 'unknown' or node_name == '':
             raise WazuhException(3017)
@@ -164,7 +171,7 @@ def get_solver_node(input_json, master_name):
         return node_name, True
 
 
-def merge_results(responses, final_json):
+def merge_results(responses, final_json, input_json):
     """
     Merge results from an API call.
 
@@ -186,12 +193,10 @@ def merge_results(responses, final_json):
         for key,field in local_json.items():
             field_type = type(field)
             if field_type == dict:
-                final_json[key] = merge_results([field], {} if key not in final_json else final_json[key])
+                final_json[key] = merge_results([field], {} if key not in final_json else final_json[key], input_json)
             elif field_type == list:
                 if key in final_json:
-                    for elem in field:
-                        if elem not in final_json[key]:
-                            final_json[key].append(field)
+                    final_json[key].extend([elem for elem in field if elem not in final_json[key]])
                 else:
                     final_json[key] = field
             elif field_type == int:
@@ -205,5 +210,9 @@ def merge_results(responses, final_json):
                         final_json[key] = field
                 else:
                     final_json[key] = field
+
+    if 'data' in final_json and 'items' in final_json['data'] and isinstance(final_json['data']['items'],list):
+        offset,limit = input_json['arguments']['offset'], input_json['arguments']['limit']
+        final_json['data']['items'] = final_json['data']['items'][offset:offset+limit]
 
     return final_json
