@@ -100,7 +100,7 @@ def oscap(profile=None):
         unlink(FIFO_PATH)
     except OSError:
         pass
-    
+
     # Create an unique FIFO file
     mkfifo(FIFO_PATH, 0666)
 
@@ -156,9 +156,9 @@ def oscap(profile=None):
 
         if arg_module == 'xccdf':
 
-            ps_xsltproc = Popen([XSLT_BIN, TEMPLATE_XCCDF, FIFO_PATH], stdin=None, stdout=None, stderr=STDOUT)
+            ps_xsltproc = Popen([XSLT_BIN, TEMPLATE_XCCDF, FIFO_PATH], stdin=None, stdout=PIPE, stderr=STDOUT)
             ps.wait()
-            output = ps.communicate()[0]
+            output = ps_xsltproc.communicate()[0]
             ps_xsltproc.wait()
             returncode = ps_xsltproc.returncode
 
@@ -168,29 +168,29 @@ def oscap(profile=None):
                 error_cmd.output = output
                 raise error_cmd
             else:
-                unlink(FIFO_PATH)
-                return output
-                
-            if version_info[0] >= 3:
-                output = output.decode('utf-8', 'backslashreplace')
 
-            for line in output.split("\n"):
-                if not line:
-                    continue
+                if version_info[0] >= 3:
+                    output = output.decode('utf-8', 'backslashreplace')
 
-                # Adding file
-                if 'msg: "xccdf-overview"' in line:
-                    new_line = line.replace('oscap: msg: "xccdf-overview",', 'oscap: msg: "xccdf-overview", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
-                else:
-                    new_line = line.replace('oscap: msg: "xccdf-result",', 'oscap: msg: "xccdf-result", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
+                for line in output.split("\n"):
+                    if not line:
+                        continue
 
-                print(new_line)
+                    # Adding file
+                    if 'msg: "xccdf-overview"' in line:
+                        new_line = line.replace('oscap: msg: "xccdf-overview",', 'oscap: msg: "xccdf-overview", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
+                    else:
+                        new_line = line.replace('oscap: msg: "xccdf-result",', 'oscap: msg: "xccdf-result", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
+
+                    print(new_line)
 
         else:
 
             ps_xsltproc = Popen([XSLT_BIN, TEMPLATE_OVAL, FIFO_PATH], stdin=None, stdout=PIPE, stderr=STDOUT)
-            output = ps_xsltproc.communicate()[0]
             ps.wait()
+            output = ps_xsltproc.communicate()[0]
+            ps_xsltproc.wait()
+            returncode = ps_xsltproc.returncode
 
             if version_info[0] >= 3:
                 output = output.decode('utf-8', 'backslashreplace')
@@ -395,4 +395,3 @@ if __name__ == "__main__":
             oscap(profile)
     else:
         oscap()
-
