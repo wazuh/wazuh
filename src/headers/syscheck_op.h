@@ -13,6 +13,21 @@
 
 #include "analysisd/eventinfo.h"
 
+#ifndef WIN32
+
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
+
+#else
+
+#include "shared.h"
+#include "aclapi.h"
+
+#define BUFFER_LEN 1024
+
+#endif
+
 /* Fields for rules */
 typedef enum sk_syscheck {
     SK_FILE,
@@ -26,7 +41,8 @@ typedef enum sk_syscheck {
     SK_GNAME,
     SK_INODE,
     SK_SHA256,
-    SK_NFIELDS,
+    SK_MTIME,
+    SK_CHFIELDS,
     SK_USER_ID,
     SK_USER_NAME,
     SK_GROUP_ID,
@@ -37,7 +53,8 @@ typedef enum sk_syscheck {
     SK_EFFECTIVE_UID,
     SK_EFFECTIVE_NAME,
     SK_PPID,
-    SK_PROC_ID
+    SK_PROC_ID,
+    SK_NFIELDS
 } sk_syscheck;
 
 typedef struct __sdb {
@@ -127,5 +144,18 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size);
+
+
+#ifndef WIN32
+
+const char* get_user(__attribute__((unused)) const char *path, int uid);
+const char* get_group(int gid);
+
+#else
+
+const char *get_user(const char *path, __attribute__((unused)) int uid);
+const char *get_group(__attribute__((unused)) int gid);
+
+#endif
 
 #endif

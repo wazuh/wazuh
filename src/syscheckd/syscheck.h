@@ -71,8 +71,6 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
-const char* get_user(const char *path, int uid);
-const char* get_group(int gid);
 
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
