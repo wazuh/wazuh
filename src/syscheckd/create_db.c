@@ -21,7 +21,7 @@ static int read_file(const char *dir_name, int opts, OSMatch *restriction)
     __attribute__((nonnull(1)));
     
 int read_dir_diff(char *dir_name);
-int remove_empty_folders(char *path);
+
 
 /* Global variables */
 static int __counter = 0;
@@ -59,7 +59,8 @@ int read_file_diff(char *file_name) {
     return 0;
 }
 
-int read_dir_diff(char *dir_name) {
+    int read_dir_diff(char *dir_name) {
+
     size_t dir_size;
     char f_name[PATH_MAX + 2];
 
@@ -135,6 +136,7 @@ void remove_local_diff(){
 
     /* Delete all  monitored files from hash table */
     OSHashNode *curr_node_monitoring, *curr_node_local;
+
     for (j = 0; j <= syscheck.local_hash->rows; j++) {
         curr_node_local = syscheck.local_hash->table[j];
         for (k = 0; k <= syscheck.fp->rows; k++) {
@@ -154,7 +156,6 @@ void remove_local_diff(){
             }
         }
     }
-
     /* Delete local files that aren't monitorized */
     for (j = 0; j <= syscheck.local_hash->rows; j++) {
         curr_node_local = syscheck.local_hash->table[j];
@@ -172,29 +173,6 @@ void remove_local_diff(){
             }
         }
     }
-}
-
-int remove_empty_folders(char* path){
-    char *c;
-    char parent[PATH_MAX] = "\0";
-
-    // Get parent
-    c = strrchr(path, '/');
-    memmove(parent, path, strlen(path) - strlen(c));
-
-    if (*wreaddir(parent) == NULL) {
-        // Remove empty folder
-        if(rmdir_ex(parent) != 0){
-            mwarn("Empty directory '%s' couldn't be deleted. ('%s')", parent, strerror(errno));
-            return(1);
-        }
-        // Get parent and remove it if it's empty
-        c = strrchr(path, '/');
-        memmove(parent, path, strlen(path) - strlen(c));
-        
-        remove_empty_folders(parent);
-    }
-    return 0;
 }
 
 /* Read and generate the integrity data of a file */
@@ -307,10 +285,28 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
 
         if (opts & CHECK_SHA1SUM) {
             sha1s = '+';
+
+            if (opts & CHECK_SEECHANGES) {
+                sha1s = 's';
+            } else {
+                sha1s = '+';
+            }
+        } else {
+            if (opts & CHECK_SEECHANGES) {
+                sha1s = 'n';
+            } else {
+                sha1s = '-';
+            }
         }
         if (opts & CHECK_SHA256SUM) {
             sha256s = '+';
         }
+
+        // if (opts & CHECK_SEECHANGES) {
+        //     sha1s = 's';
+        // } else {
+        //     sha1s = '+';
+        // }
 
         /* Generate checksums */
         if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) ||
@@ -342,19 +338,6 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
                 strncpy(mf_sum, "n/a", 4);
                 strncpy(sf_sum, "n/a", 4);
                 strncpy(sf256_sum, "n/a", 4);
-            }
-
-            if (opts & CHECK_SEECHANGES) {
-                sha1s = 's';
-                sha256s = 's';
-            }
-        } else {
-            if (opts & CHECK_SEECHANGES) {
-                sha1s = 'n';
-                sha256s = 'n';
-            } else {
-                sha1s = '-';
-                sha256s = '-';
             }
         }
 
@@ -637,7 +620,7 @@ int run_dbcheck() {
         syscheck.last_check = OSHash_Duplicate(syscheck.fp);
         
         /* Only if there are directories */
-        if(syscheck.remove_old_diff){
+        if (syscheck.remove_old_diff && (syscheck.dir != NULL || syscheck.dir[0] != NULL)) {
             remove_local_diff();
         }
     }
@@ -695,8 +678,8 @@ int create_db() {
         }
         i++;
     } while (syscheck.dir[i] != NULL);
-
-    if(syscheck.remove_old_diff){
+    
+    if(syscheck.remove_old_diff && (syscheck.dir != NULL || syscheck.dir[0] != NULL) ){
         remove_local_diff();
     }
 
