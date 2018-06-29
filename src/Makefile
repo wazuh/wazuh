@@ -618,7 +618,8 @@ $(EXTERNAL_AUDIT)lib/.libs/libaudit.a: $(EXTERNAL_AUDIT)Makefile
 	make -C $(EXTERNAL_AUDIT)lib
 
 $(EXTERNAL_AUDIT)Makefile:
-	cd $(EXTERNAL_AUDIT) && ./configure
+
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure
 
 ####################
 #### OSSEC Libs ####
