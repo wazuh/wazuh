@@ -38,6 +38,9 @@ static regex_t regexCompiled_cwd;
 static regex_t regexCompiled_pname;
 static regex_t regexCompiled_path0;
 static regex_t regexCompiled_path1;
+static regex_t regexCompiled_path2;
+static regex_t regexCompiled_path3;
+static regex_t regexCompiled_items;
 pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -396,6 +399,21 @@ int audit_init(void) {
         merror("Cannot compile path1 regular expression.");
         return -1;
     }
+    static const char *pattern_path2 = " item=2 name=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_path2, pattern_path2, REG_EXTENDED)) {
+        merror("Cannot compile path2 regular expression.");
+        return -1;
+    }
+    static const char *pattern_path3 = " item=3 name=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_path3, pattern_path3, REG_EXTENDED)) {
+        merror("Cannot compile path3 regular expression.");
+        return -1;
+    }
+    static const char *pattern_items = " items=([0-9]*) ";
+    if (regcomp(&regexCompiled_items, pattern_items, REG_EXTENDED)) {
+        merror("Cannot compile items regular expression.");
+        return -1;
+    }
 
     return init_auditd_socket();
 }
@@ -425,6 +443,51 @@ char * audit_get_id(const char * event) {
     return id;
 }
 
+
+char *gen_audit_path(char *cwd, char *path0, char *path1) {
+
+    char *gen_path = NULL;
+
+    if (path0 && cwd) {
+        if (path1) {
+            if (path1[0] == '/') {
+                gen_path = strdup(path1);
+            } else if (path1[0] == '.' && path1[1] == '/') {
+                char *full_path = malloc(strlen(cwd) + strlen(path1) + 2);
+                snprintf(full_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, (path1+2));
+                gen_path = strdup(full_path);
+                free(full_path);
+            } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
+                gen_path = clean_audit_path(cwd, path1);
+            } else if (strncmp(path0, path1, strlen(path0)) == 0) {
+                gen_path = malloc(strlen(cwd) + strlen(path1) + 2);
+                snprintf(gen_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
+            } else {
+                char *full_path = malloc(strlen(path0) + strlen(path1) + 2);
+                snprintf(full_path, strlen(path0) + strlen(path1) + 2, "%s/%s", path0, path1);
+                gen_path = strdup(full_path);
+                free(full_path);
+            }
+            free(path1);
+        } else {
+            if (path0[0] == '/') {
+                gen_path = strdup(path0);
+            } else if (path0[0] == '.' && path0[1] == '/') {
+                char *full_path = malloc(strlen(cwd) + strlen(path0) + 2);
+                snprintf(full_path, strlen(cwd) + strlen(path0) + 2, "%s/%s", cwd, (path0+2));
+                gen_path = strdup(full_path);
+                free(full_path);
+            } else if (path0[0] == '.' && path0[1] == '.' && path0[2] == '/') {
+                gen_path = clean_audit_path(cwd, path0);
+            } else {
+                gen_path = malloc(strlen(cwd) + strlen(path0) + 2);
+                snprintf(gen_path, strlen(cwd) + strlen(path0) + 2, "%s/%s", cwd, path0);
+            }
+        }
+    }
+    return gen_path;
+}
+
 void audit_parse(char * buffer) {
     char *pkey;
     char *psuccess;
@@ -441,9 +504,12 @@ void audit_parse(char * buffer) {
     char *pname = NULL;
     char *path0 = NULL;
     char *path1 = NULL;
+    char *path2 = NULL;
+    char *path3 = NULL;
     char *cwd = NULL;
-    char *full_path = NULL;
+    char *file_path = NULL;
     whodata_evt *w_evt;
+    unsigned int items = 0;
 
     if (pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) { // Parse only 'wazuh_fim' events.
 
@@ -451,10 +517,20 @@ void audit_parse(char * buffer) {
         && (pdelete = strstr(buffer,"op=remove_rule"), pdelete)) { // Detect rules modification.
             audit_thread_active = 0;
             mwarn("Detected Audit rules manipulation: Rule removed.");
+
         } else if (psuccess = strstr(buffer,"success=yes"), psuccess) {
 
             os_calloc(1, sizeof(whodata_evt), w_evt);
 
+            // Items
+            if(regexec(&regexCompiled_items, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                char *chr_item = malloc(match_size + 1);
+                snprintf (chr_item, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                items = atoi(chr_item);
+                free(chr_item);
+            }
+            // user_name & user_id
             if(regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 uid = malloc(match_size + 1);
@@ -463,7 +539,7 @@ void audit_parse(char * buffer) {
                 w_evt->user_id = strdup(uid);
                 free(uid);
             }
-
+            // audit_name & audit_uid
             if(regexec(&regexCompiled_auid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 auid = malloc(match_size + 1);
@@ -472,7 +548,7 @@ void audit_parse(char * buffer) {
                 w_evt->audit_uid = strdup(auid);
                 free(auid);
             }
-
+            // effective_name && effective_uid
             if(regexec(&regexCompiled_euid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 euid = malloc(match_size + 1);
@@ -481,7 +557,7 @@ void audit_parse(char * buffer) {
                 w_evt->effective_uid = strdup(euid);
                 free(euid);
             }
-
+            // group_name & group_id
             if(regexec(&regexCompiled_gid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 gid = malloc(match_size + 1);
@@ -490,7 +566,7 @@ void audit_parse(char * buffer) {
                 w_evt->group_id = strdup(gid);
                 free(gid);
             }
-
+            // process_id
             if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 pid = malloc(match_size + 1);
@@ -498,7 +574,7 @@ void audit_parse(char * buffer) {
                 w_evt->process_id = atoi(pid);
                 free(pid);
             }
-
+            // ppid
             if(regexec(&regexCompiled_ppid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 ppid = malloc(match_size + 1);
@@ -506,25 +582,7 @@ void audit_parse(char * buffer) {
                 w_evt->ppid = atoi(ppid);
                 free(ppid);
             }
-
-            if(regexec(&regexCompiled_cwd, buffer, 2, match, 0) == 0) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                cwd = malloc(match_size + 1);
-                snprintf (cwd, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            }
-
-            if(regexec(&regexCompiled_path0, buffer, 2, match, 0) == 0) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                path0 = malloc(match_size + 1);
-                snprintf (path0, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            }
-
-            if(regexec(&regexCompiled_path1, buffer, 2, match, 0) == 0) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                path1 = malloc(match_size + 1);
-                snprintf (path1, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            }
-
+            // process_name
             if(regexec(&regexCompiled_pname, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 pname = malloc(match_size + 1);
@@ -532,65 +590,106 @@ void audit_parse(char * buffer) {
                 w_evt->process_name = strdup(pname);
                 free(pname);
             }
-
-            if (path0 && cwd) {
-                if (path1) {
-                    if (path1[0] == '/') {
-                        w_evt->path = strdup(path1);
-                    } else if (path1[0] == '.' && path1[1] == '/') {
-                        full_path = malloc(strlen(cwd) + strlen(path1) + 2);
-                        snprintf(full_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, (path1+2));
-                        w_evt->path = strdup(full_path);
-                        free(full_path);
-                    } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
-                        w_evt->path = clean_audit_path(cwd, path1);
-                    } else if (strncmp(path0, path1, strlen(path0)) == 0) {
-                        w_evt->path = malloc(strlen(cwd) + strlen(path1) + 2);
-                        snprintf(w_evt->path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
-                    } else {
-                        full_path = malloc(strlen(path0) + strlen(path1) + 2);
-                        snprintf(full_path, strlen(path0) + strlen(path1) + 2, "%s/%s", path0, path1);
-                        w_evt->path = strdup(full_path);
-                        free(full_path);
-                    }
-                    free(path1);
-                } else {
-                    if (path0[0] == '/') {
-                        w_evt->path = strdup(path0);
-                    } else if (path0[0] == '.' && path0[1] == '/') {
-                        full_path = malloc(strlen(cwd) + strlen(path0) + 2);
-                        snprintf(full_path, strlen(cwd) + strlen(path0) + 2, "%s/%s", cwd, (path0+2));
-                        w_evt->path = strdup(full_path);
-                        free(full_path);
-                    } else if (path0[0] == '.' && path0[1] == '.' && path0[2] == '/') {
-                        w_evt->path = clean_audit_path(cwd, path0);
-                    } else {
-                        w_evt->path = malloc(strlen(cwd) + strlen(path0) + 2);
-                        snprintf(w_evt->path, strlen(cwd) + strlen(path0) + 2, "%s/%s", cwd, path0);
-                    }
-                }
-                free(cwd);
-                free(path0);
-
-                mdebug1("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
-                    w_evt->user_name,
-                    w_evt->audit_name,
-                    w_evt->effective_name,
-                    w_evt->group_name,
-                    w_evt->process_id,
-                    w_evt->ppid,
-                    w_evt->path,
-                    w_evt->process_name);
-
-                struct timeval timeout = {0, syscheck.rt_delay * 1000};
-                select(0, NULL, NULL, NULL, &timeout);
-
-                realtime_checksumfile(w_evt->path, w_evt);
+            // cwd
+            if(regexec(&regexCompiled_cwd, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                cwd = malloc(match_size + 1);
+                snprintf (cwd, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             }
+            // path0
+            if(regexec(&regexCompiled_path0, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                path0 = malloc(match_size + 1);
+                snprintf (path0, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            }
+            // path1
+            if(regexec(&regexCompiled_path1, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                path1 = malloc(match_size + 1);
+                snprintf (path1, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            }
+
+            switch(items) {
+
+                case 2:
+                    file_path = gen_audit_path(cwd, path0, path1);
+                    w_evt->path = file_path;
+                    mdebug1("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                        w_evt->user_name,
+                        w_evt->audit_name,
+                        w_evt->effective_name,
+                        w_evt->group_name,
+                        w_evt->process_id,
+                        w_evt->ppid,
+                        w_evt->path,
+                        w_evt->process_name);
+                    realtime_checksumfile(w_evt->path, w_evt);
+                    break;
+
+                case 4:
+
+                    // path2
+                    if(regexec(&regexCompiled_path2, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        path2 = malloc(match_size + 1);
+                        snprintf (path2, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                    }
+                    // path3
+                    if(regexec(&regexCompiled_path3, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        path3 = malloc(match_size + 1);
+                        snprintf (path3, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                    }
+
+                    // Send event 1/2
+                    char *file_path1 = gen_audit_path(cwd, path0, path2);
+                    w_evt->path = file_path1;
+                    mdebug1("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                        w_evt->user_name,
+                        w_evt->audit_name,
+                        w_evt->effective_name,
+                        w_evt->group_name,
+                        w_evt->process_id,
+                        w_evt->ppid,
+                        w_evt->path,
+                        w_evt->process_name);
+
+                    realtime_checksumfile(w_evt->path, w_evt);
+                    free(file_path1);
+
+                    // Send event 2/2
+                    char *file_path2 = gen_audit_path(cwd, path1, path3);
+                    w_evt->path = file_path2;
+                    mdebug1("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                        w_evt->user_name,
+                        w_evt->audit_name,
+                        w_evt->effective_name,
+                        w_evt->group_name,
+                        w_evt->process_id,
+                        w_evt->ppid,
+                        w_evt->path,
+                        w_evt->process_name);
+
+                    realtime_checksumfile(w_evt->path, w_evt);
+
+                    free(path2);
+                    free(path3);
+                    break;
+            }
+
+            free(cwd);
+            free(path0);
+            free(path1);
+
+
+            struct timeval timeout = {0, syscheck.rt_delay * 1000};
+            select(0, NULL, NULL, NULL, &timeout);
+
             free_whodata_event(w_evt);
         }
     }
 }
+
 
 void * audit_main(int * audit_sock) {
     size_t byteRead;
@@ -705,10 +804,15 @@ void * audit_main(int * audit_sock) {
     close(*audit_sock);
     regfree(&regexCompiled_uid);
     regfree(&regexCompiled_auid);
+    regfree(&regexCompiled_euid);
+    regfree(&regexCompiled_gid);
     regfree(&regexCompiled_pid);
+    regfree(&regexCompiled_ppid);
+    regfree(&regexCompiled_cwd);
     regfree(&regexCompiled_path0);
     regfree(&regexCompiled_path1);
     regfree(&regexCompiled_pname);
+    regfree(&regexCompiled_items);
     // Change Audit monitored folders to Inotify.
     int i;
     w_mutex_lock(&audit_rules_mutex);
