@@ -112,3 +112,5 @@ def get_agents(filter_status, filter_node, is_master):
 
         if response['error'] == 0:
             return response['data']
+        else:
+            raise WazuhException(response['error'], response['message'])

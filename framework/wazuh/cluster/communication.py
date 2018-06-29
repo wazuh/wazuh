@@ -345,7 +345,7 @@ class Handler(asyncore.dispatcher_with_send):
         except Exception as e:
             error_msg = "Error sending string ({}): {}".format(reason, e)
             logger.error("{} {}.".format(self.tag, error_msg))
-            response = "err" + " " + error_msg
+            raise Exception(error_msg)
 
         return response
 

@@ -79,6 +79,10 @@ class ClientManagerHandler(ClientHandler):
             string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper, client_id=data.decode())
             string_receiver.start()
             return 'ack', self.set_worker(command, string_receiver)
+        elif command == 'err-is':
+            client_id, err_msg = data.decode().split(' ',1)
+            self.isocket_handler.send_request(command=command, data=err_msg, client_name=client_id)
+            return 'ack','thanks'
         else:
             return ClientHandler.process_request(self, command, data)
 
@@ -408,7 +412,7 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverClient):
 
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason == 'error':
-            self.forward_msg('err', send_err_request)
+            self.forward_msg('err-is', send_err_request)
         FragmentedStringReceiverClient.unlock_and_stop(self, reason, None)
 
 

@@ -149,6 +149,11 @@ class InternalSocketClient(communication.AbstractClient):
             string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
             string_receiver.start()
             return 'ok', self.set_worker(command, string_receiver)
+        elif command == 'err-is':
+            data = data.decode()
+            logger.debug("{} Cluster has reported an error receiving data: {}".format(self.tag, data))
+            self.final_response.write(json.dumps({"error":1000, "message":data}))
+            return 'ack','thanks'
         else:
             return communication.AbstractClient.process_request(self, command, data)
 

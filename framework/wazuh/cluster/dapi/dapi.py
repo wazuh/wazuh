@@ -252,7 +252,10 @@ class APIRequestQueue(communication.ClusterThread):
         while not self.stopper.is_set() and self.running:
             name, id, request = self.request_queue.get(block=True).split(' ', 2)
             result = distribute_function(json.loads(request), from_master=True)
-            self.send_string(result, id, name)
+            try:
+                self.send_string(result, id, name)
+            except Exception as e:
+                self.send_request(command='err-is', data=str(e), id=id, name=name)
 
 
     def send_string(self, result, id, name):
@@ -262,6 +265,13 @@ class APIRequestQueue(communication.ClusterThread):
         else:
             self.server.send_string(client_name=name, reason='dapi_res', string_to_send=result, new_req="fwd_new",
                                     upd_req="fwd_upd", end_req="fwd_end", extra_data=id)
+
+
+    def send_request(self, command, data, id, name):
+        if name == 'None':
+            self.server.send_request(command=command, data=id + ' ' + data)
+        else:
+            self.server.send_request(client_name=name, command=command, data=id + ' ' + data)
 
 
     def set_request(self, request):
