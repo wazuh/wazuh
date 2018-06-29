@@ -19,16 +19,17 @@ extern unsigned int s_events_hostinfo_decoded;
 extern unsigned int s_events_decoded;
 extern unsigned int s_events_processed;
 extern unsigned int s_events_dropped;
+extern volatile unsigned int s_events_received;
 extern unsigned int s_alerts_written; 
 extern unsigned int s_firewall_written;
 extern unsigned int s_fts_written;
 
-extern unsigned int s_syscheck_queue;
-extern unsigned int s_syscollector_queue;
-extern unsigned int s_rootcheck_queue;
-extern unsigned int s_hostinfo_queue;
-extern unsigned int s_event_queue;
-extern unsigned int s_process_event_queue;
+extern float s_syscheck_queue;
+extern float s_syscollector_queue;
+extern float s_rootcheck_queue;
+extern float s_hostinfo_queue;
+extern float s_event_queue;
+extern float s_process_event_queue;
 
 extern unsigned int s_syscheck_queue_size;
 extern unsigned int s_syscollector_queue_size;
@@ -37,10 +38,10 @@ extern unsigned int s_hostinfo_queue_size;
 extern unsigned int s_event_queue_size;
 extern unsigned int s_process_event_queue_size;
 
-extern unsigned int s_writer_alerts_queue;
-extern unsigned int s_writer_archives_queue;
-extern unsigned int s_writer_firewall_queue;
-extern unsigned int s_writer_statistical_queue;
+extern float s_writer_alerts_queue;
+extern float s_writer_archives_queue;
+extern float s_writer_firewall_queue;
+extern float s_writer_statistical_queue;
 
 extern unsigned int s_writer_alerts_queue_size;
 extern unsigned int s_writer_archives_queue_size;
