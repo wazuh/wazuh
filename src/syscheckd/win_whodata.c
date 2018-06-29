@@ -23,6 +23,7 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int is_valid_sacl(PACL sacl);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
+void set_policies();
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
@@ -250,6 +251,8 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 int run_whodata_scan() {
     // Set the signal handler to restore the policies
     atexit(restore_sacls);
+    // Set the system audit policies
+    set_policies();
     // Set the whodata callback
     if (!EvtSubscribe(NULL, NULL, L"Security", L"Event[(((System/EventID = 4656 or System/EventID = 4663) and (EventData/Data[@Name='ObjectType'] = 'File')) or System/EventID = 4658 or System/EventID = 4660)]", NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
         merror("Event Channel subscription could not be made. Whodata scan is disabled.");
@@ -373,6 +376,17 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             goto clean;
         }
 
+        if (buffer[7].Type != EvtVarTypeHexInt64) {
+            merror("Invalid parameter type (%ld) for 'keywords'.", buffer[7].Type);
+            goto clean;
+        }
+        keywords = buffer[7].UInt64Val;
+
+        // Discards unsuccessful attempts
+        if (!(keywords & AUDIT_SUCCESS)) {
+            goto clean;
+        }
+
         // Check types
         if (buffer[0].Type != EvtVarTypeUInt16) {
             merror("Invalid parameter type (%ld) for 'event_id'.", buffer[0].Type);
@@ -428,12 +442,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             mask = buffer[6].UInt32Val;
         }
 
-        if (buffer[7].Type != EvtVarTypeHexInt64) {
-            merror("Invalid parameter type (%ld) for 'keywords'.", buffer[7].Type);
-            goto clean;
-        }
-        keywords = buffer[7].UInt64Val;
-
         if (buffer[8].Type != EvtVarTypeSid) {
             merror("Invalid parameter type (%ld) for 'user_id'.", buffer[8].Type);
             goto clean;
@@ -442,10 +450,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             goto clean;
         }
 
-        // Discards unsuccessful attempts
-        if (!(keywords & AUDIT_SUCCESS) /*|| !(event_id == 4656 && (keywords & AUDIT_SUCCESS))*/) {
-            goto clean;
-        }
         snprintf(hash_id, 21, "%llu", handle_id);
         switch(event_id) {
             // Open fd
@@ -533,7 +537,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         } else if ((mask & DELETE_AND_READ_ATT) == DELETE_AND_READ_ATT) {
                             // The file has been moved or renamed
                             send_whodata_del(w_evt);
-                        } else if (w_evt->force_notify){
+                        } else if (w_evt->force_notify) {
                             realtime_checksumfile(w_evt->path, w_evt);
                         }
                     }
@@ -660,5 +664,22 @@ void send_whodata_del(whodata_evt *w_evt) {
 
     snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s", wd_sum, w_evt->path);
     send_syscheck_msg(del_msg);
+}
+
+void set_policies() {
+/*    char *output = NULL;
+    int result_code = 0;
+    char command[OS_SIZE_1024];
+    static const char *WPOL_HANDLEM = ",System,Handle Manipulation,";
+    static const char *WPOL_FILE_SYS = ",System,File System,";
+    static const char *WPOL_BACKUP_COMMAND = "auditpol \/backup \/file:\"%s\"";
+    static const char *WPOL_RESTORE_COMMAND = "auditpol \/restore \/file:\"%s\"";
+
+    snprintf()
+
+    auditpol /backup /file:"%backup_path%"
+
+    wm_exec("ee", &output, &result_code, 0);
+*/
 }
 #endif
