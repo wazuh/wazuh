@@ -1924,7 +1924,7 @@ class Agent:
         """
         Generates a list of available versions for its distribution and version.
         """
-        if desired_version is None or desired_version[:4] >= "v3.4" and self.os['platform'] != "windows":
+        if (desired_version is None or desired_version[:4] >= "v3.4") and self.os['platform'] != "windows":
             versions_url = wpk_repo + "linux/" + self.os['arch'] + "/versions"
         else:
             if self.os['platform']=="windows":
@@ -1999,7 +1999,7 @@ class Agent:
         if self.os['platform']=="windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
             wpk_url = wpk_repo + "windows/" + wpk_file
-            
+
         else:
             if version is None or version[:4] >= "v3.4":
                 wpk_file = "wazuh_agent_{0}_linux_{1}.wpk".format(agent_new_ver, self.os['arch'])
