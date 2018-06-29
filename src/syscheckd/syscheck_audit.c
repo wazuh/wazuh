@@ -16,6 +16,7 @@
 #include <sys/un.h>
 #include "syscheck.h"
 #include <os_net/os_net.h>
+#include "syscheck_op.h"
 
 #define ADD_RULE 1
 #define DELETE_RULE 2

@@ -238,6 +238,12 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             /* Send the new checksum to the analysis server */
             alert_msg[OS_MAXSTR] = '\0';
 
+            /* Extract the whodata sum here to not include it in the hash table */
+            if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                *wd_sum = '\0';
+            }
+
 #ifdef WIN32
             snprintf(alert_msg, OS_MAXSTR, "%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s!%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
@@ -249,6 +255,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                 opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
+                wd_sum,
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -287,7 +294,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             }
 
             OSHash_Delete(syscheck.last_check, file_name);
-            
+
             if (strcmp(c_sum, buf + SK_DB_NATTR)) {
                 // Extract the whodata sum here to not include it in the hash table
                 if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
