@@ -520,7 +520,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Close fd
             case 4658:
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
-                    if (w_evt->mask) {
+                    if (w_evt->mask || w_evt->force_notify) {
                         static const unsigned int DELETE_AND_READ_ATT = DELETE | FILE_READ_ATTRIBUTES;
                         unsigned int mask = w_evt->mask;
 
