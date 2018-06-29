@@ -365,7 +365,7 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverClient):
 
     def __init__(self, manager_handler, stopper, client_id):
         FragmentedStringReceiverClient.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[APIResponseReceiver]"
+        self.thread_tag = "[APIResponseReceiverClient]"
         self.client_id = client_id
         # send request to the client
         self.worker_id = self.manager_handler.process_response(self.manager_handler.isocket_handler.send_request(self.client_id, "dapi_res"))

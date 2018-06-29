@@ -15,6 +15,7 @@ from itertools import groupby
 from operator import itemgetter
 from multiprocessing.dummy import Pool as ThreadPool
 import logging
+import time
 try:
     from Queue import Queue
 except ImportError:
@@ -61,11 +62,14 @@ def print_json(data, error=0, pretty=False):
 
 def execute_local_request(input_json, pretty, debug):
     try:
+        before = time.time()
         if 'arguments' in input_json and input_json['arguments']:
             data = rq.functions[input_json['function']]['function'](**input_json['arguments'])
         else:
             data = rq.functions[input_json['function']]['function']()
 
+        after = time.time()
+        logger.debug("[DistributedAPI] Time calculating request result: {}s".format(after - before))
         return print_json(data=data, pretty=pretty, error=0)
     except WazuhException as e:
         if debug:

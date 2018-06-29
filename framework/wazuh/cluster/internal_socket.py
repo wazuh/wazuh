@@ -116,10 +116,14 @@ class InternalSocketClient(communication.AbstractClient):
 
 
     def send_request(self, command, data=None):
+        before = time.time()
         if data:
             data = "{} {}".format(self.name, data)
 
-        return communication.AbstractClient.send_request(self, command, data)
+        res = communication.AbstractClient.send_request(self, command, data)
+        after = time.time()
+        logger.debug("{} Time sending request to internal socket server: {}s".format(self.tag, after - before))
+        return res
 
 
     def process_response(self, response):
