@@ -59,15 +59,8 @@ int ExecdConfig(const char *cfgfile)
     XML_NODE node;
     node = OS_GetElementsbyNode(&xml, NULL);
 
-    if (!node)
-    {
-        //merror(CONFIG_ERROR, rulepath);
-        OS_ClearNode(node);
-        OS_ClearXML(&xml);
-    }
-
     XML_NODE child = NULL;
-    while (node[i])
+    while (node && node[i])
     {
         child = OS_GetElementsbyNode(&xml, node[i]);
         int j = 0;
@@ -84,7 +77,7 @@ int ExecdConfig(const char *cfgfile)
                     if (!strcmp(child_attr[p]->element, "repeated_offenders"))
                     {
                         os_strdup(child_attr[p]->content, repeated_t);
-                        
+                        OS_ClearNode(child_attr);
                         goto next;
                     }
                     p++;
@@ -97,9 +90,6 @@ int ExecdConfig(const char *cfgfile)
         }
 
         i++;
-        if (child == NULL){
-            continue;
-        }
     }
     
 next: 
