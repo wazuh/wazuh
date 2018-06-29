@@ -12,6 +12,10 @@ from operator import itemgetter
 
 def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, allowed_sort_fields, table, nested=True, array=False):
     Agent(agent_id).get_basic_information()
+
+    if limit > common.maximum_database_limit:
+        limit = common.maximum_database_limit
+
     if select:
         select_fields = list(set(select['fields']) & set(valid_select_fields))
         if select_fields == []:

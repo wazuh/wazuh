@@ -131,6 +131,9 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     else:
         logs = sort_array(logs, order='desc', sort_by=['timestamp'])
 
+    if limit > common.maximum_database_limit:
+        limit = common.maximum_database_limit
+
     return {'items': cut_array(logs, offset, limit), 'totalItems': len(logs)}
 
 

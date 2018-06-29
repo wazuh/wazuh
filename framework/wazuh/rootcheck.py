@@ -176,6 +176,8 @@ def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=co
         query += ' ORDER BY date_last DESC'
 
     if limit:
+        if limit > common.maximum_database_limit:
+            limit = common.maximum_database_limit
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
@@ -257,6 +259,8 @@ def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
         query += ' ORDER BY pci_dss ASC'
 
     if limit:
+        if limit > common.maximum_database_limit:
+            limit = common.maximum_database_limit
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
@@ -322,6 +326,8 @@ def get_cis(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
         query += ' ORDER BY cis ASC'
 
     if limit:
+        if limit > common.maximum_database_limit:
+            limit = common.maximum_database_limit
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit

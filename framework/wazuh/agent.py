@@ -281,6 +281,8 @@ class Agent:
             query = query.replace("from {} and".format(table), "from {} where".format(table))
 
         if limit:
+            if limit > common.maximum_database_limit:
+                limit = common.maximum_database_limit
             query += ' limit {} offset {}'.format(limit, offset)
 
         if sort and sort['fields']:
@@ -977,6 +979,8 @@ class Agent:
 
 
         if limit:
+            if limit > common.maximum_database_limit:
+                limit = common.maximum_database_limit
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1080,6 +1084,8 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                limit = common.maximum_database_limit
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1372,6 +1378,8 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                limit = common.maximum_database_limit
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1586,6 +1594,8 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                limit = common.maximum_database_limit
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1870,6 +1880,8 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                limit = common.maximum_database_limit
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit

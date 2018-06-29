@@ -428,6 +428,9 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     :return: agent.conf as dictionary.
     """
 
+    if limit > common.maximum_database_limit:
+        limit = common.maximum_database_limit
+
     if group_id:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)

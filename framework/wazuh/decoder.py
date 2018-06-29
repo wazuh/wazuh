@@ -151,6 +151,9 @@ class Decoder:
         else:
             data = sort_array(data, ['file'], 'asc')
 
+        if limit > common.maximum_database_limit:
+            limit = common.maximum_database_limit
+
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
     @staticmethod
@@ -197,6 +200,9 @@ class Decoder:
             decoders = sort_array(decoders, sort['fields'], sort['order'], Decoder.SORT_FIELDS)
         else:
             decoders = sort_array(decoders, ['file', 'position'], 'asc')
+
+        if limit > common.maximum_database_limit:
+            limit = common.maximum_database_limit
 
         return {'items': cut_array(decoders, offset, limit), 'totalItems': len(decoders)}
 
