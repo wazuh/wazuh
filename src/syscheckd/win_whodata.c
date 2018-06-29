@@ -29,6 +29,7 @@ whodata_event_node *whodata_list_add(char *id);
 void whodata_list_remove(whodata_event_node *node);
 void whodata_list_set_values();
 void whodata_list_remove_multiple(size_t quantity);
+void send_whodata_del(whodata_evt *w_evt);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -140,7 +141,7 @@ int set_winsacl(const char *dir, int position) {
     ace->Header.AceType  = SYSTEM_AUDIT_ACE_TYPE;
     ace->Header.AceFlags = inherit_flag | SUCCESSFUL_ACCESS_ACE_FLAG;
     ace->Header.AceSize  = LOWORD(sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD));
-    ace->Mask            = FILE_WRITE_DATA | DELETE;
+    ace->Mask            = FILE_WRITE_DATA | DELETE | FILE_READ_ATTRIBUTES;
     if (!CopySid(ev_sid_size, &ace->SidStart, everyone_sid)) {
         goto end;
     }
@@ -329,6 +330,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
     unsigned __int64 keywords;
+    char force_notify;
     char *user_id;
     static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 
@@ -352,7 +354,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
 
         // Select the interesting fields
         if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
-            wprintf(L"\nError creating the context. Error %lu.", GetLastError());
+            merror("Error creating the context. Error %lu.", GetLastError());
             return 1;
         }
 
@@ -441,7 +443,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         }
 
         // Discards unsuccessful attempts
-        if (!(keywords & AUDIT_SUCCESS)) {
+        if (!(keywords & AUDIT_SUCCESS) /*|| !(event_id == 4656 && (keywords & AUDIT_SUCCESS))*/) {
             goto clean;
         }
         snprintf(hash_id, 21, "%llu", handle_id);
@@ -454,9 +456,18 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         // Discard the file if its monitoring has not been activated
                         mdebug2("'%s' is discarded because its monitoring is not activated.", path);
                         break;
+                    } else {
+                        // The file is new and has to be notified
+                        force_notify = 1;
                     }
                 } else {
+                    force_notify = 0;
+                    // If the file is already in the hash table, it is not necessary to set its position
                     position = -1;
+                    // If we already know the file, we are only interested in processing it if it has been opened with write or deleted permissions
+                    if (!((mask & FILE_WRITE_DATA) || (mask & DELETE))) {
+                        break;
+                    }
                 }
                 os_calloc(1, sizeof(whodata_evt), w_evt);
                 w_evt->user_name = user_name;
@@ -467,6 +478,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 w_evt->process_id = process_id;
                 w_evt->mask = 0;
                 w_evt->deleted = 0;
+                w_evt->force_notify = force_notify;
                 w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
@@ -499,6 +511,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Deleted file
             case 4660:
                 if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
+                    // The file has been deleted
                     w_evt->deleted = 1;
                 } else {
                     // The file was opened before Wazuh started Syscheck.
@@ -508,24 +521,19 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             case 4658:
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
                     if (w_evt->mask) {
+                        static const unsigned int DELETE_AND_READ_ATT = DELETE | FILE_READ_ATTRIBUTES;
                         unsigned int mask = w_evt->mask;
 
-                        // Check if the file has been written or deleted
                         if (w_evt->deleted) {
-                            char del_msg[PATH_MAX + OS_SIZE_6144 + 6];
-                            char wd_sum[OS_SIZE_6144 + 1];
-
-                            // Remove the file from the syscheck hash table
-                            OSHash_Delete_ex(syscheck.fp, w_evt->path);
-
-                            if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
-                                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);
-                                *wd_sum = '\0';
-                            }
-
-                            snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s", wd_sum, w_evt->path);
-                            send_syscheck_msg(del_msg);
+                            // Check if the file has been deleted
+                            send_whodata_del(w_evt);
                         } else if (mask & FILE_WRITE_DATA) {
+                            // Check if the file has been written
+                            realtime_checksumfile(w_evt->path, w_evt);
+                        } else if ((mask & DELETE_AND_READ_ATT) == DELETE_AND_READ_ATT) {
+                            // The file has been moved or renamed
+                            send_whodata_del(w_evt);
+                        } else if (w_evt->force_notify){
                             realtime_checksumfile(w_evt->path, w_evt);
                         }
                     }
@@ -638,4 +646,19 @@ void whodata_list_set_values() {
     syscheck.wlist.max_size, syscheck.wlist.max_remove, syscheck.wlist.alert_threshold);
 }
 
+void send_whodata_del(whodata_evt *w_evt) {
+    static char del_msg[PATH_MAX + OS_SIZE_6144 + 6];
+    static char wd_sum[OS_SIZE_6144 + 1];
+
+    // Remove the file from the syscheck hash table
+    OSHash_Delete_ex(syscheck.fp, w_evt->path);
+
+    if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
+        merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);
+        *wd_sum = '\0';
+    }
+
+    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s", wd_sum, w_evt->path);
+    send_syscheck_msg(del_msg);
+}
 #endif
