@@ -174,6 +174,12 @@ class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverClient
         return True
 
 
+    def unlock_and_stop(self, reason, send_err_request=None):
+        if reason=='error':
+            self.manager_handler.final_response.write(send_err_request)
+        communication.FragmentedStringReceiverClient.unlock_and_stop(self,reason,None)
+
+
 class InternalSocketClientThread(communication.ClusterThread):
 
     def __init__(self, socket_name, stopper = threading.Event()):

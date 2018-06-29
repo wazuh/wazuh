@@ -397,6 +397,12 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
             return FragmentedStringReceiverMaster.process_cmd(self, command, data)
 
 
+    def unlock_and_stop(self, reason, send_err_request=None):
+        if reason == 'error':
+            self.forward_msg('err', send_err_request)
+        FragmentedStringReceiverMaster.unlock_and_stop(self, reason, None)
+
+
 class ProcessClient(FragmentedFileReceiver):
 
     def __init__(self, manager_handler, filename, stopper):

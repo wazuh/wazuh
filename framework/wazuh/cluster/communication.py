@@ -852,11 +852,11 @@ class FragmentedRequestReceiver(ClusterThread):
                     self.unlock_and_stop(reason="task performed", send_err_request=False)
                 except Exception as e:
                     logger.error("{0}: Result: Unknown error: {1}.".format(self.thread_tag, e))
-                    self.unlock_and_stop(reason="error")
+                    self.unlock_and_stop(reason="error", send_err_request=str(e))
 
             elif self.received_error:
                 logger.error("{0}: An error took place during request reception.".format(self.thread_tag))
-                self.unlock_and_stop(reason="error")
+                self.unlock_and_stop(reason="error", send_err_request=str(e))
 
             else:  # receiving request
                 try:
@@ -876,7 +876,7 @@ class FragmentedRequestReceiver(ClusterThread):
                     self.process_cmd(command, data)
                 except Exception as e:
                     logger.error("{0}: Unknown error in process_cmd: {1}.".format(self.thread_tag, e))
-                    self.unlock_and_stop(reason="error")
+                    self.unlock_and_stop(reason="error", send_err_request=str(e))
 
             time.sleep(self.interval_transfer_receive)
 
