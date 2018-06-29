@@ -80,7 +80,8 @@ def check_cluster_config(config):
 
 def get_cluster_items():
     try:
-        cluster_items = json.load(open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)))
+        with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
+            cluster_items = json.load(f)
         list(map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values())))
         return cluster_items
     except Exception as e:
@@ -258,14 +259,16 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     with zipfile.ZipFile(zip_path) as zipf:
         for name in zipf.namelist():
             if name == ko_files_name:
-                ko_files = json.loads(zipf.open(name).read())
+                with zipf.open(name) as file:
+                    ko_files = json.loads(file.read())
             else:
                 filename = "{}/{}".format(zip_dir, path.dirname(name))
                 if not path.exists(filename):
                     mkdir_with_mode(filename)
-                with open("{}/{}".format(filename, path.basename(name)), 'wb') as f:
-                    content = zipf.open(name).read()
-                    f.write(content)
+                with open("{}/{}".format(filename, path.basename(name)), 'wb') as cf:
+                    with zipf.open(name) as file:
+                        content = file.read()
+                    cf.write(content)
 
     # once read all files, remove the zipfile
     remove(zip_path)
