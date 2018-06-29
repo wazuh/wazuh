@@ -1550,6 +1550,8 @@ void * ad_input_main(void * args) {
                 continue;
             }
 
+            s_events_received++;
+
             if (msg[0] == SYSCHECK_MQ) {
 
                 os_strdup(buffer, copy);
@@ -2388,17 +2390,17 @@ void * w_writer_log_fts_thread(__attribute__((unused)) void * args ){
 
 void w_get_queues_size(){
 
-    s_syscheck_queue = ((decode_queue_syscheck_input->elements / (float)decode_queue_syscheck_input->size)) * 100;
-    s_syscollector_queue = ((decode_queue_syscollector_input->elements / (float)decode_queue_syscollector_input->size)) * 100;
-    s_rootcheck_queue = ((decode_queue_rootcheck_input->elements / (float)decode_queue_rootcheck_input->size)) * 100;
-    s_hostinfo_queue = ((decode_queue_hostinfo_input->elements / (float)decode_queue_hostinfo_input->size)) * 100;
-    s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size)) * 100;
-    s_process_event_queue = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size)) * 100;
+    s_syscheck_queue = ((decode_queue_syscheck_input->elements / (float)decode_queue_syscheck_input->size));
+    s_syscollector_queue = ((decode_queue_syscollector_input->elements / (float)decode_queue_syscollector_input->size));
+    s_rootcheck_queue = ((decode_queue_rootcheck_input->elements / (float)decode_queue_rootcheck_input->size));
+    s_hostinfo_queue = ((decode_queue_hostinfo_input->elements / (float)decode_queue_hostinfo_input->size));
+    s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
+    s_process_event_queue = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size));
 
-    s_writer_archives_queue = ((writer_queue->elements / (float)writer_queue->size)) * 100;
-    s_writer_alerts_queue = ((writer_queue_log->elements / (float)writer_queue_log->size)) * 100;
-    s_writer_statistical_queue = ((writer_queue_log_statistical->elements / (float)writer_queue_log_statistical->size)) * 100;
-    s_writer_firewall_queue = ((writer_queue_log_firewall->elements / (float)writer_queue_log_firewall->size)) * 100;
+    s_writer_archives_queue = ((writer_queue->elements / (float)writer_queue->size));
+    s_writer_alerts_queue = ((writer_queue_log->elements / (float)writer_queue_log->size));
+    s_writer_statistical_queue = ((writer_queue_log_statistical->elements / (float)writer_queue_log_statistical->size));
+    s_writer_firewall_queue = ((writer_queue_log_firewall->elements / (float)writer_queue_log_firewall->size));
 }
 
 void w_get_initial_queues_size(){
