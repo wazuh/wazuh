@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.4.0]
+
+### Fixed
+
+- Prevent files from remaining open in the cluster. ([#874](https://github.com/wazuh/wazuh/pull/874))
+
 ## [v3.3.2]
 
 ### Added
