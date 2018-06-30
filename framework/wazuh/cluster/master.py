@@ -92,8 +92,7 @@ class MasterManagerHandler(ServerHandler):
             string_receiver.start()
             return 'ack', self.set_worker(command, string_receiver)
         elif command == 'err-is':
-            client_id, err_msg = data.decode().split(' ',1)
-            self.isocket_handler.send_request(command=command, data=err_msg, client_name=client_id)
+            logger.debug("{} Internal socket error received: {}".format(self.tag, data.decode()))
             return 'ack','thanks'
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
@@ -403,7 +402,7 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
 
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason == 'error':
-            self.forward_msg('err-is', send_err_request)
+            self.manager_handler.isocket_handler.send_request(self.client_id, 'err-is', send_err_request)
         FragmentedStringReceiverMaster.unlock_and_stop(self, reason, None)
 
 

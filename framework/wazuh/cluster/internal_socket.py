@@ -113,6 +113,7 @@ class InternalSocketClient(communication.AbstractClient):
         communication.AbstractClient.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM,
                                               connect_query, "[InternalSocket-Client] [{}]".format(connect_query), asyncore_map)
         self.final_response = communication.Response()
+        self.string_receiver = None
 
 
     def send_request(self, command, data=None):
@@ -146,16 +147,19 @@ class InternalSocketClient(communication.AbstractClient):
 
     def process_request(self, command, data):
         if command == 'dapi_res':
-            string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
-            string_receiver.start()
-            return 'ok', self.set_worker(command, string_receiver)
+            self.string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
+            self.string_receiver.start()
+            return 'ok', self.set_worker(command, self.string_receiver)
         elif command == 'err-is':
             data = data.decode()
             logger.debug("{} Cluster has reported an error receiving data: {}".format(self.tag, data))
             self.final_response.write(json.dumps({"error":1000, "message":data}))
+            if self.string_receiver is not None:
+                self.string_receiver.stop()
             return 'ack','thanks'
         else:
             return communication.AbstractClient.process_request(self, command, data)
+
 
     def handle_error(self):
         nil, t, v, tbinfo = asyncore.compact_traceback()

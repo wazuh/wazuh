@@ -362,9 +362,6 @@ class ClientManagerHandler(ClientHandler):
 #
 # Threads (workers) created by ClientManagerHandler
 #
-
-
-
 class FragmentedAPIResponseReceiver(FragmentedStringReceiverClient):
 
     def __init__(self, manager_handler, stopper, client_id):
@@ -412,7 +409,7 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverClient):
 
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason == 'error':
-            self.forward_msg('err-is', send_err_request)
+            self.manager_handler.isocket_handler.send_request(self.client_id, 'err-is', send_err_request)
         FragmentedStringReceiverClient.unlock_and_stop(self, reason, None)
 
 

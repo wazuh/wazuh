@@ -223,7 +223,10 @@ def merge_results(responses, final_json, input_json):
                     final_json[key] = field
             elif field_type == int:
                 if key in final_json:
-                    final_json[key] += field
+                    if key == 'totalItems':
+                        final_json[key] += field
+                    elif key == 'error' and final_json[key] < field:
+                        final_json[key] = field
                 else:
                     final_json[key] = field
             else: # str
