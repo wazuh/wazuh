@@ -520,7 +520,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             case 4658:
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
                     if (w_evt->mask || w_evt->force_notify) {
-                        static const unsigned int DELETE_AND_READ_ATT = DELETE | FILE_READ_ATTRIBUTES;
                         unsigned int mask = w_evt->mask;
 
                         if (w_evt->deleted) {
@@ -529,7 +528,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         } else if (mask & FILE_WRITE_DATA) {
                             // Check if the file has been written
                             realtime_checksumfile(w_evt->path, w_evt);
-                        } else if ((mask & DELETE_AND_READ_ATT) == DELETE_AND_READ_ATT) {
+                        } else if (mask & DELETE) {
                             // The file has been moved or renamed
                             send_whodata_del(w_evt);
                         } else if (w_evt->force_notify) {
@@ -680,38 +679,38 @@ void set_policies() {
 
 void set_subscription_query(wchar_t *query) {
 
-    snwprintf(query, OS_MAXSTR, L"Event[    System[band(Keywords, %llu)]" \
-                                        "and" \
-                                            "(" \
-                                                "(" \
-                                                    "(" \
-                                                        "EventData/Data[@Name='ObjectType'] = 'File'" \
+    snwprintf(query, OS_MAXSTR, L"Event[ System[band(Keywords, %llu)] " \
+                                    "and " \
+                                        "( " \
+                                            "( " \
+                                                "( " \
+                                                    "EventData/Data[@Name='ObjectType'] = 'File' " \
+                                                ") " \
+                                            "and " \
+                                                "( " \
+                                                    "( " \
+                                                        "System/EventID = 4656 " \
+                                                    "and " \
+                                                        "( " \
+                                                            "EventData[band(Data[@Name='AccessMask'], %lu)] " \
+                                                        ") " \
                                                     ")" \
-                                                "and" \
-                                                    "(" \
-                                                        "(" \
-                                                            "System/EventID = 4656" \
-                                                        "and" \
-                                                            "(" \
-                                                                "EventData[band(Data[@Name='AccessMask'], %u)]" \
-                                                            ")" \
-                                                        ")" \
-                                                    "or" \
-                                                        "(" \
-                                                            "System/EventID = 4663" \
-                                                        "and" \
-                                                            "(" \
-                                                                "EventData[band(Data[@Name='AccessMask'], %u)]" \
-                                                            ")" \
-                                                        ")" \
-                                                    ")" \
-                                                ")" \
-                                            "or" \
-                                                "System/EventID = 4658" \
-                                            "or" \
-                                                "System/EventID = 4660" \
-                                            ")" \
-                                        "]",
+                                                "or " \
+                                                    "( " \
+                                                        "System/EventID = 4663 " \
+                                                    "and " \
+                                                        "( " \
+                                                            "EventData[band(Data[@Name='AccessMask'], %lu)] " \
+                                                        ") " \
+                                                    ") " \
+                                                ") " \
+                                            ") " \
+                                        "or " \
+                                            "System/EventID = 4658 " \
+                                        "or " \
+                                            "System/EventID = 4660 " \
+                                        ") " \
+                                    "]",
             AUDIT_SUCCESS, // Only successful events
             FILE_READ_ATTRIBUTES | FILE_WRITE_DATA | DELETE, // For 4656, write and delete events only
             FILE_WRITE_DATA | DELETE); // For 4663, write and delete events only
