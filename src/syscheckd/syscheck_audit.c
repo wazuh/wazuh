@@ -513,7 +513,8 @@ void audit_parse(char * buffer) {
     if (pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) { // Parse only 'wazuh_fim' events.
 
         if ((pconfig = strstr(buffer,"type=CONFIG_CHANGE"), pconfig)
-        && (pdelete = strstr(buffer,"op=remove_rule"), pdelete)) { // Detect rules modification.
+        && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
+            (pdelete = strstr(buffer,"op=\"remove_rule\""), pdelete))) { // Detect rules modification.
             audit_thread_active = 0;
             mwarn("Detected Audit rules manipulation: Rule removed.");
             // Send alert
