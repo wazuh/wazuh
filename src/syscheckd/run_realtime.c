@@ -96,7 +96,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             alert_msg[OS_MAXSTR] = '\0';
             char *fullalert = NULL;
 
-            if (buf[6] == 's' || buf[6] == 'n') {
+            if (buf[5] == 's' || buf[5] == 'n') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
                     snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
