@@ -173,6 +173,9 @@ int OS_ApplyVariables(OS_XML *_lxml)
                                 break;
                             }
 
+                            if (lvar[0] == '(')
+                                goto go_next;
+
                             /* Variable not found */
                             if ((j == s) && (strlen(lvar) >= 1)) {
                                 snprintf(_lxml->err, XML_ERR_LENGTH,
@@ -232,4 +235,3 @@ cleanup:
 
     return (retval);
 }
-

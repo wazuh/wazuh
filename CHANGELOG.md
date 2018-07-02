@@ -27,7 +27,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Syslog output parser when reading the timestamp from the alerts in JSON format. ([#843](https://github.com/wazuh/wazuh/pull/843))
 - Fixed filter for `gpg-pubkey` packages in Syscollector. ([#847](https://github.com/wazuh/wazuh/pull/847))
 - Fixed bug in configuration when reading the `repeated_offenders` option in Active Response. ([#873](https://github.com/wazuh/wazuh/pull/873))
-
+- Fixed variables parser when loading rules. ([#855](https://github.com/wazuh/wazuh/pull/855))
 
 ## [v3.3.1]
 
