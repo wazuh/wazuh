@@ -27,7 +27,6 @@ static const wchar_t* event_fields[] = {
     L"Event/EventData/Data[@Name='ProcessId']",
     L"Event/EventData/Data[@Name='HandleId']",
     L"Event/EventData/Data[@Name='AccessMask']",
-    L"Event/System/Keywords",
     L"Event/EventData/Data[@Name='SubjectUserSid']"
 };
 static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
@@ -265,6 +264,8 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 }
 
 int run_whodata_scan() {
+    wchar_t query[OS_MAXSTR];
+
     // Set the signal handler to restore the policies
     atexit(restore_sacls);
     // Set the system audit policies
@@ -274,8 +275,13 @@ int run_whodata_scan() {
         merror("Error creating the whodata context. Error %lu.", GetLastError());
         return 1;
     }
+
+    snwprintf(query, OS_MAXSTR, L"Event[System[band(Keywords, %llu)] and (((System/EventID = 4656 or System/EventID = 4663) and (EventData/Data[@Name='ObjectType'] = 'File')) or	System/EventID = 4658 or System/EventID = 4660)]",
+            AUDIT_SUCCESS);
+
     // Set the whodata callback
-    if (!EvtSubscribe(NULL, NULL, L"Security", L"Event[(((System/EventID = 4656 or System/EventID = 4663) and (EventData/Data[@Name='ObjectType'] = 'File')) or System/EventID = 4658 or System/EventID = 4660)]", NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
+    if (!EvtSubscribe(NULL, NULL, L"Security", query,
+            NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
         merror("Event Channel subscription could not be made. Whodata scan is disabled.");
         return 1;
     }
@@ -352,7 +358,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     char *process_name = NULL;
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
-    unsigned __int64 keywords;
     char force_notify;
     char *user_id;
     unsigned int mask;
@@ -374,17 +379,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
 
         if (fields_number != p_count) {
 			merror("Invalid number of rendered parameters.");
-            goto clean;
-        }
-
-        if (buffer[7].Type != EvtVarTypeHexInt64) {
-            merror("Invalid parameter type (%ld) for 'keywords'.", buffer[7].Type);
-            goto clean;
-        }
-        keywords = buffer[7].UInt64Val;
-
-        // Discards unsuccessful attempts
-        if (!(keywords & AUDIT_SUCCESS)) {
             goto clean;
         }
 
@@ -443,10 +437,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             mask = buffer[6].UInt32Val;
         }
 
-        if (buffer[8].Type != EvtVarTypeSid) {
-            merror("Invalid parameter type (%ld) for 'user_id'.", buffer[8].Type);
+        if (buffer[7].Type != EvtVarTypeSid) {
+            merror("Invalid parameter type (%ld) for 'user_id'.", buffer[7].Type);
             goto clean;
-        } else if (!ConvertSidToStringSid(buffer[8].SidVal, &user_id)) {
+        } else if (!ConvertSidToStringSid(buffer[7].SidVal, &user_id)) {
             mdebug1("Invalid identifier for user '%s'", user_name);
             goto clean;
         }
