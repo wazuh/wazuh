@@ -85,8 +85,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
             logf[pl].target = OS_StrBreak(',', node[i]->content, count);
+            char * tmp;
             for (n=0; n<count; n++) {
-                os_strdup(w_strtrim(logf[pl].target[n]), logf[pl].target[n]);
+                os_strdup(w_strtrim(logf[pl].target[n]), tmp);
+                free(logf[pl].target[n]);
+                logf[pl].target[n] = tmp;
             }
         } else if (strcmp(node[i]->element, xml_localfile_outformat) == 0) {
             char * target = NULL;
