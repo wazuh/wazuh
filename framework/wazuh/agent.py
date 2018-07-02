@@ -1924,6 +1924,12 @@ class Agent:
         """
         Generates a list of available versions for its distribution and version.
         """
+        invalid_platforms = ["darwin", "solaris", "aix", "hpux"]
+
+        if self.os['platform'] in invalid_platforms or self.os['platform'] = "sles" and self.os['major'] == 11:
+            error = "The WPK for this platform is not available."
+            raise WazuhException(1713, error)
+
         if (desired_version is None or desired_version[:4] >= "v3.4") and self.os['platform'] != "windows":
             versions_url = wpk_repo + "linux/" + self.os['arch'] + "/versions"
         else:
