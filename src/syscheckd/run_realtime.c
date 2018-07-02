@@ -87,6 +87,8 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 *wd_sum = '\0';
             }
 
+            free(buf);
+
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
             if (!OSHash_Update_ex(syscheck.fp, file_name, strdup(alert_msg))) {
