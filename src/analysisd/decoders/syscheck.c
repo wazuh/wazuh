@@ -574,9 +574,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                         sdb.effective_name,
                         sdb.group_name,
                         sdb.process_id,
-                        sdb.process_name,
-                        lf->data ? "What changed:\n" : "",
-                        lf->data ? lf->data : "");
+                        sdb.process_name);
 
                 if(!changes) {
                     lf->data = NULL;
@@ -587,7 +585,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
 
                 if(lf->data) {
                     snprintf(sdb.comment+comment_buf, OS_MAXSTR-comment_buf, "What changed:\n%s", lf->data);
-                    os_strdup(sdb.comment+comment_buf, lf->diff);
+                    os_strdup(lf->data, lf->diff);
                 }
 
                 lf->event_type = FIM_MODIFIED;
