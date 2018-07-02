@@ -195,8 +195,10 @@ int delete_target_file(const char *path) {
     strcat(full_path, path);
 #endif
     if(rmdir_ex(full_path) == 0){
-        remove_empty_folders(full_path);
+        mdebug1("Deleting last-entry of file '%s'", full_path);
+        return(remove_empty_folders(full_path));
     }
+    return 1;
 }
 
 #ifndef WIN32
