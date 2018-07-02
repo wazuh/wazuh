@@ -10,11 +10,13 @@ All notable changes to this project will be documented in this file.
 - Add a field to the containing those attributes that changed in last alert. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Added two options in the tag <auto_ignore> 'frequency' and `timeframe' to hide alerts when they are played several times in a given period of time. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Syscheck in frequency time show alerts from deleted files. ([#857](https://github.com/wazuh/wazuh/pull/857))
+- Added an option `target` to customize output format per-target in Logcollector. ([#863](https://github.com/wazuh/wazuh/pull/863))
 
 ### Changed
 - Changed a descriptive message in the alert showing what attributes changed. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Change visualization of Syscheck alerts. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Add all the available fields in the Syscheck messages from the Wazuh configuration files. ([#857](https://github.com/wazuh/wazuh/pull/857))
+- Now the no_full_log option only affects JSON alerts. ([#881](https://github.com/wazuh/wazuh/pull/881))
 
 ### Fixed
 
