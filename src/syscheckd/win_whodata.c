@@ -14,21 +14,39 @@
 #define WLIST_REMOVE_MAX 10 // 10%
 #define WLIST_MAX_SIZE OS_SIZE_1024
 
+// Variables whodata
 static PSID everyone_sid = NULL;
 static size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
+static EVT_HANDLE context;
+static const wchar_t* event_fields[] = {
+    L"Event/System/EventID",
+    L"Event/EventData/Data[@Name='SubjectUserName']",
+    L"Event/EventData/Data[@Name='ObjectName']",
+    L"Event/EventData/Data[@Name='ProcessName']",
+    L"Event/EventData/Data[@Name='ProcessId']",
+    L"Event/EventData/Data[@Name='HandleId']",
+    L"Event/EventData/Data[@Name='AccessMask']",
+    L"Event/System/Keywords",
+    L"Event/EventData/Data[@Name='SubjectUserSid']"
+};
+static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
+static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 
+// Whodata function headers
 void restore_sacls();
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int is_valid_sacl(PACL sacl);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
+void set_policies();
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
 void whodata_list_remove(whodata_event_node *node);
 void whodata_list_set_values();
 void whodata_list_remove_multiple(size_t quantity);
+void send_whodata_del(whodata_evt *w_evt);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -140,14 +158,14 @@ int set_winsacl(const char *dir, int position) {
     ace->Header.AceType  = SYSTEM_AUDIT_ACE_TYPE;
     ace->Header.AceFlags = inherit_flag | SUCCESSFUL_ACCESS_ACE_FLAG;
     ace->Header.AceSize  = LOWORD(sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD));
-    ace->Mask            = FILE_WRITE_DATA | DELETE;
+    ace->Mask            = FILE_WRITE_DATA | DELETE | FILE_READ_ATTRIBUTES;
     if (!CopySid(ev_sid_size, &ace->SidStart, everyone_sid)) {
         goto end;
     }
 
     // Add the new ACE
     if (!AddAce(new_sacl, ACL_REVISION, 0, (LPVOID)ace, ace->Header.AceSize)) {
-		wprintf(L"The new ACE could not be added to '%s'.", dir);
+		merror("The new ACE could not be added to '%s'.", dir);
 		goto end;
 	}
 
@@ -249,6 +267,13 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 int run_whodata_scan() {
     // Set the signal handler to restore the policies
     atexit(restore_sacls);
+    // Set the system audit policies
+    set_policies();
+    // Select the interesting fields
+    if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
+        merror("Error creating the whodata context. Error %lu.", GetLastError());
+        return 1;
+    }
     // Set the whodata callback
     if (!EvtSubscribe(NULL, NULL, L"Security", L"Event[(((System/EventID = 4656 or System/EventID = 4663) and (EventData/Data[@Name='ObjectType'] = 'File')) or System/EventID = 4658 or System/EventID = 4660)]", NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
         merror("Event Channel subscription could not be made. Whodata scan is disabled.");
@@ -319,7 +344,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     int result;
     unsigned long p_count = 0;
     unsigned long used_size;
-    EVT_HANDLE context;
     PEVT_VARIANT buffer = NULL;
     whodata_evt *w_evt;
     short event_id;
@@ -329,33 +353,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
     unsigned __int64 keywords;
+    char force_notify;
     char *user_id;
-    char force_send;
-    static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
-
     unsigned int mask;
     int position;
-    static const wchar_t* event_fields[] = {
-        L"Event/System/EventID",
-        L"Event/EventData/Data[@Name='SubjectUserName']",
-        L"Event/EventData/Data[@Name='ObjectName']",
-        L"Event/EventData/Data[@Name='ProcessName']",
-        L"Event/EventData/Data[@Name='ProcessId']",
-        L"Event/EventData/Data[@Name='HandleId']",
-        L"Event/EventData/Data[@Name='AccessMask']",
-        L"Event/System/Keywords",
-        L"Event/EventData/Data[@Name='SubjectUserSid']"
-    };
-    static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
     UNREFERENCED_PARAMETER(_void);
+
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
-
-        // Select the interesting fields
-        if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
-            wprintf(L"\nError creating the context. Error %lu.", GetLastError());
-            return 1;
-        }
 
         // Extract the necessary memory size
         EvtRender(context, event, EvtRenderEventValues, 0, NULL, &used_size, &p_count);
@@ -369,6 +374,17 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
 
         if (fields_number != p_count) {
 			merror("Invalid number of rendered parameters.");
+            goto clean;
+        }
+
+        if (buffer[7].Type != EvtVarTypeHexInt64) {
+            merror("Invalid parameter type (%ld) for 'keywords'.", buffer[7].Type);
+            goto clean;
+        }
+        keywords = buffer[7].UInt64Val;
+
+        // Discards unsuccessful attempts
+        if (!(keywords & AUDIT_SUCCESS)) {
             goto clean;
         }
 
@@ -427,12 +443,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             mask = buffer[6].UInt32Val;
         }
 
-        if (buffer[7].Type != EvtVarTypeHexInt64) {
-            merror("Invalid parameter type (%ld) for 'keywords'.", buffer[7].Type);
-            goto clean;
-        }
-        keywords = buffer[7].UInt64Val;
-
         if (buffer[8].Type != EvtVarTypeSid) {
             merror("Invalid parameter type (%ld) for 'user_id'.", buffer[8].Type);
             goto clean;
@@ -441,25 +451,28 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             goto clean;
         }
 
-        // Discards unsuccessful attempts
-        if (!(keywords & AUDIT_SUCCESS)) {
-            goto clean;
-        }
         snprintf(hash_id, 21, "%llu", handle_id);
         switch(event_id) {
             // Open fd
             case 4656:
-                force_send = 0;
                 // Check if it is a known file
                 if (!OSHash_Get_ex(syscheck.fp, path)) {
                     if (position = find_dir_pos(path, 1), position < 0) {
                         // Discard the file if its monitoring has not been activated
                         mdebug2("'%s' is discarded because its monitoring is not activated.", path);
                         break;
+                    } else {
+                        // The file is new and has to be notified
+                        force_notify = 1;
                     }
-                    force_send = 1;
                 } else {
+                    force_notify = 0;
+                    // If the file is already in the hash table, it is not necessary to set its position
                     position = -1;
+                    // If we already know the file, we are only interested in processing it if it has been opened with write or deleted permissions
+                    if (!((mask & FILE_WRITE_DATA) || (mask & DELETE))) {
+                        break;
+                    }
                 }
                 os_calloc(1, sizeof(whodata_evt), w_evt);
                 w_evt->user_name = user_name;
@@ -470,7 +483,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 w_evt->process_id = process_id;
                 w_evt->mask = 0;
                 w_evt->deleted = 0;
-                w_evt->force_send = force_send;
+                w_evt->force_notify = force_notify;
                 w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
@@ -503,6 +516,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Deleted file
             case 4660:
                 if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
+                    // The file has been deleted
                     w_evt->deleted = 1;
                 } else {
                     // The file was opened before Wazuh started Syscheck.
@@ -511,25 +525,20 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Close fd
             case 4658:
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
-                    if (w_evt->mask || w_evt->force_send) {
+                    if (w_evt->mask || w_evt->force_notify) {
+                        static const unsigned int DELETE_AND_READ_ATT = DELETE | FILE_READ_ATTRIBUTES;
                         unsigned int mask = w_evt->mask;
 
-                        // Check if the file has been written or deleted
                         if (w_evt->deleted) {
-                            char del_msg[PATH_MAX + OS_SIZE_6144 + 6];
-                            char wd_sum[OS_SIZE_6144 + 1];
-
-                            // Remove the file from the syscheck hash table
-                            OSHash_Delete_ex(syscheck.fp, w_evt->path);
-
-                            if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
-                                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);
-                                *wd_sum = '\0';
-                            }
-
-                            snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s", wd_sum, w_evt->path);
-                            send_syscheck_msg(del_msg);
-                        } else if (mask & FILE_WRITE_DATA || w_evt->force_send) {
+                            // Check if the file has been deleted
+                            send_whodata_del(w_evt);
+                        } else if (mask & FILE_WRITE_DATA) {
+                            // Check if the file has been written
+                            realtime_checksumfile(w_evt->path, w_evt);
+                        } else if ((mask & DELETE_AND_READ_ATT) == DELETE_AND_READ_ATT) {
+                            // The file has been moved or renamed
+                            send_whodata_del(w_evt);
+                        } else if (w_evt->force_notify) {
                             realtime_checksumfile(w_evt->path, w_evt);
                         }
                     }
@@ -642,4 +651,36 @@ void whodata_list_set_values() {
     syscheck.wlist.max_size, syscheck.wlist.max_remove, syscheck.wlist.alert_threshold);
 }
 
+void send_whodata_del(whodata_evt *w_evt) {
+    static char del_msg[PATH_MAX + OS_SIZE_6144 + 6];
+    static char wd_sum[OS_SIZE_6144 + 1];
+
+    // Remove the file from the syscheck hash table
+    OSHash_Delete_ex(syscheck.fp, w_evt->path);
+
+    if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
+        merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);
+        *wd_sum = '\0';
+    }
+
+    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s", wd_sum, w_evt->path);
+    send_syscheck_msg(del_msg);
+}
+
+void set_policies() {
+/*    char *output = NULL;
+    int result_code = 0;
+    char command[OS_SIZE_1024];
+    static const char *WPOL_HANDLEM = ",System,Handle Manipulation,";
+    static const char *WPOL_FILE_SYS = ",System,File System,";
+    static const char *WPOL_BACKUP_COMMAND = "auditpol \/backup \/file:\"%s\"";
+    static const char *WPOL_RESTORE_COMMAND = "auditpol \/restore \/file:\"%s\"";
+
+    snprintf()
+
+    auditpol /backup /file:"%backup_path%"
+
+    wm_exec("ee", &output, &result_code, 0);
+*/
+}
 #endif
