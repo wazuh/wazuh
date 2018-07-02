@@ -1,11 +1,32 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.3.2]
+## [v3.3.2]
+
+### Added
+
+- New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
+
+### Changed
+
+- Delete temporary files when stopping Wazuh. ([#732](https://github.com/wazuh/wazuh/pull/732))
+- Send OpenSCAP checks results to a FIFO queue instead of temporary files. ([#732](https://github.com/wazuh/wazuh/pull/732))
+- Default behavior when starting Syscheck and Rootcheck components. ([#829](https://github.com/wazuh/wazuh/pull/829))
+  - They are disabled if not appear in the configuration.
+  - They can be set up as empty blocks in the configuration, applying their default values.
+  - Improvements of error and information messages when they start.
 
 ### Fixed
 
 - Fixed active-responses.log definition path on Windows configuration. ([#739](https://github.com/wazuh/wazuh/pull/739))
+- Added warning message when updating Syscheck/Rootcheck database to restart the manager. ([#817](https://github.com/wazuh/wazuh/pull/817))
+- Fix PID file creation checking. ([#822](https://github.com/wazuh/wazuh/pull/822))
+  - Check that the PID file was created and written.
+  - This would prevent service from running multiple processes of the same daemon.
+- Fix reading of Windows platform for 64 bits systems. ([#832](https://github.com/wazuh/wazuh/pull/832))
+- Fixed Syslog output parser when reading the timestamp from the alerts in JSON format. ([#843](https://github.com/wazuh/wazuh/pull/843))
+- Fixed filter for `gpg-pubkey` packages in Syscollector. ([#847](https://github.com/wazuh/wazuh/pull/847))
+- Fixed bug in configuration when reading the `repeated_offenders` option in Active Response. ([#873](https://github.com/wazuh/wazuh/pull/873))
 - Fixed variables parser when loading rules. ([#855](https://github.com/wazuh/wazuh/pull/855))
 
 ## [v3.3.1]

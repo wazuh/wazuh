@@ -544,7 +544,7 @@ void * wcom_main(__attribute__((unused)) void * arg) {
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(DEFAULTDIR COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s'. Closing local server.", COM_LOCAL_SOCK);
+        merror("Unable to bind to socket '%s': '%s'. Closing local server.", COM_LOCAL_SOCK, strerror(errno));
         return NULL;
     }
 

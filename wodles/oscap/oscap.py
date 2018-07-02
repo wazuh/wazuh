@@ -8,16 +8,12 @@
 from re import compile
 from sys import argv, exit, version_info
 from os.path import isfile, isdir
-from tempfile import mkstemp
-from xml.etree import ElementTree
-from os import remove, close as close
-from subprocess import call, CalledProcessError, STDOUT
+from os import mkfifo, unlink
+from subprocess import CalledProcessError, STDOUT, Popen, PIPE
 from getopt import getopt, GetoptError
 from signal import signal, SIGINT
 from random import randrange
 from time import time
-import tempfile
-import string
 
 OSCAP_BIN = "oscap"
 XSLT_BIN = "xsltproc"
@@ -28,8 +24,20 @@ OSCAP_LOG_ERROR = "oscap: ERROR:"
 TEMPLATE_XCCDF = "wodles/oscap/template_xccdf.xsl"
 TEMPLATE_OVAL = "wodles/oscap/template_oval.xsl"
 CONTENT_PATH = "wodles/oscap/content"
+FIFO_PATH = "wodles/oscap/oscap.fifo"
 
-tempfile.tempdir = "tmp"
+def check_installed(arguments, stdin=None, stderr=None, shell=False):
+
+    ps = Popen(arguments,shell=shell, stdin=None, stdout=PIPE, stderr=STDOUT)
+    cmd_output = ps.communicate()[0]
+    returncode = ps.returncode
+
+    if returncode != 0:
+        error_cmd = CalledProcessError(returncode, arguments[0])
+        error_cmd.output = cmd_output
+        raise error_cmd
+    else:
+        return cmd_output
 
 if version_info[0] >= 3:
     import sys
@@ -37,33 +45,13 @@ if version_info[0] >= 3:
 
 ################################################################################
 
-try:
-    from subprocess import check_output
-except ImportError:
-    def check_output(arguments, stdin=None, stderr=None, shell=False):
-        temp_f = mkstemp()
-        returncode = call(arguments, stdin=stdin, stdout=temp_f[0], stderr=stderr, shell=shell)
-        close(temp_f[0])
-        file_o = open(temp_f[1], 'r')
-        cmd_output = file_o.read()
-        file_o.close()
-        remove(temp_f[1])
-
-        if returncode != 0:
-            error_cmd = CalledProcessError(returncode, arguments[0])
-            error_cmd.output = cmd_output
-            raise error_cmd
-        else:
-            return cmd_output
-
-
 def extract_profiles_from_file(oscap_file):
     regex_head = compile(PATTERN_HEAD)
     regex_profile = compile(PATTERN_PROFILE)
     regex_id_profile = compile(PATTERN_ID_PROFILE)
 
     try:
-        profiles_output = check_output([OSCAP_BIN, "info", oscap_file], stderr=STDOUT)
+        profiles_output = check_installed([OSCAP_BIN, "info", oscap_file], stderr=STDOUT)
         if version_info[0] >= 3:
             profiles_output = profiles_output.decode('utf-8', 'backslashreplace')
     except CalledProcessError as err:
@@ -71,7 +59,6 @@ def extract_profiles_from_file(oscap_file):
         exit(1)
 
     # Find word "Profiles:"
-
     match_head = regex_head.search(profiles_output)
 
     if not match_head:
@@ -107,11 +94,18 @@ def extract_profiles_from_file(oscap_file):
     return ex_profiles
 
 def oscap(profile=None):
-    temp = mkstemp()
-    close(temp[0])
+
+    # If FIFO exists, delete it
+    try:
+        unlink(FIFO_PATH)
+    except OSError:
+        pass
+
+    # Create an unique FIFO file
+    mkfifo(FIFO_PATH, 0666)
 
     try:
-        cmd = [OSCAP_BIN, arg_module, 'eval', '--results', temp[1]]
+        cmd = [OSCAP_BIN, arg_module, 'eval', '--results', FIFO_PATH]
 
         if profile:
             cmd.extend(["--profile", profile])
@@ -132,7 +126,7 @@ def oscap(profile=None):
         if debug:
             print("\nCMD: '{0}'".format(' '.join(cmd)))
 
-        check_output(cmd, stderr=STDOUT)
+        ps = Popen(cmd, shell=False, stdout=PIPE, stderr=STDOUT)
 
     except CalledProcessError as error:
 
@@ -141,7 +135,7 @@ def oscap(profile=None):
             # output = error.output
             print("{0} Executing profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
                                                                                                                error.output.replace('\r', '').split("\n")[0]))
-            remove(temp[1])
+            unlink(FIFO_PATH)
             return
 
     try:
@@ -161,24 +155,43 @@ def oscap(profile=None):
         scan_id = "{0}{1}".format(agent_id, int(time()))
 
         if arg_module == 'xccdf':
-            output = check_output((XSLT_BIN, TEMPLATE_XCCDF, temp[1]))
-            if version_info[0] >= 3:
-                output = output.decode('utf-8', 'backslashreplace')
 
-            for line in output.split("\n"):
-                if not line:
-                    continue
+            ps_xsltproc = Popen([XSLT_BIN, TEMPLATE_XCCDF, FIFO_PATH], stdin=None, stdout=PIPE, stderr=STDOUT)
+            ps.wait()
+            output = ps_xsltproc.communicate()[0]
+            ps_xsltproc.wait()
+            returncode = ps_xsltproc.returncode
 
-                # Adding file
-                if 'msg: "xccdf-overview"' in line:
-                    new_line = line.replace('oscap: msg: "xccdf-overview",', 'oscap: msg: "xccdf-overview", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
-                else:
-                    new_line = line.replace('oscap: msg: "xccdf-result",', 'oscap: msg: "xccdf-result", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
 
-                print(new_line)
+            if returncode != 0:
+                error_cmd = CalledProcessError(returncode, [XSLT_BIN, TEMPLATE_XCCDF, FIFO_PATH])
+                error_cmd.output = output
+                raise error_cmd
+            else:
+
+                if version_info[0] >= 3:
+                    output = output.decode('utf-8', 'backslashreplace')
+
+                for line in output.split("\n"):
+                    if not line:
+                        continue
+
+                    # Adding file
+                    if 'msg: "xccdf-overview"' in line:
+                        new_line = line.replace('oscap: msg: "xccdf-overview",', 'oscap: msg: "xccdf-overview", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
+                    else:
+                        new_line = line.replace('oscap: msg: "xccdf-result",', 'oscap: msg: "xccdf-result", scan-id: "{0}", content: "{1}",'.format(scan_id, content_filename))
+
+                    print(new_line)
 
         else:
-            output = check_output((XSLT_BIN, TEMPLATE_OVAL, temp[1]))
+
+            ps_xsltproc = Popen([XSLT_BIN, TEMPLATE_OVAL, FIFO_PATH], stdin=None, stdout=PIPE, stderr=STDOUT)
+            ps.wait()
+            output = ps_xsltproc.communicate()[0]
+            ps_xsltproc.wait()
+            returncode = ps_xsltproc.returncode
+
             if version_info[0] >= 3:
                 output = output.decode('utf-8', 'backslashreplace')
 
@@ -222,7 +235,7 @@ def oscap(profile=None):
         print("{0} Formatting data for profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
                                                                                                            error.output.replace('\r', '').split("\n")[0]))
 
-    remove(temp[1])
+    unlink(FIFO_PATH)
 
 def signal_handler(n_signal, frame):
     print("\nExiting...({0})".format(n_signal))
@@ -328,23 +341,26 @@ if __name__ == "__main__":
 
     # Check oscap installed
     try:
-        output_installed = check_output([OSCAP_BIN, "-V"], stderr=STDOUT)
+        output_installed = check_installed([OSCAP_BIN, "-V"], stderr=STDOUT)
     except Exception as e:
         if "No such file or directory" in e:
             print("{0} OpenSCAP not installed. Details: {1}.".format(OSCAP_LOG_ERROR, e))
         else:
             print("{0} Impossible to execute OpenSCAP. Details: {1}.".format(OSCAP_LOG_ERROR, e))
+
         exit(1)
 
     # Check xsltproc installed
     try:
-        output_installed = check_output([XSLT_BIN, "-V"], stderr=STDOUT)
+        output_installed = check_installed([XSLT_BIN, "-V"], stderr=STDOUT)
+
     except Exception as e:
         if "No such file or directory" in e:
             print("{0} xsltproc not installed. Details: {1}.".format(OSCAP_LOG_ERROR, e))
         else:
             print("{0} Impossible to execute xsltproc. Details: {1}.".format(OSCAP_LOG_ERROR, e))
         exit(1)
+
 
     # Check policy
     if not isfile(arg_file):
@@ -369,7 +385,6 @@ if __name__ == "__main__":
             profiles = extract_profiles_from_file(arg_file)
     else:
         profiles = None
-
     # Execute checkings
     if profiles:
         for profile in profiles:

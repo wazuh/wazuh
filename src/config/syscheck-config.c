@@ -571,6 +571,14 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     syscheck = (syscheck_config *)configp;
     unsigned int nodiff_size = 0;
 
+    /* If no options are defined, disable it */
+    if (!node) {
+        syscheck->disabled = 1;
+        return 0;
+    } else {
+        syscheck->disabled = 0;
+    }
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);

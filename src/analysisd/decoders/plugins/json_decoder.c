@@ -9,6 +9,7 @@
 */
 
 #include "../plugin_decoders.h"
+#include "../decoder.h"
 
 #include "shared.h"
 #include "eventinfo.h"
@@ -202,6 +203,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
     static const char * VALUE_TRUE = "true";
     static const char * VALUE_FALSE = "false";
     static const char * VALUE_COMMA = ",";
+    static const char * VALUE_EMPTY = "";
 
     cJSON *next, *array;
     char *key = NULL;
@@ -325,7 +327,11 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_NULL:
-                fillData(lf, key, VALUE_NULL);
+                if (lf->decoder_info->flags == EMPTY) {
+                    fillData(lf, key, VALUE_EMPTY);
+                } else if (lf->decoder_info->flags == SHOW_STRING) {
+                    fillData(lf, key, VALUE_NULL);
+                }
                 break;
 
             case cJSON_True:

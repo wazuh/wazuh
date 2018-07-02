@@ -22,8 +22,10 @@ static void helpmsg()
 {
     printf("\n%s %s: Manages the integrity checking database.\n",
            __ossec_name, ARGV0);
-    printf("Available options:\n");
+    printf("Available options:\n\n");
     printf("\t-h          This help message.\n");
+    printf("\t-V          Print version.\n");
+    printf("\t-D          Debug mode.\n\n");
     printf("\t-l          List available (active or not) agents.\n");
     printf("\t-lc         List only active agents.\n");
     printf("\t-u <id>     Updates (clear) the database for the agent.\n");
@@ -242,10 +244,10 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "data", "Integrity check database updated");
+                cJSON_AddStringToObject(json_root, "data", "Integrity check database updated. Restart the manager to apply changes.");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
-                printf("\n** Integrity check database updated.\n\n");
+                printf("\n** Integrity check database updated. Restart the manager to apply changes.\n\n");
 
             exit(0);
         }
@@ -276,10 +278,10 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "data", "Integrity check database updated");
+                cJSON_AddStringToObject(json_root, "data", "Integrity check database updated. Restart the manager to apply changes.");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
-                printf("\n** Integrity check database updated.\n\n");
+                printf("\n** Integrity check database updated. Restart the manager to apply changes.\n\n");
 
             exit(0);
         }
@@ -314,10 +316,10 @@ int main(int argc, char **argv)
 
             if (json_output) {
                 cJSON_AddNumberToObject(json_root, "error", 0);
-                cJSON_AddStringToObject(json_root, "data", "Integrity check database updated");
+                cJSON_AddStringToObject(json_root, "data", "Integrity check database updated. Restart the manager to apply changes.");
                 printf("%s", cJSON_PrintUnformatted(json_root));
             } else
-                printf("\n** Integrity check database updated.\n\n");
+                printf("\n** Integrity check database updated. Restart the manager to apply changes.\n\n");
 
             exit(0);
         }

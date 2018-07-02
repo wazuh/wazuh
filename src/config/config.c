@@ -90,14 +90,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CRULES) && (Read_Rules(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, ossyscheck) == 0)) {
+        } else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
             if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osrootcheck) == 0)) {
+        } else if (strcmp(node[i]->element, osrootcheck) == 0) {
             if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
