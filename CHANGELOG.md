@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Fixed registry_ignore problem on syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
 - Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
 - Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
+- Fix memory leak reading logcollector config. ([#884](https://github.com/wazuh/wazuh/pull/884))
 
 ## [v3.3.1]
 
