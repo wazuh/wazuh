@@ -428,10 +428,18 @@ int realtime_adddir(const char *dir, int whodata)
             return -1;
         }
 
+        /* Maximum limit for realtime on Windows */
+        if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
+            merror("Unable to add directory to whodata monitoring: '%s' - Maximum size permitted.", dir);
+            return (0);
+        }
+
         if (set_winsacl(dir, whodata - 1)) {
             merror("Unable to add directory to whodata monitoring: '%s'.", dir);
             return 0;
         }
+
+        syscheck.realtime->fd++;
         return 1;
     }
 
