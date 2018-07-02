@@ -39,6 +39,7 @@ int is_valid_sacl(PACL sacl);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
 void set_policies();
+void set_subscription_query(wchar_t *query);
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
@@ -276,8 +277,7 @@ int run_whodata_scan() {
         return 1;
     }
 
-    snwprintf(query, OS_MAXSTR, L"Event[System[band(Keywords, %llu)] and (((System/EventID = 4656 or System/EventID = 4663) and (EventData/Data[@Name='ObjectType'] = 'File')) or	System/EventID = 4658 or System/EventID = 4660)]",
-            AUDIT_SUCCESS);
+    set_subscription_query(query);
 
     // Set the whodata callback
     if (!EvtSubscribe(NULL, NULL, L"Security", query,
@@ -490,7 +490,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                     if (!result) {
                         merror("The event could not be added to the whodata hash table.");
                     } else if (result == 1) {
-                        merror("The event could not be added to the whodata hash table because is duplicated.");
+                        merror("The event could not be added to the whodata hash table because it is duplicated.");
                     }
                     retval = 1;
                     goto clean;
@@ -677,4 +677,44 @@ void set_policies() {
     wm_exec("ee", &output, &result_code, 0);
 */
 }
+
+void set_subscription_query(wchar_t *query) {
+
+    snwprintf(query, OS_MAXSTR, L"Event[    System[band(Keywords, %llu)]" \
+                                        "and" \
+                                            "(" \
+                                                "(" \
+                                                    "(" \
+                                                        "EventData/Data[@Name='ObjectType'] = 'File'" \
+                                                    ")" \
+                                                "and" \
+                                                    "(" \
+                                                        "(" \
+                                                            "System/EventID = 4656" \
+                                                        "and" \
+                                                            "(" \
+                                                                "EventData[band(Data[@Name='AccessMask'], %u)]" \
+                                                            ")" \
+                                                        ")" \
+                                                    "or" \
+                                                        "(" \
+                                                            "System/EventID = 4663" \
+                                                        "and" \
+                                                            "(" \
+                                                                "EventData[band(Data[@Name='AccessMask'], %u)]" \
+                                                            ")" \
+                                                        ")" \
+                                                    ")" \
+                                                ")" \
+                                            "or" \
+                                                "System/EventID = 4658" \
+                                            "or" \
+                                                "System/EventID = 4660" \
+                                            ")" \
+                                        "]",
+            AUDIT_SUCCESS, // Only successful events
+            FILE_READ_ATTRIBUTES | FILE_WRITE_DATA | DELETE, // For 4656, write and delete events only
+            FILE_WRITE_DATA | DELETE); // For 4663, write and delete events only
+}
+
 #endif
