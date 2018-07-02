@@ -111,7 +111,7 @@
     <if_sid>500</if_sid>
     <match>^ossec: Audit:</match>
     <description>Syscheck Audit: $(extra_data)</description>
-    <group>syscheck,</group>
+    <group>syscheck,gdpr_II_5.1.f,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="518" level="9">
