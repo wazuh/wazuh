@@ -94,6 +94,7 @@ typedef struct whodata_event_list {
 
 typedef struct whodata {
     OSHash *fd;        // Open file descriptors
+    OSHash *ignored_paths;        // Open file descriptors
     int *ignore_rest;       // List of directories whose SACL will not be restored
 } whodata;
 

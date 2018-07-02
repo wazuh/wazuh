@@ -382,19 +382,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             goto clean;
         }
 
-        // Check types
         if (buffer[0].Type != EvtVarTypeUInt16) {
             merror("Invalid parameter type (%ld) for 'event_id'.", buffer[0].Type);
             goto clean;
         }
         event_id = buffer[0].Int16Val;
 
-        if (buffer[1].Type != EvtVarTypeString) {
-            merror("Invalid parameter type (%ld) for 'user_name'.", buffer[1].Type);
-            goto clean;
-        }
-        user_name = convert_windows_string(buffer[1].XmlVal);
-
+        // Check types
         if (buffer[2].Type != EvtVarTypeString) {
             if (event_id == 4658 || event_id == 4660) {
                 path = NULL;
@@ -404,7 +398,18 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             }
         }  else {
             path = convert_windows_string(buffer[2].XmlVal);
+            if (OSHash_Get_ex(syscheck.wdata.ignored_paths, path)) {
+                // The file has been marked as ignored
+                mdebug2("The file '%s' has been marked as ignored, so it will be discarded.", path);
+                goto clean;
+            }
         }
+
+        if (buffer[1].Type != EvtVarTypeString) {
+            merror("Invalid parameter type (%ld) for 'user_name'.", buffer[1].Type);
+            goto clean;
+        }
+        user_name = convert_windows_string(buffer[1].XmlVal);
 
         if (buffer[3].Type != EvtVarTypeString) {
             merror("Invalid parameter type (%ld) for 'process_name'.", buffer[3].Type);
@@ -444,16 +449,22 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             mdebug1("Invalid identifier for user '%s'", user_name);
             goto clean;
         }
-
         snprintf(hash_id, 21, "%llu", handle_id);
         switch(event_id) {
             // Open fd
             case 4656:
                 // Check if it is a known file
                 if (!OSHash_Get_ex(syscheck.fp, path)) {
-                    if (position = find_dir_pos(path, 1), position < 0) {
+                    if (!IsFile(path) || ((position = find_dir_pos(path, 1)) < 0)) {
                         // Discard the file if its monitoring has not been activated
                         mdebug2("'%s' is discarded because its monitoring is not activated.", path);
+                        if (result = OSHash_Add_ex(syscheck.wdata.ignored_paths, path, &fields_number), result != 2) {
+                            if (!result) {
+                                merror("The event could not be added to the ignored hash table. File: '%s'.", path);
+                            } else if (result == 1) {
+                                merror("The event could not be added to the ignored hash table because it is duplicated. File: '%s'.", path);
+                            }
+                        }
                         break;
                     } else {
                         // The file is new and has to be notified
@@ -562,10 +573,15 @@ clean:
 }
 
 int whodata_audit_start() {
+    // Set the hash table of ignored paths
+    if (syscheck.wdata.ignored_paths = OSHash_Create(), !syscheck.wdata.ignored_paths) {
+        return 1;
+    }
+    // Set the hash table of file descriptors
+    // We assume that its default value is 1024
     if (syscheck.wdata.fd = OSHash_Create(), !syscheck.wdata.fd) {
         return 1;
     }
-    OSHash_setSize_ex(syscheck.wdata.fd, WLIST_MAX_SIZE);
     memset(&syscheck.wlist, 0, sizeof(whodata_event_list));
     whodata_list_set_values();
     return 0;
@@ -678,7 +694,6 @@ void set_policies() {
 }
 
 void set_subscription_query(wchar_t *query) {
-
     snwprintf(query, OS_MAXSTR, L"Event[ System[band(Keywords, %llu)] " \
                                     "and " \
                                         "( " \
