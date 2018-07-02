@@ -14,10 +14,26 @@
 #define WLIST_REMOVE_MAX 10 // 10%
 #define WLIST_MAX_SIZE OS_SIZE_1024
 
+// Variables whodata
 static PSID everyone_sid = NULL;
 static size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
+static EVT_HANDLE context;
+static const wchar_t* event_fields[] = {
+    L"Event/System/EventID",
+    L"Event/EventData/Data[@Name='SubjectUserName']",
+    L"Event/EventData/Data[@Name='ObjectName']",
+    L"Event/EventData/Data[@Name='ProcessName']",
+    L"Event/EventData/Data[@Name='ProcessId']",
+    L"Event/EventData/Data[@Name='HandleId']",
+    L"Event/EventData/Data[@Name='AccessMask']",
+    L"Event/System/Keywords",
+    L"Event/EventData/Data[@Name='SubjectUserSid']"
+};
+static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
+static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 
+// Whodata function headers
 void restore_sacls();
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int is_valid_sacl(PACL sacl);
@@ -149,7 +165,7 @@ int set_winsacl(const char *dir, int position) {
 
     // Add the new ACE
     if (!AddAce(new_sacl, ACL_REVISION, 0, (LPVOID)ace, ace->Header.AceSize)) {
-		wprintf(L"The new ACE could not be added to '%s'.", dir);
+		merror("The new ACE could not be added to '%s'.", dir);
 		goto end;
 	}
 
@@ -253,6 +269,11 @@ int run_whodata_scan() {
     atexit(restore_sacls);
     // Set the system audit policies
     set_policies();
+    // Select the interesting fields
+    if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
+        merror("Error creating the whodata context. Error %lu.", GetLastError());
+        return 1;
+    }
     // Set the whodata callback
     if (!EvtSubscribe(NULL, NULL, L"Security", L"Event[(((System/EventID = 4656 or System/EventID = 4663) and (EventData/Data[@Name='ObjectType'] = 'File')) or System/EventID = 4658 or System/EventID = 4660)]", NULL, NULL, (EVT_SUBSCRIBE_CALLBACK)whodata_callback, EvtSubscribeToFutureEvents)) {
         merror("Event Channel subscription could not be made. Whodata scan is disabled.");
@@ -323,7 +344,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     int result;
     unsigned long p_count = 0;
     unsigned long used_size;
-    EVT_HANDLE context;
     PEVT_VARIANT buffer = NULL;
     whodata_evt *w_evt;
     short event_id;
@@ -335,31 +355,12 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     unsigned __int64 keywords;
     char force_notify;
     char *user_id;
-    static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
-
     unsigned int mask;
     int position;
-    static const wchar_t* event_fields[] = {
-        L"Event/System/EventID",
-        L"Event/EventData/Data[@Name='SubjectUserName']",
-        L"Event/EventData/Data[@Name='ObjectName']",
-        L"Event/EventData/Data[@Name='ProcessName']",
-        L"Event/EventData/Data[@Name='ProcessId']",
-        L"Event/EventData/Data[@Name='HandleId']",
-        L"Event/EventData/Data[@Name='AccessMask']",
-        L"Event/System/Keywords",
-        L"Event/EventData/Data[@Name='SubjectUserSid']"
-    };
-    static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
     UNREFERENCED_PARAMETER(_void);
+
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
-
-        // Select the interesting fields
-        if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
-            merror("Error creating the context. Error %lu.", GetLastError());
-            return 1;
-        }
 
         // Extract the necessary memory size
         EvtRender(context, event, EvtRenderEventValues, 0, NULL, &used_size, &p_count);
