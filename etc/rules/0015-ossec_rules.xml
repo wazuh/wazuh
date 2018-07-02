@@ -107,6 +107,13 @@
     <group>rootcheck,gdpr_IV_30.1.g,</group>
   </rule>
 
+  <rule id="517" level="7">
+    <if_sid>500</if_sid>
+    <match>^ossec: Audit:</match>
+    <description>Syscheck Audit: $(extra_data)</description>
+    <group>syscheck,</group>
+  </rule>
+
   <rule id="518" level="9">
     <if_sid>514</if_sid>
     <match>Adware|Spyware</match>

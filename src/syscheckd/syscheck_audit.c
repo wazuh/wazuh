@@ -517,6 +517,10 @@ void audit_parse(char * buffer) {
         && (pdelete = strstr(buffer,"op=remove_rule"), pdelete)) { // Detect rules modification.
             audit_thread_active = 0;
             mwarn("Detected Audit rules manipulation: Rule removed.");
+            // Send alert
+            char msg_alert[512 + 1];
+            snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Rule removed");
+            SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 
         } else if (psuccess = strstr(buffer,"success=yes"), psuccess) {
 
@@ -739,6 +743,10 @@ void * audit_main(int * audit_sock) {
         if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), !byteRead) {
             // Connection closed
             minfo("Audit: connection closed.");
+            // Send alert
+            char msg_alert[512 + 1];
+            snprintf(msg_alert, 512, "ossec: Audit: Connection closed");
+            SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
             break;
         }
 
@@ -802,6 +810,12 @@ void * audit_main(int * audit_sock) {
     merror("Audit thread finished.");
     free(buffer);
     close(*audit_sock);
+
+    // Send alert
+    char msg_alert[512 + 1];
+    snprintf(msg_alert, 512, "ossec: Audit: Reading thread finished");
+    SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+
     regfree(&regexCompiled_uid);
     regfree(&regexCompiled_auid);
     regfree(&regexCompiled_euid);

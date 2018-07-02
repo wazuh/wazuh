@@ -20,6 +20,15 @@
   <order>extra_data</order>
 </decoder>
 
+<!-- ossec: Audit: Detected rules manipulation: Rule removed -->
+<decoder name="ossec-syscheck-audit">
+  <parent>ossec</parent>
+  <type>ossec</type>
+  <prematch offset="after_parent">^Audit:</prematch>
+  <regex offset="after_prematch">^ (\.+)</regex>
+  <order>extra_data</order>
+</decoder>
+
 <decoder name="ossec-agent">
   <parent>ossec</parent>
   <type>ossec</type>
