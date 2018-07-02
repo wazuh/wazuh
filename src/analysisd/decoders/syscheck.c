@@ -558,8 +558,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                         "%s"
                         "%s"
                         "%s"
-                        "%s"
-                        "%s%s",
+                        "%s",
                         f_name,
                         lf->fields[SK_CHFIELDS].value,
                         sdb.size,
