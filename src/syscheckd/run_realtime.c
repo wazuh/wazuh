@@ -73,6 +73,8 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             }
 
             send_syscheck_msg(alert_msg);
+            struct timeval timeout = {0, syscheck.rt_delay * 1000};
+            select(0, NULL, NULL, NULL, &timeout);
             return (0);
         }
 
@@ -109,6 +111,8 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 snprintf(alert_msg, 912, "%s!%s %s", c_sum, wd_sum, file_name);
             }
             send_syscheck_msg(alert_msg);
+            struct timeval timeout = {0, syscheck.rt_delay * 1000};
+            select(0, NULL, NULL, NULL, &timeout);
 
             free(buf);
 

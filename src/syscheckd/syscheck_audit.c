@@ -687,10 +687,6 @@ void audit_parse(char * buffer) {
             free(path0);
             free(path1);
 
-
-            struct timeval timeout = {0, syscheck.rt_delay * 1000};
-            select(0, NULL, NULL, NULL, &timeout);
-
             free_whodata_event(w_evt);
         }
     }
