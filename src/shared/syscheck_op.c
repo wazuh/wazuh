@@ -74,6 +74,12 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum) {
         return -1;
 
     *(c_inode++) = '\0';
+
+    sum->sha256 = NULL;
+    
+    if ((sum->sha256 = strchr(c_inode, ':')))
+        *(sum->sha256++) = '\0'; 
+
     sum->mtime = atol(c_mtime);
     sum->inode = atol(c_inode);
     return 0;
@@ -98,6 +104,9 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 
     lf->mtime_after = sum->mtime;
     lf->inode_after = sum->inode;
+
+    if(sum->sha256)
+        os_strdup(sum->sha256, lf->sha256_after);
 
     /* Fields */
 
@@ -125,6 +134,9 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_calloc(20, sizeof(char), lf->fields[SK_INODE].value);
         snprintf(lf->fields[SK_INODE].value, 20, "%ld", sum->inode);
     }
+
+    if(sum->sha256)
+        os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {

@@ -34,6 +34,8 @@ typedef struct _alert_data {
     char *new_md5;
     char *old_sha1;
     char *new_sha1;
+    char *old_sha256;
+    char *new_sha256;
     char **log;
     char *srcgeoip;
     char *dstgeoip;

@@ -40,6 +40,9 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         }
     }
 
+    if (!node)
+        return 0;
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);

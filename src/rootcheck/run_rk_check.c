@@ -112,7 +112,7 @@ void run_rk_check()
     if (rootcheck.checks.rc_files) {
         if (!rootcheck.rootkit_files) {
 #ifndef WIN32
-            mtinfo(ARGV0, "No rootcheck_files file configured.");
+            mterror(ARGV0, "No rootcheck_files file configured.");
 #endif
         } else {
             fp = fopen(rootcheck.rootkit_files, "r");
@@ -132,7 +132,7 @@ void run_rk_check()
     if (rootcheck.checks.rc_trojans) {
         if (!rootcheck.rootkit_trojans) {
 #ifndef WIN32
-            mtinfo(ARGV0, "No rootcheck_trojans file configured.");
+            mterror(ARGV0, "No rootcheck_trojans file configured.");
 #endif
         } else {
             fp = fopen(rootcheck.rootkit_trojans, "r");

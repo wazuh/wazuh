@@ -47,6 +47,7 @@ static void read_internal(int debug_level)
 {
     syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
+    syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
 
     /* Check current debug_level
      * Command line setting takes precedence
@@ -115,40 +116,43 @@ int Start_win32_Syscheck()
         syscheck.rootcheck = 0;
     }
 
-    /* Print options */
-    r = 0;
-    while (syscheck.registry[r].entry != NULL) {
-        minfo("Monitoring registry entry: '%s%s'.", syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
-        r++;
-    }
+    if (!syscheck.disabled) {
 
-    /* Print directories to be monitored */
-    r = 0;
-    while (syscheck.dir[r] != NULL) {
-	char optstr[ 100 ];
-        minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-        r++;
-    }
-
-    /* Print ignores. */
-    if(syscheck.ignore)
-	for (r = 0; syscheck.ignore[r] != NULL; r++)
-	    minfo("Ignoring: '%s'", syscheck.ignore[r]);
-
-    /* Print files with no diff. */
-    if (syscheck.nodiff){
+        /* Print options */
         r = 0;
-        while (syscheck.nodiff[r] != NULL) {
-            minfo("No diff for file: '%s'", syscheck.nodiff[r]);
+        while (syscheck.registry[r].entry != NULL) {
+            minfo("Monitoring registry entry: '%s%s'.", syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
             r++;
         }
+
+        /* Print directories to be monitored */
+        r = 0;
+        while (syscheck.dir[r] != NULL) {
+            char optstr[ 100 ];
+            minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            r++;
+        }
+
+        /* Print ignores. */
+        if(syscheck.ignore)
+            for (r = 0; syscheck.ignore[r] != NULL; r++)
+                minfo("Ignoring: '%s'", syscheck.ignore[r]);
+
+        /* Print files with no diff. */
+        if (syscheck.nodiff){
+            r = 0;
+            while (syscheck.nodiff[r] != NULL) {
+                minfo("No diff for file: '%s'", syscheck.nodiff[r]);
+                r++;
+            }
+        }
+
+        /* Start up message */
+        minfo(STARTUP_MSG, getpid());
     }
 
-    /* Start up message */
-    minfo(STARTUP_MSG, getpid());
-
     /* Some sync time */
-    sleep(syscheck.tsleep + 10);
+    sleep(syscheck.tsleep * 5);
 
     /* Wait if agent started properly */
     os_wait();
@@ -287,6 +291,10 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
+    if (syscheck.rootcheck) {
+        rootcheck_connect();
+    }
+
     /* Initial time to settle */
     sleep(syscheck.tsleep + 2);
 
@@ -305,52 +313,55 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
+    if (!syscheck.disabled) {
+
+        /* Start up message */
+        minfo(STARTUP_MSG, (int)getpid());
+
+        /* Print directories to be monitored */
+        r = 0;
+        while (syscheck.dir[r] != NULL) {
+            char optstr[ 100 ];
+            minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            r++;
+        }
+
+        /* Print ignores. */
+        if(syscheck.ignore)
+            for (r = 0; syscheck.ignore[r] != NULL; r++)
+                minfo("Ignoring: '%s'", syscheck.ignore[r]);
+
+        /* Print files with no diff. */
+        if (syscheck.nodiff){
+            r = 0;
+            while (syscheck.nodiff[r] != NULL) {
+                minfo("No diff for file: '%s'", syscheck.nodiff[r]);
+                r++;
+            }
+        }
+
+        /* Check directories set for real time */
+        r = 0;
+        while (syscheck.dir[r] != NULL) {
+            if (syscheck.opts[r] & CHECK_REALTIME) {
+  #ifdef INOTIFY_ENABLED
+                minfo("Directory set for real time monitoring: '%s'.", syscheck.dir[r]);
+  #elif defined(WIN32)
+                minfo("Directory set for real time monitoring: '%s'.", syscheck.dir[r]);
+  #else
+                mwarn("Ignoring flag for real time monitoring on directory: '%s'.", syscheck.dir[r]);
+  #endif
+            }
+            r++;
+        }
+    }
 
     if (syscheck.rootcheck) {
         mtinfo("rootcheck", STARTUP_MSG, (int)getpid());
     }
 
-    /* Print directories to be monitored */
-    r = 0;
-    while (syscheck.dir[r] != NULL) {
-	char optstr[ 100 ];
-        minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-        r++;
-    }
-
-    /* Print ignores. */
-    if(syscheck.ignore)
-	for (r = 0; syscheck.ignore[r] != NULL; r++)
-	    minfo("Ignoring: '%s'", syscheck.ignore[r]);
-
-    /* Print files with no diff. */
-    if (syscheck.nodiff){
-        r = 0;
-        while (syscheck.nodiff[r] != NULL) {
-            minfo("No diff for file: '%s'", syscheck.nodiff[r]);
-            r++;
-        }
-    }
-
-    /* Check directories set for real time */
-    r = 0;
-    while (syscheck.dir[r] != NULL) {
-        if (syscheck.opts[r] & CHECK_REALTIME) {
-#ifdef INOTIFY_ENABLED
-            minfo("Directory set for real time monitoring: '%s'.", syscheck.dir[r]);
-#elif defined(WIN32)
-            minfo("Directory set for real time monitoring: '%s'.", syscheck.dir[r]);
-#else
-            mwarn("Ignoring flag for real time monitoring on directory: '%s'.", syscheck.dir[r]);
-#endif
-        }
-        r++;
-    }
-
     /* Some sync time */
-    sleep(syscheck.tsleep + 10);
+    sleep(syscheck.tsleep * 5);
 
     /* Start the daemon */
     start_daemon();
