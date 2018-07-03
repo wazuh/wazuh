@@ -145,7 +145,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     if(lf->filename) {
         file_diff = cJSON_CreateObject();
-        changed_fields = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "syscheck", file_diff);
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
 
