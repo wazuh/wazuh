@@ -27,6 +27,16 @@ typedef struct _logsocket {
     time_t last_attempt;
 } logsocket;
 
+typedef struct _outformat {
+    char * target;
+    char * format;
+} outformat;
+
+typedef struct _logtarget {
+    char * format;
+    logsocket * log_socket;
+} logtarget;
+
 /* Logreader config */
 typedef struct _logreader {
     off_t size;
@@ -52,9 +62,9 @@ typedef struct _logreader {
     char *alias;
     char future;
     char *query;
-    char *outformat;
+    outformat ** out_format;
     char **target;
-    logsocket **target_socket;
+    logtarget * log_target;
     int duplicated;
     wlabel_t *labels;
 
