@@ -27,7 +27,8 @@ static const wchar_t* event_fields[] = {
     L"Event/EventData/Data[@Name='ProcessId']",
     L"Event/EventData/Data[@Name='HandleId']",
     L"Event/EventData/Data[@Name='AccessMask']",
-    L"Event/EventData/Data[@Name='SubjectUserSid']"
+    L"Event/EventData/Data[@Name='SubjectUserSid']",
+    L"Event/System/TimeCreated/@SystemTime"
 };
 static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
@@ -47,6 +48,8 @@ void whodata_list_remove(whodata_event_node *node);
 void whodata_list_set_values();
 void whodata_list_remove_multiple(size_t quantity);
 void send_whodata_del(whodata_evt *w_evt);
+int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
+int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -364,6 +367,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     unsigned int mask;
     int position;
     whodata_directory *w_dir;
+    SYSTEMTIME system_time;
     UNREFERENCED_PARAMETER(_void);
 
     if (action == EvtSubscribeActionDeliver) {
@@ -459,9 +463,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 is_directory = 0;
                 position = -1;
                 // Check if it is a known file
-                if (!OSHash_Get_ex(syscheck.fp, path)) {
+                if (path && !OSHash_Get_ex(syscheck.fp, path)) {
                     // Check if it is not a directory
-                    if (IsDir(path)) {
+                    if (path[1] == ':' && IsDir(path)) {
                         if (position = find_dir_pos(path, 1), position < 0) {
                             // Discard the file if its monitoring has not been activated
                             mdebug2("'%s' is discarded because its monitoring is not activated.", path);
@@ -487,6 +491,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         is_directory = 1;
                     }
                 }
+
                 os_calloc(1, sizeof(whodata_evt), w_evt);
                 w_evt->user_name = user_name;
                 w_evt->user_id = user_id;
@@ -510,7 +515,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 user_id = NULL;
                 path = NULL;
                 process_name = NULL;
-
                 if (result = OSHash_Add_ex(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
                     if (!result) {
                         merror("The event could not be added to the whodata hash table.");
@@ -527,14 +531,27 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 if (mask) {
                     if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                         w_evt->mask |= mask;
+
                         if (w_evt->scan_directory && (mask & FILE_WRITE_DATA)) {
                             if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, path), w_dir) {
-                                if (0) { // check timestamp ~~~~~~~~~~~~~~
+                                // Get the event time
+                                if (buffer[8].Type != EvtVarTypeFileTime) {
+                                    merror("Invalid parameter type (%ld) for 'event_time'.", buffer[8].Type);
                                     w_evt->scan_directory = 2;
-                                    break;
+                                    goto clean;
                                 }
-                                mdebug2("New files have been detected in the '%s' directory after the last scan.", path);
+                                if (!get_file_time(buffer[8].FileTimeVal, &system_time)) {
+                                    merror("Could not get the time of the event whose handler is '%I64d'.", handle_id);
+                                    goto clean;
+                                }
 
+                                /*
+                                if (check_dir_timestamp(&w_dir->timestamp, &system_time)) {
+                                    mdebug2("The '%s' directory has been scanned at 'd', so it does not need to do it again.", path);
+                                    w_evt->scan_directory = 3;
+                                    break;
+                                }*/
+                                mdebug2("New files have been detected in the '%s' directory after the last scan.", path);
                             } else {
                                 // Check if is a valid directory
                                 if (position = find_dir_pos(path, 1), position < 0) {
@@ -603,7 +620,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         } else {
                             mdebug2("The '%s' directory has not been scanned because no new files have been detected. Mask: '%x'", w_evt->path, w_evt->mask);
                         }
-                    } else {
+                    } else if (w_evt->scan_directory == 2) {
                         mdebug1("Scanning of the '%s' directory is aborted because something has gone wrong.", w_evt->path);
                     }
                     whodata_list_remove(w_evt->wnode);
@@ -791,6 +808,23 @@ void set_subscription_query(wchar_t *query) {
                                     "]",
             AUDIT_SUCCESS, // Only successful events
             FILE_WRITE_DATA | DELETE); // For 4663 and 4656, write and delete events only
+}
+
+int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time) {
+    FILETIME file_time;
+    file_time.dwHighDateTime = (DWORD)((file_time_val >> 32) & 0xFFFFFFFF);
+    file_time.dwLowDateTime = (DWORD)(file_time_val & 0xFFFFFFFF);
+    return FileTimeToSystemTime(&file_time, system_time);
+}
+
+int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time) {
+    struct tm *parsed_time = localtime(timestamp);
+    minfo("~~~~~~~~~~~~hour     1:%d       2:%d", parsed_time->tm_hour, system_time->wHour);
+    minfo("~~~~~~~~~~~~minute     1:%d       2:%d", parsed_time->tm_min, system_time->wMinute);
+    minfo("~~~~~~~~~~~~second     1:%d       2:%d", parsed_time->tm_sec, system_time->wSecond);
+
+
+    return 0;
 }
 
 #endif
