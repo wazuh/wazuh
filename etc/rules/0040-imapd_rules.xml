@@ -6,7 +6,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<var name="IMAPD_FREQ">6</var>
+<var name="IMAPD_FREQ">8</var>
 
 <group name="syslog,imapd,">
   <rule id="3600" level="0" noalert="1">

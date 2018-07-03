@@ -112,13 +112,13 @@
   </rule>
 
 
-  <rule id="7750" level="10" frequency="6" timeframe="240">
+  <rule id="7750" level="10" frequency="8" timeframe="240">
     <if_matched_sid>7711</if_matched_sid>
     <group>gdpr_IV_35.7.d,</group>
     <description>Multiple Microsoft Security Essentials AV warnings detected.</description>
   </rule>
 
-  <rule id="7751" level="10" frequency="6" timeframe="240">
+  <rule id="7751" level="10" frequency="8" timeframe="240">
     <if_matched_sid>7712</if_matched_sid>
     <group>gdpr_IV_35.7.d,</group>
     <description>Multiple Microsoft Security Essentials AV warnings detected.</description>

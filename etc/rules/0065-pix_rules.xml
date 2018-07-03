@@ -191,38 +191,38 @@
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="4380" level="10" frequency="6" timeframe="360">
+  <rule id="4380" level="10" frequency="8" timeframe="360">
     <if_matched_sid>4310</if_matched_sid>
     <description>Multiple PIX alert messages.</description>
     <group>pci_dss_10.6.1,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="4381" level="10" frequency="6" timeframe="360">
+  <rule id="4381" level="10" frequency="8" timeframe="360">
     <if_matched_sid>4311</if_matched_sid>
     <description>PIX: Multiple critical messages.</description>
     <group>pci_dss_10.6.1,pci_dss_11.4,gpg13_4.1,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="4382" level="10" frequency="8" timeframe="120">
+  <rule id="4382" level="10" frequency="10" timeframe="120">
     <if_matched_sid>4312</if_matched_sid>
     <description>PIX: Multiple error messages.</description>
     <group>system_error,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.3,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="4383" level="10" frequency="8" timeframe="120">
+  <rule id="4383" level="10" frequency="10" timeframe="120">
     <if_matched_sid>4313</if_matched_sid>
     <description>PIX: Multiple warning messages.</description>
     <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="4385" level="10" frequency="8" timeframe="240" ignore="90">
+  <rule id="4385" level="10" frequency="10" timeframe="240" ignore="90">
     <if_matched_sid>4333</if_matched_sid>
     <same_source_ip />
     <description>PIX: Multiple attack in progress messages.</description>
     <group>pci_dss_10.6.1,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="4386" level="10" frequency="8" timeframe="240">
+  <rule id="4386" level="10" frequency="10" timeframe="240">
     <if_matched_sid>4334</if_matched_sid>
     <description>PIX: Multiple AAA (VPN) authentication failures.</description>
     <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
