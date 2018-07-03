@@ -32,6 +32,7 @@ static int doesRuleExist(int sid, RuleNode *r_node);
 static void Rule_AddAR(RuleInfo *config_rule);
 static char *loadmemory(char *at, const char *str);
 static void printRuleinfo(const RuleInfo *rule, int node);
+static int file_empty(const char *file);
 
 /* Will initialize the rules list */
 void Rules_OP_CreateRules()
@@ -180,6 +181,12 @@ int Rules_OP_ReadRules(const char *rulefile)
         goto cleanup;
     }
     mdebug2("XML Variables applied.");
+
+    /* Check if the file is empty */
+    if(file_empty(rulepath) == 0){
+        retval = 0;
+        goto cleanup;
+    }
 
     /* Get the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
@@ -1958,4 +1965,20 @@ static int doesRuleExist(int sid, RuleNode *r_node)
     }
 
     return (0);
+}
+
+static int file_empty(const char *file){
+
+    FILE *fp = NULL;
+    fp = fopen(file,"r");
+
+    unsigned int size;
+
+    if (fp) {
+        fseek (fp, 0, SEEK_END);
+        size = ftell(fp);
+        return size;
+    }
+
+    return 1;
 }
