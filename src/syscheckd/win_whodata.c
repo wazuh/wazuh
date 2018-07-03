@@ -359,7 +359,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
     char force_notify;
-    char *user_id;
+    char *user_id = NULL;
     char is_directory;
     unsigned int mask;
     int position;
@@ -666,7 +666,7 @@ whodata_event_node *whodata_list_add(char *id) {
     if (syscheck.wlist.last) {
         node->next = NULL;
         node->previous = syscheck.wlist.last;
-        syscheck.wlist.last = node->next;
+        syscheck.wlist.last = node;
     } else {
         node->next = node->previous = NULL;
         syscheck.wlist.last = syscheck.wlist.first = node;
@@ -690,23 +690,28 @@ void whodata_list_remove_multiple(size_t quantity) {
 }
 
 void whodata_list_remove(whodata_event_node *node) {
-    if (node->next) {
+    if (!(node->next || node->previous)) {
+        syscheck.wlist.first = syscheck.wlist.last = NULL;
+    } else {
+        if (node->next) {
+            if (node->previous) {
+                node->next->previous = node->previous;
+            } else {
+                node->next->previous = NULL;
+                syscheck.wlist.first = node->next;
+            }
+        }
+
         if (node->previous) {
-            node->next->previous = node->previous;
-        } else {
-            node->next->previous = NULL;
-            syscheck.wlist.first = node->next;
+            if (node->next) {
+                node->previous->next = node->next;
+            } else {
+                node->previous->next = NULL;
+                syscheck.wlist.last = node->previous;
+            }
         }
     }
 
-    if (node->previous) {
-        if (node->next) {
-            node->previous->next = node->next;
-        } else {
-            node->previous->next = NULL;
-            syscheck.wlist.last = node->previous;
-        }
-    }
     free(node->handle_id);
     free(node);
     syscheck.wlist.current_size--;
