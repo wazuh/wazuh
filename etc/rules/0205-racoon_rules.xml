@@ -61,7 +61,7 @@
     <description>racoon: Invalid configuration settings (ignored error).</description>
   </rule>
 
-  <rule id="14151" level="9" frequency="3" timeframe="360">
+  <rule id="14151" level="9" frequency="5" timeframe="360">
     <if_matched_sid>14101</if_matched_sid>
     <same_source_ip />
     <description>racoon: Multiple failed VPN logins.</description>

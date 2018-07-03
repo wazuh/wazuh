@@ -52,14 +52,14 @@
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="9351" level="10" frequency="6" timeframe="120">
+  <rule id="9351" level="10" frequency="8" timeframe="120">
     <if_matched_sid>9306</if_matched_sid>
     <same_source_ip />
     <description>Horde brute force (multiple failed logins).</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="9352" level="10" frequency="4" timeframe="320">
+  <rule id="9352" level="10" frequency="6" timeframe="320">
     <if_matched_sid>9304</if_matched_sid>
     <description>Multiple Horde emergency messages.</description>
     <group>service_availability,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,</group>

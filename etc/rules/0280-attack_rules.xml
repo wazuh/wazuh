@@ -63,7 +63,7 @@
     <group>exploit_attempt,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="40111" level="10" frequency="10" timeframe="160">
+  <rule id="40111" level="10" frequency="12" timeframe="160">
     <if_matched_group>authentication_failed</if_matched_group>
     <description>Multiple authentication failures.</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
@@ -78,7 +78,7 @@
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="40113" level="12" frequency="6" timeframe="360">
+  <rule id="40113" level="12" frequency="8" timeframe="360">
     <if_matched_group>virus</if_matched_group>
     <description>Multiple viruses detected - Possible outbreak.</description>
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
@@ -88,7 +88,7 @@
 
 <!-- Privilege escalation messages -->
 <group name="syslog,elevation_of_privilege,">
-  <rule id="40501" level="15" timeframe="300" frequency="2">
+  <rule id="40501" level="15" timeframe="300" frequency="4">
     <if_group>adduser</if_group>
     <if_matched_group>attacks</if_matched_group>
     <same_location/>
@@ -100,7 +100,7 @@
 
 <!-- Scan signatures -->
 <group name="syslog,recon,">
-  <rule id="40601" level="10" frequency="10" timeframe="90" ignore="90">
+  <rule id="40601" level="10" frequency="12" timeframe="90" ignore="90">
     <if_matched_group>connection_attempt</if_matched_group>
     <description>Network scan from same source ip.</description>
     <same_source_ip />

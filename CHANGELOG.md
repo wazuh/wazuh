@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.4.0]
 
+### Changed
+
+- Improve output of `DELETE/agents` when no agents were removed. ([#868](https://github.com/wazuh/wazuh/pull/868))
+
+### Fixed
+
+- Fixed sort agents by status in `GET/agents` API request. ([#810](https://github.com/wazuh/wazuh/pull/810))
+- Added exception when no agents are selected to restart. ([#870](https://github.com/wazuh/wazuh/pull/870))
+- Prevent files from remaining open in the cluster. ([#874](https://github.com/wazuh/wazuh/pull/874))
+
+
+## [v3.3.2]
+
 ### Added
 
 - Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))

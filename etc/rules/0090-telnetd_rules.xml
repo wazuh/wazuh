@@ -40,7 +40,7 @@
     <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="5631" level="10" frequency="6" timeframe="120">
+  <rule id="5631" level="10" frequency="8" timeframe="120">
     <if_matched_sid>5602</if_matched_sid>
     <same_source_ip />
     <description>telnetd: Multiple connection attempts from same source </description>

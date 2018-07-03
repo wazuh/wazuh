@@ -1,4 +1,4 @@
-<!-- 
+<!--
   -  Exim rules
   -  Author: Alexandr Garaga.
   -  Copyright (C) 2009 Trend Micro Inc.
@@ -26,7 +26,7 @@
       <group>invalid_login,authentication_failed,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
-    <rule id="87507" level="10" frequency="6" timeframe="240">
+    <rule id="87507" level="10" frequency="8" timeframe="240">
       <if_matched_sid>87506</if_matched_sid>
       <same_source_ip />
       <description>Exim brute force attack (multiple auth failures).</description>
@@ -51,4 +51,3 @@
       <description>Exim syntax or protocol errors</description>
     </rule>
 </group>
-
