@@ -177,7 +177,7 @@ def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=co
 
     if limit:
         if limit > common.maximum_database_limit:
-            limit = common.maximum_database_limit
+            raise WazuhException(1405, str(limit))
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
@@ -260,7 +260,7 @@ def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
 
     if limit:
         if limit > common.maximum_database_limit:
-            limit = common.maximum_database_limit
+            raise WazuhException(1405, str(limit))
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
@@ -327,7 +327,7 @@ def get_cis(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
 
     if limit:
         if limit > common.maximum_database_limit:
-            limit = common.maximum_database_limit
+            raise WazuhException(1405, str(limit))
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit

@@ -282,7 +282,7 @@ class Agent:
 
         if limit:
             if limit > common.maximum_database_limit:
-                limit = common.maximum_database_limit
+                raise WazuhException(1405, str(limit))
             query += ' limit {} offset {}'.format(limit, offset)
 
         if sort and sort['fields']:
@@ -980,7 +980,7 @@ class Agent:
 
         if limit:
             if limit > common.maximum_database_limit:
-                limit = common.maximum_database_limit
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1085,7 +1085,7 @@ class Agent:
         # OFFSET - LIMIT
         if limit:
             if limit > common.maximum_database_limit:
-                limit = common.maximum_database_limit
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1379,7 +1379,7 @@ class Agent:
         # OFFSET - LIMIT
         if limit:
             if limit > common.maximum_database_limit:
-                limit = common.maximum_database_limit
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1595,7 +1595,7 @@ class Agent:
         # OFFSET - LIMIT
         if limit:
             if limit > common.maximum_database_limit:
-                limit = common.maximum_database_limit
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
@@ -1881,7 +1881,7 @@ class Agent:
         # OFFSET - LIMIT
         if limit:
             if limit > common.maximum_database_limit:
-                limit = common.maximum_database_limit
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit

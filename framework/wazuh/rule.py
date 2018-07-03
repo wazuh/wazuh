@@ -226,9 +226,6 @@ class Rule:
         else:
             data = sort_array(data, ['file'], 'asc')
 
-        if limit > common.maximum_database_limit:
-            limit = common.maximum_database_limit
-
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
 
@@ -298,9 +295,6 @@ class Rule:
         else:
             rules = sort_array(rules, ['id'], 'asc')
 
-        if limit > common.maximum_database_limit:
-            limit = common.maximum_database_limit
-
         return {'items': cut_array(rules, offset, limit), 'totalItems': len(rules)}
 
 
@@ -329,9 +323,6 @@ class Rule:
         else:
             groups = sort_array(groups)
 
-        if limit > common.maximum_database_limit:
-            limit = common.maximum_database_limit
-
         return {'items': cut_array(groups, offset, limit), 'totalItems': len(groups)}
 
 
@@ -359,9 +350,6 @@ class Rule:
             req = sort_array(req, order=sort['order'])
         else:
             req = sort_array(req)
-
-        if limit > common.maximum_database_limit:
-            limit = common.maximum_database_limit
 
         return {'items': cut_array(req, offset, limit), 'totalItems': len(req)}
 

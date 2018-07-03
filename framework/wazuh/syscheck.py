@@ -231,7 +231,7 @@ def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, s
 
     if limit:
         if limit > common.maximum_database_limit:
-            limit = common.maximum_database_limit
+            raise WazuhException(1405, str(limit))
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
