@@ -148,7 +148,7 @@ void remove_local_diff(){
                 windows_path = strchr(curr_node_monitoring->key, ':');
                 strcat(full_path, (windows_path+1));
 #else
-                strcat(full_path, curr_node_monitoring->key);
+                strncat(full_path, curr_node_monitoring->key, PATH_MAX - strlen(full_path) - 1);
 #endif
                 if (strcmp(full_path, curr_node_local->key) == 0) {
                     OSHash_Delete(syscheck.local_hash, curr_node_local->key);
@@ -456,11 +456,10 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 }
                 // Update database
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
-                free(buf);
+
                 if (!OSHash_Update_ex(syscheck.fp, file_name, strdup(alert_msg))) {
                     merror("Unable to update file to db: %s", file_name);
                 }
-
                 /* Send the new checksum to the analysis server */
                 alert_msg[OS_MAXSTR] = '\0';
                 char *fullalert = NULL;
@@ -476,6 +475,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 } else {
                     snprintf(alert_msg, 1172, "%s!%s %s", c_sum, wd_sum, file_name);
                 }
+                free(buf);
                 send_syscheck_msg(alert_msg);
             }
         }

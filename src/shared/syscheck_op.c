@@ -344,7 +344,7 @@ int remove_empty_folders(char *path) {
                 remove_empty_folders(parent);
             }
         }
-        
+
     }
     return 0;
 }
@@ -355,9 +355,9 @@ int delete_target_file(const char *path) {
 
 #ifdef WIN32
     char *windows_path = strchr(path, ':');
-    strcat(full_path, (windows_path + 1));
+    strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
 #else
-    strcat(full_path, path);
+    strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
 #endif
     if(rmdir_ex(full_path) == 0){
         mdebug1("Deleting last-entry of file '%s'", full_path);

@@ -606,7 +606,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                      "%s"
                      "%s",
                      f_name,
-                     (sdb.user_name || sdb.process_name) ? "\n" : "",
+                     (*sdb.user_name == '\0' || *sdb.process_name == '\0') ? "\n" : "",
                      sdb.user_name,
                      sdb.audit_name,
                      sdb.effective_name,
@@ -634,7 +634,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                  "%s"
                  "%s",
                  f_name,
-                 (sdb.user_name) ? "\n" : "",
+                 (*sdb.user_name == '\0') ? "\n" : "",
                  sdb.user_name,
                  sdb.audit_name,
                  sdb.effective_name,
