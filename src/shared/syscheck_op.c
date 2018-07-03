@@ -324,6 +324,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 int remove_empty_folders(char *path) {
     char *c;
     char parent[PATH_MAX] = "\0";
+    char ** subdir;
 
     // Get parent
     c = strrchr(path, '/');
@@ -331,7 +332,7 @@ int remove_empty_folders(char *path) {
         memmove(parent, path, strlen(path) - strlen(c));
         // Don't delete above /local
         if(strcmp(strrchr(parent, '/'), "/local") != 0){
-            if (*wreaddir(parent) == NULL) {
+            if (subdir = wreaddir(parent), !subdir) {
                 // Remove empty folder
                 if (rmdir_ex(parent) != 0) {
                     mwarn("Empty directory '%s' couldn't be deleted. ('%s')",
@@ -343,8 +344,9 @@ int remove_empty_folders(char *path) {
                 memmove(parent, path, strlen(path) - strlen(c));
                 remove_empty_folders(parent);
             }
+            free_strarray(subdir);
         }
-
+        
     }
     return 0;
 }
