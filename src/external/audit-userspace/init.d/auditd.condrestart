@@ -1,0 +1,7 @@
+#!/bin/sh
+# Helper script to provide legacy auditd service options not
+# directly supported by systemd.
+
+/usr/libexec/initscripts/legacy-actions/auditd/restart
+RETVAL="$?"
+exit $RETVAL

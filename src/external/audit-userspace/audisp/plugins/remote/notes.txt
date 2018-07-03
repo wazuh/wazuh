@@ -1,0 +1,31 @@
+The queue data structure can keep data only in memory, only on disk
+(writing it to disk and reading from disk), or in both (writing everything
+to disk, but reading from disk only data stored in a previous run).
+audisp-remote will use the last option for performance.
+
+The queue file format starts with a fixed header, followed by an array
+of slots for strings.  Due to the fixed size of each slot the file format
+is rather inefficient, but it is also very simple.
+
+The file is preallocated and the string slots will be aligned to a 4KB
+boundary, so it should be necessary to only write one block to disk
+when audisp-remote receives a (short) audit record.
+
+With the default queue size of 200 items the file will be about 2.4
+megabytes large, which is probably not really worth worrying about.
+
+If necessary, the space utilization could be improved by storing strings
+consecutively instead of using pre-arranged slots.
+
+The queue file format is intended to be resilient against unexpected
+termination of the process, and should be resilient against unexpected
+system crash as long as the OS does not reorder writes (the string data
+is written before the header that indicates that it is present) - but
+ultimately resiliency against such failures is limited by other
+links in the audit record transmission chain - if the record is lost
+within auditd or audispd, having a resilient queue file format does
+not help; audit records generated within the kernel are necessarily
+lost if the system crashes before they are read by auditd because
+the kernel will not be able to regenerate/retransmit them after the next
+boot.
+

@@ -17,11 +17,9 @@
 #include "syscheck.h"
 
 /* Prototypes */
-static int read_file(const char *dir_name, int opts, OSMatch *restriction)
-    __attribute__((nonnull(1)));
-    
-int read_dir_diff(char *dir_name);
+static int read_file(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt)  __attribute__((nonnull(1)));
 
+int read_dir_diff(char *dir_name);
 
 /* Global variables */
 static int __counter = 0;
@@ -177,11 +175,13 @@ void remove_local_diff(){
 }
 
 /* Read and generate the integrity data of a file */
-static int read_file(const char *file_name, int opts, OSMatch *restriction) {
+static int read_file(const char *file_name, int opts, OSMatch *restriction, whodata_evt *evt)
+{
     char *buf;
     char sha1s = '-';
     char sha256s = '-';
     struct stat statbuf;
+    char wd_sum[OS_SIZE_6144 + 1];
 
     /* Check if the file should be ignored */
     if (syscheck.ignore) {
@@ -214,6 +214,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
+
         if (errno == ENOTDIR) {
             /*Deletion message sending*/
             char *buf;
@@ -223,11 +224,11 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
             send_syscheck_msg(alert_msg);
 
             // Update database
-            if (buf = (char *)OSHash_Get(syscheck.fp, file_name), buf) {
+
+            if (buf = (char *) OSHash_Get_ex(syscheck.fp, file_name), buf) {
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s -1", SK_DB_NATTR, buf);
                 free(buf);
-
-                if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
+                if (!OSHash_Update_ex(syscheck.fp, file_name, strdup(alert_msg))) {
                     merror("Unable to update file to db: %s", file_name);
                 }
             }
@@ -251,7 +252,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
             return (-1);
         }
 #endif
-        return (read_dir(file_name, opts, restriction));
+        return (read_dir(file_name, opts, restriction, NULL));
     }
 
     /* Restrict file types */
@@ -327,35 +328,36 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
             }
         }
 
-        buf = (char *) OSHash_Get(syscheck.fp, file_name);
+        buf = (char *) OSHash_Get_ex(syscheck.fp, file_name);
+
         if (!buf) {
-            char alert_msg[1172 + 1];   /* to accommodate a long */
-            alert_msg[1172] = '\0';
+            char alert_msg[OS_MAXSTR + 1];    /* to accommodate a long */
+            alert_msg[OS_MAXSTR] = '\0';
             char * alertdump = NULL;
 
             if (opts & CHECK_SEECHANGES) {
                 alertdump = seechanges_addfile(file_name);
             }
 #ifdef WIN32
-            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s",
-                opts & CHECK_SIZE ? '+' : '-', 
-                opts & CHECK_PERM ? '+' : '-',
-                opts & CHECK_OWNER ? '+' : '-', 
-                opts & CHECK_GROUP ? '+' : '-',
-                opts & CHECK_MD5SUM ? '+' : '-', 
-                sha1s,
-                opts & CHECK_MTIME ? '+' : '-', 
-                opts & CHECK_INODE ? '+' : '-',
-                sha256s, 
-                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
-                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s",
+                     opts & CHECK_SIZE ? '+' : '-',
+                     opts & CHECK_PERM ? '+' : '-',
+                     opts & CHECK_OWNER ? '+' : '-',
+                     opts & CHECK_GROUP ? '+' : '-',
+                     opts & CHECK_MD5SUM ? '+' : '-',
+                     sha1s,
+                     opts & CHECK_MTIME ? '+' : '-',
+                     opts & CHECK_INODE ? '+' : '-',
+                     sha256s,
+                     opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
+                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                     opts & CHECK_MD5SUM ? mf_sum : "xxx",
+                     opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                     opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 #else
             snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
                 opts & CHECK_SIZE ? '+' : '-', 
@@ -380,29 +382,36 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
                 opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 #endif
 
-            if (OSHash_Add(syscheck.fp, file_name, strdup(alert_msg)) <= 0) {
+            if (OSHash_Add_ex(syscheck.fp, file_name, strdup(alert_msg)) <= 0) {
                 merror("Unable to add file to db: %s", file_name);
             }
 
             /* Send the new checksum to the analysis server */
-            alert_msg[1172] = '\0';
+            alert_msg[OS_MAXSTR] = '\0';
+
+            /* Extract the whodata sum here to not include it in the hash table */
+            if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                *wd_sum = '\0';
+            }
 
 #ifdef WIN32
-            snprintf(alert_msg, 1172, "%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s %s%s%s",
-                     opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                     opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                     opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
-                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                     opts & CHECK_SHA256SUM ? sf256_sum : "xxx", 
-                     file_name,
-                     alertdump ? "\n" : "", 
-                     alertdump ? alertdump : "");
+            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s!%s %s%s%s",
+                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
+                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                opts & CHECK_MD5SUM ? mf_sum : "xxx",
+                opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
+                wd_sum,
+                file_name,
+                alertdump ? "\n" : "",
+                alertdump ? alertdump : "");
 #else
-            snprintf(alert_msg, 1172, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
@@ -413,8 +422,10 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                opts & CHECK_SHA256SUM ? sf256_sum : "xxx", file_name,
-                alertdump ? "\n" : "", 
+                opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
+                wd_sum,
+                file_name,
+                alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
 #endif
             send_syscheck_msg(alert_msg);
@@ -429,18 +440,22 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
             alert_msg[OS_MAXSTR] = '\0';
 
             /* If it returns < 0, we have already alerted */
-            if (c_read_file(file_name, buf, c_sum) < 0) {
+            if (c_read_file(file_name, buf, c_sum, NULL) < 0) {
                 return (0);
             }
 
             OSHash_Delete(syscheck.last_check, file_name);
 
-            if (strcmp(c_sum, buf + SK_DB_NATTR) != 0) {
+            if (strcmp(c_sum, buf + SK_DB_NATTR)) {
+                // Extract the whodata sum here to not include it in the hash table
+                if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+                    merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                    *wd_sum = '\0';
+                }
                 // Update database
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
                 free(buf);
-
-                if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
+                if (!OSHash_Update_ex(syscheck.fp, file_name, strdup(alert_msg))) {
                     merror("Unable to update file to db: %s", file_name);
                 }
 
@@ -450,14 +465,14 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
                 if (buf[5] == 's' || buf[5] == 'n') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
-                        snprintf(alert_msg, OS_MAXSTR, "%s %s\n%s", c_sum, file_name, fullalert);
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
                         free(fullalert);
                         fullalert = NULL;
                     } else {
-                        snprintf(alert_msg, 1172, "%s %s", c_sum, file_name);
+                        snprintf(alert_msg, 1172, "%s!%s %s", c_sum, wd_sum, file_name);
                     }
                 } else {
-                    snprintf(alert_msg, 1172, "%s %s", c_sum, file_name);
+                    snprintf(alert_msg, 1172, "%s!%s %s", c_sum, wd_sum, file_name);
                 }
                 send_syscheck_msg(alert_msg);
             }
@@ -482,7 +497,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction) {
     return (0);
 }
 
-int read_dir(const char *dir_name, int opts, OSMatch *restriction) 
+int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt)
 {
     size_t dir_size;
     char f_name[PATH_MAX + 2];
@@ -514,7 +529,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
     dp = opendir(dir_name);
     if (!dp) {
         if (errno == ENOTDIR) {
-            if (read_file(dir_name, opts, restriction) == 0) {
+            if (read_file(dir_name, opts, restriction, evt) == 0) {
                 return (0);
             }
         }
@@ -546,9 +561,9 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
     }
 
     /* Check for real time flag */
-    if (opts & CHECK_REALTIME) {
+    if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
 #ifdef INOTIFY_ENABLED
-        realtime_adddir(dir_name);
+        realtime_adddir(dir_name, opts & CHECK_WHODATA);
 #else
 #ifndef WIN32
         mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
@@ -570,15 +585,21 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction)
         s_name += dir_size;
 
         /* Check if the file name is already null terminated */
+#ifdef WIN32
+        if (*(s_name - 1) != '\\') {
+            *s_name++ = '\\';
+        }
+#else
         if (*(s_name - 1) != '/') {
             *s_name++ = '/';
         }
+#endif
 
         *s_name = '\0';
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
 
         /* Check integrity of the file */
-        read_file(f_name, opts, restriction);
+        read_file(f_name, opts, restriction, NULL);
     }
 
     closedir(dp);
@@ -593,7 +614,7 @@ int run_dbcheck()
 
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
-        read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]);
+        read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i], NULL);
         i++;
     }
 
@@ -624,6 +645,7 @@ int run_dbcheck()
 int create_db() 
 {
     int i = 0;
+    int enable_who_scan = 0;
 
     /* Create store data */
     syscheck.fp = OSHash_Create();
@@ -634,7 +656,7 @@ int create_db()
         merror_exit("Unable to create syscheck database. Exiting.");
     }
 
-    if (!OSHash_setSize(syscheck.fp, 2048)) {
+    if (!OSHash_setSize_ex(syscheck.fp, 2048)) {
         merror(LIST_ERROR);
         return (0);
     }
@@ -653,19 +675,43 @@ int create_db()
     /* Read all available directories */
     __counter = 0;
     do {
-        if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]) == 0) {
+        if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i], NULL) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
-        /* Check for real time flag on windows*/
-        if (syscheck.opts[i] & CHECK_REALTIME) {
 #ifdef WIN32
-            realtime_adddir(syscheck.dir[i]);
-#else
-#ifndef INOTIFY_ENABLED
-            mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);
-#endif
-#endif
+        if (syscheck.opts[i] & CHECK_WHODATA) {
+            realtime_adddir(syscheck.dir[i], i + 1);
+            if (!enable_who_scan) {
+                enable_who_scan = 1;
+            }
+        } else if (syscheck.opts[i] & CHECK_REALTIME) {
+            realtime_adddir(syscheck.dir[i], 0);
         }
+#else
+        if ((syscheck.opts[i] & CHECK_WHODATA) && audit_thread_active) {
+            // Insert Audit rule
+            int retval;
+            if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
+                if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
+                    mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
+                    w_mutex_lock(&audit_rules_mutex);
+                    W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                    w_mutex_unlock(&audit_rules_mutex);
+                } else {
+                    merror("Error adding Audit rule for %s : %i", syscheck.dir[i], retval);
+                    added_rules_error = 1;
+                }
+            } else {
+                merror("Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d).", syscheck.dir[i], syscheck.max_audit_entries);
+            }
+        }
+
+#ifndef INOTIFY_ENABLED
+        if (syscheck.opts[i] & CHECK_REALTIME) {
+            mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);
+        }
+#endif
+#endif
         i++;
     } while (syscheck.dir[i] != NULL);
     
@@ -681,6 +727,53 @@ int create_db()
         minfo("Real time file monitoring engine started.");
     }
 #endif
+    if (enable_who_scan && !run_whodata_scan()) {
+        minfo("Whodata auditing engine started.");
+    }
     minfo("Finished creating syscheck database (pre-scan completed).");
     return (0);
+}
+
+int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
+    int retval = 0;
+    if (!evt) {
+        if (snprintf(wd_sum, size, "::::::::::") >= size) {
+            retval = 1;
+        }
+    } else {
+        char *process_esc = NULL;
+        char *name_esc = evt->user_name;
+        char *esc_it = NULL;
+
+        // Escape process
+        esc_it = wstr_replace(evt->process_name, ":", "\\:");
+        process_esc = wstr_replace(esc_it, " ", "\\ ");
+
+#ifdef WIN32
+        // Only Windows agents can have spaces in their names
+        name_esc = wstr_replace(evt->user_name, " ", "\\ ");
+#endif
+        if (snprintf(wd_sum, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%i:%lli",
+                evt->user_id,
+                name_esc,
+                (evt->group_id)?evt->group_id:"",
+                (evt->group_name)?evt->group_name:"",
+                process_esc,
+                (evt->audit_uid)?evt->audit_uid:"",
+                (evt->audit_name)?evt->audit_name:"",
+                (evt->effective_uid)?evt->effective_uid:"",
+                (evt->effective_name)?evt->effective_name:"",
+                evt->ppid,
+                (long long unsigned int) evt->process_id
+            ) >= size) {
+            retval = 1;
+        }
+
+#ifdef WIN32
+        free(name_esc);
+#endif
+        free(process_esc);
+        free(esc_it);
+    }
+    return retval;
 }

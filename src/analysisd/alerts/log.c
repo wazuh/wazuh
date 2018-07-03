@@ -325,9 +325,8 @@ void OS_Log(Eventinfo *lf)
 
             lf->dstuser == NULL ? "" : "\nUser: ",
             lf->dstuser == NULL ? "" : lf->dstuser,
-
-            lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : "\n",
-            lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : lf->full_log);
+            "\n",
+            lf->full_log);
 
     /* FIM events */
 

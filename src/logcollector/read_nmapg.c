@@ -240,7 +240,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
         if (drop_it == 0) {
             /* Send message to queue */
             if (SendMSGtoSCK(logr_queue, final_msg, logff[pos].file,
-                        HOSTINFO_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
+                        HOSTINFO_MQ, logff[pos].log_target) < 0) {
                 merror(QUEUE_SEND);
                 if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                     merror_exit(QUEUE_FATAL, DEFAULTQPATH);

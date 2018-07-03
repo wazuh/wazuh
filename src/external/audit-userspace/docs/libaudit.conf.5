@@ -1,0 +1,25 @@
+.TH LIBAUDIT.CONF: "5" "Oct 2009" "Red Hat" "System Administration Utilities"
+.SH NAME
+libaudit.conf \- libaudit configuration file
+.SH DESCRIPTION
+The file
+.I /etc/libaudit.conf
+contains configuration information for user space applications that link to libaudit. The applications are responsible for querrying the settings in this file and obeying the admin's preferences. This file contains one configuration keyword per line, an equal sign, and then followed by appropriate configuration information. The keywords recognized are:
+.IR  failure_action ".
+These keywords are described below.
+
+.TP
+.I failure_action
+This keyword specifies what action the admin wishes a user space application to take when there is a failure to send an audit event to the kernel. The possible values are: 
+.IR IGNORE
+ - meaning do nothing,
+.IR LOG
+- write to syslog the inability to send an audit event, and
+.I TERMINATE
+- the user space application should exit.
+
+.SH "SEE ALSO"
+.BR get_auditfail_action (3).
+
+.SH AUTHOR
+Steve Grubb

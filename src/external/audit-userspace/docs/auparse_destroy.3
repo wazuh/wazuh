@@ -1,0 +1,29 @@
+.TH "AUPARSE_DESTROY" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_destroy \- release instance of parser
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+.B void auparse_destroy (auparse_state_t *au);
+
+.B void auparse_destroy_ext (auparse_state_t *au, auparse_destroy_what_t what);
+
+.SH "DESCRIPTION"
+
+.B auparse_destroy
+frees all data structures and closes file descriptors.
+
+.B auparse_destroy_ext
+frees data structures based on what. What can be AUPARSE_DESTROY_ALL to release everything or AUPARSE_DESTROY_COMMON to release everything but the uid and gid lookup cache.
+
+.SH "RETURN VALUE"
+
+None.
+
+.SH "SEE ALSO"
+
+.BR auparse_init (3),
+.BR auparse_reset (3).
+
+.SH AUTHOR
+Steve Grubb

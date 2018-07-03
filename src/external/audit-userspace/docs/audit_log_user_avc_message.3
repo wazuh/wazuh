@@ -1,0 +1,40 @@
+.TH "AUDIT_LOG_USER_AVC_MESSAGE" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_log_user_avc_message \- log a user avc message
+.SH SYNOPSIS
+.B #include <libaudit.h>
+.sp
+.B int audit_log_user_avc_message(int audit_fd, int type, const char *message,
+const char *hostname, const char *addr, const char *tty, uid_t uid)
+
+.SH DESCRIPTION
+
+This function will log a message to the audit system using a predefined message format. This function should be used by all apps that are SE Linux object managers. The function parameters are as follows:
+
+.nf
+audit_fd - The fd returned by audit_open
+type - type of message, ex: AUDIT_USER_AVC
+message - the message being sent
+hostname - the hostname if known
+addr - The network address of the user
+tty - The tty of the user, if NULL will attempt to figure out
+uid - The auid of the person related to the avc message
+.fi
+
+.SH "RETURN VALUE"
+
+It returns the sequence number which is > 0 on success or <= 0 on error.
+
+.SH "ERRORS"
+
+This function returns \-1 on failure. Examine errno for more info.
+
+.SH "SEE ALSO"
+
+.BR audit_log_user_message (3),
+.BR audit_log_acct_message (3),
+.BR audit_log_user_avc_message (3),
+.BR audit_log_semanage_message (3).
+
+.SH AUTHOR
+Steve Grubb

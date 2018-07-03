@@ -1,0 +1,25 @@
+.TH "AUDIT_SETLOGINUID" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_setloginuid \- Set a program's loginuid value
+.SH SYNOPSIS
+.B #include <libaudit.h>
+.sp
+int audit_setloginuid(uid_t uid);
+
+.SH "DESCRIPTION"
+
+This function sets the task attribute loginuid with the value of uid. The loginuid value may only be set by programs with the CAP_AUDIT_CONTROL capability. This normally means the root account.
+.sp
+The loginuid value is part of the task structure and is inheritted by child processes. It is used to track what account a user gained system access with. All system entry point programs should set this value right before changing to the uid of the user granted access so that audit events are properly attributed to the that user.
+
+.SH "RETURN VALUE"
+
+This function returns 0 on success and non-zero otherwise.
+
+.SH "SEE ALSO"
+
+.BR audit_getloginuid (3),
+.BR pam_loginuid (8).
+
+.SH AUTHOR
+Steve Grubb

@@ -1,0 +1,30 @@
+
+To build audit from github, cd to the place where you want everything to be.
+Then do this:
+
+git clone https://github.com/linux-audit/audit-userspace.git
+cd audit-userspace
+./autogen.sh
+./configure
+make dist
+
+This will result in a tar file. This can then be used with the packaging
+system for your OS. This is the recommended way to do it.
+
+If you do not want use a packaging system, read the options from
+./configure --help and choose appropriately. For example, you may want
+to do something like this as root:
+
+./configure --prefix=/usr --exec-prefix=/usr --bindir=/usr/bin \
+--sbindir=/usr/sbin --sysconfdir=/etc --datadir=/usr/share \
+--includedir=/usr/include --libdir=/usr/lib64 --libexecdir=/usr/libexec \
+--localstatedir=/var --sharedstatedir=/var/lib --mandir=/usr/share/man \
+--infodir=/usr/share/info --sbindir=/sbin --libdir=/lib64 \
+--with-python=yes --with-python3=yes --with-libwrap --enable-tcp=yes \
+--enable-gssapi-krb5=yes --with-arm --with-aarch64 --with-libcap-ng=yes \
+--without-golang --enable-systemd
+
+make
+make install
+
+

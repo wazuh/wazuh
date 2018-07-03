@@ -1,0 +1,22 @@
+.TH "AUPARSE_GET_FIELD_TYPE" "3" "Sept 2008" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_field_type \- get current field's data type 
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int auparse_get_field_type(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_field_type returns a value from the auparse_type_t enum that describes the kind of data in the current field of the current record in the current event.
+
+.SH "RETURN VALUE"
+
+Returns AUPARSE_TYPE_UNCLASSIFIED if the field's data type has no known description or is an integer. Otherwise it returns another enum. Fields with the type AUPARSE_TYPE_ESCAPED must be interpretted to access their value since those field's raw value is encoded.
+
+.SH "SEE ALSO"
+
+.BR auparse_get_field_name (3).
+
+.SH AUTHOR
+Steve Grubb

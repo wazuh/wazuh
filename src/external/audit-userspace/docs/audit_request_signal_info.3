@@ -1,0 +1,33 @@
+.TH "AUDIT_" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_request_signal_info \- Request signal info for the audit system
+.SH "SYNOPSIS"
+.B #include <libaudit.h>
+.sp
+int audit_request_signal_info(int fd);
+
+.SH "DESCRIPTION"
+
+audit_request_signal_info requests that the kernel send information about the sender of a signal to the audit daemon. The sinal info structure is as follows:
+
+.nf
+struct audit_sig_info {
+        uid_t           uid;
+        pid_t           pid;
+        char            ctx[0];
+};
+.fi
+
+This function is likely to be used only by audit daemons and shouldn't be called by any other kind of program.
+
+.SH "RETURN VALUE"
+
+The return value is <= 0 on error, otherwise it is the netlink sequence id number. This function can have any error that sendto would encounter.
+
+.SH "SEE ALSO"
+
+.BR audit_open (3),
+.BR audit_get_reply (3).
+
+.SH AUTHOR
+Steve Grubb

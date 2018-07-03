@@ -1,0 +1,22 @@
+.TH "AUPARSE_GET_TYPE_NAME" "3" "Mar 2016" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_type_name \- get record's type translation
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+const char *auparse_get_type_name(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+The auparse_get_type_name function will return the text representation of the name of the current record type.
+
+.SH "RETURN VALUE"
+
+The auparse_get_type_name function returns NULL on error; otherwise a pointer to a string.
+
+.SH "SEE ALSO"
+
+.BR auparse_get_type(3), auparse_next_record(3).
+
+.SH AUTHOR
+Steve Grubb

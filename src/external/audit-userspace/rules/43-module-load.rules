@@ -1,0 +1,9 @@
+## These rules watch for kernel module insertion
+-w /sbin/kmod -p x -k modules
+-w /sbin/insmod -p x -k modules
+-w /sbin/rmmod -p x -k modules
+-w /sbin/modprobe -p x -k modules
+-a always,exit -F arch=b32 -S init_module,finit_module -F key=module-load
+-a always,exit -F arch=b64 -S init_module,finit_module -F key=module-load
+-a always,exit -F arch=b32 -S delete_module -F key=module-unload
+-a always,exit -F arch=b64 -S delete_module -F key=module-unload

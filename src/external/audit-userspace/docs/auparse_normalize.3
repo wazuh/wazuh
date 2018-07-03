@@ -1,0 +1,31 @@
+.TH "AUPARSE_NORMALIZE" "3" "Feb 2017" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_normalize \- normalize the current event
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+.B int auparse_normalize(auparse_state_t *au, normalize_option_t opt);
+
+.SH "DESCRIPTION"
+
+.B auparse_normalize
+analyzes the current event so that the important information about the event can be accessed through a normalized API which positions to internal field cursor to the exact record and field when asked about specific information.
+
+The auparse_normalize function takes an opt argument to tell it how much information to gather. Legal values are:
+
+.nf
+	NORM_OPT_ALL - gather maximum information
+	NORM_OPT_NO_ATTRS - do not gather subject/object attribute information
+.fi
+
+
+.SH "RETURN VALUE"
+
+Returns 0 on success and 1 on error.
+
+.SH "SEE ALSO"
+
+.BR 
+
+.SH AUTHOR
+Steve Grubb

@@ -1,0 +1,25 @@
+.TH "AUDIT_GETLOGINUID" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_getloginuid \- Get a program's loginuid value
+.SH SYNOPSIS
+.B #include <libaudit.h>
+.sp
+uid_t audit_getloginuid(void);
+
+.SH DESCRIPTION
+This function returns the task attribute loginuid.
+
+.SH "RETURN VALUE"
+
+This function returns the loginuid value if it was set. It will return a \-1 if loginuid was unset. However, since uid_t is an unsigned type, you will see the converted value instead of \-1.
+
+.SH "ERRORS"
+
+This function returns \-1 on failure. However, in the event of a real error, errno would be set. The function can set errno based on failures of open, read, or strtoul.
+
+.SH "SEE ALSO"
+
+.BR audit_setloginuid (3).
+
+.SH AUTHOR
+Steve Grubb

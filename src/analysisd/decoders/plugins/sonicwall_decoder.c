@@ -261,4 +261,3 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
 
     return (NULL);
 }
-
