@@ -26,6 +26,8 @@
 static void send_sk_db(void);
 static void log_realtime_status(int);
 
+
+
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
 {
@@ -388,13 +390,16 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 
     /* sha1 sum */
     if (oldsum[5] == '+') {
+        delete_target_file(file_name);
         sha1sum = 1;
     } else if (oldsum[5] == 's') {
         sha1sum = 1;
     } else if (oldsum[5] == 'n') {
         sha1sum = 0;
+    } else if (oldsum[5] == '-') {
+        delete_target_file(file_name);
+        sha1sum = 0;
     }
-
 
     /* Modification time */
     if (oldsum[6] == '+')

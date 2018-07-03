@@ -145,10 +145,15 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size);
 
+/* Delete from path to parent all empty folders */
+int remove_empty_folders(char *path);
+
+/* Delete path file and all empty folders above */
+int delete_target_file(const char *path);
 
 #ifndef WIN32
 
-const char* get_user(__attribute__((unused)) const char *path, int uid);
+const char *get_user(__attribute__((unused)) const char *path, int uid);
 const char* get_group(int gid);
 
 #else

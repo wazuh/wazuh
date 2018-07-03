@@ -321,6 +321,51 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     return r < (int)size ? 0 : -1;
 }
 
+int remove_empty_folders(char *path) {
+    char *c;
+    char parent[PATH_MAX] = "\0";
+
+    // Get parent
+    c = strrchr(path, '/');
+    if(c) {
+        memmove(parent, path, strlen(path) - strlen(c));
+        // Don't delete above /local
+        if(strcmp(strrchr(parent, '/'), "/local") != 0){
+            if (*wreaddir(parent) == NULL) {
+                // Remove empty folder
+                if (rmdir_ex(parent) != 0) {
+                    mwarn("Empty directory '%s' couldn't be deleted. ('%s')",
+                        parent, strerror(errno));
+                    return (1);
+                }
+                // Get parent and remove it if it's empty
+                c = strrchr(path, '/');
+                memmove(parent, path, strlen(path) - strlen(c));
+                remove_empty_folders(parent);
+            }
+        }
+        
+    }
+    return 0;
+}
+
+int delete_target_file(const char *path) {
+    char full_path[PATH_MAX] = DIFF_DIR_PATH;
+    strcat(full_path, "/local");
+
+#ifdef WIN32
+    char *windows_path = strchr(path, ':');
+    strcat(full_path, (windows_path + 1));
+#else
+    strcat(full_path, path);
+#endif
+    if(rmdir_ex(full_path) == 0){
+        mdebug1("Deleting last-entry of file '%s'", full_path);
+        return(remove_empty_folders(full_path));
+    }
+    return 1;
+}
+
 #ifndef WIN32
 
 const char* get_user(__attribute__((unused)) const char *path, int uid) {

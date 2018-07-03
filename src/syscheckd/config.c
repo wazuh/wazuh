@@ -38,6 +38,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
+    syscheck.remove_old_diff= 1;
 #ifdef WIN32
     syscheck.wdata.fd      = NULL;
     syscheck.registry       = NULL;
