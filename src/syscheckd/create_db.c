@@ -79,10 +79,12 @@ int read_dir_diff(char *dir_name) {
             if (read_file_diff(dir_name) == 0) {
                 return (0);
             }
+        } else {
+            return -1;
         }
     }
-    
- 
+
+
     while ((entry = readdir(dp)) != NULL) {
         char *s_name;
 
@@ -154,7 +156,7 @@ void remove_local_diff(){
             }
         }
     }
-    
+
     /* Delete local files that aren't monitorized */
     for (j = 0; j <= syscheck.local_hash->rows; j++) {
         curr_node_local = syscheck.local_hash->table[j];
@@ -166,7 +168,7 @@ void remove_local_diff(){
             else{
                 remove_empty_folders(curr_node_local->key);
             }
-            
+
             if (OSHash_Delete(syscheck.local_hash, curr_node_local->key) != 0) {
                 mwarn("Could not delete from hash table '%s'", curr_node_local->key);
             }
@@ -257,7 +259,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
 
     /* Restrict file types */
     if (restriction) {
-        if (!OSMatch_Execute(file_name, strlen(file_name), 
+        if (!OSMatch_Execute(file_name, strlen(file_name),
                              restriction)) {
             return (0);
         }
@@ -360,15 +362,15 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                      opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 #else
             snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
-                opts & CHECK_SIZE ? '+' : '-', 
+                opts & CHECK_SIZE ? '+' : '-',
                 opts & CHECK_PERM ? '+' : '-',
-                opts & CHECK_OWNER ? '+' : '-', 
+                opts & CHECK_OWNER ? '+' : '-',
                 opts & CHECK_GROUP ? '+' : '-',
-                opts & CHECK_MD5SUM ? '+' : '-', 
+                opts & CHECK_MD5SUM ? '+' : '-',
                 sha1s,
-                opts & CHECK_MTIME ? '+' : '-', 
+                opts & CHECK_MTIME ? '+' : '-',
                 opts & CHECK_INODE ? '+' : '-',
-                sha256s, 
+                sha256s,
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
@@ -515,10 +517,10 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
     }
 
     /* Should we check for NFS? */
-    if (syscheck.skip_nfs) 
+    if (syscheck.skip_nfs)
     {
         is_nfs = IsNFS(dir_name);
-        if (is_nfs != 0) 
+        if (is_nfs != 0)
         {
             // Error will be -1, and 1 means skipped
             return (is_nfs);
@@ -606,7 +608,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
     return (0);
 }
 
-int run_dbcheck() 
+int run_dbcheck()
 {
     unsigned int i = 0;
     OSHashNode *curr_node;
@@ -631,7 +633,7 @@ int run_dbcheck()
         }
         /* Duplicate hash table to check for deleted files */
         syscheck.last_check = OSHash_Duplicate(syscheck.fp);
-        
+
         /* Only if there are directories */
         if (syscheck.remove_old_diff && (syscheck.dir != NULL || syscheck.dir[0] != NULL)) {
             remove_local_diff();
@@ -642,7 +644,7 @@ int run_dbcheck()
     return (0);
 }
 
-int create_db() 
+int create_db()
 {
     int i = 0;
     int enable_who_scan = 0;
@@ -714,7 +716,7 @@ int create_db()
 #endif
         i++;
     } while (syscheck.dir[i] != NULL);
-    
+
     if(syscheck.remove_old_diff && (syscheck.dir != NULL || syscheck.dir[0] != NULL) ){
         remove_local_diff();
     }
