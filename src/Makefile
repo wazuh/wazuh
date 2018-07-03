@@ -615,7 +615,7 @@ endif
 endif
 
 $(EXTERNAL_AUDIT)lib/.libs/libaudit.a: $(EXTERNAL_AUDIT)Makefile
-	make -C $(EXTERNAL_AUDIT)lib
+	make -C $(EXTERNAL_AUDIT)lib CC=$(CC)
 
 $(EXTERNAL_AUDIT)Makefile:
 
