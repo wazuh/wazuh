@@ -44,12 +44,12 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
         char *ptfile;
 
         /* Change forward slashes to backslashes on entry */
-        ptfile = strchr(entry, '\\');
+        ptfile = strchr(entry, '/');
         while (ptfile) {
-            *ptfile = '/';
+            *ptfile = '\\';
             ptfile++;
 
-            ptfile = strchr(ptfile, '\\');
+            ptfile = strchr(ptfile, '/');
         }
 #endif
         if (syscheck->dir == NULL) {
