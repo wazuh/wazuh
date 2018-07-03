@@ -114,6 +114,10 @@ def read_config():
     if 'port' in config_cluster:
         config_cluster['port'] = int(config_cluster['port'])
 
+    if 'node_type' in config_cluster and config_cluster['node_type'] == 'client':
+        logger.warning("Deprecated node type 'client'. Using 'worker' instead.")
+        config_cluster['node_type'] = 'worker'
+
     return config_cluster
 
 
