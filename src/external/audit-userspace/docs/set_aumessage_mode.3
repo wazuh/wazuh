@@ -1,0 +1,56 @@
+.\" Copyright (C) 2004 IBM
+.\" This file is distributed according to the GNU General Public License.
+.\" See the file COPYING in the top level source directory for details.
+.de Sh \" Subsection
+.br
+.if t .Sp
+.ne 5
+.PP
+\fB\\$1\fR
+.PP
+..
+.de Sp \" Vertical space (when we can't use .PP)
+.if t .sp .5v
+.if n .sp
+..
+.de Ip \" List item
+.br
+.ie \\n(.$>=3 .ne \\$3
+.el .ne 3
+.IP "\\$1" \\$2
+..
+.TH "SET_MESSAGE_MODE" 3 "2004-12-01" "Linux 2.6" "Linux Programmer's Manual"
+.SH NAME
+set_message_mode \- Sets the message mode
+.SH "SYNOPSIS"
+.ad l
+.hy 0
+
+#include <libaudit.h>
+.sp
+.HP 23
+void\ \fBset_message_mode\fR\ (message_t\ \fImode\fR);
+.ad
+.hy
+
+.SH "DESCRIPTION"
+
+.PP
+\fBset_message_mode\fR sets the location where informational messages are sent. If \fImode\fR=0 (default), then informational messages are sent to stderr. If \fImode\fR=1, then informational messages are sent to syslog.
+
+.SH "EXAMPLE"
+
+.nf
+
+/* Sample code */
+set_message_mode(MSG_SYSLOG)
+
+.fi
+
+.SH "SEE ALSO"
+
+.BR auditd (8),
+.BR audit_open (3).
+
+.SH AUTHOR
+Debora Velarde.

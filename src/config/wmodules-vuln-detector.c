@@ -90,6 +90,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
     vulnerability_detector->flags.u_flags.update_nvd = 0;
     vulnerability_detector->flags.u_flags.update_ubuntu = 0;
     vulnerability_detector->flags.u_flags.update_redhat = 0;
+    vulnerability_detector->flags.u_flags.attempted_ubuntu = 0;
+    vulnerability_detector->flags.u_flags.attempted_redhat = 0;
     vulnerability_detector->flags.u_flags.precise = 0;
     vulnerability_detector->flags.u_flags.trusty = 0;
     vulnerability_detector->flags.u_flags.xenial = 0;
@@ -103,6 +105,8 @@ int wm_vulnerability_detector_read(xml_node **nodes, wmodule *module) {
     module->context = &WM_VULNDETECTOR_CONTEXT;
     module->data = vulnerability_detector;
 
+    if (!nodes)
+        return 0;
 
     for (i = 0; nodes[i]; i++) {
         if (!nodes[i]->element) {

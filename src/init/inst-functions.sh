@@ -356,6 +356,7 @@ WriteAgent()
         echo "    <ca_store>${CA_STORE}</ca_store>" >> $NEWCONFIG
     fi
 
+    echo "    <ca_verification>yes</ca_verification>" >> $NEWCONFIG
     echo "  </active-response>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 

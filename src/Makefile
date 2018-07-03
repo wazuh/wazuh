@@ -7,6 +7,7 @@ EXTERNAL_LUA=external/lua-5.2.3/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
+EXTERNAL_AUDIT=external/audit-userspace/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 endif
@@ -50,9 +51,9 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl -L$(EXTERNAL_AUDIT)lib/.libs -laudit
 #		OSSEC_LDFLAGS+=-lmagic
-		CFLAGS+=-Wl,--start-group
+		CFLAGS+=-I$(EXTERNAL_AUDIT)lib -Wl,--start-group
 else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
@@ -513,7 +514,7 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 
 .PHONY: external lua
 ifeq (${uname_S},Linux)
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a
+external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a ${EXTERNAL_AUDIT}lib/.libs/libaudit.a
 else
 external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
 endif
@@ -612,6 +613,13 @@ libproc.a: ${procps_o}
 	${OSSEC_RANLIB} $@
 endif
 endif
+
+$(EXTERNAL_AUDIT)lib/.libs/libaudit.a: $(EXTERNAL_AUDIT)Makefile
+	make -C $(EXTERNAL_AUDIT)lib CC=$(CC)
+
+$(EXTERNAL_AUDIT)Makefile:
+
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure
 
 ####################
 #### OSSEC Libs ####
@@ -756,10 +764,22 @@ crypto_sha1_o := $(crypto_sha1_c:.c=.o)
 os_crypto/sha1/%.o: os_crypto/sha1/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
+crypto_sha256_c := os_crypto/sha256/sha256_op.c
+crypto_sha256_o := $(crypto_sha256_c:.c=.o)
+
+os_crypto/sha256/%.o: os_crypto/sha256/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
 crypto_md5_sha1_c := os_crypto/md5_sha1/md5_sha1_op.c
 crypto_md5_sha1_o := $(crypto_md5_sha1_c:.c=.o)
 
 os_crypto/md5_sha1/%.o: os_crypto/md5_sha1/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
+crypto_md5_sha1_sha256_c := os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.c
+crypto_md5_sha1_sha256_o := $(crypto_md5_sha1_sha256_c:.c=.o)
+
+os_crypto/md5_sha1_sha256/%.o: os_crypto/md5_sha1_sha256/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
 crypto_hmac_c := os_crypto/hmac/hmac.c
@@ -785,7 +805,9 @@ crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
 					 ${crypto_sha1_o} \
 					 ${crypto_shared_o} \
-					 ${crypto_md5_sha1_o}\
+					 ${crypto_md5_sha1_o} \
+					 ${crypto_md5_sha1_sha256_o} \
+					 ${crypto_sha256_o} \
 					 ${crypto_hmac_o} \
 					 ${crypto_signature_o}
 

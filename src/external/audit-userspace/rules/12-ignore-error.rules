@@ -1,0 +1,7 @@
+## This rule will cause auditctl to continue loading rules when it runs
+## across a an unsupported or a rule with a syntax error but exit with success
+## reason code. The normal action is to report the line and issue with the
+## rule and exit immediately with an error to get the admin's attention to
+## fix the rules.
+
+-i

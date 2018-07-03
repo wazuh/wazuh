@@ -1,0 +1,13 @@
+## These rules watch for code injection by the ptrace facility.
+## This could indicate someone trying to do something bad or
+## just debugging
+
+#-a always,exit -F arch=b32 -S ptrace -F key=tracing
+-a always,exit -F arch=b64 -S ptrace -F key=tracing
+-a always,exit -F arch=b32 -S ptrace -F a0=0x4 -F key=code-injection
+-a always,exit -F arch=b64 -S ptrace -F a0=0x4 -F key=code-injection
+-a always,exit -F arch=b32 -S ptrace -F a0=0x5 -F key=data-injection
+-a always,exit -F arch=b64 -S ptrace -F a0=0x5 -F key=data-injection
+-a always,exit -F arch=b32 -S ptrace -F a0=0x6 -F key=register-injection
+-a always,exit -F arch=b64 -S ptrace -F a0=0x6 -F key=register-injection
+

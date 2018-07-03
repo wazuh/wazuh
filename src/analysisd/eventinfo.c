@@ -513,6 +513,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->md5_after = NULL;
     lf->sha1_before = NULL;
     lf->sha1_after = NULL;
+    lf->sha256_before = NULL;
+    lf->sha256_after = NULL;
     lf->size_before = NULL;
     lf->size_after = NULL;
     lf->owner_before = NULL;
@@ -530,6 +532,18 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->diff = NULL;
     lf->previous = NULL;
     lf->labels = NULL;
+
+    lf->user_id = NULL;
+    lf->user_name = NULL;
+    lf->group_id = NULL;
+    lf->group_name = NULL;
+    lf->process_name = NULL;
+    lf->audit_uid = NULL;
+    lf->audit_name = NULL;
+    lf->effective_uid = NULL;
+    lf->effective_name = NULL;
+    lf->ppid = NULL;
+    lf->process_id = NULL;
 
     return;
 }
@@ -638,6 +652,12 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->sha1_after) {
         free(lf->sha1_after);
     }
+    if (lf->sha256_before) {
+        free(lf->sha256_before);
+    }
+    if (lf->sha256_after) {
+        free(lf->sha256_after);
+    }
     if (lf->size_before) {
         free(lf->size_before);
     }
@@ -667,6 +687,39 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->gname_after) {
         free(lf->gname_after);
+    }
+    if (lf->user_id) {
+        free(lf->user_id);
+    }
+    if (lf->user_name) {
+        free(lf->user_name);
+    }
+    if (lf->group_id) {
+        free(lf->group_id);
+    }
+    if (lf->group_name) {
+        free(lf->group_name);
+    }
+    if (lf->process_name) {
+        free(lf->process_name);
+    }
+    if (lf->audit_uid) {
+        free(lf->audit_uid);
+    }
+    if (lf->audit_name) {
+        free(lf->audit_name);
+    }
+    if (lf->effective_uid) {
+        free(lf->effective_uid);
+    }
+    if (lf->effective_name) {
+        free(lf->effective_name);
+    }
+    if (lf->ppid) {
+        free(lf->ppid);
+    }
+    if (lf->process_id) {
+        free(lf->process_id);
     }
     if (lf->diff) {
         free(lf->diff);

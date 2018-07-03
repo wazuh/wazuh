@@ -1,0 +1,4 @@
+## Put your own watches after this point
+# -a exit,always -F path=file -F perm=rwxa -F key=text
+# -a exit,always -F dir=directory -F perm=rwxa -F key=text
+

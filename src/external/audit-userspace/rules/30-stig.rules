@@ -1,0 +1,137 @@
+## The purpose of these rules is to meet the stig auditing requirements
+## These rules depends on having 10-base-config.rules & 99-finalize.rules
+## installed.
+
+## NOTE:
+## 1) if this is being used on a 32 bit machine, comment out the b64 lines
+## 2) These rules assume that login under the root account is not allowed.
+## 3) It is also assumed that 1000 represents the first usable user account. To
+##    be sure, look at UID_MIN in /etc/login.defs.
+## 4) If these rules generate too much spurious data for your tastes, limit the
+## the syscall file rules with a directory, like -F dir=/etc
+## 5) You can search for the results on the key fields in the rules
+##
+##
+## (GEN002880: CAT II) The IAO will ensure the auditing software can
+## record the following for each audit event: 
+##- Date and time of the event 
+##- Userid that initiated the event 
+##- Type of event 
+##- Success or failure of the event 
+##- For I&A events, the origin of the request (e.g., terminal ID) 
+##- For events that introduce an object into a user’s address space, and
+##  for object deletion events, the name of the object, and in MLS
+##  systems, the object’s security level.
+##
+## Things that could affect time
+-a always,exit -F arch=b32 -S adjtimex,settimeofday,stime -F key=time-change
+-a always,exit -F arch=b64 -S adjtimex,settimeofday -F key=time-change
+-a always,exit -F arch=b32 -S clock_settime -F a0=0x0 -F key=time-change
+-a always,exit -F arch=b64 -S clock_settime -F a0=0x0 -F key=time-change
+# Introduced in 2.6.39, commented out because it can make false positives
+#-a always,exit -F arch=b32 -S clock_adjtime -F key=time-change
+#-a always,exit -F arch=b64 -S clock_adjtime -F key=time-change
+-w /etc/localtime -p wa -k time-change
+
+## Things that affect identity
+-w /etc/group -p wa -k identity
+-w /etc/passwd -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/security/opasswd -p wa -k identity
+
+## Things that could affect system locale
+-a always,exit -F arch=b32 -S sethostname,setdomainname -F key=system-locale
+-a always,exit -F arch=b64 -S sethostname,setdomainname -F key=system-locale
+-w /etc/issue -p wa -k system-locale
+-w /etc/issue.net -p wa -k system-locale
+-w /etc/hosts -p wa -k system-locale
+-w /etc/hostname -p wa -k system-locale
+-a always,exit -F dir=/etc/NetworkManager/ -F perm=wa -F key=system-locale
+
+## Things that could affect MAC policy
+-a always,exit -F dir=/etc/selinux/ -F perm=wa -F key=MAC-policy
+
+
+## (GEN002900: CAT III) The IAO will ensure audit files are retained at
+## least one year; systems containing SAMI will be retained for five years.
+##
+## Site action - no action in config files
+
+## (GEN002920: CAT III) The IAO will ensure audit files are backed up
+## no less than weekly onto a different system than the system being
+## audited or backup media.  
+##
+## Can be done with cron script
+
+## (GEN002700: CAT I) (Previously – G095) The SA will ensure audit data
+## files have permissions of 640, or more restrictive.
+##
+## Done automatically by auditd
+
+## (GEN002720-GEN002840: CAT II) (Previously – G100-G106) The SA will
+## configure the auditing system to audit the following events for all
+## users and root:
+##
+## - Logon (unsuccessful and successful) and logout (successful)
+##
+## Handled by pam, sshd, login, and gdm
+## Might also want to watch these files if needing extra information
+#-w /var/log/tallylog -p wa -k logins
+#-w /var/run/faillock/ -p wa -k logins
+#-w /var/log/lastlog -p wa -k logins
+
+
+##- Process and session initiation (unsuccessful and successful)
+##
+## The session initiation is audited by pam without any rules needed.
+## Might also want to watch this file if needing extra information
+#-w /var/run/utmp -p wa -k session
+#-w /var/log/btmp -p wa -k session
+#-w /var/log/wtmp -p wa -k session
+
+##- Discretionary access control permission modification (unsuccessful
+## and successful use of chown/chmod)
+-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
+-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
+-a always,exit -F arch=b32 -S lchown,fchown,chown,fchownat -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
+-a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
+-a always,exit -F arch=b32 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
+-a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
+
+##- Unauthorized access attempts to files (unsuccessful) 
+-a always,exit -F arch=b32 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -F key=access
+-a always,exit -F arch=b32 -S open,creat,truncate,ftruncate,openat,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -F key=access
+-a always,exit -F arch=b64 -S open,truncate,ftruncate,creat,openat,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -F key=access
+-a always,exit -F arch=b64 -S open,truncate,ftruncate,creat,openat,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -F key=access
+
+##- Use of print command (unsuccessful and successful) 
+
+##- Export to media (successful)
+## You have to mount media before using it. You must disable all automounting
+## so that its done manually in order to get the correct user requesting the
+## export
+-a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -F key=export
+-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -F key=export
+
+##- System startup and shutdown (unsuccessful and successful)
+
+##- Files and programs deleted by the user (successful and unsuccessful)
+-a always,exit -F arch=b32 -S unlink,unlinkat,rename,renameat -F auid>=1000 -F auid!=4294967295 -F key=delete
+-a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat -F auid>=1000 -F auid!=4294967295 -F key=delete
+
+##- All system administration actions 
+##- All security personnel actions
+## 
+## Look for pam_tty_audit and add it to your login entry point's pam configs.
+## If that is not found, use sudo which should be patched to record its
+## commands to the audit system. Do not allow unrestricted root shells or
+## sudo cannot record the action.
+-w /etc/sudoers -p wa -k actions
+-w /etc/sudoers.d/ -p wa -k actions
+
+## (GEN002860: CAT II) (Previously – G674) The SA and/or IAO will
+##ensure old audit logs are closed and new audit logs are started daily.
+##
+## Site action. Can be assisted by a cron job
+

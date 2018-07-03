@@ -1,0 +1,18 @@
+This file is to mention significant contributions
+to this project.
+
+* Kris Wilson of IBM for all the testing and bug reports
+* Tim Chavez of IBM for the auditctl filesystem watch code
+* Debbie Velarde of IBM for the command line parsing code of ausearch and lspp rules sample configuration
+* Amy Griffis of HP for the capp.rules sample configuration
+* Dustin Kirkland of IBM for the new rule operator & exclude filter patch
+* Sergey Tikhonov for the Alpha Processor support patch
+* Darrel Goeddel of TCS for new audit rule format patch
+* Lisa Smith of HP for the audit failure query function
+* Dan Walsh of Red Hat for Python bindings
+* John Dennis of Red Hat for rewriting the python bindings and auparse updates
+* Miloslav Trmac of Red Hat for numerous patches including store forward remote logging
+* DJ Delorie of Red Hat for the remote logging code
+* Marcelo Cerri of IBM for the auvirt program
+* Peter Moody of Google for the interfield comparator code
+* Burn Alting for the augenrules code and the auparse list of lists conversion

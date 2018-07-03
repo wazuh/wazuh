@@ -1,0 +1,23 @@
+#!/bin/sh
+# Helper script to provide legacy auditd service options not 
+# directly supported by systemd
+
+# Check that we are root ... so non-root users stop here
+test $EUID = 0  ||  exit 4
+
+PATH=/sbin:/bin:/usr/bin:/usr/sbin
+prog="auditd"
+state_file="/var/run/auditd.state"
+. /etc/init.d/functions
+
+printf "Getting auditd internal state: "
+killproc $prog -CONT
+RETVAL=$?
+echo -e "\n"
+if [ $? -eq 0 ] ; then
+	if [ -e $state_file ] ; then
+		cat $state_file
+	fi
+fi
+echo
+exit $RETVAL

@@ -12,7 +12,7 @@
 
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
-#define SYSCHECK_WAIT   300
+#define SYSCHECK_WAIT   1
 
 /* Checking options */
 #define CHECK_MD5SUM        0000001
@@ -25,6 +25,8 @@
 #define CHECK_SEECHANGES    0000200
 #define CHECK_MTIME         0000400
 #define CHECK_INODE         0001000
+#define CHECK_SHA256SUM     0002000
+#define CHECK_WHODATA       0004000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
@@ -34,6 +36,10 @@
 
 #include "os_regex/os_regex.h"
 
+#ifdef WIN32
+typedef struct whodata_event_node whodata_event_node;
+#endif
+
 typedef struct _rtfim {
     int fd;
     OSHash *dirtb;
@@ -42,7 +48,62 @@ typedef struct _rtfim {
 #endif
 } rtfim;
 
+
+typedef struct whodata_evt {
+    char *user_id;
+    char *user_name;
+    char *group_id;  // Linux
+    char *group_name;  // Linux
+    char *process_name;
+    char *path;
+    char *audit_uid;  // Linux
+    char *audit_name;  // Linux
+    char *effective_uid;  // Linux
+    char *effective_name;  // Linux
+    int ppid;  // Linux
+#ifndef WIN32
+    unsigned int process_id;
+#else
+    unsigned __int64 process_id;
+    unsigned int mask;
+    int dir_position;
+    char deleted;
+    char force_notify;
+    char scan_directory;
+    whodata_event_node *wnode;
+#endif
+} whodata_evt;
+
 #ifdef WIN32
+
+typedef struct whodata_event_node {
+    struct whodata_event_node *next;
+    struct whodata_event_node *previous;
+    char *handle_id;
+} whodata_event_node;
+
+typedef struct whodata_event_list {
+    whodata_event_node *nodes;
+    whodata_event_node *first;
+    whodata_event_node *last;
+    size_t current_size;
+    size_t max_size;
+    size_t alert_threshold;
+    size_t max_remove;
+    char alerted;
+} whodata_event_list;
+
+typedef struct whodata_directory {
+    time_t timestamp;
+    int position;
+} whodata_directory;
+
+typedef struct whodata {
+    OSHash *fd;                 // Open file descriptors
+    OSHash *ignored_paths;      // Open file descriptors
+    OSHash *directories;      // Open file descriptors
+    int *ignore_rest;           // List of directories whose SACL will not be restored
+} whodata;
 
 typedef struct registry {
     char *entry;
@@ -63,10 +124,16 @@ typedef struct _config {
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;
     int realtime_count;
+
+    int remove_old_diff;            /* delete not monitorized files history */
+
     short skip_nfs;
+    int rt_delay;                   /* Delay before real-time dispatching (ms) */
 
     int time;                       /* frequency (secs) for syscheck to run */
     int queue;                      /* file descriptor of socket to write to queue */
+    unsigned int restart_audit:1;   /* Allow Syscheck restart Auditd */
+    unsigned int enable_whodata:1;  /* At less one directory configured with whodata */
 
     int *opts;                      /* attributes set in the <directories> tag element */
 
@@ -91,15 +158,23 @@ typedef struct _config {
     registry_regex *registry_ignore_regex;      /* regex of registry entries to ignore */
     registry *registry;                         /* array of registry entries to be scanned */
     FILE *reg_fp;
+    int max_fd_win_rt;
+    whodata wdata;
+    whodata_event_list wlist;
+#else
+    int max_audit_entries;          /* Maximum entries for Audit (whodata) */
 #endif
 
     OSHash *fp;
+    OSHash *last_check;
+    OSHash *local_hash;
 
     rtfim *realtime;
 
     char *prefilter_cmd;
 
 } syscheck_config;
+
 
 int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile) __attribute__((nonnull(1, 2)));
 

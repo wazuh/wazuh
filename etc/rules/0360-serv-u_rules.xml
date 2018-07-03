@@ -95,7 +95,7 @@ TypeMessage:
         <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
-    <rule id="80506" level="10" frequency="6">
+    <rule id="80506" level="10" frequency="8">
         <if_matched_sid>80505</if_matched_sid>
         <same_user />
         <description>Serv-U: Multiple authentication failures.</description>
@@ -123,7 +123,7 @@ TypeMessage:
         <action>02</action>
         <match>Closed session</match>
         <description>Serv-U: Closed session</description>
-        <group>gpg13_7.1,gdpr_IV_32.2,</group>   
+        <group>gpg13_7.1,gdpr_IV_32.2,</group>
     </rule>
 
     <!--

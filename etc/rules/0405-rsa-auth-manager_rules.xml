@@ -35,7 +35,7 @@
         <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
-    <rule id="81904" level="10" frequency="6" timeframe="120">
+    <rule id="81904" level="10" frequency="8" timeframe="120">
         <if_matched_sid>81903</if_matched_sid>
         <same_user />
         <description>RSA Authentication Manager: Multiple authentication failures.</description>

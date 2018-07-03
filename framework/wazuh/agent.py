@@ -78,7 +78,9 @@ class Agent:
               'version': 'version', 'manager_host': 'manager_host', 'dateAdd': 'date_add',
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
-              'os.uname': 'os_uname', 'os.arch': 'os_arch', 'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive'}
+              'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build':'os_build',
+              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'key':'key'}
+
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
         """
@@ -958,7 +960,7 @@ class Agent:
                     # Order by status ASC is the same that order by last_keepalive DESC.
                     if i == 'status':
                         str_order = "desc" if sort['order'] == 'asc' else "asc"
-                        order_str_field = '{0} {1}'.format(Agent.fields[i], str_order)
+                        order_str_field = '{0} {1}'.format(Agent.fields['lastKeepAlive'], str_order)
                     # Order by version is order by major and minor
                     elif i == 'os.version':
                         order_str_field = "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(sort['order'])
@@ -1108,6 +1110,8 @@ class Agent:
             oq.close()
             return ret_msg
         else:
+            if not agent_id:
+                raise WazuhException(1732)
             failed_ids = list()
             affected_agents = list()
             if isinstance(agent_id, list):
@@ -1250,14 +1254,17 @@ class Agent:
                     failed_ids.append(create_exception_dic(id, e))
 
         if not failed_ids:
-            message = 'All selected agents were removed'
+            message = 'All selected agents were removed' if affected_agents else "No agents were removed"
         else:
             message = 'Some agents were not removed'
 
         if failed_ids:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids, 'older_than': older_than}
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids,
+                          'older_than': older_than, 'total_affected_agents':len(affected_agents),
+                          'total_failed_ids':len(failed_ids)}
         else:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'older_than': older_than}
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'older_than': older_than,
+                          'total_affected_agents':len(affected_agents)}
 
         return final_dict
 

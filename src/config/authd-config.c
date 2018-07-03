@@ -35,6 +35,28 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     authd_config_t *config = (authd_config_t *)d1;
     int i;
 
+    char manager_cert[OS_SIZE_1024];
+    char manager_key[OS_SIZE_1024];
+
+    snprintf(manager_cert, OS_SIZE_1024 - 1, "%s/etc/sslmanager.cert", DEFAULTDIR);
+    snprintf(manager_key, OS_SIZE_1024 - 1, "%s/etc/sslmanager.key", DEFAULTDIR);
+
+    config->flags.disabled = 0;
+    config->port = 1515;
+    config->flags.use_source_ip = 0;
+    config->flags.force_insert = 0;
+    config->flags.clear_removed = 0;
+    config->flags.use_password = 0;
+    config->flags.register_limit = 1;
+    config->ciphers = strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
+    config->flags.verify_host = 0;
+    config->manager_cert = strdup(manager_cert);
+    config->manager_key = strdup(manager_key);
+    config->flags.auto_negotiate = 0;
+
+    if (!node)
+        return 0;
+
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);

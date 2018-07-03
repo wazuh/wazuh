@@ -1,0 +1,77 @@
+3.0
+- Generate checkpoint file even when no results are returned (Burn Alting)
+- Fix log file creation when file logging is disabled entirely (Vlad Glagolev)
+- Convert auparse_test to run with python3 (Tomáš Chvátal)
+- Drop support for prelude
+- Adjust backlog_wait_time in rules to the kernel default (#1482848)
+- Remove ids key syntax checking of rules in auditctl
+- Use SIGCONT to dump auditd internal state (#1504251)
+- Fix parsing of virtual timestamp fields in ausearch_expression (#1515903)
+- Fix parsing of uid & success for ausearch
+- Add support for not equal operator in audit by executable (Ondrej Mosnacek)
+- Hide lru symbols in auparse
+- Add systemd process protections
+- Fix aureport summary time range reporting
+
+2.8.3
+- Correct msg function name in LRU debug code
+- Fix a segfault in auditd when dns resolution isn't available
+- Make a reload legacy service for auditd
+- In auparse python bindings, expose some new types that were missing
+- In normalizer, pickup subject kind for user_login events
+- Fix interpretation of unknown ioctcmds (#1540507)
+- Add ANOM_LOGIN_SERVICE, RESP_ORIGIN_BLOCK, & RESP_ORIGIN_BLOCK_TIMED events
+- In auparse_normalize for USER_LOGIN events, map acct for subj_kind
+- Fix logging of IPv6 addresses in DAEMON_ACCEPT events (#1534748)
+- Do not rotate auditd logs when num_logs < 2 (brozs)
+
+2.8.2
+- Update tables for 4.14 kernel
+- Fixup ipv6 server side binding
+- AVC report from aureport was missing result column header (#1511606)
+- Add SOFTWARE_UPDATE event
+- In ausearch/report pickup any path and new-disk fields as a file
+- Fix value returned by auditctl --reset-lost (Richard Guy Briggs)
+- In auparse, fix expr_create_timestamp_comparison_ex to be numeric field
+- Fix building on old systems without linux/fanotify.h
+- Fix shell portability issues reported by shellcheck
+- Auditd validate_email should not use gethostbyname
+
+2.8.1
+- Fix NULL ptr dereference in audispd plugin_dir parser
+- Signed/unsigned cleanup
+
+2.8
+- Add support for ambient capability fields (Richard Guy Briggs)
+- Update auparse-normalizer to support TTY events
+- Add auparse_normalize_object_primary2 API
+- In ausearch text format, add 'to xxx' for mount operations
+- In ausearch add new --extra-obj2 option for CSV output
+- In auparse_normalize, pick up second file name for rename syscalls
+- In auparse_normalize, pick up permission & ownership changes as obj2
+- In auparse_normalize, pick up uid/gid for setuid/gid syscalls as obj2
+- In auparse_normalize, pick up link for symlink syscalls as obj2
+- In auparse_normalize, correct mount records based on success
+- In auparse_normalize, correct object for USER_MGMT, ACCT_LOCK, & ACCT_UNLOCK
+- Add default port to auditd.conf (#1455598)
+- Fix auvirt to report AVC's (#982154)
+- Add sockaddr accessor functions in auparse
+- In ausearch, use auparse_interpret_sock_address for text mode output
+- In remote logging, inform client auditd is suspended and please disconnect
+- Auditd and audisp-remote now supports IPv6
+- In auparse function auparse_goto_record_num, make it positioned on first field
+- In auparse_normalize, finish support for MAC_STATUS and MAC_CONFIG events
+- Add support for filesystem filter type (Richard Guy Briggs)
+- Add file system type table for fstype lookup
+- Add command line option to auditd & audispd for config dir path (Dan Born)
+- Fix auparse serial parsing of event when system time < 9 characters (kruvin)
+- In auparse, allow non-equality comparisons for uid & gid fields (#1399314)
+- In auparse_normalize, add support for USER_DEVICE events
+- In audispd.conf, add new plugin_dir config item to customize plugin location
+- Add support for FANOTIFY event
+- Improve auparse_normalize support for SECCOMP events
+- In auparse_normalize, pick up comm for successful memory allocations
+
+<see audit-2.8.3 and later for full 2.X change history>
+<see audit-1.8 and later for 1.X change history>
+<see audit-1.0.12 for 1.0 change history>

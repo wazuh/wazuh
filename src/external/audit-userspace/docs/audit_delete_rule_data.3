@@ -1,0 +1,23 @@
+.TH "AUDIT_DELETE_RULE_DATA" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_delete_rule_data \- Delete audit rule
+.SH "SYNOPSIS"
+.B #include <libaudit.h>
+.sp
+int audit_delete_rule_data (int fd, struct audit_rule_data *rule, int flags, int action);
+
+.SH "DESCRIPTION"
+
+audit_delete_rule_data is used to delete rules that are currently loaded in the kernel. To delete a rule, you must set up the rules identical to the one being deleted. See audit_add_rule_data for flag and action definitions.
+
+.SH "RETURN VALUE"
+
+The return value is <= 0 on error, otherwise it is the netlink sequence id number. This function can have any error that sendto would encounter.
+
+.SH "SEE ALSO"
+
+.BR audit_add_rule_data (3),
+.BR auditctl (8).
+
+.SH AUTHOR
+Steve Grubb

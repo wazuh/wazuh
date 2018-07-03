@@ -1,0 +1,26 @@
+.TH "AUDIT_ENCODE_NV_STRING" "3" "Oct 2010" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_encode_nv_string \- encode a name/value pair in a string
+.SH SYNOPSIS
+.B #include <libaudit.h>
+.sp
+.B char *audit_encode_nv_string(const char *name, const char *value, unsigned int vlen)
+
+.SH DESCRIPTION
+This function is used to encode a name/value pair. This should be used on any field being logged that potentially contains a space, a double-quote, or a control character. Any value containing those have to be specially encoded for the auparse library to correctly handle the value. The encoding method is designed to prevent log injection attacks where malicious values could cause parsing errors.
+
+To use this function, pass the name string and value strings on their respective arguments. If the value is likely to have a NUL value embedded within it, you will need to pass a value length that tells in bytes how big the value is. Otherwise, you can pass a 0 for vlen and the function will simply use strlen against the value pointer. Also be aware that the name of the field will cause auparse to do certain things when interpretting the value. If the name is uid, a user id value in decimal is expected. Make sure that well known names are used for their intended purpose or that there is no chance of name collision with something new.
+
+.SH "RETURN VALUE"
+
+Returns a freshly malloc'ed string that the caller must free or NULL on error.
+
+.SH "SEE ALSO"
+
+.BR audit_log_user_message (3),
+.BR audit_log_user_comm_message (3),
+.BR audit_log_user_avc_message (3),
+.BR audit_log_semanage_message (3).
+
+.SH AUTHOR
+Steve Grubb
