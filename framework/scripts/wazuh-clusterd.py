@@ -279,7 +279,7 @@ if __name__ == '__main__':
                 else:
                     logger.error("{0}".format(str(e)))
 
-        elif cluster_config['node_type'] == "worker" or cluster_config['node_type'] == "client":
+        elif cluster_config['node_type'] == "worker":
             manager_tag = "Worker"
             logger.info("[{0}] PID: {1}".format(manager_tag, getpid()))
 
