@@ -158,7 +158,7 @@ int set_winsacl(const char *dir, int position) {
     ace->Header.AceType  = SYSTEM_AUDIT_ACE_TYPE;
     ace->Header.AceFlags = inherit_flag | SUCCESSFUL_ACCESS_ACE_FLAG;
     ace->Header.AceSize  = LOWORD(sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD));
-    ace->Mask            = FILE_WRITE_DATA | DELETE | FILE_READ_ATTRIBUTES;
+    ace->Mask            = FILE_WRITE_DATA | DELETE;
     if (!CopySid(ev_sid_size, &ace->SidStart, everyone_sid)) {
         goto end;
     }
@@ -360,8 +360,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     unsigned __int64 handle_id;
     char force_notify;
     char *user_id;
+    char is_directory;
     unsigned int mask;
     int position;
+    whodata_directory *w_dir;
     UNREFERENCED_PARAMETER(_void);
 
     if (action == EvtSubscribeActionDeliver) {
@@ -453,40 +455,52 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         switch(event_id) {
             // Open fd
             case 4656:
+                force_notify = 0;
+                is_directory = 0;
+                position = -1;
                 // Check if it is a known file
                 if (!OSHash_Get_ex(syscheck.fp, path)) {
-                    if (!IsFile(path) || ((position = find_dir_pos(path, 1)) < 0)) {
-                        // Discard the file if its monitoring has not been activated
-                        mdebug2("'%s' is discarded because its monitoring is not activated.", path);
-                        if (result = OSHash_Add_ex(syscheck.wdata.ignored_paths, path, &fields_number), result != 2) {
-                            if (!result) {
-                                merror("The event could not be added to the ignored hash table. File: '%s'.", path);
-                            } else if (result == 1) {
-                                merror("The event could not be added to the ignored hash table because it is duplicated. File: '%s'.", path);
+                    // Check if it is not a directory
+                    if (IsDir(path)) {
+                        if (position = find_dir_pos(path, 1), position < 0) {
+                            // Discard the file if its monitoring has not been activated
+                            mdebug2("'%s' is discarded because its monitoring is not activated.", path);
+                            if (result = OSHash_Add_ex(syscheck.wdata.ignored_paths, path, &fields_number), result != 2) {
+                                if (!result) {
+                                    merror("The event could not be added to the ignored hash table. File: '%s'.", path);
+                                } else if (result == 1) {
+                                    merror("The event could not be added to the ignored hash table because it is duplicated. File: '%s'.", path);
+                                }
                             }
+                            break;
+                        } else {
+                            // The file is new and has to be notified
+                            force_notify = 1;
                         }
-                        break;
                     } else {
-                        // The file is new and has to be notified
-                        force_notify = 1;
+                        // Is a directory
+                        is_directory = 1;
                     }
                 } else {
-                    force_notify = 0;
-                    // If the file is already in the hash table, it is not necessary to set its position
-                    position = -1;
-                    // If we already know the file, we are only interested in processing it if it has been opened with write or deleted permissions
-                    if (!((mask & FILE_WRITE_DATA) || (mask & DELETE))) {
-                        break;
+                    // If the file or directory is already in the hash table, it is not necessary to set its position
+                    if (!IsDir(path)) {
+                        is_directory = 1;
                     }
                 }
                 os_calloc(1, sizeof(whodata_evt), w_evt);
                 w_evt->user_name = user_name;
                 w_evt->user_id = user_id;
-                w_evt->path = path;
+                if (!is_directory) {
+                    w_evt->path = path;
+                } else {
+                    // The directory path will be saved in 4663 event
+                    w_evt->path = NULL;
+                }
                 w_evt->dir_position = position;
                 w_evt->process_name = process_name;
                 w_evt->process_id = process_id;
                 w_evt->mask = 0;
+                w_evt->scan_directory = is_directory;
                 w_evt->deleted = 0;
                 w_evt->force_notify = force_notify;
                 w_evt->ppid = -1;
@@ -513,6 +527,40 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 if (mask) {
                     if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                         w_evt->mask |= mask;
+                        if (w_evt->scan_directory && (mask & FILE_WRITE_DATA)) {
+                            if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, path), w_dir) {
+                                if (0) { // check timestamp ~~~~~~~~~~~~~~
+                                    w_evt->scan_directory = 2;
+                                    break;
+                                }
+                                mdebug2("New files have been detected in the '%s' directory after the last scan.", path);
+
+                            } else {
+                                // Check if is a valid directory
+                                if (position = find_dir_pos(path, 1), position < 0) {
+                                    mdebug2("The '%s' directory has been discarded because it is not being monitored in whodata mode.", path);
+                                    w_evt->scan_directory = 2;
+                                    break;
+                                }
+                                os_calloc(1, sizeof(whodata_directory), w_dir);
+                                w_dir->timestamp = 0;
+                                w_dir->position = position;
+                                if (result = OSHash_Add_ex(syscheck.wdata.directories, path, w_dir), result != 2) {
+                                    if (!result) {
+                                        merror("The directory '%s' could not be added to the directories hash table.", path);
+                                    } else if (result == 1) {
+                                        merror("The directory '%s' could not be added to the directories hash table because it is duplicated.", path);
+                                    }
+                                    w_evt->scan_directory = 2;
+                                    free(w_dir);
+                                    break;
+                                } else {
+                                    mdebug2("New files have been detected in the '%s' directory and will be scanned.", path);
+                                }
+                            }
+                            w_evt->path = path;
+                            path = NULL;
+                        }
                     } else {
                         // The file was opened before Wazuh started Syscheck.
                     }
@@ -530,21 +578,33 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
             // Close fd
             case 4658:
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
-                    if (w_evt->mask || w_evt->force_notify) {
-                        unsigned int mask = w_evt->mask;
-
-                        if (w_evt->deleted) {
-                            // Check if the file has been deleted
-                            send_whodata_del(w_evt);
-                        } else if (mask & FILE_WRITE_DATA) {
-                            // Check if the file has been written
-                            realtime_checksumfile(w_evt->path, w_evt);
-                        } else if (mask & DELETE) {
-                            // The file has been moved or renamed
-                            send_whodata_del(w_evt);
-                        } else if (w_evt->force_notify) {
-                            realtime_checksumfile(w_evt->path, w_evt);
+                    unsigned int mask = w_evt->mask;
+                    if (!w_evt->scan_directory) {
+                        if (mask || w_evt->force_notify) {
+                            if (w_evt->deleted) {
+                                // Check if the file has been deleted
+                                send_whodata_del(w_evt);
+                            } else if (mask & FILE_WRITE_DATA) {
+                                // Check if the file has been written
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            } else if (mask & DELETE) {
+                                // The file has been moved or renamed
+                                send_whodata_del(w_evt);
+                            } else if (w_evt->force_notify) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            }
                         }
+                    } else if (w_evt->scan_directory != 2) { // Directory scan has been aborted if scan_directory is 2
+                        // Check that a new file has been added
+                        if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
+                            time(&w_dir->timestamp);
+                            read_dir(w_evt->path, syscheck.opts[w_dir->position], syscheck.filerestrict[w_dir->position], NULL);
+                            mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
+                        } else {
+                            mdebug2("The '%s' directory has not been scanned because no new files have been detected. Mask: '%x'", w_evt->path, w_evt->mask);
+                        }
+                    } else {
+                        mdebug1("Scanning of the '%s' directory is aborted because something has gone wrong.", w_evt->path);
                     }
                     whodata_list_remove(w_evt->wnode);
                     free_whodata_event(w_evt);
@@ -575,6 +635,10 @@ clean:
 int whodata_audit_start() {
     // Set the hash table of ignored paths
     if (syscheck.wdata.ignored_paths = OSHash_Create(), !syscheck.wdata.ignored_paths) {
+        return 1;
+    }
+    // Set the hash table of directories
+    if (syscheck.wdata.directories = OSHash_Create(), !syscheck.wdata.directories) {
         return 1;
     }
     // Set the hash table of file descriptors
@@ -703,20 +767,14 @@ void set_subscription_query(wchar_t *query) {
                                                 ") " \
                                             "and " \
                                                 "( " \
-                                                    "( " \
+                                                    "(  " \
                                                         "System/EventID = 4656 " \
-                                                    "and " \
-                                                        "( " \
-                                                            "EventData[band(Data[@Name='AccessMask'], %lu)] " \
-                                                        ") " \
-                                                    ")" \
-                                                "or " \
-                                                    "( " \
+                                                    "or " \
                                                         "System/EventID = 4663 " \
-                                                    "and " \
-                                                        "( " \
-                                                            "EventData[band(Data[@Name='AccessMask'], %lu)] " \
-                                                        ") " \
+                                                    ") " \
+                                                "and " \
+                                                    "( " \
+                                                        "EventData[band(Data[@Name='AccessMask'], %lu)] " \
                                                     ") " \
                                                 ") " \
                                             ") " \
@@ -727,8 +785,7 @@ void set_subscription_query(wchar_t *query) {
                                         ") " \
                                     "]",
             AUDIT_SUCCESS, // Only successful events
-            FILE_READ_ATTRIBUTES | FILE_WRITE_DATA | DELETE, // For 4656, write and delete events only
-            FILE_WRITE_DATA | DELETE); // For 4663, write and delete events only
+            FILE_WRITE_DATA | DELETE); // For 4663 and 4656, write and delete events only
 }
 
 #endif

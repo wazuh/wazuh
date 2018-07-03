@@ -149,8 +149,8 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
 /* Find container directory */
 int find_dir_pos(const char *filename, char is_whodata) {
-    char *buf = strdup(filename);
-    char bar = '/';
+    char *buf;
+    char bar;
     int i;
     char *c;
     int retval = -1;
@@ -158,7 +158,18 @@ int find_dir_pos(const char *filename, char is_whodata) {
 #ifdef WIN32
     // In Windows all routes will have '\'
     bar = '\\';
+    if (is_whodata) {
+        // Root directories are checked in whodata mode
+        os_calloc(strlen(filename) + 2, sizeof(char), buf);
+        snprintf(buf, strlen(filename) + 2, "%s\\", filename);
+    } else {
+        buf = strdup(filename);
+    }
+#else
+    bar = '/';
+    buf = strdup(filename);
 #endif
+
 
     while (c = strrchr(buf, bar), c && c != buf) {
         *c = '\0';
@@ -392,7 +403,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 int realtime_start()
 {
     minfo("Initializing real time file monitoring engine.");
-
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
     syscheck.realtime->dirtb = (void *)OSHash_Create();
     syscheck.realtime->fd = -1;
@@ -436,7 +446,6 @@ int realtime_adddir(const char *dir, int whodata)
             merror("Unable to add directory to whodata monitoring: '%s'.", dir);
             return 0;
         }
-
         return 1;
     }
 

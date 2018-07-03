@@ -69,6 +69,7 @@ typedef struct whodata_evt {
     int dir_position;
     char deleted;
     char force_notify;
+    char scan_directory;
     whodata_event_node *wnode;
 #endif
 } whodata_evt;
@@ -92,10 +93,16 @@ typedef struct whodata_event_list {
     char alerted;
 } whodata_event_list;
 
+typedef struct whodata_directory {
+    time_t timestamp;
+    int position;
+} whodata_directory;
+
 typedef struct whodata {
-    OSHash *fd;        // Open file descriptors
-    OSHash *ignored_paths;        // Open file descriptors
-    int *ignore_rest;       // List of directories whose SACL will not be restored
+    OSHash *fd;                 // Open file descriptors
+    OSHash *ignored_paths;      // Open file descriptors
+    OSHash *directories;      // Open file descriptors
+    int *ignore_rest;           // List of directories whose SACL will not be restored
 } whodata;
 
 typedef struct registry {
