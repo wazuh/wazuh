@@ -665,7 +665,7 @@ void send_whodata_del(whodata_evt *w_evt) {
     static char wd_sum[OS_SIZE_6144 + 1];
 
     // Remove the file from the syscheck hash table
-    OSHash_Delete_ex(syscheck.fp, w_evt->path);
+    free(OSHash_Delete_ex(syscheck.fp, w_evt->path));
 
     if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
         merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);
