@@ -238,7 +238,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
     int st = 0;
     int sf = 0;
     int comment_buf = 0;
-    
+
     char *saved_sum;
     char *saved_name;
     char *saved_time;
@@ -511,8 +511,9 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                         changes = 1;
                         wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
                         snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: 'xxx'\nNew sha256sum is : '%s'\n", newsum.sha256);
-                        os_strdup(oldsum.sha256, lf->sha256_before);
                     }
+
+                    os_strdup(newsum.sha256, lf->sha256_after);
                 }
 
                 /* Modification time message */
