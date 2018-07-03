@@ -24,7 +24,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     modules |= CSYSCHECK;
 
     syscheck.rootcheck      = 0;
-    syscheck.disabled       = 0;
+    syscheck.disabled       = 1;
     syscheck.skip_nfs       = 0;
     syscheck.scan_on_start  = 1;
     syscheck.time           = SYSCHECK_WAIT * 2;
@@ -40,6 +40,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 #ifdef WIN32
     syscheck.registry       = NULL;
     syscheck.reg_fp         = NULL;
+    syscheck.max_fd_win_rt  = 0;
 #endif
     syscheck.prefilter_cmd  = NULL;
 
@@ -78,6 +79,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     if ((syscheck.dir[0] == NULL) && (syscheck.registry[0].entry == NULL)) {
         return (1);
     }
+    syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 256, 1024);
 #endif
 
     return (0);

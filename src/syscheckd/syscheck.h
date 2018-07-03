@@ -16,6 +16,9 @@
 /* Notify list size */
 #define NOTIFY_LIST_SIZE    32
 
+// Number of attributes in the hash table
+#define SK_DB_NATTR 9
+
 /* Global config */
 extern syscheck_config syscheck;
 

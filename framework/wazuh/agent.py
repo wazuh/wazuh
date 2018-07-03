@@ -1110,6 +1110,8 @@ class Agent:
             oq.close()
             return ret_msg
         else:
+            if not agent_id:
+                raise WazuhException(1732)
             failed_ids = list()
             affected_agents = list()
             if isinstance(agent_id, list):
@@ -1252,7 +1254,7 @@ class Agent:
                     failed_ids.append(create_exception_dic(id, e))
 
         if not failed_ids:
-            message = 'All selected agents were removed'
+            message = 'All selected agents were removed' if affected_agents else "No agents were removed"
         else:
             message = 'Some agents were not removed'
 

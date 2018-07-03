@@ -190,7 +190,7 @@ void * run_dealer(__attribute__((unused)) void * args) {
     struct timeval timeout;
 
     if (sock = OS_BindUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror_exit("Unable to bind to socket '%s'. Closing local server.", WDB_LOCAL_SOCK);
+        merror_exit("Unable to bind to socket '%s': '%s'. Closing local server.", WDB_LOCAL_SOCK, strerror(errno));
     }
 
     while (running) {

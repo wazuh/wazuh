@@ -1,11 +1,59 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [TBD]
+## [v3.4.0]
+
+### Changed
+
+- Improve output of `DELETE/agents` when no agents were removed. ([#868](https://github.com/wazuh/wazuh/pull/868))
 
 ### Fixed
 
 - Fixed sort agents by status in `GET/agents` API request. ([#810](https://github.com/wazuh/wazuh/pull/810))
+- Added exception when no agents are selected to restart. ([#870](https://github.com/wazuh/wazuh/pull/870))
+- Prevent files from remaining open in the cluster. ([#874](https://github.com/wazuh/wazuh/pull/874))
+
+
+## [v3.3.2]
+
+### Added
+
+- Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
+- Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
+- Added an option `target` to customize output format per-target in Logcollector. ([#863](https://github.com/wazuh/wazuh/pull/863))
+- New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
+
+### Changed
+
+- Now the no_full_log option only affects JSON alerts. ([#881](https://github.com/wazuh/wazuh/pull/881))
+- Delete temporary files when stopping Wazuh. ([#732](https://github.com/wazuh/wazuh/pull/732))
+- Send OpenSCAP checks results to a FIFO queue instead of temporary files. ([#732](https://github.com/wazuh/wazuh/pull/732))
+- Default behavior when starting Syscheck and Rootcheck components. ([#829](https://github.com/wazuh/wazuh/pull/829))
+  - They are disabled if not appear in the configuration.
+  - They can be set up as empty blocks in the configuration, applying their default values.
+  - Improvements of error and information messages when they start.
+
+### Fixed
+
+- Syscheck RT process granularized to make frequency option more accurate. ([#434](https://github.com/wazuh/wazuh/pull/434))
+- Fixed registry_ignore problem on syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
+- Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
+- Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
+- Fix memory leak reading logcollector config. ([#884](https://github.com/wazuh/wazuh/pull/884))
+- Fixed crash in Slack integration for alerts that don't have full log. ([#880](https://github.com/wazuh/wazuh/pull/880))
+- Fixed active-responses.log definition path on Windows configuration. ([#739](https://github.com/wazuh/wazuh/pull/739))
+- Added warning message when updating Syscheck/Rootcheck database to restart the manager. ([#817](https://github.com/wazuh/wazuh/pull/817))
+- Fix PID file creation checking. ([#822](https://github.com/wazuh/wazuh/pull/822))
+  - Check that the PID file was created and written.
+  - This would prevent service from running multiple processes of the same daemon.
+- Fix reading of Windows platform for 64 bits systems. ([#832](https://github.com/wazuh/wazuh/pull/832))
+- Fixed Syslog output parser when reading the timestamp from the alerts in JSON format. ([#843](https://github.com/wazuh/wazuh/pull/843))
+- Fixed filter for `gpg-pubkey` packages in Syscollector. ([#847](https://github.com/wazuh/wazuh/pull/847))
+- Fixed bug in configuration when reading the `repeated_offenders` option in Active Response. ([#873](https://github.com/wazuh/wazuh/pull/873))
+- Fixed variables parser when loading rules. ([#855](https://github.com/wazuh/wazuh/pull/855))
+- Fixed parser files names in the Rootcheck scan. ([#840](https://github.com/wazuh/wazuh/pull/840))
+- Removed frequency offset in rules. ([#827](https://github.com/wazuh/wazuh/pull/827)).
+
 
 ## [v3.3.1]
 
@@ -67,6 +115,7 @@ All notable changes to this project will be documented in this file.
 - Fixed bug getting the agents in cluster control. ([#741](https://github.com/wazuh/wazuh/pull/741))
 - Prevent Logcollector from reporting an error when a path with wildcards matches no files.
 - Fixes the feature to group with the option multi-line. ([#754](https://github.com/wazuh/wazuh/pull/754))
+
 
 ## [v3.2.4]
 
@@ -153,7 +202,7 @@ All notable changes to this project will be documented in this file.
 - Fix memory leak in Maild with JSON input. ([#498](https://github.com/wazuh/wazuh/pull/498))
 - Fixed remote command switch option. ([#504](https://github.com/wazuh/wazuh/pull/504))
 
-## [v3.2.1]
+## [v3.2.1] 2018-03-03
 
 ### Added
 
@@ -194,7 +243,7 @@ All notable changes to this project will be documented in this file.
 - Fixed memory leaks in vulnerability-detector and CIS-CAT wodle.
 - Fixed behavior when working directory is not found in CIS-CAT wodle.
 
-## [v3.2.0]
+## [v3.2.0] 2018-02-13
 
 ### Added
 - Added support to synchronize custom rules and decoders in the cluster.([#344](https://github.com/wazuh/wazuh/pull/344))
