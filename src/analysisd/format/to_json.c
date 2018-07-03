@@ -20,7 +20,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* root;
     cJSON* rule;
     cJSON* file_diff;
-    cJSON* changed_fields;
     cJSON* manager;
 	cJSON* agent;
     cJSON* predecoder;
