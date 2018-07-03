@@ -3,19 +3,6 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.4.0]
 
-### Changed
-
-- Improve output of `DELETE/agents` when no agents were removed. ([#868](https://github.com/wazuh/wazuh/pull/868))
-
-### Fixed
-
-- Fixed sort agents by status in `GET/agents` API request. ([#810](https://github.com/wazuh/wazuh/pull/810))
-- Added exception when no agents are selected to restart. ([#870](https://github.com/wazuh/wazuh/pull/870))
-- Prevent files from remaining open in the cluster. ([#874](https://github.com/wazuh/wazuh/pull/874))
-
-
-## [v3.3.2]
-
 ### Added
 
 - Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
@@ -27,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
 
 ### Changed
+
 - Changed a descriptive message in the alert showing what attributes changed. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Change visualization of Syscheck alerts. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Add all the available fields in the Syscheck messages from the Wazuh configuration files. ([#857](https://github.com/wazuh/wazuh/pull/857))
@@ -37,6 +25,7 @@ All notable changes to this project will be documented in this file.
   - They are disabled if not appear in the configuration.
   - They can be set up as empty blocks in the configuration, applying their default values.
   - Improvements of error and information messages when they start.
+- Improve output of `DELETE/agents` when no agents were removed. ([#868](https://github.com/wazuh/wazuh/pull/868))
 
 ### Fixed
 
@@ -63,7 +52,10 @@ All notable changes to this project will be documented in this file.
 - Fixed variables parser when loading rules. ([#855](https://github.com/wazuh/wazuh/pull/855))
 - Fixed parser files names in the Rootcheck scan. ([#840](https://github.com/wazuh/wazuh/pull/840))
 - Removed frequency offset in rules. ([#827](https://github.com/wazuh/wazuh/pull/827)).
-
+- Fix memory leak reading logcollector config. ([#884](https://github.com/wazuh/wazuh/pull/884))
+- Fixed sort agents by status in `GET/agents` API request. ([#810](https://github.com/wazuh/wazuh/pull/810))
+- Added exception when no agents are selected to restart. ([#870](https://github.com/wazuh/wazuh/pull/870))
+- Prevent files from remaining open in the cluster. ([#874](https://github.com/wazuh/wazuh/pull/874))
 
 ## [v3.3.1]
 
