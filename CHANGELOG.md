@@ -1,7 +1,6 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-
 ## [v3.4.0]
 
 ### Changed
@@ -10,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fixed sort agents by status in `GET/agents` API request. ([#810](https://github.com/wazuh/wazuh/pull/810))
 - Added exception when no agents are selected to restart. ([#870](https://github.com/wazuh/wazuh/pull/870))
 - Prevent files from remaining open in the cluster. ([#874](https://github.com/wazuh/wazuh/pull/874))
 

@@ -960,7 +960,7 @@ class Agent:
                     # Order by status ASC is the same that order by last_keepalive DESC.
                     if i == 'status':
                         str_order = "desc" if sort['order'] == 'asc' else "asc"
-                        order_str_field = '{0} {1}'.format(Agent.fields[i], str_order)
+                        order_str_field = '{0} {1}'.format(Agent.fields['lastKeepAlive'], str_order)
                     # Order by version is order by major and minor
                     elif i == 'os.version':
                         order_str_field = "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(sort['order'])
