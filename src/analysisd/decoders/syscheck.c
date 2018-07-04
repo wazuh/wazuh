@@ -338,12 +338,6 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
             sf = 0;
         }
 
-        if (saved_frec == NULL) {
-            merror("Invalid integrity message in the database");
-            fgetpos(fp, &sdb.init_pos); /* Get next location */
-            continue;
-        }
-
         mdebug2("Agent: %d, location: <%s>, file: <%s>, sum: <%s>, saved: <%s>", agent_id, lf->location, f_name, c_sum, saved_sum);
 
         if (!Config.syscheck_auto_ignore) {
