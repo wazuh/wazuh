@@ -545,12 +545,11 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                                     goto clean;
                                 }
 
-                                /*
-                                if (check_dir_timestamp(&w_dir->timestamp, &system_time)) {
+                                if (!check_dir_timestamp(&w_dir->timestamp, &system_time)) {
                                     mdebug2("The '%s' directory has been scanned at 'd', so it does not need to do it again.", path);
                                     w_evt->scan_directory = 3;
                                     break;
-                                }*/
+                                }
                                 mdebug2("New files have been detected in the '%s' directory after the last scan.", path);
                             } else {
                                 // Check if is a valid directory
@@ -611,7 +610,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                                 realtime_checksumfile(w_evt->path, w_evt);
                             }
                         }
-                    } else if (w_evt->scan_directory != 2) { // Directory scan has been aborted if scan_directory is 2
+                    } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         // Check that a new file has been added
                         if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             time(&w_dir->timestamp);
@@ -818,13 +817,34 @@ int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time) {
 }
 
 int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time) {
-    struct tm *parsed_time = localtime(timestamp);
-    minfo("~~~~~~~~~~~~hour     1:%d       2:%d", parsed_time->tm_hour, system_time->wHour);
-    minfo("~~~~~~~~~~~~minute     1:%d       2:%d", parsed_time->tm_min, system_time->wMinute);
-    minfo("~~~~~~~~~~~~second     1:%d       2:%d", parsed_time->tm_sec, system_time->wSecond);
+    struct tm parsed_time;
+    gmtime_r(timestamp, &parsed_time);
 
+    if (parsed_time.tm_mday > system_time->wDay) {
+        return 0;
+    } else if (parsed_time.tm_mday < system_time->wDay) {
+        return 1;
+    }
 
-    return 0;
+    if (parsed_time.tm_hour > system_time->wHour) {
+        return 0;
+    } else if (parsed_time.tm_hour < system_time->wHour) {
+        return 1;
+    }
+
+    if (parsed_time.tm_min > system_time->wMinute) {
+        return 0;
+    } else if (parsed_time.tm_min < system_time->wMinute) {
+        return 1;
+    }
+
+    if (parsed_time.tm_sec > system_time->wSecond) {
+        return 0;
+    } else if (parsed_time.tm_sec < system_time->wSecond) {
+        return 1;
+    }
+
+    return 1;
 }
 
 #endif

@@ -534,11 +534,13 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
     /* Open the directory given */
     dp = opendir(dir_name);
     if (!dp) {
+        minfo("~~~~~0~~~~~ dir_name: '%s'", dir_name);
         if (errno == ENOTDIR) {
             if (read_file(dir_name, opts, restriction, evt, enable_recursion) == 0) {
                 return (0);
             }
         }
+        minfo("~~~~~1~~~~~ dir_name: '%s'", dir_name);
 
 #ifdef WIN32
         int di = 0;
@@ -557,9 +559,11 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
             }
             di++;
         }
+        minfo("~~~~~2~~~~~ dir_name: '%s'", dir_name);
         if (defaultfilesn[di] == NULL) {
             mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
         }
+        minfo("~~~~~3~~~~~ dir_name: '%s'", dir_name);
 #else
         mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
 #endif /* WIN32 */
