@@ -1,0 +1,79 @@
+.\" Copyright (C) 2006 HP
+.\" This file is distributed according to the GNU General Public License.
+.\" See the file COPYING in the top level source directory for details.
+.de Sh \" Subsection
+.br
+.if t .Sp
+.ne 5
+.PP
+\fB\\$1\fR
+.PP
+..
+.de Sp \" Vertical space (when we can't use .PP)
+.if t .sp .5v
+.if n .sp
+..
+.de Ip \" List item
+.br
+.ie \\n(.$>=3 .ne \\$3
+.el .ne 3
+.IP "\\$1" \\$2
+..
+.TH "GET_AUDITFAIL_ACTION" 3 "2006-7-10" "Linux 2.7" "Linux Programmer's Manual"
+.SH NAME
+get_auditfail_action \- Get failure_action tunable value
+.SH "SYNOPSIS"
+.ad l
+.hy 0
+
+#include <libaudit.h>
+.sp
+.HP 19
+int\ \fBget_auditfail_action\fR\ (int *\fIfailmode\fR);
+.ad
+.hy
+
+.SH "DESCRIPTION"
+
+.PP
+This function gets the failure_action tunable value stored in \fB/etc/libaudit.conf\fR. \fBget_auditfail_action\fR should be called after an \fBaudit_open\fR call returns an error to see what action the admin prefers.
+
+.PP
+The failure_action value found in \fB/etc/libaudit.conf\fR is copied into the \fIfailmode\fR argument upon function return.  This value should then be used by the calling application to determine what action should be taken when the audit subsystem is unavailable. 
+
+.SH "RETURN VALUE"
+
+.PP
+Upon success, \fBget_auditfail_action\fR returns a zero, and the \fIfailmode\fR argument will hold the failure_action value.  The possible values for failure_action are: FAIL_IGNORE (0), FAIL_LOG (1), and FAIL_TERMINATE (2). Upon failure, \fBget_auditfail_action\fR returns a return code of one.
+
+.SH "ERRORS"
+
+.PP
+An error is returned if there is an error reading \fB/etc/libaudit.conf\fR or if the failure_action tunable is not found in the file.
+
+.SH "EXAMPLES"
+
+.PP
+       /* Sample code */
+       auditfail_t failmode;	
+
+       if ((fd = audit_open() ) < 0 ) {
+            fprintf (stderr, "Cannot open netlink audit socket");
+
+            /* Get the failure_action */
+            if ((rc = get_auditfail_action(&failmode)) == 0) {
+                if (failmode == FAIL_LOG)
+                     fprintf (stderr, "Audit subsystem unavailable");
+                else if (failmode == FAIL_TERMINATE) 
+                     exit (1);
+                /* If failmode == FAIL_IGNORE, do nothing */
+            }
+       }
+
+.SH "SEE ALSO"
+
+.BR audit_open (3),
+.BR auditd (8).
+
+.SH AUTHOR
+Lisa M. Smith.

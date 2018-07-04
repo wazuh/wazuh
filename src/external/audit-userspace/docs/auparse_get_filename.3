@@ -1,0 +1,26 @@
+.TH "AUPARSE_GET_FILENAME" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_filename \- get the filename where record was found
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+const char *auparse_get_filename(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_filename will return the name of the source file where the
+record was found if the source type is AUSOURCE_FILE or
+AUSOURCE_FILE_ARRAY. For other source types the return value will be
+NULL.
+
+.SH "RETURN VALUE"
+
+Returns pointer to a filename or NULL if unavailable.
+
+.SH "SEE ALSO"
+
+.BR auparse_get_line_number (3).
+.BR auparse_next_record (3).
+
+.SH AUTHOR
+John Dennis

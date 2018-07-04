@@ -399,7 +399,7 @@ class WorkerManager:
 
     # Private methods
     def _initiate_worker_threads(self):
-        logger.debug("[Master] Creating threads.")
+        logger.debug("[Worker] Creating threads.")
         # Sync integrity
         self.threads[WorkerManager.SYNC_I_T] = SyncIntegrityThread(worker_handler=self.handler, stopper=self.stopper)
         self.threads[WorkerManager.SYNC_I_T].start()

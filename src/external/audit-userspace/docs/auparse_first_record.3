@@ -1,0 +1,22 @@
+.TH "AUPARSE_FIRST_RECORD" "3" "Sep 2014" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_first_record \- reposition record cursor
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int auparse_first_record(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+auparse_first_record repositions the internal cursors of the parsing library to point to the first field of the first record in the current event.
+
+.SH "RETURN VALUE"
+
+Returns \-1 if an error occurs, 0 if there is no event data, or 1 for success.
+
+.SH "SEE ALSO"
+
+.BR auparse_next_event (3),
+.BR auparse_next_record (3).
+
+.SH AUTHOR
+Steve Grubb

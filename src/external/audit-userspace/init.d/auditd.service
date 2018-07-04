@@ -1,0 +1,35 @@
+[Unit]
+Description=Security Auditing Service
+DefaultDependencies=no
+## If auditd.conf has tcp_listen_port enabled, copy this file to
+## /etc/systemd/system/auditd.service and add network-online.target
+## to the next line so it waits for the network to start before launching.
+After=local-fs.target systemd-tmpfiles-setup.service
+Conflicts=shutdown.target
+Before=sysinit.target shutdown.target
+RefuseManualStop=yes
+ConditionKernelCommandLine=!audit=0
+Documentation=man:auditd(8) https://github.com/linux-audit/audit-documentation
+
+[Service]
+Type=forking
+PIDFile=/var/run/auditd.pid
+ExecStart=/sbin/auditd
+## To not use augenrules, copy this file to /etc/systemd/system/auditd.service
+## and comment/delete the next line and uncomment the auditctl line.
+## NOTE: augenrules expect any rules to be added to /etc/audit/rules.d/
+ExecStartPost=-/sbin/augenrules --load
+#ExecStartPost=-/sbin/auditctl -R /etc/audit/audit.rules
+# By default we don't clear the rules on exit. To enable this, uncomment
+# the next line after copying the file to /etc/systemd/system/auditd.service
+#ExecStopPost=/sbin/auditctl -R /etc/audit/audit-stop.rules
+
+### Security Settings ###
+MemoryDenyWriteExecute=true
+LockPersonality=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+
+[Install]
+WantedBy=multi-user.target
+

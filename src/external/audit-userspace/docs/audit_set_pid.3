@@ -1,0 +1,24 @@
+.TH "AUDIT_SET_PID" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_set_pid \- Set audit daemon process ID
+.SH "SYNOPSIS"
+
+.B #include <libaudit.h>
+.sp
+int audit_set_pid (int fd, int pid);
+
+.SH "DESCRIPTION"
+
+audit_set_pid tells the kernel what the pid is of the audit daemon. When the pid is set to 0, the kernel will log all events to syslog. Otherwise it will try to send events to the netlink connection that has the same pid given by this function. If for some reason the process goes away, the kernel will automatically set the value to 0 itself. Usually this function is called by the audit daemon and not an external program.
+
+.SH "RETURN VALUE"
+
+The return value is <= 0 on error, otherwise it is the netlink sequence id number. This function can have any error that sendto would encounter.
+
+.SH "SEE ALSO"
+
+.BR audit_open (3),
+.BR auditd (8).
+
+.SH AUTHOR
+Steve Grubb

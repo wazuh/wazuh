@@ -1,0 +1,22 @@
+.TH "AUPARSE_NEXT_EVENT" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_next_event \- get the next event
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int auparse_next_event(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_next_event will position the cursors at the first field of the first record of the next event in a file or buffer. It does not skip events or honor any search criteria that may be stored.
+
+.SH "RETURN VALUE"
+
+Returns \-1 if an error occurs, 0 if there's no data, 1 for success.
+
+.SH "SEE ALSO"
+
+.BR auparse_next_record (3).
+
+.SH AUTHOR
+Steve Grubb

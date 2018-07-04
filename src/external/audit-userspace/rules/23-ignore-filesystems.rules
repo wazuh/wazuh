@@ -1,0 +1,8 @@
+# This rule supresses events that originate on the below file systems.
+# Typically you would use this in conjunction with rules to monitor
+# kernel modules. The filesystem listed are known to cause hundreds of
+# path records during kernel module load. As an aside, if you do see the
+# tracefs or debugfs module load and this is a production system, you really
+# should look into why its getting loaded and prevent it if possible.
+-a never,filesystem -F fstype=tracefs
+-a never,filesystem -F fstype=debugfs

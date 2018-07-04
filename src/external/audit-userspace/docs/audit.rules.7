@@ -1,0 +1,180 @@
+.TH AUDIT.RULES: "7" "Aug 2014" "Red Hat" "System Administration Utilities"
+.SH NAME
+audit.rules \- a set of rules loaded in the kernel audit system
+.SH DESCRIPTION
+\fBaudit.rules\fP is a file containing audit rules that will be loaded by the audit daemon's init script whenever the daemon is started. The auditctl program is used by the initscripts to perform this operation. The syntax for the rules is essentially the same as when typing in an auditctl command at a shell prompt except you do not need to type the auditctl command name since that is implied. The audit rules come in 3 varieties:
+.IR control ", " file ", and " syscall ".
+
+.SS Control
+Control commands generally involve configuring the audit system rather than telling it what to watch for. These commands typically include deleting all rules, setting the size of the kernel's backlog queue, setting the failure mode, setting the event rate limit, or to tell auditctl to ignore syntax errors in the rules and continue loading. Generally, these rules are at the top of the rules file.
+
+.SS File System
+File System rules are sometimes called watches. These rules are used to audit access to particular files or directories that you may be interested in. If the path given in a watch rule is a directory, then the rule used is recursive to the bottom of the directory tree excluding any directories that may be mount points. The syntax of these watch rules generally follow this format:
+
+.nf
+.B \-w path-to-file \-p permissions \-k keyname
+.fi
+
+where the permission are any one of the following:
+
+.RS
+.TP 2
+.B r
+- read of the file
+.TP
+.B w
+- write to the file
+.TP
+.B x
+- execute the file
+.TP
+.B a
+- change in the file's attribute
+.RE
+
+Watches can also be created using the syscall format described below which allow for greater flexibility and options. Using syscall rules you can choose between
+.B path
+and
+.B dir
+which is against a specific inode or directory tree respectively. It should also be noted that the recursive directory watch will stop if there is a mount point below the parent directory. There is an option to make the mounted subdirectory equivalent by using a
+.B -q
+rule.
+
+.SS System Call
+The system call rules are loaded into a matching engine that intercepts each syscall that all programs on the system makes. Therefore it is very important to only use syscall rules when you have to since these affect performance. The more rules, the bigger the performance hit. You can help the performance, though, by combining syscalls into one rule whenever possible.
+
+The Linux kernel has 4 rule matching lists or filters as they are sometimes called. They are: task, exit, user, and exclude. The task list is checked only during the fork or clone syscalls. It is rarely used in practice.
+
+The exit filter is the place where all syscall and file system audit requests are evaluated.
+
+The user filter is used to filter (remove) some events that originate in user space.  By default, any event originating in user space is allowed. So, if there are some events that you do not want to see, then this is a place where some can be removed. See auditctl(8) for fields that are valid.
+
+The exclude filter is used to exclude certain events from being emitted. The msgtype and a number of subject attribute fields can be used to tell the kernel which message types you do not want to record. This filter can remove the event as a whole and is not selective about any other attribute. The user and exit filters are better suited to selectively auditing events.  The action is ignored for this filter, defaulting to "never".
+
+Syscall rules take the general form of:
+
+.nf
+.B \-a action,list \-S syscall \-F field=value \-k keyname
+.fi
+
+The
+.B \-a
+option tells the kernel's rule matching engine that we want to append a rule at the end of the rule list. But we need to specify which rule list it goes on and what action to take when it triggers. Valid actions are:
+
+.RS
+.TP 7
+.B always
+- always create an event
+.TP
+.B never
+- never create an event
+.RE
+
+The action and list are separated by a comma but no space in between. Valid lists are:
+.IR task ", " exit ", " user ", and " exclude ". Their meaning was explained earlier.
+
+Next in the rule would normally be the
+.B \-S
+option. This field can either be the syscall name or number. For readability, the name is almost always used. You may give more than one syscall in a rule by specifying another
+.B \-S
+option. When sent into the kernel, all syscall fields are put into a mask so that one compare can determine if the syscall is of interest. So, adding multiple syscalls in one rule is very efficient. When you specify a syscall name, auditctl will look up the name and get its syscall number. This leads to some problems on bi-arch machines. The 32 and 64 bit syscall numbers sometimes, but not always, line up. So, to solve this problem, you would generally need to break the rule into 2 with one specifying \-F arch=b32 and the other specifying \-F arch=b64. This needs to go in front of the
+.B \-S
+option so that auditctl looks at the right lookup table when returning the number.
+
+After the syscall is specified, you would normally have one or more
+.B \-F
+options that fine tune what to match against. Rather than list all the valid field types here, the reader should look at the auditctl man page which has a full listing of each field and what it means. But it's worth mentioning a couple things.
+
+The audit system considers uids to be unsigned numbers. The audit system uses the number \-1 to indicate that a loginuid is not set. This means that when it's printed out, it looks like 4294967295. If you write a rule that you wanted try to get the valid users of the system, you need to look in /etc/login.defs to see where user accounts start. For example, if UID_MIN is  500, then you would also need to take into account that the unsigned representation of \-1 is higher than 500. So you would address this with the following piece of a rule:
+
+.nf
+\-F auid>=500 \-F auid!=4294967295
+.fi
+
+These individual checks are "anded" and both have to be true.
+
+The last thing to know about syscall rules is that you can add a key field which is a free form text string that you want inserted into the event to help identify its meaning. This is discussed in more detail in the NOTES section.
+
+.SH NOTES
+The purpose of auditing is to be able to do an investigation periodically or whenever an incident occurs. A few simple steps in planning up front will make this job easier. The best advice is to use keys in both the watches and system call rules to give the rule a meaning. If rules are related or together meet a specific requirement, then give them a common key name. You can use this during your investigation to select only results with a specific meaning.
+
+When doing an investigation, you would normally start off with the main aureport output to just get an idea about what is happening on the system. This report mostly tells you about events that are hard coded by the audit system such as login/out, uses of authentication, system anomalies, how many users have been on the machine, and if SE Linux has detected any AVCs.
+
+.nf
+aureport \-\-start this-week
+.fi
+
+After looking at the report, you probably want to get a second view about what rules you loaded that have been triggering. This is where keys become important. You would generally run the key summary report like this:
+
+.nf
+aureport \-\-start this-week \-\-key \-\-summary
+.fi
+
+This will give an ordered listing of the keys associated with rules that have been triggering. If, for example, you had a syscall audit rule that triggered on the failure to open files with EPERM that had a key field of access like this:
+
+.nf
+\-a always,exit \-F arch=b64 \-S open \-S openat \-F exit=\-EPERM \-k access
+.fi
+
+Then you can isolate these failures with ausearch and pipe the results to aureport for display. Suppose your investigation noticed a lot of the access denied events. If you wanted to see the files that unauthorized access has been attempted, you could run the following command:
+
+.nf
+ausearch \-\-start this-week \-k access \-\-raw | aureport \-\-file \-\-summary
+.fi
+
+This will give an ordered list showing which files are being accessed with the EPERM failure. Suppose you wanted to see which users might be having failed access, you would run the following command:
+
+.nf
+ausearch \-\-start this-week \-k access \-\-raw | aureport \-\-user \-\-summary
+.fi
+
+If your investigation showed a lot of failed accesses to a particular file, you could run the following report to see who is doing it:
+
+.fi
+ausearch \-\-start this-week \-k access \-f /path-to/file \-\-raw | aureport \-\-user \-i
+.fi
+
+This report will give you the individual access attempts by person. If you needed to see the actual audit event that is being reported, you would look at the date, time, and event columns. Assuming the event was 822 and it occurred at 2:30 on 09/01/2009 and you use the en_US.utf8 locale, the command would look something like this:
+
+.nf
+ausearch \-\-start 09/01/2009 02:30 \-a 822 \-i \-\-just\-one
+.fi
+
+This will select the first event from that day and time with the matching event id and interpret the numeric values into human readable values.
+
+The most important step in being able to do this kind of analysis is setting up key fields when the rules were originally written. It should also be pointed out that you can have more than one key field associated with any given rule.
+
+.SH TROUBLESHOOTING
+If you are not getting events on syscall rules that you think you should, try running a test program under strace so that you can see the syscalls. There is a chance that you might have identified the wrong syscall.
+
+If you get a warning from auditctl saying, "32/64 bit syscall mismatch in line XX, you should specify an arch". This means that you specified a syscall rule on a bi-arch system where the syscall has a different syscall number for the 32 and 64 bit interfaces. This means that on one of those interfaces you are likely auditing the wrong syscall. To solve the problem, re-write the rule as two rules specifying the intended arch for each rule. For example,
+
+.nf
+\-always,exit \-S openat \-k access
+.fi
+
+would be rewritten as
+
+.nf
+\-always,exit \-F arch=b32 \-S openat \-k access
+\-always,exit \-F arch=b64 \-S openat \-k access
+.fi
+
+If you get a warning that says, "entry rules deprecated, changing to exit rule". This means that you have a rule intended for the entry filter, but that filter is no longer available. Auditctl moved your rule to the exit filter so that it's not lost. But to solve this so that you do not get the warning any more, you need to change the offending rule from entry to exit.
+
+.SH EXAMPLES
+The following rule shows how to audit failed access to files due to permission problems. Note that it takes two rules for each arch ABI to audit this since file access can fail with two different failure codes indicating permission problems.
+
+.nf
+.B \-a always,exit \-F arch=b32 \-S open \-S openat \-F exit=\-EACCES \-k access
+.B \-a always,exit \-F arch=b32 \-S open \-S openat \-F exit=\-EPERM \-k access
+.B \-a always,exit \-F arch=b64 \-S open \-S openat \-F exit=\-EACCES \-k access
+.B \-a always,exit \-F arch=b64 \-S open \-S openat \-F exit=\-EPERM \-k access
+.fi
+
+.SH "SEE ALSO"
+.BR auditctl (8),
+.BR auditd (8).
+
+.SH AUTHOR
+Steve Grubb

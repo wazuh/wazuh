@@ -1,0 +1,27 @@
+This group of rules are meant to be used with the augenrules program.
+The augenrules program expects rules to be located in /etc/audit/rules.d/
+The rules will get processed in a specific order based on their natural
+sort order. To make things easier to use, the files in this directory are
+organized into groups with the following meanings:
+
+10 - Kernel and auditctl configuration
+20 - Rules that could match general rules but we want a different match
+30 - Main rules
+40 - Optional rules
+50 - Server Specific rules
+70 - System local rules
+90 - Finalize (immutable)
+
+There is one set of rules, 31-privileged.rules, that should be regenerated.
+There is a script in the comments of that file. You can uncomment the commands
+and run the script and then rename the resulting file.
+
+The rules are not meant to be used all at once. They are pieces of a policy
+that should be thought out and individual files copied to /etc/audit/rules.d/
+For example, if you wanted to set a system up in the STIG configuration, copy
+rules 10-base-config, 30-stig, 31-privileged, and 99-finalize. You can add
+more if you like.
+
+Once you have the rules in the rules.d directory, you can load then by running
+augenrules --load
+

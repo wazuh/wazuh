@@ -9,7 +9,7 @@
  * Foundation.
  */
 
- #ifndef WIN32
+#ifndef WIN32
 
 #include <shared.h>
 

@@ -1,0 +1,26 @@
+.TH "AUDIT_SET_BACKLOG_LIMIT" "3" "Oct 2006" "Linux Audit API"
+.SH NAME
+audit_set_backlog_limit \- Set the audit backlog limit
+.SH "SYNOPSIS"
+
+.B #include <libaudit.h>
+.sp
+int audit_set_backlog_limit (int fd, int limit);
+
+.SH "DESCRIPTION"
+
+audit_set_backlog_limit sets the queue length for audit events awaiting transfer to the audit daemon. The default value is 64 which can potentially be overrun by bursts of activity. When the backlog limit is reached, the kernel consults the failure_flag to see what action to take.
+
+.SH "RETURN VALUE"
+
+The return value is <= 0 on error, otherwise it is the netlink sequence id number. This function can have any error that sendto would encounter.
+
+.SH "SEE ALSO"
+
+.BR audit_set_failure (3),
+.BR audit_open (3),
+.BR auditd (8),
+.BR auditctl (8).
+
+.SH AUTHOR
+Steve Grubb

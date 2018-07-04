@@ -1,0 +1,37 @@
+.TH "AUPARSE_INIT" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_init \- initialize an instance of the audit parsing library
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+auparse_state_t *auparse_init(ausource_t source, const void *b);
+
+.SH "DESCRIPTION"
+
+auparse_init initializes an instance of the audit parsing library. The function returns an opaque pointer to the parser's internal state. It is used in subsequent calls to the library so. The source variable determines where the library looks for data. Legal values can be:
+
+.nf
+	AUSOURCE_LOGS - use audit logs
+	AUSOURCE_FILE - use a file
+	AUSOURCE_FILE_ARRAY - use several files
+	AUSOURCE_BUFFER - use a buffer
+	AUSOURCE_BUFFER_ARRAY - use an array of buffers
+	AUSOURCE_DESCRIPTOR - use a particular descriptor
+	AUSOURCE_FILE_POINTER - use a stdio FILE pointer
+	AUSOURCE_FEED - feed data to parser with auparse_feed()
+.fi
+
+The pointer 'b' is used to set the file name, array of filenames, the buffer address, or an array of pointers to buffers, or the descriptor number based on what source is given. When the data source is an array of files or buffers, you would create an array of pointers with the last one being a NULL pointer. Buffers should be NUL terminated.
+
+.SH "RETURN VALUE"
+
+Returns a NULL pointer if an error occurs; otherwise, the return value is an opaque pointer to the parser's internal state.
+
+.SH "SEE ALSO"
+
+.BR auparse_reset (3), 
+.BR auparse_destroy (3).
+.BR auparse_feed (3).
+
+.SH AUTHOR
+Steve Grubb

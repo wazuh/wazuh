@@ -47,13 +47,13 @@
     <group>gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="86806" level="12" frequency="5" timeframe="120">
+  <rule id="86806" level="12" frequency="7" timeframe="120">
     <if_matched_sid>86804</if_matched_sid>
     <description>VShell multiple connection attempts within 2 minute by a host in the deny file, potential DOS or brute force attempt.</description>
     <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="86807" level="12" frequency="5" timeframe="60">
+  <rule id="86807" level="12" frequency="7" timeframe="60">
     <if_matched_sid>86802</if_matched_sid>
     <description>VShell host has exceeded the number of failed login attempts and has been added to the Hosts Deny file.</description>
     <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>

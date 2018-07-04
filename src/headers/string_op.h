@@ -12,6 +12,18 @@
 
 #include <external/cJSON/cJSON.h>
 
+#ifdef WIN32
+#include <winsock2.h>
+#include <windows.h>
+
+#ifndef WC_ERR_INVALID_CHARS
+#define WC_ERR_INVALID_CHARS 0x80
+#endif
+
+/* converts a Windows format string to char* */
+char *convert_windows_string(LPCWSTR string);
+#endif
+
 /* Trim the CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str) __attribute__((nonnull));
 
@@ -38,6 +50,12 @@ int w_str_in_array(const char * needle, const char ** haystack);
 
 /* Filter escape characters */
 char* filter_special_chars(const char *string);
+
+// Replace substrings
+char * wstr_replace(const char * string, const char * search, const char * replace);
+
+// Locate first occurrence of non escaped character in string
+char * wstr_chr(char * str, int character);
 
 // Free string array
 void free_strarray(char ** array);

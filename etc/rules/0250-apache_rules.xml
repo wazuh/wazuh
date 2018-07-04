@@ -103,7 +103,7 @@
     <group>invalid_request,</group>
   </rule>
 
-  <rule id="30116" level="10" frequency="8" timeframe="120">
+  <rule id="30116" level="10" frequency="10" timeframe="120">
     <if_matched_sid>30115</if_matched_sid>
     <same_source_ip />
     <description>Apache: Multiple Invalid URI requests from same source.</description>
@@ -125,7 +125,7 @@
     <group>modsecurity,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="30119" level="12" frequency="6" timeframe="120">
+  <rule id="30119" level="12" frequency="8" timeframe="120">
     <if_matched_sid>30118</if_matched_sid>
     <same_source_ip />
     <description>ModSecurity: Multiple attempts blocked.</description>
@@ -152,7 +152,7 @@
     <group>modsecurity,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="30202" level="10" frequency="8" timeframe="120">
+  <rule id="30202" level="10" frequency="10" timeframe="120">
     <if_matched_sid>30201</if_matched_sid>
     <description>ModSecurity: Multiple attempts blocked.</description>
     <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
@@ -222,7 +222,7 @@
     <group>invalid_login,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="30310" level="10" frequency="10" timeframe="160">
+  <rule id="30310" level="10" frequency="12" timeframe="160">
     <if_matched_sid>30309</if_matched_sid>
     <same_source_ip/>
     <description>Apache: Multiple authentication failures with invalid user.</description>
@@ -245,7 +245,7 @@
     <group>invalid_request,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="30316" level="10" frequency="8" timeframe="120">
+  <rule id="30316" level="10" frequency="10" timeframe="120">
     <if_matched_sid>30315</if_matched_sid>
     <same_source_ip />
     <description>Apache: Multiple Invalid URI requests from same source.</description>

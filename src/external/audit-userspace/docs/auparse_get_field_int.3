@@ -1,0 +1,22 @@
+.TH "AUPARSE_GET_FIELD_INT" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_field_int \- get current field's value as an int
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int auparse_get_field_int(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_field_int allows access to the value as an int of the current field of the current record in the current event.
+
+.SH "RETURN VALUE"
+
+Returns \-1 if there is an error with errno set appropriately or the value if errno is zero.
+
+.SH "SEE ALSO"
+
+.BR auparse_get_field_str (3).
+
+.SH AUTHOR
+Steve Grubb

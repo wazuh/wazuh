@@ -960,7 +960,7 @@ class Agent:
                     # Order by status ASC is the same that order by last_keepalive DESC.
                     if i == 'status':
                         str_order = "desc" if sort['order'] == 'asc' else "asc"
-                        order_str_field = '{0} {1}'.format(Agent.fields[i], str_order)
+                        order_str_field = '{0} {1}'.format(Agent.fields['lastKeepAlive'], str_order)
                     # Order by version is order by major and minor
                     elif i == 'os.version':
                         order_str_field = "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(sort['order'])
@@ -1110,6 +1110,8 @@ class Agent:
             oq.close()
             return ret_msg
         else:
+            if not agent_id:
+                raise WazuhException(1732)
             failed_ids = list()
             affected_agents = list()
             if isinstance(agent_id, list):
@@ -1252,7 +1254,7 @@ class Agent:
                     failed_ids.append(create_exception_dic(id, e))
 
         if not failed_ids:
-            message = 'All selected agents were removed'
+            message = 'All selected agents were removed' if affected_agents else "No agents were removed"
         else:
             message = 'Some agents were not removed'
 

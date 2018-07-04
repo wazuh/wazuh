@@ -1,0 +1,25 @@
+.TH "AUDIT_REQUEST_LIST_DATA" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_request_rules_list_data \- Request list of current audit rules
+.SH "SYNOPSIS"
+.B #include <libaudit.h>
+.sp
+int audit_request_rules_list_data (int fd);
+
+.SH "DESCRIPTION"
+
+audit_request_rules_list_data sends a request to the kernel to list the current audit rules. The rules are sent back one after another after this request is issued.
+
+.SH "RETURN VALUE"
+
+The return value is <= 0 on error, otherwise it is the netlink sequence id number. This function can have any error that sendto would encounter.
+
+.SH "SEE ALSO"
+
+.BR audit_add_rule_data (3),
+.BR audit_delete_rule_data (3),
+.BR audit_open (3),
+.BR auditctl (8).
+
+.SH AUTHOR
+Steve Grubb

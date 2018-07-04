@@ -1,0 +1,22 @@
+.TH "AUPARSE_GET_NUM_RECORDS" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_num_records \- get the number of records
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+unsigned int auparse_get_num_records(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_num_records gets the number of records in the current event.
+
+.SH "RETURN VALUE"
+
+Returns 0 if an error occurs; otherwise, the number of records.
+
+.SH "SEE ALSO"
+
+.BR auparse_next_record (3).
+
+.SH AUTHOR
+Steve Grubb

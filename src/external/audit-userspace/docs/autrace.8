@@ -1,0 +1,38 @@
+.TH AUTRACE: "8" "Jan 2007" "Red Hat" "System Administration Utilities"
+.SH NAME
+autrace \- a program similar to strace
+.SH SYNOPSIS
+.B autrace
+.I program
+.RB [ \-r ]
+.RI [ program-args ]...
+.SH DESCRIPTION
+\fBautrace\fP is a program that will add the audit rules to trace a process similar to strace. It will then execute the \fIprogram\fP passing \fIarguments\fP to it. The resulting audit information will be in the audit logs if the audit daemon is running or syslog. This command deletes all audit rules prior to executing the target program and after executing it. As a safety precaution, it will not run unless all rules are deleted with
+.B auditctl
+prior to use.
+.SH OPTIONS
+.TP
+.B \-r
+Limit syscalls collected to ones needed for analyzing resource usage. This could help people doing threat modeling. This saves space in logs.
+.SH "EXAMPLES"
+The following illustrates a typical session:
+
+.nf
+.B autrace /bin/ls /tmp
+.B ausearch \-\-start recent \-p 2442 \-i 
+.fi
+
+and for resource usage mode:
+
+.nf
+.B autrace \-r /bin/ls
+.B ausearch \-\-start recent \-p 2450 \-\-raw | aureport \-\-file \-\-summary
+.B ausearch \-\-start recent \-p 2450 \-\-raw | aureport \-\-host \-\-summary
+.fi
+
+.SH "SEE ALSO"
+.BR ausearch (8),
+.BR auditctl (8).
+
+.SH AUTHOR
+Steve Grubb
