@@ -631,7 +631,9 @@ int run_dbcheck()
 int create_db()
 {
     int i = 0;
+#ifdef WIN32
     int enable_who_scan = 0;
+#endif
 
     /* Create store data */
     syscheck.fp = OSHash_Create();
@@ -713,9 +715,11 @@ int create_db()
         minfo("Real time file monitoring engine started.");
     }
 #endif
+#ifdef WIN32
     if (enable_who_scan && !run_whodata_scan()) {
         minfo("Whodata auditing engine started.");
     }
+#endif
     minfo("Finished creating syscheck database (pre-scan completed).");
     return (0);
 }
