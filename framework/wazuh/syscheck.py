@@ -235,6 +235,8 @@ def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, s
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
+    elif limit == 0:
+        raise WazuhException(1406)
 
     if summary:
         select = ["max(date)", "mtime", "fim_event.type", "path"]
