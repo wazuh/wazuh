@@ -619,17 +619,19 @@ void audit_parse(char * buffer) {
             switch(items) {
 
                 case 1:
-                    w_evt->path = strdup(path0);
-                    mdebug1("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
-                        w_evt->user_name,
-                        w_evt->audit_name,
-                        w_evt->effective_name,
-                        w_evt->group_name,
-                        w_evt->process_id,
-                        w_evt->ppid,
-                        w_evt->path,
-                        w_evt->process_name);
-                    realtime_checksumfile(w_evt->path, w_evt);
+                    if (path0) {
+                        w_evt->path = strdup(path0);
+                        mdebug1("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            w_evt->user_name,
+                            w_evt->audit_name,
+                            w_evt->effective_name,
+                            w_evt->group_name,
+                            w_evt->process_id,
+                            w_evt->ppid,
+                            w_evt->path,
+                            w_evt->process_name);
+                        realtime_checksumfile(w_evt->path, w_evt);
+                    }
                     break;
 
                 case 2:
