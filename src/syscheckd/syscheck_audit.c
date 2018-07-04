@@ -619,8 +619,9 @@ void audit_parse(char * buffer) {
             switch(items) {
 
                 case 1:
-                    if (path0) {
-                        w_evt->path = strdup(path0);
+                case 2:
+                    if (file_path = gen_audit_path(cwd, path0, path1), file_path) {
+                        w_evt->path = file_path;
                         mdebug1("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
                             w_evt->user_name,
                             w_evt->audit_name,
@@ -632,21 +633,6 @@ void audit_parse(char * buffer) {
                             w_evt->process_name);
                         realtime_checksumfile(w_evt->path, w_evt);
                     }
-                    break;
-
-                case 2:
-                    file_path = gen_audit_path(cwd, path0, path1);
-                    w_evt->path = file_path;
-                    mdebug1("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
-                        w_evt->user_name,
-                        w_evt->audit_name,
-                        w_evt->effective_name,
-                        w_evt->group_name,
-                        w_evt->process_id,
-                        w_evt->ppid,
-                        w_evt->path,
-                        w_evt->process_name);
-                    realtime_checksumfile(w_evt->path, w_evt);
                     break;
 
                 case 4:
@@ -664,41 +650,43 @@ void audit_parse(char * buffer) {
                     }
 
                     // Send event 1/2
-                    char *file_path1 = gen_audit_path(cwd, path0, path2);
-                    w_evt->path = file_path1;
-                    mdebug1("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
-                        w_evt->user_name,
-                        w_evt->audit_name,
-                        w_evt->effective_name,
-                        w_evt->group_name,
-                        w_evt->process_id,
-                        w_evt->ppid,
-                        w_evt->path,
-                        w_evt->process_name);
+                    char *file_path1;
+                    if (file_path1 = gen_audit_path(cwd, path0, path2), file_path1) {
+                        w_evt->path = file_path1;
+                        mdebug1("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            w_evt->user_name,
+                            w_evt->audit_name,
+                            w_evt->effective_name,
+                            w_evt->group_name,
+                            w_evt->process_id,
+                            w_evt->ppid,
+                            w_evt->path,
+                            w_evt->process_name);
 
-                    realtime_checksumfile(w_evt->path, w_evt);
-                    free(file_path1);
+                        realtime_checksumfile(w_evt->path, w_evt);
+                        free(file_path1);
+                    }
 
                     // Send event 2/2
-                    char *file_path2 = gen_audit_path(cwd, path1, path3);
-                    w_evt->path = file_path2;
-                    mdebug1("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
-                        w_evt->user_name,
-                        w_evt->audit_name,
-                        w_evt->effective_name,
-                        w_evt->group_name,
-                        w_evt->process_id,
-                        w_evt->ppid,
-                        w_evt->path,
-                        w_evt->process_name);
+                    char *file_path2;
+                    if (file_path2 = gen_audit_path(cwd, path1, path3), file_path2) {
+                        w_evt->path = file_path2;
+                        mdebug1("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            w_evt->user_name,
+                            w_evt->audit_name,
+                            w_evt->effective_name,
+                            w_evt->group_name,
+                            w_evt->process_id,
+                            w_evt->ppid,
+                            w_evt->path,
+                            w_evt->process_name);
 
-                    realtime_checksumfile(w_evt->path, w_evt);
-
+                        realtime_checksumfile(w_evt->path, w_evt);
+                    }
                     free(path2);
                     free(path3);
                     break;
             }
-
             free(cwd);
             free(path0);
             free(path1);
