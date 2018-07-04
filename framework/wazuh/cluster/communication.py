@@ -534,7 +534,13 @@ class Server(asyncore.dispatcher):
 
     def add_client(self, data, ip, handler):
         name, node_type, version = data.split(' ')
+        name, cluster_name = name.split('*')
         node_id = name
+
+        if cluster_name != handler.server.config['name']:
+            raise Exception("Incoming connection from '{0}' rejected: cluster name is different ({1}/{2}).".format(
+                                ip, cluster_name, handler.server.config['name']))
+
         with self._clients_lock:
             if node_id in self._clients or node_id == handler.server.config['node_name']:
                 raise Exception("Incoming connection from '{0}' rejected: There is already a node with the same ID ('{1}') connected.".format(ip, node_id))
@@ -627,12 +633,13 @@ class Server(asyncore.dispatcher):
 
 class ClientHandler(Handler):
 
-    def __init__(self, key, host, port, name, asyncore_map = {}):
+    def __init__(self, key, host, port, name, cluster_name, asyncore_map = {}):
         Handler.__init__(self, key=key, asyncore_map=asyncore_map)
         self.name = name
         self.map = asyncore_map
         self.host = host
         self.port = port
+        self.cluster_name = cluster_name
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             ok = self.connect( (host, port) )
@@ -645,7 +652,7 @@ class ClientHandler(Handler):
     def handle_connect(self):
         logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
-        payload = msgbuild(counter, 'hello', self.my_fernet, '{} {} {}'.format(self.name, 'client', __version__))
+        payload = msgbuild(counter, 'hello', self.my_fernet, '{}*{} {} {}'.format(self.name, self.cluster_name, 'client', __version__))
         self.send(payload)
         self.my_connected = True
         logger.info("[Client] Connected.")

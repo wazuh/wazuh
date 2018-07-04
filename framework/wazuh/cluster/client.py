@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class ClientManagerHandler(ClientHandler):
 
     def __init__(self, cluster_config):
-        ClientHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'])
+        ClientHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'], cluster_config['name'])
 
         self.config = cluster_config
         self.integrity_received_and_processed = threading.Event()
