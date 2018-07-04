@@ -331,6 +331,10 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     os_md5 mf_sum;
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
+#ifdef WIN32
+    char *sid;
+    char *user;
+#endif
 
     /* Clean sums */
     strncpy(mf_sum, "xxx", 4);
@@ -456,22 +460,29 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         group == 0 ? 0 : (int)statbuf.st_gid,
         md5sum   == 0 ? "xxx" : mf_sum,
         sha1sum  == 0 ? "xxx" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, statbuf.st_uid),
+        owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
         group == 0 ? "" : get_group(statbuf.st_gid),
         mtime ? (long)statbuf.st_mtime : 0,
         inode ? (long)statbuf.st_ino : 0,
         sha256sum  == 0 ? "xxx" : sf256_sum);
 #else
-    snprintf(newsum, 511, "%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s",
+    user = get_user(file_name, statbuf.st_uid, &sid);
+
+    snprintf(newsum, 511, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
         size == 0 ? 0 : (long)statbuf.st_size,
         perm == 0 ? 0 : (int)statbuf.st_mode,
+        (owner == 0) && sid ? "" : sid,
         md5sum   == 0 ? "xxx" : mf_sum,
         sha1sum  == 0 ? "xxx" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, statbuf.st_uid),
+        owner == 0 ? "" : user,
         group == 0 ? "" : get_group(statbuf.st_gid),
         mtime ? (long)statbuf.st_mtime : 0,
         inode ? (long)statbuf.st_ino : 0,
         sha256sum  == 0 ? "xxx" : sf256_sum);
+
+        if (sid) {
+            LocalFree(sid);
+        }
 #endif
 
     return (0);

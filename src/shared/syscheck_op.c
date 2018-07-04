@@ -10,6 +10,10 @@
 
 #include "syscheck_op.h"
 
+#ifdef WIN32
+#include <sddl.h>
+#endif
+
 /* Local variables */
 _sdb sdb;
 
@@ -346,7 +350,7 @@ int remove_empty_folders(char *path) {
             }
             free_strarray(subdir);
         }
-        
+
     }
     return 0;
 }
@@ -370,7 +374,7 @@ int delete_target_file(const char *path) {
 
 #ifndef WIN32
 
-const char* get_user(__attribute__((unused)) const char *path, int uid) {
+const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
     struct passwd *user = getpwuid(uid);
     return user ? user->pw_name : "";
 }
@@ -382,7 +386,7 @@ const char* get_group(int gid) {
 
 #else
 
-const char *get_user(const char *path, __attribute__((unused)) int uid)
+const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
 {
     DWORD dwRtnCode = 0;
     PSID pSidOwner = NULL;
@@ -434,6 +438,12 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
                                 &pSD);
 
     CloseHandle(hFile);
+
+
+    if (!ConvertSidToStringSid(pSidOwner, sid)) {
+        *sid = NULL;
+        mdebug1("The user's SID could not be extracted.");
+    }
 
     // Check GetLastError for GetSecurityInfo error condition.
     if (dwRtnCode != ERROR_SUCCESS) {

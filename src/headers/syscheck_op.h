@@ -153,12 +153,12 @@ int delete_target_file(const char *path);
 
 #ifndef WIN32
 
-const char *get_user(__attribute__((unused)) const char *path, int uid);
+const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
 const char* get_group(int gid);
 
 #else
 
-const char *get_user(const char *path, __attribute__((unused)) int uid);
+const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
 const char *get_group(__attribute__((unused)) int gid);
 
 #endif

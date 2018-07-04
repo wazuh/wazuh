@@ -26,6 +26,7 @@ All notable changes to this project will be documented in this file.
   - They can be set up as empty blocks in the configuration, applying their default values.
   - Improvements of error and information messages when they start.
 - Improve output of `DELETE/agents` when no agents were removed. ([#868](https://github.com/wazuh/wazuh/pull/868))
+- Include the file owner SID in Syscheck alerts.
 
 ### Fixed
 

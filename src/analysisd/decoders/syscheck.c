@@ -446,11 +446,11 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                     } else {
                         changes = 1;
                         wm_strcat(&lf->fields[SK_CHFIELDS].value, "uid", ',');
-                        if (oldsum.uname && newsum.uname) {
+                        if (oldsum.uid && newsum.uid) {
                             snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.uname, oldsum.uid, newsum.uname, newsum.uid);
                             os_strdup(oldsum.uname, lf->uname_before);
                         } else {
-                            snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum.uid, newsum.uid);
+                            snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum.uname, newsum.uname);
                         }
                         os_strdup(oldsum.uid, lf->owner_before);
                     }
@@ -510,10 +510,8 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                     } else {
                         changes = 1;
                         wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
-                        snprintf(sdb.sha256, OS_FLSIZE, "Old sha256sum was: 'xxx'\nNew sha256sum is : '%s'\n", newsum.sha256);
+                        snprintf(sdb.sha256, OS_FLSIZE, "New sha256sum is : '%s'\n", newsum.sha256);
                     }
-
-                    os_strdup(newsum.sha256, lf->sha256_after);
                 }
 
                 /* Modification time message */

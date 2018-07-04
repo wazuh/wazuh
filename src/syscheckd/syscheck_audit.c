@@ -539,7 +539,7 @@ void audit_parse(char * buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 uid = malloc(match_size + 1);
                 snprintf (uid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                const char *user = get_user("",atoi(uid));
+                const char *user = get_user("",atoi(uid), NULL);
                 w_evt->user_name = strdup(user);
                 w_evt->user_id = strdup(uid);
                 free(uid);
@@ -549,7 +549,7 @@ void audit_parse(char * buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 auid = malloc(match_size + 1);
                 snprintf (auid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                const char *user = get_user("",atoi(auid));
+                const char *user = get_user("",atoi(auid), NULL);
                 w_evt->audit_name = strdup(user);
                 w_evt->audit_uid = strdup(auid);
                 free(auid);
@@ -559,7 +559,7 @@ void audit_parse(char * buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 euid = malloc(match_size + 1);
                 snprintf (euid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-                const char *user = get_user("",atoi(euid));
+                const char *user = get_user("",atoi(euid), NULL);
                 w_evt->effective_name = strdup(user);
                 w_evt->effective_uid = strdup(euid);
                 free(euid);

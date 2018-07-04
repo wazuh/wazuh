@@ -37,7 +37,7 @@ static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 void restore_sacls();
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int is_valid_sacl(PACL sacl);
-unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
+unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
 void set_policies();
 void set_subscription_query(wchar_t *query);
@@ -348,7 +348,7 @@ void restore_sacls() {
     CloseHandle(hdle);
 }
 
-unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event) {
+unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event) {
     unsigned int retval = 1;
     int result;
     unsigned long p_count = 0;
@@ -368,7 +368,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
-    UNREFERENCED_PARAMETER(_void);
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];

@@ -184,6 +184,10 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
     char sha256s = '-';
     struct stat statbuf;
     char wd_sum[OS_SIZE_6144 + 1];
+#ifdef WIN32
+    const char *user;
+    char *sid;
+#endif
 
     /* Check if the file should be ignored */
     if (syscheck.ignore) {
@@ -345,7 +349,8 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 alertdump = seechanges_addfile(file_name);
             }
 #ifdef WIN32
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s",
+            user = get_user(file_name, statbuf.st_uid, &sid);
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
                      opts & CHECK_SIZE ? '+' : '-',
                      opts & CHECK_PERM ? '+' : '-',
                      opts & CHECK_OWNER ? '+' : '-',
@@ -357,13 +362,18 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                      sha256s,
                      opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                      opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                     (opts & CHECK_OWNER) && sid ? sid : "",
                      opts & CHECK_MD5SUM ? mf_sum : "xxx",
                      opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                     opts & CHECK_OWNER ? user : "",
                      opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                      opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                      opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                      opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
+
+                if (sid) {
+                     LocalFree(sid);
+                 }
 #else
             snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
                 opts & CHECK_SIZE ? '+' : '-',
@@ -381,7 +391,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                 opts & CHECK_MD5SUM ? mf_sum : "xxx",
                 opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
@@ -402,12 +412,14 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             }
 
 #ifdef WIN32
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s!%s %s%s%s",
+            user = get_user(file_name, statbuf.st_uid, &sid);
+            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s!%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                (opts & CHECK_OWNER) && sid ? sid : "",
                 opts & CHECK_MD5SUM ? mf_sum : "xxx",
                 opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                opts & CHECK_OWNER ? user : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
@@ -416,6 +428,9 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
+            if (sid) {
+                LocalFree(sid);
+            }
 #else
             snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
@@ -424,7 +439,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
                 opts & CHECK_MD5SUM ? mf_sum : "xxx",
                 opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid) : "",
+                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
@@ -534,13 +549,11 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
     /* Open the directory given */
     dp = opendir(dir_name);
     if (!dp) {
-        minfo("~~~~~0~~~~~ dir_name: '%s'", dir_name);
         if (errno == ENOTDIR) {
             if (read_file(dir_name, opts, restriction, evt, enable_recursion) == 0) {
                 return (0);
             }
         }
-        minfo("~~~~~1~~~~~ dir_name: '%s'", dir_name);
 
 #ifdef WIN32
         int di = 0;
@@ -559,11 +572,9 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
             }
             di++;
         }
-        minfo("~~~~~2~~~~~ dir_name: '%s'", dir_name);
         if (defaultfilesn[di] == NULL) {
             mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
         }
-        minfo("~~~~~3~~~~~ dir_name: '%s'", dir_name);
 #else
         mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
 #endif /* WIN32 */
