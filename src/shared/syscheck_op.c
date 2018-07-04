@@ -325,37 +325,39 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     return r < (int)size ? 0 : -1;
 }
 
-int remove_empty_folders(char *path) {
-    char *c;
+int remove_empty_folders(const char *path) {
+    const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
+    const char *c;
     char parent[PATH_MAX] = "\0";
-    char localdir[PATH_MAX] = "\0";
     char ** subdir;
+    int retval = 0;
 
-    snprintf(localdir, PATH_MAX, "%clocal", PATH_SEP);
     // Get parent
     c = strrchr(path, PATH_SEP);
     if (c) {
-        memmove(parent, path, strlen(path) - strlen(c));
+        memcpy(parent, path, c - path);
+        parent[c - path] = '\0';
         // Don't delete above /local
-        if(strcmp(strrchr(parent, PATH_SEP), localdir) != 0){
+        if (c = strrchr(parent, PATH_SEP), strcmp(c, LOCALDIR) != 0) {
             subdir = wreaddir(parent);
             if (!(subdir && *subdir)) {
                 // Remove empty folder
+                mdebug1("Removing empty directory '%s'.", parent);
                 if (rmdir_ex(parent) != 0) {
                     mwarn("Empty directory '%s' couldn't be deleted. ('%s')",
                         parent, strerror(errno));
-                    return (1);
+                    retval = 1;
+                } else {
+                    // Get parent and remove it if it's empty
+                    retval = remove_empty_folders(parent);
                 }
-                // Get parent and remove it if it's empty
-                c = strrchr(path, PATH_SEP);
-                memmove(parent, path, strlen(path) - strlen(c));
-                remove_empty_folders(parent);
             }
+
             free_strarray(subdir);
         }
-
     }
-    return 0;
+
+    return retval;
 }
 
 int delete_target_file(const char *path) {

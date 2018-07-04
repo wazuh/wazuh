@@ -148,7 +148,7 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size);
 
 /* Delete from path to parent all empty folders */
-int remove_empty_folders(char *path);
+int remove_empty_folders(const char *path);
 
 /* Delete path file and all empty folders above */
 int delete_target_file(const char *path);
