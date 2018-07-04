@@ -2078,3 +2078,19 @@ char ** wreaddir(const char * name) {
     closedir(dir);
     return files;
 }
+
+int file_empty(const char *file){
+
+    FILE *fp = NULL;
+    fp = fopen(file,"r");
+
+    unsigned int size;
+
+    if (fp) {
+        fseek (fp, 0, SEEK_END);
+        size = ftell(fp);
+        return size;
+    }
+
+    return 1;
+}
