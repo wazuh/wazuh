@@ -240,6 +240,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         }
     }
 
+    free(_message);
     return (0);
 }
 
