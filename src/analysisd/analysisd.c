@@ -1001,9 +1001,15 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                   rule->comment);
 #endif
 
-    /* Check if any decoder pre-matched here */
-    if (rule->decoded_as &&
-            rule->decoded_as != lf->decoder_info->id) {
+    
+    /* Check if any decoder pre-matched here for syscheck event */
+    if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
+            rule->decoded_as != lf->decoder_syscheck_id)){
+        return (NULL);
+    }
+    /* Check if any decoder pre-matched here for non-syscheck events*/
+    else if (lf->decoder_syscheck_id == 0 && (rule->decoded_as &&
+            rule->decoded_as != lf->decoder_info->id)) {
         return (NULL);
     }
 
@@ -1817,6 +1823,8 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_syscheck_decoded_events();
+
             if (!DecodeSyscheck(lf)) {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
@@ -1825,8 +1833,6 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             else{
                 queue_push_ex_block(decode_queue_event_output,lf);
             }
-
-            w_inc_syscheck_decoded_events();
         }    
     }
 }
