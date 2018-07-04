@@ -1817,17 +1817,14 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            w_mutex_lock(&decode_syscheck_mutex);
             if (!DecodeSyscheck(lf)) {
                 /* We don't process syscheck events further */
-                w_mutex_unlock(&decode_syscheck_mutex);
                 w_free_event_info(lf);
                 continue;
             }
             else{
                 queue_push_ex_block(decode_queue_event_output,lf);
             }
-            w_mutex_unlock(&decode_syscheck_mutex);
 
             w_inc_syscheck_decoded_events();
         }    
