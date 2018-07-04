@@ -328,15 +328,18 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 int remove_empty_folders(char *path) {
     char *c;
     char parent[PATH_MAX] = "\0";
+    char localdir[PATH_MAX] = "\0";
     char ** subdir;
 
+    snprintf(localdir, PATH_MAX, "%clocal", PATH_SEP);
     // Get parent
-    c = strrchr(path, '/');
-    if(c) {
+    c = strrchr(path, PATH_SEP);
+    if (c) {
         memmove(parent, path, strlen(path) - strlen(c));
         // Don't delete above /local
-        if(strcmp(strrchr(parent, '/'), "/local") != 0){
-            if (subdir = wreaddir(parent), !subdir) {
+        if(strcmp(strrchr(parent, PATH_SEP), localdir) != 0){
+            subdir = wreaddir(parent);
+            if (!(subdir && *subdir)) {
                 // Remove empty folder
                 if (rmdir_ex(parent) != 0) {
                     mwarn("Empty directory '%s' couldn't be deleted. ('%s')",
@@ -344,7 +347,7 @@ int remove_empty_folders(char *path) {
                     return (1);
                 }
                 // Get parent and remove it if it's empty
-                c = strrchr(path, '/');
+                c = strrchr(path, PATH_SEP);
                 memmove(parent, path, strlen(path) - strlen(c));
                 remove_empty_folders(parent);
             }
@@ -356,8 +359,8 @@ int remove_empty_folders(char *path) {
 }
 
 int delete_target_file(const char *path) {
-    char full_path[PATH_MAX] = DIFF_DIR_PATH;
-    strcat(full_path, "/local");
+    char full_path[PATH_MAX] = "\0";
+    snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
 #ifdef WIN32
     char *windows_path = strchr(path, ':');

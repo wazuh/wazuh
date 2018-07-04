@@ -33,6 +33,7 @@ volatile int added_rules_error;
 #include "hash_op.h"
 #include "debug_op.h"
 #include "syscheck.h"
+#include "syscheck_op.h"
 
 /* Prototypes */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
@@ -150,14 +151,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 /* Find container directory */
 int find_dir_pos(const char *filename, char is_whodata) {
     char *buf;
-    char bar;
     int i;
     char *c;
     int retval = -1;
 
 #ifdef WIN32
-    // In Windows all routes will have '\'
-    bar = '\\';
     if (is_whodata) {
         // Root directories are checked in whodata mode
         os_calloc(strlen(filename) + 2, sizeof(char), buf);
@@ -166,12 +164,11 @@ int find_dir_pos(const char *filename, char is_whodata) {
         buf = strdup(filename);
     }
 #else
-    bar = '/';
     buf = strdup(filename);
 #endif
 
 
-    while (c = strrchr(buf, bar), c && c != buf) {
+    while (c = strrchr(buf, PATH_SEP), c && c != buf) {
         *c = '\0';
 
         for (i = 0; syscheck.dir[i]; i++) {

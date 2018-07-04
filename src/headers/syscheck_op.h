@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
+#define PATH_SEP '/'
 
 #else
 
@@ -25,6 +26,7 @@
 #include "aclapi.h"
 
 #define BUFFER_LEN 1024
+#define PATH_SEP '\\'
 
 #endif
 

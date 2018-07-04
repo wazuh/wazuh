@@ -19,48 +19,15 @@
 /* Prototypes */
 static int read_file(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt, int enable_recursion)  __attribute__((nonnull(1)));
 
-int read_dir_diff(char *dir_name);
+static int read_dir_diff(char *dir_name);
 
 /* Global variables */
 static int __counter = 0;
 
-int read_file_diff(char *file_name) {
-
-    struct stat statbuf;
-
-#ifdef WIN32
-    /* Win32 does not have lstat */
-    if (stat(file_name, &statbuf) < 0)
-#else
-
-    if (lstat(file_name, &statbuf) < 0)
-#endif
-    {
-        merror("Error accessing '%s'.", file_name);
-        return (-1);
-    }
-
-    if (S_ISDIR(statbuf.st_mode)) {
-#ifdef DEBUG
-        minfo("Reading dir: %s\n", file_name);
-#endif
-
-#ifdef WIN32
-        /* Directory links are not supported */
-        if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
-            mwarn("Links are not supported: '%s'", file_name);
-            return (-1);
-        }
-#endif
-        return (read_dir_diff(file_name));
-    }
-    return 0;
-}
-
-int read_dir_diff(char *dir_name) {
-
+static int read_dir_diff(char *dir_name) {
     size_t dir_size;
     char f_name[PATH_MAX + 2];
+    char file_name[PATH_MAX] = "\0";
 
     DIR *dp;
     struct dirent *entry;
@@ -76,10 +43,9 @@ int read_dir_diff(char *dir_name) {
     dp = opendir(dir_name);
     if (!dp) {
         if (errno == ENOTDIR) {
-            if (read_file_diff(dir_name) == 0) {
-                return (0);
-            }
+            return 0;
         } else {
+            mwarn("Accessing(%d) to '%s'.", errno, dir_name);
             return -1;
         }
     }
@@ -99,21 +65,22 @@ int read_dir_diff(char *dir_name) {
         s_name += dir_size;
 
         /* Check if the file name is already null terminated */
-        if (*(s_name - 1) != '/') {
-            *s_name++ = '/';
+        if (*(s_name - 1) != PATH_SEP) {
+            *s_name++ = PATH_SEP;
         }
 
         *s_name = '\0';
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
-        char file_name[PATH_MAX] = "\0";
+
         if (strcmp(DIFF_LAST_FILE, s_name) == 0) {
             memset(file_name, 0, strlen(file_name));
             memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
             if (OSHash_Add(syscheck.local_hash, file_name, NULL) <= 0) {
                 merror("Unable to add file to db: %s", file_name);
             }
+        } else {
+            read_dir_diff(f_name);
         }
-        read_file_diff(f_name);
     }
 
     closedir(dp);
@@ -124,10 +91,10 @@ int read_dir_diff(char *dir_name) {
 void remove_local_diff(){
 
     /* Fill hash table with the content of DIFF_DIR_PATH/local */
-    char local_path[PATH_MAX] = DIFF_DIR_PATH;
-    char full_path[PATH_MAX];
+    char local_path[PATH_MAX] = "\0";
+    char full_path[PATH_MAX] = "\0";
 
-    strcat(local_path, "/local");
+    snprintf(local_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
     read_dir_diff(local_path);
 
     unsigned int j = 0;
@@ -165,9 +132,7 @@ void remove_local_diff(){
             if (rmdir_ex(curr_node_local->key) != 0) {
                 mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
             }
-            else{
-                remove_empty_folders(curr_node_local->key);
-            }
+            remove_empty_folders(curr_node_local->key);
 
             if (OSHash_Delete(syscheck.local_hash, curr_node_local->key) != 0) {
                 mwarn("Could not delete from hash table '%s'", curr_node_local->key);
