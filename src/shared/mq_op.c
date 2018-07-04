@@ -152,9 +152,10 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
     char tmpstr[OS_MAXSTR + 1];
     int i;
     time_t mtime = time(NULL);
-    char * _message;
+    char * _message = NULL;
 
     for (i = 0; targets[i].log_socket; i++) {
+        free(_message);
         _message = msgsubst(targets[i].format, message, locmsg, mtime);
 
         if (strcmp(targets[i].log_socket->name, "agent") == 0) {
@@ -237,8 +238,6 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
                 }
             }
         }
-
-        free(_message);
     }
 
     return (0);

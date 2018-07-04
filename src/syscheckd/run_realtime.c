@@ -45,11 +45,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     buf = (char *) OSHash_Get_ex(syscheck.fp, file_name);
 
     if (buf != NULL) {
-        char c_sum[256 + 2];
+        char c_sum[512];
         size_t c_sum_size;
 
         c_sum[0] = '\0';
-        c_sum[255] = '\0';
+        c_sum[511] = '\0';
 
         /* If it returns < 0, we have already alerted */
         if (c_read_file(file_name, buf, c_sum, evt) < 0) {

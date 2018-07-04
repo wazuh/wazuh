@@ -239,10 +239,10 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
     int sf = 0;
     int comment_buf = 0;
 
-    char *saved_sum;
-    char *saved_name;
-    char *saved_time;
-    char *saved_frec;
+    char *saved_sum = NULL;
+    char *saved_name = NULL;
+    char *saved_time = NULL;
+    char *saved_frec = NULL;
 
     FILE *fp;
 

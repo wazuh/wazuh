@@ -66,7 +66,7 @@ int ExecdConfig(const char *cfgfile)
         int j = 0;
 
         while (child && child[j]){
-            
+
             if (strcmp(child[j]->element, "active-response") == 0){
                 XML_NODE child_attr = NULL;
                 child_attr = OS_GetElementsbyNode(&xml, child[j]);
@@ -90,9 +90,11 @@ int ExecdConfig(const char *cfgfile)
         }
 
         i++;
+        OS_ClearNode(child);
+        child = NULL;
     }
-    
-next: 
+
+next:
     OS_ClearNode(child);
     OS_ClearNode(node);
 
