@@ -203,7 +203,7 @@ int ReadDecodeXML(const char *file)
     }
 
     /* Check if the file is empty */
-    if(file_empty(file) == 0){
+    if(FileSize(file) == 0){
         retval = 0;
         goto cleanup;
     }
