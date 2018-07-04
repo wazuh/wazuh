@@ -102,4 +102,6 @@ int w_ref_parent_folder(const char * path);
 // Read directory and return an array of contained files, sorted alphabetically.
 char ** wreaddir(const char * name);
 
+int file_empty(const char *file);
+
 #endif /* __FILE_H */

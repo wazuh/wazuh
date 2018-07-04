@@ -202,6 +202,12 @@ int ReadDecodeXML(const char *file)
         goto cleanup;
     }
 
+    /* Check if the file is empty */
+    if(file_empty(file) == 0){
+        retval = 0;
+        goto cleanup;
+    }
+
     /* Get the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
     if (!node) {

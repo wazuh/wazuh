@@ -134,6 +134,12 @@ int OS_ReadXMLRules(const char *rulefile,
     }
     mdebug1("XML Variables applied.");
 
+    /* Check if the file is empty */
+    if(file_empty(rulepath) == 0){
+        retval = 0;
+        goto cleanup;
+    }
+
     /* Get the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
     if (!node) {
