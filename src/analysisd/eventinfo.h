@@ -118,6 +118,7 @@ typedef struct _Eventinfo {
     char *ppid;
     char *process_id;
     u_int16_t decoder_syscheck_id;
+    int rootcheck_fts;
 } Eventinfo;
 
 /* Events List structure */

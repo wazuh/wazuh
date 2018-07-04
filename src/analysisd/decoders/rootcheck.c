@@ -23,6 +23,7 @@
 static char *rk_agent_ips[MAX_AGENTS];
 static FILE *rk_agent_fps[MAX_AGENTS];
 static int rk_err;
+static int fts_r;
 
 /* Rootcheck decoder */
 static OSDecoderInfo *rootcheck_dec = NULL;
@@ -49,6 +50,7 @@ void RootcheckInit()
     rootcheck_dec->type = OSSEC_RL;
     rootcheck_dec->name = ROOTCHECK_MOD;
     rootcheck_dec->fts = 0;
+    fts_r = 0;
 
     /* New fields as dynamic */
 
@@ -192,7 +194,7 @@ int DecodeRootcheck(Eventinfo *lf)
         if (rk_buf[0] != '!') {
             /* Cannot use strncmp to avoid errors with crafted files */
             if (strcmp(lf->log, rk_buf) == 0) {
-                rootcheck_dec->fts = 0;
+                fts_r = 0;
                 lf->decoder_info = rootcheck_dec;
                 lf->nfields = RK_NFIELDS;
                 os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
@@ -217,7 +219,7 @@ int DecodeRootcheck(Eventinfo *lf)
                 }
                 fprintf(fp, "!%ld", (long int)lf->time.tv_sec);
                 fflush(fp);
-                rootcheck_dec->fts = 0;
+                fts_r = 0;
                 lf->decoder_info = rootcheck_dec;
                 lf->nfields = RK_NFIELDS;
                 os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
@@ -242,8 +244,9 @@ int DecodeRootcheck(Eventinfo *lf)
     fprintf(fp, "!%ld!%ld %s\n", (long int)lf->time.tv_sec, (long int)lf->time.tv_sec, lf->log);
     fflush(fp);
 
-    rootcheck_dec->fts = FTS_DONE;
+    fts_r = FTS_DONE;
     lf->decoder_info = rootcheck_dec;
+    lf->rootcheck_fts = fts_r;
     lf->nfields = RK_NFIELDS;
     os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
     lf->fields[RK_TITLE].value = rk_get_title(lf->log);
