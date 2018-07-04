@@ -130,13 +130,13 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 #endif
             if (pos = find_dir_pos(file_name, 0), pos > -1) {
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt);
+                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt, 1);
             }
 #ifdef WIN32
         } else {
             if (pos = evt->dir_position, pos >= 0) {
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt);
+                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt, 1);
             } else {
                 mdebug1("'%s' has been deleted while another file was writing to it.", file_name);
             }

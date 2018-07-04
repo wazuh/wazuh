@@ -615,7 +615,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                         // Check that a new file has been added
                         if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             time(&w_dir->timestamp);
-                            read_dir(w_evt->path, syscheck.opts[w_dir->position], syscheck.filerestrict[w_dir->position], NULL);
+                            read_dir(w_evt->path, syscheck.opts[w_dir->position], syscheck.filerestrict[w_dir->position], NULL, 0);
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
                         } else {
                             mdebug2("The '%s' directory has not been scanned because no new files have been detected. Mask: '%x'", w_evt->path, w_evt->mask);

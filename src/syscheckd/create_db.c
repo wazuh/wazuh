@@ -17,7 +17,7 @@
 #include "syscheck.h"
 
 /* Prototypes */
-static int read_file(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt)  __attribute__((nonnull(1)));
+static int read_file(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt, int enable_recursion)  __attribute__((nonnull(1)));
 
 int read_dir_diff(char *dir_name);
 
@@ -177,7 +177,7 @@ void remove_local_diff(){
 }
 
 /* Read and generate the integrity data of a file */
-static int read_file(const char *file_name, int opts, OSMatch *restriction, whodata_evt *evt)
+static int read_file(const char *file_name, int opts, OSMatch *restriction, whodata_evt *evt, int enable_recursion)
 {
     char *buf;
     char sha1s = '-';
@@ -254,7 +254,11 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
             return (-1);
         }
 #endif
-        return (read_dir(file_name, opts, restriction, NULL));
+        if (enable_recursion) {
+            return (read_dir(file_name, opts, restriction, NULL, enable_recursion));
+        } else {
+            return 0;
+        }
     }
 
     /* Restrict file types */
@@ -499,7 +503,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
     return (0);
 }
 
-int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt)
+int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt, int enable_recursion)
 {
     size_t dir_size;
     char f_name[PATH_MAX + 2];
@@ -531,7 +535,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
     dp = opendir(dir_name);
     if (!dp) {
         if (errno == ENOTDIR) {
-            if (read_file(dir_name, opts, restriction, evt) == 0) {
+            if (read_file(dir_name, opts, restriction, evt, enable_recursion) == 0) {
                 return (0);
             }
         }
@@ -601,7 +605,7 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
 
         /* Check integrity of the file */
-        read_file(f_name, opts, restriction, NULL);
+        read_file(f_name, opts, restriction, NULL, enable_recursion);
     }
 
     closedir(dp);
@@ -616,7 +620,7 @@ int run_dbcheck()
 
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
-        read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i], NULL);
+        read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i], NULL, 1);
         i++;
     }
 
@@ -677,7 +681,7 @@ int create_db()
     /* Read all available directories */
     __counter = 0;
     do {
-        if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i], NULL) == 0) {
+        if (read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i], NULL, 1) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
 #ifdef WIN32
