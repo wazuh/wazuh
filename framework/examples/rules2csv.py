@@ -35,5 +35,5 @@ except Exception as e:
     exit()
 
 print("file;id;description;level;status;groups;pci;details")
-for rule in Rule.get_rules(status='enabled', limit=0, sort={"fields":["file"],"order":"asc"})['items']:
+for rule in Rule.get_rules(status='enabled', limit=None, sort={"fields":["file"],"order":"asc"})['items']:
     print("{0};{1};{2};{3};{4};{5};{6};{7}".format(rule.file, rule.id, rule.description, rule.level, rule.status, rule.groups, rule.pci, rule.details))

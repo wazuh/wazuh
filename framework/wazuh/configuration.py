@@ -487,14 +487,14 @@ def get_file_conf(filename, group_id=None, type_conf=None):
     if type_conf:
         if type_conf in types:
             if type_conf == 'conf':
-                data = types[type_conf](group_id, limit=0, filename=filename)
+                data = types[type_conf](group_id, limit=None, filename=filename)
             else:
                 data = types[type_conf](file_path)
         else:
             raise WazuhException(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
     else:
         if filename == "agent.conf":
-            data = get_agent_conf(group_id, limit=0, filename=filename)
+            data = get_agent_conf(group_id, limit=None, filename=filename)
         elif filename == "rootkit_files.txt":
             data = _rootkit_files2json(file_path)
         elif filename == "rootkit_trojans.txt":
