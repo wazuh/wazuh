@@ -172,7 +172,7 @@ class Decoder:
         status = Decoder.__check_status(status)
         all_decoders = []
 
-        for decoder_file in Decoder.get_decoders_files(status=status, limit=0)['items']:
+        for decoder_file in Decoder.get_decoders_files(status=status, limit=None)['items']:
             all_decoders.extend(Decoder.__load_decoders_from_file(decoder_file['file'], decoder_file['path'], decoder_file['status']))
 
         decoders = list(all_decoders)
