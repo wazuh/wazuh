@@ -68,7 +68,6 @@ typedef struct whodata_evt {
     unsigned int mask;
     int dir_position;
     char deleted;
-    char force_notify;
     char scan_directory;
     whodata_event_node *wnode;
 #endif

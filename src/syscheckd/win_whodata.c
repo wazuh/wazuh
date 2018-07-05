@@ -395,7 +395,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     char *process_name = NULL;
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
-    char force_notify;
     char *user_id = NULL;
     char is_directory;
     unsigned int mask;
@@ -492,7 +491,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         switch(event_id) {
             // Open fd
             case 4656:
-                force_notify = 0;
                 is_directory = 0;
                 position = -1;
                 // Check if it is a known file
@@ -512,7 +510,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                             break;
                         } else {
                             // The file is new and has to be notified
-                            force_notify = 1;
                         }
                     } else {
                         // Is a directory
@@ -540,7 +537,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 w_evt->mask = 0;
                 w_evt->scan_directory = is_directory;
                 w_evt->deleted = 0;
-                w_evt->force_notify = force_notify;
                 w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
@@ -629,19 +625,18 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
                     unsigned int mask = w_evt->mask;
                     if (!w_evt->scan_directory) {
-                        if (mask || w_evt->force_notify) {
-                            if (w_evt->deleted) {
-                                // Check if the file has been deleted
-                                send_whodata_del(w_evt);
-                            } else if (mask & FILE_WRITE_DATA) {
-                                // Check if the file has been written
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            } else if (mask & DELETE) {
-                                // The file has been moved or renamed
-                                send_whodata_del(w_evt);
-                            } else if (w_evt->force_notify) {
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            }
+                        if (w_evt->deleted) {
+                            // Check if the file has been deleted
+                            send_whodata_del(w_evt);
+                        } else if (mask & FILE_WRITE_DATA) {
+                            // Check if the file has been written
+                            realtime_checksumfile(w_evt->path, w_evt);
+                        } else if (mask & DELETE) {
+                            // The file has been moved or renamed
+                            send_whodata_del(w_evt);
+                        } else {
+                            // At this point the file can be new or cleaned
+                            realtime_checksumfile(w_evt->path, w_evt);
                         }
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         // Check that a new file has been added
