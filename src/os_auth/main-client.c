@@ -86,6 +86,7 @@ int main(int argc, char **argv)
     BIO *sbio;
     bio_err = 0;
     buf[4096] = '\0';
+    int debug_level = 0;
 
 #ifdef WIN32
     WSADATA wsaData;
@@ -103,6 +104,7 @@ int main(int argc, char **argv)
                 help_agent_auth();
                 break;
             case 'd':
+                debug_level = 1;
                 nowDebug();
                 break;
             case 'g':
@@ -177,6 +179,15 @@ int main(int argc, char **argv)
             default:
                 help_agent_auth();
                 break;
+        }
+    }
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = getDefine_Int("authd", "debug", 0, 2);
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
         }
     }
 
