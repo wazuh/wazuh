@@ -742,6 +742,10 @@ void * audit_main(int * audit_sock) {
             continue;
 
         default:
+            if (!audit_thread_active) {
+                continue;
+            }
+
             break;
         }
 
@@ -848,6 +852,8 @@ void * audit_main(int * audit_sock) {
 void clean_rules(void) {
     int i;
     w_mutex_lock(&audit_mutex);
+    audit_thread_active = 0;
+
     if (audit_added_rules) {
         mdebug2("Deleting Audit rules...");
         for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
