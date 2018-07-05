@@ -229,7 +229,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
     }
 
     if (whodata && audit_thread_active && !added_rules_error) {
-        mdebug1("Monitoring with Audit: '%s'.", dir);
+        mdebug2("Monitoring with Audit: '%s'.", dir);
 
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);

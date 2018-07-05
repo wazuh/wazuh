@@ -816,11 +816,6 @@ void * audit_main(int * audit_sock) {
     free(buffer);
     close(*audit_sock);
 
-    // Send alert
-    char msg_alert[512 + 1];
-    snprintf(msg_alert, 512, "ossec: Audit: Reading thread finished");
-    SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
-
     regfree(&regexCompiled_uid);
     regfree(&regexCompiled_auid);
     regfree(&regexCompiled_euid);
