@@ -119,6 +119,7 @@ void remove_local_diff(){
 #endif
                 if (strcmp(full_path, curr_node_local->key) == 0) {
                     OSHash_Delete(syscheck.local_hash, curr_node_local->key);
+                    break;
                 }
             }
         }
