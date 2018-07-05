@@ -78,15 +78,21 @@ int check_auditd_enabled(void) {
     proc_t *proc_info;
     int auditd_pid = -1;
 
+    if (!proc) {
+        return -1;
+    }
+
     while (proc_info = readproc(proc, NULL), proc_info != NULL) {
         if(strcmp(proc_info->cmd,"auditd") == 0) {
             auditd_pid = proc_info->tid;
+            freeproc(proc_info);
             break;
         }
+
+        freeproc(proc_info);
     }
 
-    freeproc(proc_info);
-
+    closeproc(proc);
     return auditd_pid;
 }
 
