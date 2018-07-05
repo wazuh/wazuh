@@ -73,7 +73,8 @@ static volatile int suspend = 0;
 static volatile int dump = 0;
 static volatile int transport_ok = 0;
 static volatile int sock=-1;
-static volatile int remote_ended = 0, quiet = 0;
+// We start with remote_ended true so it retries on startup
+static volatile int remote_ended = 1, quiet = 0;
 static int ifd;
 remote_conf_t config;
 static int warned = 0;
@@ -140,11 +141,12 @@ static void user1_handler( int sig )
 static void dump_stats(struct queue *queue)
 {
 	syslog(LOG_INFO,
-		"suspend=%s, remote_ended=%s, transport_ok=%s, queue_size=%zu",
+		"suspend=%s, remote_ended=%s, transport_ok=%s, queued_items=%zu, queue_depth=%u",
 		suspend ? "yes" : "no",
 		remote_ended ? "yes" : "no",
 		transport_ok ? "yes" : "no",
-		q_queue_length(queue));
+		q_queue_length(queue),
+		config.queue_depth);
 	dump = 0;
 }
 
@@ -450,7 +452,6 @@ int main(int argc, char *argv[])
 {
 	struct sigaction sa;
 	struct queue *queue;
-	int rc;
 	size_t q_len;
 
 	/* Register sighandlers */
@@ -475,11 +476,6 @@ int main(int argc, char *argv[])
 	ifd = 0;
 	fcntl(ifd, F_SETFL, O_NONBLOCK);
 
-	/* We fail here if the transport can't be initialized because of some
-	 * permanent (i.e. operator) problem, such as misspelled host name. */
-	rc = init_transport();
-	if (rc == ET_PERMANENT)
-		return 1;
 	queue = init_queue();
 	if (queue == NULL) {
 		syslog(LOG_ERR, "Error initializing audit record queue: %m");

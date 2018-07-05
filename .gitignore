@@ -19,7 +19,6 @@ src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
 src/Config.OS
 src/external/zlib/ztest*
-src/external/audit-userspace
 
 # Compiled programs
 src/agent-auth

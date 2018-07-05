@@ -29,7 +29,7 @@ define([AC_INIT_NOTICE],
 ])
 
 AC_REVISION($Revision: 1.3 $)dnl
-AC_INIT(audit,3.0)
+AC_INIT(audit,2.8.4)
 AC_PREREQ(2.12)dnl
 AM_CONFIG_HEADER(config.h)
 
@@ -329,6 +329,28 @@ fi
 AC_MSG_RESULT($use_apparmor)
 
 withval=""
+AC_MSG_CHECKING(whether to use prelude)
+AC_ARG_WITH(prelude,
+AS_HELP_STRING([--with-prelude],[enable prelude IDS support]),
+use_prelude=$withval,
+use_prelude=no)
+AC_MSG_RESULT($use_prelude)
+if test x$use_prelude = xno ; then
+	have_prelude=no;
+else
+      AC_CHECK_LIB(prelude, prelude_init,
+                 have_prelude=yes, have_prelude=no)
+      if test x$have_prelude = xno ; then
+        AC_MSG_ERROR([Prelude explicitly required and prelude library not found])
+      else
+	LIBPRELUDE_CFLAGS=`libprelude-config --pthread-cflags 2>/dev/null`
+	LIBPRELUDE_LDFLAGS=`libprelude-config --ldflags 2>/dev/null`
+        AC_MSG_RESULT(yes)
+      fi
+fi
+AM_CONDITIONAL(HAVE_PRELUDE, test x$have_prelude = xyes)
+
+withval=""
 AC_MSG_CHECKING(whether to use libwrap)
 AC_ARG_WITH(libwrap,
 [  --with-libwrap[=PATH]   Compile in libwrap (tcp_wrappers) support.],
@@ -379,7 +401,7 @@ AC_SUBST(LIBWRAP_LIBS)
 AC_SUBST(LIBPRELUDE_CFLAGS)
 AC_SUBST(LIBPRELUDE_LDFLAGS)
 
-AC_OUTPUT(Makefile lib/Makefile lib/audit.pc lib/test/Makefile auparse/Makefile auparse/test/Makefile auparse/auparse.pc src/Makefile src/libev/Makefile src/test/Makefile docs/Makefile rules/Makefile init.d/Makefile audisp/Makefile audisp/plugins/Makefile audisp/plugins/builtins/Makefile audisp/plugins/remote/Makefile audisp/plugins/zos-remote/Makefile bindings/Makefile bindings/python/Makefile bindings/python/python2/Makefile bindings/python/python3/Makefile bindings/golang/Makefile bindings/swig/Makefile bindings/swig/src/Makefile bindings/swig/python/Makefile bindings/swig/python3/Makefile tools/Makefile tools/aulast/Makefile tools/aulastlog/Makefile tools/ausyscall/Makefile tools/auvirt/Makefile m4/Makefile)
+AC_OUTPUT(Makefile lib/Makefile lib/audit.pc lib/test/Makefile auparse/Makefile auparse/test/Makefile auparse/auparse.pc src/Makefile src/libev/Makefile src/test/Makefile docs/Makefile rules/Makefile init.d/Makefile audisp/Makefile audisp/plugins/Makefile audisp/plugins/builtins/Makefile audisp/plugins/prelude/Makefile audisp/plugins/remote/Makefile audisp/plugins/zos-remote/Makefile bindings/Makefile bindings/python/Makefile bindings/python/python2/Makefile bindings/python/python3/Makefile bindings/golang/Makefile bindings/swig/Makefile bindings/swig/src/Makefile bindings/swig/python/Makefile bindings/swig/python3/Makefile tools/Makefile tools/aulast/Makefile tools/aulastlog/Makefile tools/ausyscall/Makefile tools/auvirt/Makefile m4/Makefile)
 
 echo .
 echo "

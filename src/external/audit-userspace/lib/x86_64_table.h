@@ -1,5 +1,5 @@
 /* x86_64_table.h --
- * Copyright 2005-18 Red Hat Inc., Durham, North Carolina.
+ * Copyright 2005-17 Red Hat Inc., Durham, North Carolina.
  * All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -303,7 +303,7 @@ _S(279, "move_pages")
 _S(280, "utimensat")
 _S(281, "epoll_pwait")
 _S(282, "signalfd")
-_S(283, "timerfd_create")
+_S(283, "timerfd")
 _S(284, "eventfd")
 _S(285, "fallocate")
 _S(286, "timerfd_settime")

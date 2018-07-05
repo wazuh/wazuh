@@ -252,9 +252,7 @@ the auditd.service file.
 This is a numeric value which indicates how many pending (requested
 but unaccepted) connections are allowed.  The default is 5.  Setting
 this too small may cause connections to be rejected if too many hosts
-start up at exactly the same time, such as after a power failure. This
-setting is only used for aggregating servers. Clients logging to a remote
-server should keep this commented out.
+start up at exactly the same time, such as after a power failure.
 .TP
 .I tcp_max_per_addr
 This is a numeric value which indicates how many concurrent connections from

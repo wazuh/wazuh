@@ -1,0 +1,72 @@
+.TH AUDISP-PRELUDE: "8" "Dec 2008" "Red Hat" "System Administration Utilities"
+.SH NAME
+audisp\-prelude \- plugin for IDMEF alerts 
+.SH SYNOPSIS
+.B audisp\-prelude [ \-\-test ]
+.SH DESCRIPTION
+\fBaudisp\-prelude\fP is a plugin for the audit event dispatcher daemon, audispd, that uses libprelude to send IDMEF alerts for possible Intrusion Detection events. This plugin requires connecting to a prelude\-manager to record the events it sends. This plugin will analyze audit events in realtime and send detected events to the prelude\-manager for correlation, recording, and display. 
+
+Events that are currently supported are: Logins, Forbidden Login Location, Max Concurrent Sessions, Max Login Failures, Forbidden Login Time, SE Linux AVCs, SE Linux Enforcement Changes, Abnormal Program Termination, Promiscuous Socket Changes, and watched account logins.
+
+.SH OPTIONS
+.TP
+.B \-\-test
+Take input from stdin and write prelude events to stdout but does not send them to the prelude\-manager. This can be used for debugging or testing the system with suspicious log files when you do not want it to alert or react.
+
+.SH INSTALLATION
+This sensor has to be registered with the prelude\-manager before it will work properly. If the prelude\-manager is on the same host as the sensor, you will need to open two windows to register. If not, you will have to adjust this example to fit your environment.
+
+In one window, type:
+
+.B prelude\-admin register auditd "idmef:w" localhost \-\-uid 0 \-\-gid 0
+
+In another, type:
+
+.B prelude\-admin registration\-server prelude\-manager
+
+Follow the on\-screen instructions to complete the registration.
+
+.SH TIPS
+If you are aggregating multiple machines, you should enable node information in the audit event stream. You can do this in one of two places. If you want computer node names written to disk as well as sent in the realtime event stream, edit the name_format option in /etc/audit/auditd.conf. If you only want the node names in the realtime event stream, then edit the name_format option in /etc/audisp/audispd.conf. Do not enable both as it will put 2 node fields in the event stream.
+
+At this point, if you want have audit: forbidden login location, max concurrent sessions, max login failures, and forbidden login time anomalies being reported, you have to setup pam modules correctly. The pam modules are respectively: pam_access, pam_limits, pam_tally2, and pam_time. Please see the respective pam module man pages for any instructions.
+
+For performance reasons, some audit events will not produce syscall records which contain additional information about events unless there is at least one audit rule loaded. If you do not have any additional audit rules, edit \fI/etc/audit/audit.rules\fP and add something simple that won't impact performance like this: \fB\-w /etc/shadow \-p wa\fP. This rule will watch the shadow file for writes or changes to its attributes. The additional audit information provided by having at least one rule will allow the plugin to give a more complete view of the alert it is sending.
+
+If you are wanting to get alerts on watched syscalls, watched files, watched execution, or something becoming executable, you need to add some keys to your audit rules. For example, if you have the following audit watch in \fI/etc/audit/audit.rules\fP:
+
+.B \-w /etc/shadow \-p wa
+
+and you want idmef alerts on this, you need to add \fB\-k ids\-file\-med\fP  or something appropriate to signal to the plugin that this message is for it. The format of the key has a fixed format of keywords separated by a dash. It follows the form of
+.IB ids \- type \- severity .
+The \fItype\fP can be either \fBsys\fP, \fBfile\fP, \fBexec\fP, or \fBmkexe\fP depending on whether you want the event to be considered a watched_syscall, watched_file, watched_exec, or watched_mk_exe respectively. The \fIseverity\fP can be either \fBinfo\fP, \fBlow\fP, \fBmed\fP, or \fBhi\fP depending on how urgent you would like it to be.
+
+.SH EXAMPLE RULES
+To alert on any use of the personality syscall:
+.br
+.B \-a always,exit \-S personality \-k ids\-sys\-med
+
+To alert on a user failing to access the shadow file:
+.br
+.B \-a always,exit \-F path=/etc/shadow \-F perms=wa \-F success=0 \-k ids\-file\-med
+
+To alert on the execution of a program:
+.br
+.B \-w /bin/ping \-p x \-k ids\-exe\-info
+
+To alert on users making exe's in their home dir (takes 2 rules):
+.br
+.B \-a always,exit \-S fchmodat \-F dir=/home \-F a2&0111 \-F filetype=file \-k ids\-mkexe\-hi
+.br
+.B \-a always,exit \-S fchmod,chmod \-F dir=/home \-F a1&0111 \-F filetype=file \-k ids\-mkexe\-hi
+
+.SH FILES
+/etc/audisp/plugins.d/au\-prelude.conf, /etc/audit/auditd.conf, /etc/audisp/audispd.conf, /etc/audisp/audisp\-prelude.conf
+.SH "SEE ALSO"
+.BR audispd (8),
+.BR prelude\-manager (1),
+.BR auditd.conf (8),
+.BR audispd.conf (8),
+.BR audisp\-prelude.conf (5).
+.SH AUTHOR
+Steve Grubb

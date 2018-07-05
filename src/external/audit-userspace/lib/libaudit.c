@@ -1585,8 +1585,8 @@ int audit_rule_fieldpair_data(struct audit_rule_data **rulep, const char *pair,
 				uint32_t features = audit_get_features();
 				if ((features & AUDIT_FEATURE_BITMAP_EXECUTABLE_PATH) == 0)
 					return -EAU_FIELDNOSUPPORT;
-				if (!(op == AUDIT_NOT_EQUAL || op == AUDIT_EQUAL))
-					return -EAU_OPEQNOTEQ;
+				if (op != AUDIT_EQUAL)
+					return -EAU_OPEQ;
 				_audit_exeadded = 1;
 			}
 			if (field == AUDIT_FILTERKEY &&

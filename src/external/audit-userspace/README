@@ -17,8 +17,8 @@ See the man pages for audit, auditctl, audit.rules, ausearch, and aureport.
 DISCUSSION
 ==========
 Original lkml thread(s): 
-     https://marc.info/?t=107815888100001&r=1&w=2
-     https://marc.info/?t=107901570800002&r=1&w=2
+     http://marc.theaimsgroup.com/?t=107815888100001&r=1&w=2
+     http://marc.theaimsgroup.com/?t=107901570800002&r=1&w=2
 
 There is a linux audit mail list where any question whether kernel design,
 setup and configuration, or usage can be discussed:

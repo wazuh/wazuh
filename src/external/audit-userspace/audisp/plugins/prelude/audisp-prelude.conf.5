@@ -1,0 +1,153 @@
+.TH AUDISP-PRELUDE.CONF: "5" "Mar 2008" "Red Hat" "System Administration Utilities"
+.SH NAME
+audisp-prelude.conf \- the audisp-prelude configuration file
+.SH DESCRIPTION
+\fBaudisp-prelude.conf\fP is the file that controls the configuration of the audit based intrusion detection system. There are 2 general kinds of configuration option types, enablers and actions. The enablers simply have
+.IR yes "/" no "
+as the only valid choices.
+
+The action options currently allow
+.IR ignore ", and "idmef "
+as its choices. The 
+.IR ignore
+option means that the IDS still detects events, but only logs the detection in response. The
+.IR idmef
+option means that the IDS will send an IDMEF alert to the prelude manager upon detection.
+
+The configuration options that are available are as follows:
+
+.TP
+.I profile
+This is a one word character string that is used to identify the profile name in the prelude reporting tools. The default is auditd.
+.TP
+.I detect_avc
+This an enabler that determines if the IDS should be examining SE Linux AVC events. The default is 
+.IR yes ".
+.TP
+.I avc_action
+This is an action that determines what response should be taken whenever a SE Linux AVC is detected. The default is 
+.IR idmef ".
+.TP
+.I detect_login
+This is an enabler that determines if the IDS should be examining login events. The default is 
+.IR yes ".
+.TP
+.I login_action
+This is an action that determines what response should be taken whenever a login event is detected. The default is 
+.IR idmef ".
+.TP
+.I detect_login_fail_max
+This is an enabler that determines if the IDS should be looking for maximum number of failed logins for an account. The default is 
+.IR yes ".
+.TP
+.I login_fail_max_action
+This is an action that determines what response should be taken whenever the maximum number of failed logins for an account is detected. The default is 
+.IR idmef ".
+.TP
+.I detect_login_session_max
+This is an enabler that determines if the IDS should be looking for maximum concurrent sessions limit for an account. The default is 
+.IR yes ".
+.TP
+.I login_session_max_action
+This is an action that determines what response should be taken whenever the maximum concurrent sessions limit for an account is detected. The default is 
+.IR idmef ".
+.TP
+.I detect_login_location
+This is an enabler that determines if the IDS should be looking for logins being attempted from a forbidden location. The default is 
+.IR yes ".
+.TP
+.I login_location_action
+This is an action that determines what response should be taken whenever logins are attempted from a forbidden location. The default is 
+.IR idmef ".
+.TP
+.I detect_login_time_alerts
+This is an enabler that determines if the IDS should be looking for logins attempted during a forbidden time. The default is 
+.IR yes ".
+.TP
+.I login_time_action
+This is an action that determines what response should be taken whenever logins are attempted during a forbidden time. The default is 
+.IR idmef ".
+.TP
+.I detect_abend
+This is an enabler that determines if the IDS should be looking for programs terminating for an abnormal reason. The default is 
+.IR yes ".
+.TP
+.I abend_action
+This is an action that determines what response should be taken whenever programs terminate for an abnormal reason. The default is 
+.IR idmef ".
+.TP
+.I detect_promiscuous
+This is an enabler that determines if the IDS should be looking for promiscuous sockets being opened. The default is 
+.IR yes ".
+.TP
+.I promiscuous_action
+This is an action that determines what response should be taken whenever promiscuous sockets are detected open. The default is 
+.IR idmef ".
+.TP
+.I detect_mac_status
+This is an enabler that determines if the IDS should be detecting changes made to the SE Linux MAC enforcement. The default is 
+.IR yes ".
+.TP
+.I mac_status_action
+This is an action that determines what response should be taken whenever changes are made to the SE Linux MAC enforcement. The default is 
+.IR idmef ".
+.TP
+.I detect_group_auth
+This is an enabler that determines if the IDS should be detecting whenever a user fails in changing their default group. The default is 
+.IR yes ".
+.TP
+.I group_auth_act
+This is an action that determines what response should be taken whenever a user fails in changing their default group. The default is 
+.IR idmef ".
+.TP
+.I detect_watched_acct
+This is an enabler that determines if the IDS should be detecting a user attempting to login on an account that is being watched. The accounts to watch is set by the
+.IR watched_accounts
+option. The default is 
+.IR yes ".
+.TP
+.I watched_acct_act
+This is an action that determines what response should be taken whenever a user attempts to login on an account that is being watched. The default is 
+.IR idmef ".
+.TP
+.I watched_accounts
+This option is a whitespace and comma separated list of accounts to watch. The accounts may be numeric or alphanumeric. If you want to include a range of accounts, separate them with a dash but no spaces. For example, to watch logins from bin to lp, use "bin-lp". Only successful logins are recorded.
+.TP
+.I detect_watched_syscall
+This is an enabler that determines if the IDS should be detecting whenever a user runs a command that issues a syscall that is being watched. The default is 
+.IR yes ".
+.TP
+.I watched_syscall_act
+This is an action that determines what response should be taken whenever a user runs a command that issues a syscall that is being watched. The default is 
+.IR idmef ".
+.TP
+.I detect_watched_file
+This is an enabler that determines if the IDS should be detecting whenever a user accesses a file that is being watched. The default is 
+.IR yes ".
+.TP
+.I watched_file_act
+This is an action that determines what response should be taken whenever a user accesses a file that is being watched. The default is 
+.IR idmef ".
+.TP
+.I detect_watched_exec
+This is an enabler that determines if the IDS should be detecting whenever a user executes a program that is being watched. The default is 
+.IR yes ".
+.TP
+.I watched_exec_act
+This is an action that determines what response should be taken whenever a user executes a program that is being watched. The default is 
+.IR idmef ".
+.TP
+.I detect_watched_mk_exe
+This is an enabler that determines if the IDS should be detecting whenever a user creates a file that is executable. The default is 
+.IR yes ".
+.TP
+.I watched_mk_exe_act
+This is an action that determines what response should be taken whenever a user creates a file that is executable. The default is 
+.IR idmef ".
+.SH "SEE ALSO"
+.BR audispd (8),
+.BR audisp-prelude (8),
+.BR prelude-manager (1).
+.SH AUTHOR
+Steve Grubb
+

@@ -127,7 +127,8 @@ int main(int argc, char *argv[])
 				auparse_feed(au, tmp, strnlen(tmp,
 						MAX_AUDIT_MESSAGE_LENGTH));
 			}
-		}
+		} else if (retval == 0)
+			auparse_flush_feed(au);
 		if (feof(stdin))
 			break;
 	} while (stop == 0);

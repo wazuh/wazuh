@@ -1,5 +1,5 @@
 /* i386_table.h --
- * Copyright 2005-18 Red Hat Inc., Durham, North Carolina.
+ * Copyright 2005-17 Red Hat Inc., Durham, North Carolina.
  * All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -340,7 +340,7 @@ _S(318, "getcpu")
 _S(319, "epoll_pwait")
 _S(320, "utimensat")
 _S(321, "signalfd")
-_S(322, "timerfd_create")
+_S(322, "timerfd")
 _S(323, "eventfd")
 _S(324, "fallocate")
 _S(325, "timerfd_settime")

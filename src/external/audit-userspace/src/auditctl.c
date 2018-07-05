@@ -336,6 +336,74 @@ static int audit_setup_perms(struct audit_rule_data *rule, const char *opt)
 	return -1;
 }
 
+/* 0 success, -1 failure */
+static int lookup_itype(const char *kind)
+{
+        if (strcmp(kind, "sys") == 0)
+                return 0;
+        if (strcmp(kind, "file") == 0)
+                return 0;
+        if (strcmp(kind, "exec") == 0)
+                return 0;
+        if (strcmp(kind, "mkexe") == 0)
+                return 0;
+        return -1;
+}
+
+/* 0 success, -1 failure */
+static int lookup_iseverity(const char *severity)
+{
+        if (strncmp(severity, "inf", 3) == 0)
+                return 0;
+        if (strncmp(severity, "low", 3) == 0)
+                return 0;
+        if (strncmp(severity, "med", 3) == 0)
+                return 0;
+        if (strncmp(severity, "hi", 2) == 0)
+                return 0;
+        return -1;
+}
+
+/* 0 success, -1 failure */
+static int check_ids_key(const char *k)
+{
+	char *ptr, *kindptr, *ratingptr;
+	char keyptr[AUDIT_MAX_KEY_LEN+1];
+
+	if (strlen(k) > AUDIT_MAX_KEY_LEN)
+		goto fail_exit;
+
+	strncpy(keyptr, k, sizeof(keyptr));
+	keyptr[AUDIT_MAX_KEY_LEN] = 0;
+	ptr = strchr(keyptr, '-'); // There has to be a - because strncmp
+	kindptr = ptr + 1;
+	if (*kindptr == 0) 
+		goto fail_exit;
+
+	ptr = strchr(kindptr, '-');
+	if (ptr) {
+		*ptr = 0;
+		ratingptr = ptr +1;
+	} else // The rules are misconfigured
+		goto fail_exit;
+	if (*ratingptr == 0) 
+		goto fail_exit;
+
+	if (lookup_itype(kindptr)) {
+		audit_msg(LOG_ERR, "ids key type is bad");
+		return -1;
+	}
+	if (lookup_iseverity(ratingptr)) {
+		audit_msg(LOG_ERR, "ids key severity is bad");
+		return -1;
+	}
+	return 0;
+
+fail_exit:
+	audit_msg(LOG_ERR, "ids key is bad");
+	return -1;
+}
+
 static int equiv_parse(char *optarg, char **mp, char **sub)
 {
 	char *ptr = strchr(optarg, ',');
@@ -899,6 +967,12 @@ process_keys:
 			audit_msg(LOG_ERR, "key option exceeds size limit");
 			retval = -1;
 		} else {
+			if (strncmp(optarg, "ids-", 4) == 0) {
+				if (check_ids_key(optarg)) {
+					retval = -1;
+					break;
+				}
+			}
 			if (strchr(optarg, AUDIT_KEY_SEPARATOR)) 
 				audit_msg(LOG_ERR,
 				    "key %s has illegal character", optarg);

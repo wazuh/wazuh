@@ -24,12 +24,6 @@ ExecStartPost=-/sbin/augenrules --load
 # the next line after copying the file to /etc/systemd/system/auditd.service
 #ExecStopPost=/sbin/auditctl -R /etc/audit/audit-stop.rules
 
-### Security Settings ###
-MemoryDenyWriteExecute=true
-LockPersonality=true
-ProtectControlGroups=true
-ProtectKernelModules=true
-
 [Install]
 WantedBy=multi-user.target
 
