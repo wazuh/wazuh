@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
   - Improvements of error and information messages when they start.
 - Improve output of `DELETE/agents` when no agents were removed. ([#868](https://github.com/wazuh/wazuh/pull/868))
 - Include the file owner SID in Syscheck alerts.
+- Change no previous checksum error message to information log. ([#897](https://github.com/wazuh/wazuh/pull/897))
 
 ### Fixed
 
