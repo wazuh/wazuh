@@ -71,9 +71,10 @@ def main():
         raise WazuhException(1720)
 
     # Evaluate if the version is correct
-    pattern = re.compile("v[0-9]+\.[0-9]+\.[0-9]+")
-    if not pattern.match(args.version):
-        raise WazuhException(1733, "Version received: {0}".format(args.version))
+    if args.version is not None:
+        pattern = re.compile("v[0-9]+\.[0-9]+\.[0-9]+")
+        if not pattern.match(args.version):
+            raise WazuhException(1733, "Version received: {0}".format(args.version))
 
     # Custom WPK file
     if args.file:
