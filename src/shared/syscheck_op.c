@@ -338,7 +338,7 @@ int remove_empty_folders(const char *path) {
         memcpy(parent, path, c - path);
         parent[c - path] = '\0';
         // Don't delete above /local
-        if (c = strrchr(parent, PATH_SEP), strcmp(c, LOCALDIR) != 0) {
+        if (c = strrchr(parent, PATH_SEP), c && strcmp(c, LOCALDIR) != 0) {
             subdir = wreaddir(parent);
             if (!(subdir && *subdir)) {
                 // Remove empty folder
