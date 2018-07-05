@@ -13,6 +13,10 @@
 #define WLIST_ALERT_THRESHOLD 80 // 80%
 #define WLIST_REMOVE_MAX 10 // 10%
 #define WLIST_MAX_SIZE OS_SIZE_1024
+#define WPOL_BACKUP_COMMAND "auditpol /backup /file:\"%s\""
+#define WPOL_RESTORE_COMMAND "auditpol /restore /file:\"%s\""
+#define WPOL_BACKUP_FILE "tmp\\backup-policies"
+#define WPOL_NEW_FILE "tmp\\new-policies"
 
 // Variables whodata
 static PSID everyone_sid = NULL;
@@ -39,8 +43,11 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int is_valid_sacl(PACL sacl);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
-void set_policies();
+int set_policies();
 void set_subscription_query(wchar_t *query);
+extern int wm_exec(char *command, char **output, int *exitcode, int secs);
+int restore_audit_policies();
+void audit_restore();
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
@@ -271,9 +278,12 @@ int run_whodata_scan() {
     wchar_t query[OS_MAXSTR];
 
     // Set the signal handler to restore the policies
-    atexit(restore_sacls);
+    atexit(audit_restore);
     // Set the system audit policies
-    set_policies();
+    if (set_policies()) {
+        merror("Local audit policies could not be configured.");
+        return 1;
+    }
     // Select the interesting fields
     if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
         merror("Error creating the whodata context. Error %lu.", GetLastError());
@@ -289,6 +299,11 @@ int run_whodata_scan() {
         return 1;
     }
     return 0;
+}
+
+void audit_restore() {
+    restore_sacls();
+    restore_audit_policies();
 }
 
 /* Removes added security audit policies */
@@ -346,6 +361,25 @@ void restore_sacls() {
         merror("Failed to disable the privilege while restoring the SACLs. Error '%lu'.", GetLastError());
     }
     CloseHandle(hdle);
+}
+
+int restore_audit_policies() {
+    char command[OS_SIZE_1024];
+    int result_code;
+    char *output;
+    snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_BACKUP_FILE);
+
+    if (IsFile(WPOL_BACKUP_FILE)) {
+        merror("There is no backup of audit policies. Policies will not be restored.");
+        return 1;
+    }
+    // Get the current policies
+    if (wm_exec(command, &output, &result_code, 5), result_code) {
+        merror("Auditpol backup error: '%s'.", output);
+        return 1;
+    }
+
+    return 0;
 }
 
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event) {
@@ -760,21 +794,63 @@ void send_whodata_del(whodata_evt *w_evt) {
     send_syscheck_msg(del_msg);
 }
 
-void set_policies() {
-/*    char *output = NULL;
+int set_policies() {
+    char *output = NULL;
     int result_code = 0;
+    FILE *f_backup;
+    FILE *f_new;
+    char buffer[OS_MAXSTR];
     char command[OS_SIZE_1024];
-    static const char *WPOL_HANDLEM = ",System,Handle Manipulation,";
-    static const char *WPOL_FILE_SYS = ",System,File System,";
-    static const char *WPOL_BACKUP_COMMAND = "auditpol \/backup \/file:\"%s\"";
-    static const char *WPOL_RESTORE_COMMAND = "auditpol \/restore \/file:\"%s\"";
+    char *found;
+    char *state;
+    static const char *WPOL_HANDLE_MAN = ",System,Handle Manipulation,";
+    static const char *WPOL_FILE_SYSTEM = ",System,File System,";
+    static const char *WPOL_NO_AUDITING = ",No Auditing,";
+    static const char *WPOL_FAILURE = ",Failure,";
+    static const char *WPOL_SUCCESS = ",Success,,1";
 
-    snprintf()
+    if (!IsFile(WPOL_BACKUP_FILE) && remove(WPOL_BACKUP_FILE)) {
+        return 1;
+    }
 
-    auditpol /backup /file:"%backup_path%"
+    snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
-    wm_exec("ee", &output, &result_code, 0);
-*/
+    // Get the current policies
+    if (wm_exec(command, &output, &result_code, 5), result_code) {
+        merror("Auditpol backup error: '%s'.", output);
+        return 1;
+    }
+
+    if (!(f_backup = fopen (WPOL_BACKUP_FILE, "r")) ||
+        !(f_new = fopen (WPOL_NEW_FILE, "w"))) {
+        return 1;
+    }
+
+    // Merge the policies
+    while (fgets(buffer, OS_MAXSTR - 20, f_backup)) {
+        if ((found = strstr(buffer, WPOL_HANDLE_MAN)) ||
+            (found = strstr(buffer, WPOL_FILE_SYSTEM))) {
+            if ((state = strstr(found, WPOL_NO_AUDITING)) ||
+                (state = strstr(found, WPOL_FAILURE))) {
+                snprintf(state, 20, "%s\n", WPOL_SUCCESS);
+            }
+        }
+        fprintf(f_new, buffer);
+    }
+
+    fclose(f_new);
+    fclose(f_backup);
+
+    snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
+
+    // Set the new policies
+    if (wm_exec(command, &output, &result_code, 5), result_code) {
+        merror("Auditpol restore error: '%s'.", output);
+        return 1;
+    }
+
+    free(output);
+    return 0;
 }
 
 void set_subscription_query(wchar_t *query) {
