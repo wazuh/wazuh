@@ -345,7 +345,9 @@ void * run_worker(__attribute__((unused)) void * args) {
                     if (terminal && length < OS_MAXSTR - 1) {
                         response[length++] = '\n';
                     }
-                    send(*peer, response, length, 0);
+                    if (send(*peer, response, length, 0 < 0)) {
+                        merror("at run_worker(): send(%d): %s (%d)", *peer, strerror(errno), errno);
+                    }
                 }
             }
         }
