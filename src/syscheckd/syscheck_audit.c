@@ -714,7 +714,10 @@ void * audit_main(int * audit_sock) {
     os_malloc(BUF_SIZE, cache);
 
     mdebug1("Reading events from Audit socket...");
+    w_mutex_lock(&audit_mutex);
     audit_thread_active = 1;
+    pthread_cond_signal(&audit_thread_started);
+    w_mutex_unlock(&audit_mutex);
 
     while (audit_thread_active) {
         FD_ZERO(&fdset);

@@ -92,6 +92,7 @@ extern volatile int audit_thread_active;
 extern volatile int added_rules_error;
 extern pthread_mutex_t audit_mutex;
 extern pthread_mutex_t audit_rules_mutex;
+extern pthread_cond_t audit_thread_started;
 void clean_rules(void);
 #else
 int whodata_audit_start();

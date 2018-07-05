@@ -20,6 +20,7 @@ syscheck_config syscheck;
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
 volatile int added_rules_error;
+pthread_cond_t audit_thread_started;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -372,6 +373,7 @@ int main(int argc, char **argv)
 
     // Audit events thread
     if (syscheck.enable_whodata) {
+        unsigned int i = 0;
         int audit_socket = audit_init();
         added_rules_error = 0;
         if (audit_socket > 0) {
@@ -379,7 +381,33 @@ int main(int argc, char **argv)
             audit_added_rules = W_Vector_init(10);
             audit_added_dirs = W_Vector_init(20);
             atexit(clean_rules);
+            pthread_cond_init(&audit_thread_started, NULL);
             w_create_thread(audit_main, &audit_socket);
+            w_mutex_lock(&audit_mutex);
+            while (!audit_thread_active)
+                pthread_cond_wait(&audit_thread_started, &audit_mutex);
+            w_mutex_unlock(&audit_mutex);
+            // Add Audit rules
+            while (syscheck.dir[i] != NULL) {
+                if (syscheck.opts[i] & CHECK_WHODATA) {
+                    int retval;
+                    if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
+                        if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
+                            mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
+                            w_mutex_lock(&audit_rules_mutex);
+                            W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                            w_mutex_unlock(&audit_rules_mutex);
+                        } else {
+                            merror("Error adding Audit rule for %s : %i", syscheck.dir[i], retval);
+                            added_rules_error = 1;
+                        }
+                    } else {
+                        merror("Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d).", syscheck.dir[i], syscheck.max_audit_entries);
+                    }
+                }
+                i++;
+            }
+
         } else {
             merror("Cannot start Audit events reader thread.");
         }
