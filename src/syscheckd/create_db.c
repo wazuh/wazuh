@@ -129,7 +129,7 @@ void remove_local_diff(){
     for (j = 0; j <= syscheck.local_hash->rows; j++) {
         curr_node_local = syscheck.local_hash->table[j];
         if (curr_node_local && curr_node_local->key) {
-            minfo("Deleting '%s'. Not monitorized anymore.", curr_node_local->key);
+            mdebug1("Deleting '%s'. Not monitorized anymore.", curr_node_local->key);
             if (rmdir_ex(curr_node_local->key) != 0) {
                 mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
             }
