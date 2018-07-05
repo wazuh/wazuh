@@ -440,11 +440,11 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                     } else {
                         changes = 1;
                         wm_strcat(&lf->fields[SK_CHFIELDS].value, "uid", ',');
-                        if (oldsum.uid && newsum.uid) {
+                        if (oldsum.uname && newsum.uname) {
                             snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum.uname, oldsum.uid, newsum.uname, newsum.uid);
                             os_strdup(oldsum.uname, lf->uname_before);
                         } else {
-                            snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum.uname, newsum.uname);
+                            snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum.uid, newsum.uid);
                         }
                         os_strdup(oldsum.uid, lf->owner_before);
                     }
