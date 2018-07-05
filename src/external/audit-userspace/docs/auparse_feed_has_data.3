@@ -1,0 +1,25 @@
+.TH "AUPARSE_FEED_HAS_DATA" "3" "Apr 2016" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_feed_has_data \- check if there is any data accumulating that might need flushing.
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+int auparse_feed_has_data(const auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+.I auparse_feed_has_data
+may be called to determine if there is any records that are accumulating but not yet ready to emit.
+
+.SH "RETURN VALUE"
+
+Returns 1 if any records are accumulating otherwise 0 if empty.
+
+.SH "SEE ALSO"
+
+.BR auparse_feed (3),
+.BR auparse_feed_age_events (3)
+
+
+.SH AUTHOR
+Steve Grubb

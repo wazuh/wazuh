@@ -1,0 +1,53 @@
+.TH "AUDIT_LOG_SEMANAGE_MESSAGE" "3" "Jan 2012" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_log_semanage_message \- log a semanage message
+.SH SYNOPSIS
+.B #include <libaudit.h>
+.sp
+.B int audit_log_semanage_message(int audit_fd, int type,
+.B const char *pgname, const char *op, const char *name, unsigned int id,
+.B const char *new_seuser, const char *new_role, const char *new_range,
+.B const char *old_seuser, const char *old_role, const char *old_range,
+.B const char *host, const char *addr, const char *tty, int result)
+
+.SH DESCRIPTION
+
+This function will log a message to the audit system using a predefined
+message format. It should be used for all SE linux user and role
+manipulation operations. The function parameters are as follows:
+
+.nf
+audit_fd - The fd returned by audit_open
+type - type of message: AUDIT_ROLE_ASSIGN/REMOVE for changing any SE Linux user or role attributes.
+pgname - program's name
+op  -  operation. "adding-user", "adding-role", "deleting-user", "deleting-role"
+name - user's account. If not available use NULL.
+id  -  uid that the operation is being performed on. This is used only when name is NULL.
+new_seuser - the new seuser that the login user is getting
+new_role - the new_role that the login user is getting
+new_range - the new mls range that the login user is getting
+old_seuser - the old seuser that the login usr had
+old_role - the old role that the login user had
+old_range - the old mls range that the login usr had
+host - The hostname if known
+addr - The network address of the user
+tty  - The tty of the user
+result - 1 is "success" and 0 is "failed"
+.fi
+
+.SH "RETURN VALUE"
+
+It returns the sequence number which is > 0 on success or <= 0 on error.
+
+.SH "ERRORS"
+
+This function returns \-1 on failure. Examine errno for more info.
+
+.SH "SEE ALSO"
+.BR audit_log_user_message (3),
+.BR audit_log_acct_message (3),
+.BR audit_log_user_avc_message (3),
+.BR audit_log_user_comm_message (3).
+
+.SH AUTHOR
+Steve Grubb

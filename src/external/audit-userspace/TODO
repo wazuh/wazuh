@@ -1,0 +1,24 @@
+Future roadmap (subject to change):
+===================================
+3.0
+* Support TLS PSK as remote logging transport
+* Performance improvements for auparse (Memory management)
+* In audispd, look into non-blocking handling of write to plugins
+* Look at pulling audispd into auditd
+* Container support
+
+3.1
+* Basic HIDS based on reactive audit component
+* Add rule verify to detect mismatch between in-kernel and on-disk rules
+* If auparse input is a pipe timeout events by wall clock
+* Fix audit.pc.in to use Requires.private
+* Support multiple time streams when searching
+
+3.1.1
+* Add keywords for time: month-ago
+* Fix aureport-scan to properly decide if CONFIG_CHANGE is add or del, need to optionally look for op and use remove/add to decide
+* Change ausearch to output name="" unless its a real null. (mount) ausearch-report.c, 523. FIXME
+* Consolidate linked lists and other functions
+* Consolidate parsing code between libaudit and auditd-conf.c
+* Fix SIGHUP for auditd network settings
+* Add ability to filter events in auditd

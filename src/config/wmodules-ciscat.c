@@ -34,6 +34,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     wm_ciscat *ciscat;
     wm_ciscat_eval *cur_eval = NULL;
 
+
     // Create module
 
     os_calloc(1, sizeof(wm_ciscat), ciscat);
@@ -41,6 +42,9 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     ciscat->flags.scan_on_start = 1;
     module->context = &WM_CISCAT_CONTEXT;
     module->data = ciscat;
+
+    if (!nodes)
+        return 0;
 
     // Iterate over module subelements
 

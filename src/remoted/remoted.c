@@ -59,7 +59,7 @@ void HandleRemote(int uid)
     /* Bind TCP */
     if (logr.proto[position] == TCP_PROTO) {
         if ((logr.sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
-            merror_exit(BIND_ERROR, logr.port[position]);
+            merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         }else{
             if (OS_SetRecvTimeout(logr.sock, timeout) < 0){
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
@@ -69,7 +69,7 @@ void HandleRemote(int uid)
         /* Using UDP. Fast, unreliable... perfect */
         if ((logr.sock =
                     OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
-            merror_exit(BIND_ERROR, logr.port[position]);
+            merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         }
     }
 

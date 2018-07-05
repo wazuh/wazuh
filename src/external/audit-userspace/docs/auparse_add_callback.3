@@ -1,0 +1,69 @@
+.TH "AUPARSE_ADD_CALLBACK" "3" "May 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_add_callback \- add a callback handler for notifications
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+.nf
+.B void
+auparse_add_callback(auparse_state_t *au, auparse_callback_ptr callback,
+                     void *user_data, user_destroy user_destroy_func);
+.fi
+.SH "DESCRIPTION"
+auparse_add_callback adds a callback function to the parse state which is invoked to notify the application of parsing events. This is part of the event feed API.
+
+The signature of the callback is:
+
+.nf
+void
+auparse_callback(auparse_state_t *au, auparse_cb_event_t cb_event_type,
+                 void *user_data);
+.fi
+
+When the callback is invoked it is passed:
+
+.TP
+.I au
+ a pointer to the parse_state
+.TP
+.I cb_event_type
+enumerated value indicating the reason why the callback was invoked
+.TP
+.I user_data
+pointer to user supplied private data. May be NULL.
+.
+.TP
+.I user_destroy_func
+pointer to function called when user_data is destroyed. May be NULL.
+The signature is:
+.br
+.sp
+.nf
+void destroy(void *user_data);
+.fi
+.br
+.sp
+The destroy() function should be prepared to accept user_data possibly being NULL.
+.PP
+The 
+.I cb_event_type
+argument indicates why the callback was invoked. It's possible values are:
+.br
+.TP
+.B AUPARSE_CB_EVENT_READY
+A complete event has been parsed and is ready to be examined. This is logically equivalent to the parse state immediately following 
+.I auparse_next_event()
+.PP
+See auparse_feed(3) for a complete code example.
+.
+.SH "RETURN VALUE"
+
+Returns the previous callback pointer.
+
+.SH "SEE ALSO"
+
+.BR auparse_feed (3), 
+.BR auparse_flush_feed (3).
+
+.SH AUTHOR
+John Dennis

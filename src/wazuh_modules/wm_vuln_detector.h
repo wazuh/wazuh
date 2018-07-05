@@ -64,6 +64,8 @@ typedef struct update_flags {
     unsigned int update_nvd:1;
     unsigned int update_ubuntu:1;
     unsigned int update_redhat:1;
+    unsigned int attempted_ubuntu:1;
+    unsigned int attempted_redhat:1;
     // Ubuntu versions
     unsigned int precise:1; // 12.04
     unsigned int trusty:1;  // 14.04

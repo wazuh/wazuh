@@ -1,0 +1,25 @@
+.TH "AUPARSE_GET_NODE" "3" "Sept 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+auparse_get_node \- get the event's machine node name
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+const char *auparse_get_node(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+auparse_get_node gets the machine's node name if it exists in the audit event from the current event's timestamp data structure. Not all records have node names since its an admin configurable option.
+
+.SH "RETURN VALUE"
+
+Returns a copy of the node name or NULL if it does not exist or there was an error. The caller must free the string.
+
+.SH "SEE ALSO"
+
+.BR auparse_get_timestamp (3), 
+.BR auparse_get_time (3), 
+.BR auparse_get_milli (3).
+.BR auparse_get_serial (3).
+
+.SH AUTHOR
+Steve Grubb

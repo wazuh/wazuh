@@ -26,7 +26,7 @@ class InternalSocketHandler(communication.ServerHandler):
 
     def process_request(self, command, data):
         if command == 'hello':
-            self.name = self.server.add_client(data, '', self)
+            self.name = self.server.add_worker(data, '', self)
             return None
         else:
             return 'err',"Received an unknown command '{}'".format(command)
@@ -58,14 +58,14 @@ class InternalSocket(communication.AbstractServer):
         communication.AbstractServer.create_socket(self, family, type)
 
 
-    def add_client(self, data, ip, handler):
-        with self._clients_lock:
-            self._clients[data] = {'handler': handler}
+    def add_worker(self, data, ip, handler):
+        with self._workers_lock:
+            self._workers[data] = {'handler': handler}
 
         return data
 
 
-    def find_client_by_ip(self, client_ip):
+    def find_worker_by_ip(self, worker_ip):
         return None
 
 
@@ -104,14 +104,14 @@ class InternalSocketThread(threading.Thread):
             time.sleep(2)
 
 
-class InternalSocketClient(communication.AbstractClient):
+class InternalSocketWorker(communication.AbstractWorker):
 
     def __init__(self, socket_name, asyncore_map = {}):
         self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
         connect_query = str(random.randint(0, 2 ** 32 - 1))
-        logger.debug("[InternalSocketClient] Client ID: {}".format(connect_query))
-        communication.AbstractClient.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM,
-                                              connect_query, "[InternalSocket-Client] [{}]".format(connect_query), asyncore_map)
+        logger.debug("[InternalSocketWorker] Worker ID: {}".format(connect_query))
+        communication.AbstractWorker.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM,
+                                              connect_query, "[InternalSocket-Worker] [{}]".format(connect_query), asyncore_map)
         self.final_response = communication.Response()
         self.string_receiver = None
 
@@ -121,7 +121,7 @@ class InternalSocketClient(communication.AbstractClient):
         if data:
             data = "{} {}".format(self.name, data)
 
-        res = communication.AbstractClient.send_request(self, command, data)
+        res = communication.AbstractWorker.send_request(self, command, data)
         after = time.time()
         logger.debug("{} Time sending request to internal socket server: {}s".format(self.tag, after - before))
         return res
@@ -149,7 +149,7 @@ class InternalSocketClient(communication.AbstractClient):
         if command == 'dapi_res':
             self.string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
             self.string_receiver.start()
-            return 'ok', self.set_worker(command, self.string_receiver)
+            return 'ok', self.set_worker_thread(command, self.string_receiver)
         elif command == 'err-is':
             data = data.decode()
             logger.debug("{} Cluster has reported an error receiving data: {}".format(self.tag, data))
@@ -158,7 +158,7 @@ class InternalSocketClient(communication.AbstractClient):
                 self.string_receiver.stop()
             return 'ack','thanks'
         else:
-            return communication.AbstractClient.process_request(self, command, data)
+            return communication.AbstractWorker.process_request(self, command, data)
 
 
     def handle_error(self):
@@ -175,10 +175,10 @@ class InternalSocketClient(communication.AbstractClient):
 
 
 
-class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverClient):
+class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverWorker):
 
     def __init__(self, manager_handler, stopper):
-        communication.FragmentedStringReceiverClient.__init__(self, manager_handler, stopper)
+        communication.FragmentedStringReceiverWorker.__init__(self, manager_handler, stopper)
         self.thread_tag = "[APIResponseReceiver]"
 
 
@@ -190,15 +190,15 @@ class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverClient
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason=='error':
             self.manager_handler.final_response.write(send_err_request)
-        communication.FragmentedStringReceiverClient.unlock_and_stop(self,reason,None)
+        communication.FragmentedStringReceiverWorker.unlock_and_stop(self,reason,None)
 
 
-class InternalSocketClientThread(communication.ClusterThread):
+class InternalSocketWorkerThread(communication.ClusterThread):
 
     def __init__(self, socket_name, stopper = threading.Event()):
         communication.ClusterThread.__init__(self, stopper)
         asyncore_map = {}
-        self.manager = InternalSocketClient(socket_name=socket_name, asyncore_map=asyncore_map)
+        self.manager = InternalSocketWorker(socket_name=socket_name, asyncore_map=asyncore_map)
 
 
     def run(self):
@@ -228,13 +228,13 @@ def execute(request):
         # if no exception is raised from function check_cluster_status, the cluster is ok.
         check_cluster_status()
 
-        isocket_client_thread = InternalSocketClientThread(socket_name=socket_name)
-        isocket_client_thread.start()
+        isocket_worker_thread = InternalSocketWorkerThread(socket_name=socket_name)
+        isocket_worker_thread.start()
         command, payload = request.split(' ',1)
-        is_error = isocket_client_thread.manager.process_response(isocket_client_thread.manager.send_request(command = command, data = payload).split(' ',1))
-        response = isocket_client_thread.manager.final_response.read()
-        isocket_client_thread.manager.handle_close()
-        isocket_client_thread.stop()
+        is_error = isocket_worker_thread.manager.process_response(isocket_worker_thread.manager.send_request(command = command, data = payload).split(' ',1))
+        response = isocket_worker_thread.manager.final_response.read()
+        isocket_worker_thread.manager.handle_close()
+        isocket_worker_thread.stop()
         response = json.loads(response) if not is_error else response
         return response
     except WazuhException as e:

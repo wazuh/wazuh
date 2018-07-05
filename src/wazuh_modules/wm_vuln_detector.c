@@ -1621,13 +1621,15 @@ free_mem:
 int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max, time_intervals *remaining) {
     int need_update = 1;
     time_t time_start;
+    int success;
 
     if (flags->update_ubuntu && !remaining->ubuntu) {
         time_start = time(NULL);
+        success = 1;
         if (flags->xenial) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Ubuntu Xenial");
             if (wm_vulnerability_fetch_oval(XENIAL, &need_update) || (need_update && wm_vulnerability_update_oval(XENIAL))) {
-                return OS_INVALID;
+                success = 0;
             } else {
                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Ubuntu Xenial");
             }
@@ -1635,7 +1637,7 @@ int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max,
         if (flags->trusty) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Ubuntu Trusty");
             if (wm_vulnerability_fetch_oval(TRUSTY, &need_update) || (need_update && wm_vulnerability_update_oval(TRUSTY))) {
-                return OS_INVALID;
+                success = 0;
             } else {
                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Ubuntu Trusty");
             }
@@ -1643,20 +1645,31 @@ int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max,
         if (flags->precise) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Ubuntu Precise");
             if (wm_vulnerability_fetch_oval(PRECISE, &need_update) || (need_update && wm_vulnerability_update_oval(PRECISE))) {
-                return OS_INVALID;
+                success = 0;
             } else {
                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Ubuntu Precise");
             }
         }
         wm_vulnerability_update_intervals(remaining, time(NULL) - time_start);
         remaining->ubuntu = max->ubuntu;
+        if (!success) {
+            if (!flags->attempted_ubuntu) {
+                flags->attempted_ubuntu = 1;
+                remaining->ubuntu = 300;
+            } else {
+                flags->attempted_ubuntu = 0;
+            }
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, "Failed when updating Ubuntu databases. Retrying in %lu seconds...", remaining->ubuntu);
+            return OS_INVALID;
+        }
     }
     if (flags->update_redhat && !remaining->redhat) {
         time_start = time(NULL);
+        success = 1;
         if (flags->rh5) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Red Hat Enterprise Linux 5");
             if (wm_vulnerability_fetch_oval(RHEL5, &need_update) || (need_update && wm_vulnerability_update_oval(RHEL5))) {
-                return OS_INVALID;
+                success = 0;
             } else {
                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Red Hat Enterprise Linux 5");
             }
@@ -1664,7 +1677,7 @@ int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max,
         if (flags->rh6) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Red Hat Enterprise Linux 6");
             if (wm_vulnerability_fetch_oval(RHEL6, &need_update) || (need_update && wm_vulnerability_update_oval(RHEL6))) {
-                return OS_INVALID;
+                success = 0;
             } else {
                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Red Hat Enterprise Linux 6");
             }
@@ -1672,13 +1685,23 @@ int wm_vulnerability_detector_updatedb(update_flags *flags, time_intervals *max,
         if (flags->rh7) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, "Red Hat Enterprise Linux 7");
             if (wm_vulnerability_fetch_oval(RHEL7, &need_update) || (need_update && wm_vulnerability_update_oval(RHEL7))) {
-                return OS_INVALID;
+                success = 0;
             } else {
                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, "Red Hat Enterprise Linux 7");
             }
         }
         wm_vulnerability_update_intervals(remaining, time(NULL) - time_start);
         remaining->redhat = max->redhat;
+        if (!success) {
+            if (!flags->attempted_redhat) {
+                flags->attempted_redhat = 1;
+                remaining->redhat = 300;
+            } else {
+                flags->attempted_redhat = 0;
+            }
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, "Failed when updating RedHat databases. Retrying in %lu seconds...", remaining->redhat);
+            return OS_INVALID;
+        }
     }
     return 0;
 };

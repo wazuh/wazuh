@@ -1,0 +1,44 @@
+.TH "AUDIT_REQUEST_STATUS" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_request_status \- Request status of the audit system
+.SH "SYNOPSIS"
+
+.B #include <libaudit.h>
+.sp
+int audit_request_status (int fd);
+
+.SH "DESCRIPTION"
+
+.PP
+audit_request_status requests that the kernel send status structure describing various settings. The audit_status structure is as follows:
+
+.RS
+.ta 4n 10n 24n
+.nf
+
+struct audit_status {
+   __u32   mask;           /* Bit mask for valid entries */
+   __u32   enabled;        /* 1 = enabled, 0 = disabled */
+   __u32   failure;        /* Failure-to-log action */
+   __u32   pid;            /* pid of auditd process */
+   __u32   rate_limit;     /* messages rate limit (per second) */
+   __u32   backlog_limit;  /* waiting messages limit */
+   __u32   lost;           /* messages lost */
+   __u32   backlog;        /* messages waiting in queue */
+};
+.fi
+.ta
+.RE
+
+.SH "RETURN VALUE"
+
+The return value is <= 0 on error, otherwise it is the netlink sequence id number. This function can have any error that sendto would encounter.
+
+.SH "SEE ALSO"
+
+.BR audit_open (3),
+.BR audit_get_reply (3),
+.BR auditd (8).
+
+.SH AUTHOR
+Steve Grubb

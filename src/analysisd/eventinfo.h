@@ -85,6 +85,8 @@ typedef struct _Eventinfo {
     char *md5_after;
     char *sha1_before;
     char *sha1_after;
+    char *sha256_before;
+    char *sha256_after;
     char *size_before;
     char *size_after;
     char *owner_before;
@@ -102,6 +104,18 @@ typedef struct _Eventinfo {
     char *diff;
     const char *previous;
     const wlabel_t *labels;
+    // Whodata fields
+    char *user_id;
+    char *user_name;
+    char *group_id;
+    char *group_name;
+    char *process_name;
+    char *audit_uid;
+    char *audit_name;
+    char *effective_uid;
+    char *effective_name;
+    char *ppid;
+    char *process_id;
 } Eventinfo;
 
 /* Events List structure */

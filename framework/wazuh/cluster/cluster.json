@@ -62,7 +62,7 @@
 
         "/queue/agent-info/": {
             "umask": "0o117",
-            "source": "client",
+            "source": "worker",
             "write_mode": "atomic",
             "files": [
                 "agent-info.merged"
@@ -100,7 +100,7 @@
     },
 
     "intervals":{
-        "client": {
+        "worker": {
             "sync_integrity": 20,
             "sync_files": 60,
             "keep_alive": 60,

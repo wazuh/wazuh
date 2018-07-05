@@ -25,7 +25,6 @@ AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
-REMOTE_SYS_TEMPLATE="./etc/templates/config/generic/remote-syslog.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 
@@ -356,6 +355,7 @@ WriteAgent()
         echo "    <ca_store>${CA_STORE}</ca_store>" >> $NEWCONFIG
     fi
 
+    echo "    <ca_verification>yes</ca_verification>" >> $NEWCONFIG
     echo "  </active-response>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -399,12 +399,6 @@ WriteManager()
     echo "" >> $NEWCONFIG
 
     # Remote connection secure
-    if [ "X$RLOG" = "Xyes" ]; then
-      cat ${REMOTE_SYS_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    # Remote connection syslog
     if [ "X$SLOG" = "Xyes" ]; then
       cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG

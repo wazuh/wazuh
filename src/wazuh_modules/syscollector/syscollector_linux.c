@@ -465,7 +465,7 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
 
         while(fgets(read_buff, OS_MAXSTR, output)){
 
-            if (!strcmp(read_buff, "gpg-pubkey"))
+            if (!strncmp(read_buff, "gpg-pubkey", 10))
                 continue;
 
             cJSON *object = cJSON_CreateObject();
@@ -482,7 +482,9 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             parts = OS_StrBreak('|', read_buff, 5);
 
             cJSON_AddStringToObject(program, "name", parts[0]);
-            cJSON_AddStringToObject(program, "vendor", parts[1]);
+            if (strncmp(parts[1], "(none)", 6))
+                cJSON_AddStringToObject(program, "vendor", parts[1]);
+
             if (!strncmp(parts[2], "(none):", 7)) {
                 char ** epoch = NULL;
                 epoch = OS_StrBreak(':', parts[2], 2);
@@ -494,7 +496,9 @@ void sys_programs_linux(int queue_fd, const char* LOCATION){
             } else {
                 cJSON_AddStringToObject(program, "version", parts[2]);
             }
-            cJSON_AddStringToObject(program, "architecture", parts[3]);
+
+            if (strncmp(parts[3], "(none)", 6))
+                cJSON_AddStringToObject(program, "architecture", parts[3]);
 
             char ** description = NULL;
             description = OS_StrBreak('\n', parts[4], 2);

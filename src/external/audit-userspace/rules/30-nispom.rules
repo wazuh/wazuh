@@ -1,0 +1,94 @@
+## This file contains the a sample audit configuration intended to
+## meet the NISPOM Chapter 8 rules. This rule depends on having
+## 10-base-config.rules & 99-finalize.rules installed.
+
+## Audit 1, 1(a) Enough information to determine the date and time of
+## action (e.g., common network time), the system locale of the action,
+## the system entity that initiated or completed the action, the resources
+## involved, and the action involved.
+
+## Things that could affect time
+-a always,exit -F arch=b32 -S adjtimex,settimeofday,stime -F key=time-change
+-a always,exit -F arch=b64 -S adjtimex,settimeofday -F key=time-change
+-a always,exit -F arch=b32 -S clock_settime -F a0=0x0 -F key=time-change
+-a always,exit -F arch=b64 -S clock_settime -F a0=0x0 -F key=time-change
+# Introduced in 2.6.39, commented out because it can make false positives
+#-a always,exit -F arch=b32 -S clock_adjtime -F key=time-change
+#-a always,exit -F arch=b64 -S clock_adjtime -F key=time-change
+-w /etc/localtime -p wa -k time-change
+
+## Things that could affect system locale
+-a always,exit -F arch=b32 -S sethostname,setdomainname -F key=system-locale
+-a always,exit -F arch=b64 -S sethostname,setdomainname -F key=system-locale
+-w /etc/issue -p wa -k system-locale
+-w /etc/issue.net -p wa -k system-locale
+-w /etc/hosts -p wa -k system-locale
+-w /etc/hostname -p wa -k system-locale
+-w /etc/sysconfig/network -p wa -k system-locale
+-a always,exit -F dir=/etc/NetworkManager/ -F perm=wa -F key=system-locale
+
+## Audit 1, 1(b) Successful and unsuccessful logons and logoffs.
+## This is covered by patches to login, gdm, and openssh
+## Might also want to watch these files if needing extra information
+#-w /var/log/tallylog -p wa -k logins
+#-w /var/run/faillock/ -p wa -k logins
+#-w /var/log/lastlog -p wa -k logins
+#-w /var/log/btmp -p wa -k logins
+#-w /var/run/utmp -p wa -k logins
+
+## Audit 1, 1(c) Successful and unsuccessful accesses to
+## security-relevant objects and directories, including
+## creation, open, close, modification, and deletion.
+
+## unsuccessful creation
+-a always,exit -F arch=b32 -S creat,link,mknod,mkdir,symlink,mknodat,linkat,symlinkat -F exit=-EACCES -F key=creation
+-a always,exit -F arch=b64 -S mkdir,creat,link,symlink,mknod,mknodat,linkat,symlinkat -F exit=-EACCES -F key=creation
+-a always,exit -F arch=b32 -S link,mkdir,symlink,mkdirat -F exit=-EPERM -F key=creation
+-a always,exit -F arch=b64 -S mkdir,link,symlink,mkdirat -F exit=-EPERM -F key=creation
+
+## unsuccessful open
+-a always,exit -F arch=b32 -S open,openat,open_by_handle_at -F exit=-EACCES -F key=open
+-a always,exit -F arch=b64 -S open,openat,open_by_handle_at -F exit=-EACCES -F key=open
+-a always,exit -F arch=b32 -S open,openat,open_by_handle_at -F exit=-EPERM -F key=open
+-a always,exit -F arch=b64 -S open,openat,open_by_handle_at -F exit=-EPERM -F key=open
+
+## unsuccessful close
+-a always,exit -F arch=b32 -S close -F exit=-EIO -F key=close
+-a always,exit -F arch=b64 -S close -F exit=-EIO -F key=close
+
+## unsuccessful modifications
+-a always,exit -F arch=b32 -S rename -S renameat -S truncate -S chmod -S setxattr -S lsetxattr -S removexattr -S lremovexattr -F exit=-EACCES -F key=mods
+-a always,exit -F arch=b64 -S rename -S renameat -S truncate -S chmod -S setxattr -S lsetxattr -S removexattr -S lremovexattr -F exit=-EACCES -F key=mods
+-a always,exit -F arch=b32 -S rename -S renameat -S truncate -S chmod -S setxattr -S lsetxattr -S removexattr -S lremovexattr -F exit=-EPERM -F key=mods
+-a always,exit -F arch=b64 -S rename -S renameat -S truncate -S chmod -S setxattr -S lsetxattr -S removexattr -S lremovexattr -F exit=-EPERM -F key=mods
+
+## unsuccessful deletion
+-a always,exit -F arch=b32 -S unlink,rmdir,unlinkat -F exit=-EACCES -F key=delete
+-a always,exit -F arch=b64 -S rmdir,unlink,unlinkat -F exit=-EACCES -F key=delete
+-a always,exit -F arch=b32 -S unlink,rmdir,unlinkat -F exit=-EPERM -F key=delete
+-a always,exit -F arch=b64 -S rmdir,unlink,unlinkat -F exit=-EPERM -F key=delete
+
+## Audit 1, 1(d) Changes in user authenticators.
+## Covered by patches to libpam, passwd, and shadow-utils
+## Might also want to watch these files for changes
+-w /etc/group -p wa -k auth
+-w /etc/passwd -p wa -k auth
+-w /etc/gshadow -p wa -k auth
+-w /etc/shadow -p wa -k auth
+-w /etc/security/opasswd -p wa -k auth
+
+## Audit 1, 1(e) The blocking or blacklisting of a user ID,
+## terminal, or access port and the reason for the action.
+## Covered by patches to pam_tally2 or pam_faillock and pam_limits
+
+## Audit 1, 1(f) Denial of access resulting from an excessive
+## number of unsuccessful logon attempts.
+## Covered by patches to pam_tally2 or pam_faillock
+
+## Audit 1, 2 Audit Trail Protection. The contents of audit trails
+## shall be protected against unauthorized access, modification,
+## or deletion.
+## This should be covered by file permissions, but we can watch it
+## to see any activity
+-w /var/log/audit/ -k audit-logs
+

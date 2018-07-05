@@ -1,0 +1,23 @@
+.TH "AUSEARCH_CLEAR" "3" "Feb 2007" "Red Hat" "Linux Audit API"
+.SH NAME
+ausearch_clear \- clear search parameters
+.SH "SYNOPSIS"
+.B #include <auparse.h>
+.sp
+void ausearch_clear(auparse_state_t *au);
+
+.SH "DESCRIPTION"
+
+ausearch_clear clears any search parameters stored in the parser instance and frees memory associated with it.
+
+.SH "RETURN VALUE"
+
+None.
+
+.SH "SEE ALSO"
+
+.BR ausearch_add_item (3), 
+.BR ausearch_add_regex (3).
+
+.SH AUTHOR
+Steve Grubb

@@ -1,0 +1,21 @@
+.TH "AUDIT_GET_REPLY" "3" "Oct 2006" "Red Hat" "Linux Audit API"
+.SH NAME
+audit_get_reply \- Get the audit system's reply
+.SH SYNOPSIS
+.B #include <libaudit.h>
+.sp
+int audit_get_reply(int fd, struct audit_reply *rep, reply_t block, int peek);
+
+.SH "DESCRIPTION"
+This function gets the next data packet sent on the audit netlink socket. This function is usually called after sending a command to the audit system. fd should be an open file descriptor returned by audit_open. rep should be a data structure to put the reply in. block is of type reply_t which is either: GET_REPLY_BLOCKING and GET_REPLY_NONBLOCKING. peek, if non-zero, gets the data without dequeueing it from the netlink socket.
+
+.SH "RETURN VALUE"
+
+This function returns \-1 on error, 0 if error response received, and positive value on success.
+
+.SH "SEE ALSO"
+
+.BR audit_open (3).
+
+.SH AUTHOR
+Steve Grubb

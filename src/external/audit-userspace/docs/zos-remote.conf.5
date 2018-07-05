@@ -1,0 +1,69 @@
+.\" Copyright (c) International Business Machines  Corp., 2007
+.\"
+.\" This program is free software;  you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY;  without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
+.\" the GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program;  if not, write to the Free Software
+.\" Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+.\" MA 02111-1307 USA
+.\"
+.\" Changelog:
+.\" 2007-10-06, created by Klaus Heinrich Kiwi <klausk@br.ibm.com>
+.\"
+.TH ZOS\-REMOTE.CONF 5 "Oct 2007" "IBM" "System Administration Utilities"
+.SH NAME
+zos\-remote.conf \- the audisp-racf plugin configuration file
+.SH DESCRIPTION
+.B zos\-remote.conf
+controls the configuration for the
+.BR audispd\-zos\-remote (8)
+Audit dispatcher plugin. The default location for this file is
+.IR /etc/audisp/zos\-remote.conf ,
+however, a different file can be specified as the first argument to the
+.B audispd\-zos\-remote
+plugin. See
+.BR audispd\-zos\-remote (8)
+and
+.BR auditd (8).
+The options available are as follows:
+.TP
+.I server
+This is the IBM z/OS ITDS server hostname or IP address
+.TP
+.I port
+The port number where ITDS is running on the z/OS server. Default is 389 (ldap port)
+.TP
+.I user
+The z/OS RACF user ID which the audispd\-zos\-remote plugin will use to perform Remote Audit requests. This user needs READ access to FACILITY Class resource IRR.LDAP.REMOTE.AUDIT (See
+.BR audispd\-zos\-remote (8)).
+.TP
+.I password
+The password associated the the z/OS user ID configured above.
+.TP
+.I timeout
+The number in seconds that
+.B audispd\-zos\-remote
+plugin will wait before giving up in connection attempts and event submissions. The default value is 15
+.TP
+.I q_depth
+The
+.B audispd\-zos\-remote
+plugin will queue inputed events to the maximum of
+.I q_depth
+events while trying to submit those remotely. This can handle burst of events or in case of a slow network connection. However, the
+.B audispd\-zos\-remote
+plugin will drop events in case the queue is full. The default queue depth is 64 - Increase this value in case you are experiencing event drop due to full queue
+.RB ( audispd\-zos\-remote
+will log this to syslog).
+.SH "SEE ALSO"
+.BR audispd\-zos\-remote (8)
+.SH AUTHOR
+Klaus Heinrich Kiwi <klausk@br.ibm.com>

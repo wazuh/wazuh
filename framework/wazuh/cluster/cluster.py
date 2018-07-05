@@ -61,8 +61,8 @@ def check_cluster_config(config):
 
     if 'node_type' not in config:
         raise WazuhException(3004, "Node type not present in cluster configuration")
-    elif config['node_type'] != 'master' and config['node_type'] != 'client':
-        raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
+    elif config['node_type'] != 'master' and config['node_type'] != 'worker':
+        raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(config['node_type']))
 
     if 'nodes' not in config or len(config['nodes']) == 0:
         raise WazuhException(3004, 'No nodes defined in cluster configuration.')
@@ -80,7 +80,8 @@ def check_cluster_config(config):
 
 def get_cluster_items():
     try:
-        cluster_items = json.load(open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)))
+        with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
+            cluster_items = json.load(f)
         list(map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values())))
         return cluster_items
     except Exception as e:
@@ -95,8 +96,8 @@ def get_cluster_items_communication_intervals():
     return get_cluster_items()['intervals']['communication']
 
 
-def get_cluster_items_client_intervals():
-    return get_cluster_items()['intervals']['client']
+def get_cluster_items_worker_intervals():
+    return get_cluster_items()['intervals']['worker']
 
 
 def read_config():
@@ -113,6 +114,10 @@ def read_config():
 
     if 'port' in config_cluster:
         config_cluster['port'] = int(config_cluster['port'])
+
+    if 'node_type' in config_cluster and config_cluster['node_type'] == 'client':
+        logger.warning("Deprecated node type 'client'. Using 'worker' instead.")
+        config_cluster['node_type'] = 'worker'
 
     return config_cluster
 
@@ -179,7 +184,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
             if not path.isdir(full_path):
                 file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
 
-                if whoami == 'client' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
+                if whoami == 'worker' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
                     continue
 
                 new_key = full_path.replace(common.ossec_path, "")
@@ -257,14 +262,16 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     with zipfile.ZipFile(zip_path) as zipf:
         for name in zipf.namelist():
             if name == ko_files_name:
-                ko_files = json.loads(zipf.open(name).read())
+                with zipf.open(name) as file:
+                    ko_files = json.loads(file.read())
             else:
                 filename = "{}/{}".format(zip_dir, path.dirname(name))
                 if not path.exists(filename):
                     mkdir_with_mode(filename)
-                with open("{}/{}".format(filename, path.basename(name)), 'wb') as f:
-                    content = zipf.open(name).read()
-                    f.write(content)
+                with open("{}/{}".format(filename, path.basename(name)), 'wb') as cf:
+                    with zipf.open(name) as file:
+                        content = file.read()
+                    cf.write(content)
 
     # once read all files, remove the zipfile
     remove(zip_path)
@@ -276,7 +283,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
 
     dst_path = common.ossec_path + file_path
     if path.basename(dst_path) == 'client.keys':
-        if whoami =='client':
+        if whoami =='worker':
             _check_removed_agents(new_content.split('\n'))
         else:
             logger.warning("[Cluster] Client.keys file received in a master node.")
@@ -311,7 +318,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
                     logger.debug2("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
                     return
         elif is_agent_info:
-            logger.warning("[Cluster] Agent-info received in a client node.")
+            logger.warning("[Cluster] Agent-info received in a worker node.")
             raise WazuhException(3011)
 
     # Write

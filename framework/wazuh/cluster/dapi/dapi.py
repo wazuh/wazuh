@@ -266,7 +266,7 @@ class APIRequestQueue(communication.ClusterThread):
             self.server.send_string(reason='dapi_res', string_data=result, new_req="fwd_new", upd_req="fwd_upd",
                                     end_req="fwd_end", extra_data=id)
         else:
-            self.server.send_string(client_name=name, reason='dapi_res', string_to_send=result, new_req="fwd_new",
+            self.server.send_string(worker_name=name, reason='dapi_res', string_to_send=result, new_req="fwd_new",
                                     upd_req="fwd_upd", end_req="fwd_end", extra_data=id)
 
 
@@ -274,7 +274,7 @@ class APIRequestQueue(communication.ClusterThread):
         if name == 'None':
             self.server.send_request(command=command, data=id + ' ' + data)
         else:
-            self.server.send_request(client_name=name, command=command, data=id + ' ' + data)
+            self.server.send_request(worker_name=name, command=command, data=id + ' ' + data)
 
 
     def set_request(self, request):
