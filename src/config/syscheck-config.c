@@ -180,6 +180,7 @@ int dump_registry_ignore_regex(syscheck_config *syscheck, char *regex, int arch)
 int read_reg(syscheck_config *syscheck, char *entries, int arch)
 {
     int i;
+    int j;
     char **entry;
     char *tmp_str;
 
@@ -190,10 +191,9 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch)
         return (0);
     }
 
-    while (*entry) {
+    for (j = 0; entry[j]; j++) {
         char *tmp_entry;
-
-        tmp_entry = *entry;
+        tmp_entry = entry[j];
 
         /* Remove spaces at the beginning */
         while (*tmp_entry == ' ') {
@@ -237,8 +237,9 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch)
         dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL);
 
         /* Next entry */
-        entry++;
+        free(entry[j]);
     }
+    free(entry);
 
     return (1);
 }

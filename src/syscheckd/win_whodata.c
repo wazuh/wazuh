@@ -536,10 +536,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 w_evt->user_id = user_id;
                 if (!is_directory) {
                     w_evt->path = path;
+                    path = NULL;
                 } else {
                     // The directory path will be saved in 4663 event
                     w_evt->path = NULL;
-                    free(path);
                 }
                 w_evt->dir_position = position;
                 w_evt->process_name = process_name;
@@ -552,14 +552,15 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 user_name = NULL;
                 user_id = NULL;
-                path = NULL;
                 process_name = NULL;
                 if (result = OSHash_Add_ex(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
                     if (!result) {
-                        merror("The event could not be added to the whodata hash table.");
+                        merror("The event for '%s' could not be added to the whodata hash table. Handle: '%s'.", path, hash_id);
                     } else if (result == 1) {
-                        merror("The event could not be added to the whodata hash table because it is duplicated.");
+                        merror("The event for '%s' could not be added to the whodata hash table because it is duplicated. Handle: '%s'.", path, hash_id);
                     }
+                    whodata_list_remove(w_evt->wnode);
+                    free_whodata_event(w_evt);
                     retval = 1;
                     goto clean;
                 }
@@ -740,7 +741,7 @@ void whodata_list_remove_multiple(size_t quantity) {
         }
         whodata_list_remove(syscheck.wlist.first);
     }
-    mdebug2("%d events have been deleted from the whodata list.", quantity);
+    mdebug1("%d events have been deleted from the whodata list.", quantity);
 }
 
 void whodata_list_remove(whodata_event_node *node) {
