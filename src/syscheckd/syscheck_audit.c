@@ -728,6 +728,7 @@ void audit_parse(char *buffer) {
 
                         realtime_checksumfile(w_evt->path, w_evt);
                         free(file_path1);
+                        w_evt->path = NULL;
                     }
 
                     // Send event 2/2

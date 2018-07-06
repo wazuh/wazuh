@@ -17,7 +17,6 @@
 
 // Global variables
 syscheck_config syscheck;
-volatile int added_rules_error;
 pthread_cond_t audit_thread_started;
 
 #ifdef USE_MAGIC
