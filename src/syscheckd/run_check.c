@@ -333,7 +333,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     os_sha256 sf256_sum;
 #ifdef WIN32
     char *sid;
-    char *user;
+    const char *user;
 #endif
 
     /* Clean sums */

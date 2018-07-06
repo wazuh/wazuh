@@ -87,7 +87,7 @@ int set_winsacl(const char *dir, int position) {
 
     mdebug2("The SACL of '%s' will be configured.", dir);
 
-	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES /*| ACCESS_SYSTEM_SECURITY*/, &hdle)) {
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
 		merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
 		return 1;
 	}
@@ -311,18 +311,20 @@ void restore_sacls() {
     int i;
     PACL sacl_it;
     HANDLE hdle = NULL;
+    HANDLE c_process = NULL;
     LPCTSTR priv = "SeSecurityPrivilege";
     DWORD result = 0;
     PSECURITY_DESCRIPTOR security_descriptor = NULL;
 
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
+    c_process = GetCurrentProcess();
+    if (!OpenProcessToken(c_process, TOKEN_ADJUST_PRIVILEGES, &hdle)) {
         merror("OpenProcessToken() failed restoring the SACLs. Error '%lu'.", GetLastError());
-        return;
+        goto end;
     }
 
     if (set_privilege(hdle, priv, TRUE)) {
         merror("The privilege could not be activated restoring the SACLs. Error: '%ld'.", GetLastError());
-        return;
+        goto end;
     }
 
     for (i = 0; syscheck.dir[i] != NULL; i++) {
@@ -360,7 +362,14 @@ void restore_sacls() {
     if (set_privilege(hdle, priv, 0)) {
         merror("Failed to disable the privilege while restoring the SACLs. Error '%lu'.", GetLastError());
     }
-    CloseHandle(hdle);
+
+end:
+    if (hdle) {
+        CloseHandle(hdle);
+    }
+    if (c_process) {
+        CloseHandle(c_process);
+    }
 }
 
 int restore_audit_policies() {
@@ -530,6 +539,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 } else {
                     // The directory path will be saved in 4663 event
                     w_evt->path = NULL;
+                    free(path);
                 }
                 w_evt->dir_position = position;
                 w_evt->process_name = process_name;

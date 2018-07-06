@@ -480,7 +480,8 @@ const char *get_user(const char *path, __attribute__((unused)) int uid, char **s
             merror("CreateFile (%s) error = %lu", path, dwErrorCode);
         }
 
-        return "";
+        *AcctName = '\0';
+        goto end;
     }
 
     // Get the owner SID of the file.
@@ -508,7 +509,8 @@ const char *get_user(const char *path, __attribute__((unused)) int uid, char **s
 
         dwErrorCode = GetLastError();
         merror("GetSecurityInfo error = %lu", dwErrorCode);
-        return "";
+        *AcctName = '\0';
+        goto end;
     }
 
     // Second call to LookupAccountSid to get the account name.
@@ -532,9 +534,13 @@ const char *get_user(const char *path, __attribute__((unused)) int uid, char **s
         else
             merror("Error in LookupAccountSid.");
 
-        return "";
+        *AcctName = '\0';
     }
 
+end:
+    if (pSD) {
+        LocalFree(pSD);
+    }
     return AcctName;
 }
 

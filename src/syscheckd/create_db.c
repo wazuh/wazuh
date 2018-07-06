@@ -638,10 +638,9 @@ int create_db()
 
     /* Create store data */
     syscheck.fp = OSHash_Create();
-    syscheck.last_check = OSHash_Create();
     syscheck.local_hash = OSHash_Create();
 
-    if (!syscheck.fp || !syscheck.last_check) {
+    if (!syscheck.fp) {
         merror_exit("Unable to create syscheck database. Exiting.");
     }
 
