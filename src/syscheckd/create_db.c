@@ -94,42 +94,59 @@ void remove_local_diff(){
 
     /* Fill hash table with the content of DIFF_DIR_PATH/local */
     char local_path[PATH_MAX] = "\0";
-    char full_path[PATH_MAX] = "\0";
+    const char LOCALDIR[] = {PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0'};
 
-    snprintf(local_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
+    strcpy(local_path, DIFF_DIR_PATH);
+    strcat(local_path, LOCALDIR);
+
     read_dir_diff(local_path);
 
-    unsigned int j = 0;
-    unsigned int k = 0;
+    unsigned int i = 0;
 
     /* Delete all  monitored files from hash table */
-    OSHashNode *curr_node_monitoring, *curr_node_local;
-
-    for (j = 0; j <= syscheck.local_hash->rows; j++) {
-        curr_node_local = syscheck.local_hash->table[j];
-        for (k = 0; k <= syscheck.fp->rows; k++) {
-            curr_node_monitoring = syscheck.fp->table[k];
-            strcpy(full_path, local_path);
-            if (curr_node_monitoring && curr_node_monitoring->key &&
-                curr_node_local && curr_node_local->key) {
+    OSHashNode *curr_node_local;
 #ifdef WIN32
-                char *windows_path;
+    OSHashNode *curr_node_monitoring;
+    unsigned int j = 0;
+    char full_path[PATH_MAX] = "\0";
+    char *windows_path;
+
+    for (i = 0; i <= syscheck.local_hash->rows; i++) {
+        curr_node_local = syscheck.local_hash->table[i];
+        for (j = 0; j <= syscheck.fp->rows; j++) {
+            curr_node_monitoring = syscheck.fp->table[j];
+            strcpy(full_path, local_path);
+            if (curr_node_monitoring && curr_node_monitoring->key && curr_node_local && curr_node_local->key) {
                 windows_path = strchr(curr_node_monitoring->key, ':');
-                strcat(full_path, (windows_path+1));
-#else
-                strncat(full_path, curr_node_monitoring->key, PATH_MAX - strlen(full_path) - 1);
-#endif
+                strcat(full_path, (windows_path + 1));
                 if (strcmp(full_path, curr_node_local->key) == 0) {
+                    mdebug2("Deleting '%s' from local hash table.", curr_node_local->key);
                     OSHash_Delete(syscheck.local_hash, curr_node_local->key);
                     break;
                 }
             }
         }
     }
-
+#else
+    const char *monitoring_path;
+    for (i = 0; i <= syscheck.local_hash->rows; i++) {
+        curr_node_local = syscheck.local_hash->table[i];
+        if (curr_node_local && curr_node_local->key) {
+            monitoring_path = curr_node_local->key;
+            monitoring_path += strlen(local_path);
+            if(OSHash_Get_ex(syscheck.fp, monitoring_path)){
+                mdebug2("Deleting '%s' from local hash table.", curr_node_local->key);
+                OSHash_Delete(syscheck.local_hash, curr_node_local->key);
+            }
+            else{
+                mdebug1("Couldn't get '%s' from monitoring hash table.", monitoring_path);
+            }
+        }
+    }
+#endif
     /* Delete local files that aren't monitorized */
-    for (j = 0; j <= syscheck.local_hash->rows; j++) {
-        curr_node_local = syscheck.local_hash->table[j];
+    for (i = 0; i <= syscheck.local_hash->rows; i++) {
+        curr_node_local = syscheck.local_hash->table[i];
         if (curr_node_local && curr_node_local->key) {
             mdebug1("Deleting '%s'. Not monitorized anymore.", curr_node_local->key);
             if (rmdir_ex(curr_node_local->key) != 0) {
