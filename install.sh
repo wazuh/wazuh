@@ -751,6 +751,49 @@ AddPFTable()
 
 }
 
+#####################
+# AddSELinuxRule()
+#####################
+AddSELinuxRule(){
+
+    $(hash semodule 2> /dev/null)
+
+    if [ $? -eq 0 ]; then    
+
+        if [ "X${DIST_NAME}" = "Xcentos" ]; then
+                
+                $(hash semodule_package 2> /dev/null)
+
+                if [! $? -eq 0 ]; then
+                    echo "semodule_package command not found. Please run sudo yum install policycoreutils-python"
+                    exit 2;
+                fi
+
+                checkmodule -M -m -o src/selinux/wazuh.mod src/selinux/wazuh.te 
+        
+        elif [ "X${DIST_NAME}" = "Xfedora" ]; then
+
+            $(hash semodule_package 2> /dev/null)
+
+            if [! $? -eq 0 ]; then
+                echo "semodule_package command not found. Please run sudo yum install policycoreutils-python-utils"
+                exit 2;
+            fi
+
+            if [ "X${DIST_VER}" = "X28" ]; then
+                checkmodule -M -m -o src/selinux/wazuh.mod src/selinux/wazuh-f28.te
+            else
+                checkmodule -M -m -o src/selinux/wazuh.mod src/selinux/wazuh.te
+            fi
+        fi
+
+        semodule_package -o src/selinux/wazuh.pp -m src/selinux/wazuh.mod
+        semodule -i src/selinux/wazuh.pp
+        semodule -e wazuh
+        service auditd restart
+    fi
+}
+
 ##########
 # main()
 ##########
@@ -1057,6 +1100,8 @@ main()
         echo ""
     fi
 
+    AddSELinuxRule
+    
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
         echo "      $INSTALLDIR/bin/ossec-control start"
