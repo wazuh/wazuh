@@ -17,7 +17,7 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_file
     decompress_files, get_files_status, get_cluster_items_worker_intervals, unmerge_agent_info, merge_agent_info
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
-from wazuh.cluster.communication import WorkerHandler, ClusterThread, FragmentedFileReceiver, FragmentedStringReceiverWorker
+from wazuh.cluster.communication import WorkerHandler, ClusterThread, FragmentedFileReceiver, FragmentedStringReceiverWorker, TransferTester
 from wazuh.cluster.internal_socket import InternalSocketHandler
 from wazuh.cluster.dapi import dapi
 
@@ -69,6 +69,10 @@ class WorkerManagerHandler(WorkerHandler):
             return 'json', json.dumps(files)
         elif command == 'string':
             string_sender_thread = FragmentedStringReceiverWorker(manager_handler=self, stopper=self.stopper)
+            string_sender_thread.start()
+            return 'ack', self.set_worker_thread(command, string_sender_thread)
+        elif command == 'transfertest':
+            string_sender_thread = TransferTester(manager_handler=self, stopper=self.stopper, request_id=data)
             string_sender_thread.start()
             return 'ack', self.set_worker_thread(command, string_sender_thread)
         elif command == 'dapi':

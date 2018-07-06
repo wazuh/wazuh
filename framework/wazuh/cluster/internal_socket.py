@@ -189,7 +189,7 @@ class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverWorker
 
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason=='error':
-            self.manager_handler.final_response.write(send_err_request)
+            self.manager_handler.final_response.write(json.dumps({'error':1000,'message':'Wazuh Python Internal Error: ' + send_err_request}))
         communication.FragmentedStringReceiverWorker.unlock_and_stop(self,reason,None)
 
 
