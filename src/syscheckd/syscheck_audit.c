@@ -42,6 +42,7 @@ static regex_t regexCompiled_path1;
 static regex_t regexCompiled_path2;
 static regex_t regexCompiled_path3;
 static regex_t regexCompiled_items;
+static regex_t regexCompiled_dir;
 pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -450,6 +451,11 @@ int audit_init(void) {
         merror("Cannot compile items regular expression.");
         return -1;
     }
+    static const char *pattern_dir = " dir=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_dir, pattern_dir, REG_EXTENDED)) {
+        merror("Cannot compile dir regular expression.");
+        return -1;
+    }
 
     // Initialize Audit socket
     static int audit_socket;
@@ -578,12 +584,31 @@ void audit_parse(char *buffer) {
         if ((pconfig = strstr(buffer,"type=CONFIG_CHANGE"), pconfig)
         && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
             (pdelete = strstr(buffer,"op=\"remove_rule\""), pdelete))) { // Detect rules modification.
-            audit_thread_active = 0;
-            mwarn("Detected Audit rules manipulation: Rule removed.");
-            // Send alert
-            char msg_alert[512 + 1];
-            snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Rule removed");
-            SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+
+            // Filter rule removed
+            char *p_dir = NULL;
+            if(regexec(&regexCompiled_dir, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                p_dir = calloc(1, match_size + 1);
+                snprintf (p_dir, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            }
+
+            if (*p_dir != '\0') {
+                mwarn("Monitored directory '%s' was removed: Audit rule removed.", p_dir);
+                // Send alert
+                char msg_alert[512 + 1];
+                snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+                SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+            } else {
+                audit_thread_active = 0;
+                mwarn("Detected Audit rules manipulation: Audit rules removed.");
+                // Send alert
+                char msg_alert[512 + 1];
+                snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+                SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+            }
+
+            free(p_dir);
 
         } else if (psuccess = strstr(buffer,"success=yes"), psuccess) {
 
