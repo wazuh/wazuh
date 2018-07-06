@@ -672,6 +672,15 @@ $(EXTERNAL_LIBDB)Makefile:
 	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics
 endif
 
+#### Audit lib ####
+
+${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
+	make -C $(EXTERNAL_AUDIT)lib CC=$(CC)
+
+$(EXTERNAL_AUDIT)Makefile:
+
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC
+
 ################################
 #### External dependencies  ####
 ################################
@@ -684,7 +693,7 @@ space +=
 VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 
-EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib
+EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib audit-userspace
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -697,12 +706,6 @@ external/%.tar.gz:
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 
-$(EXTERNAL_AUDIT)lib/.libs/libaudit.a: $(EXTERNAL_AUDIT)Makefile
-	make -C $(EXTERNAL_AUDIT)lib CC=$(CC)
-
-$(EXTERNAL_AUDIT)Makefile:
-
-	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure
 
 ####################
 #### OSSEC Libs ####
@@ -1411,6 +1414,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
+	-cd ${EXTERNAL_AUDIT} && make clean
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
