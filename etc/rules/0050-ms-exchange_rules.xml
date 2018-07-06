@@ -27,14 +27,14 @@
     <group>spam,</group>
   </rule>
 
-  <rule id="3851" level="9" frequency="10" timeframe="120" ignore="120">
+  <rule id="3851" level="9" frequency="12" timeframe="120" ignore="120">
     <if_matched_sid>3801</if_matched_sid>
     <same_source_ip />
     <description>ms-exchange: Multiple e-mail attempts to an invalid account.</description>
     <group>multiple_spam,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="3852" level="9" frequency="12" timeframe="120" ignore="240">
+  <rule id="3852" level="9" frequency="14" timeframe="120" ignore="240">
     <if_matched_sid>3802</if_matched_sid>
     <same_source_ip />
     <description>ms-exchange: Multiple e-mail 500 error code (spam).</description>

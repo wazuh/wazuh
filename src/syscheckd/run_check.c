@@ -20,10 +20,13 @@
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
+#include "syscheck_op.h"
 
 /* Prototypes */
 static void send_sk_db(void);
 static void log_realtime_status(int);
+
+
 
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
@@ -113,7 +116,7 @@ void start_daemon()
 #endif
 
 #ifdef DEBUG
-    minfo("Starting daemon ..");
+    minfo("Starting daemon...");
 #endif
 
     /* Some time to settle */
@@ -321,13 +324,17 @@ void start_daemon()
 }
 
 /* Read file information and return a pointer to the checksum */
-int c_read_file(const char *file_name, const char *oldsum, char *newsum)
+int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata_evt * evt)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
     os_md5 mf_sum;
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
+#ifdef WIN32
+    char *sid;
+    const char *user;
+#endif
 
     /* Clean sums */
     strncpy(mf_sum, "xxx", 4);
@@ -341,10 +348,18 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
-        char alert_msg[PATH_MAX+4];
+        char alert_msg[OS_SIZE_6144 + 1];
+        char wd_sum[OS_SIZE_6144 + 1];
 
-        alert_msg[PATH_MAX + 3] = '\0';
-        snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
+        alert_msg[sizeof(alert_msg) - 1] = '\0';
+
+        // Extract the whodata sum here to not include it in the hash table
+        if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+            merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+            *wd_sum = '\0';
+        }
+
+        snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s", wd_sum, file_name);
         send_syscheck_msg(alert_msg);
 
         return (-1);
@@ -379,13 +394,16 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 
     /* sha1 sum */
     if (oldsum[5] == '+') {
+        delete_target_file(file_name);
         sha1sum = 1;
     } else if (oldsum[5] == 's') {
         sha1sum = 1;
     } else if (oldsum[5] == 'n') {
         sha1sum = 0;
+    } else if (oldsum[5] == '-') {
+        delete_target_file(file_name);
+        sha1sum = 0;
     }
-
 
     /* Modification time */
     if (oldsum[6] == '+')
@@ -405,14 +423,16 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
     }
 
     /* Generate new checksum */
+    newsum[0] = '\0';
+    newsum[511] = '\0';
     if (S_ISREG(statbuf.st_mode))
     {
         if (sha1sum || md5sum || sha256sum) {
             /* Generate checksums of the file */
             if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
-                strncpy(sf_sum, "xxx", 4);
-                strncpy(mf_sum, "xxx", 4);
-                strncpy(sf256_sum, "xxx", 4);
+                strncpy(sf_sum, "n/a", 4);
+                strncpy(mf_sum, "n/a", 4);
+                strncpy(sf256_sum, "n/a", 4);
             }
         }
     }
@@ -425,18 +445,14 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
                 if (sha1sum || md5sum || sha256sum) {
                     /* Generate checksums of the file */
                     if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
-                        strncpy(sf_sum, "xxx", 4);
-                        strncpy(mf_sum, "xxx", 4);
-                        strncpy(sf256_sum, "xxx", 4);
+                        strncpy(sf_sum, "n/a", 4);
+                        strncpy(mf_sum, "n/a", 4);
+                        strncpy(sf256_sum, "n/a", 4);
                     }
                 }
             }
         }
     }
-#endif
-
-    newsum[0] = '\0';
-    newsum[511] = '\0';
     snprintf(newsum, 511, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
         size == 0 ? 0 : (long)statbuf.st_size,
         perm == 0 ? 0 : (int)statbuf.st_mode,
@@ -444,11 +460,30 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
         group == 0 ? 0 : (int)statbuf.st_gid,
         md5sum   == 0 ? "xxx" : mf_sum,
         sha1sum  == 0 ? "xxx" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, statbuf.st_uid),
+        owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
         group == 0 ? "" : get_group(statbuf.st_gid),
         mtime ? (long)statbuf.st_mtime : 0,
         inode ? (long)statbuf.st_ino : 0,
         sha256sum  == 0 ? "xxx" : sf256_sum);
+#else
+    user = get_user(file_name, statbuf.st_uid, &sid);
+
+    snprintf(newsum, 511, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
+        size == 0 ? 0 : (long)statbuf.st_size,
+        perm == 0 ? 0 : (int)statbuf.st_mode,
+        (owner == 0) && sid ? "" : sid,
+        md5sum   == 0 ? "xxx" : mf_sum,
+        sha1sum  == 0 ? "xxx" : sf_sum,
+        owner == 0 ? "" : user,
+        group == 0 ? "" : get_group(statbuf.st_gid),
+        mtime ? (long)statbuf.st_mtime : 0,
+        inode ? (long)statbuf.st_ino : 0,
+        sha256sum  == 0 ? "xxx" : sf256_sum);
+
+        if (sid) {
+            LocalFree(sid);
+        }
+#endif
 
     return (0);
 }

@@ -54,21 +54,21 @@
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="6250" level="10" frequency="6" timeframe="300">
+  <rule id="6250" level="10" frequency="8" timeframe="300">
     <if_matched_sid>6211</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Multiple failed logins (user enumeration in process).</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="6251" level="10" frequency="6" timeframe="300">
+  <rule id="6251" level="10" frequency="8" timeframe="300">
     <if_matched_sid>6210</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Multiple failed logins.</description>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="6252" level="10" frequency="6" timeframe="300">
+  <rule id="6252" level="10" frequency="8" timeframe="300">
     <if_matched_sid>6212</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Extension enumeration.</description>
@@ -85,7 +85,7 @@
   </rule>
 
   <!--From Javi Benito jabi.benito@gmail.com-->
-  <rule id="6254" level="10" frequency="3" timeframe="300">
+  <rule id="6254" level="10" frequency="5" timeframe="300">
     <if_matched_sid>6253</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Extension IAX Enumeration.</description>
@@ -109,7 +109,7 @@
   </rule>
 
   <!--From Javi Benito jabi.benito@gmail.com-->
-  <rule id="6257" level="10" frequency="3" timeframe="300">
+  <rule id="6257" level="10" frequency="5" timeframe="300">
     <if_matched_sid>6256</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Multiple failed logins.</description>

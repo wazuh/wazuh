@@ -13,19 +13,51 @@
 
 #include "analysisd/eventinfo.h"
 
+#ifndef WIN32
+
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
+#define PATH_SEP '/'
+
+#else
+
+#include "shared.h"
+#include "aclapi.h"
+
+#define BUFFER_LEN 1024
+#define PATH_SEP '\\'
+
+#endif
+
 /* Fields for rules */
-#define SK_FILE    0
-#define SK_SIZE    1
-#define SK_PERM    2
-#define SK_UID     3
-#define SK_GID     4
-#define SK_MD5     5
-#define SK_SHA1    6
-#define SK_UNAME   7
-#define SK_GNAME   8
-#define SK_INODE   9
-#define SK_SHA256  10
-#define SK_NFIELDS 11
+typedef enum sk_syscheck {
+    SK_FILE,
+    SK_SIZE,
+    SK_PERM,
+    SK_UID,
+    SK_GID,
+    SK_MD5,
+    SK_SHA1,
+    SK_UNAME,
+    SK_GNAME,
+    SK_INODE,
+    SK_SHA256,
+    SK_MTIME,
+    SK_CHFIELDS,
+    SK_USER_ID,
+    SK_USER_NAME,
+    SK_GROUP_ID,
+    SK_GROUP_NAME,
+    SK_PROC_NAME,
+    SK_AUDIT_ID,
+    SK_AUDIT_NAME,
+    SK_EFFECTIVE_UID,
+    SK_EFFECTIVE_NAME,
+    SK_PPID,
+    SK_PROC_ID,
+    SK_NFIELDS
+} sk_syscheck;
 
 typedef struct __sdb {
     char buf[OS_MAXSTR + 1];
@@ -45,6 +77,19 @@ typedef struct __sdb {
     char *agent_ips[MAX_AGENTS + 1];
     FILE *agent_fps[MAX_AGENTS + 1];
 
+    // Whodata fields
+    char user_id[OS_FLSIZE + 1];
+    char user_name[OS_FLSIZE + 1];
+    char group_id[OS_FLSIZE + 1];
+    char group_name[OS_FLSIZE + 1];
+    char process_name[OS_FLSIZE + 1];
+    char audit_uid[OS_FLSIZE + 1];
+    char audit_name[OS_FLSIZE + 1];
+    char effective_uid[OS_FLSIZE + 1];
+    char effective_name[OS_FLSIZE + 1];
+    char ppid[OS_FLSIZE + 1];
+    char process_id[OS_FLSIZE + 1];
+
     int db_err;
 
     /* Ids for decoder */
@@ -62,6 +107,20 @@ typedef struct __sdb {
 
 } _sdb; /* syscheck db information */
 
+typedef struct sk_sum_wdata {
+    char *user_id;
+    char *user_name;
+    char *group_id;
+    char *group_name;
+    char *process_name;
+    char *audit_uid;
+    char *audit_name;
+    char *effective_uid;
+    char *effective_name;
+    char *ppid;
+    char *process_id;
+} sk_sum_wdata;
+
 /* File sum structure */
 typedef struct sk_sum_t {
     char *size;
@@ -75,16 +134,37 @@ typedef struct sk_sum_t {
     char *gname;
     long mtime;
     long inode;
+    sk_sum_wdata wdata;
 } sk_sum_t;
 
 extern _sdb sdb;
 
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
    or -1 on failure. */
-int sk_decode_sum(sk_sum_t *sum, char *c_sum);
+int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size);
+
+void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum);
+
+/* Delete from path to parent all empty folders */
+int remove_empty_folders(const char *path);
+
+/* Delete path file and all empty folders above */
+int delete_target_file(const char *path);
+
+#ifndef WIN32
+
+const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
+const char* get_group(int gid);
+
+#else
+
+const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
+const char *get_group(__attribute__((unused)) int gid);
+
+#endif
 
 #endif

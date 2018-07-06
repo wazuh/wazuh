@@ -213,6 +213,7 @@ extern const char *__local_name;
 #include "randombytes.h"
 #include "labels_op.h"
 #include "time_op.h"
+#include "vector_op.h"
 #include "exec_op.h"
 #include "json_op.h"
 #include "notify_op.h"

@@ -75,7 +75,7 @@ def updt(total, progress):
 
 agent_id = 999
 
-def client(ossec_path="/var/ossec", n_agents=5):
+def worker(ossec_path="/var/ossec", n_agents=5):
     print ("Executing test for WORKER node...")
 
     ###
@@ -325,7 +325,7 @@ def master(ossec_path="/var/ossec"):
     ###
 
 
-def check_client_test_client(ossec_path="/var/ossec"):
+def check_worker_test_worker(ossec_path="/var/ossec"):
     print ('Checking missing and shared files...')
     ###
     print ('/etc/shared/')
@@ -407,7 +407,7 @@ def check_client_test_client(ossec_path="/var/ossec"):
     ###
 
 
-def check_client_test_master(ossec_path="/var/ossec"):
+def check_worker_test_master(ossec_path="/var/ossec"):
     print ('Checking missing and shared files...')
     ###
     print ('/etc/shared/')
@@ -567,7 +567,7 @@ if __name__ == "__main__":
     if args.worker:
         n_agents = args.n_agents if args.n_agents else 5
         ossec_path = args.ossec_path if args.ossec_path else "/var/ossec"
-        client(ossec_path=ossec_path, n_agents=n_agents)
+        worker(ossec_path=ossec_path, n_agents=n_agents)
 
     elif args.master:
         ossec_path = args.ossec_path if args.ossec_path else "/var/ossec"
@@ -575,9 +575,9 @@ if __name__ == "__main__":
 
     elif args.check:
         if args.check == "master":
-            check_client_test_master()
+            check_worker_test_master()
         elif args.check == "worker":
-            check_client_test_client()
+            check_worker_test_worker()
         else:
             print ("Expected argument: master or worker")
 

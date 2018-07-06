@@ -45,6 +45,12 @@ int IsDir(const char *file) __attribute__((nonnull));
 
 int IsFile(const char *file) __attribute__((nonnull));
 
+int IsSocket(const char * file) __attribute__((nonnull));
+
+#ifndef WIN32
+int IsLink(const char * file) __attribute__((nonnull));
+#endif
+
 int CreatePID(const char *name, int pid) __attribute__((nonnull));
 
 char *GetRandomNoise();

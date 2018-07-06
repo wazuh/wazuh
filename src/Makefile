@@ -10,6 +10,7 @@ EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
 EXTERNAL_LIBYAML=external/libyaml/
 EXTERNAL_CURL=external/curl/
+EXTERNAL_AUDIT=external/audit-userspace/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -60,6 +61,9 @@ ifeq (${uname_S},Linux)
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		OSSEC_LIBS+=-lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl -L$(EXTERNAL_AUDIT)lib/.libs -laudit
+#		OSSEC_LDFLAGS+=-lmagic
+		CFLAGS+=-I$(EXTERNAL_AUDIT)lib -Wl,--start-group
 else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
@@ -527,6 +531,7 @@ PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
 DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
+AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
 
@@ -535,7 +540,7 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB)
 endif
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(AUDIT_LIB)
 endif
 endif
 
@@ -691,6 +696,13 @@ external/%.tar.gz:
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
+
+$(EXTERNAL_AUDIT)lib/.libs/libaudit.a: $(EXTERNAL_AUDIT)Makefile
+	make -C $(EXTERNAL_AUDIT)lib CC=$(CC)
+
+$(EXTERNAL_AUDIT)Makefile:
+
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure
 
 ####################
 #### OSSEC Libs ####

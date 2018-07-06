@@ -10,6 +10,11 @@
 #include "shared.h"
 #include "string.h"
 
+#ifdef WIN32
+#ifdef EVENTCHANNEL_SUPPORT
+#define _WIN32_WINNT 0x0600
+#endif
+#endif
 
 /* Trim CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str)
@@ -246,6 +251,87 @@ char * wstr_replace(const char * string, const char * search, const char * repla
     result[wi] = '\0';
     return result;
 }
+
+// Locate first occurrence of non escaped character in string
+
+char * wstr_chr(char * str, int character) {
+    char escaped = 0;
+
+    for (;*str != '\0'; str++) {
+        if (!escaped) {
+            if (*str == character) {
+                return str;
+            }
+            if (*str == '\\') {
+                escaped = 1;
+            }
+        } else {
+            escaped = 0;
+        }
+    }
+
+    return NULL;
+}
+
+#ifdef WIN32
+
+char *convert_windows_string(LPCWSTR string)
+{
+    char *dest = NULL;
+    size_t size = 0;
+    int result = 0;
+
+    if (string == NULL) {
+        return (NULL);
+    }
+
+    /* Determine size required */
+    size = WideCharToMultiByte(CP_UTF8,
+                               WC_ERR_INVALID_CHARS,
+                               string,
+                               -1,
+                               NULL,
+                               0,
+                               NULL,
+                               NULL);
+
+    if (size == 0) {
+        mferror(
+            "Could not WideCharToMultiByte() when determining size which returned (%lu)",
+            GetLastError());
+        return (NULL);
+    }
+
+    if ((dest = calloc(size, sizeof(char))) == NULL) {
+        mferror(
+            "Could not calloc() memory for WideCharToMultiByte() which returned [(%d)-(%s)]",
+            errno,
+            strerror(errno)
+        );
+        return (NULL);
+    }
+
+    result = WideCharToMultiByte(CP_UTF8,
+                                 WC_ERR_INVALID_CHARS,
+                                 string,
+                                 -1,
+                                 dest,
+                                 size,
+                                 NULL,
+                                 NULL);
+
+    if (result == 0) {
+        mferror(
+            "Could not WideCharToMultiByte() which returned (%lu)",
+            GetLastError());
+        free(dest);
+        return (NULL);
+    }
+
+    return (dest);
+}
+
+#endif
 
 // Free string array
 void free_strarray(char ** array) {
