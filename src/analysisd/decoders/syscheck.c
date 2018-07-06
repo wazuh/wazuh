@@ -339,6 +339,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
 
         if (!Config.syscheck_auto_ignore) {
             sdb.syscheck_dec->id = sdb.id1;
+            sf = 1;
         } else {
             if (lf->time.tv_sec - st < Config.syscheck_ignore_time) {
                 if (sf >= Config.syscheck_ignore_frequency) {
