@@ -77,8 +77,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__
 /* Find container directory */
 int find_dir_pos(const char *filename, char is_whodata) __attribute__((nonnull(1)));
 
-#ifndef WIN32
-#define AUDIT_KEY "wazuh_fim"
+#ifdef __linux__
 int audit_init(void);
 int check_auditd_enabled(void);
 int set_auditd_config(void);
@@ -86,15 +85,12 @@ int init_auditd_socket(void);
 int audit_add_rule(const char *path, const char *key);
 int audit_delete_rule(const char *path, const char *key);
 void *audit_main(int *audit_sock);
-extern W_Vector *audit_added_rules;
+void clean_rules(void);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
-extern volatile int added_rules_error;
 extern pthread_mutex_t audit_mutex;
-extern pthread_mutex_t audit_rules_mutex;
 extern pthread_cond_t audit_thread_started;
-void clean_rules(void);
-#else
+#elif WIN32
 int whodata_audit_start();
 int set_winsacl(const char *dir, int position);
 #endif
