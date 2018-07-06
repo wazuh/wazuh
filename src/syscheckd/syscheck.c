@@ -133,7 +133,7 @@ int Start_win32_Syscheck()
         /* Print directories to be monitored */
         r = 0;
         while (syscheck.dir[r] != NULL) {
-            char optstr[ 100 ];
+            char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             r++;
         }
