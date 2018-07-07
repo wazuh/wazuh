@@ -51,7 +51,7 @@ static void read_internal(int debug_level)
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
     syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
 #ifndef WIN32
-    syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 256, 4096);
+    syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
 #endif
 
     /* Check current debug_level
