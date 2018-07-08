@@ -431,8 +431,6 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 return (0);
             }
 
-            OSHash_Delete(syscheck.last_check, file_name);
-
             if (strcmp(c_sum, buf + SK_DB_NATTR)) {
                 // Extract the whodata sum here to not include it in the hash table
                 if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
