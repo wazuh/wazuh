@@ -547,6 +547,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 w_evt->mask = 0;
                 w_evt->scan_directory = is_directory;
                 w_evt->deleted = 0;
+                w_evt->ignore_not_exist = 0;
                 w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
@@ -647,6 +648,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                             send_whodata_del(w_evt);
                         } else {
                             // At this point the file can be new or cleaned
+                            w_evt->ignore_not_exist = 1;
                             realtime_checksumfile(w_evt->path, w_evt);
                         }
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2

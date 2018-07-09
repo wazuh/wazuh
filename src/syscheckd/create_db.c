@@ -536,8 +536,10 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
             }
             di++;
         }
-        if (defaultfilesn[di] == NULL) {
+        if (defaultfilesn[di] == NULL && !(evt && evt->ignore_not_exist)) {
             mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
+        } else {
+            return 0;
         }
 #else
         mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
