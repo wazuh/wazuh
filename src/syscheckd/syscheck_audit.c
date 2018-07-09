@@ -315,21 +315,7 @@ end:
 
 // Add rule into Auditd rules list
 int audit_add_rule(const char *path, const char *key) {
-    int retval = 0;
-
-    // Save dir into saved rules list
-    w_mutex_lock(&audit_mutex);
-
-    if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
-        if (retval = audit_manage_rules(ADD_RULE, path, key), retval >= 0) {
-            W_Vector_insert(audit_added_rules, path);
-        }
-    } else {
-        retval = -2;
-    }
-
-    w_mutex_unlock(&audit_mutex);
-    return retval;
+    return audit_manage_rules(ADD_RULE, path, key);
 }
 
 
