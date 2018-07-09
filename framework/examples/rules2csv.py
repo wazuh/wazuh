@@ -16,8 +16,8 @@
 #  - Configure the python path. Example for python27 package in Centos6
 #    - export PATH=$PATH:/opt/rh/python27/root/usr/bin
 #    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/lib64
-#  - Use the framework sqlite lib
-#    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/var/ossec/api/framework/lib
+#  - Use the wazuh sqlite lib
+#    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/var/ossec/lib
 
 from sys import path, exit
 # cwd = /var/ossec/api/framework/examples
@@ -35,5 +35,5 @@ except Exception as e:
     exit()
 
 print("file;id;description;level;status;groups;pci;details")
-for rule in Rule.get_rules(status='enabled', limit=0, sort={"fields":["file"],"order":"asc"})['items']:
+for rule in Rule.get_rules(status='enabled', limit=None, sort={"fields":["file"],"order":"asc"})['items']:
     print("{0};{1};{2};{3};{4};{5};{6};{7}".format(rule.file, rule.id, rule.description, rule.level, rule.status, rule.groups, rule.pci, rule.details))

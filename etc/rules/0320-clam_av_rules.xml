@@ -81,7 +81,7 @@
     <group>virus,pci_dss_5.1,gpg13_4.14,</group>
   </rule>
 
-  <rule id="52511" level="10" frequency="6">
+  <rule id="52511" level="10" frequency="8">
     <if_matched_sid>52502</if_matched_sid>
     <same_id />
     <description>ClamAV: Virus detected multiple times</description>

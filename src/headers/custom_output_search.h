@@ -1,3 +1,13 @@
+/*
+ * Contributed by Dan Parriott (@ddpbsd)
+ * Maintained by Wazuh Inc.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifndef CUSTOM_OUTPUT_SEARCH_H_
 #define CUSTOM_OUTPUT_SEARCH_H_
 
@@ -12,4 +22,3 @@ char *searchAndReplace(const char *orig, const char *search, const char *value) 
 char *escape_newlines(const char *orig) __attribute__((nonnull));
 
 #endif /* CUSTOM_OUTPUT_SEARCH_H_ */
-

@@ -65,6 +65,7 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
+    static int reported = 0;
 
     tmpstr[OS_MAXSTR] = '\0';
 
@@ -95,15 +96,6 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
         return (-1);
     }
 
-    /* We attempt 5 times to send the message if
-     * the receiver socket is busy.
-     * After the first error, we wait 1 second.
-     * After the second error, we wait more 3 seconds.
-     * After the third error, we wait 5 seconds.
-     * After the fourth error, we wait 10 seconds.
-     * If we failed again, the message is not going
-     * to be delivered and an error is sent back.
-     */
     if ((__mq_rcode = OS_SendUnix(queue, tmpstr, 0)) < 0) {
         /* Error on the socket */
         if (__mq_rcode == OS_SOCKTERR) {
@@ -113,32 +105,11 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
         }
 
         /* Unable to send. Socket busy */
-        mwarn("Socket busy, waiting for 1 second.");
-        sleep(1);
-        if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-            /* When the socket is to busy, we may get some
-             * error here. Just sleep 2 second and try
-             * again.
-             */
-             mwarn("Socket busy, waiting for 3 seconds.");
-             sleep(3);
-            /* merror("socket busy"); */
-            if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-              merror("Socket busy, waiting for 5 seconds.");
-              sleep(5);
-              if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-                    merror("socket busy, waiting for 10 seconds.");
-                    sleep(10);
-                    if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-                        /* Message is going to be lost
-                         * if the application does not care
-                         * about checking the error
-                         */
-                        close(queue);
-                        return (-1);
-                    }
-                }
-            }
+        mdebug2("Socket busy, discarding message.");
+
+        if (!reported) {
+            reported = 1;
+            mwarn("Socket busy, discarding message.");
         }
     }
 
@@ -146,16 +117,19 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 }
 
 /* Send a message to socket */
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets, const char * pattern)
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * targets)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
     int i;
     time_t mtime = time(NULL);
-    char * _message = msgsubst(pattern, message, locmsg, mtime);
+    char * _message = NULL;
 
-    for (i = 0; sockets[i] && sockets[i]->name; i++) {
-        if (strcmp(sockets[i]->name, "agent") == 0) {
+    for (i = 0; targets[i].log_socket; i++) {
+        free(_message);
+        _message = msgsubst(targets[i].format, message, locmsg, mtime);
+
+        if (strcmp(targets[i].log_socket->name, "agent") == 0) {
             SendMSG(queue, _message, locmsg, loc);
         }
         else {
@@ -164,7 +138,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
             int sock_type;
             const char * strmode;
 
-            switch (sockets[i]->mode) {
+            switch (targets[i].log_socket->mode) {
             case UDP_PROTO:
                 sock_type = SOCK_DGRAM;
                 strmode = "udp";
@@ -180,56 +154,56 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
             }
 
             // create message and add prefix
-            if (sockets[i]->prefix && *sockets[i]->prefix) {
-                snprintf(tmpstr, OS_MAXSTR, "%s%s", sockets[i]->prefix, _message);
+            if (targets[i].log_socket->prefix && *targets[i].log_socket->prefix) {
+                snprintf(tmpstr, OS_MAXSTR, "%s%s", targets[i].log_socket->prefix, _message);
             } else {
                 snprintf(tmpstr, OS_MAXSTR, "%s", _message);
             }
 
             // Connect to socket if disconnected
-            if (sockets[i]->socket < 0) {
-                if (mtime = time(NULL), mtime > sockets[i]->last_attempt + sock_fail_time) {
-                    if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
-                        sockets[i]->last_attempt = mtime;
-                        merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
+            if (targets[i].log_socket->socket < 0) {
+                if (mtime = time(NULL), mtime > targets[i].log_socket->last_attempt + sock_fail_time) {
+                    if (targets[i].log_socket->socket = OS_ConnectUnixDomain(targets[i].log_socket->location, sock_type, OS_MAXSTR + 256), targets[i].log_socket->socket < 0) {
+                        targets[i].log_socket->last_attempt = mtime;
+                        merror("Unable to connect to socket '%s': %s (%s)", targets[i].log_socket->name, targets[i].log_socket->location, strmode);
                         continue;
                     }
 
-                    mdebug1("Connected to socket '%s' (%s)", sockets[i]->name, sockets[i]->location);
+                    mdebug1("Connected to socket '%s' (%s)", targets[i].log_socket->name, targets[i].log_socket->location);
                 } else {
-                    mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, sockets[i]->name);
+                    mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, targets[i].log_socket->name);
                     continue;
                 }
             }
 
             // Send msg to socket
 
-            if (__mq_rcode = OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
+            if (__mq_rcode = OS_SendUnix(targets[i].log_socket->socket, tmpstr, 0), __mq_rcode < 0) {
                 if (__mq_rcode == OS_SOCKTERR) {
-                    if (mtime = time(NULL), mtime > sockets[i]->last_attempt + sock_fail_time) {
-                        close(sockets[i]->socket);
+                    if (mtime = time(NULL), mtime > targets[i].log_socket->last_attempt + sock_fail_time) {
+                        close(targets[i].log_socket->socket);
 
-                        if (sockets[i]->socket = OS_ConnectUnixDomain(sockets[i]->location, sock_type, OS_MAXSTR + 256), sockets[i]->socket < 0) {
-                            merror("Unable to connect to socket '%s': %s (%s)", sockets[i]->name, sockets[i]->location, strmode);
-                            sockets[i]->last_attempt = mtime;
+                        if (targets[i].log_socket->socket = OS_ConnectUnixDomain(targets[i].log_socket->location, sock_type, OS_MAXSTR + 256), targets[i].log_socket->socket < 0) {
+                            merror("Unable to connect to socket '%s': %s (%s)", targets[i].log_socket->name, targets[i].log_socket->location, strmode);
+                            targets[i].log_socket->last_attempt = mtime;
                             continue;
                         }
 
-                        mdebug1("Connected to socket '%s' (%s)", sockets[i]->name, sockets[i]->location);
+                        mdebug1("Connected to socket '%s' (%s)", targets[i].log_socket->name, targets[i].log_socket->location);
 
-                        if (OS_SendUnix(sockets[i]->socket, tmpstr, 0), __mq_rcode < 0) {
-                            merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
+                        if (OS_SendUnix(targets[i].log_socket->socket, tmpstr, 0), __mq_rcode < 0) {
+                            merror("Cannot send message to socket '%s'. (Retry)", targets[i].log_socket->name);
                             SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
-                            sockets[i]->last_attempt = mtime;
+                            targets[i].log_socket->last_attempt = mtime;
                             continue;
                         }
                     } else {
-                        mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, sockets[i]->name);
+                        mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, targets[i].log_socket->name);
                         continue;
                     }
 
                 } else {
-                    merror("Cannot send message to socket '%s'. (Retry)", sockets[i]->name);
+                    merror("Cannot send message to socket '%s'. (Retry)", targets[i].log_socket->name);
                     SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
                     continue;
                 }
@@ -243,9 +217,17 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
 #else
 
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, __attribute__((unused)) logsocket **sockets, const char * pattern) {
-    char * _message = msgsubst(pattern, message, locmsg, time(NULL));
-    int retval = SendMSG(queue, _message, locmsg, loc);
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * targets) {
+    char * _message;
+    int retval;
+
+    if (!targets[0].log_socket) {
+        merror("No targets defined for a localfile.");
+        return -1;
+    }
+
+    _message = msgsubst(targets[0].format, message, locmsg, time(NULL));
+    retval = SendMSG(queue, _message, locmsg, loc);
     free(_message);
     return retval;
 }

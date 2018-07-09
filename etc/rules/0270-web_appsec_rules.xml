@@ -99,7 +99,7 @@
   </rule>
 
   <!-- If we see frequent wp-login POST's, it is likely a bot. -->
-  <rule id="31510" level="8" frequency="6" timeframe="30">
+  <rule id="31510" level="8" frequency="8" timeframe="30">
     <if_matched_sid>31509</if_matched_sid>
     <same_source_ip />
     <description>CMS (WordPress or Joomla) brute force attempt.</description>
@@ -178,7 +178,7 @@
     <description>Ignoring often post requests inside /wp-admin and /admin.</description>
    </rule>
 
-   <rule id="31533" level="10" timeframe="20" frequency="6">
+   <rule id="31533" level="10" timeframe="20" frequency="8">
     <if_matched_sid>31530</if_matched_sid>
     <same_source_ip />
     <description>High amount of POST requests in a small period of time (likely bot).</description>

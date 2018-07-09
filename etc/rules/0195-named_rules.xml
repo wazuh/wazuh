@@ -324,7 +324,7 @@
     <description>Parsing of a configuration file has failed.</description>
   </rule>
 
-  <rule id="12149" level="10" frequency="6" timeframe="120">
+  <rule id="12149" level="10" frequency="8" timeframe="120">
     <if_matched_sid>12108</if_matched_sid>
     <same_source_ip />
     <description> Multiple query (cache) failures.</description>

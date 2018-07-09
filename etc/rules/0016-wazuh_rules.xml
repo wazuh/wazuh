@@ -127,6 +127,12 @@
     <group>agent_restarting,configuration_failure,</group>
   </rule>
 
+  <!-- Ignore syscollector events -->
+  <rule id="221" level="0">
+    <decoded_as>syscollector</decoded_as>
+    <description>Syscollector event.</description>
+  </rule>
+
   <rule id="222" level="7">
     <if_sid>200</if_sid>
     <match>^wazuh: Could not unmerge shared file.</match>

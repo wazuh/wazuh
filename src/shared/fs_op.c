@@ -29,6 +29,7 @@ const struct file_system_type network_file_systems[] = {
 const struct file_system_type skip_file_systems[] = {
     {.name="BTRFS", .f_type=0x9123683E, .flag=1},
     {.name="AUFS", .f_type=0x61756673, .flag=1},
+    {.name="OVERLAYFS", .f_type=0x794c7630, .flag=1},
 
     /*  The last entry must be name=NULL */
     {.name=NULL, .f_type=0, .flag=0}

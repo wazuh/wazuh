@@ -33,6 +33,6 @@ int StartMQ(const char *key, short int type) __attribute__((nonnull));
 
 int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
 
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logsocket **sockets, const char * pattern) __attribute__((nonnull (2, 3, 5)));
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * targets) __attribute__((nonnull (2, 3, 5)));
 
 #endif

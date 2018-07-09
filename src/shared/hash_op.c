@@ -51,7 +51,7 @@ OSHash *OSHash_Create()
     srandom((unsigned int)time(0));
     self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
     self->constant = os_getprime((unsigned)os_random() % self->rows);
-
+    self->mutex = (pthread_rwlock_t)PTHREAD_RWLOCK_INITIALIZER;
     return (self);
 }
 
@@ -81,6 +81,7 @@ void *OSHash_Free(OSHash *self)
     free(self);
     return (NULL);
 }
+
 
 /* Generates hash for key */
 static unsigned int _os_genhash(const OSHash *self, const char *key)
@@ -135,6 +136,15 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
     return (1);
 }
 
+int OSHash_setSize_ex(OSHash *self, unsigned int new_size)
+{
+    int result;
+    w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
+    result = OSHash_setSize(self,new_size);
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+    return result;
+}
+
 
 /** int OSHash_Update(OSHash *self, char *key, void *data)
  * Returns 0 on error (not found).
@@ -164,6 +174,22 @@ int OSHash_Update(OSHash *self, const char *key, void *data)
         curr_node = curr_node->next;
     }
     return (0);
+}
+
+/** int OSHash_Update(OSHash *self, char *key, void *data)
+ * Returns 0 on error (not found).
+ * Returns 1 on successduplicated key (not added)
+ * Key must not be NULL.
+ */
+int OSHash_Update_ex(OSHash *self, const char *key, void *data)
+{
+    int result;
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
+    result = OSHash_Update(self,key,data);
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
+    return result;
 }
 
 /** int OSHash_Add(OSHash *self, char *key, void *data)
@@ -223,6 +249,22 @@ int OSHash_Add(OSHash *self, const char *key, void *data)
     return (2);
 }
 
+/** int OSHash_Add(OSHash *self, char *key, void *data)
+ * Returns 0 on error.
+ * Returns 1 on duplicated key (not added)
+ * Returns 2 on success
+ * Key must not be NULL.
+ */
+int OSHash_Add_ex(OSHash *self, const char *key, void *data)
+{
+    int result;
+    w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
+    result = OSHash_Add(self,key,data);
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
+    return result;
+}
+
 /** void *OSHash_Get(OSHash *self, char *key)
  * Returns NULL on error (key not found).
  * Returns the key otherwise.
@@ -257,6 +299,21 @@ void *OSHash_Get(const OSHash *self, const char *key)
     }
 
     return (NULL);
+}
+
+/** void *OSHash_Get(OSHash *self, char *key)
+ * Returns NULL on error (key not found).
+ * Returns the key otherwise.
+ * Key must not be NULL.
+ */
+void *OSHash_Get_ex(const OSHash *self, const char *key)
+{
+    void *result;
+    w_rwlock_rdlock((pthread_rwlock_t *)&self->mutex);
+    result = OSHash_Get(self,key);
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
+    return result;
 }
 
 /* Return a pointer to a hash node if found, that hash node is removed from the table */
@@ -294,6 +351,17 @@ void *OSHash_Delete(OSHash *self, const char *key)
     return NULL;
 }
 
+/* Return a pointer to a hash node if found, that hash node is removed from the table */
+void *OSHash_Delete_ex(OSHash *self, const char *key)
+{
+    void *result;
+    w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
+    result = OSHash_Delete(self,key);
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
+    return result;
+}
+
 OSHash *OSHash_Duplicate(const OSHash *hash) {
     OSHash *self;
     unsigned int i;
@@ -318,4 +386,15 @@ OSHash *OSHash_Duplicate(const OSHash *hash) {
     }
 
     return self;
+}
+
+OSHash *OSHash_Duplicate_ex(const OSHash *hash) {
+
+    OSHash *result;
+
+    w_rwlock_rdlock((pthread_rwlock_t *)&hash->mutex);
+    result = OSHash_Duplicate(hash);
+    w_rwlock_unlock((pthread_rwlock_t *)&hash->mutex);
+
+    return result;
 }

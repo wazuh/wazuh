@@ -23,7 +23,7 @@
     <group>firewall_drop,pci_dss_1.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="4151" level="10" frequency="16" timeframe="45" ignore="240">
+  <rule id="4151" level="10" frequency="18" timeframe="45" ignore="240">
     <if_matched_sid>4101</if_matched_sid>
     <same_source_ip />
     <description>Multiple Firewall drop events from same source.</description>
