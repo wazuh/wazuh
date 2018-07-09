@@ -112,6 +112,7 @@ void wm_help()
 
 void wm_setup()
 {
+    gid_t gid;
     struct sigaction action = { .sa_handler = wm_handler };
 
     // Read XML settings and internal options
@@ -127,6 +128,18 @@ void wm_setup()
         nowDaemon();
     }
 
+    // Set group
+
+    if (gid = Privsep_GetGroup(GROUPGLOBAL), gid == (gid_t) -1) {
+        merror_exit(USER_ERROR, "", GROUPGLOBAL);
+    }
+
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
+    }
+
+    // Change working directory
+
     if (chdir(DEFAULTDIR) < 0)
         merror_exit("chdir(): %s", strerror(errno));
 
@@ -134,11 +147,6 @@ void wm_setup()
         minfo("No configuration defined. Exiting...");
         exit(EXIT_SUCCESS);
     }
-
-    // Create PID file
-
-    if (CreatePID(ARGV0, getpid()) < 0)
-        merror_exit("Couldn't create PID file: (%s)", strerror(errno));
 
     // Signal management
 
@@ -149,6 +157,11 @@ void wm_setup()
         sigaction(SIGHUP, &action, NULL);
         sigaction(SIGINT, &action, NULL);
     }
+
+    // Create PID file
+
+    if (CreatePID(ARGV0, getpid()) < 0)
+        merror_exit("Couldn't create PID file: (%s)", strerror(errno));
 }
 
 // Cleanup function, called on exiting.

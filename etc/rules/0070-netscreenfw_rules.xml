@@ -79,7 +79,7 @@
     <group>config_changed,pci_dss_1.1.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="4550" level="10" frequency="4" timeframe="180" ignore="60">
+  <rule id="4550" level="10" frequency="6" timeframe="180" ignore="60">
     <if_matched_sid>4503</if_matched_sid>
     <same_source_ip />
     <description>Netscreen firewall: Multiple critical messages from </description>
@@ -87,12 +87,12 @@
     <group>pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.1,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="4551" level="10" frequency="6" timeframe="180" ignore="60">
+  <rule id="4551" level="10" frequency="8" timeframe="180" ignore="60">
     <if_matched_sid>4503</if_matched_sid>
     <description>Netscreen firewall: Multiple critical messages.</description>
   </rule>
 
-  <rule id="4552" level="10" frequency="4" timeframe="180" ignore="60">
+  <rule id="4552" level="10" frequency="6" timeframe="180" ignore="60">
     <if_matched_sid>4513</if_matched_sid>
     <same_source_ip />
     <description>Netscreen firewall: Multiple alert messages from </description>
@@ -100,7 +100,7 @@
     <group>pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="4553" level="10" frequency="8" timeframe="100" ignore="60">
+  <rule id="4553" level="10" frequency="10" timeframe="100" ignore="60">
     <if_matched_sid>4513</if_matched_sid>
     <description>Netscreen firewall: Multiple alert messages.</description>
   </rule>

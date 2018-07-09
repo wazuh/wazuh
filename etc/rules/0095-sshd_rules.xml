@@ -28,7 +28,7 @@
     <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="5703" level="10" frequency="4" timeframe="360">
+  <rule id="5703" level="10" frequency="6" timeframe="360">
     <if_matched_sid>5702</if_matched_sid>
     <description>sshd: Possible breakin attempt </description>
     <description>(high number of reverse lookup errors).</description>
@@ -41,7 +41,7 @@
     <description>sshd: Timeout while logging in.</description>
   </rule>
 
-  <rule id="5705" level="10" frequency="4" timeframe="360">
+  <rule id="5705" level="10" frequency="6" timeframe="360">
     <if_matched_sid>5704</if_matched_sid>
     <description>sshd: Possible scan or breakin attempt </description>
     <description>(high number of login timeouts).</description>
@@ -86,7 +86,7 @@
     <description>sshd: Useless/Duplicated SSHD message without a user/ip.</description>
   </rule>
 
-  <rule id="5712" level="10" frequency="6" timeframe="120" ignore="60">
+  <rule id="5712" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>5710</if_matched_sid>
     <description>sshd: brute force trying to get access to </description>
     <description>the system.</description>
@@ -100,7 +100,7 @@
     <description>sshd: Corrupted bytes on SSHD.</description>
   </rule>
 
-  <rule id="5714" level="14" timeframe="120" frequency="1">
+  <rule id="5714" level="14" timeframe="120" frequency="3">
     <if_matched_sid>5713</if_matched_sid>
     <match>Local: crc32 compensation attack</match>
     <description>sshd: SSH CRC-32 Compensation attack</description>
@@ -136,13 +136,13 @@
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="5719" level="10" frequency="6" timeframe="120" ignore="60">
+  <rule id="5719" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>5718</if_matched_sid>
     <description>sshd: Multiple access attempts using a denied user.</description>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="5720" level="10" frequency="6">
+  <rule id="5720" level="10" frequency="8">
     <if_matched_sid>5716</if_matched_sid>
     <same_source_ip />
     <description>sshd: Multiple authentication failures.</description>

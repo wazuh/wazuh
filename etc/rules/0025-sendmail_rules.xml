@@ -78,7 +78,7 @@
     <group>system_error,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="3151" level="10" frequency="6" timeframe="120">
+  <rule id="3151" level="10" frequency="8" timeframe="120">
     <if_matched_sid>3102</if_matched_sid>
     <same_source_ip />
     <description>sendmail: Sender domain has bogus MX record. </description>
@@ -86,7 +86,7 @@
     <group>multiple_spam,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="3152" level="6" frequency="6" timeframe="120">
+  <rule id="3152" level="6" frequency="8" timeframe="120">
     <if_matched_sid>3103</if_matched_sid>
     <same_source_ip />
     <description>sendmail: Multiple attempts to send e-mail from a </description>
@@ -94,14 +94,14 @@
     <group>multiple_spam,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="3153" level="6" frequency="6" timeframe="120">
+  <rule id="3153" level="6" frequency="8" timeframe="120">
     <if_matched_sid>3104</if_matched_sid>
     <same_source_ip />
     <description>sendmail: Multiple relaying attempts of spam.</description>
     <group>multiple_spam,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="3154" level="10" frequency="6" timeframe="120">
+  <rule id="3154" level="10" frequency="8" timeframe="120">
     <if_matched_sid>3105</if_matched_sid>
     <same_source_ip />
     <description>sendmail: Multiple attempts to send e-mail </description>
@@ -109,7 +109,7 @@
     <group>multiple_spam,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="3155" level="10" frequency="6" timeframe="120">
+  <rule id="3155" level="10" frequency="8" timeframe="120">
     <if_matched_sid>3106</if_matched_sid>
     <same_source_ip />
     <description>sendmail: Multiple attempts to send e-mail from </description>
@@ -117,14 +117,14 @@
     <group>multiple_spam,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="3156" level="10" frequency="10" timeframe="120">
+  <rule id="3156" level="10" frequency="12" timeframe="120">
     <if_matched_sid>3107</if_matched_sid>
     <same_source_ip />
     <description>sendmail: Multiple rejected e-mails from same source ip.</description>
     <group>multiple_spam,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="3158" level="10" frequency="6" timeframe="120">
+  <rule id="3158" level="10" frequency="8" timeframe="120">
     <if_matched_sid>3108</if_matched_sid>
     <same_source_ip />
     <description>sendmail: Multiple pre-greetings rejects.</description>

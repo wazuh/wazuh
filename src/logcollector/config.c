@@ -61,9 +61,14 @@ int LogCollectorConfig(const char *cfgfile)
     if (logff) {
         int i, j, k, r, count_localfiles = 0;
         for (i=0;logff[i].file;i++) {
+            os_malloc(sizeof(logsocket), logff[i].log_target);
+
             for (j=0;logff[i].target[j];j++) {
+                os_realloc(logff[i].log_target, (j + 2) * sizeof(logsocket), logff[i].log_target);
+                memset(logff[i].log_target + j, 0, sizeof(logsocket));
+
                 if (strcmp(logff[i].target[j], "agent") == 0) {
-                    logff[i].target_socket[j] = &default_agent;
+                    logff[i].log_target[j].log_socket = &default_agent;
                     continue;
                 }
                 int found = -1;
@@ -76,7 +81,38 @@ int LogCollectorConfig(const char *cfgfile)
                 if (found != 0) {
                     merror_exit("Socket '%s' for '%s' is not defined.", logff[i].target[j], logff[i].file);
                 } else {
-                    logff[i].target_socket[j] = &logsk[k];
+                    logff[i].log_target[j].log_socket = &logsk[k];
+                }
+            }
+
+            memset(logff[i].log_target + j, 0, sizeof(logsocket));
+
+            // Add output formats
+
+            if (logff[i].out_format) {
+                for (j = 0; logff[i].out_format[j]; ++j) {
+                    if (logff[i].out_format[j]->target) {
+                        // Fill the corresponding target
+
+                        for (k = 0; logff[i].target[k]; k++) {
+                            if (strcmp(logff[i].target[k], logff[i].out_format[j]->target) == 0) {
+                                logff[i].log_target[k].format = logff[i].out_format[j]->format;
+                                break;
+                            }
+                        }
+
+                        if (!logff[i].target[k]) {
+                            mwarn("Log target '%s' wat not found for the output format of localfile '%s'.", logff[i].out_format[j]->target, logff[i].file);
+                        }
+                    } else {
+                        // Fill the targets that don't have a format yet
+
+                        for (k = 0; logff[i].target[k]; k++) {
+                            if (!logff[i].log_target[k].format) {
+                                logff[i].log_target[k].format = logff[i].out_format[j]->format;
+                            }
+                        }
+                    }
                 }
             }
         }

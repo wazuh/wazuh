@@ -77,13 +77,13 @@
     <group>service_availability,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="50580" level="10" frequency="6" timeframe="120" ignore="60">
+  <rule id="50580" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>50504</if_matched_sid>
     <description>PostgreSQL: Multiple database errors.</description>
     <group>service_availability,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.3,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="50581" level="10" frequency="6" timeframe="120" ignore="60">
+  <rule id="50581" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>50503</if_matched_sid>
     <description>PostgreSQL: Multiple database errors.</description>
     <group>service_availability,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.3,gdpr_IV_35.7.d,</group>
