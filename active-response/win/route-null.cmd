@@ -23,7 +23,7 @@ EXIT /B 1
 :: Check for a valid IP
 ECHO "%3" | %WINDIR%\system32\findstr.exe /R %IP_REGEX% >nul || ECHO Invalid IP && EXIT /B 2
 :: Extracts last ip address from ipconfig and routes to this address. Windows will not allow routing to 127.0.0.1
-FOR /F "TOKENS=2* DELIMS=:" %%A IN ('%WINDIR%\system32\ipconfig.exe ^| %WINDIR%\system32\findstr.exe /R /C:"IPv*4* Address"') DO FOR %%B IN (%%A) DO SET IPADDR=%%B
+FOR /F "TOKENS=2* DELIMS=:" %%A IN ('%WINDIR%\system32\ipconfig.exe ^| %WINDIR%\system32\findstr.exe /R /C:".*IP.*[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*"') DO FOR %%B IN (%%A) DO SET IPADDR=%%B
 :: Adding IP to be null-routed. IP will be routed to local machine IP
 %WINDIR%\system32\route.exe -p ADD %3 MASK 255.255.255.255 %IPADDR%
 GOTO LOG

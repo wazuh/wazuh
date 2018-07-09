@@ -23,7 +23,7 @@
         <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
     </rule>
 
-    <rule id="81802" level="3" frequency="1" timeframe="60">
+    <rule id="81802" level="3" frequency="3" timeframe="60">
         <if_matched_sid>81801</if_matched_sid>
         <user />
         <options>alert_by_email</options>
@@ -42,7 +42,7 @@
         <group>openvpn-error,gdpr_IV_35.7.d,</group>
     </rule>
 
-    <rule id="81804" level="4" frequency="1" timeframe="60">
+    <rule id="81804" level="4" frequency="3" timeframe="60">
         <if_matched_sid>81803</if_matched_sid>
         <options>alert_by_email</options>
         <description>OpenVPN: Certificate failed - Possible revoked user</description>

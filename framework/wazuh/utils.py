@@ -93,7 +93,12 @@ def cut_array(array, offset, limit):
     :return: cut array.
     """
 
-    if not array or limit == 0 or limit == None:
+    if limit > common.maximum_database_limit:
+        raise WazuhException(1405, str(limit))
+    elif limit == 0:
+        raise WazuhException(1406)
+
+    if not array or limit == None:
         return array
 
     offset = int(offset)

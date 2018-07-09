@@ -400,7 +400,6 @@ void os_winreg_check()
 
         os_winreg_open_key(rk, syscheck.registry[i].entry, syscheck.registry[i].arch);
         i++;
-        sleep(syscheck.tsleep * 5);
     }
 
     /* Notify of db completed */

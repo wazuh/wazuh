@@ -41,21 +41,21 @@
     <description>vpopmail: successful login.</description>
   </rule>
 
-  <rule id="9951" level="10" frequency="8" timeframe="240">
+  <rule id="9951" level="10" frequency="10" timeframe="240">
     <if_matched_sid>9901</if_matched_sid>
     <same_source_ip />
     <description>vpopmail: brute force (multiple failed logins).</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="9952" level="10" frequency="8" timeframe="240">
+  <rule id="9952" level="10" frequency="10" timeframe="240">
     <if_matched_sid>9902</if_matched_sid>
     <same_source_ip />
     <description>vpopmail: brute force (email harvesting).</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="9953" level="10" frequency="8" timeframe="240">
+  <rule id="9953" level="10" frequency="10" timeframe="240">
     <if_matched_sid>9903</if_matched_sid>
     <same_source_ip />
     <description>vpopmail: brute force (empty password).</description>
