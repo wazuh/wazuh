@@ -21,7 +21,7 @@ static int read_file(const char *dir_name, int opts, OSMatch *restriction, whoda
 
 static int read_dir_diff(char *dir_name);
 
-pthread_mutex_t fim_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lastcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Global variables */
 static int __counter = 0;
@@ -433,9 +433,9 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 return (0);
             }
 
-            w_mutex_lock(&fim_mutex);
+            w_mutex_lock(&lastcheck_mutex);
             OSHash_Delete(syscheck.last_check, file_name);
-            w_mutex_unlock(&fim_mutex);
+            w_mutex_unlock(&lastcheck_mutex);
 
             if (strcmp(c_sum, buf + SK_DB_NATTR)) {
                 // Extract the whodata sum here to not include it in the hash table
@@ -613,7 +613,7 @@ int run_dbcheck()
 
     if (syscheck.dir[0]) {
         /* Check for deleted files */
-        w_mutex_lock(&fim_mutex);
+        w_mutex_lock(&lastcheck_mutex);
         for (i = 0; i <= syscheck.last_check->rows; i++) {
             curr_node = syscheck.last_check->table[i];
             if(curr_node && curr_node->key) {
@@ -626,7 +626,7 @@ int run_dbcheck()
         OSHash_Free(syscheck.last_check);
         /* Duplicate hash table to check for deleted files */
         syscheck.last_check = OSHash_Duplicate(syscheck.fp);
-        w_mutex_unlock(&fim_mutex);
+        w_mutex_unlock(&lastcheck_mutex);
 
         /* Only if there are directories */
         if (syscheck.remove_old_diff && (syscheck.dir != NULL || syscheck.dir[0] != NULL)) {
@@ -694,8 +694,11 @@ int create_db()
         remove_local_diff();
     }
 
+    w_mutex_lock(&lastcheck_mutex);
+    OSHash_Free(syscheck.last_check);
     /* Duplicate hash table to check for deleted files */
     syscheck.last_check = OSHash_Duplicate(syscheck.fp);
+    w_mutex_unlock(&lastcheck_mutex);
 
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
     if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {

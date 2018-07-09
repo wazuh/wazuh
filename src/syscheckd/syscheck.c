@@ -76,7 +76,7 @@ int fim_initilize() {
     syscheck.local_hash = OSHash_Create();
 
     /* Duplicate hash table to check for deleted files */
-    syscheck.last_check = OSHash_Duplicate(syscheck.fp);
+    syscheck.last_check = OSHash_Create();
 
     return 0;
 }
@@ -171,6 +171,7 @@ int Start_win32_Syscheck()
 
     /* Some sync time */
     sleep(syscheck.tsleep * 5);
+    fim_initilize();
 
     /* Wait if agent started properly */
     os_wait();
