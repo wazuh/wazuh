@@ -26,6 +26,11 @@ int wm_aws_read(xml_node **nodes, wmodule *module, int agent_cfg)
     int i;
     wm_aws_t * config;
 
+    if (!nodes) {
+        mwarn("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+        return OS_INVALID;
+    }
+
     // Create module
 
     os_calloc(1, sizeof(wm_aws_t), config);
@@ -105,7 +110,7 @@ int wm_aws_read(xml_node **nodes, wmodule *module, int agent_cfg)
             if (strlen(nodes[i]->content) != 0) {
                 free(config->secret_key);
                 os_strdup(nodes[i]->content, config->secret_key);
-            } 
+            }
         } else if (!strcmp(nodes[i]->element, XML_BUCKET)) {
             if (strlen(nodes[i]->content) == 0) {
                 merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);

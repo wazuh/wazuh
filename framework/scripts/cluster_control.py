@@ -3,8 +3,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from sys import argv, exit, path, stdout, version_info
+
+if version_info[0] == 2 and version_info[1] < 7:
+    print("Error: Minimal Python version required is 2.7. Found version is {0}.{1}.".format(version_info[0], version_info[1]))
+    exit(1)
+
 from os.path import dirname, basename
-from sys import argv, exit, path, stdout
 from itertools import chain
 import argparse
 import logging
@@ -27,14 +32,14 @@ try:
     myWazuh = Wazuh(get_init=True)
 
     # Import cluster
-    from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
-    from wazuh.cluster.control import check_cluster_status, get_nodes, get_healthcheck, get_agents, sync, get_files
+    from wazuh.cluster.cluster import read_config, get_status_json
+    from wazuh.cluster.control import get_nodes, get_healthcheck, get_agents, sync, get_files
 
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.CRITICAL, format='%(levelname)s: %(message)s')
 
 def get_parser(type):
     if type == "master":
@@ -86,7 +91,7 @@ Others:
     else:
         class WazuhHelpFormatter(argparse.ArgumentParser):
             def format_help(self):
-                msg = """Wazuh cluster control - Client node
+                msg = """Wazuh cluster control - Worker node
 
 Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
@@ -136,10 +141,7 @@ def __execute(my_function, my_args=()):
             print("Error: {}".format(response['err']))
             exit(1)
     except Exception as e:
-        if response:
-            print ("Error: {}".format(response))
-        else:
-            print ("{}".format(e))
+        print ("{}".format(e))
         exit(1)
 
     return response
@@ -210,7 +212,7 @@ def print_file_status_master(filter_file_list, filter_node_list):
             print (" - {}: {}".format(node, error))
 
 
-def print_file_status_client(filter_file_list, node_name):
+def print_file_status_worker(filter_file_list, node_name):
     my_files = __execute(my_function=get_files, my_args=(filter_file_list, node_name,))
     headers = ["Node", "File name", "Modification time", "MD5"]
     data = []
@@ -219,7 +221,7 @@ def print_file_status_client(filter_file_list, node_name):
             data.append(my_file)
 
     __print_table(data, headers, True)
-    print ("(*) Clients only show their own files.")
+    print ("(*) Workers only show their own files.")
 
 
 ### Get nodes
@@ -330,8 +332,8 @@ if __name__ == '__main__':
     cluster_config = None
     try:
         cluster_config = read_config()
-        if 'node_type' not in cluster_config or (cluster_config['node_type'] != 'master' and cluster_config['node_type'] != 'client'):
-            raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(cluster_config['node_type']))
+        if 'node_type' not in cluster_config or (cluster_config['node_type'] != 'master' and cluster_config['node_type'] != 'worker'):
+            raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(cluster_config['node_type']))
     except WazuhException as e:
         print( "Invalid configuration: '{0}'".format(str(e)))
         exit(1)
@@ -368,11 +370,11 @@ if __name__ == '__main__':
             exit()
 
         #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
+        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_worker(args.filter_file, cluster_config['node_name'])
         #elif is_master and args.sync is not None:
         #    sync_master(args.filter_node)
         #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_client(args.filter_file, cluster_config['node_name'])
+        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_worker(args.filter_file, cluster_config['node_name'])
 
     except Exception as e:
         logging.error(str(e))

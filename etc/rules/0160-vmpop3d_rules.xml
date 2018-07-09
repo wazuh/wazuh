@@ -19,7 +19,7 @@
     <description>vm-pop3d: Login failed accessing the pop3 server.</description>
   </rule>
 
-  <rule id="9820" level="10" frequency="6" timeframe="240">
+  <rule id="9820" level="10" frequency="8" timeframe="240">
     <if_matched_sid>9801</if_matched_sid>
     <same_source_ip />
     <description>vm-pop3d: POP3 brute force (multiple failed logins).</description>

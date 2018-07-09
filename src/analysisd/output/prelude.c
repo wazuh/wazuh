@@ -187,6 +187,7 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
                            const char *filename,
                            const char *md5,
                            const char *sha1,
+                           const char *sha256,
                            const char *owner,
                            const char *gowner,
                            int perm)
@@ -205,6 +206,10 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
     if (sha1) {
         add_idmef_object(idmef, "alert.target(0).file(-1).checksum(>>).algorithm", "SHA1");
         add_idmef_object(idmef, "alert.target(0).file(-1).checksum(-1).value", sha1);
+    }
+    if (sha256) {
+        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(>>).algorithm", "SHA256");
+        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(-1).value", sha256);
     }
 
     /* Add the owner */
@@ -500,6 +505,7 @@ void OS_PreludeLog(const Eventinfo *lf)
                               lf->filename,
                               lf->md5_before,
                               lf->sha1_before,
+                              lf->sha256_before,
                               lf->owner_before,
                               lf->gowner_before,
                               lf->perm_before);
@@ -508,6 +514,7 @@ void OS_PreludeLog(const Eventinfo *lf)
                               lf->filename,
                               lf->md5_after,
                               lf->sha1_after,
+                              lf->sha256_after,
                               lf->owner_after,
                               lf->gowner_after,
                               lf->perm_after);

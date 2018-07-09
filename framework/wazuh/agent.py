@@ -77,8 +77,10 @@ class Agent:
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager_host': 'manager_host', 'dateAdd': 'date_add',
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
-              'os.codename': 'os_codename', 'os.major': 'os_major', 'os.uname': 'os_uname',
-              'os.arch': 'os_arch', 'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive'}
+              'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
+              'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build':'os_build',
+              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'key':'key'}
+
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
         """
@@ -279,7 +281,11 @@ class Agent:
             query = query.replace("from {} and".format(table), "from {} where".format(table))
 
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' limit {} offset {}'.format(limit, offset)
+        elif limit == 0:
+            raise WazuhException(1406)
 
         if sort and sort['fields']:
             str_order = "desc" if sort['order'] == 'asc' else "asc"
@@ -958,7 +964,7 @@ class Agent:
                     # Order by status ASC is the same that order by last_keepalive DESC.
                     if i == 'status':
                         str_order = "desc" if sort['order'] == 'asc' else "asc"
-                        order_str_field = '{0} {1}'.format(Agent.fields[i], str_order)
+                        order_str_field = '{0} {1}'.format(Agent.fields['lastKeepAlive'], str_order)
                     # Order by version is order by major and minor
                     elif i == 'os.version':
                         order_str_field = "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(sort['order'])
@@ -975,9 +981,13 @@ class Agent:
 
 
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         conn.execute(query.format(','.join(min_select_fields)), request)
 
@@ -1078,9 +1088,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         conn.execute(query.format(','.join(select)), request)
 
@@ -1108,6 +1122,8 @@ class Agent:
             oq.close()
             return ret_msg
         else:
+            if not agent_id:
+                raise WazuhException(1732)
             failed_ids = list()
             affected_agents = list()
             if isinstance(agent_id, list):
@@ -1226,7 +1242,7 @@ class Agent:
 
 
         agents = Agent.get_agents_overview(filters={'status':status, 'older_than': older_than}, limit = None)
-        
+
         id_purgeable_agents = [agent['id'] for agent in agents['items']]
 
         failed_ids = []
@@ -1250,14 +1266,17 @@ class Agent:
                     failed_ids.append(create_exception_dic(id, e))
 
         if not failed_ids:
-            message = 'All selected agents were removed'
+            message = 'All selected agents were removed' if affected_agents else "No agents were removed"
         else:
             message = 'Some agents were not removed'
 
         if failed_ids:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids, 'older_than': older_than}
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids,
+                          'older_than': older_than, 'total_affected_agents':len(affected_agents),
+                          'total_failed_ids':len(failed_ids)}
         else:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'older_than': older_than}
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'older_than': older_than,
+                          'total_affected_agents':len(affected_agents)}
 
         return final_dict
 
@@ -1367,9 +1386,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         # Data query
         conn.execute(query.format(','.join(select)), request)
@@ -1581,9 +1604,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         if 'group' in select_fields:
             select_fields.remove('group')
@@ -1865,9 +1892,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         # Data query
         conn.execute(query.format(','.join(select)), request)
@@ -2004,8 +2035,6 @@ class Agent:
         wpk_url = self._get_url_wpk_file(wpk_file, wpk_repo, use_http)
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))
-        else:
-            print("Downloading WPK file...")
 
         try:
             result = urlopen(wpk_url)
@@ -2029,8 +2058,6 @@ class Agent:
 
         if debug:
             print("WPK file downloaded: {0} - SHA1SUM: {1}".format(wpk_file_path, sha1hash))
-        else:
-            print("WPK file downloaded.")
 
         return [wpk_file, sha1hash]
 
@@ -2163,6 +2190,10 @@ class Agent:
 
         self._load_info_from_DB()
 
+        # Check if agent is active.
+        if not self.status == 'Active':
+            raise WazuhException(1720)
+
         # Check if remote upgrade is available for the selected agent version
         if WazuhVersion(self.version.split(' ')[1]) < WazuhVersion("3.0.0-alpha4"):
             raise WazuhException(1719, version)
@@ -2175,10 +2206,6 @@ class Agent:
 
         if not wpk_repo.endswith('/'):
             wpk_repo = wpk_repo + '/'
-
-        # Check if agent is active.
-        if not self.status == 'Active':
-            raise WazuhException(1720)
 
         # Send file to agent
         sending_result = self._send_wpk_file(wpk_repo=wpk_repo, debug=debug, version=version, force=force,
@@ -2203,11 +2230,12 @@ class Agent:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok'):
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): started. Current version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             return "Upgrade procedure started"
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             raise WazuhException(1716, data.replace("err ",""))
-        s.close()
 
 
     @staticmethod
@@ -2255,14 +2283,16 @@ class Agent:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok 0'):
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): succeeded. New version: {2}".format(str(self.id).zfill(3), self.name, self.version)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             return "Agent upgraded successfully"
         elif data.startswith('ok 2'):
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): failed: restored to previous version".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             raise WazuhException(1716, "Agent restored to previous version")
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): lost: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             raise WazuhException(1716, data.replace("err ",""))
-        s.close()
 
 
     @staticmethod
@@ -2428,11 +2458,12 @@ class Agent:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if data.startswith('ok'):
             s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}): started.".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             return "Installation started"
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
+            s.close()
             raise WazuhException(1716, data.replace("err ",""))
-        s.close()
 
 
     @staticmethod

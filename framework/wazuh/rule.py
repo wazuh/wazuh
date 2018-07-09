@@ -255,7 +255,7 @@ class Rule:
             if len(levels) < 0 or len(levels) > 2:
                 raise WazuhException(1203)
 
-        for rule_file in Rule.get_rules_files(status=status, limit=0)['items']:
+        for rule_file in Rule.get_rules_files(status=status, limit=None)['items']:
             all_rules.extend(Rule.__load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
 
         rules = list(all_rules)
@@ -311,7 +311,7 @@ class Rule:
         """
         groups = set()
 
-        for rule in Rule.get_rules(limit=0)['items']:
+        for rule in Rule.get_rules(limit=None)['items']:
             for group in rule.groups:
                 groups.add(group)
 
@@ -341,7 +341,7 @@ class Rule:
         if requirement != 'pci' and requirement != 'gdpr':
             raise WazuhException(1205, requirement)
 
-        req = list({req for rule in Rule.get_rules(limit=0)['items'] for req in rule.to_dict()[requirement]})
+        req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
 
         if search:
             req = search_array(req, search['value'], search['negation'])

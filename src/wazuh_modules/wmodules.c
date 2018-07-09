@@ -42,10 +42,18 @@ int wm_config() {
     // Read configuration: agent.conf
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
-    wmodule *database;
+    wmodule *module;
+
     // The database module won't be available on agents
-    if ((database = wm_database_read()))
-        wm_add(database);
+
+    if ((module = wm_database_read()))
+        wm_add(module);
+
+    // Downloading module
+
+    if ((module = wm_download_read()))
+        wm_add(module);
+
 #endif
 
     return 0;
@@ -69,12 +77,13 @@ int wm_check() {
     wmodule *i = wmodules;
     wmodule *j;
     wmodule *next;
-    wmodule *prev;
+    wmodule *prev = wmodules;
 
     // Discard empty configurations
 
     while (i) {
         if (i->context) {
+            prev = i;
             i = i->next;
         } else {
             next = i->next;
@@ -82,6 +91,8 @@ int wm_check() {
 
             if (i == wmodules) {
                 wmodules = next;
+            } else {
+                prev->next = next;
             }
 
             i = next;
@@ -224,9 +235,9 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     return nmemb - 1;
 }
 
-int wm_read_http_header(char *header) {
-    int size;
-    char *size_tag = "Content-Length:";
+long int wm_read_http_size(char *header) {
+    long int size;
+    char size_tag[] = "Content-Length:";
     char *found;
     char c_aux;
 
