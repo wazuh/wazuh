@@ -17,9 +17,8 @@
 
 // Global variables
 syscheck_config syscheck;
-W_Vector *audit_added_rules;
-W_Vector *audit_added_dirs;
 volatile int added_rules_error;
+pthread_cond_t audit_thread_started;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -134,7 +133,7 @@ int Start_win32_Syscheck()
         /* Print directories to be monitored */
         r = 0;
         while (syscheck.dir[r] != NULL) {
-            char optstr[ 100 ];
+            char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             r++;
         }
@@ -328,7 +327,7 @@ int main(int argc, char **argv)
         /* Print directories to be monitored */
         r = 0;
         while (syscheck.dir[r] != NULL) {
-            char optstr[ 100 ];
+            char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             r++;
         }
@@ -372,17 +371,9 @@ int main(int argc, char **argv)
 
     // Audit events thread
     if (syscheck.enable_whodata) {
-        int audit_socket = audit_init();
-        added_rules_error = 0;
-        if (audit_socket > 0) {
-            mdebug1("Starting Auditd events reader thread...");
-            audit_added_rules = W_Vector_init(10);
-            audit_added_dirs = W_Vector_init(20);
-            atexit(clean_rules);
-            w_create_thread(audit_main, &audit_socket);
-        } else {
+        int out = audit_init();
+        if (out < 0)
             merror("Cannot start Audit events reader thread.");
-        }
     }
 
     /* Start the daemon */

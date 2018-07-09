@@ -564,6 +564,9 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Initialize Rootcheck */
     RootcheckInit();
 
+    /* Initialize Syscollector */
+    SyscollectorInit();
+
     /* Initialize host info */
     HostinfoInit();
 
@@ -1164,6 +1167,17 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
 
         if (!OSMatch_Execute(lf->url, strlen(lf->url), rule->url)) {
+            return (NULL);
+        }
+    }
+
+    /* Checking for the URL */
+    if (rule->location) {
+        if (!lf->location) {
+            return (NULL);
+        }
+
+        if (!OSMatch_Execute(lf->location, strlen(lf->location), rule->location)) {
             return (NULL);
         }
     }

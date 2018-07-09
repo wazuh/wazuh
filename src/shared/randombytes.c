@@ -1,3 +1,13 @@
+/*
+ * Contributed by Jeremy Rossi (@jrossi)
+ * Maintained by Wazuh Inc.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifndef WIN32
 #include <sys/stat.h>
 #include <fcntl.h>

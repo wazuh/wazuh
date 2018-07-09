@@ -65,6 +65,7 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
+    static int reported = 0;
 
     tmpstr[OS_MAXSTR] = '\0';
 
@@ -95,15 +96,6 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
         return (-1);
     }
 
-    /* We attempt 5 times to send the message if
-     * the receiver socket is busy.
-     * After the first error, we wait 1 second.
-     * After the second error, we wait more 3 seconds.
-     * After the third error, we wait 5 seconds.
-     * After the fourth error, we wait 10 seconds.
-     * If we failed again, the message is not going
-     * to be delivered and an error is sent back.
-     */
     if ((__mq_rcode = OS_SendUnix(queue, tmpstr, 0)) < 0) {
         /* Error on the socket */
         if (__mq_rcode == OS_SOCKTERR) {
@@ -113,32 +105,11 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
         }
 
         /* Unable to send. Socket busy */
-        mwarn("Socket busy, waiting for 1 second.");
-        sleep(1);
-        if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-            /* When the socket is to busy, we may get some
-             * error here. Just sleep 2 second and try
-             * again.
-             */
-             mwarn("Socket busy, waiting for 3 seconds.");
-             sleep(3);
-            /* merror("socket busy"); */
-            if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-              merror("Socket busy, waiting for 5 seconds.");
-              sleep(5);
-              if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-                    merror("socket busy, waiting for 10 seconds.");
-                    sleep(10);
-                    if (OS_SendUnix(queue, tmpstr, 0) < 0) {
-                        /* Message is going to be lost
-                         * if the application does not care
-                         * about checking the error
-                         */
-                        close(queue);
-                        return (-1);
-                    }
-                }
-            }
+        mdebug2("Socket busy, discarding message.");
+
+        if (!reported) {
+            reported = 1;
+            mwarn("Socket busy, discarding message.");
         }
     }
 

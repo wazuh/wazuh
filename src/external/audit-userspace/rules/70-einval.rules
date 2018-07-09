@@ -1,6 +1,0 @@
-## These are rules are to locate poorly written programs.
-## Its never planned to waste time on a syscall with incorrect parameters
-## This is more of a debugging step than something people should run with
-## in production.
--a never,exit -F arch=b64 -S rt_sigreturn
--a always,exit -S all -F exit=-EINVAL -F key=einval-retcode

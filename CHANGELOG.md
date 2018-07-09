@@ -1,6 +1,57 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.5.0]
+
+### Added
+
+- Improved configuration of OVAL updates. ([#416](https://github.com/wazuh/wazuh/pull/416))
+- Added selective agent software request in vulnerability-detector. ([#404](https://github.com/wazuh/wazuh/pull/404))
+- Get Linux packages inventory natively. ([#441](https://github.com/wazuh/wazuh/pull/441))
+- Get Windows packages inventory natively. ([#471](https://github.com/wazuh/wazuh/pull/471))
+- Supporting AES encryption for manager and agent. ([#448](https://github.com/wazuh/wazuh/pull/448))
+- Added Debian and Ubuntu 18 support in vulnerability-detector. ([#470](https://github.com/wazuh/wazuh/pull/470))
+- Added Rids Synchronization. ([#459](https://github.com/wazuh/wazuh/pull/459))
+- Added option for setting the group that the agent belongs to when registering it with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
+- Added option for setting the source IP when the agent registers with authd ([#460](https://github.com/wazuh/wazuh/pull/460))
+- Added option to force the vulnerability detection in unsupported OS. ([#462](https://github.com/wazuh/wazuh/pull/462))
+- Get network inventory natively. ([#546](https://github.com/wazuh/wazuh/pull/546))
+- Integration with Osquery. ([#627](https://github.com/wazuh/wazuh/pull/627))
+    - Enrich osquery configuration with pack files aggregation and agent labels as decorators.
+    - Launch osquery daemon in background.
+    - Monitor results file and send them to the manager.
+    - New option in rules `<location>` to filter events by osquery.
+    - Support folders in shared configuration. This makes easy to send pack folders to agents.
+    - Basic ruleset for osquery events and daemon logs.
+- Boost Remoted performance with multithreading. ([#649](https://github.com/wazuh/wazuh/pull/649))
+    - Up to 16 parallel threads to decrypt messages from agents.
+    - Limit the frequency of agent keys reloading.
+    - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
+- Module to download shared files for agent groups dinamically. ([#519](https://github.com/wazuh/wazuh/pull/519))
+
+### Changed
+
+- Add default value for option -x in agent_control tool.
+- External libraries moved to an external repository.
+- Ignore OverlayFS directories on Rootcheck system scan.
+- Extracts agent's OS from the database instead of the agent-info.
+- Increases the maximum size of XML parser to 20KB.
+- Extract CVE instead of RHSA codes into vulnerability-detector. ([#549](https://github.com/wazuh/wazuh/pull/549))
+- Merge external libraries into a unique shared library. ([#620](https://github.com/wazuh/wazuh/pull/620))
+
+### Fixed
+
+- Fixed invalid alerts reported by Syscollector when the event contains the word "error". ([#461](https://github.com/wazuh/wazuh/pull/461))
+- Silenced Vuls integration starting and ending alerts. ([#541](https://github.com/wazuh/wazuh/pull/541))
+- Fix problem comparing releases of ubuntu packages. ([#556](https://github.com/wazuh/wazuh/pull/556))
+- Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
+- Fix bug in Rootcheck for Windows that searches for keys in 32-bit mode only. ([#566](https://github.com/wazuh/wazuh/pull/566))
+- Alert when unmerge files fails on agent. ([#731](https://github.com/wazuh/wazuh/pull/731))
+
+### Removed
+
+- Deleted Lua language support.
+
 ## [v3.4.0]
 
 ### Added
@@ -28,11 +79,15 @@ All notable changes to this project will be documented in this file.
   - Improvements of error and information messages when they start.
 - Improve output of `DELETE/agents` when no agents were removed. ([#868](https://github.com/wazuh/wazuh/pull/868))
 - Include the file owner SID in Syscheck alerts.
+- Change no previous checksum error message to information log. ([#897](https://github.com/wazuh/wazuh/pull/897))
+
+### Changed
+
+- Syscheck RT process granularized to make frequency option more accurate. ([#434](https://github.com/wazuh/wazuh/pull/434))
 
 ### Fixed
 
-- Syscheck RT process granularized to make frequency option more accurate. ([#434](https://github.com/wazuh/wazuh/pull/434))
-- Fixed registry_ignore problem on syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
+- Fixed registry_ignore problem on Syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
 - Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
 - Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
 - Replace hash value xxx (not enabled) for n/a if the hash couldn't be calculated. ([#857](https://github.com/wazuh/wazuh/pull/857))

@@ -18,8 +18,8 @@
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 {
     cJSON* root;
-    cJSON* rule;
-    cJSON* file_diff;
+    cJSON* rule = NULL;
+    cJSON* file_diff = NULL;
     cJSON* manager;
 	cJSON* agent;
     cJSON* predecoder;
@@ -36,7 +36,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     // Parse timestamp
     W_JSON_AddTimestamp(root, lf);
 
-    cJSON_AddItemToObject(root, "rule", rule = cJSON_CreateObject());
+    if(lf->generated_rule){
+        cJSON_AddItemToObject(root, "rule", rule = cJSON_CreateObject());
+    }
     cJSON_AddItemToObject(root, "agent", agent = cJSON_CreateObject());
     cJSON_AddItemToObject(root, "manager", manager = cJSON_CreateObject());
     data = cJSON_CreateObject();
@@ -308,7 +310,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddStringToObject(data, "system_name", lf->systemname);
 
     // Whodata fields
-    if (lf->user_id && lf->user_name) {
+    if (lf->user_id && lf->user_name && file_diff) {
         cJSON* audit = cJSON_CreateObject();
 
         cJSON* user = cJSON_CreateObject();
@@ -345,7 +347,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddItemToObject(audit, "effective_user", euser);
         }
 
-        cJSON_AddItemToObject(root, "audit", audit);
+        cJSON_AddItemToObject(file_diff, "audit", audit);
     }
 
     // DecoderInfo

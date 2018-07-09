@@ -1,5 +1,0 @@
-## If you are on a 64 bit platform, everything _should_ be running
-## in 64 bit mode. This rule will detect any use of the 32 bit syscalls
-## because this might be a sign of someone exploiting a hole in the 32
-## bit API.
--a always,exit -F arch=b32 -S all -F key=32bit-abi

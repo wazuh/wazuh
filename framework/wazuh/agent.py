@@ -229,7 +229,11 @@ class Agent:
             query = query.replace("from {} and".format(table), "from {} where".format(table))
 
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' limit {} offset {}'.format(limit, offset)
+        elif limit == 0:
+            raise WazuhException(1406)
 
         if sort and sort['fields']:
             str_order = "desc" if sort['order'] == 'asc' else "asc"
@@ -927,9 +931,13 @@ class Agent:
 
 
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         conn.execute(query.format(','.join(min_select_fields)), request)
 
@@ -1030,9 +1038,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         conn.execute(query.format(','.join(select)), request)
 
@@ -1324,9 +1336,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         # Data query
         conn.execute(query.format(','.join(select)), request)
@@ -1538,9 +1554,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         if 'group' in select_fields:
             select_fields.remove('group')
@@ -1822,9 +1842,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         # Data query
         conn.execute(query.format(','.join(select)), request)

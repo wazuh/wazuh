@@ -72,6 +72,7 @@ int SetDecodeXML(void);
 void HostinfoInit(void);
 void SyscheckInit(void);
 void RootcheckInit(void);
+void SyscollectorInit(void);
 
 int ReadDecodeXML(const char *file);
 

@@ -1,3 +1,0 @@
-## Make the loginuid immutable. This prevents tampering with the auid.
---loginuid-immutable
-

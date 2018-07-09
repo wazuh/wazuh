@@ -84,6 +84,20 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
                         agt->profile);
 
+    /*Set the crypto method for the agent */
+    os_set_agent_crypto_method(&keys,agt->crypto_method);
+
+    switch (agt->crypto_method) {
+        case W_METH_AES:
+            minfo("Using AES as encryption method.");
+            break;
+        case W_METH_BLOWFISH:
+            minfo("Using Blowfish as encryption method.");
+            break;
+        default:
+            merror("Invalid encryption method.");
+    }
+
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 

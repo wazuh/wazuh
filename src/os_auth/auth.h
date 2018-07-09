@@ -42,6 +42,7 @@ extern BIO *bio_err;
 #define CERTFILE "/etc/sslmanager.cert"
 #define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
 #define DEFAULT_PORT 1515
+#define DEFAULT_CENTRALIZED_GROUP "default"
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -56,6 +57,7 @@ struct keynode {
     char *id;
     char *name;
     char *ip;
+    char *group;
     struct keynode *next;
 };
 
@@ -69,7 +71,7 @@ int verify_callback(int ok, X509_STORE_CTX *store);
 void* run_local_server(void *arg);
 
 // Append key to insertion queue
-void add_insert(const keyentry *entry);
+void add_insert(const keyentry *entry,const char *group);
 
 // Append key to backup queue
 void add_backup(const keyentry *entry);

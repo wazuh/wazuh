@@ -218,7 +218,7 @@ void * run_dealer(__attribute__((unused)) void * args) {
         // Accept new peer
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if ((errno == EINTR)) {
+            if (errno == EINTR) {
                 minfo("at run_dealer(): accept(): %s", strerror(errno));
             } else {
                 merror("at run_dealer(): accept(): %s", strerror(errno));
@@ -345,7 +345,9 @@ void * run_worker(__attribute__((unused)) void * args) {
                     if (terminal && length < OS_MAXSTR - 1) {
                         response[length++] = '\n';
                     }
-                    send(*peer, response, length, 0);
+                    if (send(*peer, response, length, 0) < 0) {
+                        merror("at run_worker(): send(%d): %s (%d)", *peer, strerror(errno), errno);
+                    }
                 }
             }
         }
