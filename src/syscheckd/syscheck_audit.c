@@ -441,6 +441,7 @@ int init_regex(void) {
     return 0;
 }
 
+
 // Init Audit events reader thread
 int audit_init(void) {
 
@@ -607,7 +608,7 @@ void audit_parse(char *buffer) {
                 snprintf (p_dir, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             }
 
-            if (*p_dir != '\0') {
+            if (p_dir && *p_dir != '\0') {
                 mwarn("Monitored directory '%s' was removed: Audit rule removed.", p_dir);
                 // Send alert
                 char msg_alert[512 + 1];
