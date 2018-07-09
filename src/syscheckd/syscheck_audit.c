@@ -965,6 +965,7 @@ void clean_rules(void) {
             audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
         }
         W_Vector_free(audit_added_rules);
+        audit_added_rules = NULL;
     }
     w_mutex_unlock(&audit_mutex);
 }
