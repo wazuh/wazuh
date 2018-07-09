@@ -13,6 +13,10 @@
 #define WLIST_ALERT_THRESHOLD 80 // 80%
 #define WLIST_REMOVE_MAX 10 // 10%
 #define WLIST_MAX_SIZE OS_SIZE_1024
+#define WPOL_BACKUP_COMMAND "auditpol /backup /file:\"%s\""
+#define WPOL_RESTORE_COMMAND "auditpol /restore /file:\"%s\""
+#define WPOL_BACKUP_FILE "tmp\\backup-policies"
+#define WPOL_NEW_FILE "tmp\\new-policies"
 
 // Variables whodata
 static PSID everyone_sid = NULL;
@@ -37,10 +41,13 @@ static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 void restore_sacls();
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 int is_valid_sacl(PACL sacl);
-unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event);
+unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
-void set_policies();
+int set_policies();
 void set_subscription_query(wchar_t *query);
+extern int wm_exec(char *command, char **output, int *exitcode, int secs);
+int restore_audit_policies();
+void audit_restore();
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
@@ -80,7 +87,7 @@ int set_winsacl(const char *dir, int position) {
 
     mdebug2("The SACL of '%s' will be configured.", dir);
 
-	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES /*| ACCESS_SYSTEM_SECURITY*/, &hdle)) {
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
 		merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
 		return 1;
 	}
@@ -271,9 +278,12 @@ int run_whodata_scan() {
     wchar_t query[OS_MAXSTR];
 
     // Set the signal handler to restore the policies
-    atexit(restore_sacls);
+    atexit(audit_restore);
     // Set the system audit policies
-    set_policies();
+    if (set_policies()) {
+        merror("Local audit policies could not be configured.");
+        return 1;
+    }
     // Select the interesting fields
     if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
         merror("Error creating the whodata context. Error %lu.", GetLastError());
@@ -291,23 +301,30 @@ int run_whodata_scan() {
     return 0;
 }
 
+void audit_restore() {
+    restore_sacls();
+    restore_audit_policies();
+}
+
 /* Removes added security audit policies */
 void restore_sacls() {
     int i;
     PACL sacl_it;
     HANDLE hdle = NULL;
+    HANDLE c_process = NULL;
     LPCTSTR priv = "SeSecurityPrivilege";
     DWORD result = 0;
     PSECURITY_DESCRIPTOR security_descriptor = NULL;
 
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
+    c_process = GetCurrentProcess();
+    if (!OpenProcessToken(c_process, TOKEN_ADJUST_PRIVILEGES, &hdle)) {
         merror("OpenProcessToken() failed restoring the SACLs. Error '%lu'.", GetLastError());
-        return;
+        goto end;
     }
 
     if (set_privilege(hdle, priv, TRUE)) {
         merror("The privilege could not be activated restoring the SACLs. Error: '%ld'.", GetLastError());
-        return;
+        goto end;
     }
 
     for (i = 0; syscheck.dir[i] != NULL; i++) {
@@ -345,10 +362,36 @@ void restore_sacls() {
     if (set_privilege(hdle, priv, 0)) {
         merror("Failed to disable the privilege while restoring the SACLs. Error '%lu'.", GetLastError());
     }
-    CloseHandle(hdle);
+
+end:
+    if (hdle) {
+        CloseHandle(hdle);
+    }
+    if (c_process) {
+        CloseHandle(c_process);
+    }
 }
 
-unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *_void, EVT_HANDLE event) {
+int restore_audit_policies() {
+    char command[OS_SIZE_1024];
+    int result_code;
+    char *output;
+    snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_BACKUP_FILE);
+
+    if (IsFile(WPOL_BACKUP_FILE)) {
+        merror("There is no backup of audit policies. Policies will not be restored.");
+        return 1;
+    }
+    // Get the current policies
+    if (wm_exec(command, &output, &result_code, 5), result_code) {
+        merror("Auditpol backup error: '%s'.", output);
+        return 1;
+    }
+
+    return 0;
+}
+
+unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event) {
     unsigned int retval = 1;
     int result;
     unsigned long p_count = 0;
@@ -361,14 +404,12 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
     char *process_name = NULL;
     unsigned __int64 process_id;
     unsigned __int64 handle_id;
-    char force_notify;
     char *user_id = NULL;
     char is_directory;
     unsigned int mask;
     int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
-    UNREFERENCED_PARAMETER(_void);
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
@@ -459,7 +500,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
         switch(event_id) {
             // Open fd
             case 4656:
-                force_notify = 0;
                 is_directory = 0;
                 position = -1;
                 // Check if it is a known file
@@ -479,7 +519,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                             break;
                         } else {
                             // The file is new and has to be notified
-                            force_notify = 1;
                         }
                     } else {
                         // Is a directory
@@ -500,6 +539,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 } else {
                     // The directory path will be saved in 4663 event
                     w_evt->path = NULL;
+                    free(path);
                 }
                 w_evt->dir_position = position;
                 w_evt->process_name = process_name;
@@ -507,7 +547,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 w_evt->mask = 0;
                 w_evt->scan_directory = is_directory;
                 w_evt->deleted = 0;
-                w_evt->force_notify = force_notify;
                 w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
@@ -545,12 +584,11 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                                     goto clean;
                                 }
 
-                                /*
-                                if (check_dir_timestamp(&w_dir->timestamp, &system_time)) {
+                                if (!check_dir_timestamp(&w_dir->timestamp, &system_time)) {
                                     mdebug2("The '%s' directory has been scanned at 'd', so it does not need to do it again.", path);
                                     w_evt->scan_directory = 3;
                                     break;
-                                }*/
+                                }
                                 mdebug2("New files have been detected in the '%s' directory after the last scan.", path);
                             } else {
                                 // Check if is a valid directory
@@ -597,25 +635,24 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, void *
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
                     unsigned int mask = w_evt->mask;
                     if (!w_evt->scan_directory) {
-                        if (mask || w_evt->force_notify) {
-                            if (w_evt->deleted) {
-                                // Check if the file has been deleted
-                                send_whodata_del(w_evt);
-                            } else if (mask & FILE_WRITE_DATA) {
-                                // Check if the file has been written
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            } else if (mask & DELETE) {
-                                // The file has been moved or renamed
-                                send_whodata_del(w_evt);
-                            } else if (w_evt->force_notify) {
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            }
+                        if (w_evt->deleted) {
+                            // Check if the file has been deleted
+                            send_whodata_del(w_evt);
+                        } else if (mask & FILE_WRITE_DATA) {
+                            // Check if the file has been written
+                            realtime_checksumfile(w_evt->path, w_evt);
+                        } else if (mask & DELETE) {
+                            // The file has been moved or renamed
+                            send_whodata_del(w_evt);
+                        } else {
+                            // At this point the file can be new or cleaned
+                            realtime_checksumfile(w_evt->path, w_evt);
                         }
-                    } else if (w_evt->scan_directory != 2) { // Directory scan has been aborted if scan_directory is 2
+                    } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         // Check that a new file has been added
                         if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             time(&w_dir->timestamp);
-                            read_dir(w_evt->path, syscheck.opts[w_dir->position], syscheck.filerestrict[w_dir->position], NULL);
+                            read_dir(w_evt->path, syscheck.opts[w_dir->position], syscheck.filerestrict[w_dir->position], NULL, 0);
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
                         } else {
                             mdebug2("The '%s' directory has not been scanned because no new files have been detected. Mask: '%x'", w_evt->path, w_evt->mask);
@@ -762,21 +799,63 @@ void send_whodata_del(whodata_evt *w_evt) {
     send_syscheck_msg(del_msg);
 }
 
-void set_policies() {
-/*    char *output = NULL;
+int set_policies() {
+    char *output = NULL;
     int result_code = 0;
+    FILE *f_backup;
+    FILE *f_new;
+    char buffer[OS_MAXSTR];
     char command[OS_SIZE_1024];
-    static const char *WPOL_HANDLEM = ",System,Handle Manipulation,";
-    static const char *WPOL_FILE_SYS = ",System,File System,";
-    static const char *WPOL_BACKUP_COMMAND = "auditpol \/backup \/file:\"%s\"";
-    static const char *WPOL_RESTORE_COMMAND = "auditpol \/restore \/file:\"%s\"";
+    char *found;
+    char *state;
+    static const char *WPOL_HANDLE_MAN = ",System,Handle Manipulation,";
+    static const char *WPOL_FILE_SYSTEM = ",System,File System,";
+    static const char *WPOL_NO_AUDITING = ",No Auditing,";
+    static const char *WPOL_FAILURE = ",Failure,";
+    static const char *WPOL_SUCCESS = ",Success,,1";
 
-    snprintf()
+    if (!IsFile(WPOL_BACKUP_FILE) && remove(WPOL_BACKUP_FILE)) {
+        return 1;
+    }
 
-    auditpol /backup /file:"%backup_path%"
+    snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
-    wm_exec("ee", &output, &result_code, 0);
-*/
+    // Get the current policies
+    if (wm_exec(command, &output, &result_code, 5), result_code) {
+        merror("Auditpol backup error: '%s'.", output);
+        return 1;
+    }
+
+    if (!(f_backup = fopen (WPOL_BACKUP_FILE, "r")) ||
+        !(f_new = fopen (WPOL_NEW_FILE, "w"))) {
+        return 1;
+    }
+
+    // Merge the policies
+    while (fgets(buffer, OS_MAXSTR - 20, f_backup)) {
+        if ((found = strstr(buffer, WPOL_HANDLE_MAN)) ||
+            (found = strstr(buffer, WPOL_FILE_SYSTEM))) {
+            if ((state = strstr(found, WPOL_NO_AUDITING)) ||
+                (state = strstr(found, WPOL_FAILURE))) {
+                snprintf(state, 20, "%s\n", WPOL_SUCCESS);
+            }
+        }
+        fprintf(f_new, buffer);
+    }
+
+    fclose(f_new);
+    fclose(f_backup);
+
+    snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
+
+    // Set the new policies
+    if (wm_exec(command, &output, &result_code, 5), result_code) {
+        merror("Auditpol restore error: '%s'.", output);
+        return 1;
+    }
+
+    free(output);
+    return 0;
 }
 
 void set_subscription_query(wchar_t *query) {
@@ -818,13 +897,34 @@ int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time) {
 }
 
 int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time) {
-    struct tm *parsed_time = localtime(timestamp);
-    minfo("~~~~~~~~~~~~hour     1:%d       2:%d", parsed_time->tm_hour, system_time->wHour);
-    minfo("~~~~~~~~~~~~minute     1:%d       2:%d", parsed_time->tm_min, system_time->wMinute);
-    minfo("~~~~~~~~~~~~second     1:%d       2:%d", parsed_time->tm_sec, system_time->wSecond);
+    struct tm parsed_time;
+    gmtime_r(timestamp, &parsed_time);
 
+    if (parsed_time.tm_mday > system_time->wDay) {
+        return 0;
+    } else if (parsed_time.tm_mday < system_time->wDay) {
+        return 1;
+    }
 
-    return 0;
+    if (parsed_time.tm_hour > system_time->wHour) {
+        return 0;
+    } else if (parsed_time.tm_hour < system_time->wHour) {
+        return 1;
+    }
+
+    if (parsed_time.tm_min > system_time->wMinute) {
+        return 0;
+    } else if (parsed_time.tm_min < system_time->wMinute) {
+        return 1;
+    }
+
+    if (parsed_time.tm_sec > system_time->wSecond) {
+        return 0;
+    } else if (parsed_time.tm_sec < system_time->wSecond) {
+        return 1;
+    }
+
+    return 1;
 }
 
 #endif

@@ -32,7 +32,7 @@ void HandleRemote(int uid)
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
         if (logr.allowips == NULL) {
-            merror(NO_SYSLOG);
+            minfo(NO_SYSLOG);
             exit(0);
         } else {
             os_ip **tmp_ips;

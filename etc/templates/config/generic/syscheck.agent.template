@@ -33,5 +33,5 @@
     <skip_nfs>yes</skip_nfs>
 
     <!-- Remove not monitorized files -->
-    <remove_old_diff>no</remove_old_diff>
+    <remove_old_diff>yes</remove_old_diff>
   </syscheck>

@@ -25,7 +25,6 @@ AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
-REMOTE_SYS_TEMPLATE="./etc/templates/config/generic/remote-syslog.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 
@@ -33,6 +32,7 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
+SYSC_TEMPLATE="./etc/templates/config/generic/wodle-syscollector.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 ##########
@@ -118,6 +118,19 @@ WriteSyscollector()
         SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
     cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+}
+##########
+# Osquery()
+##########
+WriteOsquery()
+{
+    # Adding to the config file
+    OSQUERY_TEMPLATE=$(GetTemplate "osquery.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+        OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
 
@@ -302,6 +315,7 @@ WriteAgent()
     echo "    <notify_time>60</notify_time>" >> $NEWCONFIG
     echo "    <time-reconnect>300</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
+    echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -321,6 +335,12 @@ WriteAgent()
 
     # CIS-CAT configuration
     WriteCISCAT "agent"
+
+    # Write osquery
+    WriteOsquery "agent"
+
+    # Syscollector configuration
+    WriteSyscollector "agent"
 
     # Syscheck
     WriteSyscheck "agent"
@@ -400,12 +420,6 @@ WriteManager()
     echo "" >> $NEWCONFIG
 
     # Remote connection secure
-    if [ "X$RLOG" = "Xyes" ]; then
-      cat ${REMOTE_SYS_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    # Remote connection syslog
     if [ "X$SLOG" = "Xyes" ]; then
       cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
@@ -419,6 +433,12 @@ WriteManager()
 
     # CIS-CAT configuration
     WriteCISCAT "manager"
+
+    # Write osquery
+    WriteOsquery "manager"
+
+    # Syscollector configuration
+    WriteSyscollector "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -530,6 +550,9 @@ WriteLocal()
     # CIS-CAT configuration
     WriteCISCAT "agent"
 
+    # Write osquery
+    WriteOsquery "manager"
+
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -599,7 +622,6 @@ InstallCommon(){
     OSSEC_USER='ossec'
     OSSEC_USER_MAIL='ossecm'
     OSSEC_USER_REM='ossecr'
-    EXTERNAL_LUA='external/lua-5.2.3/'
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -640,15 +662,23 @@ InstallCommon(){
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
     fi
 
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/native
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lua/compiled
+  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lib
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        ${INSTALL} -m 0750 -o root -g 0 libwazuhext.dylib ${PREFIX}/lib
+    else
+        ${INSTALL} -m 0750 -o root -g 0 libwazuhext.so ${PREFIX}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/libwazuhext.so
+        fi
+    fi
+
   ${INSTALL} -m 0750 -o root -g 0 ossec-logcollector ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ossec-execd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-lua ${PREFIX}/bin/
-  ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LUA}src/ossec-luac ${PREFIX}/bin/
   ${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
@@ -734,6 +764,7 @@ InstallCommon(){
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
+  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
@@ -748,7 +779,7 @@ InstallLocal(){
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/rules
     ${INSTALL} -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db
     ${INSTALL} -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/db/agents
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
+    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/download
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
@@ -820,8 +851,8 @@ InstallLocal(){
 
 TransferShared() {
     rm -f ${PREFIX}/etc/shared/merged.mg
-    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec cp -pf {} ${PREFIX}/backup/shared \;
-    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -exec mv -f {} ${PREFIX}/etc/shared/default \;
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${PREFIX}/backup/shared \;
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${PREFIX}/etc/shared/default \;
 }
 
 InstallServer(){
@@ -831,6 +862,7 @@ InstallServer(){
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/cluster
 
+    ${INSTALL} -d -m 760 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
     ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
 
@@ -867,7 +899,6 @@ InstallAgent(){
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/incoming
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/wpk_root.pem ${PREFIX}/etc/
 

@@ -82,17 +82,6 @@ void *OSHash_Free(OSHash *self)
     return (NULL);
 }
 
-/* Free the memory used by the hash */
-void *OSHash_Free_ex(OSHash *self)
-{
-    void *result;
-
-    w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
-    result = OSHash_Free(self);
-    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
-
-    return result;
-}
 
 /* Generates hash for key */
 static unsigned int _os_genhash(const OSHash *self, const char *key)

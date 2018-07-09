@@ -10,6 +10,10 @@
 
 #include "syscheck_op.h"
 
+#ifdef WIN32
+#include <sddl.h>
+#endif
+
 /* Local variables */
 _sdb sdb;
 
@@ -150,8 +154,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             return -1;
         }
 
-        sum->wdata.user_name = unescape_whodata_sum(sum->wdata.user_name);
-        sum->wdata.process_name = unescape_whodata_sum(sum->wdata.process_name);
         if (*sum->wdata.ppid == '-') {
             sum->wdata.ppid = NULL;
         }
@@ -201,7 +203,7 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if(sum->wdata.user_name) {
-        os_strdup(sum->wdata.user_name, lf->user_name);
+        lf->user_name = unescape_whodata_sum(sum->wdata.user_name);
     }
 
     if(sum->wdata.group_id) {
@@ -213,7 +215,7 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if(sum->wdata.process_name) {
-        os_strdup(sum->wdata.process_name, lf->process_name);
+        lf->process_name = unescape_whodata_sum(sum->wdata.process_name);
     }
 
     if(sum->wdata.audit_uid) {
@@ -309,6 +311,60 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->wdata.effective_name, lf->fields[SK_EFFECTIVE_NAME].value);
 }
 
+void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum) {
+    /* Whodata user */
+    if(sum->wdata.user_id && sum->wdata.user_name && *sum->wdata.user_id != '\0') {
+        snprintf(sdb.user_name, OS_FLSIZE, "(Audit) User: '%s (%s)'\n", sum->wdata.user_name, sum->wdata.user_id);
+        os_strdup(sum->wdata.user_id, lf->user_id);
+        os_strdup(sum->wdata.user_name, lf->user_name);
+    } else {
+        *sdb.user_name = '\0';
+    }
+
+    /* Whodata effective user */
+    if(sum->wdata.effective_uid && sum->wdata.effective_name && *sum->wdata.effective_uid != '\0') {
+        snprintf(sdb.effective_name, OS_FLSIZE, "(Audit) Effective user: '%s (%s)'\n", sum->wdata.effective_name, sum->wdata.effective_uid);
+        os_strdup(sum->wdata.effective_uid, lf->effective_uid);
+        os_strdup(sum->wdata.effective_name, lf->effective_name);
+    } else {
+        *sdb.effective_name = '\0';
+    }
+
+    /* Whodata Audit user */
+    if(sum->wdata.audit_uid && sum->wdata.audit_name && *sum->wdata.audit_uid != '\0') {
+        snprintf(sdb.audit_name, OS_FLSIZE, "(Audit) Login user: '%s (%s)'\n", sum->wdata.audit_name, sum->wdata.audit_uid);
+        os_strdup(sum->wdata.audit_uid, lf->audit_uid);
+        os_strdup(sum->wdata.audit_name, lf->audit_name);
+    } else {
+        *sdb.audit_name = '\0';
+    }
+
+    /* Whodata Group */
+    if(sum->wdata.group_id && sum->wdata.group_name && *sum->wdata.group_id != '\0') {
+        snprintf(sdb.group_name, OS_FLSIZE, "(Audit) Group: '%s (%s)'\n", sum->wdata.group_name, sum->wdata.group_id);
+        os_strdup(sum->wdata.group_id, lf->group_id);
+        os_strdup(sum->wdata.group_name, lf->group_name);
+    } else {
+        *sdb.group_name = '\0';
+    }
+
+    /* Whodata process */
+    if(sum->wdata.process_id && *sum->wdata.process_id != '\0') {
+        snprintf(sdb.process_id, OS_FLSIZE, "(Audit) Process id: '%s'\n", sum->wdata.process_id);
+        os_strdup(sum->wdata.process_id, lf->process_id);
+    } else {
+        *sdb.process_id = '\0';
+    }
+
+    if(sum->wdata.process_name && *sum->wdata.process_name != '\0') {
+        snprintf(sdb.process_name, OS_FLSIZE, "(Audit) Process name: '%s'\n", sum->wdata.process_name);
+        os_strdup(sum->wdata.process_name, lf->process_name);
+    } else {
+        *sdb.process_name = '\0';
+    }
+}
+
+
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     int r;
 
@@ -321,39 +377,44 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     return r < (int)size ? 0 : -1;
 }
 
-int remove_empty_folders(char *path) {
-    char *c;
+int remove_empty_folders(const char *path) {
+    const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
+    const char *c;
     char parent[PATH_MAX] = "\0";
     char ** subdir;
+    int retval = 0;
 
     // Get parent
-    c = strrchr(path, '/');
-    if(c) {
-        memmove(parent, path, strlen(path) - strlen(c));
+    c = strrchr(path, PATH_SEP);
+    if (c) {
+        memcpy(parent, path, c - path);
+        parent[c - path] = '\0';
         // Don't delete above /local
-        if(strcmp(strrchr(parent, '/'), "/local") != 0){
-            if (subdir = wreaddir(parent), !subdir) {
+        if (c = strrchr(parent, PATH_SEP), c && strcmp(c, LOCALDIR) != 0) {
+            subdir = wreaddir(parent);
+            if (!(subdir && *subdir)) {
                 // Remove empty folder
+                mdebug1("Removing empty directory '%s'.", parent);
                 if (rmdir_ex(parent) != 0) {
                     mwarn("Empty directory '%s' couldn't be deleted. ('%s')",
                         parent, strerror(errno));
-                    return (1);
+                    retval = 1;
+                } else {
+                    // Get parent and remove it if it's empty
+                    retval = remove_empty_folders(parent);
                 }
-                // Get parent and remove it if it's empty
-                c = strrchr(path, '/');
-                memmove(parent, path, strlen(path) - strlen(c));
-                remove_empty_folders(parent);
             }
+
             free_strarray(subdir);
         }
-        
     }
-    return 0;
+
+    return retval;
 }
 
 int delete_target_file(const char *path) {
-    char full_path[PATH_MAX] = DIFF_DIR_PATH;
-    strcat(full_path, "/local");
+    char full_path[PATH_MAX] = "\0";
+    snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
 #ifdef WIN32
     char *windows_path = strchr(path, ':');
@@ -370,7 +431,7 @@ int delete_target_file(const char *path) {
 
 #ifndef WIN32
 
-const char* get_user(__attribute__((unused)) const char *path, int uid) {
+const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
     struct passwd *user = getpwuid(uid);
     return user ? user->pw_name : "";
 }
@@ -382,7 +443,7 @@ const char* get_group(int gid) {
 
 #else
 
-const char *get_user(const char *path, __attribute__((unused)) int uid)
+const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
 {
     DWORD dwRtnCode = 0;
     PSID pSidOwner = NULL;
@@ -419,7 +480,8 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
             merror("CreateFile (%s) error = %lu", path, dwErrorCode);
         }
 
-        return "";
+        *AcctName = '\0';
+        goto end;
     }
 
     // Get the owner SID of the file.
@@ -435,13 +497,20 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
 
     CloseHandle(hFile);
 
+
+    if (!ConvertSidToStringSid(pSidOwner, sid)) {
+        *sid = NULL;
+        mdebug1("The user's SID could not be extracted.");
+    }
+
     // Check GetLastError for GetSecurityInfo error condition.
     if (dwRtnCode != ERROR_SUCCESS) {
         DWORD dwErrorCode = 0;
 
         dwErrorCode = GetLastError();
         merror("GetSecurityInfo error = %lu", dwErrorCode);
-        return "";
+        *AcctName = '\0';
+        goto end;
     }
 
     // Second call to LookupAccountSid to get the account name.
@@ -465,9 +534,13 @@ const char *get_user(const char *path, __attribute__((unused)) int uid)
         else
             merror("Error in LookupAccountSid.");
 
-        return "";
+        *AcctName = '\0';
     }
 
+end:
+    if (pSD) {
+        LocalFree(pSD);
+    }
     return AcctName;
 }
 

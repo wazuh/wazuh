@@ -230,9 +230,13 @@ def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, s
         query += ' ORDER BY date DESC'
 
     if limit:
+        if limit > common.maximum_database_limit:
+            raise WazuhException(1405, str(limit))
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
+    elif limit == 0:
+        raise WazuhException(1406)
 
     if summary:
         select = ["max(date)", "mtime", "fim_event.type", "path"]

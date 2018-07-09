@@ -19,7 +19,7 @@ try:
     from wazuh import common
     from wazuh.cluster import cluster
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
-    from wazuh.cluster.client import ClientManager
+    from wazuh.cluster.worker import WorkerManager
     from wazuh.cluster.communication import InternalSocketThread
 except Exception as e:
     print("Error importing 'Wazuh' package: {0}".format(e))
@@ -28,13 +28,13 @@ except Exception as e:
 #
 # Tests
 #
-def test_multiple_requests_from_client(thread, name, my_client, n):
+def test_multiple_requests_from_worker(thread, name, my_worker, n):
     ok_requests = 0
 
     start = time.time()
     for i in range(n):
-        response = my_client.send_request('echo-c', 'Keep-alive from client!')
-        processed_response = my_client.process_response(response)
+        response = my_worker.send_request('echo-c', 'Keep-alive from worker!')
+        processed_response = my_worker.process_response(response)
         if processed_response:
             ok_requests += 1
             print(processed_response)
@@ -42,7 +42,7 @@ def test_multiple_requests_from_client(thread, name, my_client, n):
             print("No response")
     end = time.time()
 
-    print("\n#Results '{0}' - test_multiple_requests_from_client:".format(name))
+    print("\n#Results '{0}' - test_multiple_requests_from_worker:".format(name))
     print("Total requests: {}".format(n))
     print("\tOK: {0}".format(ok_requests))
     print("\tKO: {0}".format(n-ok_requests))
@@ -57,7 +57,7 @@ def test_multiple_requests_from_master(thread, name, server, n):
     start = time.time()
     for i in range(n):
         # Broadcast
-        for client_name, response in server.send_request_broadcast('echo-m', 'Keep-alive from server!'):
+        for worker_name, response in server.send_request_broadcast('echo-m', 'Keep-alive from server!'):
             processed_response = server.handler.process_response(response)
             if processed_response:
                 ok_requests += 1
@@ -76,23 +76,23 @@ def test_multiple_requests_from_master(thread, name, server, n):
     thread.stop()
 
 
-def test_send_file(thread, my_client, file_path):
+def test_send_file(thread, my_worker, file_path):
     before = time.time()
     print("Sending file: {}".format(file_path))
-    response = my_client.send_file('sync_c_m', file_path)
-    print "Response: {}".format(response)
+    response = my_worker.send_file('sync_c_m', file_path)
+    print("Response: {}".format(response))
     after = time.time()
-    print "Total time: {}".format(after - before)
+    print("Total time: {}".format(after - before))
     thread.stop()
 
 
-def test_cluster_client_requests(thread, my_client):
+def test_cluster_worker_requests(thread, my_worker):
     requests_list = [
     ]
 
     for req, data, expected_res in requests_list:
         print("Testing request {}".format(req))
-        local_res = my_client.process_response(my_client.send_request(command = req, data = data))
+        local_res = my_worker.process_response(my_worker.send_request(command = req, data = data))
         if expected_res != local_res:
             print("Request {} failed. Expected response: '{}', response: '{}'".format(req, expected_res, local_res))
         else:
@@ -107,11 +107,11 @@ def test_cluster_master_requests(thread, my_master):
         ("getintegrity", None, {'/etc/client.keys':'pending'})
     ]
 
-    time.sleep(2) # wait for clients to connect
+    time.sleep(2) # wait for workers to connect
     for req, data, expected_res in requests_list:
         print("Testing request {}".format(req))
         for c_name, res in my_master.send_request_broadcast(command=req, data=data):
-            print("Client {}".format(c_name))
+            print("Worker {}".format(c_name))
             local_res = my_master.handler.process_response(res)
             if expected_res != local_res:
                 print("Request {} failed. Expected response: '{}', response: '{}'".format(req, expected_res, local_res))
@@ -140,10 +140,10 @@ class MasterTest(threading.Thread):
 
         while self.running:
             if self.test == 'test1':
-                if len(self.server.get_connected_clients()) > 0:
+                if len(self.server.get_connected_workers()) > 0:
                     test_multiple_requests_from_master(self, self.name, self.server, self.test_size)
                 else:
-                    print("Waiting for clients")
+                    print("Waiting for workers")
                     time.sleep(2)
             elif self.test == 'testm':
                 test_cluster_master_requests(self, self.server)
@@ -155,14 +155,14 @@ class MasterTest(threading.Thread):
         self.running = False
 
 #
-# Client threads
+# Worker threads
 #
-class ClientTest(threading.Thread):
+class WorkerTest(threading.Thread):
 
     def __init__(self, t_name, test_name, test_size=0, filepath=""):
         threading.Thread.__init__(self)
         self.daemon = True
-        self.client = None
+        self.worker = None
         self.running = True
         self.name = t_name
         self.test = test_name
@@ -172,22 +172,22 @@ class ClientTest(threading.Thread):
 
     def run(self):
         while self.running:
-            if self.client and self.client.is_connected():
+            if self.worker and self.worker.is_connected():
 
                 if self.test == 'test1':
-                    test_multiple_requests_from_client(self, self.name, self.client, n=self.test_size)
+                    test_multiple_requests_from_worker(self, self.name, self.worker, n=self.test_size)
                 elif self.test == 'testf':
-                    test_send_file(self, self.client, filepath)
+                    test_send_file(self, self.worker, filepath)
                 elif self.test == 'testc':
-                    test_cluster_client_requests(self, self.client)
+                    test_cluster_worker_requests(self, self.worker)
                 else:
                     print("T: No test selected")
 
-                #self.client.handle_close()
+                #self.worker.handle_close()
                 # self.stop()
 
-    def setclient(self, client):
-        self.client = client
+    def setworker(self, worker):
+        self.worker = worker
 
 
     def stop(self):
@@ -240,9 +240,9 @@ def master_main(test_name, test_size):
     print("Exiting...")
 
 #
-# Client main
+# Worker main
 #
-def client_main(test_name, test_size, filepath):
+def worker_main(test_name, test_size, filepath):
     c_config = cluster.read_config()
 
 
@@ -251,42 +251,42 @@ def client_main(test_name, test_size, filepath):
         print("Just connect")
         while True:
             print("Test: just listening")
-            client = ClientManager(c_config)
-            asyncore.loop(timeout=1, map=client.map)
+            worker = WorkerManager(c_config)
+            asyncore.loop(timeout=1, map=worker.map)
             time.sleep(1)
-        asyncore.loop(timeout=1, map=client.map)
+        asyncore.loop(timeout=1, map=worker.map)
     elif test_name == 'test1':
-        client = ClientManager(c_config)
+        worker = WorkerManager(c_config)
 
-        c_test_thread = ClientTest('trehad 0', test_name, test_size)
+        c_test_thread = WorkerTest('trehad 0', test_name, test_size)
         c_test_thread.start()
-        c_test_thread.setclient(client)
+        c_test_thread.setworker(worker)
 
-        asyncore.loop(timeout=1, map=client.map)
+        asyncore.loop(timeout=1, map=worker.map)
     elif test_name == 'test2':
-        client = ClientManager(c_config)
+        worker = WorkerManager(c_config)
 
         thread_pool = []
         for i in range(10):
-            thread_pool.append(ClientTest('thread {0}'.format(i), 'test1', test_size))
-            thread_pool[i].setclient(client)
+            thread_pool.append(WorkerTest('thread {0}'.format(i), 'test1', test_size))
+            thread_pool[i].setworker(worker)
 
         for i in range(10):
             thread_pool[i].start()
 
-        asyncore.loop(timeout=1, map=client.map)
+        asyncore.loop(timeout=1, map=worker.map)
     elif test_name == 'testf':
-        client = ClientManager(c_config)
-        thread_test = ClientTest(t_name='thread0', test_name='testf', filepath=filepath)
-        thread_test.setclient(client)
+        worker = WorkerManager(c_config)
+        thread_test = WorkerTest(t_name='thread0', test_name='testf', filepath=filepath)
+        thread_test.setworker(worker)
         thread_test.start()
-        asyncore.loop(timeout=1, map=client.map)
+        asyncore.loop(timeout=1, map=worker.map)
     elif test_name == 'testc':
-        client = ClientManager(c_config)
-        thread_test = ClientTest(t_name='thread0', test_name='testc')
-        thread_test.setclient(client)
+        worker = WorkerManager(c_config)
+        thread_test = WorkerTest(t_name='thread0', test_name='testc')
+        thread_test.setworker(worker)
         thread_test.start()
-        asyncore.loop(timeout=1, map=client.map)
+        asyncore.loop(timeout=1, map=worker.map)
     else:
         print("No test selected")
 
@@ -319,8 +319,8 @@ if __name__ == '__main__':
     try:
         if  node_type == "master":
             master_main(test_name, size)
-        elif node_type == "client":
-            client_main(test_name, size, filepath)
+        elif node_type == "worker":
+            worker_main(test_name, size, filepath)
     except KeyboardInterrupt:
         pass
 

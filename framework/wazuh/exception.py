@@ -59,6 +59,8 @@ class WazuhException(Exception):
         1402: 'Invalid order. Order must be \'asc\' or \'desc\'',
         1403: 'Sort field invalid',  # Also, in DB
         1404: 'A field must be specified to order the data',
+        1405: 'Specified limit exceeds maximum allowed (1000)',
+        1406: '0 is not a valid limit',
 
         # Decoders: 1500 - 1599
         1500: 'Error reading decoders from ossec.conf',
@@ -126,7 +128,7 @@ class WazuhException(Exception):
         3008: 'Received invalid agent status',
         3009: 'Error executing request to internal socket',
         3010: 'Received the status/group of an unexisting agent',
-        3011: 'Agent info file received in a client node',
+        3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
         3013: 'Cluster is disabled',
         3015: 'Cannot access directory',

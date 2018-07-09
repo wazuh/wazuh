@@ -33,6 +33,7 @@ volatile int added_rules_error;
 #include "hash_op.h"
 #include "debug_op.h"
 #include "syscheck.h"
+#include "syscheck_op.h"
 
 /* Prototypes */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
@@ -45,11 +46,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     buf = (char *) OSHash_Get_ex(syscheck.fp, file_name);
 
     if (buf != NULL) {
-        char c_sum[256 + 2];
+        char c_sum[512];
         size_t c_sum_size;
 
         c_sum[0] = '\0';
-        c_sum[255] = '\0';
+        c_sum[511] = '\0';
 
         /* If it returns < 0, we have already alerted */
         if (c_read_file(file_name, buf, c_sum, evt) < 0) {
@@ -130,13 +131,13 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 #endif
             if (pos = find_dir_pos(file_name, 0), pos > -1) {
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt);
+                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt, 1);
             }
 #ifdef WIN32
         } else {
             if (pos = evt->dir_position, pos >= 0) {
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt);
+                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt, 1);
             } else {
                 mdebug1("'%s' has been deleted while another file was writing to it.", file_name);
             }
@@ -150,14 +151,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 /* Find container directory */
 int find_dir_pos(const char *filename, char is_whodata) {
     char *buf;
-    char bar;
     int i;
     char *c;
     int retval = -1;
 
 #ifdef WIN32
-    // In Windows all routes will have '\'
-    bar = '\\';
     if (is_whodata) {
         // Root directories are checked in whodata mode
         os_calloc(strlen(filename) + 2, sizeof(char), buf);
@@ -166,12 +164,11 @@ int find_dir_pos(const char *filename, char is_whodata) {
         buf = strdup(filename);
     }
 #else
-    bar = '/';
     buf = strdup(filename);
 #endif
 
 
-    while (c = strrchr(buf, bar), c && c != buf) {
+    while (c = strrchr(buf, PATH_SEP), c && c != buf) {
         *c = '\0';
 
         for (i = 0; syscheck.dir[i]; i++) {
@@ -232,7 +229,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
     }
 
     if (whodata && audit_thread_active && !added_rules_error) {
-        mdebug1("Monitoring with Audit: '%s'.", dir);
+        mdebug2("Monitoring with Audit: '%s'.", dir);
 
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);

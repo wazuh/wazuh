@@ -112,6 +112,9 @@ then
 
     sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $FW_SETUP
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $FW_INIT
+
+    # Cluster
+
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $CLUSTER_INIT
 fi
 
@@ -133,6 +136,10 @@ then
     fi
 
     sed -E -i'' -e "s/^(\!define REVISION \").+\"/\1$revision\"/g" $NSIS_FILE
+
+    # Cluster
+
+    sed -E -i'' -e "s/__revision__ = '.+'/__revision__ = '$revision'/g" $CLUSTER_INIT
 fi
 
 if [ -n "$product" ]

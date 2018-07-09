@@ -21,6 +21,10 @@ int intcheck_file(const char *file_name, const char *dir)
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
     char newsum[1172 + 1];
+#ifdef WIN32
+    const char *user;
+    char *sid;
+#endif
 
     /* Clean sums */
     strncpy(mf_sum,  "xxx", 4);
@@ -59,20 +63,26 @@ int intcheck_file(const char *file_name, const char *dir)
     }
 
 #ifdef WIN32
-    snprintf(newsum, 1172, "%c:%s:%ld:%d:::%s:%s:%s:%s:%ld:%ld:%s %s%s",
+    user = get_user(file_name, statbuf.st_uid, &sid);
+    snprintf(newsum, 1172, "%c:%s:%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s %s%s",
             SYSCHECK_MQ,
             SYSCHECK,
             (long)statbuf.st_size,
             (int)statbuf.st_mode,
+            sid,
             mf_sum,
             sf_sum,
-            get_user(file_name, statbuf.st_uid),
+            user,
             get_group(statbuf.st_gid),
             (long)statbuf.st_mtime,
             (long)statbuf.st_ino,
             sf256_sum,
             dir,
             file_name);
+
+    if (sid) {
+        LocalFree(sid);
+    }
 #else
     snprintf(newsum, 1172, "%c:%s:%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s %s%s",
             SYSCHECK_MQ,
@@ -83,7 +93,7 @@ int intcheck_file(const char *file_name, const char *dir)
             (int)statbuf.st_gid,
             mf_sum,
             sf_sum,
-            get_user(file_name, statbuf.st_uid),
+            get_user(file_name, statbuf.st_uid, NULL),
             get_group(statbuf.st_gid),
             (long)statbuf.st_mtime,
             (long)statbuf.st_ino,

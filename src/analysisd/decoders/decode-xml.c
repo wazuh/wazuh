@@ -202,6 +202,12 @@ int ReadDecodeXML(const char *file)
         goto cleanup;
     }
 
+    /* Check if the file is empty */
+    if(FileSize(file) == 0){
+        retval = 0;
+        goto cleanup;
+    }
+
     /* Get the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
     if (!node) {
@@ -773,6 +779,7 @@ int SetDecodeXML()
     addDecoder2list(SYSCHECK_DEL);
     addDecoder2list(HOSTINFO_NEW);
     addDecoder2list(HOSTINFO_MOD);
+    addDecoder2list(SYSCOLLECTOR_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {
