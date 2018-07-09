@@ -59,6 +59,7 @@ static void execd_shutdown(int sig)
 
         list_entry = (timeout_data *)timeout_node->data;
 
+        mdebug2("Delete pending AR: %s", list_entry->command[0]);
         ExecCmd(list_entry->command);
 
         /* Delete current node - already sets the pointer to next */
@@ -157,6 +158,8 @@ int main(int argc, char **argv)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
+
+    CheckExecConfig();
 
     /* Start exec queue */
     if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {

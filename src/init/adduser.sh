@@ -86,8 +86,12 @@ else
 
     for U in ${NEWUSERS}; do
         if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
-	    if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "AIX" ]; then
+            if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" ]; then
                 ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
+            elif [ "$UNAME" = "AIX" ]; then
+                GID=$(cat /etc/group | grep ossec| cut -d':' -f 3)
+                uid=$(( $GID + 1 ))
+                echo "ossec:x:$uid:$GID::/var/ossec:/bin/false" >> /etc/passwd
             else
                 ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
             fi

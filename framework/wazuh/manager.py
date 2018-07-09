@@ -84,36 +84,41 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     statfs_error = "ERROR: statfs('******') produced error: No such file or directory"
 
     for line in tail(common.ossec_log, 2000):
-        date, log_category, level, description = __get_ossec_log_fields(line)
+        log_fields = __get_ossec_log_fields(line)
+        if log_fields:
+            date, log_category, level, description = log_fields
 
-        try:
-            log_date = datetime.strptime(date, '%Y/%m/%d %H:%M:%S')
-        except ValueError as e:
-            continue
-
-        if log_date < first_date:
-            continue
-
-        if category != 'all':
-            if log_category:
-                if log_category != category:
-                    continue
-            else:
+            try:
+                log_date = datetime.strptime(date, '%Y/%m/%d %H:%M:%S')
+            except ValueError as e:
                 continue
 
-        log_line = {'timestamp': date, 'tag': log_category, 'level': level, 'description': description}
-        if type_log == 'all':
-            logs.append(log_line)
-        elif type_log.lower() == level.lower():
-            if "ERROR: statfs(" in line:
-                if statfs_error in logs:
-                    continue
+            if log_date < first_date:
+                continue
+
+            if category != 'all':
+                if log_category:
+                    if log_category != category:
+                        continue
                 else:
-                    logs.append(statfs_error)
-            else:
+                    continue
+
+            log_line = {'timestamp': date, 'tag': log_category, 'level': level, 'description': description}
+            if type_log == 'all':
                 logs.append(log_line)
+            elif type_log.lower() == level.lower():
+                if "ERROR: statfs(" in line:
+                    if statfs_error in logs:
+                        continue
+                    else:
+                        logs.append(statfs_error)
+                else:
+                    logs.append(log_line)
+            else:
+                continue
         else:
-            continue
+            if logs != []:
+                logs[-1]['description'] += "\n" + line
 
     if search:
         logs = search_array(logs, search['value'], search['negation'])

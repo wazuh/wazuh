@@ -46,6 +46,10 @@
 #define OLDSHA1_BEGIN_SZ  17
 #define NEWSHA1_BEGIN     "New sha1sum is : "
 #define NEWSHA1_BEGIN_SZ  17
+#define OLDSHA256_BEGIN     "Old sha256sum was: "
+#define OLDSHA256_BEGIN_SZ  19
+#define NEWSHA256_BEGIN     "New sha256sum is : "
+#define NEWSHA256_BEGIN_SZ  19
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
 #define SIZE_BEGIN        "Size changed from "
 #define SIZE_BEGIN_SZ     18
@@ -114,6 +118,14 @@ void FreeAlertData(alert_data *al_data)
         free(al_data->new_sha1);
         al_data->new_sha1 = NULL;
     }
+    if (al_data->old_sha256) {
+        free(al_data->old_sha256);
+        al_data->old_sha256 = NULL;
+    }
+    if (al_data->new_sha256) {
+        free(al_data->new_sha256);
+        al_data->new_sha256 = NULL;
+    }
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
     if(al_data->file_size)
     {
@@ -181,6 +193,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *new_md5 = NULL;
     char *old_sha1 = NULL;
     char *new_sha1 = NULL;
+    char *old_sha256 = NULL;
+    char *new_sha256 = NULL;
     char **log = NULL;
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
     char *file_size = NULL;
@@ -226,6 +240,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->new_md5 = new_md5;
                 al_data->old_sha1 = old_sha1;
                 al_data->new_sha1 = new_sha1;
+                al_data->old_sha256 = old_sha256;
+                al_data->new_sha256 = new_sha256;
             /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
                 al_data->file_size = file_size;
                 al_data->owner_chg = owner_chg;
@@ -456,6 +472,22 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 free(new_sha1);
                 os_strdup(p, new_sha1);
             }
+            /* Old SHA-256 */
+            else if (strncmp(OLDSHA256_BEGIN, str, OLDSHA256_BEGIN_SZ) == 0) {
+                os_clearnl(str, p);
+
+                p = str + OLDSHA256_BEGIN_SZ;
+                free(old_sha256);
+                os_strdup(p, old_sha256);
+            }
+            /* New SHA-256 */
+            else if (strncmp(NEWSHA256_BEGIN, str, NEWSHA256_BEGIN_SZ) == 0) {
+                os_clearnl(str, p);
+
+                p = str + NEWSHA256_BEGIN_SZ;
+                free(new_sha256);
+                os_strdup(p, new_sha256);
+            }
          /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
             /* File Size */
             else if(strncmp(SIZE_BEGIN, str, SIZE_BEGIN_SZ) == 0)
@@ -576,6 +608,16 @@ l_error:
             free(new_sha1);
             new_sha1 = NULL;
         }
+
+        if (old_sha256) {
+            free(old_sha256);
+            old_sha256 = NULL;
+        }
+
+        if (new_sha256) {
+            free(new_sha256);
+            new_sha256 = NULL;
+        }
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
         if(file_size)
         {
@@ -641,6 +683,8 @@ l_error:
     free(new_md5);
     free(old_sha1);
     free(new_sha1);
+    free(old_sha256);
+    free(new_sha256);
     free(filename);
 /* "9/19/2016 - Sivakumar Nellurandi - parsing additions" */
     free(file_size);

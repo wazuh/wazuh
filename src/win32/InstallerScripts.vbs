@@ -30,7 +30,7 @@ address         = Replace(args(1), Chr(34), "") 'ADDRESS
 server_port     = Replace(args(2), Chr(34), "") 'SERVER_PORT
 protocol        = Replace(args(3), Chr(34), "") 'PROTOCOL
 notify_time     = Replace(args(4), Chr(34), "") 'NOTIFY_TIME
-time_reconnect  = Replace(args(5), Chr(34), "") 
+time_reconnect  = Replace(args(5), Chr(34), "")
 ' Only try to set the configuration if variables are setted
 
 Set objFSO = CreateObject("Scripting.FileSystemObject")
@@ -143,6 +143,19 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
     objFile.WriteLine strNewText
     objFile.Close
+
+	If Not objFSO.fileExists(home_dir & "local_internal_options.conf") Then
+		' Reading default-local_internal_options.conf file
+		Set objFile = objFSO.OpenTextFile(home_dir & "default-local_internal_options.conf", ForReading)
+		strText = objFile.ReadAll
+		objFile.Close
+
+		' Writing the local_internal_options.conf file
+		Set objFile = objFSO.CreateTextFile(home_dir & "local_internal_options.conf", ForWriting)
+		objFile.WriteLine strText
+		objFile.Close
+
+	End If
 
 End If
 

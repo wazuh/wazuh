@@ -35,7 +35,7 @@
 //#define PIPE_ERROR    "%s(1120): ERROR: Pipe error."
 #define GLOB_ERROR    "(1121): Glob error. Invalid pattern: '%s'."
 #define GLOB_NFOUND   "(1122): No file found by pattern: '%s'."
-//#define UNLINK_ERROR  "%s(1123): ERROR: Unable to delete file: '%s'."
+#define UNLINK_ERROR  "(1123): Unable to delete file: '%s' due to [(%d)-(%s)]."
 #define RENAME_ERROR  "(1124): Could not rename file '%s' to '%s' due to [(%d)-(%s)]."
 //#define INT_ERROR     "%s(1125): ERROR: Internal error (undefined)."
 #define OPEN_ERROR    "(1126): Unable to open file '%s' due to [(%d)-(%s)]."
@@ -48,19 +48,19 @@
 #define CHDIR_ERROR   "(1133): Unable to chdir to directory '%s' due to [(%d)-(%s)]."
 #define LINK_ERROR    "(1134): Unable to link from '%s' to '%s' due to [(%d)-(%s)]."
 #define CHOWN_ERROR   "(1135): Could not chown object '%s' due to [(%d)-(%s)]."
-#define CHOWN_ERROR   "(1135): Could not chown object '%s' due to [(%d)-(%s)]."
 #define EPOLL_ERROR   "(1136): Could not handle epoll descriptor."
 #define LOST_ERROR   "(1137): Lost connection with manager. Setting lock."
 #define KQUEUE_ERROR   "(1138): Could not handle kqueue descriptor."
 #define FTELL_ERROR     "(1139): Could not get position from file '%s' due to [(%d)-(%s)]."
+#define FCLOSE_ERROR  "(1140): Could not close file '%s' due to [(%d)-(%s)]."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
-#define CONFIG_ERROR    "(1202): Configuration error at '%s'. Exiting."
+#define CONFIG_ERROR    "(1202): Configuration error at '%s'."
 #define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
-#define BIND_ERROR      "(1206): Unable to Bind port '%d'"
+#define BIND_ERROR      "(1206): Unable to Bind port '%d' due to [(%d)-(%s)]"
 #define RCONFIG_ERROR   "(1207): %s remote configuration in '%s' is corrupted."
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up.."
@@ -68,7 +68,7 @@
 #define DENYIP_WARN     "(1213): Message from '%s' not allowed."
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
-#define CONNS_ERROR     "(1216): Unable to connect to '%s'."
+#define CONNS_ERROR     "(1216): Unable to connect to '%s': '%s'."
 #define UNABLE_CONN     "(1242): Unable to connect to server. Exhausted all options."
 #define SEC_ERROR       "(1217): Error creating encrypted message."
 #define SEND_ERROR      "(1218): Unable to send message to '%s': %s"
@@ -181,6 +181,9 @@
 #define READING_EVTLOG  "(1951): Analyzing event log: '%s'."
 #define VAR_LOG_MON     "(1952): Monitoring variable log file: '%s'."
 #define INV_MULTILOG    "(1953): Invalid DJB multilog file: '%s'."
+#define MISS_SOCK_NAME  "(1954): Missing field 'name' for socket."
+#define MISS_SOCK_LOC   "(1955): Missing field 'location' for socket."
+
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -275,13 +278,13 @@
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5400): %s database could not be fetched."
 #define VU_OPEN_FILE_ERROR          "(5401): Could not open %s."
-#define VU_LOAD_CVE_ERROR           "(5402): Could not load the CVE OVAL for %s."
+#define VU_LOAD_CVE_ERROR           "(5402): Could not load the CVE OVAL for %s. %s"
 #define VU_INVALID_AT_VALUE         "(5403): Invalid '%s' value for '%s' attribute in node '%s'."
 #define VU_PACKAGE_NAME_ERROR       "(5404): The package name could not be obtained."
 #define VU_SQL_ERROR                "(5405): SQL error: %s"
 #define VU_CHECK_DB_ERROR           "(5406): Database check failed."
 #define VU_QUERY_ERROR              "(5407): The query could not be formed."
-#define VU_OS_VERSION_ERROR         "(5408): Invalid SO version."
+#define VU_OS_VERSION_ERROR         "(5408): Invalid OS version."
 #define VU_REFRESH_DB_ERROR         "(5409): Could not refresh the %s DB."
 #define VU_GET_SOFTWARE_ERROR       "(5410): The software of the agent '%s' could not be obtained."
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
@@ -301,14 +304,22 @@
 #define VU_CREATE_DB_ERROR          "(5427): The database could not be checked or created."
 #define VU_SOFTWARE_REQUEST_ERROR   "(5428): Agent %s software could not be requested."
 #define VU_NO_AGENT_ERROR           "(5429): The agents information could not be processed."
+#define VU_CREATE_HASH_ERRO         "(5430): The agents hash table could not be created."
+#define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last Syscollector scan from the agent %s could not be requested."
+#define VU_HTTP_HEADER_ERROR        "(5432): Invalid HTTP header."
+#define VU_PACKAGE_RECOG_ERROR      "(5433): The package could not be recognized in '%s'."
+#define VU_NO_SYSC_SCANS            "(5434): No Syscollector scans found for agent %s, so their vulnerabilities will not be checked."
+#define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
+#define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
+#define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds..."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
 #define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"
 #define MSG_SOCKET_SIZE "(unix_domain) Maximum send buffer set to: '%d'."
 
-#define NO_SYSLOG       "(1501): No IP or network allowed in the access list" \
-                        " for syslog. No reason for running it. Exiting."
+#define NO_SYSLOG       "(1501): IP or network must be present in syslog" \
+                        " access list (allowed-ips). Syslog server disabled."
 #define CONN_TO     "Connected to '%s' (%s queue)"
 #define MAIL_DIS    "E-Mail notification disabled. Clean Exit."
 

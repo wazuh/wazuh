@@ -156,7 +156,11 @@ static int check_diff_file(const char *host, const char *script)
     char old_location[1024 + 1];
     char new_location[1024 + 1];
     char tmp_location[1024 + 1];
-    char diff_cmd[2048 + 1];
+    char diff_location[1024 + 1];
+    char buffer[4096];
+    wfd_t * wfd;
+    FILE * fp;
+    size_t zread;
 
     os_md5 md5sum_old;
     os_md5 md5sum_new;
@@ -164,7 +168,7 @@ static int check_diff_file(const char *host, const char *script)
     old_location[1024] = '\0';
     new_location[1024] = '\0';
     tmp_location[1024] = '\0';
-    diff_cmd[2048] = '\0';
+    diff_location[1024] = '\0';
 
     snprintf(new_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
              DIFF_NEW_FILE);
@@ -207,11 +211,30 @@ static int check_diff_file(const char *host, const char *script)
 
     /* Run diff */
     date_of_change = File_DateofChange(old_location);
-    snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/%s->%s/diff.%d\" "
-             "2>/dev/null",
-             tmp_location, old_location,
-             DIFF_DIR_PATH, host, script, (int)date_of_change);
-    if (system(diff_cmd) != 256) {
+
+    if (wfd = wpopenl("diff", W_BIND_STDOUT | W_CHECK_WRITE, "diff", tmp_location, old_location, NULL), !wfd) {
+        merror("Unable to run diff for %s->%s: %s (%d)", host, script, strerror(errno), errno);
+        return 0;
+    }
+
+    snprintf(diff_location, sizeof(diff_location), DIFF_DIR_PATH "/%s->%s/diff.%d", host, script, (int)date_of_change);
+
+    if (fp = fopen(diff_location, "wb"), !fp) {
+        merror("Unable to open diff file '%s': %s (%d)", diff_location, strerror(errno), errno);
+        wpclose(wfd);
+        return 0;
+    }
+
+    while (zread = fread(buffer, 1, sizeof(buffer), wfd->file), zread) {
+        if (fwrite(buffer, 1, zread, fp) != zread) {
+            merror("Unable to write diff file '%s': %s (%d)", diff_location, strerror(errno), errno);
+            break;
+        }
+    }
+
+    fclose(fp);
+
+    if (wpclose(wfd) != 256) {
         merror("Unable to run diff for %s->%s",
                host, script);
         return (0);
@@ -257,6 +280,40 @@ static FILE *open_diff_file(const char *host, const char *script)
     return (fp);
 }
 
+static char ** command_args(const char * type, const char * server, const char * options) {
+    char command[1024];
+    char ** argv;
+    char * _options;
+    char * token;
+    int i = 1;
+
+    snprintf(command, sizeof(command), AGENTLESSDIRPATH "/%s", type);
+
+    os_malloc(4 * sizeof(char *), argv);
+    os_strdup(command, argv[0]);
+
+    switch (server[0]) {
+    case 'o':
+        argv[i++] = "use_sudo";
+        break;
+    case 's':
+        argv[i++] = "use_su";
+        break;
+    }
+
+    os_strdup(server + 1, argv[i++]);
+    os_strdup(options, _options);
+
+    for (token = strtok(_options, " "); token; token = strtok(NULL, " ")) {
+        os_strdup(token, argv[i++]);
+        os_realloc(argv, (i + 1) * sizeof(char *), argv);
+    }
+
+    argv[i] = NULL;
+    free(_options);
+    return argv;
+}
+
 /* Run periodic commands */
 static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
 {
@@ -264,8 +321,9 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
     char *tmp_str;
     char buf[OS_SIZE_2048 + 1];
     char command[OS_SIZE_1024 + 1];
-    FILE *fp;
+    char ** argv;
     FILE *fp_store = NULL;
+    wfd_t * wfd;
 
     buf[0] = '\0';
     command[0] = '\0';
@@ -281,10 +339,11 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
         /* We only test for the first server entry */
         else if (test_it) {
             int ret_code = 0;
-            snprintf(command, OS_SIZE_1024,
-                     "%s/%s test test >/dev/null 2>&1",
-                     AGENTLESSDIRPATH, entry->type);
-            ret_code = system(command);
+            snprintf(command, OS_SIZE_1024, "%s/%s", AGENTLESSDIRPATH, entry->type);
+
+            if (wfd = wpopenl(command, W_CHECK_WRITE, command, "test", "test", NULL), wfd) {
+                ret_code = wpclose(wfd);
+            }
 
             /* Check if the test worked */
             if (ret_code != 0) {
@@ -303,23 +362,12 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
             return (0);
         }
 
-        if (entry->server[i][0] == 's') {
-            snprintf(command, OS_SIZE_1024, "%s/%s \"use_su\" \"%s\" %s 2>&1",
-                     AGENTLESSDIRPATH, entry->type, entry->server[i] + 1,
-                     entry->options);
-        } else if (entry->server[i][0] == 'o') {
-            snprintf(command, OS_SIZE_1024, "%s/%s \"use_sudo\" \"%s\" %s 2>&1",
-                     AGENTLESSDIRPATH, entry->type, entry->server[i] + 1,
-                     entry->options);
-        } else {
-            snprintf(command, OS_SIZE_1024, "%s/%s \"%s\" %s 2>&1",
-                     AGENTLESSDIRPATH, entry->type, entry->server[i] + 1,
-                     entry->options);
-        }
+        argv = command_args(entry->type, entry->server[i], entry->options);
+        wfd = wpopenv(argv[0], argv, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
+        free_strarray(argv);
 
-        fp = popen(command, "r");
-        if (fp) {
-            while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
+        if (wfd) {
+            while (fgets(buf, OS_SIZE_2048, wfd->file) != NULL) {
                 /* Remove newlines and carriage returns */
                 tmp_str = strchr(buf, '\r');
                 if (tmp_str) {
@@ -369,9 +417,9 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 save_agentless_entry(entry->server[i] + 1,
                                      entry->type, "syscheck");
             }
-            pclose(fp);
+            wpclose(wfd);
         } else {
-            merror("Popen failed on '%s' for '%s'.",
+            merror("Subprocess failed on '%s' for '%s'.",
                    entry->type, entry->server[i] + 1);
             entry->error_flag++;
         }

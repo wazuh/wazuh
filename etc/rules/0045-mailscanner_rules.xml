@@ -25,7 +25,7 @@
     <group>spam,</group>
   </rule>
 
-  <rule id="3751" level="6" frequency="6" timeframe="180">
+  <rule id="3751" level="6" frequency="8" timeframe="180">
     <if_matched_sid>3702</if_matched_sid>
     <same_source_ip />
     <description>mailscanner: Multiple attempts of spam.</description>

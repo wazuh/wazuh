@@ -27,7 +27,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->allowips = NULL;
     cfg->denyips = NULL;
     cfg->nocmerged = 0;
-    cfg->queue_size = 16384;
+    cfg->queue_size = 131072;
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0) {
         return (OS_INVALID);

@@ -1,4 +1,4 @@
-<!--
+frequency="8"<!--
   -  VMWare ESX rules
   -  Author: Daniel Cid.
   -  Copyright (C) 2009 Trend Micro Inc.
@@ -124,25 +124,25 @@
 
   <!-- Composite rules. -->
 
-  <rule id="19150" level="10" frequency="6" timeframe="120" ignore="60">
+  <rule id="19150" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>19104</if_matched_sid>
     <description>Multiple VMWare ESX warning messages.</description>
     <group>service_availability,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="19151" level="10" frequency="6" timeframe="120" ignore="60">
+  <rule id="19151" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>19103</if_matched_sid>
     <description>Multiple VMWare ESX error messages.</description>
     <group>service_availability,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="19152" level="10" frequency="6" timeframe="120">
+  <rule id="19152" level="10" frequency="8" timeframe="120">
     <if_matched_sid>19111</if_matched_sid>
     <description>Multiple VMWare ESX authentication failures.</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="19153" level="10" frequency="6" timeframe="120">
+  <rule id="19153" level="10" frequency="8" timeframe="120">
     <if_matched_sid>19113</if_matched_sid>
     <description>Multiple VMWare ESX user authentication failures.</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>

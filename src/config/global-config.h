@@ -19,6 +19,8 @@ typedef struct __Config {
     u_int8_t stats;
     u_int8_t integrity;
     u_int8_t syscheck_auto_ignore;
+    int syscheck_ignore_frequency;
+    int syscheck_ignore_time;
     u_int8_t syscheck_alert_new;
     u_int8_t rootcheck;
     u_int8_t hostinfo;
@@ -106,6 +108,7 @@ typedef struct __Config {
     int rotate_interval;
     int min_rotate_interval;
     ssize_t max_output_size;
+    long queue_size;
 } _Config;
 
 #endif /* _CCONFIG__H */

@@ -74,7 +74,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
     mdebug1("Local server thread ready.");
 
     if (sock = OS_BindUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s'. Closing local server.", AUTH_LOCAL_SOCK);
+        merror("Unable to bind to socket '%s': '%s'. Closing local server.", AUTH_LOCAL_SOCK, strerror(errno));
         return NULL;
     }
 
@@ -309,7 +309,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     }
 
     /* Add pending key to write */
-    add_insert(keys.keyentries[index]);
+    add_insert(keys.keyentries[index],NULL);
     write_pending = 1;
     pthread_cond_signal(&cond_pending);
 

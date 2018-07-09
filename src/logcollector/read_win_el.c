@@ -465,8 +465,7 @@ void readel(os_el *el, int printit)
                          computer_name,
                          descriptive_msg != NULL ? descriptive_msg : el_string);
 
-                if (SendMSG(logr_queue, final_msg, "WinEvtLog",
-                            LOCALFILE_MQ) < 0) {
+                if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
                     merror(QUEUE_SEND);
                 }
             }

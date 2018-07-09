@@ -799,7 +799,10 @@ void OS_RemoveAgentTimestamp(const char *id)
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
         if (sep = strchr(line, ' '), sep) {
             *sep = '\0';
+        } else {
+            continue;
         }
+
         if (strcmp(id, line)) {
             *sep = ' ';
             strncpy(&buffer[pos], line, fp_stat.st_size - pos);

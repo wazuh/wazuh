@@ -30,7 +30,7 @@ int receive_msg()
     uint32_t length;
     size_t msg_length;
     int reads = 0;
-    int undefined_msg_logged = 0;
+    static int undefined_msg_logged = 0;
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;
@@ -72,9 +72,9 @@ int receive_msg()
                 }else if(length > OS_MAXSTR){
                 	merror("Too big message size from manager.");
                 	return 0;
-                }    
+                }
             }
-            
+
             recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
 
             if (recv_b != (ssize_t)length) {
@@ -234,9 +234,13 @@ int receive_msg()
                                     mwarn("Could not clean up shared directory.");
                                 }
 
-                                UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
+                                if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
+                                    char msg_output[OS_MAXSTR];
 
-                                if (agt->flags.remote_conf && !verifyRemoteConf()) {
+                                    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);
+                                    send_msg(msg_output, -1);
+                                }
+                                else if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                     if (agt->flags.auto_restart) {
                                         minfo("Agent is restarting due to shared configuration changes.");
                                         restartAgent();

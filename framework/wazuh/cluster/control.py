@@ -46,17 +46,25 @@ def check_cluster_status():
 def get_nodes(filter_list_nodes=None):
     request="get_nodes {}"
     nodes = __execute(request)
-    response = {"items":{}, "node_error":[]}
-    response["items"] = {node:node_info for node, node_info in nodes.items() if not filter_list_nodes or node in filter_list_nodes}
-    if filter_list_nodes:
-        response["node_error"] = [node for node in filter_list_nodes if node not in response["items"]]
+
+    if nodes.get("err"):
+        response = nodes
+    else:
+        response = {"items":{}, "node_error":[]}
+        response["items"] = {node:node_info for node, node_info in nodes.items() if not filter_list_nodes or node in filter_list_nodes}
+        if filter_list_nodes:
+            response["node_error"] = [node for node in filter_list_nodes if node not in response["items"]]
     return response
 
 def get_nodes_api(filter_node=None, filter_type=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None):
     request="get_nodes {}"
     nodes = __execute(request)
+
+    if nodes.get("err"):
+        raise WazuhException(3016, "{}".format(nodes['err']))
+
     valid_select_fiels = {"name", "version", "type", "ip"}
-    valid_types = {"client", "master"}
+    valid_types = {"worker", "master"}
     select_fields_param = {}
 
     if select:
@@ -103,7 +111,7 @@ def get_healthcheck(filter_node=None):
     request="get_health {}".format(filter_node)
     return __execute(request)
 
-def get_agents(filter_status="all", filter_node="all", offset=0, limit=common.database_limit, sort=None, search=None):
+def get_agents(filter_status=None, filter_node=None):
     filter_status_f = "all"
     filter_node_f = "all"
 
@@ -123,8 +131,16 @@ def get_agents(filter_status="all", filter_node="all", offset=0, limit=common.da
     if filter_node:
         filter_node_f = [node_name.lower() for node_name in filter_node]
 
-    request="get_agents {}%--%{}%--%{}%--%{}%--%{}%--%{}".format(filter_status_f, filter_node_f, offset, limit, sort, search)
-    return __execute(request)
+    internal_limit = common.database_limit
+    request = "get_agents {}%--%{}%--%{}%--%{}"
+    current_offset = 0
+    continue_request = True
+    while continue_request:
+        response = __execute(request.format(filter_status_f, filter_node_f, current_offset, internal_limit))
+        continue_request = (response and len(response['items']) > 0)
+        current_offset += internal_limit
+        yield response
+
 
 def sync(filter_node=None):
     request = "sync {}".format(filter_node) if filter_node else "sync"
