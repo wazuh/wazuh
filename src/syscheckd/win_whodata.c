@@ -57,6 +57,7 @@ void whodata_list_remove_multiple(size_t quantity);
 void send_whodata_del(whodata_evt *w_evt);
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
 int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time);
+void free_win_whodata_evt(whodata_evt *evt);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -554,14 +555,21 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 user_name = NULL;
                 user_id = NULL;
                 process_name = NULL;
+add_whodata_evt:
                 if (result = OSHash_Add_ex(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
                     if (!result) {
                         merror("The event for '%s' could not be added to the whodata hash table. Handle: '%s'.", path, hash_id);
                     } else if (result == 1) {
-                        merror("The event for '%s' could not be added to the whodata hash table because it is duplicated. Handle: '%s'.", path, hash_id);
+                        whodata_evt *w_evtdup;
+                        mdebug1("The event for '%s' could not be added to the whodata hash table because it is duplicated, so the handler ('%s') will be updated.", path, hash_id);
+                        if (w_evtdup = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evtdup) {
+                            free_win_whodata_evt(w_evtdup);
+                            goto add_whodata_evt;
+                        } else {
+                            merror("The handler '%s' could not be removed from the whodata hash table.", hash_id);
+                        }
                     }
-                    whodata_list_remove(w_evt->wnode);
-                    free_whodata_event(w_evt);
+                    free_win_whodata_evt(w_evt);
                     retval = 1;
                     goto clean;
                 }
@@ -663,8 +671,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     } else if (w_evt->scan_directory == 2) {
                         mdebug1("Scanning of the '%s' directory is aborted because something has gone wrong.", w_evt->path);
                     }
-                    whodata_list_remove(w_evt->wnode);
-                    free_whodata_event(w_evt);
+                    free_win_whodata_evt(w_evt);
                 } else {
                     // The file was opened before Wazuh started Syscheck.
                 }
@@ -928,6 +935,11 @@ int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time) {
     }
 
     return 1;
+}
+
+void free_win_whodata_evt(whodata_evt *evt) {
+    whodata_list_remove(evt->wnode);
+    free_whodata_event(evt);
 }
 
 #endif
