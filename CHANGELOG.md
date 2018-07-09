@@ -81,12 +81,9 @@ All notable changes to this project will be documented in this file.
 - Include the file owner SID in Syscheck alerts.
 - Change no previous checksum error message to information log. ([#897](https://github.com/wazuh/wazuh/pull/897))
 
-### Changed
-
-- Syscheck RT process granularized to make frequency option more accurate. ([#434](https://github.com/wazuh/wazuh/pull/434))
-
 ### Fixed
 
+- Syscheck RT process granularized to make frequency option more accurate. ([#434](https://github.com/wazuh/wazuh/pull/434))
 - Fixed registry_ignore problem on Syscheck for Windows when arch="both" was used. ([#525](https://github.com/wazuh/wazuh/pull/525))
 - Allow more than 256 directories in real-time for Windows agent using recursive watchers. ([#540](https://github.com/wazuh/wazuh/pull/540))
 - Fix weird behavior in Syscheck when a modified file returns back to its first state. ([#434](https://github.com/wazuh/wazuh/pull/434))
