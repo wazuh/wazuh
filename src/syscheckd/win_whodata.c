@@ -57,6 +57,7 @@ void whodata_list_remove_multiple(size_t quantity);
 void send_whodata_del(whodata_evt *w_evt);
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
 int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time);
+void free_win_whodata_evt(whodata_evt *evt);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -536,10 +537,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 w_evt->user_id = user_id;
                 if (!is_directory) {
                     w_evt->path = path;
+                    path = NULL;
                 } else {
                     // The directory path will be saved in 4663 event
                     w_evt->path = NULL;
-                    free(path);
                 }
                 w_evt->dir_position = position;
                 w_evt->process_name = process_name;
@@ -547,19 +548,28 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 w_evt->mask = 0;
                 w_evt->scan_directory = is_directory;
                 w_evt->deleted = 0;
+                w_evt->ignore_not_exist = 0;
                 w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
                 user_name = NULL;
                 user_id = NULL;
-                path = NULL;
                 process_name = NULL;
+add_whodata_evt:
                 if (result = OSHash_Add_ex(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
                     if (!result) {
-                        merror("The event could not be added to the whodata hash table.");
+                        merror("The event for '%s' could not be added to the whodata hash table. Handle: '%s'.", path, hash_id);
                     } else if (result == 1) {
-                        merror("The event could not be added to the whodata hash table because it is duplicated.");
+                        whodata_evt *w_evtdup;
+                        mdebug1("The event for '%s' could not be added to the whodata hash table because it is duplicated, so the handler ('%s') will be updated.", path, hash_id);
+                        if (w_evtdup = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evtdup) {
+                            free_win_whodata_evt(w_evtdup);
+                            goto add_whodata_evt;
+                        } else {
+                            merror("The handler '%s' could not be removed from the whodata hash table.", hash_id);
+                        }
                     }
+                    free_win_whodata_evt(w_evt);
                     retval = 1;
                     goto clean;
                 }
@@ -646,6 +656,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                             send_whodata_del(w_evt);
                         } else {
                             // At this point the file can be new or cleaned
+                            w_evt->ignore_not_exist = 1;
                             realtime_checksumfile(w_evt->path, w_evt);
                         }
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
@@ -660,8 +671,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     } else if (w_evt->scan_directory == 2) {
                         mdebug1("Scanning of the '%s' directory is aborted because something has gone wrong.", w_evt->path);
                     }
-                    whodata_list_remove(w_evt->wnode);
-                    free_whodata_event(w_evt);
+                    free_win_whodata_evt(w_evt);
                 } else {
                     // The file was opened before Wazuh started Syscheck.
                 }
@@ -740,7 +750,7 @@ void whodata_list_remove_multiple(size_t quantity) {
         }
         whodata_list_remove(syscheck.wlist.first);
     }
-    mdebug2("%d events have been deleted from the whodata list.", quantity);
+    mdebug1("%d events have been deleted from the whodata list.", quantity);
 }
 
 void whodata_list_remove(whodata_event_node *node) {
@@ -925,6 +935,11 @@ int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time) {
     }
 
     return 1;
+}
+
+void free_win_whodata_evt(whodata_evt *evt) {
+    whodata_list_remove(evt->wnode);
+    free_whodata_event(evt);
 }
 
 #endif

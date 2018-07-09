@@ -17,7 +17,6 @@
 
 // Global variables
 syscheck_config syscheck;
-volatile int added_rules_error;
 pthread_cond_t audit_thread_started;
 
 #ifdef USE_MAGIC
@@ -373,7 +372,7 @@ int main(int argc, char **argv)
     if (syscheck.enable_whodata) {
         int out = audit_init();
         if (out < 0)
-            merror("Cannot start Audit events reader thread.");
+            mwarn("Audit events reader thread not started.");
     }
 
     /* Start the daemon */

@@ -431,8 +431,6 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 return (0);
             }
 
-            OSHash_Delete(syscheck.last_check, file_name);
-
             if (strcmp(c_sum, buf + SK_DB_NATTR)) {
                 // Extract the whodata sum here to not include it in the hash table
                 if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
@@ -538,8 +536,10 @@ int read_dir(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *
             }
             di++;
         }
-        if (defaultfilesn[di] == NULL) {
+        if (defaultfilesn[di] == NULL && !(evt && evt->ignore_not_exist)) {
             mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
+        } else {
+            return 0;
         }
 #else
         mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
