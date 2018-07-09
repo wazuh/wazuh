@@ -95,4 +95,7 @@ int whodata_audit_start();
 int set_winsacl(const char *dir, int position);
 #endif
 
+extern pthread_mutex_t fim_mutex;
+int fim_initialize();
+
 #endif

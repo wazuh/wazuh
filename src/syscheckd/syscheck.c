@@ -68,6 +68,20 @@ static void read_internal(int debug_level)
     return;
 }
 
+/* Initialize syscheck variables */
+int fim_initilize() {
+
+    /* Create store data */
+    syscheck.fp = OSHash_Create();
+    syscheck.local_hash = OSHash_Create();
+
+    /* Duplicate hash table to check for deleted files */
+    syscheck.last_check = OSHash_Duplicate(syscheck.fp);
+
+    return 0;
+}
+
+
 #ifdef WIN32
 /* syscheck main for Windows */
 int Start_win32_Syscheck()
@@ -367,6 +381,7 @@ int main(int argc, char **argv)
 
     /* Some sync time */
     sleep(syscheck.tsleep * 5);
+    fim_initilize();
 
     // Audit events thread
     if (syscheck.enable_whodata) {

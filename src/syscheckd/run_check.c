@@ -119,6 +119,10 @@ void start_daemon()
     minfo("Starting daemon...");
 #endif
 
+#ifdef WIN32
+    fim_initilize();
+#endif
+
     /* Some time to settle */
     memset(curr_hour, '\0', 12);
     sleep(syscheck.tsleep * 10);
