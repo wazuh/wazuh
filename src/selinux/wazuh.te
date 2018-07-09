@@ -1,0 +1,15 @@
+module wazuh 1.0;
+
+require {
+    type var_t;
+    type audisp_t;
+    class sock_file { create setattr };
+    class file { getattr open read };
+    class dir { add_name read write };
+}
+
+#============= audisp_t ==============
+allow audisp_t var_t:dir { add_name read write };
+#!!!! This avc is allowed in the current policy
+allow audisp_t var_t:sock_file { create setattr };
+allow audisp_t var_t:file { getattr open read };
