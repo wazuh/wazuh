@@ -7,19 +7,21 @@
  * Foundation
  */
 
+#include "shared.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "syscheck_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
-#include "shared.h"
 #include "syscheck.h"
 
 /* Prototypes */
 static int read_file(const char *dir_name, int opts, OSMatch *restriction, whodata_evt *evt, int enable_recursion)  __attribute__((nonnull(1)));
 
 static int read_dir_diff(char *dir_name);
+
+pthread_mutex_t fim_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Global variables */
 static int __counter = 0;
@@ -431,6 +433,10 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction, whod
                 return (0);
             }
 
+            w_mutex_lock(&fim_mutex);
+            OSHash_Delete(syscheck.last_check, file_name);
+            w_mutex_unlock(&fim_mutex);
+
             if (strcmp(c_sum, buf + SK_DB_NATTR)) {
                 // Extract the whodata sum here to not include it in the hash table
                 if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
@@ -607,6 +613,7 @@ int run_dbcheck()
 
     if (syscheck.dir[0]) {
         /* Check for deleted files */
+        w_mutex_lock(&fim_mutex);
         for (i = 0; i <= syscheck.last_check->rows; i++) {
             curr_node = syscheck.last_check->table[i];
             if(curr_node && curr_node->key) {
@@ -616,8 +623,10 @@ int run_dbcheck()
                 OSHash_Delete(syscheck.fp, curr_node->key);
             }
         }
+        OSHash_Free(syscheck.last_check);
         /* Duplicate hash table to check for deleted files */
         syscheck.last_check = OSHash_Duplicate(syscheck.fp);
+        w_mutex_unlock(&fim_mutex);
 
         /* Only if there are directories */
         if (syscheck.remove_old_diff && (syscheck.dir != NULL || syscheck.dir[0] != NULL)) {
@@ -635,10 +644,6 @@ int create_db()
 #ifdef WIN32
     int enable_who_scan = 0;
 #endif
-
-    /* Create store data */
-    syscheck.fp = OSHash_Create();
-    syscheck.local_hash = OSHash_Create();
 
     if (!syscheck.fp) {
         merror_exit("Unable to create syscheck database. Exiting.");
