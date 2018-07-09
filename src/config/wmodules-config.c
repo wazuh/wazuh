@@ -56,15 +56,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 
     // Select module by name
 
-   //osQuery monitor module
-    if (!strcmp(node->values[0], WM_OSQUERYMONITOR_CONTEXT.name)) {
-        if (wm_osquery_monitor_read(children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
-    }
-
-    else if (!strcmp(node->values[0], WM_OSCAP_CONTEXT.name)) {
+    if (!strcmp(node->values[0], WM_OSCAP_CONTEXT.name)) {
         if (wm_oscap_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
@@ -94,14 +86,14 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #endif
 #ifndef WIN32
     else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name)) {
-        if (wm_aws_read(children, cur_wmodule, agent_cfg) < 0) {
+        if (wm_aws_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
 #ifndef CLIENT
     else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)) {
-        if (wm_vulnerability_detector_read(xml, children, cur_wmodule) < 0) {
+        if (wm_vulnerability_detector_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
