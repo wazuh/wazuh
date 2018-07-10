@@ -731,6 +731,7 @@ InstallCommon(){
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
   ./init/fw-check.sh execute
+  InstallSELinuxPolicyPackage
 }
 
 InstallLocal(){

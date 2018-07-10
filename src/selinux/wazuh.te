@@ -1,0 +1,22 @@
+module wazuh 1.0;
+
+require {
+	type audisp_t;
+        type var_t;
+        class sock_file { create setattr };
+        class dir { remove_name add_name read write };
+        class file { getattr open read };
+        class capability dac_override;
+}
+
+#============= audisp_t ==============
+allow audisp_t self: capability dac_override;
+
+#!!!! This avc is allowed in the current policy
+allow audisp_t var_t:dir { remove_name add_name read write };
+allow audisp_t var_t:file getattr;
+
+allow audisp_t var_t:sock_file { create setattr };
+#!!!! This avc is allowed in the current policy
+allow audisp_t var_t:file { open read };
+

@@ -9,6 +9,23 @@ WazuhSetup(){
     patch_version
 }
 
+InstallSELinuxPolicyPackage(){
+
+    if which semodule > /dev/null; then
+        if [ -f selinux/wazuh.pp ]; then
+            if [[ ! $(semodule -l | grep wazuh) ]]; then
+                echo "Installing Wazuh policy for SELinux."
+                semodule -i selinux/wazuh.pp
+                semodule -e wazuh
+            else
+                echo "Skipping installation of Wazuh policy for SELinux: module already installed."
+            fi
+        else
+            echo "WARN: Could not install Wazuh policy for SELinux: the module was not compiled."
+        fi
+    fi
+}
+
 WazuhUpgrade()
 {
     # Encode Agentd passlist if not encoded
