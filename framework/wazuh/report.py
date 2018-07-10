@@ -36,6 +36,11 @@ def _get_total_items(query, request):
     return total_items
 
 
+def _nest_dictionary_by_keys(fields, dict, keys):
+    fields_to_nest, non_nested = get_fields_to_nest(fields.values(), keys, '.')
+    return [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, keys, '.') for d in dict]
+
+
 def _get_group_distinct(select_fields, table, offset=0, limit=common.database_limit, sort={}, search={}, count=True):
     query = "SELECT DISTINCT {} FROM {}"
     db_fields = ','.join(select_fields.values())
@@ -77,7 +82,7 @@ def _get_group_distinct(select_fields, table, offset=0, limit=common.database_li
 
 
 def _get_distinct_items(valid_select_fields, table, select={}, offset=0, limit=common.database_limit,
-                        search={}, sort={}, nest=[]):
+                        search={}, sort={}, nest=[], filter_fields={}):
     offset = int(offset)
     limit = int(limit)
 
@@ -99,14 +104,17 @@ def _get_distinct_items(valid_select_fields, table, select={}, offset=0, limit=c
     items, total_items = _get_group_distinct(select_fields=select_fields, table=table, offset=offset,
                                              limit=limit, sort=sort, search=search)
 
+    if filter_fields:
+        items = [{key:value for key,value in item.items() if key in filter_fields['fields']} for item in items]
+
     if nest:
-        fields_to_nest, non_nested = get_fields_to_nest(select_fields.values(), nest, '.')
-        items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, nest, '.') for d in items]
+        items = _nest_dictionary_by_keys(select_fields, items, nest)
+
 
     return {'items': items, 'totalItems': total_items}
 
 
-def get_distinct_agents(offset=0, limit=common.database_limit, select={}, search={}, sort={}):
+def get_distinct_agents(offset=0, limit=common.database_limit, db_select={}, search={}, sort={}, filter_fields={}):
     valid_select_fields = {'group': '`group`', 'node_name': 'node_name', 'version': 'version',
                            'manager_host': 'manager_host', 'os.codename': 'os_codename',
                            'os.major': 'os_major', 'os.minor': 'os_minor', 'os.uname': 'os_uname',
@@ -115,4 +123,5 @@ def get_distinct_agents(offset=0, limit=common.database_limit, select={}, search
     table = 'agent'
 
     return _get_distinct_items(table=table, valid_select_fields=valid_select_fields,
-                               offset=offset, limit=limit, select=select, search=search, sort=sort, nest=['os'])
+                                 offset=offset, limit=limit, select=db_select,
+                                 search=search, sort=sort, nest=['os'], filter_fields=filter_fields)
