@@ -181,67 +181,119 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     int i;
 
     os_strdup(f_name, lf->filename);
-    os_strdup(sum->size, lf->size_after);
-    lf->perm_after = sum->perm;
-    os_strdup(sum->uid, lf->owner_after);
-    os_strdup(sum->gid, lf->gowner_after);
-    os_strdup(sum->md5, lf->md5_after);
-    os_strdup(sum->sha1, lf->sha1_after);
+    os_strdup(f_name, lf->fields[SK_FILE].value);
 
-    if (sum->uname)
+    if (sum->size) {
+        os_strdup(sum->size, lf->size_after);
+        os_strdup(sum->size, lf->fields[SK_SIZE].value);
+    }
+
+    if (sum->perm) {
+        lf->perm_after = sum->perm;
+        os_calloc(7, sizeof(char), lf->fields[SK_PERM].value);
+        snprintf(lf->fields[SK_PERM].value, 7, "%06o", sum->perm);
+    }
+
+    if (sum->uid) {
+        os_strdup(sum->uid, lf->owner_after);
+        os_strdup(sum->uid, lf->fields[SK_UID].value);
+    }
+
+    if (sum->gid) {
+        os_strdup(sum->gid, lf->gowner_after);
+        os_strdup(sum->gid, lf->fields[SK_GID].value);
+    }
+
+    if (sum->md5) {
+        os_strdup(sum->md5, lf->md5_after);
+        os_strdup(sum->md5, lf->fields[SK_MD5].value);
+    }
+
+    if (sum->sha1) {
+        os_strdup(sum->sha1, lf->sha1_after);
+        os_strdup(sum->sha1, lf->fields[SK_SHA1].value);
+    }
+
+    if (sum->uname) {
         os_strdup(sum->uname, lf->uname_after);
+        os_strdup(sum->uname, lf->fields[SK_UNAME].value);
+    }
 
-    if (sum->gname)
+    if (sum->gname) {
         os_strdup(sum->gname, lf->gname_after);
+        os_strdup(sum->gname, lf->fields[SK_GNAME].value);
+    }
 
-    lf->mtime_after = sum->mtime;
-    lf->inode_after = sum->inode;
+    if (sum->mtime) {
+        lf->mtime_after = sum->mtime;
+        os_calloc(20, sizeof(char), lf->fields[SK_MTIME].value);
+        snprintf(lf->fields[SK_MTIME].value, 20, "%ld", sum->mtime);
+    }
 
-    if(sum->sha256)
+    if (sum->inode) {
+        lf->inode_after = sum->inode;
+        os_calloc(20, sizeof(char), lf->fields[SK_INODE].value);
+        snprintf(lf->fields[SK_INODE].value, 20, "%ld", sum->inode);
+    }
+
+    if(sum->sha256) {
         os_strdup(sum->sha256, lf->sha256_after);
+        os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
+    }
 
     if(sum->wdata.user_id) {
         os_strdup(sum->wdata.user_id, lf->user_id);
+        os_strdup(sum->wdata.user_id, lf->fields[SK_USER_ID].value);
     }
 
     if(sum->wdata.user_name) {
         os_strdup(sum->wdata.user_name, lf->user_name);
+        os_strdup(sum->wdata.user_name, lf->fields[SK_USER_NAME].value);
     }
 
     if(sum->wdata.group_id) {
         os_strdup(sum->wdata.group_id, lf->group_id);
+        os_strdup(sum->wdata.group_id, lf->fields[SK_GROUP_ID].value);
     }
 
     if(sum->wdata.group_name) {
         os_strdup(sum->wdata.group_name, lf->group_name);
+        os_strdup(sum->wdata.group_name, lf->fields[SK_GROUP_NAME].value);
     }
 
     if(sum->wdata.process_name) {
         os_strdup(sum->wdata.process_name, lf->process_name);
+        os_strdup(sum->wdata.process_name, lf->fields[SK_PROC_NAME].value);
     }
 
     if(sum->wdata.audit_uid) {
         os_strdup(sum->wdata.audit_uid, lf->audit_uid);
+        os_strdup(sum->wdata.audit_uid, lf->fields[SK_AUDIT_ID].value);
     }
 
     if(sum->wdata.audit_name) {
         os_strdup(sum->wdata.audit_name, lf->audit_name);
+        os_strdup(sum->wdata.audit_name, lf->fields[SK_AUDIT_NAME].value);
     }
 
     if(sum->wdata.effective_uid) {
         os_strdup(sum->wdata.effective_uid, lf->effective_uid);
+        os_strdup(sum->wdata.effective_uid, lf->fields[SK_EFFECTIVE_UID].value);
     }
 
     if(sum->wdata.effective_name) {
         os_strdup(sum->wdata.effective_name, lf->effective_name);
+        os_strdup(sum->wdata.effective_name, lf->fields[SK_EFFECTIVE_NAME].value);
     }
 
     if(sum->wdata.ppid) {
         os_strdup(sum->wdata.ppid, lf->ppid);
+        os_strdup(sum->wdata.ppid, lf->fields[SK_PPID].value);
     }
 
     if(sum->wdata.process_id) {
         os_strdup(sum->wdata.process_id, lf->process_id);
+        os_strdup(sum->wdata.process_id, lf->fields[SK_PROC_ID].value);
     }
 
     /* Fields */
@@ -250,67 +302,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 
     for (i = 0; i < SK_NFIELDS; i++)
         os_strdup(sdb.syscheck_dec->fields[i], lf->fields[i].key);
-
-    os_strdup(f_name, lf->fields[SK_FILE].value);
-    os_strdup(sum->size, lf->fields[SK_SIZE].value);
-    os_calloc(7, sizeof(char), lf->fields[SK_PERM].value);
-    snprintf(lf->fields[SK_PERM].value, 7, "%06o", sum->perm);
-    os_strdup(sum->uid, lf->fields[SK_UID].value);
-    os_strdup(sum->gid, lf->fields[SK_GID].value);
-    os_strdup(sum->md5, lf->fields[SK_MD5].value);
-    os_strdup(sum->sha1, lf->fields[SK_SHA1].value);
-
-    if (sum->uname)
-        os_strdup(sum->uname, lf->fields[SK_UNAME].value);
-
-    if (sum->gname)
-        os_strdup(sum->gname, lf->fields[SK_GNAME].value);
-
-    if (sum->inode) {
-        os_calloc(20, sizeof(char), lf->fields[SK_INODE].value);
-        snprintf(lf->fields[SK_INODE].value, 20, "%ld", sum->inode);
-    }
-
-    if (sum->mtime) {
-        os_calloc(20, sizeof(char), lf->fields[SK_MTIME].value);
-        snprintf(lf->fields[SK_MTIME].value, 20, "%ld", sum->mtime);
-    }
-
-    if(sum->sha256)
-        os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
-
-    if(sum->wdata.user_id)
-        os_strdup(sum->wdata.user_id, lf->fields[SK_USER_ID].value);
-
-    if(sum->wdata.user_name)
-        os_strdup(sum->wdata.user_name, lf->fields[SK_USER_NAME].value);
-
-    if(sum->wdata.process_id)
-        os_strdup(sum->wdata.process_id, lf->fields[SK_PROC_ID].value);
-
-    if(sum->wdata.ppid)
-        os_strdup(sum->wdata.ppid, lf->fields[SK_PPID].value);
-
-    if(sum->wdata.process_name)
-        os_strdup(sum->wdata.process_name, lf->fields[SK_PROC_NAME].value);
-
-    if(sum->wdata.group_id)
-        os_strdup(sum->wdata.group_id, lf->fields[SK_GROUP_ID].value);
-
-    if(sum->wdata.group_name)
-        os_strdup(sum->wdata.group_name, lf->fields[SK_GROUP_NAME].value);
-
-    if(sum->wdata.audit_uid)
-        os_strdup(sum->wdata.audit_uid, lf->fields[SK_AUDIT_ID].value);
-
-    if(sum->wdata.audit_name)
-        os_strdup(sum->wdata.audit_name, lf->fields[SK_AUDIT_NAME].value);
-
-    if(sum->wdata.effective_uid)
-        os_strdup(sum->wdata.effective_uid, lf->fields[SK_EFFECTIVE_UID].value);
-
-    if(sum->wdata.effective_name)
-        os_strdup(sum->wdata.effective_name, lf->fields[SK_EFFECTIVE_NAME].value);
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
