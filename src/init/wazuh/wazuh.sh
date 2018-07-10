@@ -13,7 +13,7 @@ InstallSELinuxPolicyPackage(){
 
     if which semodule > /dev/null; then
         if [ -f selinux/wazuh.pp ]; then
-            if [[ ! $(semodule -l | grep wazuh) ]]; then
+            if ! (semodule -l | grep wazuh > /dev/null); then
                 echo "Installing Wazuh policy for SELinux."
                 semodule -i selinux/wazuh.pp
                 semodule -e wazuh
