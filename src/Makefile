@@ -34,6 +34,7 @@ USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
+USE_AUDIT=yes
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -60,15 +61,23 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+	DEFINES+=-DENABLE_AUDIT
+endif
+
 OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto ${LDFLAGS}
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl -L$(EXTERNAL_AUDIT)lib/.libs -l:libaudit.a
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
-		CFLAGS+=-I$(EXTERNAL_AUDIT)lib -Wl,--start-group
+		CFLAGS+=-Wl,--start-group
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+		OSSEC_LDFLAGS+=-L$(EXTERNAL_AUDIT)lib/.libs -l:libaudit.a
+		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
+endif
 else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
@@ -428,6 +437,7 @@ settings:
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:   ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:      ${USE_SELINUX}"
+	@echo "    USE_AUDIT:        ${USE_AUDIT}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"
 	@echo "    libs:             ${ML}"
@@ -540,12 +550,17 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-.PHONY: external lua
+EXTERNAL_LIBS := libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+
 ifeq (${uname_S},Linux)
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a libproc.a ${EXTERNAL_AUDIT}lib/.libs/libaudit.a
-else
-external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+EXTERNAL_LIBS += ${EXTERNAL_AUDIT}lib/.libs/libaudit.a
 endif
+EXTERNAL_LIBS += libproc.a
+endif
+
+.PHONY: external lua
+external: $(EXTERNAL_LIBS)
 
 lua:
 	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
@@ -1349,6 +1364,7 @@ clean-external:
 	rm -f ${OPENSSL_LIB}
 	rm -f ${CRYPTO_LIB}
 	rm -f ${procps_o} libproc.a
+	-cd ${EXTERNAL_AUDIT} && make distclean
 
 clean-internals:
 	rm -f ${os_zlib_o} os_zlib.a

@@ -403,9 +403,13 @@ int main(int argc, char **argv)
 
     // Audit events thread
     if (syscheck.enable_whodata) {
+#ifdef ENABLE_AUDIT
         int out = audit_init();
         if (out < 0)
             mwarn("Audit events reader thread not started.");
+#else
+        merror("Audit support not built. Whodata is not available.");
+#endif
     }
 
     /* Start the daemon */
