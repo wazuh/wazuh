@@ -96,9 +96,11 @@ Install()
     # On CentOS <= 5 we need to disable syscollector compilation
     OS_VERSION_FOR_SYSC="${DIST_NAME}"
     SYSC_FLAG=""
- 
+    AUDIT_FLAG=""
+
     if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ] || [ "X${OS_VERSION_FOR_SYSC}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
         SYSC_FLAG="DISABLE_SYSC=true"
+        AUDIT_FLAG="DISABLE_AUDIT=true"
     fi
 
 
@@ -112,7 +114,7 @@ Install()
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} build
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"

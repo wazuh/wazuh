@@ -10,8 +10,10 @@
 #ifdef __linux__
 #include "shared.h"
 #include "external/procps/readproc.h"
+#ifdef ENABLE_AUDIT
 #include <linux/audit.h>
 #include <libaudit.h>
+#endif
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "syscheck.h"
@@ -29,6 +31,11 @@
 // Global variables
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
+pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#ifdef ENABLE_AUDIT
+
 static regex_t regexCompiled_uid;
 static regex_t regexCompiled_pid;
 static regex_t regexCompiled_ppid;
@@ -43,8 +50,6 @@ static regex_t regexCompiled_path2;
 static regex_t regexCompiled_path3;
 static regex_t regexCompiled_items;
 static regex_t regexCompiled_dir;
-pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 // Converts Audit relative paths into absolute paths
@@ -955,4 +960,5 @@ void clean_rules(void) {
     }
     w_mutex_unlock(&audit_mutex);
 }
+#endif
 #endif
