@@ -62,6 +62,7 @@ All notable changes to this project will be documented in this file.
 - Prevent files from remaining open in the cluster. ([#874](https://github.com/wazuh/wazuh/pull/874))
 - Fix network unreachable error when cluster starts. ([#800](https://github.com/wazuh/wazuh/pull/800))
 - Fix empty rules and decoders file check. ([#887](https://github.com/wazuh/wazuh/pull/887))
+- Prevent to access an unexisting hash table from 'whodata' thread. ([#911](https://github.com/wazuh/wazuh/pull/911))
 
 ## [v3.3.1]
 
