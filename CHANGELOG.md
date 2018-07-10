@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 ## [TBD]
 
 ### Added
-- Add support to `GET/report/distinct/agents` API request. ([Wazuh #828](https://github.com/wazuh/wazuh/pull/828))
+- Add support to `GET/agents/stats/distinct` API request. ([Wazuh #828](https://github.com/wazuh/wazuh/pull/828))
 
 
 ## [v3.5.0]
