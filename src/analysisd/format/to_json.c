@@ -19,7 +19,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 {
     cJSON* root;
     cJSON* rule = NULL;
+<<<<<<< HEAD
     cJSON* file_diff = NULL;
+=======
+    cJSON* file_diff;
+>>>>>>> ef4d92d... Fixed syscollector socket writing, improved error checking
     cJSON* manager;
 	cJSON* agent;
     cJSON* predecoder;

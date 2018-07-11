@@ -258,10 +258,12 @@ char * FTS(Eventinfo *lf)
 {
     int i;
     int number_of_matches = 0;
-    char _line[OS_FLSIZE + 1];
+    char *_line = NULL;
     char *line_for_list = NULL;
     OSListNode *fts_node;
     const char *field;
+
+    os_calloc(OS_FLSIZE + 1,sizeof(char),_line);
 
     _line[OS_FLSIZE] = '\0';
 
@@ -286,6 +288,7 @@ char * FTS(Eventinfo *lf)
 
     /** Check if FTS is already present **/
     if (OSHash_Get_ex(fts_store, _line)) {
+        free(_line);
         return NULL;
     }
 
@@ -319,6 +322,7 @@ char * FTS(Eventinfo *lf)
     }
 
     if (OSHash_Add_ex(fts_store, line_for_list, line_for_list) <= 1) {
+        free(_line);
         return NULL;
     }
 
