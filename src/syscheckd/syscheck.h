@@ -19,6 +19,8 @@
 // Number of attributes in the hash table
 #define SK_DB_NATTR 10
 
+#define WDATA_DEFAULT_INTERVAL_SCAN 300
+
 /* Global config */
 extern syscheck_config syscheck;
 

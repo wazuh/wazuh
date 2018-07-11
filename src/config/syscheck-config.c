@@ -608,6 +608,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_skip_nfs = "skip_nfs";
     const char *xml_nodiff = "nodiff";
     const char *xml_restart_audit = "restart_audit";
+    const char *xml_windows_audit_interval = "windows_audit_interval";
 
 #ifdef WIN32
     const char *xml_arch = "arch";
@@ -704,6 +705,17 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             } else if (!read_reg(syscheck, node[i]->content, ARCH_32BIT)) {
                 return (OS_INVALID);
             }
+#endif
+        }
+        /* Get windows audit interval */
+        else if (strcmp(node[i]->element, xml_windows_audit_interval) == 0) {
+#ifdef WIN32
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+            syscheck->wdata.interval_scan = atoi(node[i]->content);
 #endif
         }
         /* Get frequency */

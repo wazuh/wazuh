@@ -17,7 +17,6 @@
 #define WPOL_RESTORE_COMMAND "auditpol /restore /file:\"%s\""
 #define WPOL_BACKUP_FILE "tmp\\backup-policies"
 #define WPOL_NEW_FILE "tmp\\new-policies"
-#define WCHECK_TIME 10
 
 // Variables whodata
 static PSID everyone_sid = NULL;
@@ -741,6 +740,15 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     whodata_dir_status *d_status;
     SYSTEMTIME utc;
     DIR *dp;
+    int interval;
+
+    if (syscheck.wdata.interval_scan == 0) {
+        interval = WDATA_DEFAULT_INTERVAL_SCAN;
+    } else {
+        interval = syscheck.wdata.interval_scan;
+    }
+
+    mdebug1("Checking thread set to %d seconds.", interval);
 
     while (1) {
         for (i = 0; syscheck.dir[i]; i++) {
@@ -812,7 +820,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
             // Set the timestamp
             GetSystemTime(&d_status->last_check);
         }
-        sleep(WCHECK_TIME);
+        sleep(interval);
     }
 
     return 0;
