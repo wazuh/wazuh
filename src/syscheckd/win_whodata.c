@@ -466,7 +466,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             path = convert_windows_string(buffer[2].XmlVal);
             if (OSHash_Get_ex(syscheck.wdata.ignored_paths, path)) {
                 // The file has been marked as ignored
-                mdebug2("The file '%s' has been marked as ignored, so it will be discarded.", path);
+                mdebug2("The file '%s' has been marked as ignored. It will be discarded.", path);
                 goto clean;
             }
         }
@@ -618,7 +618,7 @@ add_whodata_evt:
                                 }
 
                                 if (!compare_timestamp(&w_dir->timestamp, &system_time)) {
-                                    mdebug2("The '%s' directory has been scanned at 'd', so it does not need to do it again.", path);
+                                    mdebug2("The '%s' directory has been scanned at 'd'. It does not need to do it again.", path);
                                     w_evt->scan_directory = 3;
                                     break;
                                 }
@@ -740,6 +740,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     int exists;
     whodata_dir_status *d_status;
     SYSTEMTIME utc;
+    DIR *dp;
 
     while (1) {
         for (i = 0; syscheck.dir[i]; i++) {
@@ -748,34 +749,32 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
             // CHECK IGNORE
 
-            // Check if the target exists
-            if (d_status->object_type == WSTATUS_FILE_TYPE) {
-                exists = !IsFile(syscheck.dir[i]);
-            } else if (d_status->object_type == WSTATUS_DIR_TYPE) {
-                exists = !IsDir(syscheck.dir[i]);
-            } else if (d_status->object_type == WSTATUS_UNK_TYPE) {
-                if (!IsFile(syscheck.dir[i])) {
-                    syscheck.wdata.dirs_status[i].object_type = WSTATUS_FILE_TYPE;
-                } else if (!IsDir(syscheck.dir[i])) {
-                    syscheck.wdata.dirs_status[i].object_type = WSTATUS_DIR_TYPE;
-                } else {
-                    // Unknown device type or does not exist
-                    continue;
-                }
-                exists = 1;
-            } else {
+            if (syscheck.wdata.dirs_status[i].check_type != WSTATUS_CHECK_WHODATA) {
                 // It is not whodata
-                // It would also be valid to check if the file properties have CHECK_WHODATA
                 continue;
             }
 
+            if (dp = opendir(syscheck.dir[i]), dp) { // Directory
+                exists = 1;
+                syscheck.wdata.dirs_status[i].object_type = WSTATUS_DIR_TYPE;
+            } else if (errno == ENOTDIR) { // File
+                exists = 1;
+                syscheck.wdata.dirs_status[i].object_type = WSTATUS_FILE_TYPE;
+            } else {
+                // Unknown device type or does not exist
+                exists = 0;
+            }
+
+            closedir(dp);
+
             if (exists) {
                 if (d_status->status == WSTATUS_NO_EXISTS) {
-                    minfo("'%s' has been re-added, so it will be monitored in Whodata mode.        %d", syscheck.dir[i], i);
+                    minfo("'%s' has been re-added. It will be monitored in Whodata mode.", syscheck.dir[i]);
                     if (set_winsacl(syscheck.dir[i], i)) {
                         merror("Unable to add directory to whodata monitoring: '%s'.", syscheck.dir[i]);
                         continue;
                     }
+                    syscheck.wdata.dirs_status[i].check_type = WSTATUS_CHECK_WHODATA;
                     d_status->status = WSTATUS_EXISTS;
                 } else {
                     if (get_creation_date(syscheck.dir[i], &utc)) {
@@ -791,7 +790,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                         }
                     } else {
                         if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WSTATUS_FILE_TYPE) ? 1 : 0)) {
-                            minfo("The SACL of '%s' has been modified and it is not valid for the Whodata mode, so real-time mode will be activated for this file.", syscheck.dir[i]);
+                            minfo("The SACL of '%s' has been modified and it is not valid for the Whodata mode. Real-time mode will be activated for this file.", syscheck.dir[i]);
                             d_status->object_type = WSTATUS_NO_WHODATA;
                             // Mark the directory to prevent its children from sending partial whodata alerts
                             syscheck.wdata.dirs_status[i].check_type = WSTATUS_CHECK_REALTIME;
@@ -806,7 +805,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     }
                 }
             } else {
-                minfo("'%s' has been deleted, so it will not be monitored in Whodata mode.", syscheck.dir[i]);
+                minfo("'%s' has been deleted. It will not be monitored in Whodata mode.", syscheck.dir[i]);
                 d_status->status = WSTATUS_NO_EXISTS;
                 d_status->object_type = WSTATUS_UNK_TYPE;
             }
