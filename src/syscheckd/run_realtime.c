@@ -148,18 +148,18 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
 /* Find container directory */
 int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) {
-    char buf[MAX_PATH];
+    char buf[PATH_MAX];
     int i;
     char *c;
     int retval = -1;
-    int path_length = MAX_PATH;
+    int path_length = PATH_MAX;
 
     if (full_compare) {
         snprintf(buf, strlen(filename) + 2, "%s%c", filename, PATH_SEP);
     } else {
         snprintf(buf, strlen(filename) + 1, "%s", filename);
     }
-
+ 
     while (c = strrchr(buf, PATH_SEP), c && c != buf) {
         *c = '\0';
 
