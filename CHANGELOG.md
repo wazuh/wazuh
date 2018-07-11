@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [TBD]
+### Added
+- Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
+
 ## [v3.4.0]
 
 ### Added
