@@ -1,10 +1,6 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [TBD]
-### Added
-- Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
-
 ## [v3.4.0]
 
 ### Added
@@ -17,6 +13,8 @@ All notable changes to this project will be documented in this file.
 - Added an option `target` to customize output format per-target in Logcollector. ([#863](https://github.com/wazuh/wazuh/pull/863))
 - New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
 - Remove old snapshot files for FIM. ([#872](https://github.com/wazuh/wazuh/pull/872))
+- Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
+
 
 ### Changed
 
