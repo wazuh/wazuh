@@ -4,6 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
+from wazuh.database import Connection
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
@@ -17,6 +18,7 @@ import errno
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 from operator import itemgetter
+import glob
 
 try:
     from subprocess import check_output
@@ -530,3 +532,191 @@ class WazuhVersion:
 
     def __le__(self, new_version):
         return (not (self < new_version) or self == new_version)
+
+
+class WazuhDBQuery:
+    """
+    This class describes a database query for wazuh
+    """
+    def __init__(self, offset, limit, table, sort, search, select, fields, default_sort_field, filters, db_path, count,
+                 get_data, default_sort_order='ASC', min_select_fields=set(), filter_operator='='):
+        """
+        Wazuh DB Query constructor
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        :param table: table to do the query
+        :param fields: all available fields
+        :param default_sort_field: by default, return elements sorted by this field
+        :param db_path: database path
+        :param default_sort_order: by default, return elements sorted in this order
+        :param min_select_fields: fields that must be always be selected because they're necessary to compute other fields
+        :param count: whether to compute totalItems or not
+        :param get_data: whether to return data or not
+        """
+        self.offset = offset
+        self.limit = limit
+        self.table = table
+        self.sort = sort
+        self.search = search
+        self.select = None if not select else select.copy()
+        self.fields = fields
+        self.query = self.default_query()
+        self.request = {}
+        self.default_sort_field = default_sort_field
+        self.default_sort_order = default_sort_order
+        self.filters = filters
+        self.count = count
+        self.data = get_data
+        self.total_items = 0
+        self.min_select_fields = min_select_fields
+        self.filter_operator = filter_operator
+        if not glob.glob(db_path):
+            raise WazuhException(1600)
+        self.conn = Connection(db_path)
+
+
+    def add_limit_to_query(self):
+        if self.limit:
+            if self.limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(self.limit))
+            self.query += ' LIMIT :offset,:limit'
+            self.request['offset'] = self.offset
+            self.request['limit'] = self.limit
+
+
+    def add_sort_to_query(self):
+        if self.sort:
+            if self.sort['fields']:
+                sort_fields, allowed_sort_fields = set(self.sort['fields']), set(self.fields.keys())
+                # check every element in sort['fields'] is in allowed_sort_fields
+                if not sort_fields.issubset(allowed_sort_fields):
+                    raise WazuhException(1403, "Allowerd sort fields: {}. Fields: {}".format(
+                        allowed_sort_fields, ', '.join(sort_fields - allowed_sort_fields)
+                    ))
+                self.query += ' ORDER BY ' + ','.join(['{0} {1}'.format(self.fields[i], self.sort['order']) for i in sort_fields])
+            else:
+                self.query += ' ORDER BY {0} {1}'.format(self.default_sort_field, self.sort['order'])
+        else:
+            self.query += ' ORDER BY {0} {1}'.format(self.default_sort_field, self.default_sort_order)
+
+
+    def add_search_to_query(self):
+        if self.search:
+            self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
+            self.query += " (" + " OR ".join(x + ' LIKE:search' for x in self.fields.values()) + ')'
+            self.request['search'] = '%{0}%'.format(self.search['value'])
+
+
+    def add_select_to_query(self):
+        if self.select:
+            self.select['fields'] = set(map(lambda x: self.fields[x] if x in self.fields else x, self.select['fields']))
+
+            if not self.select['fields'].issubset(self.fields.values()):
+                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                                    format(', '.join(self.fields.keys()), ', '.join(self.select['fields'] - set(self.fields.values()))))
+
+            self.select['fields'] |= self.min_select_fields
+        else:
+            self.select = {'fields': self.fields.values()}
+
+
+    def add_filters_to_query(self):
+        for filter_name, db_filter in self.filters.items():
+
+            if db_filter == "all":
+                continue
+
+            if filter_name == "status":
+                self.filter_status()
+            elif filter_name == "older_than":
+                self.filter_older_than()
+            else:
+                if isinstance(db_filter, list):
+                    filter_list = [name.lower() if filter_name != 'version'
+                                                else re.sub( r'([a-zA-Z])([v])', r'\1 \2', name)
+                                   for name in db_filter]
+                    key_list = [":{}{}".format(filter_name, x) for x in range(len(filter_list))]
+                    self.query += ' AND {} COLLATE NOCASE IN ({})'.format(self.fields[filter_name], ','.join(key_list))
+                    self.request.update({x[1:]:y for x, y in zip(key_list, filter_list)})
+                else: #str or null
+                    if db_filter is not None:
+                        self.request[filter_name] = db_filter if filter_name != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', db_filter)
+                        self.query += ' AND {} {} :{}'.format(self.fields[filter_name], self.filter_operator, filter_name)
+                    else:
+                        self.query += ' AND {} IS null'.format(self.fields[filter_name])
+
+        if "FROM {} AND".format(self.table) in self.query:
+            self.query = self.query.replace("FROM {} AND".format(self.table), "FROM {} WHERE".format(self.table))
+
+
+    def get_total_items(self):
+        self.conn.execute(self.query.format(self.default_count_query()), self.request)
+        self.total_items = self.conn.fetch()[0]
+
+
+    def get_data(self):
+        self.conn.execute(self.query.format(','.join(self.select['fields'])), self.request)
+
+
+    def filter_status(self):
+        raise NotImplementedError
+
+
+    def filter_older_than(self):
+        raise NotImplementedError
+
+
+    def run(self):
+        """
+        Builds the query and runs it on the database
+        """
+
+        self.add_select_to_query()
+        self.add_filters_to_query()
+        self.add_search_to_query()
+        if self.count:
+            self.get_total_items()
+        self.add_sort_to_query()
+        self.add_limit_to_query()
+        if self.data:
+            self.get_data()
+
+
+    def reset(self):
+        """
+        Resets query to its initial value. Useful when doing several requests to the same DB.
+        """
+        self.query = self.default_query()
+
+
+    def default_query(self):
+        """
+        :return: The default query
+        """
+        return "SELECT {0} FROM " + self.table
+
+
+    def default_count_query(self):
+        return "COUNT(*)"
+
+
+class WazuhDBQueryDistinct(WazuhDBQuery):
+
+    def default_query(self):
+        return "SELECT DISTINCT {0} FROM agent"
+
+
+    def default_count_query(self):
+        return "COUNT (DISTINCT {0})".format(','.join(self.select['fields']))
+
+
+    def add_filters_to_query(self):
+        for field in self.fields.values():
+            self.query += " AND {0} IS NOT null AND {0} != ''".format(field)
+
+        WazuhDBQuery.add_filters_to_query(self)
