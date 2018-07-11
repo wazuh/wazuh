@@ -37,7 +37,6 @@ OSHash *OSHash_Create(void);
 
 /* Free the memory used by the hash */
 void *OSHash_Free(OSHash *self) __attribute__((nonnull));
-void *OSHash_Free_ex(OSHash *self) __attribute__((nonnull));
 
 /* Returns 0 on error
  * Returns 1 on duplicated key (not added)
