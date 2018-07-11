@@ -38,6 +38,7 @@
 
 #ifdef WIN32
 typedef struct whodata_event_node whodata_event_node;
+typedef struct whodata_dir_status whodata_dir_status;
 #endif
 
 typedef struct _rtfim {
@@ -76,6 +77,25 @@ typedef struct whodata_evt {
 
 #ifdef WIN32
 
+typedef enum whodata_states {
+    WSTATUS_EXISTS,
+    WSTATUS_NO_EXISTS,
+    WSTATUS_FILE_TYPE,
+    WSTATUS_DIR_TYPE,
+    WSTATUS_UNK_TYPE,
+    WSTATUS_NO_WHODATA,
+    WSTATUS_CHECK_WHODATA,
+    WSTATUS_CHECK_REALTIME
+} whodata_states;
+
+typedef struct whodata_dir_status {
+    char status;
+    char object_type;
+    char check_type;
+    int ignore_rest; // List of directories whose SACL will not be restored
+    SYSTEMTIME last_check;
+} whodata_dir_status;
+
 typedef struct whodata_event_node {
     struct whodata_event_node *next;
     struct whodata_event_node *previous;
@@ -94,15 +114,15 @@ typedef struct whodata_event_list {
 } whodata_event_list;
 
 typedef struct whodata_directory {
-    time_t timestamp;
+    SYSTEMTIME timestamp;
     int position;
 } whodata_directory;
 
 typedef struct whodata {
-    OSHash *fd;                 // Open file descriptors
-    OSHash *ignored_paths;      // Open file descriptors
-    OSHash *directories;      // Open file descriptors
-    int *ignore_rest;           // List of directories whose SACL will not be restored
+    OSHash *fd;                         // Open file descriptors
+    OSHash *ignored_paths;              // Files or directories marked as ignored
+    OSHash *directories;                // Directories checked by whodata mode
+    whodata_dir_status *dirs_status;    // Status list
 } whodata;
 
 typedef struct registry {
@@ -116,6 +136,11 @@ typedef struct registry_regex {
 } registry_regex;
 
 #endif
+
+typedef struct syscheck_node {
+    char *checksum;
+    int dir_position;
+} syscheck_node;
 
 typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */

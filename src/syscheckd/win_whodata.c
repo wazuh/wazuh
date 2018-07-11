@@ -17,6 +17,7 @@
 #define WPOL_RESTORE_COMMAND "auditpol /restore /file:\"%s\""
 #define WPOL_BACKUP_FILE "tmp\\backup-policies"
 #define WPOL_NEW_FILE "tmp\\new-policies"
+#define WCHECK_TIME 10
 
 // Variables whodata
 static PSID everyone_sid = NULL;
@@ -36,11 +37,13 @@ static const wchar_t* event_fields[] = {
 };
 static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
+static LPCTSTR priv = "SeSecurityPrivilege";
+static unsigned int criteria = FILE_WRITE_DATA | DELETE;
 
 // Whodata function headers
 void restore_sacls();
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
-int is_valid_sacl(PACL sacl);
+int is_valid_sacl(PACL sacl, int is_file);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event);
 char *guid_to_string(GUID *guid);
 int set_policies();
@@ -48,6 +51,8 @@ void set_subscription_query(wchar_t *query);
 extern int wm_exec(char *command, char **output, int *exitcode, int secs);
 int restore_audit_policies();
 void audit_restore();
+int check_object_sacl(char *obj, int is_file);
+int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
@@ -56,7 +61,7 @@ void whodata_list_set_values();
 void whodata_list_remove_multiple(size_t quantity);
 void send_whodata_del(whodata_evt *w_evt);
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
-int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time);
+int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 void free_win_whodata_evt(whodata_evt *evt);
 
 char *guid_to_string(GUID *guid) {
@@ -74,7 +79,6 @@ char *guid_to_string(GUID *guid) {
 }
 
 int set_winsacl(const char *dir, int position) {
-    static LPCTSTR priv = "SeSecurityPrivilege";
 	DWORD result = 0;
 	PACL old_sacl = NULL, new_sacl = NULL;
 	PSECURITY_DESCRIPTOR security_descriptor = NULL;
@@ -85,6 +89,7 @@ int set_winsacl(const char *dir, int position) {
     ACL_SIZE_INFORMATION old_sacl_info;
     unsigned long new_sacl_size;
     int retval = 1;
+    int privilege_enabled = 0;
 
     mdebug2("The SACL of '%s' will be configured.", dir);
 
@@ -98,6 +103,8 @@ int set_winsacl(const char *dir, int position) {
 		return 1;
 	}
 
+    privilege_enabled = 1;
+
 	if (result = GetNamedSecurityInfo(dir, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
 		merror("GetNamedSecurityInfo() failed. Error '%ld'", result);
         goto end;
@@ -106,10 +113,10 @@ int set_winsacl(const char *dir, int position) {
     ZeroMemory(&old_sacl_info, sizeof(ACL_SIZE_INFORMATION));
 
     // Check if the sacl has what the whodata scanner needs
-    switch(is_valid_sacl(old_sacl)) {
+    switch(is_valid_sacl(old_sacl, (syscheck.wdata.dirs_status[position].object_type == WSTATUS_FILE_TYPE) ? 1 : 0)) {
         case 0:
             mdebug1("It is necessary to configure the SACL of '%s'.", dir);
-            syscheck.wdata.ignore_rest[position] = 1;
+            syscheck.wdata.dirs_status[position].ignore_rest = 1;
 
             // Get SACL size
             if (!GetAclInformation(old_sacl, (LPVOID)&old_sacl_info, sizeof(ACL_SIZE_INFORMATION), AclSizeInformation)) {
@@ -123,7 +130,7 @@ int set_winsacl(const char *dir, int position) {
             goto end;
         case 2:
             // Empty SACL
-            syscheck.wdata.ignore_rest[position] = 1;
+            syscheck.wdata.dirs_status[position].ignore_rest = 1;
             old_sacl_info.AclBytesInUse = sizeof(ACL);
             break;
     }
@@ -169,7 +176,7 @@ int set_winsacl(const char *dir, int position) {
     ace->Header.AceType  = SYSTEM_AUDIT_ACE_TYPE;
     ace->Header.AceFlags = inherit_flag | SUCCESSFUL_ACCESS_ACE_FLAG;
     ace->Header.AceSize  = LOWORD(sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD));
-    ace->Mask            = FILE_WRITE_DATA | DELETE;
+    ace->Mask            = criteria;
     if (!CopySid(ev_sid_size, &ace->SidStart, everyone_sid)) {
         goto end;
     }
@@ -186,15 +193,19 @@ int set_winsacl(const char *dir, int position) {
         goto end;
     }
 
-	// Disable the privilege
-	if (set_privilege(hdle, priv, 0)) {
-		merror("Failed to disable the privilege. Error '%lu'.", GetLastError());
-        goto end;
-	}
-
-	CloseHandle(hdle);
 	retval = 0;
 end:
+    if (privilege_enabled) {
+        // Disable the privilege
+        if (set_privilege(hdle, priv, FALSE)) {
+            merror("Failed to disable the privilege. Error '%lu'.", GetLastError());
+        }
+    }
+
+    if (hdle) {
+        CloseHandle(hdle);
+    }
+
     if (security_descriptor) {
         LocalFree((HLOCAL)security_descriptor);
     }
@@ -209,7 +220,7 @@ end:
     return retval;
 }
 
-int is_valid_sacl(PACL sacl) {
+int is_valid_sacl(PACL sacl, int is_file) {
     int i;
     ACCESS_ALLOWED_ACE *ace;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
@@ -231,9 +242,10 @@ int is_valid_sacl(PACL sacl) {
             merror("Could not extract the ACE information. Error: '%lu'.", GetLastError());
             return 0;
         }
-        if ((ace->Header.AceFlags & inherit_flag) && // Check folder and subfolders
+
+        if ((is_file || (ace->Header.AceFlags & inherit_flag)) && // Check folder and subfolders
             (ace->Header.AceFlags & SUCCESSFUL_ACCESS_ACE_FLAG) && // Check successful attemp
-            (ace->Mask & (FILE_WRITE_DATA | DELETE)) && // Check write and delete permission
+            ((ace->Mask & (criteria)) == criteria) && // Check write and delete permission
             (EqualSid((PSID)&ace->SidStart, everyone_sid))) { // Check everyone user
             return 1;
         }
@@ -316,6 +328,7 @@ void restore_sacls() {
     LPCTSTR priv = "SeSecurityPrivilege";
     DWORD result = 0;
     PSECURITY_DESCRIPTOR security_descriptor = NULL;
+    int privilege_enabled = 0;
 
     c_process = GetCurrentProcess();
     if (!OpenProcessToken(c_process, TOKEN_ADJUST_PRIVILEGES, &hdle)) {
@@ -328,8 +341,10 @@ void restore_sacls() {
         goto end;
     }
 
+    privilege_enabled = 1;
+
     for (i = 0; syscheck.dir[i] != NULL; i++) {
-        if (syscheck.wdata.ignore_rest[i]) {
+        if (syscheck.wdata.dirs_status[i].ignore_rest) {
             sacl_it = NULL;
             if (result = GetNamedSecurityInfo(syscheck.dir[i], SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &sacl_it, &security_descriptor), result != ERROR_SUCCESS) {
                 merror("GetNamedSecurityInfo() failed restoring the SACLs. Error '%ld'.", result);
@@ -359,12 +374,14 @@ void restore_sacls() {
         }
     }
 
-    // Disable the privilege
-    if (set_privilege(hdle, priv, 0)) {
-        merror("Failed to disable the privilege while restoring the SACLs. Error '%lu'.", GetLastError());
+end:
+    if (privilege_enabled) {
+        // Disable the privilege
+        if (set_privilege(hdle, priv, FALSE)) {
+            merror("Failed to disable the privilege. Error '%lu'.", GetLastError());
+        }
     }
 
-end:
     if (hdle) {
         CloseHandle(hdle);
     }
@@ -411,6 +428,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
+    syscheck_node *s_node;
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
@@ -503,20 +521,19 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             case 4656:
                 is_directory = 0;
                 position = -1;
+
+                if (!path) {
+                    goto clean;
+                }
+
                 // Check if it is a known file
-                if (path && !OSHash_Get_ex(syscheck.fp, path)) {
+                if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     // Check if it is not a directory
                     if (path[1] == ':' && IsDir(path)) {
-                        if (position = find_dir_pos(path, 1), position < 0) {
+                        if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
                             // Discard the file if its monitoring has not been activated
                             mdebug2("'%s' is discarded because its monitoring is not activated.", path);
-                            if (result = OSHash_Add_ex(syscheck.wdata.ignored_paths, path, &fields_number), result != 2) {
-                                if (!result) {
-                                    merror("The event could not be added to the ignored hash table. File: '%s'.", path);
-                                } else if (result == 1) {
-                                    merror("The event could not be added to the ignored hash table because it is duplicated. File: '%s'.", path);
-                                }
-                            }
+                            whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
                             break;
                         } else {
                             // The file is new and has to be notified
@@ -526,6 +543,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         is_directory = 1;
                     }
                 } else {
+                    // Check if the file belongs to a directory that has been transformed to real-time
+                    if (s_node->dir_position) {
+                        mdebug2("The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", path);
+                        whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
+                    } else {
+                        merror("The '%s' file does not have an associated directory.", path);
+                        goto clean;
+                    }
                     // If the file or directory is already in the hash table, it is not necessary to set its position
                     if (!IsDir(path)) {
                         is_directory = 1;
@@ -556,12 +581,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 user_id = NULL;
                 process_name = NULL;
 add_whodata_evt:
-                if (result = OSHash_Add_ex(syscheck.wdata.fd, hash_id, w_evt), result != 2) {
-                    if (!result) {
-                        merror("The event for '%s' could not be added to the whodata hash table. Handle: '%s'.", path, hash_id);
-                    } else if (result == 1) {
+                if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result != 2) {
+                    if (result == 1) {
+                        mdebug1("The handler ('%s') will be updated.", hash_id);
                         whodata_evt *w_evtdup;
-                        mdebug1("The event for '%s' could not be added to the whodata hash table because it is duplicated, so the handler ('%s') will be updated.", path, hash_id);
                         if (w_evtdup = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evtdup) {
                             free_win_whodata_evt(w_evtdup);
                             goto add_whodata_evt;
@@ -594,7 +617,7 @@ add_whodata_evt:
                                     goto clean;
                                 }
 
-                                if (!check_dir_timestamp(&w_dir->timestamp, &system_time)) {
+                                if (!compare_timestamp(&w_dir->timestamp, &system_time)) {
                                     mdebug2("The '%s' directory has been scanned at 'd', so it does not need to do it again.", path);
                                     w_evt->scan_directory = 3;
                                     break;
@@ -602,20 +625,16 @@ add_whodata_evt:
                                 mdebug2("New files have been detected in the '%s' directory after the last scan.", path);
                             } else {
                                 // Check if is a valid directory
-                                if (position = find_dir_pos(path, 1), position < 0) {
+                                if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
                                     mdebug2("The '%s' directory has been discarded because it is not being monitored in whodata mode.", path);
                                     w_evt->scan_directory = 2;
                                     break;
                                 }
                                 os_calloc(1, sizeof(whodata_directory), w_dir);
-                                w_dir->timestamp = 0;
+                                memset(&w_dir->timestamp, 0, sizeof(SYSTEMTIME));
                                 w_dir->position = position;
-                                if (result = OSHash_Add_ex(syscheck.wdata.directories, path, w_dir), result != 2) {
-                                    if (!result) {
-                                        merror("The directory '%s' could not be added to the directories hash table.", path);
-                                    } else if (result == 1) {
-                                        merror("The directory '%s' could not be added to the directories hash table because it is duplicated.", path);
-                                    }
+
+                                if (result = whodata_hash_add(syscheck.wdata.directories, path, w_dir, "directories"), result != 2) {
                                     w_evt->scan_directory = 2;
                                     free(w_dir);
                                     break;
@@ -662,8 +681,8 @@ add_whodata_evt:
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         // Check that a new file has been added
                         if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
-                            time(&w_dir->timestamp);
-                            read_dir(w_evt->path, syscheck.opts[w_dir->position], syscheck.filerestrict[w_dir->position], NULL, 0);
+                            GetSystemTime(&w_dir->timestamp);
+                            read_dir(w_evt->path, w_dir->position, NULL, 0);
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
                         } else {
                             mdebug2("The '%s' directory has not been scanned because no new files have been detected. Mask: '%x'", w_evt->path, w_evt->mask);
@@ -712,6 +731,91 @@ int whodata_audit_start() {
     }
     memset(&syscheck.wlist, 0, sizeof(whodata_event_list));
     whodata_list_set_values();
+
+    return 0;
+}
+
+long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
+    int i;
+    int exists;
+    whodata_dir_status *d_status;
+    SYSTEMTIME utc;
+
+    while (1) {
+        for (i = 0; syscheck.dir[i]; i++) {
+            exists = 0;
+            d_status = &syscheck.wdata.dirs_status[i];
+
+            // CHECK IGNORE
+
+            // Check if the target exists
+            if (d_status->object_type == WSTATUS_FILE_TYPE) {
+                exists = !IsFile(syscheck.dir[i]);
+            } else if (d_status->object_type == WSTATUS_DIR_TYPE) {
+                exists = !IsDir(syscheck.dir[i]);
+            } else if (d_status->object_type == WSTATUS_UNK_TYPE) {
+                if (!IsFile(syscheck.dir[i])) {
+                    syscheck.wdata.dirs_status[i].object_type = WSTATUS_FILE_TYPE;
+                } else if (!IsDir(syscheck.dir[i])) {
+                    syscheck.wdata.dirs_status[i].object_type = WSTATUS_DIR_TYPE;
+                } else {
+                    // Unknown device type or does not exist
+                    continue;
+                }
+                exists = 1;
+            } else {
+                // It is not whodata
+                // It would also be valid to check if the file properties have CHECK_WHODATA
+                continue;
+            }
+
+            if (exists) {
+                if (d_status->status == WSTATUS_NO_EXISTS) {
+                    minfo("'%s' has been re-added, so it will be monitored in Whodata mode.        %d", syscheck.dir[i], i);
+                    if (set_winsacl(syscheck.dir[i], i)) {
+                        merror("Unable to add directory to whodata monitoring: '%s'.", syscheck.dir[i]);
+                        continue;
+                    }
+                    d_status->status = WSTATUS_EXISTS;
+                } else {
+                    if (get_creation_date(syscheck.dir[i], &utc)) {
+                        merror("The creation date for '%s' could not be extracted.", syscheck.dir[i]);
+                        continue;
+                    }
+
+                    if (compare_timestamp(&d_status->last_check, &utc)) {
+                        mdebug1("'%s' has been deleted and added after the last scan.", syscheck.dir[i]);
+                        if (set_winsacl(syscheck.dir[i], i)) {
+                            merror("Unable to add directory to whodata monitoring: '%s'.", syscheck.dir[i]);
+                            continue;
+                        }
+                    } else {
+                        if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WSTATUS_FILE_TYPE) ? 1 : 0)) {
+                            minfo("The SACL of '%s' has been modified and it is not valid for the Whodata mode, so real-time mode will be activated for this file.", syscheck.dir[i]);
+                            d_status->object_type = WSTATUS_NO_WHODATA;
+                            // Mark the directory to prevent its children from sending partial whodata alerts
+                            syscheck.wdata.dirs_status[i].check_type = WSTATUS_CHECK_REALTIME;
+                            // Removes CHECK_WHODATA from directory properties to prevent from being found in the whodata callback for Windows
+                            syscheck.opts[i] = syscheck.opts[i] & ~CHECK_WHODATA;
+                            continue;
+                        } else {
+                            // The SACL is valid
+                            // Mark it to prevent the restoration of its SACL
+                            syscheck.wdata.dirs_status[i].ignore_rest = 0;
+                        }
+                    }
+                }
+            } else {
+                minfo("'%s' has been deleted, so it will not be monitored in Whodata mode.", syscheck.dir[i]);
+                d_status->status = WSTATUS_NO_EXISTS;
+                d_status->object_type = WSTATUS_UNK_TYPE;
+            }
+            // Set the timestamp
+            GetSystemTime(&d_status->last_check);
+        }
+        sleep(WCHECK_TIME);
+    }
+
     return 0;
 }
 
@@ -796,9 +900,12 @@ void whodata_list_set_values() {
 void send_whodata_del(whodata_evt *w_evt) {
     static char del_msg[PATH_MAX + OS_SIZE_6144 + 6];
     static char wd_sum[OS_SIZE_6144 + 1];
+    syscheck_node *s_node;
 
     // Remove the file from the syscheck hash table
-    free(OSHash_Delete_ex(syscheck.fp, w_evt->path));
+    s_node = OSHash_Delete_ex(syscheck.fp, w_evt->path);
+    free(s_node->checksum);
+    free(s_node);
 
     if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
         merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", w_evt->path);
@@ -896,7 +1003,7 @@ void set_subscription_query(wchar_t *query) {
                                         ") " \
                                     "]",
             AUDIT_SUCCESS, // Only successful events
-            FILE_WRITE_DATA | DELETE); // For 4663 and 4656, write and delete events only
+            criteria); // For 4663 and 4656, write and delete events only
 }
 
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time) {
@@ -906,31 +1013,40 @@ int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time) {
     return FileTimeToSystemTime(&file_time, system_time);
 }
 
-int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time) {
-    struct tm parsed_time;
-    gmtime_r(timestamp, &parsed_time);
-
-    if (parsed_time.tm_mday > system_time->wDay) {
+int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2) {
+    if (t1->wYear > t2->wYear) {
         return 0;
-    } else if (parsed_time.tm_mday < system_time->wDay) {
+    } else if (t1->wYear < t2->wYear) {
         return 1;
     }
 
-    if (parsed_time.tm_hour > system_time->wHour) {
+    if (t1->wMonth > t2->wMonth) {
         return 0;
-    } else if (parsed_time.tm_hour < system_time->wHour) {
+    } else if (t1->wMonth < t2->wMonth) {
         return 1;
     }
 
-    if (parsed_time.tm_min > system_time->wMinute) {
+    if (t1->wDay > t2->wDay) {
         return 0;
-    } else if (parsed_time.tm_min < system_time->wMinute) {
+    } else if (t1->wDay < t2->wDay) {
         return 1;
     }
 
-    if (parsed_time.tm_sec > system_time->wSecond) {
+    if (t1->wHour > t2->wHour) {
         return 0;
-    } else if (parsed_time.tm_sec < system_time->wSecond) {
+    } else if (t1->wHour < t2->wHour) {
+        return 1;
+    }
+
+    if (t1->wMinute > t2->wMinute) {
+        return 0;
+    } else if (t1->wMinute < t2->wMinute) {
+        return 1;
+    }
+
+    if (t1->wSecond > t2->wSecond) {
+        return 0;
+    } else if (t1->wSecond < t2->wSecond) {
         return 1;
     }
 
@@ -940,6 +1056,68 @@ int check_dir_timestamp(time_t *timestamp, SYSTEMTIME *system_time) {
 void free_win_whodata_evt(whodata_evt *evt) {
     whodata_list_remove(evt->wnode);
     free_whodata_event(evt);
+}
+
+int check_object_sacl(char *obj, int is_file) {
+    HANDLE hdle = NULL;
+    PACL sacl = NULL;
+    int retval = 1;
+    PSECURITY_DESCRIPTOR security_descriptor = NULL;
+    long int result;
+    int privilege_enabled = 0;
+
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
+        merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
+        return 1;
+    }
+
+    if (set_privilege(hdle, priv, TRUE)) {
+        merror("The privilege could not be activated. Error: '%ld'.", GetLastError());
+        goto end;
+    }
+
+    privilege_enabled = 1;
+    if (result = GetNamedSecurityInfo(obj, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &sacl, &security_descriptor), result != ERROR_SUCCESS) {
+        merror("GetNamedSecurityInfo() failed. Error '%ld'", result);
+        goto end;
+    }
+
+    if (is_valid_sacl(sacl, is_file) == 1) {
+        // Is a valid SACL
+        retval = 0;
+    }
+
+end:
+    if (privilege_enabled) {
+        // Disable the privilege
+        if (set_privilege(hdle, priv, FALSE)) {
+            merror("Failed to disable the privilege. Error '%lu'.", GetLastError());
+        }
+    }
+    if (hdle) {
+        CloseHandle(hdle);
+    }
+    if (security_descriptor) {
+        LocalFree((HLOCAL)security_descriptor);
+    }
+    if (sacl) {
+        LocalFree((HLOCAL)sacl);
+    }
+    return retval;
+}
+
+int whodata_hash_add(OSHash *table, char *id, void *data, char *tag) {
+    int result;
+
+    if (result = OSHash_Add_ex(table, id, data), result != 2) {
+        if (!result) {
+            merror("The event could not be added to the %s hash table. Target: '%s'.", tag, id);
+        } else if (result == 1) {
+            merror("The event could not be added to the %s hash table because it is duplicated. Target: '%s'.", tag, id);
+        }
+    }
+
+    return result;
 }
 
 #endif

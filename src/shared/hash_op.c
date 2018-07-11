@@ -385,6 +385,17 @@ void *OSHash_Delete(OSHash *self, const char *key)
     return NULL;
 }
 
+void *OSHash_Numeric_Delete_ex(OSHash *self, int key)
+{
+    char string_key[12];
+    void *result;
+
+    snprintf(string_key, 12, "%d", key);
+    result = OSHash_Delete_ex(self, string_key);
+
+    return result;
+}
+
 /* Return a pointer to a hash node if found, that hash node is removed from the table */
 void *OSHash_Delete_ex(OSHash *self, const char *key)
 {
