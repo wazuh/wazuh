@@ -42,13 +42,15 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__
 int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 {
     char *buf;
+    syscheck_node *s_node;
 
-    buf = (char *) OSHash_Get_ex(syscheck.fp, file_name);
+    s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name);
 
-    if (buf != NULL) {
+    if (s_node != NULL) {
         char c_sum[512];
         size_t c_sum_size;
 
+        buf = s_node->checksum;
         c_sum[0] = '\0';
         c_sum[511] = '\0';
 
@@ -59,7 +61,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             // Extract the whodata sum here to not include it in the hash table
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                merror("The whodata sum for '%s' file could not ºbe included in the alert as it is too large.", file_name);
                 *wd_sum = '\0';
             }
 
@@ -69,9 +71,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             snprintf(c_sum, sizeof(c_sum), "%.*s -1", SK_DB_NATTR, buf);
             free(buf);
 
-            if (!OSHash_Update_ex(syscheck.fp, file_name, strdup(c_sum))) {
-                merror("Unable to update file to db: %s", file_name);
-            }
+            s_node->checksum = strdup(c_sum);
 
             send_syscheck_msg(alert_msg);
             struct timeval timeout = {0, syscheck.rt_delay * 1000};
@@ -92,9 +92,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
-            if (!OSHash_Update_ex(syscheck.fp, file_name, strdup(alert_msg))) {
-                merror("Unable to update file to db: %s", file_name);
-            }
+            s_node->checksum = strdup(alert_msg);
 
             alert_msg[OS_MAXSTR] = '\0';
             char *fullalert = NULL;
@@ -129,15 +127,15 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 #ifdef WIN32
         if (!evt) {
 #endif
-            if (pos = find_dir_pos(file_name, 0), pos > -1) {
+            if (pos = find_dir_pos(file_name, 1, 0, 0), pos > -1) {
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt, 1);
+                read_dir(file_name, pos, evt, 1);
             }
 #ifdef WIN32
         } else {
             if (pos = evt->dir_position, pos >= 0) {
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, syscheck.opts[pos], syscheck.filerestrict[pos], evt, 1);
+                read_dir(file_name, pos, evt, 1);
             } else {
                 mdebug1("'%s' has been deleted while another file was writing to it.", file_name);
             }
@@ -149,45 +147,47 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 }
 
 /* Find container directory */
-int find_dir_pos(const char *filename, char is_whodata) {
-    char *buf;
+int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) {
+    char buf[PATH_MAX];
     int i;
     char *c;
     int retval = -1;
+    int path_length = PATH_MAX;
 
-#ifdef WIN32
-    if (is_whodata) {
-        // Root directories are checked in whodata mode
-        os_calloc(strlen(filename) + 2, sizeof(char), buf);
-        snprintf(buf, strlen(filename) + 2, "%s\\", filename);
+    if (full_compare) {
+        snprintf(buf, strlen(filename) + 2, "%s%c", filename, PATH_SEP);
     } else {
-        buf = strdup(filename);
+        snprintf(buf, strlen(filename) + 1, "%s", filename);
     }
-#else
-    buf = strdup(filename);
-#endif
-
-
+ 
     while (c = strrchr(buf, PATH_SEP), c && c != buf) {
         *c = '\0';
 
         for (i = 0; syscheck.dir[i]; i++) {
-            if (is_whodata && !(syscheck.opts[i] & CHECK_WHODATA)) {
+            if (check_find && !(syscheck.opts[i] & check_find)) {
                 continue;
             }
             if (!strcmp(syscheck.dir[i], buf)) {
-                retval = i;
+                // If deep_search is activated we will continue searching for parent directories
+                if (deep_search) {
+                    int buf_len = strlen(buf);
+                    if (buf_len < path_length) {
+                        path_length = buf_len;
+                        retval = i;
+                    }
+                } else {
+                    retval = i;
+                }
                 break;
             }
         }
 
-        if (syscheck.dir[i]) {
+        if (!deep_search && syscheck.dir[i]) {
             // The directory has been found
             break;
         }
     }
 
-    free(buf);
     return retval;
 }
 
@@ -433,12 +433,34 @@ int realtime_adddir(const char *dir, int whodata)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
+    DIR *dp;
 
     if (whodata) {
         if (!syscheck.wdata.fd && whodata_audit_start()) {
-            return -1;
+            return 0;
         }
 
+        // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
+        // regardless of it was checked in the initial configuration (CHECK_WHODATA in opts)
+        syscheck.wdata.dirs_status[whodata - 1].check_type = WSTATUS_CHECK_WHODATA;
+
+        // Check if the file or directory exists
+        if (dp = opendir(dir), dp) {
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WSTATUS_DIR_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status = WSTATUS_EXISTS;
+        } else if (errno == ENOTDIR) {
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WSTATUS_FILE_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status = WSTATUS_EXISTS;
+        } else {
+            mwarn("'%s' does not exist. Monitoring discarded.", dir);
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WSTATUS_UNK_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status = WSTATUS_NO_EXISTS;
+            closedir(dp);
+            return 0;
+        }
+
+        closedir(dp);
+        GetSystemTime(&syscheck.wdata.dirs_status[whodata - 1].last_check);
         if (set_winsacl(dir, whodata - 1)) {
             merror("Unable to add directory to whodata monitoring: '%s'.", dir);
             return 0;

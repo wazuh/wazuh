@@ -63,6 +63,9 @@ All notable changes to this project will be documented in this file.
 - Syscheck in frequency time show alerts from deleted files. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Added an option `target` to customize output format per-target in Logcollector. ([#863](https://github.com/wazuh/wazuh/pull/863))
 - New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
+- Remove old snapshot files for FIM. ([#872](https://github.com/wazuh/wazuh/pull/872))
+- Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
+
 
 ### Changed
 
@@ -112,6 +115,7 @@ All notable changes to this project will be documented in this file.
 - Prevent files from remaining open in the cluster. ([#874](https://github.com/wazuh/wazuh/pull/874))
 - Fix network unreachable error when cluster starts. ([#800](https://github.com/wazuh/wazuh/pull/800))
 - Fix empty rules and decoders file check. ([#887](https://github.com/wazuh/wazuh/pull/887))
+- Prevent to access an unexisting hash table from 'whodata' thread. ([#911](https://github.com/wazuh/wazuh/pull/911))
 
 ## [v3.3.1]
 
