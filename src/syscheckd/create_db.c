@@ -30,6 +30,9 @@ static int read_dir_diff(char *dir_name) {
     size_t dir_size;
     char f_name[PATH_MAX + 2];
     char file_name[PATH_MAX] = "\0";
+    char local_dir[PATH_MAX];
+
+    snprintf(local_dir, PATH_MAX - 1, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
     DIR *dp;
     struct dirent *entry;
@@ -44,10 +47,10 @@ static int read_dir_diff(char *dir_name) {
     /* Open the directory given */
     dp = opendir(dir_name);
     if (!dp) {
-        if (errno == ENOTDIR) {
+        if (errno == ENOTDIR || (errno == ENOENT && !strcmp(dir_name, local_dir))) {
             return 0;
         } else {
-            mwarn("Accessing(%d) to '%s'.", errno, dir_name);
+            mwarn("Accessing to '%s': [(%d) - (%s)]", dir_name, errno, strerror(errno));
             return -1;
         }
     }
