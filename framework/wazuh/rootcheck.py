@@ -138,7 +138,7 @@ def clear(agent_id=None, all_agents=False):
     return "Rootcheck database deleted"
 
 
-def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=common.database_limit, sort=None, search=None):
+def print_db(agent_id=None, filters={}, offset=0, limit=common.database_limit, sort=None, search=None):
     """
     Returns a list of events from the database.
 
@@ -153,9 +153,10 @@ def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=co
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     select = {'fields':["status", "oldDay", "readDay", "log", "pci", "cis"]}
+    if 'status' not in filters:
+        filters['status'] = 'all'
     db_query = WazuhDBQueryRootcheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                     select=select, count=True, get_data=True,
-                                     filters={key:value for key,value in [('status',status),('pci',pci),('cis',cis)] if value is not None})
+                                     select=select, count=True, get_data=True, filters=filters)
     db_query.run()
 
     return {'totalItems': db_query.total_items, 'data':[{key:val for key,val in zip(db_query.select['fields'], tuple)
