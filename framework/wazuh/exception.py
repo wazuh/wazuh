@@ -70,6 +70,7 @@ class WazuhException(Exception):
         1600: 'There is no database for selected agent',  # Also, agent
         1601: 'Unable to restart syscheck/rootcheck',
         1602: 'Impossible to run syscheck/run due to agent is not active',
+        1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
 
         # Agents:
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',

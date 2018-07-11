@@ -628,7 +628,7 @@ class WazuhDBQuery:
     def add_filters_to_query(self):
         for filter_name, db_filter in self.filters.items():
 
-            if db_filter == "all":
+            if self.pass_filter(db_filter):
                 continue
 
             if filter_name == "status":
@@ -705,10 +705,15 @@ class WazuhDBQuery:
         return "COUNT(*)"
 
 
+    @staticmethod
+    def pass_filter(db_filter):
+        return db_filter == "all"
+
+
 class WazuhDBQueryDistinct(WazuhDBQuery):
 
     def default_query(self):
-        return "SELECT DISTINCT {0} FROM agent"
+        return "SELECT DISTINCT {0} FROM " + self.table
 
 
     def default_count_query(self):
