@@ -17,9 +17,6 @@
 
 // Global variables
 syscheck_config syscheck;
-W_Vector *audit_added_rules;
-W_Vector *audit_added_dirs;
-volatile int added_rules_error;
 pthread_cond_t audit_thread_started;
 
 #ifdef USE_MAGIC
@@ -54,7 +51,7 @@ static void read_internal(int debug_level)
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
     syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
 #ifndef WIN32
-    syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 256, 4096);
+    syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
 #endif
 
     /* Check current debug_level
@@ -70,6 +67,20 @@ static void read_internal(int debug_level)
 
     return;
 }
+
+/* Initialize syscheck variables */
+int fim_initilize() {
+
+    /* Create store data */
+    syscheck.fp = OSHash_Create();
+    syscheck.local_hash = OSHash_Create();
+
+    /* Duplicate hash table to check for deleted files */
+    syscheck.last_check = OSHash_Create();
+
+    return 0;
+}
+
 
 #ifdef WIN32
 /* syscheck main for Windows */
@@ -135,7 +146,7 @@ int Start_win32_Syscheck()
         /* Print directories to be monitored */
         r = 0;
         while (syscheck.dir[r] != NULL) {
-            char optstr[ 100 ];
+            char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             r++;
         }
@@ -160,6 +171,7 @@ int Start_win32_Syscheck()
 
     /* Some sync time */
     sleep(syscheck.tsleep * 5);
+    fim_initilize();
 
     /* Wait if agent started properly */
     os_wait();
@@ -329,7 +341,7 @@ int main(int argc, char **argv)
         /* Print directories to be monitored */
         r = 0;
         while (syscheck.dir[r] != NULL) {
-            char optstr[ 100 ];
+            char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             r++;
         }
@@ -370,47 +382,13 @@ int main(int argc, char **argv)
 
     /* Some sync time */
     sleep(syscheck.tsleep * 5);
+    fim_initilize();
 
     // Audit events thread
     if (syscheck.enable_whodata) {
-        unsigned int i = 0;
-        int audit_socket = audit_init();
-        added_rules_error = 0;
-        if (audit_socket > 0) {
-            mdebug1("Starting Auditd events reader thread...");
-            audit_added_rules = W_Vector_init(10);
-            audit_added_dirs = W_Vector_init(20);
-            atexit(clean_rules);
-            pthread_cond_init(&audit_thread_started, NULL);
-            w_create_thread(audit_main, &audit_socket);
-            w_mutex_lock(&audit_mutex);
-            while (!audit_thread_active)
-                pthread_cond_wait(&audit_thread_started, &audit_mutex);
-            w_mutex_unlock(&audit_mutex);
-            // Add Audit rules
-            while (syscheck.dir[i] != NULL) {
-                if (syscheck.opts[i] & CHECK_WHODATA) {
-                    int retval;
-                    if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
-                        if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
-                            mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
-                            w_mutex_lock(&audit_rules_mutex);
-                            W_Vector_insert(audit_added_rules, syscheck.dir[i]);
-                            w_mutex_unlock(&audit_rules_mutex);
-                        } else {
-                            merror("Error adding Audit rule for %s : %i", syscheck.dir[i], retval);
-                            added_rules_error = 1;
-                        }
-                    } else {
-                        merror("Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d).", syscheck.dir[i], syscheck.max_audit_entries);
-                    }
-                }
-                i++;
-            }
-
-        } else {
-            merror("Cannot start Audit events reader thread.");
-        }
+        int out = audit_init();
+        if (out < 0)
+            mwarn("Audit events reader thread not started.");
     }
 
     /* Start the daemon */

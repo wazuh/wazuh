@@ -298,8 +298,8 @@ WriteAgent()
         fi
       fi
     fi
-    echo "    <notify_time>60</notify_time>" >> $NEWCONFIG
-    echo "    <time-reconnect>300</time-reconnect>" >> $NEWCONFIG
+    echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
+    echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -731,6 +731,7 @@ InstallCommon(){
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
   ./init/fw-check.sh execute
+  InstallSELinuxPolicyPackage
 }
 
 InstallLocal(){

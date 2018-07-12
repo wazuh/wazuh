@@ -44,10 +44,12 @@ void *OSHash_Free(OSHash *self) __attribute__((nonnull));
  * Key must not be NULL
  */
 int OSHash_Add(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
+int OSHash_Numeric_Add_ex(OSHash *hash, int key, void *data) __attribute__((nonnull(1, 3)));
 int OSHash_Add_ex(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 int OSHash_Update(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 int OSHash_Update_ex(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 void *OSHash_Delete(OSHash *self, const char *key) __attribute__((nonnull));
+void *OSHash_Numeric_Delete_ex(OSHash *self, int key);
 void *OSHash_Delete_ex(OSHash *self, const char *key) __attribute__((nonnull));
 
 /* Returns NULL on error (key not found)
@@ -55,6 +57,7 @@ void *OSHash_Delete_ex(OSHash *self, const char *key) __attribute__((nonnull));
  * Key must not be NULL
  */
 void *OSHash_Get(const OSHash *self, const char *key) __attribute__((nonnull));
+void *OSHash_Numeric_Get_ex(const OSHash *self, int key) __attribute__((nonnull(1)));
 void *OSHash_Get_ex(const OSHash *self, const char *key) __attribute__((nonnull));
 
 int OSHash_setSize(OSHash *self, unsigned int new_size) __attribute__((nonnull));

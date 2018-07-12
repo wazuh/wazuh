@@ -7,7 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef WIN32
+#ifdef __linux__
 #include "shared.h"
 #include "external/procps/readproc.h"
 #include <linux/audit.h>
@@ -24,6 +24,7 @@
 #define AUDIT_CONF_LINK "/etc/audisp/plugins.d/af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 4096
+#define AUDIT_KEY "wazuh_fim"
 
 // Global variables
 W_Vector *audit_added_rules;
@@ -41,10 +42,12 @@ static regex_t regexCompiled_path1;
 static regex_t regexCompiled_path2;
 static regex_t regexCompiled_path3;
 static regex_t regexCompiled_items;
+static regex_t regexCompiled_dir;
 pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// Convert audit relative paths into absolute paths
+
+// Converts Audit relative paths into absolute paths
 char *clean_audit_path(char *cwd, char *path) {
 
     char *file_ptr = path;
@@ -71,7 +74,7 @@ char *clean_audit_path(char *cwd, char *path) {
 }
 
 
-// Check if auditd is installed and running
+// Check if Auditd is installed and running
 int check_auditd_enabled(void) {
 
     PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
@@ -96,7 +99,10 @@ int check_auditd_enabled(void) {
     return auditd_pid;
 }
 
-int audit_restart() {
+
+// Restart Auditd service
+int audit_restart(void) {
+
     wfd_t * wfd;
     int status;
     char buffer[4096];
@@ -108,7 +114,6 @@ int audit_restart() {
     }
 
     // Print stderr
-
     while (fgets(buffer, sizeof(buffer), wfd->file)) {
         mdebug1("auditd: %s", buffer);
     }
@@ -126,8 +131,10 @@ int audit_restart() {
     }
 }
 
-// Set audit socket configuration
+
+// Set Auditd socket configuration
 int set_auditd_config(void) {
+
     FILE *fp;
 
     // Check that the plugin file is installed
@@ -197,8 +204,7 @@ int set_auditd_config(void) {
     }
 }
 
-
-// Init audit socket
+// Init Audit events socket
 int init_auditd_socket(void) {
     int sfd;
 
@@ -237,7 +243,7 @@ int audit_manage_rules(int action, const char *path, const char *key) {
             type = AUDIT_WATCH;
         }
     } else {
-        merror("audit_manage_rules(): Cannot stat %s", path);
+        mdebug2("audit_manage_rules(): Cannot stat %s", path);
         retval = -1;
         goto end;
     }
@@ -307,23 +313,9 @@ end:
 }
 
 
-// Add rule
+// Add rule into Auditd rules list
 int audit_add_rule(const char *path, const char *key) {
-    int retval = 0;
-
-    // Save dir into saved rules list
-    w_mutex_lock(&audit_mutex);
-
-    if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
-        if (retval = audit_manage_rules(ADD_RULE, path, key), retval >= 0) {
-            W_Vector_insert(audit_added_rules, path);
-        }
-    } else {
-        retval = -2;
-    }
-
-    w_mutex_unlock(&audit_mutex);
-    return retval;
+    return audit_manage_rules(ADD_RULE, path, key);
 }
 
 
@@ -333,27 +325,34 @@ int audit_delete_rule(const char *path, const char *key) {
 }
 
 
-int audit_init(void) {
-
-    // Check if auditd is installed and running.
-    int aupid = check_auditd_enabled();
-    if (aupid <= 0) {
-        mdebug1("Auditd is not running.");
-        return (-1);
+int add_audit_rules_syscheck(void) {
+    unsigned int i = 0;
+    unsigned int rules_added = 0;
+    while (syscheck.dir[i] != NULL) {
+        if (syscheck.opts[i] & CHECK_WHODATA) {
+            int retval;
+            if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
+                if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
+                    mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
+                    w_mutex_lock(&audit_rules_mutex);
+                    W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                    w_mutex_unlock(&audit_rules_mutex);
+                    rules_added++;
+                } else {
+                    merror("Error adding Audit rule for directory: %s", syscheck.dir[i]);
+                }
+            } else {
+                merror("Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d).", syscheck.dir[i], syscheck.max_audit_entries);
+            }
+        }
+        i++;
     }
+    return rules_added;
+}
 
-    // Check audit socket configuration
-    switch (set_auditd_config()) {
-    case -1:
-        mdebug1("Cannot apply Audit config.");
-        return (-1);
-    case 0:
-        break;
-    default:
-        return (-1);
-    }
 
-    // Initialize regular expressions
+// Initialize regular expressions
+int init_regex(void) {
 
     static const char *pattern_uid = " uid=([0-9]*) ";
     if (regcomp(&regexCompiled_uid, pattern_uid, REG_EXTENDED)) {
@@ -420,12 +419,76 @@ int audit_init(void) {
         merror("Cannot compile items regular expression.");
         return -1;
     }
-
-    return init_auditd_socket();
+    static const char *pattern_dir = " dir=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_dir, pattern_dir, REG_EXTENDED)) {
+        merror("Cannot compile dir regular expression.");
+        return -1;
+    }
+    return 0;
 }
 
-// Extract id: node=... type=CWD msg=audit(1529332881.955:3867): cwd="..."
 
+// Init Audit events reader thread
+int audit_init(void) {
+
+    // Check if auditd is installed and running.
+    int aupid = check_auditd_enabled();
+    if (aupid <= 0) {
+        mdebug1("Auditd is not running.");
+        return (-1);
+    }
+
+    // Check audit socket configuration
+    switch (set_auditd_config()) {
+    case -1:
+        mdebug1("Cannot apply Audit config.");
+        return (-1);
+    case 0:
+        break;
+    default:
+        return (-1);
+    }
+
+    // Add Audit rules
+    audit_added_rules = W_Vector_init(10);
+    audit_added_dirs = W_Vector_init(20);
+    int rules_added = add_audit_rules_syscheck();
+    if (rules_added < 1){
+        mdebug1("No rules added. Audit events reader thread will not start.");
+        return (-1);
+    }
+
+    // Initialize Audit socket
+    static int audit_socket;
+    audit_socket = init_auditd_socket();
+
+    if (audit_socket >= 0) {
+
+        mdebug1("Starting Auditd events reader thread...");
+
+        int regex_comp = init_regex();
+        if (regex_comp < 0) {
+            return -1;
+        }
+
+        atexit(clean_rules);
+
+        // Start audit thread
+        pthread_cond_init(&audit_thread_started, NULL);
+        w_create_thread(audit_main, &audit_socket);
+        w_mutex_lock(&audit_mutex);
+        while (!audit_thread_active)
+            pthread_cond_wait(&audit_thread_started, &audit_mutex);
+        w_mutex_unlock(&audit_mutex);
+        return 1;
+
+    } else {
+        return -1;
+    }
+}
+
+
+// Extract id: node=... type=CWD msg=audit(1529332881.955:3867): cwd="..."
 char * audit_get_id(const char * event) {
     char * begin;
     char * end;
@@ -493,7 +556,8 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
     return gen_path;
 }
 
-void audit_parse(char * buffer) {
+
+void audit_parse(char *buffer) {
     char *pkey;
     char *psuccess;
     char *pconfig;
@@ -521,12 +585,31 @@ void audit_parse(char * buffer) {
         if ((pconfig = strstr(buffer,"type=CONFIG_CHANGE"), pconfig)
         && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
             (pdelete = strstr(buffer,"op=\"remove_rule\""), pdelete))) { // Detect rules modification.
-            audit_thread_active = 0;
-            mwarn("Detected Audit rules manipulation: Rule removed.");
-            // Send alert
-            char msg_alert[512 + 1];
-            snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Rule removed");
-            SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+
+            // Filter rule removed
+            char *p_dir = NULL;
+            if(regexec(&regexCompiled_dir, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                p_dir = calloc(1, match_size + 1);
+                snprintf (p_dir, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            }
+
+            if (p_dir && *p_dir != '\0') {
+                mwarn("Monitored directory '%s' was removed: Audit rule removed.", p_dir);
+                // Send alert
+                char msg_alert[512 + 1];
+                snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+                SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+            } else {
+                audit_thread_active = 0;
+                mwarn("Detected Audit rules manipulation: Audit rules removed.");
+                // Send alert
+                char msg_alert[512 + 1];
+                snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+                SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+            }
+
+            free(p_dir);
 
         } else if (psuccess = strstr(buffer,"success=yes"), psuccess) {
 
@@ -671,6 +754,7 @@ void audit_parse(char * buffer) {
 
                         realtime_checksumfile(w_evt->path, w_evt);
                         free(file_path1);
+                        w_evt->path = NULL;
                     }
 
                     // Send event 2/2
@@ -719,11 +803,12 @@ void * audit_main(int * audit_sock) {
     buffer = malloc(BUF_SIZE * sizeof(char));
     os_malloc(BUF_SIZE, cache);
 
-    mdebug1("Reading events from Audit socket...");
     w_mutex_lock(&audit_mutex);
     audit_thread_active = 1;
     pthread_cond_signal(&audit_thread_started);
     w_mutex_unlock(&audit_mutex);
+
+    mdebug1("Reading events from Audit socket...");
 
     while (audit_thread_active) {
         FD_ZERO(&fdset);
@@ -757,7 +842,7 @@ void * audit_main(int * audit_sock) {
 
         if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), !byteRead) {
             // Connection closed
-            minfo("Audit: connection closed.");
+            mwarn("Audit: connection closed.");
             // Send alert
             char msg_alert[512 + 1];
             snprintf(msg_alert, 512, "ossec: Audit: Connection closed");
@@ -866,6 +951,7 @@ void clean_rules(void) {
             audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
         }
         W_Vector_free(audit_added_rules);
+        audit_added_rules = NULL;
     }
     w_mutex_unlock(&audit_mutex);
 }

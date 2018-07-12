@@ -20,7 +20,7 @@
 /* Compare the first common fields between sum strings */
 static int SumCompare(const char *s1, const char *s2);
 
-static void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum);
+static void InsertWhodata(const sk_sum_t * sum);
 
 /* Initialize the necessary information to process the syscheck information */
 void SyscheckInit()
@@ -246,8 +246,8 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
 
     FILE *fp;
 
-    sk_sum_t oldsum;
-    sk_sum_t newsum;
+    sk_sum_t oldsum = { .size = NULL };
+    sk_sum_t newsum = { .size = NULL };
 
     /* Get db pointer */
     fp = DB_File(lf->location, &agent_id);
@@ -342,6 +342,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
 
         if (!Config.syscheck_auto_ignore) {
             sdb.syscheck_dec->id = sdb.id1;
+            sf = 1;
         } else {
             if (lf->time.tv_sec - st < Config.syscheck_ignore_time) {
                 if (sf >= Config.syscheck_ignore_frequency) {
@@ -382,13 +383,14 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
         fflush(fp);
 
         if (result = sk_decode_sum(&newsum, c_sum, w_sum), result != -1) {
-            InsertWhodata(lf, &newsum);
+            InsertWhodata(&newsum);
         }
 
         switch (result) {
         case -1:
             merror("Couldn't decode syscheck sum from log.");
             lf->data = NULL;
+            sk_sum_clean(&newsum);
             return 0;
 
         case 0:
@@ -396,6 +398,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
             case -1:
                 merror("Couldn't decode syscheck sum from database.");
                 lf->data = NULL;
+                sk_sum_clean(&newsum);
                 return 0;
 
             case 0:
@@ -570,6 +573,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
 
                 if(!changes) {
                     lf->data = NULL;
+                    sk_sum_clean(&newsum);
                     return 0;
                 } else {
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, ",", '\0');
@@ -613,7 +617,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
         case 1:
             /* File deleted */
             sdb.syscheck_dec->id = sdb.idd;
-            os_strdup(f_name, lf->filename);
+            sk_fill_event(lf, f_name, &newsum);
             lf->event_type = FIM_DELETED;
 
             snprintf(sdb.comment, OS_MAXSTR,
@@ -644,7 +648,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
 
         /* Set decoder */
         lf->decoder_info = sdb.syscheck_dec;
-
+        sk_sum_clean(&newsum);
         return (1);
 
     } /* Continue */
@@ -667,7 +671,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
             /* Alert if configured to notify on new files */
             if ((Config.syscheck_alert_new == 1) && DB_IsCompleted(agent_id)) {
                 sdb.syscheck_dec->id = sdb.idn;
-                InsertWhodata(lf, &newsum);
+                InsertWhodata(&newsum);
                 sk_fill_event(lf, f_name, &newsum);
 
                 /* New file message */
@@ -690,7 +694,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 /* Set decoder */
                 lf->decoder_info = sdb.syscheck_dec;
                 lf->data = NULL;
-
+                sk_sum_clean(&newsum);
                 return (1);
             }
 
@@ -702,6 +706,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
     }
 
     lf->data = NULL;
+    sk_sum_clean(&newsum);
     return (0);
 }
 
@@ -791,12 +796,10 @@ int SumCompare(const char *s1, const char *s2) {
     return size1 == size2 ? strncmp(s1, s2, size1) : 1;
 }
 
-void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum) {
+void InsertWhodata(const sk_sum_t * sum) {
     /* Whodata user */
     if(sum->wdata.user_id && sum->wdata.user_name && *sum->wdata.user_id != '\0') {
         snprintf(sdb.user_name, OS_FLSIZE, "(Audit) User: '%s (%s)'\n", sum->wdata.user_name, sum->wdata.user_id);
-        os_strdup(sum->wdata.user_id, lf->user_id);
-        os_strdup(sum->wdata.user_name, lf->user_name);
     } else {
         *sdb.user_name = '\0';
     }
@@ -804,8 +807,6 @@ void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum) {
     /* Whodata effective user */
     if(sum->wdata.effective_uid && sum->wdata.effective_name && *sum->wdata.effective_uid != '\0') {
         snprintf(sdb.effective_name, OS_FLSIZE, "(Audit) Effective user: '%s (%s)'\n", sum->wdata.effective_name, sum->wdata.effective_uid);
-        os_strdup(sum->wdata.effective_uid, lf->effective_uid);
-        os_strdup(sum->wdata.effective_name, lf->effective_name);
     } else {
         *sdb.effective_name = '\0';
     }
@@ -813,8 +814,6 @@ void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum) {
     /* Whodata Audit user */
     if(sum->wdata.audit_uid && sum->wdata.audit_name && *sum->wdata.audit_uid != '\0') {
         snprintf(sdb.audit_name, OS_FLSIZE, "(Audit) Login user: '%s (%s)'\n", sum->wdata.audit_name, sum->wdata.audit_uid);
-        os_strdup(sum->wdata.audit_uid, lf->audit_uid);
-        os_strdup(sum->wdata.audit_name, lf->audit_name);
     } else {
         *sdb.audit_name = '\0';
     }
@@ -822,8 +821,6 @@ void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum) {
     /* Whodata Group */
     if(sum->wdata.group_id && sum->wdata.group_name && *sum->wdata.group_id != '\0') {
         snprintf(sdb.group_name, OS_FLSIZE, "(Audit) Group: '%s (%s)'\n", sum->wdata.group_name, sum->wdata.group_id);
-        os_strdup(sum->wdata.group_id, lf->group_id);
-        os_strdup(sum->wdata.group_name, lf->group_name);
     } else {
         *sdb.group_name = '\0';
     }
@@ -831,14 +828,12 @@ void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum) {
     /* Whodata process */
     if(sum->wdata.process_id && *sum->wdata.process_id != '\0') {
         snprintf(sdb.process_id, OS_FLSIZE, "(Audit) Process id: '%s'\n", sum->wdata.process_id);
-        os_strdup(sum->wdata.process_id, lf->process_id);
     } else {
         *sdb.process_id = '\0';
     }
 
     if(sum->wdata.process_name && *sum->wdata.process_name != '\0') {
         snprintf(sdb.process_name, OS_FLSIZE, "(Audit) Process name: '%s'\n", sum->wdata.process_name);
-        os_strdup(sum->wdata.process_name, lf->process_name);
     } else {
         *sdb.process_name = '\0';
     }

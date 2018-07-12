@@ -58,8 +58,8 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             os_strdup(entry, syscheck->dir[pl]);
 
 #ifdef WIN32
-            os_calloc(2, sizeof(int), syscheck->wdata.ignore_rest);
-            memset(syscheck->wdata.ignore_rest + pl, 0, 2 * sizeof(int));
+            os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
+            memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
             os_calloc(2, sizeof(int), syscheck->opts);
             syscheck->opts[pl + 1] = 0;
@@ -78,9 +78,8 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             os_strdup(entry, syscheck->dir[pl]);
 
 #ifdef WIN32
-            os_realloc(syscheck->wdata.ignore_rest, (pl + 2) * sizeof(int),
-                       syscheck->wdata.ignore_rest);
-            memset(syscheck->wdata.ignore_rest + pl, 0, 2 * sizeof(int));
+            os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
+            memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
             os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
                        syscheck->opts);
@@ -180,6 +179,7 @@ int dump_registry_ignore_regex(syscheck_config *syscheck, char *regex, int arch)
 int read_reg(syscheck_config *syscheck, char *entries, int arch)
 {
     int i;
+    int j;
     char **entry;
     char *tmp_str;
 
@@ -190,10 +190,9 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch)
         return (0);
     }
 
-    while (*entry) {
+    for (j = 0; entry[j]; j++) {
         char *tmp_entry;
-
-        tmp_entry = *entry;
+        tmp_entry = entry[j];
 
         /* Remove spaces at the beginning */
         while (*tmp_entry == ' ') {
@@ -237,8 +236,9 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch)
         dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL);
 
         /* Next entry */
-        entry++;
+        free(entry[j]);
     }
+    free(entry);
 
     return (1);
 }
@@ -608,6 +608,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_skip_nfs = "skip_nfs";
     const char *xml_nodiff = "nodiff";
     const char *xml_restart_audit = "restart_audit";
+    const char *xml_windows_audit_interval = "windows_audit_interval";
 
 #ifdef WIN32
     const char *xml_arch = "arch";
@@ -704,6 +705,17 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             } else if (!read_reg(syscheck, node[i]->content, ARCH_32BIT)) {
                 return (OS_INVALID);
             }
+#endif
+        }
+        /* Get windows audit interval */
+        else if (strcmp(node[i]->element, xml_windows_audit_interval) == 0) {
+#ifdef WIN32
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+            syscheck->wdata.interval_scan = atoi(node[i]->content);
 #endif
         }
         /* Get frequency */

@@ -153,6 +153,8 @@ int remove_empty_folders(const char *path);
 /* Delete path file and all empty folders above */
 int delete_target_file(const char *path);
 
+void sk_sum_clean(sk_sum_t * sum);
+
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
