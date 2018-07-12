@@ -32,8 +32,18 @@
 #define ARCH_64BIT          1
 #define ARCH_BOTH           2
 
-#include <stdio.h>
+#ifdef WIN32
+/* Whodata  states */
+#define WD_STATUS_FILE_TYPE 1
+#define WD_STATUS_DIR_TYPE  2
+#define WD_STATUS_UNK_TYPE  3
+#define WD_STATUS_EXISTS    0x0000001
+#define WD_CHECK_WHODATA    0x0000002
+#define WD_CHECK_REALTIME   0x0000004
+#define WD_IGNORE_REST      0x0000008
+#endif
 
+#include <stdio.h>
 #include "os_regex/os_regex.h"
 
 #ifdef WIN32
@@ -77,22 +87,9 @@ typedef struct whodata_evt {
 
 #ifdef WIN32
 
-typedef enum whodata_states {
-    WSTATUS_EXISTS,
-    WSTATUS_NO_EXISTS,
-    WSTATUS_FILE_TYPE,
-    WSTATUS_DIR_TYPE,
-    WSTATUS_UNK_TYPE,
-    WSTATUS_NO_WHODATA,
-    WSTATUS_CHECK_WHODATA,
-    WSTATUS_CHECK_REALTIME
-} whodata_states;
-
 typedef struct whodata_dir_status {
-    char status;
+    int status;
     char object_type;
-    char check_type;
-    int ignore_rest; // List of directories whose SACL will not be restored
     SYSTEMTIME last_check;
 } whodata_dir_status;
 

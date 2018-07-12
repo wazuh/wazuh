@@ -52,6 +52,7 @@ int restore_audit_policies();
 void audit_restore();
 int check_object_sacl(char *obj, int is_file);
 int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
+void notify_SACL_change(char *dir);
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
@@ -112,10 +113,10 @@ int set_winsacl(const char *dir, int position) {
     ZeroMemory(&old_sacl_info, sizeof(ACL_SIZE_INFORMATION));
 
     // Check if the sacl has what the whodata scanner needs
-    switch(is_valid_sacl(old_sacl, (syscheck.wdata.dirs_status[position].object_type == WSTATUS_FILE_TYPE) ? 1 : 0)) {
+    switch(is_valid_sacl(old_sacl, (syscheck.wdata.dirs_status[position].object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
         case 0:
             mdebug1("It is necessary to configure the SACL of '%s'.", dir);
-            syscheck.wdata.dirs_status[position].ignore_rest = 1;
+            syscheck.wdata.dirs_status[position].status |= WD_IGNORE_REST;
 
             // Get SACL size
             if (!GetAclInformation(old_sacl, (LPVOID)&old_sacl_info, sizeof(ACL_SIZE_INFORMATION), AclSizeInformation)) {
@@ -129,7 +130,7 @@ int set_winsacl(const char *dir, int position) {
             goto end;
         case 2:
             // Empty SACL
-            syscheck.wdata.dirs_status[position].ignore_rest = 1;
+            syscheck.wdata.dirs_status[position].status |= WD_IGNORE_REST;
             old_sacl_info.AclBytesInUse = sizeof(ACL);
             break;
     }
@@ -343,7 +344,7 @@ void restore_sacls() {
     privilege_enabled = 1;
 
     for (i = 0; syscheck.dir[i] != NULL; i++) {
-        if (syscheck.wdata.dirs_status[i].ignore_rest) {
+        if (syscheck.wdata.dirs_status[i].status & WD_IGNORE_REST) {
             sacl_it = NULL;
             if (result = GetNamedSecurityInfo(syscheck.dir[i], SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &sacl_it, &security_descriptor), result != ERROR_SUCCESS) {
                 merror("GetNamedSecurityInfo() failed restoring the SACLs. Error '%ld'.", result);
@@ -524,7 +525,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (!path) {
                     goto clean;
                 }
-
                 // Check if it is a known file
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     // Check if it is not a directory
@@ -542,14 +542,18 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         is_directory = 1;
                     }
                 } else {
-                    // Check if the file belongs to a directory that has been transformed to real-time
-                    if (s_node->dir_position) {
-                        mdebug2("The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", path);
-                        whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
-                    } else {
+                    if (s_node->dir_position < 0) {
                         merror("The '%s' file does not have an associated directory.", path);
                         goto clean;
                     }
+
+                    // Check if the file belongs to a directory that has been transformed to real-time
+                    if (!(syscheck.wdata.dirs_status[s_node->dir_position].status & WD_CHECK_WHODATA)) {
+                        mdebug2("The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", path);
+                        whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
+                        goto clean;
+                    }
+
                     // If the file or directory is already in the hash table, it is not necessary to set its position
                     if (!IsDir(path)) {
                         is_directory = 1;
@@ -757,17 +761,17 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
             // CHECK IGNORE
 
-            if (syscheck.wdata.dirs_status[i].check_type != WSTATUS_CHECK_WHODATA) {
+            if (!(syscheck.wdata.dirs_status[i].status & WD_CHECK_WHODATA)) {
                 // It is not whodata
                 continue;
             }
 
             if (dp = opendir(syscheck.dir[i]), dp) { // Directory
                 exists = 1;
-                syscheck.wdata.dirs_status[i].object_type = WSTATUS_DIR_TYPE;
+                syscheck.wdata.dirs_status[i].object_type = WD_STATUS_DIR_TYPE;
             } else if (errno == ENOTDIR) { // File
                 exists = 1;
-                syscheck.wdata.dirs_status[i].object_type = WSTATUS_FILE_TYPE;
+                syscheck.wdata.dirs_status[i].object_type = WD_STATUS_FILE_TYPE;
             } else {
                 // Unknown device type or does not exist
                 exists = 0;
@@ -776,14 +780,13 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
             closedir(dp);
 
             if (exists) {
-                if (d_status->status == WSTATUS_NO_EXISTS) {
+                if (!(d_status->status & WD_STATUS_EXISTS)) {
                     minfo("'%s' has been re-added. It will be monitored in Whodata mode.", syscheck.dir[i]);
                     if (set_winsacl(syscheck.dir[i], i)) {
                         merror("Unable to add directory to whodata monitoring: '%s'.", syscheck.dir[i]);
                         continue;
                     }
-                    syscheck.wdata.dirs_status[i].check_type = WSTATUS_CHECK_WHODATA;
-                    d_status->status = WSTATUS_EXISTS;
+                    d_status->status |= WD_STATUS_EXISTS;
                 } else {
                     if (get_creation_date(syscheck.dir[i], &utc)) {
                         merror("The creation date for '%s' could not be extracted.", syscheck.dir[i]);
@@ -797,25 +800,26 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                             continue;
                         }
                     } else {
-                        if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WSTATUS_FILE_TYPE) ? 1 : 0)) {
+                        if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
                             minfo("The SACL of '%s' has been modified and it is not valid for the Whodata mode. Real-time mode will be activated for this file.", syscheck.dir[i]);
-                            d_status->object_type = WSTATUS_NO_WHODATA;
                             // Mark the directory to prevent its children from sending partial whodata alerts
-                            syscheck.wdata.dirs_status[i].check_type = WSTATUS_CHECK_REALTIME;
-                            // Removes CHECK_WHODATA from directory properties to prevent from being found in the whodata callback for Windows
+                            syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
+                            syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
+                            // Removes CHECK_WHODATA from directory properties to prevent from being found in the whodata callback for Windows (find_dir_pos)
                             syscheck.opts[i] = syscheck.opts[i] & ~CHECK_WHODATA;
+                            // Mark it to prevent the restoration of its SACL
+                            syscheck.wdata.dirs_status[i].status &= ~WD_IGNORE_REST;
+                            notify_SACL_change(syscheck.dir[i]);
                             continue;
                         } else {
                             // The SACL is valid
-                            // Mark it to prevent the restoration of its SACL
-                            syscheck.wdata.dirs_status[i].ignore_rest = 0;
                         }
                     }
                 }
             } else {
                 minfo("'%s' has been deleted. It will not be monitored in Whodata mode.", syscheck.dir[i]);
-                d_status->status = WSTATUS_NO_EXISTS;
-                d_status->object_type = WSTATUS_UNK_TYPE;
+                d_status->status &= ~WD_STATUS_EXISTS;
+                d_status->object_type = WD_STATUS_UNK_TYPE;
             }
             // Set the timestamp
             GetSystemTime(&d_status->last_check);
@@ -910,7 +914,9 @@ void send_whodata_del(whodata_evt *w_evt) {
     syscheck_node *s_node;
 
     // Remove the file from the syscheck hash table
-    s_node = OSHash_Delete_ex(syscheck.fp, w_evt->path);
+    if (s_node = OSHash_Delete_ex(syscheck.fp, w_evt->path), !s_node) {
+        return;
+    }
     free(s_node->checksum);
     free(s_node);
 
@@ -1125,6 +1131,12 @@ int whodata_hash_add(OSHash *table, char *id, void *data, char *tag) {
     }
 
     return result;
+}
+
+void notify_SACL_change(char *dir) {
+    char msg_alert[OS_SIZE_1024 + 1];
+    snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
+    SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 }
 
 #endif

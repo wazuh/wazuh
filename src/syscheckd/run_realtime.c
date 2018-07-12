@@ -442,19 +442,20 @@ int realtime_adddir(const char *dir, int whodata)
 
         // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
         // regardless of it was checked in the initial configuration (CHECK_WHODATA in opts)
-        syscheck.wdata.dirs_status[whodata - 1].check_type = WSTATUS_CHECK_WHODATA;
+        syscheck.wdata.dirs_status[whodata - 1].status |= WD_CHECK_WHODATA;
+        syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_CHECK_REALTIME;
 
         // Check if the file or directory exists
         if (dp = opendir(dir), dp) {
-            syscheck.wdata.dirs_status[whodata - 1].object_type = WSTATUS_DIR_TYPE;
-            syscheck.wdata.dirs_status[whodata - 1].status = WSTATUS_EXISTS;
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_DIR_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
         } else if (errno == ENOTDIR) {
-            syscheck.wdata.dirs_status[whodata - 1].object_type = WSTATUS_FILE_TYPE;
-            syscheck.wdata.dirs_status[whodata - 1].status = WSTATUS_EXISTS;
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
         } else {
             mwarn("'%s' does not exist. Monitoring discarded.", dir);
-            syscheck.wdata.dirs_status[whodata - 1].object_type = WSTATUS_UNK_TYPE;
-            syscheck.wdata.dirs_status[whodata - 1].status = WSTATUS_NO_EXISTS;
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
             closedir(dp);
             return 0;
         }

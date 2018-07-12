@@ -637,11 +637,13 @@ int run_dbcheck()
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
 #ifdef WIN32
-        // At this point the directories in whodata mode that have been deconfigured are added to realtime
-        if (syscheck.wdata.dirs_status[i].check_type == WSTATUS_CHECK_REALTIME) {
-            syscheck.wdata.dirs_status[i].check_type = 0;
+        if (syscheck.wdata.dirs_status[i].status & WD_CHECK_REALTIME) {
+            // At this point the directories in whodata mode that have been deconfigured are added to realtime
+            syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_REALTIME;
             if (realtime_adddir(syscheck.dir[i], 0) != 1) {
                 merror("The '%s' directory could not be added to realtime mode.", syscheck.dir[i]);
+            } else {
+                mdebug1("The '%s' directory starts to be monitored in real-time mode", syscheck.dir[i]);
             }
         }
 #endif
