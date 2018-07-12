@@ -14,7 +14,9 @@ All notable changes to this project will be documented in this file.
 - New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
 - Remove old snapshot files for FIM. ([#872](https://github.com/wazuh/wazuh/pull/872))
 - Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
+- Added support for unified WPK. ([#865](https://github.com/wazuh/wazuh/pull/865))
 - Added missing debug options for modules in the internal options file. ([#901](https://github.com/wazuh/wazuh/pull/901))
+
 
 ### Changed
 
