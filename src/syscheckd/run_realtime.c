@@ -159,7 +159,7 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
     } else {
         snprintf(buf, strlen(filename) + 1, "%s", filename);
     }
- 
+
     while (c = strrchr(buf, PATH_SEP), c && c != buf) {
         *c = '\0';
 
@@ -274,7 +274,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                         merror_exit("Out of memory. Exiting.");
                     }
 
-                    OSHash_Add(syscheck.realtime->dirtb, wdchar, ndir);
+                    OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir);
                     mdebug1("Directory added for real time monitoring: '%s'.", ndir);
                 }
             }
@@ -508,7 +508,7 @@ int realtime_adddir(const char *dir, int whodata)
         /* Add final elements to the hash */
         os_strdup(dir, rtlocald->dir);
         os_strdup(dir, rtlocald->overlap.Pointer);
-        OSHash_Add(syscheck.realtime->dirtb, wdchar, rtlocald);
+        OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald);
 
         /* Add directory to be monitored */
         realtime_win32read(rtlocald);
