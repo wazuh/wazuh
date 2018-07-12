@@ -13,12 +13,12 @@
 
 #ifdef WIN_WHODATA
 
-#define _WIN32_WINNT 0x600  // Windows Vista or later
 #include <winsock2.h>
 #include <windows.h>
 #include <aclapi.h>
 #include <sddl.h>
 #include <winevt.h>
+#include "win_policies.h"
 
 #define WLIST_ALERT_THRESHOLD 80 // 80%
 #define WLIST_REMOVE_MAX 10 // 10%
@@ -538,7 +538,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 // Check if it is a known file
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     // Check if it is not a directory
-                    if (strchr(path, ':') && IsDir(path)) {
+                    if (strchr(path, ':') && check_path_type(path) == 1) {
                         if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
                             // Discard the file if its monitoring has not been activated
                             mdebug2("'%s' is discarded because its monitoring is not activated.", path);
@@ -565,7 +565,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     }
 
                     // If the file or directory is already in the hash table, it is not necessary to set its position
-                    if (!IsDir(path)) {
+                    if (check_path_type(path) == 2) {
                         is_directory = 1;
                     }
                 }
@@ -753,7 +753,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     int exists;
     whodata_dir_status *d_status;
     SYSTEMTIME utc;
-    DIR *dp;
     int interval;
 
     if (syscheck.wdata.interval_scan == 0) {
@@ -774,18 +773,21 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                 continue;
             }
 
-            if (dp = opendir(syscheck.dir[i]), dp) { // Directory
-                exists = 1;
-                syscheck.wdata.dirs_status[i].object_type = WD_STATUS_DIR_TYPE;
-            } else if (errno == ENOTDIR) { // File
-                exists = 1;
-                syscheck.wdata.dirs_status[i].object_type = WD_STATUS_FILE_TYPE;
-            } else {
-                // Unknown device type or does not exist
-                exists = 0;
-            }
+            switch (check_path_type(syscheck.dir[i])) {
+                case 0:
+                    // Unknown device type or does not exist
+                    exists = 0;
+                break;
+                case 1:
+                    exists = 1;
+                    syscheck.wdata.dirs_status[i].object_type = WD_STATUS_FILE_TYPE;
+                break;
+                case 2:
+                    exists = 1;
+                    syscheck.wdata.dirs_status[i].object_type = WD_STATUS_DIR_TYPE;
+                break;
 
-            closedir(dp);
+            }
 
             if (exists) {
                 if (!(d_status->status & WD_STATUS_EXISTS)) {
@@ -940,18 +942,15 @@ void send_whodata_del(whodata_evt *w_evt) {
 int set_policies() {
     char *output = NULL;
     int result_code = 0;
-    FILE *f_backup;
-    FILE *f_new;
+    FILE *f_backup = NULL;
+    FILE *f_new = NULL;
     char buffer[OS_MAXSTR];
     char command[OS_SIZE_1024];
     char *found;
-    char *state;
-    int changes = 0;
-    static const char *WPOL_HANDLE_MAN = ",System,Handle Manipulation,";
-    static const char *WPOL_FILE_SYSTEM = ",System,File System,";
-    static const char *WPOL_NO_AUDITING = ",No Auditing,";
-    static const char *WPOL_FAILURE = ",Failure,";
-    static const char *WPOL_SUCCESS = ",Success,,1";
+    int language;
+    int retval;
+    char handle_found = 0;
+    char file_system_found = 0;
 
     if (!IsFile(WPOL_BACKUP_FILE) && remove(WPOL_BACKUP_FILE)) {
         return 1;
@@ -965,42 +964,81 @@ int set_policies() {
         return 1;
     }
 
-    if (!(f_backup = fopen (WPOL_BACKUP_FILE, "r")) ||
-        !(f_new = fopen (WPOL_NEW_FILE, "w"))) {
-        return 1;
+    free(output);
+    output = NULL;
+
+    if (f_backup = fopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
+        retval = 1;
+        goto end;
     }
 
+    // Get the first line
+    fgets(buffer, OS_MAXSTR - 20, f_backup);
+
+    for (language = 0; language < WPOL_SIZE; language++) {
+        if (strstr((const char *)buffer, WPOL_DETECTION_WORD[language])) {
+            mdebug2("The language of policies has been recognized (%d).", language);
+            break;
+        }
+    }
+
+    if (language == WPOL_SIZE) {
+        mwarn("The language of the audit policies could not be recognized. Check if the configuration is valid.");
+        retval = 0;
+        goto end;
+    }
+
+    if (f_new = fopen (WPOL_NEW_FILE, "w"), !f_new) {
+        retval = 1;
+        goto end;
+    }
+
+    fprintf(f_new, buffer);
+
     // Merge the policies
-    while (fgets(buffer, OS_MAXSTR - 20, f_backup)) {
-        if ((found = strstr(buffer, WPOL_HANDLE_MAN)) ||
-            (found = strstr(buffer, WPOL_FILE_SYSTEM))) {
-            if ((state = strstr(found, WPOL_NO_AUDITING)) ||
-                (state = strstr(found, WPOL_FAILURE))) {
-                changes++;
-                snprintf(state, 20, "%s\n", WPOL_SUCCESS);
+    while (fgets(buffer, OS_MAXSTR - 60, f_backup)) {
+        if (found = strstr(buffer, WPOL_HANDLE_MAN_VERSIONS[language]), found) {
+            handle_found++;
+            if ((found = strstr(buffer, WPOL_FAILURE_VERSIONS[language])) ||
+                (found = strstr(buffer, WPOL_NO_AUDITING_VERSIONS[language]))) {
+                    snprintf(found, 60, "%s\n", WPOL_SUCCESS_VERSIONS[language]);
+            }
+        } else if (found = strstr(buffer, WPOL_FILE_SYSTEM_VERSIONS[language]), found) {
+            file_system_found++;
+            if ((found = strstr(buffer, WPOL_FAILURE_VERSIONS[language])) ||
+                (found = strstr(buffer, WPOL_NO_AUDITING_VERSIONS[language]))) {
+                    snprintf(found, 60, "%s\n", WPOL_SUCCESS_VERSIONS[language]);
             }
         }
         fprintf(f_new, buffer);
     }
 
-    fclose(f_new);
-    fclose(f_backup);
+    if (f_new) {
+        fclose(f_new);
+    }
 
-    if (!changes) {
-        mwarn("Audit policies could not be configured.");
-        return 1;
+    if (!handle_found || !file_system_found) {
+        mwarn("Audit policies could not be configured. Check if the configuration is valid.");
+        retval = 0;
+        goto end;
     }
 
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
-
+    minfo("~~~~~~~~~~~ '%s'", command);
     // Set the new policies
     if (wm_exec(command, &output, &result_code, 5), result_code) {
         merror("Auditpol restore error: '%s'.", output);
-        return 1;
+        retval = 1;
+        goto end;
     }
 
+    retval = 0;
+end:
     free(output);
-    return 0;
+    if (f_backup) {
+        fclose(f_backup);
+    }
+    return retval;
 }
 
 void set_subscription_query(wchar_t *query) {

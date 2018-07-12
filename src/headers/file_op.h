@@ -36,6 +36,8 @@ off_t FileSize(const char * path);
 
 int IsDir(const char *file) __attribute__((nonnull));
 
+int check_path_type(const char *dir) __attribute__((nonnull));
+
 int IsFile(const char *file) __attribute__((nonnull));
 
 int IsSocket(const char * file) __attribute__((nonnull));

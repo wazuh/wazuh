@@ -415,6 +415,23 @@ int IsDir(const char *file)
     return (-1);
 }
 
+/* Return 1 if it is a file, 2 if it is a directory, 0 otherwise */
+int check_path_type(const char *dir)
+{
+    DIR *dp;
+    int retval;
+
+    if (dp = opendir(dir), dp) {
+        retval = 2;
+        closedir(dp);
+    } else if (errno == ENOTDIR){
+        retval = 1;
+    } else {
+        retval = 0;
+    }
+    return retval;
+}
+
 int IsFile(const char *file)
 {
     struct stat buf;

@@ -414,7 +414,7 @@ int realtime_adddir(const char *dir, int whodata)
 
     if (whodata) {
 #ifdef WIN_WHODATA
-        DIR *dp;
+        int type;
 
         if (!syscheck.wdata.fd && whodata_audit_start()) {
             return 0;
@@ -426,21 +426,19 @@ int realtime_adddir(const char *dir, int whodata)
         syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_CHECK_REALTIME;
 
         // Check if the file or directory exists
-        if (dp = opendir(dir), dp) {
+        if (type = check_path_type(dir), type == 2) {
             syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_DIR_TYPE;
             syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
-        } else if (errno == ENOTDIR) {
+        } else if (type == 1) {
             syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
             syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
         } else {
             mwarn("'%s' does not exist. Monitoring discarded.", dir);
             syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
             syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
-            closedir(dp);
             return 0;
         }
 
-        closedir(dp);
         GetSystemTime(&syscheck.wdata.dirs_status[whodata - 1].last_check);
         if (set_winsacl(dir, whodata - 1)) {
             merror("Unable to add directory to whodata monitoring: '%s'.", dir);
