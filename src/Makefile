@@ -66,7 +66,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl -L$(EXTERNAL_AUDIT)lib/.libs -laudit
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl -L$(EXTERNAL_AUDIT)lib/.libs -l:libaudit.a
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-I$(EXTERNAL_AUDIT)lib -Wl,--start-group
 else
