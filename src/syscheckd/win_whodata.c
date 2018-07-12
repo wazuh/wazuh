@@ -946,6 +946,7 @@ int set_policies() {
     char command[OS_SIZE_1024];
     char *found;
     char *state;
+    int changes = 0;
     static const char *WPOL_HANDLE_MAN = ",System,Handle Manipulation,";
     static const char *WPOL_FILE_SYSTEM = ",System,File System,";
     static const char *WPOL_NO_AUDITING = ",No Auditing,";
@@ -975,6 +976,7 @@ int set_policies() {
             (found = strstr(buffer, WPOL_FILE_SYSTEM))) {
             if ((state = strstr(found, WPOL_NO_AUDITING)) ||
                 (state = strstr(found, WPOL_FAILURE))) {
+                changes++;
                 snprintf(state, 20, "%s\n", WPOL_SUCCESS);
             }
         }
@@ -983,6 +985,11 @@ int set_policies() {
 
     fclose(f_new);
     fclose(f_backup);
+
+    if (!changes) {
+        mwarn("Audit policies could not be configured.");
+        return 1;
+    }
 
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
 
