@@ -181,28 +181,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     opts = syscheck.opts[dir_position];
     restriction = syscheck.filerestrict[dir_position];
 
-    /* Check if the file should be ignored */
-    if (syscheck.ignore) {
-        int i = 0;
-        while (syscheck.ignore[i] != NULL) {
-            if (strncasecmp(syscheck.ignore[i], file_name,
-                            strlen(syscheck.ignore[i])) == 0) {
-                return (0);
-            }
-            i++;
-        }
+    if (fim_check_ignore (file_name) == 1) {
+        mdebug1("Ingnoring file '%s', continuing...", file_name);
+        return (0);
     }
-
-    /* Check in the regex entry */
-    if (syscheck.ignore_regex) {
-        int i = 0;
-        while (syscheck.ignore_regex[i] != NULL) {
-            if (OSMatch_Execute(file_name, strlen(file_name),
-                                syscheck.ignore_regex[i])) {
-                return (0);
-            }
-            i++;
-        }
+    if (fim_check_restrict (file_name, restriction) == 1) {
+        mdebug1("Ingnoring file '%s' for a restriction...", file_name);
+        return (0);
     }
 
 #ifdef WIN32
@@ -254,14 +239,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
     }
 
-    /* Restrict file types */
-    if (restriction) {
-        if (!OSMatch_Execute(file_name, strlen(file_name),
-                             restriction)) {
-            return (0);
-        }
-    }
-
     /* No S_ISLNK on Windows */
 #ifdef WIN32
     if (S_ISREG(statbuf.st_mode))
@@ -271,15 +248,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     {
         os_md5 mf_sum;
         os_sha1 sf_sum;
-        os_sha1 sf_sum2;
-        os_sha1 sf_sum3;
         os_sha256 sf256_sum;
 
         /* Clean sums */
         strncpy(mf_sum,  "xxx", 4);
         strncpy(sf_sum,  "xxx", 4);
-        strncpy(sf_sum2, "xxx", 4);
-        strncpy(sf_sum3, "xxx", 4);
         strncpy(sf256_sum, "xxx", 4);
 
         /* Generate checksums */
@@ -782,4 +755,41 @@ int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
         free(esc_it);
     }
     return retval;
+}
+
+int fim_check_ignore (const char *file_name) {
+    /* Check if the file should be ignored */
+    if (syscheck.ignore) {
+        int i = 0;
+        while (syscheck.ignore[i] != NULL) {
+            if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
+                return (1);
+            }
+            i++;
+        }
+    }
+
+    /* Check in the regex entry */
+    if (syscheck.ignore_regex) {
+        int i = 0;
+        while (syscheck.ignore_regex[i] != NULL) {
+            if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
+                return (1);
+            }
+            i++;
+        }
+    }
+
+    return (0);
+}
+
+int fim_check_restrict (const char *file_name, OSMatch *restriction) {
+    /* Restrict file types */
+    if (restriction) {
+        if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {
+            return (1);
+        }
+    }
+
+    return (0);
 }
