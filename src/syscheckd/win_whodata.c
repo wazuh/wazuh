@@ -1,3 +1,13 @@
+/*
+ * Copyright (C) 2018 Wazuh Inc.
+ * June 13, 2018.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifdef WIN32
 
 #define _WIN32_WINNT 0x600  // Windows Vista or later (must be included in the dll)
@@ -528,7 +538,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 // Check if it is a known file
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     // Check if it is not a directory
-                    if (path[1] == ':' && IsDir(path)) {
+                    if (strchr(path, ':') && IsDir(path)) {
                         if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
                             // Discard the file if its monitoring has not been activated
                             mdebug2("'%s' is discarded because its monitoring is not activated.", path);
@@ -758,8 +768,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
         for (i = 0; syscheck.dir[i]; i++) {
             exists = 0;
             d_status = &syscheck.wdata.dirs_status[i];
-
-            // CHECK IGNORE
 
             if (!(syscheck.wdata.dirs_status[i].status & WD_CHECK_WHODATA)) {
                 // It is not whodata

@@ -60,7 +60,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             // Extract the whodata sum here to not include it in the hash table
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                merror("The whodata sum for '%s' file could not ºbe included in the alert as it is too large.", file_name);
+                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
                 *wd_sum = '\0';
             }
 

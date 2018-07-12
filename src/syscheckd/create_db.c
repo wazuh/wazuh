@@ -185,10 +185,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         mdebug1("Ingnoring file '%s', continuing...", file_name);
         return (0);
     }
-    if (fim_check_restrict (file_name, restriction) == 1) {
-        mdebug1("Ingnoring file '%s' for a restriction...", file_name);
-        return (0);
-    }
 
 #ifdef WIN32
     /* Win32 does not have lstat */
@@ -221,10 +217,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     }
 
     if (S_ISDIR(statbuf.st_mode)) {
-#ifdef DEBUG
-        minfo("Reading dir: %s\n", file_name);
-#endif
-
 #ifdef WIN32
         /* Directory links are not supported */
         if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
@@ -239,6 +231,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
     }
 
+    if (fim_check_restrict (file_name, restriction) == 1) {
+        mdebug1("Ingnoring file '%s' for a restriction...", file_name);
+        return (0);
+    }
+
     /* No S_ISLNK on Windows */
 #ifdef WIN32
     if (S_ISREG(statbuf.st_mode))
@@ -246,6 +243,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
+        mdebug2("REG File '%s'", file_name);
         os_md5 mf_sum;
         os_sha1 sf_sum;
         os_sha256 sf256_sum;
@@ -455,14 +453,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             __counter = 0;
         }
         __counter++;
-
-#ifdef DEBUG
-        minfo("File '%s %s'", file_name, mf_sum);
-#endif
     } else {
-#ifdef DEBUG
-        minfo("*** IRREG file: '%s'\n", file_name);
-#endif
+        mdebug2("IRREG File: '%s'", file_name);
     }
 
     return (0);
