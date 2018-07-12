@@ -171,8 +171,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     OSMatch *restriction;
     char *buf;
     syscheck_node *s_node;
-    char sha1s = '-';
-    char sha256s = '-';
     struct stat statbuf;
     char wd_sum[OS_SIZE_6144 + 1];
 #ifdef WIN32
@@ -284,25 +282,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         strncpy(sf_sum3, "xxx", 4);
         strncpy(sf256_sum, "xxx", 4);
 
-        if (opts & CHECK_SHA1SUM) {
-            sha1s = '+';
-
-            if (opts & CHECK_SEECHANGES) {
-                sha1s = 's';
-            } else {
-                sha1s = '+';
-            }
-        } else {
-            if (opts & CHECK_SEECHANGES) {
-                sha1s = 'n';
-            } else {
-                sha1s = '-';
-            }
-        }
-        if (opts & CHECK_SHA256SUM) {
-            sha256s = '+';
-        }
-
         /* Generate checksums */
         if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) || (opts & CHECK_SHA256SUM)) {
             /* If it is a link, check if dest is valid */
@@ -339,52 +318,54 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 #ifdef WIN32
             user = get_user(file_name, statbuf.st_uid, &sid);
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
-                     opts & CHECK_SIZE ? '+' : '-',
-                     opts & CHECK_PERM ? '+' : '-',
-                     opts & CHECK_OWNER ? '+' : '-',
-                     opts & CHECK_GROUP ? '+' : '-',
-                     opts & CHECK_MD5SUM ? '+' : '-',
-                     sha1s,
-                     opts & CHECK_MTIME ? '+' : '-',
-                     opts & CHECK_INODE ? '+' : '-',
-                     sha256s,
-                     opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                     (opts & CHECK_OWNER) && sid ? sid : "",
-                     opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                     opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                     opts & CHECK_OWNER ? user : "",
-                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                     opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
+                    opts & CHECK_SIZE ? '+' : '-',
+                    opts & CHECK_PERM ? '+' : '-',
+                    opts & CHECK_OWNER ? '+' : '-',
+                    opts & CHECK_GROUP ? '+' : '-',
+                    opts & CHECK_MD5SUM ? '+' : '-',
+                    opts & CHECK_SHA1SUM ? '+' : '-',
+                    opts & CHECK_MTIME ? '+' : '-',
+                    opts & CHECK_INODE ? '+' : '-',
+                    opts & CHECK_SHA256SUM ? '+' : '-',
+                    opts & CHECK_SEECHANGES ? '+' : '-',
+                    opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
+                    opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                    (opts & CHECK_OWNER) && sid ? sid : "",
+                    opts & CHECK_MD5SUM ? mf_sum : "xxx",
+                    opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                    opts & CHECK_OWNER ? user : "",
+                    opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                    opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                    opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                    opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 
                 if (sid) {
                      LocalFree(sid);
                  }
 #else
-            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
-                opts & CHECK_SIZE ? '+' : '-',
-                opts & CHECK_PERM ? '+' : '-',
-                opts & CHECK_OWNER ? '+' : '-',
-                opts & CHECK_GROUP ? '+' : '-',
-                opts & CHECK_MD5SUM ? '+' : '-',
-                sha1s,
-                opts & CHECK_MTIME ? '+' : '-',
-                opts & CHECK_INODE ? '+' : '-',
-                sha256s,
-                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
-                opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
-                opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
-                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
+            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+                    opts & CHECK_SIZE ? '+' : '-',
+                    opts & CHECK_PERM ? '+' : '-',
+                    opts & CHECK_OWNER ? '+' : '-',
+                    opts & CHECK_GROUP ? '+' : '-',
+                    opts & CHECK_MD5SUM ? '+' : '-',
+                    opts & CHECK_SHA1SUM ? '+' : '-',
+                    opts & CHECK_MTIME ? '+' : '-',
+                    opts & CHECK_INODE ? '+' : '-',
+                    opts & CHECK_SHA256SUM ? '+' : '-',
+                    opts & CHECK_SEECHANGES ? '+' : '-',
+                    opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
+                    opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                    opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
+                    opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
+                    opts & CHECK_MD5SUM ? mf_sum : "xxx",
+                    opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                    opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
+                    opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                    opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                    opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                    opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 #endif
 
             os_calloc(1, sizeof(syscheck_node), s_node);
@@ -478,7 +459,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 /* Send the new checksum to the analysis server */
                 alert_msg[OS_MAXSTR] = '\0';
                 char *fullalert = NULL;
-                if (buf[5] == 's' || buf[5] == 'n') {
+                if (buf[9] == '+') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
                         snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
