@@ -34,6 +34,8 @@ volatile int audit_thread_active;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
+pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Prototypes */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
@@ -265,7 +267,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                 snprintf(wdchar, 32, "%d", wd);
 
                 /* Entry not present */
-                if (!OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
+                if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                     char *ndir;
 
                     ndir = strdup(dir);
@@ -473,6 +475,8 @@ int realtime_adddir(const char *dir, int whodata)
         realtime_start();
     }
 
+    w_mutex_lock(&adddir_mutex);
+
     /* Maximum limit for realtime on Windows */
     if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
         merror("Unable to add directory to real time monitoring: '%s' - Maximum size permitted.", dir);
@@ -482,8 +486,9 @@ int realtime_adddir(const char *dir, int whodata)
     /* Set key for hash */
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
-    if(OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
+    if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
         mdebug2("Entry '%s' already exists in the RT hash.", wdchar);
+        w_mutex_unlock(&adddir_mutex);
     }
     else {
         os_calloc(1, sizeof(win32rtfim), rtlocald);
@@ -504,6 +509,7 @@ int realtime_adddir(const char *dir, int whodata)
             return (0);
         }
         syscheck.realtime->fd++;
+        w_mutex_unlock(&adddir_mutex);
 
         /* Add final elements to the hash */
         os_strdup(dir, rtlocald->dir);
