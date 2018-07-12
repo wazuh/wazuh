@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 - New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
 - Remove old snapshot files for FIM. ([#872](https://github.com/wazuh/wazuh/pull/872))
 - Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
-
+- Added missing debug options for modules in the internal options file. ([#901](https://github.com/wazuh/wazuh/pull/901))
 
 ### Changed
 
@@ -65,6 +65,7 @@ All notable changes to this project will be documented in this file.
 - Fix network unreachable error when cluster starts. ([#800](https://github.com/wazuh/wazuh/pull/800))
 - Fix empty rules and decoders file check. ([#887](https://github.com/wazuh/wazuh/pull/887))
 - Prevent to access an unexisting hash table from 'whodata' thread. ([#911](https://github.com/wazuh/wazuh/pull/911))
+
 
 ## [v3.3.1]
 
