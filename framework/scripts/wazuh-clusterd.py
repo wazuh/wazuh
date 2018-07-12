@@ -46,7 +46,7 @@ try:
     from wazuh.exception import WazuhException
     from wazuh.pyDaemonModule import pyDaemon, create_pid, delete_pid
     from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
-    from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items
+    from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items, CustomFileRotatingHandler
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
     from wazuh.cluster.worker import WorkerManager, WorkerInternalSocketHandler
     from wazuh.cluster.communication import InternalSocketThread
@@ -65,8 +65,7 @@ logger = logging.getLogger()
 
 def set_logging(foreground_mode=False, debug_mode=0):
     # configure logger
-    fh = logging.handlers.TimedRotatingFileHandler(filename="{}/logs/cluster.log"\
-                                    .format(common.ossec_path), when='midnight')
+    fh = CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
     formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
     fh.setFormatter(formatter)
     logger.addHandler(fh)
