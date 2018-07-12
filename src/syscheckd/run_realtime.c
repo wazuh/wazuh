@@ -20,7 +20,6 @@
 
 #ifndef WIN32
 volatile int audit_thread_active;
-volatile int added_rules_error;
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -228,7 +227,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         realtime_start();
     }
 
-    if (whodata && audit_thread_active && !added_rules_error) {
+    if (whodata && audit_thread_active) {
         mdebug2("Monitoring with Audit: '%s'.", dir);
 
         // Save dir into saved rules list
