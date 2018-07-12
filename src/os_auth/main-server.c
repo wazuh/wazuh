@@ -152,6 +152,7 @@ int main(int argc, char **argv)
 {
     FILE *fp;
     /* Count of pids we are wait()ing on */
+    int debug_level = 0;
     int test_config = 0;
     int status;
     int run_foreground = 0;
@@ -203,6 +204,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'd':
+                    debug_level = 1;
                     nowDebug();
                     break;
 
@@ -396,6 +398,15 @@ int main(int argc, char **argv)
     if (config.flags.disabled) {
         minfo("Daemon is disabled. Closing.");
         exit(0);
+    }
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = getDefine_Int("authd", "debug", 0, 2);
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
     }
 
     /* Start daemon -- NB: need to double fork and setsid */

@@ -20,7 +20,6 @@
 
 #ifndef WIN32
 volatile int audit_thread_active;
-volatile int added_rules_error;
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -61,7 +60,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             // Extract the whodata sum here to not include it in the hash table
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                merror("The whodata sum for '%s' file could not ºbe included in the alert as it is too large.", file_name);
+                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
                 *wd_sum = '\0';
             }
 
@@ -97,7 +96,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             alert_msg[OS_MAXSTR] = '\0';
             char *fullalert = NULL;
 
-            if (buf[5] == 's' || buf[5] == 'n') {
+            if (buf[9] == '+') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
                     snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
@@ -159,7 +158,7 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
     } else {
         snprintf(buf, strlen(filename) + 1, "%s", filename);
     }
- 
+
     while (c = strrchr(buf, PATH_SEP), c && c != buf) {
         *c = '\0';
 
@@ -228,7 +227,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         realtime_start();
     }
 
-    if (whodata && audit_thread_active && !added_rules_error) {
+    if (whodata && audit_thread_active) {
         mdebug2("Monitoring with Audit: '%s'.", dir);
 
         // Save dir into saved rules list
@@ -274,7 +273,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                         merror_exit("Out of memory. Exiting.");
                     }
 
-                    OSHash_Add(syscheck.realtime->dirtb, wdchar, ndir);
+                    OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir);
                     mdebug1("Directory added for real time monitoring: '%s'.", ndir);
                 }
             }
@@ -442,19 +441,20 @@ int realtime_adddir(const char *dir, int whodata)
 
         // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
         // regardless of it was checked in the initial configuration (CHECK_WHODATA in opts)
-        syscheck.wdata.dirs_status[whodata - 1].check_type = WSTATUS_CHECK_WHODATA;
+        syscheck.wdata.dirs_status[whodata - 1].status |= WD_CHECK_WHODATA;
+        syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_CHECK_REALTIME;
 
         // Check if the file or directory exists
         if (dp = opendir(dir), dp) {
-            syscheck.wdata.dirs_status[whodata - 1].object_type = WSTATUS_DIR_TYPE;
-            syscheck.wdata.dirs_status[whodata - 1].status = WSTATUS_EXISTS;
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_DIR_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
         } else if (errno == ENOTDIR) {
-            syscheck.wdata.dirs_status[whodata - 1].object_type = WSTATUS_FILE_TYPE;
-            syscheck.wdata.dirs_status[whodata - 1].status = WSTATUS_EXISTS;
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
         } else {
             mwarn("'%s' does not exist. Monitoring discarded.", dir);
-            syscheck.wdata.dirs_status[whodata - 1].object_type = WSTATUS_UNK_TYPE;
-            syscheck.wdata.dirs_status[whodata - 1].status = WSTATUS_NO_EXISTS;
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
             closedir(dp);
             return 0;
         }
@@ -508,7 +508,7 @@ int realtime_adddir(const char *dir, int whodata)
         /* Add final elements to the hash */
         os_strdup(dir, rtlocald->dir);
         os_strdup(dir, rtlocald->overlap.Pointer);
-        OSHash_Add(syscheck.realtime->dirtb, wdchar, rtlocald);
+        OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald);
 
         /* Add directory to be monitored */
         realtime_win32read(rtlocald);

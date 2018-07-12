@@ -171,8 +171,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     OSMatch *restriction;
     char *buf;
     syscheck_node *s_node;
-    char sha1s = '-';
-    char sha256s = '-';
     struct stat statbuf;
     char wd_sum[OS_SIZE_6144 + 1];
 #ifdef WIN32
@@ -183,28 +181,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     opts = syscheck.opts[dir_position];
     restriction = syscheck.filerestrict[dir_position];
 
-    /* Check if the file should be ignored */
-    if (syscheck.ignore) {
-        int i = 0;
-        while (syscheck.ignore[i] != NULL) {
-            if (strncasecmp(syscheck.ignore[i], file_name,
-                            strlen(syscheck.ignore[i])) == 0) {
-                return (0);
-            }
-            i++;
-        }
-    }
-
-    /* Check in the regex entry */
-    if (syscheck.ignore_regex) {
-        int i = 0;
-        while (syscheck.ignore_regex[i] != NULL) {
-            if (OSMatch_Execute(file_name, strlen(file_name),
-                                syscheck.ignore_regex[i])) {
-                return (0);
-            }
-            i++;
-        }
+    if (fim_check_ignore (file_name) == 1) {
+        mdebug1("Ingnoring file '%s', continuing...", file_name);
+        return (0);
     }
 
 #ifdef WIN32
@@ -238,10 +217,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     }
 
     if (S_ISDIR(statbuf.st_mode)) {
-#ifdef DEBUG
-        minfo("Reading dir: %s\n", file_name);
-#endif
-
 #ifdef WIN32
         /* Directory links are not supported */
         if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
@@ -256,12 +231,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
     }
 
-    /* Restrict file types */
-    if (restriction) {
-        if (!OSMatch_Execute(file_name, strlen(file_name),
-                             restriction)) {
-            return (0);
-        }
+    if (fim_check_restrict (file_name, restriction) == 1) {
+        mdebug1("Ingnoring file '%s' for a restriction...", file_name);
+        return (0);
     }
 
     /* No S_ISLNK on Windows */
@@ -271,37 +243,15 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
+        mdebug2("REG File '%s'", file_name);
         os_md5 mf_sum;
         os_sha1 sf_sum;
-        os_sha1 sf_sum2;
-        os_sha1 sf_sum3;
         os_sha256 sf256_sum;
 
         /* Clean sums */
         strncpy(mf_sum,  "xxx", 4);
         strncpy(sf_sum,  "xxx", 4);
-        strncpy(sf_sum2, "xxx", 4);
-        strncpy(sf_sum3, "xxx", 4);
         strncpy(sf256_sum, "xxx", 4);
-
-        if (opts & CHECK_SHA1SUM) {
-            sha1s = '+';
-
-            if (opts & CHECK_SEECHANGES) {
-                sha1s = 's';
-            } else {
-                sha1s = '+';
-            }
-        } else {
-            if (opts & CHECK_SEECHANGES) {
-                sha1s = 'n';
-            } else {
-                sha1s = '-';
-            }
-        }
-        if (opts & CHECK_SHA256SUM) {
-            sha256s = '+';
-        }
 
         /* Generate checksums */
         if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) || (opts & CHECK_SHA256SUM)) {
@@ -339,52 +289,54 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 #ifdef WIN32
             user = get_user(file_name, statbuf.st_uid, &sid);
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
-                     opts & CHECK_SIZE ? '+' : '-',
-                     opts & CHECK_PERM ? '+' : '-',
-                     opts & CHECK_OWNER ? '+' : '-',
-                     opts & CHECK_GROUP ? '+' : '-',
-                     opts & CHECK_MD5SUM ? '+' : '-',
-                     sha1s,
-                     opts & CHECK_MTIME ? '+' : '-',
-                     opts & CHECK_INODE ? '+' : '-',
-                     sha256s,
-                     opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                     (opts & CHECK_OWNER) && sid ? sid : "",
-                     opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                     opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                     opts & CHECK_OWNER ? user : "",
-                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                     opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
+                    opts & CHECK_SIZE ? '+' : '-',
+                    opts & CHECK_PERM ? '+' : '-',
+                    opts & CHECK_OWNER ? '+' : '-',
+                    opts & CHECK_GROUP ? '+' : '-',
+                    opts & CHECK_MD5SUM ? '+' : '-',
+                    opts & CHECK_SHA1SUM ? '+' : '-',
+                    opts & CHECK_MTIME ? '+' : '-',
+                    opts & CHECK_INODE ? '+' : '-',
+                    opts & CHECK_SHA256SUM ? '+' : '-',
+                    opts & CHECK_SEECHANGES ? '+' : '-',
+                    opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
+                    opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                    (opts & CHECK_OWNER) && sid ? sid : "",
+                    opts & CHECK_MD5SUM ? mf_sum : "xxx",
+                    opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                    opts & CHECK_OWNER ? user : "",
+                    opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                    opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                    opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                    opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 
                 if (sid) {
                      LocalFree(sid);
                  }
 #else
-            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
-                opts & CHECK_SIZE ? '+' : '-',
-                opts & CHECK_PERM ? '+' : '-',
-                opts & CHECK_OWNER ? '+' : '-',
-                opts & CHECK_GROUP ? '+' : '-',
-                opts & CHECK_MD5SUM ? '+' : '-',
-                sha1s,
-                opts & CHECK_MTIME ? '+' : '-',
-                opts & CHECK_INODE ? '+' : '-',
-                sha256s,
-                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
-                opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
-                opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                opts & CHECK_SHA1SUM ? sf_sum : "xxx",
-                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
-                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
+            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+                    opts & CHECK_SIZE ? '+' : '-',
+                    opts & CHECK_PERM ? '+' : '-',
+                    opts & CHECK_OWNER ? '+' : '-',
+                    opts & CHECK_GROUP ? '+' : '-',
+                    opts & CHECK_MD5SUM ? '+' : '-',
+                    opts & CHECK_SHA1SUM ? '+' : '-',
+                    opts & CHECK_MTIME ? '+' : '-',
+                    opts & CHECK_INODE ? '+' : '-',
+                    opts & CHECK_SHA256SUM ? '+' : '-',
+                    opts & CHECK_SEECHANGES ? '+' : '-',
+                    opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
+                    opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                    opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
+                    opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
+                    opts & CHECK_MD5SUM ? mf_sum : "xxx",
+                    opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                    opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
+                    opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                    opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
+                    opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                    opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
 #endif
 
             os_calloc(1, sizeof(syscheck_node), s_node);
@@ -478,7 +430,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 /* Send the new checksum to the analysis server */
                 alert_msg[OS_MAXSTR] = '\0';
                 char *fullalert = NULL;
-                if (buf[5] == 's' || buf[5] == 'n') {
+                if (buf[9] == '+') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
                         snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
@@ -501,14 +453,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             __counter = 0;
         }
         __counter++;
-
-#ifdef DEBUG
-        minfo("File '%s %s'", file_name, mf_sum);
-#endif
     } else {
-#ifdef DEBUG
-        minfo("*** IRREG file: '%s'\n", file_name);
-#endif
+        mdebug2("IRREG File: '%s'", file_name);
     }
 
     return (0);
@@ -637,11 +583,13 @@ int run_dbcheck()
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
 #ifdef WIN32
-        // At this point the directories in whodata mode that have been deconfigured are added to realtime
-        if (syscheck.wdata.dirs_status[i].check_type == WSTATUS_CHECK_REALTIME) {
-            syscheck.wdata.dirs_status[i].check_type = 0;
+        if (syscheck.wdata.dirs_status[i].status & WD_CHECK_REALTIME) {
+            // At this point the directories in whodata mode that have been deconfigured are added to realtime
+            syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_REALTIME;
             if (realtime_adddir(syscheck.dir[i], 0) != 1) {
                 merror("The '%s' directory could not be added to realtime mode.", syscheck.dir[i]);
+            } else {
+                mdebug1("The '%s' directory starts to be monitored in real-time mode", syscheck.dir[i]);
             }
         }
 #endif
@@ -799,4 +747,41 @@ int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
         free(esc_it);
     }
     return retval;
+}
+
+int fim_check_ignore (const char *file_name) {
+    /* Check if the file should be ignored */
+    if (syscheck.ignore) {
+        int i = 0;
+        while (syscheck.ignore[i] != NULL) {
+            if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
+                return (1);
+            }
+            i++;
+        }
+    }
+
+    /* Check in the regex entry */
+    if (syscheck.ignore_regex) {
+        int i = 0;
+        while (syscheck.ignore_regex[i] != NULL) {
+            if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
+                return (1);
+            }
+            i++;
+        }
+    }
+
+    return (0);
+}
+
+int fim_check_restrict (const char *file_name, OSMatch *restriction) {
+    /* Restrict file types */
+    if (restriction) {
+        if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {
+            return (1);
+        }
+    }
+
+    return (0);
 }

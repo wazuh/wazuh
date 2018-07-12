@@ -101,4 +101,8 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
 extern pthread_mutex_t lastcheck_mutex;
 int fim_initialize();
 
+/* Check for restricts and ignored files */
+int fim_check_ignore(const char *file_name);
+int fim_check_restrict(const char *file_name, OSMatch *restriction);
+
 #endif

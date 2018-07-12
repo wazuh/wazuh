@@ -609,12 +609,16 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_nodiff = "nodiff";
     const char *xml_restart_audit = "restart_audit";
     const char *xml_windows_audit_interval = "windows_audit_interval";
-
+    const char *xml_setup_windows_audit = "setup_windows_audit";
+    const char *xml_policy_result = "policy_result";
 #ifdef WIN32
     const char *xml_arch = "arch";
     const char *xml_32bit = "32bit";
     const char *xml_64bit = "64bit";
     const char *xml_both = "both";
+    const char *xml_success_failure = "success,failure";
+    const char *xml_success = "success";
+    const char *xml_auto = "auto";
 #endif
 
     /* Configuration example

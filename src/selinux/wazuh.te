@@ -1,3 +1,11 @@
+# Copyright (C) 2018 Wazuh Inc.
+# July 4, 2018.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
 module wazuh 1.0;
 
 require {
@@ -11,12 +19,7 @@ require {
 
 #============= audisp_t ==============
 allow audisp_t self: capability dac_override;
-
-#!!!! This avc is allowed in the current policy
 allow audisp_t var_t:dir { remove_name add_name read write };
 allow audisp_t var_t:file getattr;
-
 allow audisp_t var_t:sock_file { create setattr };
-#!!!! This avc is allowed in the current policy
 allow audisp_t var_t:file { open read };
-
