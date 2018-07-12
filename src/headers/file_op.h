@@ -83,6 +83,7 @@ int OS_MoveFile(const char *src, const char *dst);
 #ifdef WIN32
 int checkVista();
 int isVista;
+int get_creation_date(char *dir, SYSTEMTIME *utc);
 #endif
 
 /* Delete directory recursively */

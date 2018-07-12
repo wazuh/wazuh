@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Remove old snapshot files for FIM. ([#872](https://github.com/wazuh/wazuh/pull/872))
 - Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
 - Added support for unified WPK. ([#865](https://github.com/wazuh/wazuh/pull/865))
+- Added missing debug options for modules in the internal options file. ([#901](https://github.com/wazuh/wazuh/pull/901))
 
 
 ### Changed
@@ -66,6 +67,7 @@ All notable changes to this project will be documented in this file.
 - Fix network unreachable error when cluster starts. ([#800](https://github.com/wazuh/wazuh/pull/800))
 - Fix empty rules and decoders file check. ([#887](https://github.com/wazuh/wazuh/pull/887))
 - Prevent to access an unexisting hash table from 'whodata' thread. ([#911](https://github.com/wazuh/wazuh/pull/911))
+
 
 ## [v3.3.1]
 
