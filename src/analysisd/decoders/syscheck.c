@@ -470,7 +470,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                     }
                 }
                 /* MD5 message */
-                if (strcmp(newsum.md5, oldsum.md5) == 0) {
+                if (!*newsum.md5 || !*oldsum.md5 || strcmp(newsum.md5, oldsum.md5) == 0) {
                     sdb.md5[0] = '\0';
                 } else {
                     changes = 1;
@@ -481,7 +481,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 }
 
                 /* SHA-1 message */
-                if (strcmp(newsum.sha1, oldsum.sha1) == 0) {
+                if (!*newsum.sha1 || !*oldsum.sha1 || strcmp(newsum.sha1, oldsum.sha1) == 0) {
                     sdb.sha1[0] = '\0';
                 } else {
                     changes = 1;
