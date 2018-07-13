@@ -13,7 +13,6 @@ try:
 
     import argparse
     import logging
-    import logging.handlers
     from os.path import dirname
 
     # Import framework
