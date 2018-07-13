@@ -61,10 +61,6 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
-	DEFINES+=-DENABLE_AUDIT
-endif
-
 OSSEC_LDFLAGS=-L${EXTERNAL_OPENSSL} -lm -lssl -lcrypto ${LDFLAGS}
 
 ifneq (${TARGET},winagent)
@@ -180,6 +176,10 @@ endif
 
 ifneq (,$(filter ${ONEWAY},yes y Y 1))
 	DEFINES+=-DONEWAY_ENABLED
+endif
+
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+	DEFINES+=-DENABLE_AUDIT
 endif
 
 OSSEC_CFLAGS+=${DEFINES}

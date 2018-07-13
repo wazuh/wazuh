@@ -18,9 +18,7 @@
 #include "shared.h"
 #include "syscheck.h"
 
-#ifdef ENABLE_AUDIT
 volatile int audit_thread_active;
-#endif
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
