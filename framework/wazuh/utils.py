@@ -18,7 +18,7 @@ from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 from operator import itemgetter
 import sys
-# Python 2/3 compability
+# Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
 
@@ -185,7 +185,7 @@ def get_values(o, fields=None):
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
     else:
-        strings.append(str(obj).lower())
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else obj)
 
     return strings
 
@@ -292,12 +292,12 @@ def tail(filename, n=20):
         if (block_end_byte - BLOCK_SIZE > 0):
             # read the last block we haven't yet read
             f.seek(block_number*BLOCK_SIZE, 2)
-            blocks.append(f.read(BLOCK_SIZE).decode())
+            blocks.append(f.read(BLOCK_SIZE).decode('utf-8'))
         else:
             # file too small, start from beginning
             f.seek(0,0)
             # only read what was not read
-            blocks.append(f.read(block_end_byte).decode())
+            blocks.append(f.read(block_end_byte).decode('utf-8'))
         lines_found = blocks[-1].count('\n')
         lines_to_go -= lines_found
         block_end_byte -= BLOCK_SIZE

@@ -1,13 +1,6 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [TBD]
-
-### Fixed
-
-- Ignore uppercase and lowercase sorting an array in framework. ([#814](https://github.com/wazuh/wazuh/pull/814))
-
-
 ## [v3.5.0]
 
 ### Added
@@ -54,6 +47,8 @@ All notable changes to this project will be documented in this file.
 - Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
 - Fix bug in Rootcheck for Windows that searches for keys in 32-bit mode only. ([#566](https://github.com/wazuh/wazuh/pull/566))
 - Alert when unmerge files fails on agent. ([#731](https://github.com/wazuh/wazuh/pull/731))
+- Fixed bugs reading logs in framework. ([#856](https://github.com/wazuh/wazuh/pull/856))
+- Ignore uppercase and lowercase sorting an array in framework. ([#814](https://github.com/wazuh/wazuh/pull/814))
 
 ### Removed
 
