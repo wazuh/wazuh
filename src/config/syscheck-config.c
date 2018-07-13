@@ -58,8 +58,8 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             os_strdup(entry, syscheck->dir[pl]);
 
 #ifdef WIN32
-            os_calloc(2, sizeof(int), syscheck->wdata.ignore_rest);
-            memset(syscheck->wdata.ignore_rest + pl, 0, 2 * sizeof(int));
+            os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
+            memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
             os_calloc(2, sizeof(int), syscheck->opts);
             syscheck->opts[pl + 1] = 0;
@@ -78,9 +78,8 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             os_strdup(entry, syscheck->dir[pl]);
 
 #ifdef WIN32
-            os_realloc(syscheck->wdata.ignore_rest, (pl + 2) * sizeof(int),
-                       syscheck->wdata.ignore_rest);
-            memset(syscheck->wdata.ignore_rest + pl, 0, 2 * sizeof(int));
+            os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
+            memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
             os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
                        syscheck->opts);
@@ -609,12 +608,17 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_skip_nfs = "skip_nfs";
     const char *xml_nodiff = "nodiff";
     const char *xml_restart_audit = "restart_audit";
-
+    const char *xml_windows_audit_interval = "windows_audit_interval";
+    const char *xml_setup_windows_audit = "setup_windows_audit";
+    const char *xml_policy_result = "policy_result";
 #ifdef WIN32
     const char *xml_arch = "arch";
     const char *xml_32bit = "32bit";
     const char *xml_64bit = "64bit";
     const char *xml_both = "both";
+    const char *xml_success_failure = "success,failure";
+    const char *xml_success = "success";
+    const char *xml_auto = "auto";
 #endif
 
     /* Configuration example
@@ -705,6 +709,17 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             } else if (!read_reg(syscheck, node[i]->content, ARCH_32BIT)) {
                 return (OS_INVALID);
             }
+#endif
+        }
+        /* Get windows audit interval */
+        else if (strcmp(node[i]->element, xml_windows_audit_interval) == 0) {
+#ifdef WIN32
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+            syscheck->wdata.interval_scan = atoi(node[i]->content);
 #endif
         }
         /* Get frequency */

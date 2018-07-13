@@ -50,6 +50,7 @@ int main(int argc, char **argv)
     const char *cfg = DEFAULTCPATH;
     short day_wait = -1;
     char * end;
+    int debug_level = 0;
 
     /* Initialize global variables */
     mond.a_queue = 0;
@@ -67,6 +68,7 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                debug_level = 1;
                 break;
             case 'f':
                 run_foreground = 1;
@@ -116,6 +118,15 @@ int main(int argc, char **argv)
                 break;
         }
 
+    }
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = getDefine_Int("monitord", "debug", 0, 2);
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
     }
 
     /* Start daemon */

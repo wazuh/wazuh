@@ -1464,10 +1464,10 @@ class Agent:
             item = {'count':conn.fetch()[0], 'name': entry}
 
             if merged_sum:
-                item['merged_sum'] = merged_sum
+                item['mergedSum'] = merged_sum
 
             if conf_sum:
-                item['conf_sum'] = conf_sum
+                item['configSum'] = conf_sum
 
             data.append(item)
 
@@ -1920,31 +1920,34 @@ class Agent:
         return data
 
 
-    def _get_url_wpk_repo(self, wpk_repo=common.wpk_repo_url, use_http=False):
+    def _get_protocol(self, wpk_repo, use_http=False):
         protocol = ""
         if "http://" not in wpk_repo and "https://" not in wpk_repo:
             protocol = "https://" if not use_http else "http://"
-        if self.os['platform']=="windows":
-            wpk_url = protocol + wpk_repo + "windows/"
-        elif self.os['platform']=="ubuntu":
-            wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/"
-        else:
-            wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/"
 
-        return wpk_url
+        return protocol
 
-    def _get_url_wpk_file(self, wpk_file, wpk_repo=common.wpk_repo_url, use_http=False):
-        return self._get_url_wpk_repo(wpk_repo, use_http) + wpk_file
-
-    def _get_url_wpk_versions(self, wpk_repo=common.wpk_repo_url, use_http=False):
-        return self._get_url_wpk_repo(wpk_repo, use_http) + "versions"
-
-
-    def _get_versions(self, wpk_repo=common.wpk_repo_url, use_http=False):
+    def _get_versions(self, wpk_repo=common.wpk_repo_url, desired_version=None, use_http=False):
         """
         Generates a list of available versions for its distribution and version.
         """
-        versions_url = self._get_url_wpk_versions(wpk_repo, use_http)
+        invalid_platforms = ["darwin", "solaris", "aix", "hpux", "bsd"]
+        not_valid_versions = [("sles", 11), ("rhel", 5), ("centos", 5)]
+
+        if self.os['platform'] in invalid_platforms or (self.os['platform'], self.os['major']) in not_valid_versions:
+            error = "The WPK for this platform is not available."
+            raise WazuhException(1713, error)
+
+        protocol = self._get_protocol(wpk_repo, use_http)
+        if (desired_version is None or desired_version[:4] >= "v3.4") and self.os['platform'] != "windows":
+            versions_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/versions"
+        else:
+            if self.os['platform']=="windows":
+                versions_url = protocol + wpk_repo + "windows/versions"
+            elif self.os['platform']=="ubuntu":
+                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/versions"
+            else:
+                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
 
         try:
             result = urlopen(versions_url)
@@ -2007,14 +2010,24 @@ class Agent:
         if (WazuhVersion(agent_ver.split(" ")[1]) >= WazuhVersion(agent_new_ver) and not force):
             raise WazuhException(1716, "Agent ver: {0} / Agent new ver: {1}".format(agent_ver.split(" ")[1], agent_new_ver))
 
+        protocol = self._get_protocol(wpk_repo, use_http)
         # Generating file name
         if self.os['platform']=="windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
+            wpk_url = protocol + wpk_repo + "windows/" + wpk_file
+
         else:
-            if self.os['platform']=="ubuntu":
-                wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
+            if version is None or version[:4] >= "v3.4":
+                wpk_file = "wazuh_agent_{0}_linux_{1}.wpk".format(agent_new_ver, self.os['arch'])
+                wpk_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/" + wpk_file
+
             else:
-                wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
+                if self.os['platform']=="ubuntu":
+                    wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
+                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
+                else:
+                    wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
+                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/" + wpk_file
 
         wpk_file_path = "{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)
 
@@ -2032,7 +2045,6 @@ class Agent:
                 return [wpk_file, sha1hash]
 
         # Download WPK file
-        wpk_url = self._get_url_wpk_file(wpk_file, wpk_repo, use_http)
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))
 

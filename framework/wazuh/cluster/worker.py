@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class WorkerManagerHandler(WorkerHandler):
 
     def __init__(self, cluster_config):
-        WorkerHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'])
+        WorkerHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'], cluster_config['name'])
 
         self.config = cluster_config
         self.integrity_received_and_processed = threading.Event()

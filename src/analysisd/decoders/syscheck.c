@@ -617,7 +617,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
         case 1:
             /* File deleted */
             sdb.syscheck_dec->id = sdb.idd;
-            os_strdup(f_name, lf->filename);
+            sk_fill_event(lf, f_name, &newsum);
             lf->event_type = FIM_DELETED;
 
             snprintf(sdb.comment, OS_MAXSTR,
