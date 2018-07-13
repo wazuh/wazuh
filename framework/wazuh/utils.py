@@ -17,6 +17,10 @@ import errno
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 from operator import itemgetter
+import sys
+# Python 2/3 compatibility
+if sys.version_info[0] == 3:
+    unicode = str
 
 try:
     from subprocess import check_output
@@ -177,7 +181,7 @@ def get_values(o, fields=None):
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
     else:
-        strings.append(str(obj).lower())
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else obj)
 
     return strings
 
