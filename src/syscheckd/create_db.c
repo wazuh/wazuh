@@ -517,7 +517,11 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int enabl
             }
             di++;
         }
+#ifdef WIN_WHODATA
         if (defaultfilesn[di] == NULL && !(evt && evt->ignore_not_exist)) {
+#else
+        if (defaultfilesn[di] == NULL) {
+#endif
             mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
         } else {
             return 0;
@@ -582,7 +586,7 @@ int run_dbcheck()
 
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
-#ifdef WIN32
+#ifdef WIN_WHODATA
         if (syscheck.wdata.dirs_status[i].status & WD_CHECK_REALTIME) {
             // At this point the directories in whodata mode that have been deconfigured are added to realtime
             syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_REALTIME;
@@ -627,7 +631,7 @@ int run_dbcheck()
 int create_db()
 {
     int i = 0;
-#ifdef WIN32
+#ifdef WIN_WHODATA
     int enable_who_scan = 0;
     HANDLE t_hdle;
     long unsigned int t_id;
@@ -661,15 +665,18 @@ int create_db()
         }
 #ifdef WIN32
         if (syscheck.opts[i] & CHECK_WHODATA) {
+#ifdef WIN_WHODATA
             realtime_adddir(syscheck.dir[i], i + 1);
             if (!enable_who_scan) {
                 enable_who_scan = 1;
             }
+#endif
         } else if (syscheck.opts[i] & CHECK_REALTIME) {
             realtime_adddir(syscheck.dir[i], 0);
         }
 #else
 #ifndef INOTIFY_ENABLED
+        // Realtime mode on Linux requires inotify
         if (syscheck.opts[i] & CHECK_REALTIME) {
             mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);
         }
@@ -693,7 +700,7 @@ int create_db()
         minfo("Real time file monitoring engine started.");
     }
 #endif
-#ifdef WIN32
+#ifdef WIN_WHODATA
     if (enable_who_scan && !run_whodata_scan()) {
         minfo("Whodata auditing engine started.");
         if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {

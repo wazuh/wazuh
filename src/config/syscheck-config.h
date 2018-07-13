@@ -32,7 +32,7 @@
 #define ARCH_64BIT          1
 #define ARCH_BOTH           2
 
-#ifdef WIN32
+#ifdef WIN_WHODATA
 /* Whodata  states */
 #define WD_STATUS_FILE_TYPE 1
 #define WD_STATUS_DIR_TYPE  2
@@ -46,7 +46,7 @@
 #include <stdio.h>
 #include "os_regex/os_regex.h"
 
-#ifdef WIN32
+#ifdef WIN_WHODATA
 typedef struct whodata_event_node whodata_event_node;
 typedef struct whodata_dir_status whodata_dir_status;
 #endif
@@ -72,7 +72,7 @@ typedef struct whodata_evt {
     char *effective_uid;  // Linux
     char *effective_name;  // Linux
     int ppid;  // Linux
-#ifndef WIN32
+#ifndef WIN_WHODATA
     unsigned int process_id;
 #else
     unsigned __int64 process_id;
@@ -85,7 +85,7 @@ typedef struct whodata_evt {
 #endif
 } whodata_evt;
 
-#ifdef WIN32
+#ifdef WIN_WHODATA
 
 typedef struct whodata_dir_status {
     int status;
@@ -122,6 +122,10 @@ typedef struct whodata {
     int interval_scan;                  // Time interval between scans of the checking thread
     whodata_dir_status *dirs_status;    // Status list
 } whodata;
+
+#endif /* End WIN_WHODATA*/
+
+#ifdef WIN32
 
 typedef struct registry {
     char *entry;
@@ -182,8 +186,10 @@ typedef struct _config {
     registry *registry;                         /* array of registry entries to be scanned */
     FILE *reg_fp;
     int max_fd_win_rt;
+#ifdef WIN_WHODATA
     whodata wdata;
     whodata_event_list wlist;
+#endif
 #else
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
 #endif

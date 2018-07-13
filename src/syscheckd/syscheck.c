@@ -135,6 +135,23 @@ int Start_win32_Syscheck()
     }
 
     if (!syscheck.disabled) {
+#ifdef WIN32
+#ifndef WIN_WHODATA
+        int whodata_notification = 0;
+        /* Remove whodata attributes */
+        for (r = 0; syscheck.dir[r]; r++) {
+            if (syscheck.opts[r] & CHECK_WHODATA) {
+                if (!whodata_notification) {
+                    whodata_notification = 1;
+                    minfo("Whodata mode is not compatible with this version of Windows.");
+                }
+                syscheck.opts[r] = syscheck.opts[r] & ~CHECK_WHODATA;
+                syscheck.opts[r] = syscheck.opts[r] |= CHECK_REALTIME;
+            }
+        }
+#endif
+#endif
+
 
         /* Print options */
         r = 0;

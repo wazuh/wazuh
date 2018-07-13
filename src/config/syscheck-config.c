@@ -57,7 +57,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             syscheck->dir[pl + 1] = NULL;
             os_strdup(entry, syscheck->dir[pl]);
 
-#ifdef WIN32
+#ifdef WIN_WHODATA
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
             memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
@@ -77,7 +77,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             syscheck->dir[pl + 1] = NULL;
             os_strdup(entry, syscheck->dir[pl]);
 
-#ifdef WIN32
+#ifdef WIN_WHODATA
             os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
             memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
@@ -708,7 +708,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         }
         /* Get windows audit interval */
         else if (strcmp(node[i]->element, xml_windows_audit_interval) == 0) {
-#ifdef WIN32
+#ifdef WIN_WHODATA
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);

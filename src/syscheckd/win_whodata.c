@@ -7,18 +7,18 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "shared.h"
+#include "hash_op.h"
+#include "syscheck.h"
 
-#ifdef WIN32
+#ifdef WIN_WHODATA
 
-#define _WIN32_WINNT 0x600  // Windows Vista or later (must be included in the dll)
+#define _WIN32_WINNT 0x600  // Windows Vista or later
 #include <winsock2.h>
 #include <windows.h>
 #include <aclapi.h>
 #include <sddl.h>
 #include <winevt.h>
-#include "shared.h"
-#include "hash_op.h"
-#include "syscheck.h"
 
 #define WLIST_ALERT_THRESHOLD 80 // 80%
 #define WLIST_REMOVE_MAX 10 // 10%
@@ -1153,5 +1153,4 @@ void notify_SACL_change(char *dir) {
     snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 }
-
 #endif

@@ -10,6 +10,10 @@
 #ifndef __SYSCHECK_H
 #define __SYSCHECK_H
 
+#if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
+#define WIN_WHODATA 1
+#endif
+
 #include "config/syscheck-config.h"
 #define MAX_LINE PATH_MAX+256
 

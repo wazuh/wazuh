@@ -125,23 +125,22 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     } else {
         /* New file */
         int pos;
-#ifdef WIN32
-        if (!evt) {
+#ifdef WIN_WHODATA
+        if (evt) {
+            pos = evt->dir_position;
+        } else {
 #endif
             if (pos = find_dir_pos(file_name, 1, 0, 0), pos > -1) {
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
                 read_dir(file_name, pos, evt, 1);
             }
-#ifdef WIN32
-        } else {
-            if (pos = evt->dir_position, pos >= 0) {
-                mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, pos, evt, 1);
-            } else {
-                mdebug1("'%s' has been deleted while another file was writing to it.", file_name);
-            }
+#ifdef WIN_WHODATA
         }
 #endif
+        if (pos >= 0) {
+            mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
+            read_dir(file_name, pos, evt, 1);
+        }
     }
 
     return (0);
@@ -434,9 +433,11 @@ int realtime_adddir(const char *dir, int whodata)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
-    DIR *dp;
 
     if (whodata) {
+#ifdef WIN_WHODATA
+        DIR *dp;
+
         if (!syscheck.wdata.fd && whodata_audit_start()) {
             return 0;
         }
@@ -468,8 +469,8 @@ int realtime_adddir(const char *dir, int whodata)
             return 0;
         }
         return 1;
+#endif
     }
-
 
     if (!syscheck.realtime) {
         realtime_start();
