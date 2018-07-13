@@ -39,6 +39,7 @@ All notable changes to this project will be documented in this file.
 - Increases the maximum size of XML parser to 20KB.
 - Extract CVE instead of RHSA codes into vulnerability-detector. ([#549](https://github.com/wazuh/wazuh/pull/549))
 - Merge external libraries into a unique shared library. ([#620](https://github.com/wazuh/wazuh/pull/620))
+- Cluster log rotation: set correct permissions and store rotations in /logs/ossec. ([#667](https://github.com/wazuh/wazuh/pull/667))
 
 ### Fixed
 
@@ -50,6 +51,7 @@ All notable changes to this project will be documented in this file.
 - Alert when unmerge files fails on agent. ([#731](https://github.com/wazuh/wazuh/pull/731))
 - Fixed bugs reading logs in framework. ([#856](https://github.com/wazuh/wazuh/pull/856))
 - Ignore uppercase and lowercase sorting an array in framework. ([#814](https://github.com/wazuh/wazuh/pull/814))
+- Cluster: reject connection if the client node has a different cluster name. ([#892](https://github.com/wazuh/wazuh/pull/892))
 
 ### Removed
 
