@@ -18,7 +18,7 @@
 #include "shared.h"
 #include "syscheck.h"
 
-#ifndef WIN32
+#ifdef ENABLE_AUDIT
 volatile int audit_thread_active;
 #endif
 
@@ -517,7 +517,7 @@ int realtime_start()
     return (0);
 }
 
-int realtime_adddir(__attribute__((unused)) const char *dir, int whodata)
+int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unused))int whodata)
 {
     return (0);
 }

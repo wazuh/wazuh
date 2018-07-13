@@ -225,7 +225,9 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = DEFAULTCPATH;
+#ifdef ENABLE_AUDIT
     audit_thread_active = 0;
+#endif
 
     /* Set the name */
     OS_SetName(ARGV0);
