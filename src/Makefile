@@ -148,6 +148,8 @@ endif # Darwin
 endif # SunOS
 endif # AIX
 endif # Linux
+else
+	DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
 endif # winagent
 
 ifndef DISABLE_SYSC
@@ -1041,7 +1043,7 @@ syscheckd/%.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
 
 syscheckd/%-event.o: syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
 
 ossec-syscheckd: ${syscheck_o} rootcheck.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${ZLIB_INCLUDE} $^ ${OSSEC_LDFLAGS} -o $@

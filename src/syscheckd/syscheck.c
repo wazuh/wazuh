@@ -145,8 +145,8 @@ int Start_win32_Syscheck()
                     whodata_notification = 1;
                     minfo("Whodata mode is not compatible with this version of Windows.");
                 }
-                syscheck.opts[r] = syscheck.opts[r] & ~CHECK_WHODATA;
-                syscheck.opts[r] = syscheck.opts[r] |= CHECK_REALTIME;
+                syscheck.opts[r] &= ~CHECK_WHODATA;
+                syscheck.opts[r] |= CHECK_REALTIME;
             }
         }
 #endif

@@ -57,7 +57,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             syscheck->dir[pl + 1] = NULL;
             os_strdup(entry, syscheck->dir[pl]);
 
-#ifdef WIN_WHODATA
+#ifdef WIN32
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
             memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
@@ -77,7 +77,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             syscheck->dir[pl + 1] = NULL;
             os_strdup(entry, syscheck->dir[pl]);
 
-#ifdef WIN_WHODATA
+#ifdef WIN32
             os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
             memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
