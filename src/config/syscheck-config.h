@@ -159,6 +159,7 @@ typedef struct _config {
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;
     int realtime_count;
+    int max_depth;                  /* max level of recursivity allowed */
 
     int remove_old_diff;            /* delete not monitorized files history */
 

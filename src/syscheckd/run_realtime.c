@@ -108,18 +108,18 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             pos = evt->dir_position;
         } else {
 #endif
-            if (pos = find_dir_pos(file_name, 1, 0, 0), pos > -1) {
-                mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, pos, evt, 1);
-            }
+        pos = find_dir_pos(file_name, 1, 0, 0);
 #ifdef WIN_WHODATA
         }
 #endif
         if (pos >= 0) {
             mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-            read_dir(file_name, pos, evt, 1);
+            int diff = fim_find_child_depth(syscheck.dir[pos], file_name);
+            read_dir(file_name, pos, evt, syscheck.max_depth - diff);
         }
+
     }
+    
 
     return (0);
 }

@@ -17,7 +17,7 @@
 #include "syscheck.h"
 
 /* Prototypes */
-static int read_file(const char *dir_name, int dir_position, whodata_evt *evt, int enable_recursion)  __attribute__((nonnull(1)));
+static int read_file(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth)  __attribute__((nonnull(1)));
 
 static int read_dir_diff(char *dir_name);
 
@@ -165,7 +165,7 @@ void remove_local_diff(){
 }
 
 /* Read and generate the integrity data of a file */
-static int read_file(const char *file_name, int dir_position, whodata_evt *evt, int enable_recursion)
+static int read_file(const char *file_name, int dir_position, whodata_evt *evt, int max_depth)
 {
     int opts;
     OSMatch *restriction;
@@ -222,11 +222,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             return (-1);
         }
 #endif
-        if (enable_recursion) {
-            return (read_dir(file_name, dir_position, NULL, enable_recursion));
-        } else {
-            return 0;
-        }
+        return (read_dir(file_name, dir_position, NULL, max_depth-1));
+
     }
 
     if (fim_check_restrict (file_name, restriction) == 1) {
@@ -394,7 +391,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
 #endif
-            send_syscheck_msg(alert_msg);
+            if(max_depth <= syscheck.max_depth){
+                send_syscheck_msg(alert_msg);
+            }
             free(alertdump);
         } else {
             char alert_msg[OS_MAXSTR + 1];
@@ -458,13 +457,18 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     return (0);
 }
 
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int enable_recursion)
+int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth)
 {
+    if(max_depth < 0){
+        mdebug1("Max level of recursion reached. File '%s' out of bounds.", dir_name);
+        return 0;
+    }
+
     int opts;
     size_t dir_size;
     char f_name[PATH_MAX + 2];
     short is_nfs;
-
+    
     DIR *dp;
     struct dirent *entry;
 
@@ -493,7 +497,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int enabl
     dp = opendir(dir_name);
     if (!dp) {
         if (errno == ENOTDIR) {
-            if (read_file(dir_name, dir_position, evt, enable_recursion) == 0) {
+            if (read_file(dir_name, dir_position, evt, max_depth-1) == 0) {
                 return (0);
             }
         }
@@ -569,7 +573,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int enabl
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
 
         /* Check integrity of the file */
-        read_file(f_name, dir_position, NULL, enable_recursion);
+        read_file(f_name, dir_position, NULL, max_depth - 1);
     }
 
     closedir(dp);
@@ -596,7 +600,7 @@ int run_dbcheck()
             }
         }
 #endif
-        read_dir(syscheck.dir[i], i, NULL, 1);
+        read_dir(syscheck.dir[i], i, NULL, syscheck.max_depth);
         i++;
     }
 
@@ -662,7 +666,7 @@ int create_db()
     /* Read all available directories */
     __counter = 0;
     do {
-        if (read_dir(syscheck.dir[i], i, NULL, 1) == 0) {
+        if (read_dir(syscheck.dir[i], i, NULL, syscheck.max_depth) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
 #ifdef WIN32
