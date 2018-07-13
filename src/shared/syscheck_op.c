@@ -373,6 +373,25 @@ void sk_sum_clean(sk_sum_t * sum) {
     free(sum->wdata.process_name);
 }
 
+int fim_find_child_depth(const char *parent, const char *child) {
+    char *c;
+    int child_depth = 0;
+    int parent_depth = 0;
+    c = strchr(child, PATH_SEP);
+    while (c != NULL) {
+        child_depth++;
+        c = strchr(c + 1, PATH_SEP);
+    }
+
+    c = strchr(parent, PATH_SEP);
+    while (c != NULL) {
+        parent_depth++;
+        c = strchr(c + 1, PATH_SEP);
+    }
+
+    return (child_depth - parent_depth);
+}
+
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
