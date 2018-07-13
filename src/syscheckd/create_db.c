@@ -201,12 +201,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
             send_syscheck_msg(alert_msg);
 
-            // Update database
-
-            if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), s_node) {
-                snprintf(alert_msg, sizeof(alert_msg), "%.*s -1", SK_DB_NATTR, s_node->checksum);
-                free(s_node->checksum);
-                s_node->checksum = strdup(alert_msg);
+            // Delete from hash table
+            if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
+                free(s_node);
             }
 
             return (0);
@@ -249,9 +246,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         os_sha256 sf256_sum;
 
         /* Clean sums */
-        strncpy(mf_sum,  "xxx", 4);
-        strncpy(sf_sum,  "xxx", 4);
-        strncpy(sf256_sum, "xxx", 4);
+        strncpy(mf_sum, "", 1);
+        strncpy(sf_sum, "", 1);
+        strncpy(sf256_sum, "", 1);
 
         /* Generate checksums */
         if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) || (opts & CHECK_SHA256SUM)) {
@@ -303,19 +300,19 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                     (opts & CHECK_OWNER) && sid ? sid : "",
-                    opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                    opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                    opts & CHECK_MD5SUM ? mf_sum : "",
+                    opts & CHECK_SHA1SUM ? sf_sum : "",
                     opts & CHECK_OWNER ? user : "",
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                    opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
+                    opts & CHECK_SHA256SUM ? sf256_sum : "");
 
                 if (sid) {
                      LocalFree(sid);
                  }
 #else
-            snprintf(alert_msg, 1172, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
                     opts & CHECK_OWNER ? '+' : '-',
@@ -330,13 +327,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                     opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
                     opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
-                    opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                    opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                    opts & CHECK_MD5SUM ? mf_sum : "",
+                    opts & CHECK_SHA1SUM ? sf_sum : "",
                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                    opts & CHECK_SHA256SUM ? sf256_sum : "xxx");
+                    opts & CHECK_SHA256SUM ? sf256_sum : "");
 #endif
 
             os_calloc(1, sizeof(syscheck_node), s_node);
@@ -364,13 +361,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 (opts & CHECK_OWNER) && sid ? sid : "",
-                opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                opts & CHECK_MD5SUM ? mf_sum : "",
+                opts & CHECK_SHA1SUM ? sf_sum : "",
                 opts & CHECK_OWNER ? user : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
+                opts & CHECK_SHA256SUM ? sf256_sum : "",
                 wd_sum,
                 file_name,
                 alertdump ? "\n" : "",
@@ -384,13 +381,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
                 opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
-                opts & CHECK_MD5SUM ? mf_sum : "xxx",
-                opts & CHECK_SHA1SUM ? sf_sum : "xxx",
+                opts & CHECK_MD5SUM ? mf_sum : "",
+                opts & CHECK_SHA1SUM ? sf_sum : "",
                 opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                opts & CHECK_SHA256SUM ? sf256_sum : "xxx",
+                opts & CHECK_SHA256SUM ? sf256_sum : "",
                 wd_sum,
                 file_name,
                 alertdump ? "\n" : "",
@@ -400,11 +397,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             free(alertdump);
         } else {
             char alert_msg[OS_MAXSTR + 1];
-            char c_sum[512 + 2];
+            char c_sum[OS_MAXSTR + 1];
 
             buf = s_node->checksum;
             c_sum[0] = '\0';
-            c_sum[512] = '\0';
+            c_sum[OS_MAXSTR] = '\0';
             alert_msg[0] = '\0';
             alert_msg[OS_MAXSTR] = '\0';
 
@@ -437,10 +434,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                         free(fullalert);
                         fullalert = NULL;
                     } else {
-                        snprintf(alert_msg, 1172, "%s!%s %s", c_sum, wd_sum, file_name);
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
                     }
                 } else {
-                    snprintf(alert_msg, 1172, "%s!%s %s", c_sum, wd_sum, file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
                 }
                 free(buf);
                 send_syscheck_msg(alert_msg);
@@ -583,6 +580,7 @@ int run_dbcheck()
     unsigned int i = 0;
     OSHashNode *curr_node;
     char alert_msg[PATH_MAX+4];
+    char *data;
 
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
@@ -610,7 +608,8 @@ int run_dbcheck()
                 mdebug2("Sending delete msg for file: %s", curr_node->key);
                 snprintf(alert_msg, PATH_MAX + 4, "-1 %s", curr_node->key);
                 send_syscheck_msg(alert_msg);
-                OSHash_Delete_ex(syscheck.fp, curr_node->key);
+                data = OSHash_Delete_ex(syscheck.fp, curr_node->key);
+                free(data);
             }
         }
         OSHash_Free(syscheck.last_check);

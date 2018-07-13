@@ -541,7 +541,6 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 /* Provide information about the file */
                 comment_buf = snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
                         "'%.756s'\n"
-                        "Attributes changed: %s\n"
                         "%s"
                         "%s"
                         "%s"
@@ -556,7 +555,6 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                         "%s"
                         "%s",
                         f_name,
-                        lf->fields[SK_CHFIELDS].value,
                         sdb.size,
                         sdb.perm,
                         sdb.owner,

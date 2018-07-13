@@ -207,19 +207,19 @@ void OS_LogOutput(Eventinfo *lf)
             }
         }
         if (lf->md5_after) {
-            if (strcmp(lf->md5_after, "xxx") != 0) {
+            if (strcmp(lf->md5_after, "xxx") != 0 && strcmp(lf->md5_after, "") != 0) {
                 printf(" - MD5: %s\n", lf->md5_after);
             }
         }
         
         if (lf->sha1_after) {
-            if (strcmp(lf->sha1_after, "xxx") != 0) {
+            if (strcmp(lf->sha1_after, "xxx") != 0 && strcmp(lf->sha1_after, "") != 0) {
                 printf(" - SHA1: %s\n", lf->sha1_after);
             }
         }
 
         if (lf->sha256_after) {
-            if (strcmp(lf->sha256_after, "xxx") != 0) {
+            if (strcmp(lf->sha256_after, "xxx") != 0 && strcmp(lf->sha256_after, "") != 0) {
                 printf(" - SHA256: %s\n", lf->sha256_after);
             }
         }
@@ -357,19 +357,19 @@ void OS_Log(Eventinfo *lf)
             }
         }
         if (lf->md5_after) {
-            if (strcmp(lf->md5_after, "xxx") != 0) {
+            if (strcmp(lf->md5_after, "xxx") != 0 && strcmp(lf->md5_after, "") != 0) {
                 fprintf(_aflog, " - MD5: %s\n", lf->md5_after);
             }
         }
         
         if (lf->sha1_after) {
-            if (strcmp(lf->sha1_after, "xxx") != 0) {
+            if (strcmp(lf->sha1_after, "xxx") != 0 && strcmp(lf->sha1_after, "") != 0) {
                 fprintf(_aflog, " - SHA1: %s\n", lf->sha1_after);
             }
         }
 
         if (lf->sha256_after) {
-            if (strcmp(lf->sha256_after, "xxx") != 0) {
+            if (strcmp(lf->sha256_after, "xxx") != 0 && strcmp(lf->sha256_after, "") != 0) {
                 fprintf(_aflog, " - SHA256: %s\n", lf->sha256_after);
             }
         }
