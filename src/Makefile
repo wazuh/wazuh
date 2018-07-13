@@ -34,7 +34,7 @@ USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
-USE_AUDIT=yes
+USE_AUDIT=no
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -74,6 +74,7 @@ ifeq (${uname_S},Linux)
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
+		USE_AUDIT=yes
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
 		OSSEC_LDFLAGS+=-L$(EXTERNAL_AUDIT)lib/.libs -l:libaudit.a
 		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
