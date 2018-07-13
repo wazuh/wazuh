@@ -40,6 +40,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.realtime       = NULL;
     syscheck.remove_old_diff= 1;
 #ifdef WIN32
+    syscheck.wdata.interval_scan = 0;
     syscheck.wdata.fd      = NULL;
     syscheck.registry       = NULL;
     syscheck.reg_fp         = NULL;
@@ -82,7 +83,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     if ((syscheck.dir[0] == NULL) && (syscheck.registry[0].entry == NULL)) {
         return (1);
     }
-    syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 256, 1024);
+    syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
 #endif
 
     return (0);

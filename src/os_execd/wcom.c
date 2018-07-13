@@ -477,12 +477,16 @@ size_t wcom_upgrade_result(char *output){
 #ifndef WIN32
     const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : DEFAULTDIR UPGRADE_DIR "/upgrade_result";
 #else
-    const char * PATH = UPGRADE_DIR "/upgrade_result";
+    const char * PATH = UPGRADE_DIR "\\upgrade_result";
 #endif
 
     FILE * result_file;
 
+#ifndef WIN32
     if (result_file = fopen(PATH, "r"), result_file) {
+#else
+    if (result_file = fopen(PATH, "rb"), result_file) {
+#endif
         if (fgets(buffer,20,result_file)){
             snprintf(output, OS_MAXSTR, "ok %s", buffer);
             fclose(result_file);
@@ -491,7 +495,7 @@ size_t wcom_upgrade_result(char *output){
         fclose(result_file);
     }
     strcpy(output, "err Cannot read upgrade_result file.");
-    merror("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
+    mdebug1("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
     return strlen(output);
 }
 

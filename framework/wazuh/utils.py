@@ -102,7 +102,7 @@ def cut_array(array, offset, limit):
     elif limit == 0:
         raise WazuhException(1406)
 
-    if not array or limit == None:
+    if not array or limit is None:
         return array
 
     offset = int(offset)
@@ -129,8 +129,8 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     def check_sort_fields(allowed_sort_fields, sort_by):
         # Check if every element in sort['fields'] is in allowed_sort_fields
         if not sort_by.issubset(allowed_sort_fields):
-            uncorrect_fields = map(lambda x: str(x), sort_by - allowed_sort_fields)
-            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(list(allowed_sort_fields), uncorrect_fields))
+            incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
+            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
 
     if not array:
         return array
@@ -149,9 +149,13 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         if type(array[0]) is dict:
             check_sort_fields(set(array[0].keys()), set(sort_by))
 
-            return sorted(array, key=lambda o: tuple(o.get(a) for a in sort_by), reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str,unicode) else o.get(a) for a in sort_by),
+                          reverse=order_desc)
         else:
-            return sorted(array, key=lambda o: tuple(getattr(o, a) for a in sort_by), reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
+                          reverse=order_desc)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
@@ -220,6 +224,7 @@ def search_array(array, text, negation=False, fields=None):
                 found.append(item)
 
     return found
+
 
 _filemode_table = (
     ((stat.S_IFLNK, "l"),
@@ -370,6 +375,7 @@ def md5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
 
 def get_fields_to_nest(fields, force_fields=[], split_character="_"):
     nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))

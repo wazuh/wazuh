@@ -249,6 +249,24 @@ int OSHash_Add(OSHash *self, const char *key, void *data)
     return (2);
 }
 
+
+/** int OSHash_Numeric_Add_ex(OSHash *self, int key, void *data)
+ * Returns 0 on error.
+ * Returns 1 on duplicated key (not added)
+ * Returns 2 on success
+ * Key must not be NULL.
+ */
+int OSHash_Numeric_Add_ex(OSHash *self, int key, void *data)
+{
+    char string_key[12];
+    int result;
+
+    snprintf(string_key, 12, "%d", key);
+    result = OSHash_Add_ex(self, string_key, data);
+
+    return result;
+}
+
 /** int OSHash_Add(OSHash *self, char *key, void *data)
  * Returns 0 on error.
  * Returns 1 on duplicated key (not added)
@@ -301,6 +319,22 @@ void *OSHash_Get(const OSHash *self, const char *key)
     return (NULL);
 }
 
+/** void *OSHash_Numeric_Get_ex(OSHash *self, int key)
+ * Returns NULL on error (key not found).
+ * Returns the key otherwise.
+ * Key must not be NULL.
+ */
+void *OSHash_Numeric_Get_ex(const OSHash *self, int key)
+{
+    char string_key[12];
+    void *result;
+
+    snprintf(string_key, 12, "%d", key);
+    result = OSHash_Get_ex(self, string_key);
+
+    return result;
+}
+
 /** void *OSHash_Get(OSHash *self, char *key)
  * Returns NULL on error (key not found).
  * Returns the key otherwise.
@@ -349,6 +383,17 @@ void *OSHash_Delete(OSHash *self, const char *key)
     }
 
     return NULL;
+}
+
+void *OSHash_Numeric_Delete_ex(OSHash *self, int key)
+{
+    char string_key[12];
+    void *result;
+
+    snprintf(string_key, 12, "%d", key);
+    result = OSHash_Delete_ex(self, string_key);
+
+    return result;
 }
 
 /* Return a pointer to a hash node if found, that hash node is removed from the table */
