@@ -109,7 +109,7 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
     total = 0
     
     for agent in agents:
-        items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search, sort=sort, nested=False)
+        items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search, sort=sort, nested=True)
         if items == {}:
             continue
             
