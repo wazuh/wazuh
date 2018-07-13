@@ -183,6 +183,12 @@ int Rules_OP_ReadRules(const char *rulefile)
     }
     mdebug2("XML Variables applied.");
 
+    /* Check if the file is empty */
+    if(FileSize(rulepath) == 0){
+        retval = 0;
+        goto cleanup;
+    }
+
     /* Get the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
     if (!node) {
@@ -1669,12 +1675,11 @@ static int getattributes(char **attributes, char **values,
         /* Get level */
         else if (strcasecmp(attributes[k], xml_level) == 0) {
             if (OS_StrIsNum(values[k])) {
-                sscanf(values[k], "%4d", level);
-            } else {
-                merror("rules_op: Invalid level: %s. "
-                       "Must be integer" ,
-                       values[k]);
-                return (-1);
+                *level = atoi(values[k]);
+                if (*level < 0 || *level > 16) {
+                    merror("rules_op: Invalid level: %d. Must be an integer between 0 and 16.", *level);
+                    return (-1);
+                }
             }
         }
         /* Get maxsize */
@@ -1694,7 +1699,7 @@ static int getattributes(char **attributes, char **values,
                 sscanf(values[k], "%5d", timeframe);
             } else {
                 merror("rules_op: Invalid timeframe: %s. "
-                       "Must be integer" ,
+                       "Must be integer (max 5 digits)" ,
                        values[k]);
                 return (-1);
             }
@@ -1702,7 +1707,12 @@ static int getattributes(char **attributes, char **values,
         /* Get frequency */
         else if (strcasecmp(attributes[k], xml_frequency) == 0) {
             if (OS_StrIsNum(values[k])) {
-                sscanf(values[k], "%4d", frequency);
+                *frequency = atoi(values[k]);
+                if (*frequency < 2 || *frequency > 9999) {
+                    merror("rules_op: Invalid frequency: %d. Must be higher than 1 and lower than 10000.", *frequency);
+                    return (-1);
+                }
+                *frequency = *frequency - 2;
             } else {
                 merror("rules_op: Invalid frequency: %s. "
                        "Must be integer" ,
@@ -1727,7 +1737,7 @@ static int getattributes(char **attributes, char **values,
                 sscanf(values[k], "%6d", ignore_time);
             } else {
                 merror("rules_op: Invalid ignore_time: %s. "
-                       "Must be integer" ,
+                       "Must be integer (max 6 digits)" ,
                        values[k]);
                 return (-1);
             }
@@ -1747,7 +1757,7 @@ static int getattributes(char **attributes, char **values,
             }
         } else {
             merror("rules_op: Invalid attribute \"%s\". "
-                   "Only id, level, maxsize, accuracy, noalert and timeframe "
+                   "Only id, level, maxsize, accuracy, noalert, ignore, frequency and timeframe "
                    "are allowed.", attributes[k]);
             return (-1);
         }

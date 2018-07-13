@@ -25,7 +25,6 @@ AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
-REMOTE_SYS_TEMPLATE="./etc/templates/config/generic/remote-syslog.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 
@@ -313,8 +312,8 @@ WriteAgent()
         fi
       fi
     fi
-    echo "    <notify_time>60</notify_time>" >> $NEWCONFIG
-    echo "    <time-reconnect>300</time-reconnect>" >> $NEWCONFIG
+    echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
+    echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
@@ -377,6 +376,7 @@ WriteAgent()
         echo "    <ca_store>${CA_STORE}</ca_store>" >> $NEWCONFIG
     fi
 
+    echo "    <ca_verification>yes</ca_verification>" >> $NEWCONFIG
     echo "  </active-response>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -420,12 +420,6 @@ WriteManager()
     echo "" >> $NEWCONFIG
 
     # Remote connection secure
-    if [ "X$RLOG" = "Xyes" ]; then
-      cat ${REMOTE_SYS_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    # Remote connection syslog
     if [ "X$SLOG" = "Xyes" ]; then
       cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
@@ -775,6 +769,7 @@ InstallCommon(){
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
   ./init/fw-check.sh execute
+  InstallSELinuxPolicyPackage
 }
 
 InstallLocal(){
@@ -866,8 +861,8 @@ InstallServer(){
     InstallLocal
 
     # Install cluster files
-    ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/cluster
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/cluster
 
     ${INSTALL} -d -m 760 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
     ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default

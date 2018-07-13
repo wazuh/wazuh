@@ -17,6 +17,10 @@ import errno
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 from operator import itemgetter
+import sys
+# Python 2/3 compatibility
+if sys.version_info[0] == 3:
+    unicode = str
 
 try:
     from subprocess import check_output
@@ -93,7 +97,12 @@ def cut_array(array, offset, limit):
     :return: cut array.
     """
 
-    if not array or limit == 0 or limit == None:
+    if limit > common.maximum_database_limit:
+        raise WazuhException(1405, str(limit))
+    elif limit == 0:
+        raise WazuhException(1406)
+
+    if not array or limit is None:
         return array
 
     offset = int(offset)
@@ -120,8 +129,8 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     def check_sort_fields(allowed_sort_fields, sort_by):
         # Check if every element in sort['fields'] is in allowed_sort_fields
         if not sort_by.issubset(allowed_sort_fields):
-            uncorrect_fields = map(lambda x: str(x), sort_by - allowed_sort_fields)
-            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(list(allowed_sort_fields), uncorrect_fields))
+            incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
+            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
 
     if not array:
         return array
@@ -140,9 +149,13 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         if type(array[0]) is dict:
             check_sort_fields(set(array[0].keys()), set(sort_by))
 
-            return sorted(array, key=lambda o: tuple(o.get(a) for a in sort_by), reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str,unicode) else o.get(a) for a in sort_by),
+                          reverse=order_desc)
         else:
-            return sorted(array, key=lambda o: tuple(getattr(o, a) for a in sort_by), reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
+                          reverse=order_desc)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
@@ -172,7 +185,7 @@ def get_values(o, fields=None):
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
     else:
-        strings.append(str(obj).lower())
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else obj)
 
     return strings
 
@@ -211,6 +224,7 @@ def search_array(array, text, negation=False, fields=None):
                 found.append(item)
 
     return found
+
 
 _filemode_table = (
     ((stat.S_IFLNK, "l"),
@@ -278,12 +292,12 @@ def tail(filename, n=20):
         if (block_end_byte - BLOCK_SIZE > 0):
             # read the last block we haven't yet read
             f.seek(block_number*BLOCK_SIZE, 2)
-            blocks.append(f.read(BLOCK_SIZE).decode())
+            blocks.append(f.read(BLOCK_SIZE).decode('utf-8'))
         else:
             # file too small, start from beginning
             f.seek(0,0)
             # only read what was not read
-            blocks.append(f.read(block_end_byte).decode())
+            blocks.append(f.read(block_end_byte).decode('utf-8'))
         lines_found = blocks[-1].count('\n')
         lines_to_go -= lines_found
         block_end_byte -= BLOCK_SIZE
@@ -363,17 +377,17 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def get_fields_to_nest(fields, force_fields=[]):
+def get_fields_to_nest(fields, force_fields=[], split_character="_"):
     nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
-             for k,g in groupby(map(lambda x: x.split('_'), sorted(fields)),
+             for k,g in groupby(map(lambda x: x.split(split_character), sorted(fields)),
              key=lambda x:x[0])}
     nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
-    nested = [(field,{(subfield, '_'.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
-    non_nested = set(filter(lambda x: x.split('_')[0] not in map(itemgetter(0), nested), fields))
+    nested = [(field,{(subfield, split_character.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
+    non_nested = set(filter(lambda x: x.split(split_character)[0] not in map(itemgetter(0), nested), fields))
     return nested, non_nested
 
 
-def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[]):
+def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[], split_character='_'):
     """
     Turns an input dictionary with "nested" fields in form
                 field_subfield
@@ -408,7 +422,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
     nested = {k:list(filter(lambda x: x != k, chain.from_iterable(g)))
-             for k,g in groupby(map(lambda x: x.split('_'), sorted(data.keys())),
+             for k,g in groupby(map(lambda x: x.split(split_character), sorted(data.keys())),
              key=lambda x:x[0])}
 
     # create a nested dictionary with those fields that have subfields
@@ -424,32 +438,18 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     #           'total': '2045956'
     #       }
     #    }
-    nested_dict = {f:{sf:data['{0}_{1}'.format(f,sf)] for sf in sfl} for f,sfl
+    nested_dict = {f:{sf:data['{0}{2}{1}'.format(f,sf,split_character)] for sf in sfl} for f,sfl
                   in nested.items() if len(sfl) > 1 or f in force_fields}
 
     # create a dictionary with the non nested fields
     # non_nested_dict = {'board_serial': 'BSS-0123456789'}
-    non_nested_dict = {f:data[f] for f in data.keys() if f.split('_')[0]
+    non_nested_dict = {f:data[f] for f in data.keys() if f.split(split_character)[0]
                        not in nested_dict.keys()}
 
     # append both dictonaries
     nested_dict.update(non_nested_dict)
 
     return nested_dict
-
-
-def divide_list(l, size=1000):
-    return map(lambda x: filter(lambda y: y is not None, x), map(None, *([iter(l)] * size)))
-
-
-def create_exception_dic(id, e):
-    """
-    Creates a dictionary with a list of agent ids and it's error codes.
-    """
-    exception_dic = {}
-    exception_dic['id'] = id
-    exception_dic['error'] = {'message': e.message, 'code': e.code}
-    return exception_dic
 
 
 def load_wazuh_xml(xml_path):
@@ -463,7 +463,7 @@ def load_wazuh_xml(xml_path):
         data = data.replace(comment.group(2), good_comment)
 
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
-    data = re.sub(r"<(?!/?[\w=\'$,#\"\.@\/_ -:]+>|!--)", "&lt;", data)
+    data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!\w+;)", "&amp;", data)
@@ -515,21 +515,22 @@ class WazuhVersion:
     def __ge__(self, new_version):
         if self.__mayor < new_version.__mayor:
             return False
-        elif self.__minor < new_version.__minor:
-            return False
-        elif self.__patch < new_version.__patch:
-            return False
-        elif (self.__dev) and not (new_version.__dev):
-            return False
-        elif (self.__dev) and (new_version.__dev):
-            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+        elif self.__mayor == new_version.__mayor:
+            if self.__minor < new_version.__minor:
                 return False
-            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
-                return False
-            else:
-                return True
-        else:
-            return True
+            elif self.__minor == new_version.__minor:
+                if self.__patch < new_version.__patch:
+                    return False
+                elif self.__patch == new_version.__patch:
+                    if (self.__dev) and not (new_version.__dev):
+                        return False
+                    elif (self.__dev) and (new_version.__dev):
+                            if ord(self.__dev[0]) < ord(new_version.__dev[0]):
+                                return False
+                            elif ord(self.__dev[0]) == ord(new_version.__dev[0]) and self.__dev_ver < new_version.__dev_ver:
+                                return False
+
+        return True
 
     def __lt__(self, new_version):
         return not (self >= new_version)

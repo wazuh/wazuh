@@ -214,7 +214,7 @@ void LogCollectorStart()
                     logff[i].file = NULL;
                 }
                 logff[i].read = read_djbmultilog;
-            } else if (logff[i].logformat[0] >= '0' && logff[i].logformat[0] <= '9') {
+            } else if (strncmp(logff[i].logformat, "multi-line:", 10) == 0) {
                 logff[i].read = read_multiline;
             } else if (strcmp("audit", logff[i].logformat) == 0) {
                 logff[i].read = read_audit;
@@ -283,6 +283,10 @@ void LogCollectorStart()
 
         /* Check which file is available */
         for (i = 0; i <= max_file; i++) {
+            if (logff[i].duplicated) {
+                continue;
+            }
+
             if (!logff[i].fp) {
                 /* Run the command */
                 if (logff[i].command && (f_check % 2)) {

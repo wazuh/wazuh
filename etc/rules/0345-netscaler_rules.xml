@@ -26,7 +26,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <group>authentication_failed,netscaler-aaa,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_3.3,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
-    <rule id="80102" level="10" frequency="6">
+    <rule id="80102" level="10" frequency="8">
         <if_matched_sid>80101</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple AAA failed to login the user</description>
@@ -56,7 +56,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <group>netscaler-cmd,gpg13_3.5,gdpr_IV_35.7.d,</group>
     </rule>
 
-    <rule id="80105" level="10" frequency="6">
+    <rule id="80105" level="10" frequency="8">
         <if_matched_sid>80104</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple commands failed</description>
@@ -124,7 +124,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
     </rule>
 
-    <rule id="80112" level="10" frequency="8" timeframe="120">
+    <rule id="80112" level="10" frequency="10" timeframe="120">
         <if_matched_sid>80111</if_matched_sid>
         <description>Netscaler: Multiple non-http resource access denied</description>
         <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
@@ -141,7 +141,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
     </rule>
 
-    <rule id="80114" level="10" frequency="8" timeframe="120">
+    <rule id="80114" level="10" frequency="10" timeframe="120">
         <if_matched_sid>80113</if_matched_sid>
         <description>Netscaler: Multiple http resource access denied</description>
         <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
@@ -400,7 +400,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <group>netscaler-aaatm,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
     </rule>
 
-    <rule id="80137" level="10" frequency="8" timeframe="120">
+    <rule id="80137" level="10" frequency="10" timeframe="120">
         <if_matched_sid>80136</if_matched_sid>
         <description>Netscaler: Multiple AAATM http resource access denied</description>
         <group>netscaler-aaatm,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
@@ -431,7 +431,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <group>authentication_failed,netscaler-cmd,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_3.3,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
-    <rule id="80140" level="10" frequency="6">
+    <rule id="80140" level="10" frequency="8">
         <if_matched_sid>80139</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple UI/API login failed</description>

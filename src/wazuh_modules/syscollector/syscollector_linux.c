@@ -1725,6 +1725,11 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     proc_t * proc_info;
     char *string;
 
+    if (!proc) {
+        mterror(WM_SYS_LOGTAG, "Running process inventory: could not create libproc context.");
+        return;
+    }
+
     unsigned int random = (unsigned int)os_random();
 
     int i = 0;

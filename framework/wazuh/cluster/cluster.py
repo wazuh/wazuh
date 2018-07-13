@@ -12,20 +12,24 @@ from wazuh.InputValidator import InputValidator
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
-from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove
+from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
 from subprocess import check_output, check_call, CalledProcessError
-from shutil import rmtree
-from operator import eq, setitem
+from shutil import rmtree, copyfileobj
+from operator import eq, setitem, add
 import json
 from stat import S_IRWXG, S_IRWXU
 from difflib import unified_diff
 import errno
 import logging
+import logging.handlers
 import re
 import os
 import ast
-from calendar import timegm
+from calendar import timegm, month_abbr
 from random import random
+import glob
+import gzip
+from functools import reduce
 
 # import the C accelerated API of ElementTree
 try:
@@ -60,8 +64,8 @@ def check_cluster_config(config):
 
     if 'node_type' not in config:
         raise WazuhException(3004, "Node type not present in cluster configuration")
-    elif config['node_type'] != 'master' and config['node_type'] != 'client':
-        raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and client'.format(config['node_type']))
+    elif config['node_type'] != 'master' and config['node_type'] != 'worker':
+        raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(config['node_type']))
 
     if 'nodes' not in config or len(config['nodes']) == 0:
         raise WazuhException(3004, 'No nodes defined in cluster configuration.')
@@ -79,8 +83,9 @@ def check_cluster_config(config):
 
 def get_cluster_items():
     try:
-        cluster_items = json.load(open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)))
-        map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values()))
+        with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
+            cluster_items = json.load(f)
+        list(map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values())))
         return cluster_items
     except Exception as e:
         raise WazuhException(3005, str(e))
@@ -94,8 +99,8 @@ def get_cluster_items_communication_intervals():
     return get_cluster_items()['intervals']['communication']
 
 
-def get_cluster_items_client_intervals():
-    return get_cluster_items()['intervals']['client']
+def get_cluster_items_worker_intervals():
+    return get_cluster_items()['intervals']['worker']
 
 
 def read_config():
@@ -112,6 +117,10 @@ def read_config():
 
     if 'port' in config_cluster:
         config_cluster['port'] = int(config_cluster['port'])
+
+    if 'node_type' in config_cluster and config_cluster['node_type'] == 'client':
+        logger.warning("Deprecated node type 'client'. Using 'worker' instead.")
+        config_cluster['node_type'] = 'worker'
 
     return config_cluster
 
@@ -161,7 +170,7 @@ def get_status_json():
 # Files
 #
 
-def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, get_md5=True, whoami='master'):
+def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True, whoami='master'):
     walk_files = {}
 
     try:
@@ -170,7 +179,7 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
         raise WazuhException(3015, str(e))
 
     for entry in entries:
-        if entry in excluded_files or entry[-1] == '~' or entry[-4:] == ".tmp" or entry[-5:] == ".lock":
+        if entry in excluded_files or reduce(add, map(lambda x: entry[-(len(x)):] == x, excluded_extensions)):
             continue
 
         full_path = path.join(dirname, entry)
@@ -179,7 +188,7 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
             if not path.isdir(full_path):
                 file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
 
-                if whoami == 'client' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
+                if whoami == 'worker' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
                     continue
 
                 new_key = full_path.replace(common.ossec_path, "")
@@ -195,7 +204,7 @@ def walk_dir(dirname, recursive, files, excluded_files, get_cluster_item_key, ge
                     walk_files[new_key]['md5'] = md5(full_path)
 
         if recursive and path.isdir(full_path):
-            walk_files.update(walk_dir(full_path, recursive, files, excluded_files, get_cluster_item_key, get_md5, whoami))
+            walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5, whoami))
 
     return walk_files
 
@@ -206,7 +215,7 @@ def get_files_status(node_type, get_md5=True):
 
     final_items = {}
     for file_path, item in cluster_items['files'].items():
-        if file_path == "excluded_files":
+        if file_path == "excluded_files" or file_path == "excluded_extensions":
             continue
 
         if item['source'] == node_type or item['source'] == 'all':
@@ -220,7 +229,8 @@ def get_files_status(node_type, get_md5=True):
             else:
                 fullpath = common.ossec_path + file_path
             try:
-                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'], file_path, get_md5, node_type))
+                final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
+                                            cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
             except WazuhException as e:
                 logger.warning("[Cluster] get_files_status: {}.".format(e))
 
@@ -256,14 +266,16 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     with zipfile.ZipFile(zip_path) as zipf:
         for name in zipf.namelist():
             if name == ko_files_name:
-                ko_files = json.loads(zipf.open(name).read())
+                with zipf.open(name) as file:
+                    ko_files = json.loads(file.read())
             else:
                 filename = "{}/{}".format(zip_dir, path.dirname(name))
                 if not path.exists(filename):
                     mkdir_with_mode(filename)
-                with open("{}/{}".format(filename, path.basename(name)), 'wb') as f:
-                    content = zipf.open(name).read()
-                    f.write(content)
+                with open("{}/{}".format(filename, path.basename(name)), 'wb') as cf:
+                    with zipf.open(name) as file:
+                        content = file.read()
+                    cf.write(content)
 
     # once read all files, remove the zipfile
     remove(zip_path)
@@ -275,7 +287,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
 
     dst_path = common.ossec_path + file_path
     if path.basename(dst_path) == 'client.keys':
-        if whoami =='client':
+        if whoami =='worker':
             _check_removed_agents(new_content.split('\n'))
         else:
             logger.warning("[Cluster] Client.keys file received in a master node.")
@@ -310,7 +322,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
                     logger.debug2("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
                     return
         elif is_agent_info:
-            logger.warning("[Cluster] Agent-info received in a client node.")
+            logger.warning("[Cluster] Agent-info received in a worker node.")
             raise WazuhException(3011)
 
     # Write
@@ -426,7 +438,7 @@ def clean_up(node_name=""):
 #
 # Agents
 #
-def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=common.database_limit, sort=None, search=None):
+def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=common.database_limit):
     """
     Return a nested list where each element has the following structure
     [agent_id, agent_name, agent_status, manager_hostname]
@@ -441,15 +453,13 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
         filter_nodes=ast.literal_eval(filter_nodes)
     if not limit:
         limit = common.database_limit
-    if sort:
-        sort=ast.literal_eval(sort)
-    if search:
-        sort=ast.literal_eval(search)
 
-    agents = Agent.get_agents_overview(status=filter_status, node_name=filter_nodes , select={'fields':['id','ip','name','status','node_name']}, limit=limit, offset=offset, sort=sort, search=search)
+    agents = Agent.get_agents_overview(filters={'status':filter_status, 'node_name':filter_nodes},
+                                       select={'fields':['id','ip','name','status','node_name']}, limit=limit,
+                                       offset=offset)
     return agents
 
-
+  
 def _check_removed_agents(new_client_keys):
     """
     Function to delete agents that have been deleted in a synchronized
@@ -562,3 +572,49 @@ def unmerge_agent_info(merge_type, path_file, filename):
         yield dst_agent_info_path + '/' + name, data, st_mtime
 
     src_f.close()
+
+
+class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
+    """
+    Wazuh cluster log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
+    Also, rotated logs are stored in /logs/ossec
+    """
+
+    def doRollover(self):
+        """
+        Override base class method to make the set the appropiate permissions to the new log file
+        """
+        # Rotate the file first
+        logging.handlers.TimedRotatingFileHandler.doRollover(self)
+
+        # Set appropiate permissions
+        chown(self.baseFilename, common.ossec_uid, common.ossec_gid)
+        chmod(self.baseFilename, 0o660)
+
+        # Save rotated file in /logs/ossec directory
+        rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
+
+        new_rotated_file = self.computeArchivesDirectory(rotated_file)
+        with open(rotated_file, 'rb') as f_in, gzip.open(new_rotated_file, 'wb') as f_out:
+            copyfileobj(f_in, f_out)
+        chmod(new_rotated_file, 0o640)
+        unlink(rotated_file)
+
+
+
+    def computeArchivesDirectory(self, rotated_filepath):
+        """
+        Based on the name of the rotated file, compute in which directory it should be stored.
+
+        :param rotated_filepath: Filepath of the rotated log
+        :return: New directory path
+        """
+        rotated_file = path.basename(rotated_filepath)
+        year, month, day = re.match(r'[\w\.]+\.(\d+)-(\d+)-(\d+)', rotated_file).groups()
+        month = month_abbr[int(month)]
+
+        log_path = '{}/logs/cluster/{}/{}'.format(common.ossec_path, year, month)
+        if not path.exists(log_path):
+            mkdir_with_mode(log_path, 0o750)
+
+        return '{}/cluster-{}.log.gz'.format(log_path, day)

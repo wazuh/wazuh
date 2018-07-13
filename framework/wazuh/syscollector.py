@@ -14,6 +14,7 @@ request_internal_limit = {'sys_osinfo':20, "sys_hwinfo":20, "sys_programs":15, "
 
 def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, allowed_sort_fields, table, nested=True, array=False):
     Agent(agent_id).get_basic_information()
+
     if select:
         select_fields = list(set(select['fields']) & set(valid_select_fields))
         if select_fields == []:
@@ -207,8 +208,7 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
     total = 0
 
     for agent in agents:
-        items = func(agent_id=agent['id'], select=select, filters=filters, limit=limit, offset=offset, search=search,
-                     sort=sort, nested=False)
+        items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search, sort=sort, nested=True)
         if items == {}:
             continue
 

@@ -45,5 +45,5 @@ if __name__ == "__main__":
     print(myWazuh)
 
     print("\nAgents:")
-    agents = Agent.get_agents_overview(status="all")
+    agents = Agent.get_agents_overview()
     print(json.dumps(agents, indent=4, sort_keys=True))

@@ -1856,6 +1856,7 @@ int wm_vulnerability_detector_socketconnect(char *url, in_port_t port) {
 		}
 	}
 
+    // https://bugzilla.redhat.com/show_bug.cgi?id=116526
 	freeaddrinfo(host_info);
 
     if (*ip_addr == '\0') {
@@ -2127,6 +2128,15 @@ int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *
     if (wm_vulnerability_check_update_period(upd)) {
         mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, tag);
         if (wm_vulnerability_check_update(upd, dist)) {
+            if (!upd->attempted) {
+                upd->last_update = time(NULL) - upd->interval + WM_VULNDETECTOR_RETRY_UPDATE;
+                upd->attempted = 1;
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version, (long unsigned)WM_VULNDETECTOR_RETRY_UPDATE);
+            } else {
+                upd->last_update = time(NULL);
+                upd->attempted = 0;
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version, upd->interval);
+            }
             return OS_INVALID;
         } else {
             mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, tag);

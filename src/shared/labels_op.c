@@ -29,7 +29,7 @@ wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const cha
         os_realloc(labels, (*size + 2) * sizeof(wlabel_t), labels);
         labels[(*size)++].key = strdup(key);
         memset(labels + *size, 0, sizeof(wlabel_t));
-    } else {
+    } else if (labels) {
         free(labels[i].value);
     }
 

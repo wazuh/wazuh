@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Id="*" Name="Wazuh Agent 3.3.0" Language="1033" Version="3.3.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+    <Product Id="*" Name="Wazuh Agent 3.5.0" Language="1033" Version="3.5.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
         <!-- Default configuration values -->
@@ -72,10 +72,7 @@
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
                     <Component Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
-                        <File Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" Name="default-local_internal_options.conf" Source="default-local_internal_options.conf">
-                            <CopyFile Id="LOCAL_INTERNAL_OPTIONS.CONF" DestinationName="default-local_internal_options.conf" />
-                            <CopyFile Id="EMPTY_LOCAL_INTERNAL_OPTIONS.CONF" DestinationName="local_internal_options.conf" />
-                        </File>
+                        <File Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" Name="default-local_internal_options.conf" Source="default-local_internal_options.conf" />
                     </Component>
                     <Component Id="DEFAULT_OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="no">
                         <File Id="DEFAULT_OSSEC.CONF" Name="default-ossec.conf" Source="default-ossec.conf">
@@ -152,6 +149,9 @@
                     <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
                         <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
                     </Component>
+                    <Component Id="USER_DEFINED_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="43F9A30D-7C3A-4D7B-884A-D4387F86166E" NeverOverwrite="yes" Permanent="yes" >
+                        <File Id="USER_DEFINED_LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" />
+                    </Component>
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
                             <Component Id="RESTART_OSSEC.CMD" DiskId="1" Guid="5A405DD9-F4FF-4313-B242-A28DE03611CA">
@@ -188,7 +188,7 @@
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
                     <Directory Id="LOGS" Name="logs" />
-		            <Directory Id="WODLES" Name="wodles" />
+                    <Directory Id="WODLES" Name="wodles" />
                     <Directory Id="RIDS" Name="rids" />
                     <Directory Id="SYSCHECK" Name="syscheck" />
                     <Directory Id="INCOMING" Name="incoming" />
@@ -250,7 +250,6 @@
                 <RemoveFolder Id="purgue_logs_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
-
         <DirectoryRef Id="WODLES">
             <Component Id="CMP_WODLES" Guid="A6811CB8-C2E2-4A1A-A2E5-DCE8221828C6" KeyPath="yes">
                 <CreateFolder />
@@ -258,7 +257,6 @@
                 <RemoveFolder Id="purgue_wodles_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
-
         <DirectoryRef Id="RIDS">
             <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes">
                 <CreateFolder />
@@ -324,7 +322,7 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
-	        <ComponentRef Id="CMP_WODLES" />
+            <ComponentRef Id="CMP_WODLES" />
             <ComponentRef Id="CMP_RIDS" />
             <ComponentRef Id="CMP_SYSCHECK" />
             <ComponentRef Id="CMP_INCOMING" />
@@ -335,6 +333,7 @@
             <ComponentRef Id="VERSION" />
             <ComponentRef Id="REVISION" />
             <ComponentRef Id="WPK_ROOT.PEM" />
+            <ComponentRef Id="USER_DEFINED_LOCAL_INTERNAL_OPTIONS.CONF" />
         </Feature>
         <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
     </Product>

@@ -2,6 +2,8 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
+HAS_CHECKMODULE = $(shell which checkmodule)
+HAS_SEMODULE_PACKAGE = $(shell which semodule_package)
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -10,6 +12,7 @@ EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
 EXTERNAL_LIBYAML=external/libyaml/
 EXTERNAL_CURL=external/curl/
+EXTERNAL_AUDIT=external/audit-userspace/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -26,12 +29,25 @@ OSSEC_USER?=ossec
 OSSEC_USER_MAIL?=ossecm
 OSSEC_USER_REM?=ossecr
 SHARED=so
+SELINUX_MODULE=selinux/wazuh.mod
+SELINUX_ENFORCEMENT=selinux/wazuh.te
+SELINUX_POLICY=selinux/wazuh.pp
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
+
+ifneq ($(HAS_CHECKMODULE),)
+ifneq ($(HAS_SEMODULE_PACKAGE),)
+USE_SELINUX=yes
+else
+USE_SELINUX=no
+endif
+else
+USE_SELINUX=no
+endif
 
 ONEWAY?=no
 CLEANFULL?=no
@@ -60,12 +76,14 @@ ifeq (${uname_S},Linux)
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		OSSEC_LIBS+=-lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl -L$(EXTERNAL_AUDIT)lib/.libs -laudit
+#		OSSEC_LDFLAGS+=-lmagic
+		CFLAGS+=-I$(EXTERNAL_AUDIT)lib -Wl,--start-group
 else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
 		PATH:=${PATH}:/usr/vac/bin
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
@@ -88,7 +106,7 @@ ifeq (${uname_S},Darwin)
 		DEFINES+=-DHIGHFIRST
 		OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
 		SHARED=dylib
-		OSSEC_LIBS+=-framework Security -lldap
+		OSSEC_LIBS+=-framework Security
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
@@ -137,6 +155,10 @@ endif
 
 ifndef DISABLE_CISCAT
 	DEFINES+=-DENABLE_CISCAT
+endif
+
+ifndef DISABLE_SHARED
+	DEFINES+=-DENABLE_SHARED
 endif
 
 ifdef DEBUGAD
@@ -418,6 +440,7 @@ settings:
 	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:   ${USE_BIG_ENDIAN}"
+	@echo "    USE_SELINUX:      ${USE_SELINUX}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"
 	@echo "    libs:             ${ML}"
@@ -431,7 +454,6 @@ settings:
 	@echo "    LDFLAGS         ${OSSEC_LDFLAGS}"
 	@echo "    CC              ${CC}"
 	@echo "    MAKE            ${MAKE}"
-
 
 BUILD_SERVER+=ossec-maild -
 BUILD_SERVER+=ossec-csyslogd -
@@ -462,7 +484,8 @@ BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
 
-.PHONY: server local hybrid agent
+.PHONY: server local hybrid agent selinux
+
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
@@ -486,6 +509,18 @@ $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
 agent: external
 	${MAKE} ${BUILD_AGENT}
+
+ifneq (,$(filter ${USE_SELINUX},yes y Y 1))
+server local hybrid agent: selinux
+endif
+
+selinux: $(SELINUX_POLICY)
+
+$(SELINUX_POLICY): $(SELINUX_MODULE)
+	semodule_package -o $@ -m $?
+
+$(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
+	checkmodule -M -m -o $@ $?
 
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
@@ -524,6 +559,7 @@ PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
 DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
+AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
 
@@ -532,7 +568,7 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB)
 endif
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(AUDIT_LIB)
 endif
 endif
 
@@ -633,10 +669,10 @@ ${LIBCURL_LIB}: $(EXTERNAL_CURL)Makefile
 
 ifeq (${uname_S},Darwin)
 $(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl
+	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl --disable-ldap --without-libidn2
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap
 endif
 
 
@@ -664,6 +700,15 @@ $(EXTERNAL_LIBDB)Makefile:
 	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics
 endif
 
+#### Audit lib ####
+
+${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
+	make -C $(EXTERNAL_AUDIT)lib CC=$(CC)
+
+$(EXTERNAL_AUDIT)Makefile:
+
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC
+
 ################################
 #### External dependencies  ####
 ################################
@@ -676,7 +721,7 @@ space +=
 VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 
-EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib
+EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib audit-userspace
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -689,12 +734,18 @@ external/%.tar.gz:
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 
+
 ####################
 #### OSSEC Libs ####
 ####################
 
+ifdef DISABLE_SHARED
+BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
+endif
+ifndef DISABLE_SHARED
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
+endif
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
@@ -869,6 +920,7 @@ libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os
 
 ### libwazuhext #########
 
+ifndef DISABLE_SHARED
 ifeq (${uname_S},Darwin)
 WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 
@@ -885,6 +937,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
 endif
 endif
 endif
@@ -1389,6 +1442,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
+	-cd ${EXTERNAL_AUDIT} && make clean
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
@@ -1428,6 +1482,8 @@ clean-internals:
 	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o}
 	rm -f ${wdb_o}
+	rm -f ${SELINUX_MODULE}
+	rm -f ${SELINUX_POLICY}
 
 clean-windows:
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll

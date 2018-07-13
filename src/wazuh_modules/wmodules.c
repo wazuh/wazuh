@@ -77,12 +77,13 @@ int wm_check() {
     wmodule *i = wmodules;
     wmodule *j;
     wmodule *next;
-    wmodule *prev;
+    wmodule *prev = wmodules;
 
     // Discard empty configurations
 
     while (i) {
         if (i->context) {
+            prev = i;
             i = i->next;
         } else {
             next = i->next;
@@ -90,6 +91,8 @@ int wm_check() {
 
             if (i == wmodules) {
                 wmodules = next;
+            } else {
+                prev->next = next;
             }
 
             i = next;

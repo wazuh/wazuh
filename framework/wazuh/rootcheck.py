@@ -166,7 +166,7 @@ def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=co
             allowed_sort_fields = fields.keys()
             # Check if every element in sort['fields'] is in allowed_sort_fields
             if not set(sort['fields']).issubset(allowed_sort_fields):
-                uncorrect_fields = map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields))
+                uncorrect_fields = list(map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields)))
                 raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, uncorrect_fields))
                 
             query += ' ORDER BY ' + ','.join(['{0} {1}'.format(fields[i], sort['order']) for i in sort['fields']])
@@ -176,9 +176,13 @@ def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=co
         query += ' ORDER BY date_last DESC'
 
     if limit:
+        if limit > common.maximum_database_limit:
+            raise WazuhException(1405, str(limit))
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
+    elif limit == 0:
+        raise WazuhException(1406)
 
     select = ["status", "date_first", "date_last", "log", "pci_dss", "cis"]
 
@@ -247,7 +251,7 @@ def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
             allowed_sort_fields = fields.keys()
             # Check if every element in sort['fields'] is in allowed_sort_fields
             if not set(sort['fields']).issubset(allowed_sort_fields):
-                uncorrect_fields = map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields))
+                uncorrect_fields = list(map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields)))
                 raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, uncorrect_fields))
 
             query += ' ORDER BY pci_dss ' + sort['order']
@@ -257,9 +261,13 @@ def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
         query += ' ORDER BY pci_dss ASC'
 
     if limit:
+        if limit > common.maximum_database_limit:
+            raise WazuhException(1405, str(limit))
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
+    elif limit == 0:
+        raise WazuhException(1406)
 
 
     conn.execute(query.format('DISTINCT pci_dss'), request)
@@ -322,9 +330,13 @@ def get_cis(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
         query += ' ORDER BY cis ASC'
 
     if limit:
+        if limit > common.maximum_database_limit:
+            raise WazuhException(1405, str(limit))
         query += ' LIMIT :offset,:limit'
         request['offset'] = offset
         request['limit'] = limit
+    elif limit == 0:
+        raise WazuhException(1406)
 
 
     conn.execute(query.format('DISTINCT cis'), request)
