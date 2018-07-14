@@ -781,7 +781,7 @@ class Agent:
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, count=True, get_data=True)
         db_query.run()
 
-        data = {'items': Agent.get_agents_dict(db_query.conn, db_query.select['fields'], Agent.fields.values() if not select else select['fields']),
+        data = {'items': Agent.get_agents_dict(db_query.conn, db_query.select['fields'], Agent.fields.keys() if not select else select['fields']),
                 'totalItems': db_query.total_items}
 
         return data
@@ -1220,13 +1220,13 @@ class Agent:
         db_query.run()
 
         return {'totalItems':db_query.total_items, 'items':Agent.get_agents_dict(db_query.conn, db_query.select['fields'],
-                                                            Agent.fields.values() if not select else select['fields'])}
+                                                            Agent.fields.keys() if not select else select['fields'])}
 
 
     @staticmethod
     def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
         """
-        Gets the agents in a group
+        Gets the agents without a group
 
         :param group_id: Group ID.
         :param offset: First item to return.
