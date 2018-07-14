@@ -308,9 +308,13 @@ start()
         if [ X"$i" = "Xwazuh-clusterd" ]; then
              start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
              end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
-             if [ $? = 0 ]; then
-                 continue
+             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                if [ $? = 0 ]; then
+                    continue
+                fi
+             else
+                continue
              fi
         fi
         if [ $USE_JSON = true ] && [ $first = false ]; then
