@@ -47,6 +47,7 @@ static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 static LPCTSTR priv = "SeSecurityPrivilege";
 static unsigned int criteria = FILE_WRITE_DATA | DELETE;
+static int restore_policies = 0;
 
 // Whodata function headers
 void restore_sacls();
@@ -325,7 +326,9 @@ int run_whodata_scan() {
 
 void audit_restore() {
     restore_sacls();
-    restore_audit_policies();
+    if (restore_policies) {
+        restore_audit_policies();
+    }
 }
 
 /* Removes added security audit policies */
@@ -994,6 +997,7 @@ int set_policies() {
     }
 
     retval = 0;
+    restore_policies = 1;
 end:
     free(output);
     if (f_backup) {
