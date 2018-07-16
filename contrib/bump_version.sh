@@ -133,6 +133,10 @@ then
     fi
 
     sed -E -i'' -e "s/^(\!define REVISION \").+\"/\1$revision\"/g" $NSIS_FILE
+
+    # Framework
+
+    sed -E -i'' -e "s/__revision__ = '.+'/__revision__ = '$revision'/g" $CLUSTER_INIT
 fi
 
 if [ -n "$product" ]
