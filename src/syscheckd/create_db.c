@@ -460,7 +460,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth)
 {
     if(max_depth < 0){
-        mdebug1("Max level of recursion reached. File '%s' out of bounds.", dir_name);
+        mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);
         return 0;
     }
 
