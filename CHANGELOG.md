@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 - Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
 - Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
 - Added two options in the tag <auto_ignore> `frequency` and `timeframe` to hide alerts when they are played several times in a given period of time. ([#857](https://github.com/wazuh/wazuh/pull/857))
+- Include who-data in Syscheck for file integrity monitoring. ([#756](https://github.com/wazuh/wazuh/pull/756))
+  - Linux Audit setup and monitoring to watch directories configured with who-data.
+  - Direct communication with Auditd on Linux to catch who-data related events.
+  - Setup of SACL for monitored directories on Windows.
+  - Windows Audit events monitoring through Windows Event Channel.
+  - Auto setup of audit configuration and reset when the agent quits.
 - Syscheck in frequency time show alerts from deleted files. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Added an option `target` to customize output format per-target in Logcollector. ([#863](https://github.com/wazuh/wazuh/pull/863))
 - New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
