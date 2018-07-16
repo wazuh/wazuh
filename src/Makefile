@@ -665,7 +665,7 @@ $(EXTERNAL_AUDIT)lib/.libs/libaudit.a: $(EXTERNAL_AUDIT)Makefile
 
 $(EXTERNAL_AUDIT)Makefile:
 
-	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure --with-libcap-ng=no
 
 ####################
 #### OSSEC Libs ####
