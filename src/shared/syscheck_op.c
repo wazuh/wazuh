@@ -374,22 +374,48 @@ void sk_sum_clean(sk_sum_t * sum) {
 }
 
 int fim_find_child_depth(const char *parent, const char *child) {
+
+    int length_A = strlen(parent);
+    int length_B = strlen(child);
+
+    char* p_first = strdup(parent);
+    char *p_second = strdup(child);
+
+    char *diff_str;
+
+    if(parent[length_A - 1] == PATH_SEP){
+        p_first[length_A - 1] = '\0';
+    }
+
+    if(child[length_B - 1] == PATH_SEP){
+        p_second[length_B - 1] = '\0';
+    }
+
+    if(strncmp(parent, child, length_A) == 0){
+        diff_str = p_second;
+        diff_str += length_A;
+    }
+    else if(strncmp(child, parent, length_B) == 0) {
+        diff_str = p_first;
+        diff_str += length_B;
+    }
+    else{
+        free(p_first);
+        free(p_second);
+        return INT_MAX;
+    }
+
     char *c;
     int child_depth = 0;
-    int parent_depth = 0;
-    c = strchr(child, PATH_SEP);
+    c = strchr(diff_str, PATH_SEP);
     while (c != NULL) {
         child_depth++;
         c = strchr(c + 1, PATH_SEP);
     }
 
-    c = strchr(parent, PATH_SEP);
-    while (c != NULL) {
-        parent_depth++;
-        c = strchr(c + 1, PATH_SEP);
-    }
-
-    return (child_depth - parent_depth);
+    free(p_first);
+    free(p_second);
+    return child_depth;
 }
 
 #ifndef WIN32
