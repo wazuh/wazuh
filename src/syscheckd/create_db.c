@@ -497,7 +497,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     dp = opendir(dir_name);
     if (!dp) {
         if (errno == ENOTDIR) {
-            if (read_file(dir_name, dir_position, evt, max_depth-1) == 0) {
+            if (read_file(dir_name, dir_position, evt, max_depth) == 0) {
                 return (0);
             }
         }
@@ -573,7 +573,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
 
         /* Check integrity of the file */
-        read_file(f_name, dir_position, NULL, max_depth - 1);
+        read_file(f_name, dir_position, NULL, max_depth);
     }
 
     closedir(dp);
