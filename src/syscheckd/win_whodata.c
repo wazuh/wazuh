@@ -227,6 +227,9 @@ end:
     if (new_sacl) {
         LocalFree((HLOCAL)new_sacl);
     }
+    if (ace) {
+        LocalFree((HLOCAL)ace);
+    }
     return retval;
 }
 
@@ -757,7 +760,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     SYSTEMTIME utc;
     int interval;
 
-    if (syscheck.wdata.interval_scan == 0) {
+    if (!syscheck.wdata.interval_scan) {
         interval = WDATA_DEFAULT_INTERVAL_SCAN;
     } else {
         interval = syscheck.wdata.interval_scan;

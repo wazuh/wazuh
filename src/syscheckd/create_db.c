@@ -203,6 +203,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
             // Delete from hash table
             if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
+                free(s_node->checksum);
                 free(s_node);
             }
 
@@ -580,7 +581,7 @@ int run_dbcheck()
     unsigned int i = 0;
     OSHashNode *curr_node;
     char alert_msg[PATH_MAX+4];
-    char *data;
+    syscheck_node *data;
 
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
@@ -608,8 +609,10 @@ int run_dbcheck()
                 mdebug2("Sending delete msg for file: %s", curr_node->key);
                 snprintf(alert_msg, PATH_MAX + 4, "-1 %s", curr_node->key);
                 send_syscheck_msg(alert_msg);
-                data = OSHash_Delete_ex(syscheck.fp, curr_node->key);
-                free(data);
+                if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
+                    free(data->checksum);
+                    free(data);
+                }
             }
         }
         OSHash_Free(syscheck.last_check);

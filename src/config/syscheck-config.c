@@ -708,7 +708,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         }
         /* Get windows audit interval */
         else if (strcmp(node[i]->element, xml_windows_audit_interval) == 0) {
-#ifdef WIN_WHODATA
+#ifdef WIN32
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);

@@ -366,6 +366,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 
         // Delete from hash table
         if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
+            free(s_node->checksum);
             free(s_node);
         }
         struct timeval timeout = {0, syscheck.rt_delay * 1000};
