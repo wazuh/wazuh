@@ -5,23 +5,21 @@
 
 from wazuh import common
 from wazuh.exception import WazuhException
-from os.path import isfile
 from os import strerror
 import socket
-from operator import or_, itemgetter
 import re
 import json
 
-class WazuhDBConnection():
+class WazuhDBConnection:
     """
     Represents a connection to the wdb socket
     """
 
-    def __init__(self, socket_path=common.wdb_socket_path, request_slice=20, max_size=6144):
+    def __init__(self, request_slice=20, max_size=6144):
         """
         Constructor
         """
-        self.socket_path = socket_path
+        self.socket_path = common.wdb_socket_path
         self.request_slice = request_slice
         self.max_size = max_size
         self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

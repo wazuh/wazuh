@@ -67,6 +67,7 @@ All notable changes to this project will be documented in this file.
 - Fix empty rules and decoders file check. ([#887](https://github.com/wazuh/wazuh/pull/887))
 - Prevent to access an unexisting hash table from 'whodata' thread. ([#911](https://github.com/wazuh/wazuh/pull/911))
 - Fix CA verification with more than one 'ca_store' definitions. ([#927](https://github.com/wazuh/wazuh/pull/927))
+- Fix error in syscollector API calls when Wazuh is installed in a directory different than `/var/ossec`. ([#942](https://github.com/wazuh/wazuh/pull/942)).
 
 
 ## [v3.3.1]
