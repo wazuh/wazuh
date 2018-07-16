@@ -18,7 +18,6 @@
 #include <aclapi.h>
 #include <sddl.h>
 #include <winevt.h>
-#include "win_policies.h"
 
 #define WLIST_ALERT_THRESHOLD 80 // 80%
 #define WLIST_REMOVE_MAX 10 // 10%
@@ -946,11 +945,9 @@ int set_policies() {
     FILE *f_new = NULL;
     char buffer[OS_MAXSTR];
     char command[OS_SIZE_1024];
-    char *found;
-    int language;
     int retval;
-    char handle_found = 0;
-    char file_system_found = 0;
+    static const char *WPOL_FILE_SYSTEM_SUC = ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n";
+    static const char *WPOL_HANDLE_SUC = ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n";
 
     if (!IsFile(WPOL_BACKUP_FILE) && remove(WPOL_BACKUP_FILE)) {
         return 1;
@@ -971,63 +968,27 @@ int set_policies() {
         retval = 1;
         goto end;
     }
-
-    // Get the first line
-    fgets(buffer, OS_MAXSTR - 20, f_backup);
-
-    for (language = 0; language < WPOL_SIZE; language++) {
-        if (strstr((const char *)buffer, WPOL_DETECTION_WORD[language])) {
-            mdebug2("The language of policies has been recognized (%d).", language);
-            break;
-        }
-    }
-
-    if (language == WPOL_SIZE) {
-        mwarn("The language of the audit policies could not be recognized. Check if the configuration is valid.");
-        retval = 0;
-        goto end;
-    }
-
     if (f_new = fopen (WPOL_NEW_FILE, "w"), !f_new) {
         retval = 1;
         goto end;
     }
 
-    fprintf(f_new, buffer);
-
-    // Merge the policies
+    // Copy the policies
     while (fgets(buffer, OS_MAXSTR - 60, f_backup)) {
-        if (found = strstr(buffer, WPOL_HANDLE_MAN_VERSIONS[language]), found) {
-            handle_found++;
-            if ((found = strstr(buffer, WPOL_FAILURE_VERSIONS[language])) ||
-                (found = strstr(buffer, WPOL_NO_AUDITING_VERSIONS[language]))) {
-                    snprintf(found, 60, "%s\n", WPOL_SUCCESS_VERSIONS[language]);
-            }
-        } else if (found = strstr(buffer, WPOL_FILE_SYSTEM_VERSIONS[language]), found) {
-            file_system_found++;
-            if ((found = strstr(buffer, WPOL_FAILURE_VERSIONS[language])) ||
-                (found = strstr(buffer, WPOL_NO_AUDITING_VERSIONS[language]))) {
-                    snprintf(found, 60, "%s\n", WPOL_SUCCESS_VERSIONS[language]);
-            }
-        }
         fprintf(f_new, buffer);
     }
 
-    if (f_new) {
-        fclose(f_new);
-    }
+    // Add the new policies
+    fprintf(f_new, WPOL_FILE_SYSTEM_SUC);
+    fprintf(f_new, WPOL_HANDLE_SUC);
 
-    if (!handle_found || !file_system_found) {
-        mwarn("Audit policies could not be configured. Check if the configuration is valid.");
-        retval = 0;
-        goto end;
-    }
+    fclose(f_new);
 
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
-    minfo("~~~~~~~~~~~ '%s'", command);
+
     // Set the new policies
     if (wm_exec(command, &output, &result_code, 5), result_code) {
-        merror("Auditpol restore error: '%s'.", output);
+        merror("Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
         retval = 1;
         goto end;
     }
