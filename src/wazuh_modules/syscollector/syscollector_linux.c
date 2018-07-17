@@ -1394,6 +1394,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     if (!proc) {
         mterror(WM_SYS_LOGTAG, "Running process inventory: could not create libproc context.");
+        free(timestamp);
         return;
     }
 
