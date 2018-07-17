@@ -1708,10 +1708,24 @@ void * ad_input_main(void * args) {
 }
 
 void w_free_event_info(Eventinfo *lf){
+    /** Cleaning the memory **/
+
+    /* Only clear the memory if the eventinfo was not
+        * added to the stateful memory
+        * -- message is free inside clean event --
+    */
     if (lf->generated_rule == NULL) {
         Free_Eventinfo(lf);
-    } else if (lf->generated_rule->last_events) {
-        lf->generated_rule->last_events[0] = NULL;
+    } else if (lf->last_events) {
+        /* Free last_events struct */
+        char **last_event = lf->last_events;
+        char **lasts = lf->last_events;
+        
+        while (*lasts) {
+            free(*lasts);
+            lasts++;
+        }
+        free(last_event);
     }
 }
 
@@ -1742,7 +1756,9 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
             if (lf->generated_rule == NULL) {
                 Free_Eventinfo(lf);
             } else if (lf->generated_rule->last_events) {
+                w_mutex_lock(&lf->generated_rule->mutex);
                 lf->generated_rule->last_events[0] = NULL;
+                w_mutex_unlock(&lf->generated_rule->mutex);
             }
             w_mutex_unlock(&writer_threads_mutex);
         } else {
@@ -1768,7 +1784,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
                 } else if (Config.alerts_log) {
                     __crt_ftell = ftell(_aflog);
                     OS_Log(lf);
-                } else {
+                } else if(Config.jsonout_output){
                     __crt_ftell = ftell(_jflog);
                 }
                 /* Log to json file */
@@ -1792,7 +1808,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
                 }
     #endif
                 w_mutex_unlock(&writer_threads_mutex);
-                w_free_event_info(lf);
+                Free_Eventinfo(lf);
             }
     }
 }
@@ -2038,7 +2054,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 Eventinfo *lf_cpy = NULL;
 
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
-                memcpy(lf_cpy,lf,sizeof(*lf));
+                w_copy_event_for_log(lf,lf_cpy);
 
                 queue_push_ex_block(writer_queue_log_firewall, lf_cpy);
             }
@@ -2062,7 +2078,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     Eventinfo *lf_cpy = NULL;
 
                     os_calloc(1, sizeof(Eventinfo), lf_cpy);
-                    memcpy(lf_cpy,lf,sizeof(*lf));
+                    w_copy_event_for_log(lf,lf_cpy);
 
                     queue_push_ex_block(writer_queue_log_statistical, lf_cpy);
                 }
@@ -2152,7 +2168,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 Eventinfo *lf_cpy = NULL;
 
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
-                memcpy(lf_cpy,lf,sizeof(*lf));
+                w_copy_event_for_log(lf,lf_cpy);
 
                 queue_push_ex_block(writer_queue_log, lf_cpy);
             }
@@ -2225,6 +2241,25 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             break;
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
+
+        /* Copy last_events structure if we have matched a rule */
+        if(lf->generated_rule){
+            if (lf->generated_rule->last_events){
+                w_mutex_lock(&lf->generated_rule->mutex);
+                os_calloc(1,sizeof(char *),lf->last_events);
+                char **lasts = lf->generated_rule->last_events;
+                int index = 0;
+
+                while (*lasts) {
+                    os_realloc(lf->last_events, sizeof(char *) * (index + 2),lf->last_events);
+                    os_strdup(*lasts,lf->last_events[index]);
+                    lasts++;
+                    index++;
+                }
+                w_mutex_unlock(&lf->generated_rule->mutex);
+                lf->last_events[index] = NULL;
+            }
+        }
 
         w_inc_processed_events();
         
@@ -2313,7 +2348,7 @@ void * w_writer_log_statistical_thread(__attribute__((unused)) void * args ){
             } else if (Config.alerts_log) {
                 __crt_ftell = ftell(_aflog);
                 OS_Log(lf);
-            } else {
+            } else if (Config.jsonout_output) {
                 __crt_ftell = ftell(_jflog);
             }
 

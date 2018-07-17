@@ -119,6 +119,8 @@ typedef struct _Eventinfo {
     char *process_id;
     u_int16_t decoder_syscheck_id;
     int rootcheck_fts;
+    int is_a_copy;
+    char **last_events;
 } Eventinfo;
 
 /* Events List structure */
@@ -202,5 +204,8 @@ void *Status_FP(Eventinfo *lf, char *field, const char *order);
 void *SystemName_FP(Eventinfo *lf, char *field, const char *order);
 void *DynamicField_FP(Eventinfo *lf, char *field, const char *order);
 void *None_FP(Eventinfo *lf, char *field, const char *order);
+
+/* Copy Eventinfo for writing log */
+void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
 
 #endif /* _EVTINFO__H */
