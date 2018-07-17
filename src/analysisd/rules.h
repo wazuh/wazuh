@@ -171,7 +171,8 @@ typedef struct _RuleInfo {
 
     void *(*compiled_rule)(void *lf);
     active_response **ar;
-
+    
+    pthread_mutex_t mutex;
 } RuleInfo;
 
 

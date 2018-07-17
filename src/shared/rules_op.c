@@ -985,6 +985,8 @@ static RuleInfo *_OS_AllocateRule()
 
     ruleinfo_pt->event_search = NULL;
 
+    ruleinfo_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+
     return (ruleinfo_pt);
 }
 
