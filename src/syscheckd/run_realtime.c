@@ -119,7 +119,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         }
 
     }
-    
+
 
     return (0);
 }
@@ -202,12 +202,8 @@ int realtime_start()
 /* Add a directory to real time checking */
 int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
-    if (!syscheck.realtime) {
-        realtime_start();
-    }
-
     if (whodata && audit_thread_active) {
-        mdebug2("Monitoring with Audit: '%s'.", dir);
+        mdebug1("Monitoring with Audit: '%s'.", dir);
 
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
@@ -215,6 +211,10 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         w_mutex_unlock(&audit_mutex);
 
     } else {
+
+        if (!syscheck.realtime) {
+            realtime_start();
+        }
 
         /* Check if it is ready to use */
         if (syscheck.realtime->fd < 0) {
