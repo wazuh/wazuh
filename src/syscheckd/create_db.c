@@ -583,8 +583,9 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 int run_dbcheck()
 {
     unsigned int i = 0;
+    char alert_msg[PATH_MAX + 4];
+    OSHash *last_backup;
     OSHashNode *curr_node;
-    char alert_msg[PATH_MAX+4];
     syscheck_node *data;
 
     __counter = 0;
@@ -605,10 +606,17 @@ int run_dbcheck()
     }
 
     if (syscheck.dir[0]) {
-        /* Check for deleted files */
+        // Check for deleted files
         w_mutex_lock(&lastcheck_mutex);
-        for (i = 0; i <= syscheck.last_check->rows; i++) {
-            curr_node = syscheck.last_check->table[i];
+        last_backup = OSHash_Duplicate(syscheck.last_check);
+        OSHash_Free(syscheck.last_check);
+        // Prepare last_check for next scan
+        syscheck.last_check = OSHash_Duplicate(syscheck.fp);
+        w_mutex_unlock(&lastcheck_mutex);
+
+        // Send messages for deleted files
+        for (i = 0; i <= last_backup->rows; i++) {
+            curr_node = last_backup->table[i];
             if(curr_node && curr_node->key) {
                 mdebug2("Sending delete msg for file: %s", curr_node->key);
                 snprintf(alert_msg, PATH_MAX + 4, "-1 %s", curr_node->key);
@@ -619,13 +627,9 @@ int run_dbcheck()
                 }
             }
         }
-        OSHash_Free(syscheck.last_check);
-        /* Duplicate hash table to check for deleted files */
-        syscheck.last_check = OSHash_Duplicate(syscheck.fp);
-        w_mutex_unlock(&lastcheck_mutex);
 
-        /* Only if there are directories */
-        if (syscheck.remove_old_diff && (syscheck.dir != NULL || syscheck.dir[0] != NULL)) {
+        // Check and delete backup local/diff
+        if (syscheck.remove_old_diff) {
             remove_local_diff();
         }
     }
@@ -691,7 +695,7 @@ int create_db()
         i++;
     } while (syscheck.dir[i] != NULL);
 
-    if(syscheck.remove_old_diff && (syscheck.dir != NULL || syscheck.dir[0] != NULL) ){
+    if(syscheck.remove_old_diff) {
         remove_local_diff();
     }
 
