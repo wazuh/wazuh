@@ -492,7 +492,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 }
 
                 /* SHA-256 message */
-                if(newsum.sha256)
+                if(newsum.sha256 && *newsum.sha256)
                 {
                     if(oldsum.sha256) {
                         if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
