@@ -120,8 +120,14 @@ class WazuhDBConnection():
             response = []
             step = limit if limit < self.request_slice and limit > 0  else self.request_slice
             for off in range(offset, limit+offset, step):
-                request = "{} limit {} offset {}".format(query_lower, step, off)
-                response.extend(self.__send(request))
+                try:
+                    request = "{} limit {} offset {}".format(query_lower, step, off)
+                    response.extend(self.__send(request))
+                except ValueError:
+                    request = "{} limit {} offset {}".format(query_lower, step//2, off)
+                    response.extend(self.__send(request))
+                    request = "{} limit {} offset {}".format(query_lower, step // 2, step // 2 + off,)
+                    response.extend(self.__send(request))
 
             if count:
                 return response, total
