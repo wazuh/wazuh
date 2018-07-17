@@ -418,6 +418,21 @@ int fim_find_child_depth(const char *parent, const char *child) {
     return child_depth;
 }
 
+void normalize_path(char * path) {
+    char *ptname = path;
+
+    if(ptname[1] == ':' && ((ptname[0] >= 'A' && ptname[0] <= 'Z') || (ptname[0] >= 'a' && ptname[0] <= 'z'))) {
+        /* Change forward slashes to backslashes on entry */
+        ptname = strchr(ptname, '/');
+        while (ptname) {
+            *ptname = '\\';
+            ptname++;
+
+            ptname = strchr(ptname, '/');
+        }
+    }
+}
+
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {

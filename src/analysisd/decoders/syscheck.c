@@ -312,6 +312,9 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
             saved_name[sn_size] = '\0';
         }
 
+        //Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
+        normalize_path(saved_name);
+
         /* If name is different, go to next one */
         if (strcmp(f_name, saved_name) != 0) {
             /* Save current location */
@@ -740,6 +743,9 @@ int DecodeSyscheck(Eventinfo *lf)
     /* Zero to get the check sum */
     *f_name = '\0';
     f_name++;
+
+    //Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
+    normalize_path(f_name);
 
     /* Get diff */
     lf->data = strchr(f_name, '\n');
