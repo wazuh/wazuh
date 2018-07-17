@@ -595,7 +595,7 @@ void audit_parse(char *buffer) {
             char *p_dir = NULL;
             if(regexec(&regexCompiled_dir, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                p_dir = calloc(1, match_size + 1);
+                os_calloc(1, match_size + 1, p_dir);
                 snprintf (p_dir, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             }
 
