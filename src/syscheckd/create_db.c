@@ -468,7 +468,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     size_t dir_size;
     char f_name[PATH_MAX + 2];
     short is_nfs;
-    
+
     DIR *dp;
     struct dirent *entry;
 
@@ -608,8 +608,8 @@ int run_dbcheck()
     if (syscheck.dir[0]) {
         // Check for deleted files
         w_mutex_lock(&lastcheck_mutex);
-        last_backup = OSHash_Duplicate(syscheck.last_check);
-        OSHash_Free(syscheck.last_check);
+        last_backup = syscheck.last_check;
+
         // Prepare last_check for next scan
         syscheck.last_check = OSHash_Duplicate(syscheck.fp);
         w_mutex_unlock(&lastcheck_mutex);
@@ -627,6 +627,8 @@ int run_dbcheck()
                 }
             }
         }
+
+        OSHash_Free(last_backup);
 
         // Check and delete backup local/diff
         if (syscheck.remove_old_diff) {
