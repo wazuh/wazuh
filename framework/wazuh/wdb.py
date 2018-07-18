@@ -94,6 +94,17 @@ class WazuhDBConnection():
         """
         Sends a sql query to wdb socket
         """
+        def send_request_to_wdb(query_lower, step, off, response):
+            try:
+                request = "{} limit {} offset {}".format(query_lower, step, off)
+                response.extend(self.__send(request))
+            except ValueError:
+                # if the step is already 1, it can't be divided
+                if step == 1:
+                    raise WazuhException(2007)
+                send_request_to_wdb(query_lower, step // 2, off, response)
+                send_request_to_wdb(query_lower, step // 2, step // 2 + off, response)
+
         query_lower = self.__query_lower(query)
 
         self.__query_input_validation(query_lower)
@@ -121,14 +132,7 @@ class WazuhDBConnection():
             step = limit if limit < self.request_slice and limit > 0  else self.request_slice
             try:
                 for off in range(offset, limit+offset, step):
-                    try:
-                        request = "{} limit {} offset {}".format(query_lower, step, off)
-                        response.extend(self.__send(request))
-                    except ValueError:
-                        request = "{} limit {} offset {}".format(query_lower, step//2, off)
-                        response.extend(self.__send(request))
-                        request = "{} limit {} offset {}".format(query_lower, step // 2, step // 2 + off,)
-                        response.extend(self.__send(request))
+                    send_request_to_wdb(query_lower, step, off, response)
             except ValueError as e:
                 raise WazuhException(2006, str(e))
             except Exception as e:
