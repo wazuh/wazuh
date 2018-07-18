@@ -562,6 +562,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->process_id = NULL;
     lf->is_a_copy = 0;
     lf->last_events = NULL;
+    lf->rootcheck_fts = 0;
+    lf->decoder_syscheck_id = 0;
 
     return;
 }
@@ -1025,9 +1027,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         }
     }
 
-    /* Pointer to the decoder that matched */
-    //OSDecoderInfo *decoder_info;
-
     /* Sid node to delete */
     lf_cpy->sid_node_to_delete = lf->sid_node_to_delete;
 
@@ -1124,7 +1123,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     }
 
     lf_cpy->labels = lf->labels;
-
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
     lf_cpy->rootcheck_fts = lf->rootcheck_fts;
     lf_cpy->is_a_copy = 1;
