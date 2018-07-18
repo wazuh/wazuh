@@ -802,9 +802,6 @@ class Agent:
         else:
             agent_items = [dict(item, id=str(item['id']).zfill(3)) for item in agent_items]
 
-        if len(agent_items) > 0 and agent_items[0]['id'] == '000' and 'ip' in user_select_fields:
-            agent_items[0]['ip'] = '127.0.0.1'
-
         agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
 
         return agent_items
