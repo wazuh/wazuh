@@ -775,7 +775,6 @@ void Free_Eventinfo(Eventinfo *lf)
 
     /* Free node to delete */
     if(!lf->is_a_copy){
-
         if (lf->sid_node_to_delete) {
             OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
                                     lf->sid_node_to_delete);

@@ -70,7 +70,9 @@ int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *))
  */
 OSListNode *OSList_GetFirstNode(OSList *list)
 {
+    w_mutex_lock(&list_mutex);
     list->cur_node = list->first_node;
+    w_mutex_unlock(&list_mutex);
     return (list->first_node);
 }
 
@@ -79,7 +81,9 @@ OSListNode *OSList_GetFirstNode(OSList *list)
  */
 OSListNode *OSList_GetLastNode(OSList *list)
 {
+    w_mutex_lock(&list_mutex);
     list->cur_node = list->last_node;
+    w_mutex_unlock(&list_mutex);
     return (list->last_node);
 }
 
@@ -102,12 +106,14 @@ OSListNode *OSList_GetNextNode(OSList *list)
  */
 OSListNode *OSList_GetPrevNode(OSList *list)
 {
+    w_mutex_lock(&list_mutex);
     if (list->cur_node == NULL) {
+        w_mutex_unlock(&list_mutex);
         return (NULL);
     }
 
     list->cur_node = list->cur_node->prev;
-
+    w_mutex_unlock(&list_mutex);
     return (list->cur_node);
 }
 
@@ -124,6 +130,8 @@ void OSList_DeleteOldestNode(OSList *list)
 {
     OSListNode *next;
 
+    w_mutex_lock(&list_mutex);
+
     if (list->first_node) {
         next = list->first_node->next;
         if (next) {
@@ -137,6 +145,7 @@ void OSList_DeleteOldestNode(OSList *list)
     } else {
         merror("No Oldest node to delete");
     }
+    w_mutex_unlock(&list_mutex);
 
     return;
 }
@@ -149,7 +158,10 @@ void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode)
     OSListNode *prev;
     OSListNode *next;
 
+    w_mutex_lock(&list_mutex);
+
     if (thisnode == NULL) {
+        w_mutex_unlock(&list_mutex);
         return;
     }
 
@@ -180,6 +192,7 @@ void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode)
     list->cur_node = next;
 
     list->currently_size--;
+    w_mutex_unlock(&list_mutex);
 }
 
 /* Delete current node from list
@@ -189,6 +202,8 @@ void OSList_DeleteCurrentlyNode(OSList *list)
 {
     OSListNode *prev;
     OSListNode *next;
+
+    w_mutex_lock(&list_mutex);
 
     if (list->cur_node == NULL) {
         return;
@@ -221,6 +236,8 @@ void OSList_DeleteCurrentlyNode(OSList *list)
     list->cur_node = next;
 
     list->currently_size--;
+
+    w_mutex_unlock(&list_mutex);
 }
 
 /* Add data to the list
