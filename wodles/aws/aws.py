@@ -263,8 +263,8 @@ def migrate_legacy_table(db_connector):
     debug('+++ Rename legacy table', 1)
     db_connector.execute(
         """
-          ALTER TABLE trail_progress
-            RENAME TO legacy_trail_progress;""")
+          ALTER TABLE log_progress
+            RENAME TO legacy_log_progress;""")
     db_connector.commit()
 
     debug('+++ Finished legacy table migration', 1)
