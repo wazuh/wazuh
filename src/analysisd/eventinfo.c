@@ -198,18 +198,19 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
 
     /* Get last node */
     w_mutex_lock(&eventinfo_mutex);
-    lf_node = OSList_GetLastNode(rule->group_search);
+    lf_node = OSList_GetLastNode_group(rule->group_search);
     
     if (!lf_node) {
+        w_mutex_unlock(&rule->group_search->mutex);
         w_mutex_unlock(&eventinfo_mutex);
         return (NULL);
     }
-
     do {
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time.tv_sec) > rule->timeframe) {
+            w_mutex_unlock(&rule->group_search->mutex);
             w_mutex_unlock(&eventinfo_mutex);
             return (NULL);
         }
@@ -305,6 +306,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
          * or rules with a lower level.
          */
         else if (lf->matched >= rule->level) {
+            w_mutex_unlock(&rule->group_search->mutex);
             w_mutex_unlock(&eventinfo_mutex);
             return (NULL);
         }
@@ -329,11 +331,13 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
         my_lf->matched = rule->level;
         lf->matched = rule->level;
 
+        w_mutex_unlock(&rule->group_search->mutex);
         w_mutex_unlock(&eventinfo_mutex);
         return (lf);
 
     } while ((lf_node = lf_node->prev) != NULL);
 
+    w_mutex_unlock(&rule->group_search->mutex);
     w_mutex_unlock(&eventinfo_mutex);
     return (NULL);
 }
@@ -753,7 +757,6 @@ void Free_Eventinfo(Eventinfo *lf)
     }
 
     if(lf->is_a_copy){
-       
         if(lf->generated_rule->group){
             free(lf->generated_rule->group);
         }
@@ -768,7 +771,6 @@ void Free_Eventinfo(Eventinfo *lf)
             }
             free(last_event);
         }
-
         free(lf->generated_rule);
     }
 
