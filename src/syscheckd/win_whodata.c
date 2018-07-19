@@ -302,13 +302,18 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 
 int run_whodata_scan() {
     wchar_t query[OS_MAXSTR];
+    int result;
 
     // Set the signal handler to restore the policies
     atexit(audit_restore);
     // Set the system audit policies
-    if (set_policies()) {
-        merror("Local audit policies could not be configured.");
-        return 1;
+    if (result = set_policies(), result) {
+        if (result == 2) {
+            mwarn("Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+        } else {
+            mwarn("Local audit policies could not be configured.");
+            return 1;
+        }
     }
     // Select the interesting fields
     if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
@@ -951,31 +956,32 @@ int set_policies() {
     FILE *f_new = NULL;
     char buffer[OS_MAXSTR];
     char command[OS_SIZE_1024];
-    int retval;
+    int retval = 1;
     static const char *WPOL_FILE_SYSTEM_SUC = ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n";
     static const char *WPOL_HANDLE_SUC = ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n";
 
     if (!IsFile(WPOL_BACKUP_FILE) && remove(WPOL_BACKUP_FILE)) {
-        return 1;
+        merror("'%s' could not be removed: %s (%d).", WPOL_BACKUP_FILE, strerror(errno), errno);
+        goto end;
     }
 
     snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
     // Get the current policies
     if (wm_exec(command, &output, &result_code, 5), result_code) {
-        merror("Auditpol backup error: '%s'.", output);
-        return 1;
+        retval = 2;
+        goto end;
     }
 
     free(output);
     output = NULL;
 
     if (f_backup = fopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
-        retval = 1;
+        merror("'%s' could not be opened: %s (%d).", WPOL_BACKUP_FILE, strerror(errno), errno);
         goto end;
     }
     if (f_new = fopen (WPOL_NEW_FILE, "w"), !f_new) {
-        retval = 1;
+        merror("'%s' could not be removed: %s (%d).", WPOL_NEW_FILE, strerror(errno), errno);
         goto end;
     }
 
@@ -994,8 +1000,7 @@ int set_policies() {
 
     // Set the new policies
     if (wm_exec(command, &output, &result_code, 5), result_code) {
-        merror("Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
-        retval = 1;
+        retval = 2;
         goto end;
     }
 
