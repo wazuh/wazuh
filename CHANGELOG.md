@@ -78,7 +78,7 @@ All notable changes to this project will be documented in this file.
 - Fix Remoted connection failed warning in TCP mode due to timeout. ([#958](https://github.com/wazuh/wazuh/pull/958))
 
 
-## [v3.3.1]
+## [v3.3.1] 2018-06-18
 
 ### Added
 
@@ -113,7 +113,7 @@ All notable changes to this project will be documented in this file.
 - Avoid infinite attempts to download CVE databases when it fails. ([#792](https://github.com/wazuh/wazuh/pull/792))
 
 
-## [v3.3.0]
+## [v3.3.0] 2018-06-06
 
 ### Added
 
@@ -140,7 +140,7 @@ All notable changes to this project will be documented in this file.
 - Fixes the feature to group with the option multi-line. ([#754](https://github.com/wazuh/wazuh/pull/754))
 
 
-## [v3.2.4]
+## [v3.2.4] 2018-06-01
 
 ### Fixed
 - Fixed segmentation fault in maild when `<queue-size>` is included in the global configuration.
@@ -150,7 +150,7 @@ All notable changes to this project will be documented in this file.
 - Fixed several bugs using python3 with the Python framework. ([#701](https://github.com/wazuh/wazuh/pull/701))
 
 
-## [v3.2.3]
+## [v3.2.3] 2018-05-28
 
 ### Added
 
@@ -193,7 +193,7 @@ All notable changes to this project will be documented in this file.
 - Removed cluster database and internal cluster daemon.
 
 
-## [v3.2.2]
+## [v3.2.2] 2018-05-07
 
 ### Added
 
