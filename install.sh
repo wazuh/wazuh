@@ -100,7 +100,7 @@ Install()
 
     if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ] || [ "X${OS_VERSION_FOR_SYSC}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
         SYSC_FLAG="DISABLE_SYSC=true"
-        AUDIT_FLAG="DISABLE_AUDIT=true"
+        AUDIT_FLAG="USE_AUDIT=no"
     fi
 
 
