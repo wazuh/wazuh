@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
   - Request agent keys by calling a defined executable or connecting to a local socket.
 - Compress `last-entry` files to check differences by FIM. ([#2034](https://github.com/wazuh/wazuh/pull/2034))
 - Auto-upgrade FIM databases in Wazuh-DB. ([#2147](https://github.com/wazuh/wazuh/pull/2147))
+- Added option to allow maild select the log file to read from. ([#977](https://github.com/wazuh/wazuh/pull/977))
 
 ### Changed
 
