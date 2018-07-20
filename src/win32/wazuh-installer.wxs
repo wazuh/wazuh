@@ -209,10 +209,8 @@
             </Directory>
         </Directory>
         <DirectoryRef Id="ACTIVE_RESPONSE">
-            <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes">
+            <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
-                <RemoveFile Id="purgue_active_response" Name="*.*" On="uninstall" />
-                <RemoveFolder Id="purgue_active_response_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="TMP">
@@ -258,10 +256,8 @@
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="RIDS">
-            <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes">
+            <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
-                <RemoveFile Id="purgue_rids" Name="*.*" On="uninstall" />
-                <RemoveFolder Id="purgue_rids_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="SYSCHECK">
@@ -281,8 +277,6 @@
         <DirectoryRef Id="UPGRADE">
             <Component Id="CMP_UPGRADE" Guid="9FB42D24-217F-4E13-9598-01B62040F768" KeyPath="yes">
                 <CreateFolder />
-                <RemoveFile Id="purgue_upgrade" Name="*.*" On="uninstall" />
-                <RemoveFolder Id="purgue_upgrade_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="SHARED">
