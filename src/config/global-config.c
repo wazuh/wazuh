@@ -159,7 +159,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_smtpserver = "smtp_server";
     const char *xml_heloserver = "helo_server";
     const char *xml_mailmaxperhour = "email_maxperhour";
-    const char * xml_queue_size = "queue_size";
+    const char *xml_maillogsource = "email_log_source";
+    const char *xml_queue_size = "queue_size";
 
 #ifdef LIBGEOIP_ENABLED
     const char *xml_geoip_db_path = "geoip_db_path";
@@ -539,6 +540,24 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 Mail->maxperhour = atoi(node[i]->content);
 
                 if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 9999)) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_maillogsource) == 0) {
+            if (Mail) {
+                if (OS_StrIsNum(node[i]->content)) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+             
+                if(strncmp(node[i]->content,"alerts.log",10) == 0){
+                    Mail->source = MAIL_SOURCE_LOGS;
+                }
+                else if(strncmp(node[i]->content,"alerts.json",11) == 0){
+                    Mail->source = MAIL_SOURCE_JSON;
+                }
+                else{
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
