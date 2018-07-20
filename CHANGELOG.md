@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
     - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
 - Module to download shared files for agent groups dinamically. ([#519](https://github.com/wazuh/wazuh/pull/519))
 - Option to download the wpk using http in `agent_upgrade`. ([#798](https://github.com/wazuh/wazuh/pull/798))
+- Added option to allow maild select the log file to read from. ([#977](https://github.com/wazuh/wazuh/pull/977))
 
 ### Changed
 
