@@ -14,6 +14,7 @@
 
 /* size_t */
 #include <stddef.h>
+#include <pthread.h>
 
 /* OSRegex_Compile flags */
 #define OS_RETURN_SUBSTRING     0000200
@@ -41,6 +42,7 @@ typedef struct _OSRegex {
     char **sub_strings;
     const char ** *prts_closure;
     const char ** *prts_str;
+    pthread_mutex_t mutex;
 } OSRegex;
 
 /* OSmatch structure */
