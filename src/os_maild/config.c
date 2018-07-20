@@ -61,14 +61,19 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
         exit(0);
     }
 
-    if (global.alerts_log) {
-        Mail->source = MAIL_SOURCE_LOGS;
-    } else if (global.jsonout_output) {
-        Mail->source = MAIL_SOURCE_JSON;
-    } else {
+    if(!global.alerts_log && !global.jsonout_output) {
         merror("All alert formats are disabled.");
         return OS_INVALID;
     }
+    if(!global.alerts_log && (Mail->source == MAIL_SOURCE_LOGS)){
+        merror("Alerts.log is disabled");
+        return OS_INVALID;
+    }
+    if(!global.jsonout_output && (Mail->source == MAIL_SOURCE_JSON)){
+        merror("Alerts.json is disabled");
+        return OS_INVALID;
+    }
+    
 
     return (0);
 }
