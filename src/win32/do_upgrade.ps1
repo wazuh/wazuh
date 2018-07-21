@@ -11,9 +11,10 @@ function install
 {
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
-    $proc = Start-Process "msiexec" -ArgumentList '/i "wazuh-agent-3.4.0-1.msi" /passive /L*V install.log'
+    write-output "$(Get-Date -format u) - Start-Process." >> .\upgrade.log
+	$installer = (Get-Item wazuh-agent*.msi).Basename
+	$proc = Start-Process "msiexec" -ArgumentList "$('/i "' + $($installer) + '.msi" /quiet /L*V install.log')" -Passthru
     $proc.WaitForExit()
-    write-output "$(Get-Date -format u) - Process-Finished." >> .\upgrade.log
 }
 
 function restore
@@ -34,7 +35,6 @@ backup
 # Install
 write-output "$(Get-Date -format u) - Installing" >> .\upgrade.log
 install
-
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade.log
 
 # Check process status
