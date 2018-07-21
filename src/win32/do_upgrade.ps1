@@ -11,7 +11,9 @@ function install
 {
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
-    Start-Process -FilePath (Get-ChildItem ".\wazuh-agent*.msi") -ArgumentList '/q /L*V install.log' -Wait
+    $proc = Start-Process "msiexec" -ArgumentList '/i "wazuh-agent-3.4.0-1.msi" /passive /L*V install.log'
+    $proc.WaitForExit()
+    write-output "$(Get-Date -format u) - Process-Finished." >> .\upgrade.log
 }
 
 function restore
@@ -33,16 +35,6 @@ backup
 write-output "$(Get-Date -format u) - Installing" >> .\upgrade.log
 install
 
-# Wait for installation completion
-Start-Sleep 5
-$new_file_date = (Get-Item ".\ossec-agent.exe").LastWriteTime
-$counter = 5
-while($current_file_date -ne $new_file_date -And $counter -gt 0)
-{
-    $counter--
-    Start-Sleep 2
-    $new_file_date = (Get-Item ".\ossec-agent.exe").LastWriteTime
-}
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade.log
 
 # Check process status
@@ -83,3 +75,4 @@ Else
     $new_version = (Get-Content VERSION)
     write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade.log
 }
+
