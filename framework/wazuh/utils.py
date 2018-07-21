@@ -534,12 +534,12 @@ class WazuhVersion:
         return (not (self < new_version) or self == new_version)
 
 
-class WazuhDBQuery:
+class WazuhDBQuery(object):
     """
     This class describes a database query for wazuh
     """
-    def __init__(self, offset, limit, table, sort, search, select, fields, default_sort_field, filters, db_path, count,
-                 get_data, default_sort_order='ASC', min_select_fields=set(), filter_operator='='):
+    def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
+                 get_data, default_sort_order='ASC', min_select_fields=set()):
         """
         Wazuh DB Query constructor
 
@@ -547,8 +547,8 @@ class WazuhDBQuery:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+        :param query: query to filter in database. Format: field operator value.
         :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
         :param table: table to do the query
         :param fields: all available fields
         :param default_sort_field: by default, return elements sorted by this field
@@ -569,12 +569,16 @@ class WazuhDBQuery:
         self.request = {}
         self.default_sort_field = default_sort_field
         self.default_sort_order = default_sort_order
-        self.filters = filters
+        self.filters = []
         self.count = count
         self.data = get_data
         self.total_items = 0
         self.min_select_fields = min_select_fields
-        self.filter_operator = filter_operator
+        self.query_regex = re.compile(r"(\w+)([=!<>]{1,2})([\w _\-.]+)([,;])?")
+        self.query_operators = {"=","!=","<",">"}
+        self.query_separators = {',':'OR',';':'AND','':''}
+        self.q = query
+        self.inverse_fields = {v:k for k,v in self.fields.items()}
         if not glob.glob(db_path):
             raise WazuhException(1600)
         self.conn = Connection(db_path)
@@ -625,33 +629,54 @@ class WazuhDBQuery:
             self.select = {'fields': self.fields.values()}
 
 
-    def add_filters_to_query(self):
-        for filter_name, db_filter in self.filters.items():
+    def parse_query(self):
+        """
+        A query has the following pattern: field operator value separator field operator value...
+        An example of query: status=never connected;name!=pepe
+            * Field must be a database field (it must be contained in self.fields variable)
+            * operator must be one of = != < >
+            * value can be anything
+            * Separator can be either ; for 'and' or , for 'or'.
 
-            if self.pass_filter(db_filter):
+        :return: A list with processed query (self.fields)
+        """
+        if not self.query_regex.match(self.q):
+            raise WazuhException(1407, self.q)
+
+        for field, operator, value, separator in self.query_regex.findall(self.q):
+            if field not in self.fields.keys():
+                raise WazuhException(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
+            if operator not in self.query_operators:
+                raise WazuhException(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
+
+            self.filters.append({'value': None if value == "null" else value, 'operator': operator,
+                                 'field': '{}${}'.format(field,len(list(filter(lambda x: field in x['field'], self.filters)))),
+                                 'separator': self.query_separators[separator]})
+
+
+    def add_filters_to_query(self):
+        if self.q:
+            self.parse_query()
+            self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
+
+        for filter in self.filters:
+            field_name = filter['field'].split('$',1)[0]
+
+            if self.pass_filter(filter['value']):
                 continue
 
-            if filter_name == "status":
-                self.filter_status()
-            elif filter_name == "older_than":
-                self.filter_older_than()
+            if field_name == "status":
+                self.filter_status(filter)
+            elif field_name == "lastKeepAlive":
+                self.filter_last_keep_alive(filter)
             else:
-                if isinstance(db_filter, list):
-                    filter_list = [name.lower() if filter_name != 'version'
-                                                else re.sub( r'([a-zA-Z])([v])', r'\1 \2', name)
-                                   for name in db_filter]
-                    key_list = [":{}{}".format(filter_name, x) for x in range(len(filter_list))]
-                    self.query += ' AND {} COLLATE NOCASE IN ({})'.format(self.fields[filter_name], ','.join(key_list))
-                    self.request.update({x[1:]:y for x, y in zip(key_list, filter_list)})
-                else: #str or null
-                    if db_filter is not None:
-                        self.request[filter_name] = db_filter if filter_name != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', db_filter)
-                        self.query += ' AND {} {} :{}'.format(self.fields[filter_name], self.filter_operator, filter_name)
-                    else:
-                        self.query += ' AND {} IS null'.format(self.fields[filter_name])
+                if filter['value'] is not None:
+                    self.request[filter['field']] = filter['value'] if filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', filter['value'])
+                    self.query += '{} {} :{}'.format(self.fields[field_name], filter['operator'], filter['field'])
+                else:
+                    self.query += '{} IS null'.format(self.fields[field_name])
 
-        if "FROM {} AND".format(self.table) in self.query:
-            self.query = self.query.replace("FROM {} AND".format(self.table), "FROM {} WHERE".format(self.table))
+            self.query += ' {} '.format(filter['separator'])
 
 
     def get_total_items(self):
@@ -663,11 +688,11 @@ class WazuhDBQuery:
         self.conn.execute(self.query.format(','.join(self.select['fields'])), self.request)
 
 
-    def filter_status(self):
+    def filter_status(self, status_filter):
         raise NotImplementedError
 
 
-    def filter_older_than(self):
+    def filter_last_keep_alive(self, older_than_filter):
         raise NotImplementedError
 
 
@@ -692,6 +717,7 @@ class WazuhDBQuery:
         Resets query to its initial value. Useful when doing several requests to the same DB.
         """
         self.query = self.default_query()
+        self.filters = []
 
 
     def default_query(self):
@@ -721,7 +747,7 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
 
     def add_filters_to_query(self):
-        for field in self.fields.values():
-            self.query += " AND {0} IS NOT null AND {0} != ''".format(field)
-
         WazuhDBQuery.add_filters_to_query(self)
+        self.query += ' WHERE ' if not self.q else ' AND '
+        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(field) for field in self.select['fields']])
+

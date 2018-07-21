@@ -69,44 +69,47 @@ def get_timeframe_in_seconds(timeframe):
 
 class WazuhDBQueryAgents(WazuhDBQuery):
 
-    def __init__(self, offset, limit, sort, search, select, filters, count, get_data, filter_operator='='):
+    def __init__(self, offset, limit, sort, search, select, count, get_data, query, default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
-                              fields=Agent.fields, default_sort_field='id', default_sort_order='ASC', filters=filters,
-                              db_path=common.database_path_global, min_select_fields={'last_keepalive','version','id'},
-                              count=count, get_data=get_data, filter_operator=filter_operator)
+                              fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
+                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data)
 
 
-    def filter_status(self):
+    def filter_status(self, status_filter):
+        status_filter['value'] = status_filter['value'].lower()
         limit_seconds = 1830  # 600*3 + 30
         result = datetime.now() - timedelta(seconds=limit_seconds)
         self.request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-        list_status = self.filters['status'].split(',')
-        self.query += ' AND ('
 
-        for status in list_status:
-            status = status.lower()
-            if status == 'active':
-                self.query += '((last_keepalive >= :time_active AND version IS NOT NULL) or id = 0) OR '
-            elif status == 'disconnected':
-                self.query += 'last_keepalive < :time_active OR '
-            elif status == "never connected" or status == "neverconnected":
-                self.query += 'last_keepalive IS NULL AND id != 0 OR '
-            elif status == 'pending':
-                self.query += 'last_keepalive IS NOT NULL AND version IS NULL OR '
-            else:
-                raise WazuhException(1729, status)
-        self.query = self.query[:-3] + ")"  # Remove the last OR from query
+        if status_filter['operator'] == '!=':
+            self.query += 'NOT '
+
+        if status_filter['value'] == 'active':
+            self.query += '((last_keepalive >= :time_active AND version IS NOT NULL) or id = 0)'
+        elif status_filter['value'] == 'disconnected':
+            self.query += 'last_keepalive < :time_active'
+        elif status_filter['value'] == "never connected" or status_filter['value'] == "neverconnected":
+            self.query += 'last_keepalive IS NULL AND id != 0'
+        elif status_filter['value'] == 'pending':
+            self.query += 'last_keepalive IS NOT NULL AND version IS NULL'
+        else:
+            raise WazuhException(1729, status_filter['value'])
 
 
-    def filter_older_than(self):
-        self.request['older_than'] = get_timeframe_in_seconds(self.filters['older_than'])
-        self.query += " AND ("
+    def filter_last_keep_alive(self, older_than_filter):
+        self.request[older_than_filter['field']] = get_timeframe_in_seconds(older_than_filter['value'])
+        query_operator = '>' if older_than_filter['operator'] == '<' or older_than_filter['operator'] == '=' else '<'
+
         # If the status is not neverconnected, compare older_than with the last keepalive:
-        self.query += "(last_keepalive IS NOT NULL AND CAST(strftime('%s', last_keepalive) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
+        self.query += "(last_keepalive IS NOT NULL AND id != 0 AND CAST(strftime('%s', last_keepalive) AS INTEGER) {}" \
+                      " CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{}) ".format(query_operator, older_than_filter['field'])
         self.query += "OR "
         # If the status is neverconnected, compare older_than with the date add:
-        self.query += "(last_keepalive IS NULL AND id != 0 AND CAST(strftime('%s', date_Add) AS INTEGER) < CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :older_than) "
-        self.query += ")"
+        self.query += "(last_keepalive IS NULL AND id != 0 AND CAST(strftime('%s', date_Add) AS INTEGER) {} " \
+                      "CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{}) ".format(query_operator, older_than_filter['field'])
+
+
+class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
 
 class Agent:
@@ -186,11 +189,12 @@ class Agent:
         """
         Gets attributes of existing agent.
         """
-        db_query = WazuhDBQueryAgents(offset=0,limit=None,sort=None,search=None,select=select,filters={'id':self.id},count=False,get_data=True)
+        db_query = WazuhDBQueryAgents(offset=0,limit=None,sort=None,search=None,select=select,
+                                      query="id={}".format(self.id),count=False,get_data=True)
         db_query.run()
 
         try:
-            data = Agent.get_agents_dict(db_query.conn, db_query.select['fields'], self.fields.values() if not select else select['fields'])[0]
+            data = Agent.get_agents_dict(db_query, db_query.select['fields'], self.fields.keys() if not select else select['fields'])[0]
         except IndexError:
             raise WazuhException(1701, self.id)
 
@@ -742,11 +746,10 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_dict(conn, select_fields, user_select_fields):
-        db_api_name = {v:k for k,v in Agent.fields.items()}
-        fields_to_nest, non_nested = get_fields_to_nest(db_api_name.values(), ['os'], '.')
+    def get_agents_dict(db_query, select_fields, user_select_fields):
+        fields_to_nest, non_nested = get_fields_to_nest(db_query.inverse_fields.values(), ['os'], '.')
 
-        agent_items = [{db_api_name[field]:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in conn]
+        agent_items = [{db_query.inverse_fields[field]:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in db_query.conn]
 
         today = datetime.today()
 
@@ -764,7 +767,7 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
+    def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q=""):
         """
         Gets a list of available agents with basic attributes.
 
@@ -773,15 +776,15 @@ class Agent:
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
         :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        :param q: Defines query to filter in DB.
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
 
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, count=True, get_data=True)
+        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, query=q, count=True, get_data=True)
         db_query.run()
 
-        data = {'items': Agent.get_agents_dict(db_query.conn, db_query.select['fields'], Agent.fields.keys() if not select else select['fields']),
+        data = {'items': Agent.get_agents_dict(db_query, db_query.select['fields'], Agent.fields.keys() if not select else select['fields']),
                 'totalItems': db_query.total_items}
 
         return data
@@ -795,7 +798,7 @@ class Agent:
         :return: Dictionary with keys: total, Active, Disconnected, Never connected
         """
 
-        db_query = WazuhDBQueryAgents(offset=0,limit=None,sort=None,search=None,select=None,filters={},count=True,get_data=False)
+        db_query = WazuhDBQueryAgents(offset=0,limit=None,sort=None,search=None,select=None,count=True,get_data=False,query="")
 
         db_query.run()
         data = {'total':db_query.total_items}
@@ -803,7 +806,7 @@ class Agent:
         for status in ['Active','Disconnected','Never Connected','Pending']:
             db_query.reset()
 
-            db_query.filters['status'] = status
+            db_query.q = "status="+status
             db_query.run()
             data[status] = db_query.total_items
 
@@ -811,7 +814,7 @@ class Agent:
 
 
     @staticmethod
-    def get_os_summary(offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_os_summary(offset=0, limit=common.database_limit, sort=None, search=None, q=""):
         """
         Gets a list of available OS.
 
@@ -819,12 +822,12 @@ class Agent:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+        :param q: Query to filter results.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        db_query = WazuhDBQueryDistinct(offset=offset, limit=limit, table='agent', sort=sort, search=search,
-                                        select={'fields':['os.platform']}, fields={'os.platform':'os_platform'},
-                                        db_path=common.database_path_global, count=True, get_data=True,
-                                        default_sort_field='os_platform', filters={})
+        db_query = WazuhDBQueryDistinctAgents(offset=offset, limit=limit, sort=sort, search=search,
+                                              select={'fields':['os.platform']}, count=True, get_data=True,
+                                              default_sort_field='os_platform', query=q, min_select_fields=set())
 
         db_query.run()
 
@@ -972,7 +975,7 @@ class Agent:
         """
 
 
-        agents = Agent.get_agents_overview(filters={'status':status, 'older_than': older_than}, limit = None)
+        agents = Agent.get_agents_overview(q="status={};lastKeepAlive={}".format(status,older_than), limit = None)
 
         id_purgeable_agents = [agent['id'] for agent in agents['items']]
 
@@ -1081,7 +1084,7 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         db_query = WazuhDBQueryDistinct(offset=offset, limit=limit, sort=sort, search=search, select={'fields':['name']},
-                                        fields={'name':'`group`'}, count=True, get_data=True, filters={},
+                                        fields={'name':'`group`'}, count=True, get_data=True,
                                         db_path=common.database_path_global, default_sort_field='`group`', table='agent')
         db_query.run()
 
@@ -1179,7 +1182,7 @@ class Agent:
             raise WazuhException(1722)
 
         db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'fields':['group']},
-                                      filters={'group':group_id}, count=True, get_data=False)
+                                      query="group="+group_id, count=True, get_data=False)
         db_query.run()
 
         return bool(db_query.total_items)
@@ -1204,7 +1207,7 @@ class Agent:
 
 
     @staticmethod
-    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
+    def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q=""):
         """
         Gets the agents in a group
 
@@ -1216,15 +1219,15 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=dict(filters, group=group_id), count=True, get_data=True)
+                                      query="group="+group_id + ('' if not q else ';'+q), count=True, get_data=True)
         db_query.run()
 
-        return {'totalItems':db_query.total_items, 'items':Agent.get_agents_dict(db_query.conn, db_query.select['fields'],
+        return {'totalItems':db_query.total_items, 'items':Agent.get_agents_dict(db_query, db_query.select['fields'],
                                                             Agent.fields.keys() if not select else select['fields'])}
 
 
     @staticmethod
-    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
+    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q=""):
         """
         Gets the agents without a group
 
@@ -1235,8 +1238,8 @@ class Agent:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Agent.get_agent_group(group_id=None, offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                     filters=filters)
+        return Agent.get_agent_group(group_id="null", offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                     q=q)
 
 
     @staticmethod
@@ -1443,7 +1446,7 @@ class Agent:
 
 
     @staticmethod
-    def get_outdated_agents(offset=0, limit=common.database_limit, sort=None):
+    def get_outdated_agents(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q=""):
         """
         Gets the outdated agents.
 
@@ -1456,13 +1459,13 @@ class Agent:
         manager = Agent(id=0)
         manager._load_info_from_DB()
 
-        select = {'fields':['version','id','name']}
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=None, select=select,
-                                      filters={'version':manager.version, 'id':0}, get_data=True, count=True,
-                                      filter_operator='<>')
+        select = {'fields':['version','id','name']} if select is None else select
+        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                      query="version!={};id!=0".format(manager.version) + ('' if not q else ';'+q),
+                                      get_data=True, count=True)
         db_query.run()
 
-        return {'totalItems': db_query.total_items, 'items': Agent.get_agents_dict(db_query.conn, db_query.select['fields'], select['fields'])}
+        return {'totalItems': db_query.total_items, 'items': Agent.get_agents_dict(db_query, db_query.select['fields'], select['fields'])}
 
 
     def _get_versions(self, wpk_repo=common.wpk_repo_url):

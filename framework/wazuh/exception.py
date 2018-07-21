@@ -61,6 +61,9 @@ class WazuhException(Exception):
         1404: 'A field must be specified to order the data',
         1405: 'Specified limit exceeds maximum allowed (1000)',
         1406: '0 is not a valid limit',
+        1407: 'query does not match expected format',
+        1408: 'Field does not exist.',
+        1409: 'Invalid query operator.',
 
         # Decoders: 1500 - 1599
         1500: 'Error reading decoders from ossec.conf',

@@ -135,7 +135,7 @@ def last_scan(agent_id):
     return data
 
 
-def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, filters={}):
+def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, q=""):
     """
     Return a list of files from the database that match the filters
 
@@ -153,32 +153,20 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    agent_info = Agent(agent_id).get_basic_information()
-    if 'os' in agent_info and 'platform' in agent_info['os']:
-        if agent_info['os']['platform'].lower() == 'windows':
-            windows_agent = True
-        else:
-            windows_agent = False
-    else:
-        # We do not know if it is a windows or linux agent.
-        # It is set to windows agent in order to avoid wrong data (uid, gid, ...)
-        windows_agent = True
-
-    if 'filetype' not in filters:
-        filters['filetype'] = 'file'
+    if 'filetype' not in q:
+        q = 'filetype=file' + ('' if not q else ';'+q)
 
     db_query = WazuhDBQuerySyscheck(offset=offset, limit=limit, sort=sort, search=search, count=True, get_data=True,
-                                    filters=filters, agent_id=agent_id, summary=summary)
+                                    query=q, agent_id=agent_id, summary=summary)
     db_query.run()
-    data = {'items': [{key:value for key,value in zip(db_query.select['fields'], tuple)} for tuple in db_query.conn], 'totalItems': db_query.total_items}
+    data = {'items': [{db_query.inverse_fields[key]:value for key,value in zip(db_query.select['fields'], tuple)} for tuple in db_query.conn], 'totalItems': db_query.total_items}
 
     return data
 
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):
 
-    def __init__(self, agent_id, summary, offset, limit, sort, search, filters, count, get_data, default_sort_order='ASC',
-                 min_select_fields=set(), filter_operator='='):
+    def __init__(self, agent_id, summary, offset, limit, sort, search, query, count, get_data, default_sort_order='ASC', min_select_fields=set()):
 
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_agent:
@@ -193,12 +181,12 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
                       "group", "inode"]}
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
-                              filters=filters, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
-                              min_select_fields=min_select_fields, table='fim_event, fim_file', filter_operator=filter_operator,
+                              query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
+                              min_select_fields=min_select_fields, table='fim_event, fim_file',
                               fields={'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'path', 'size': 'size', 'user': 'uname',
                                       'group': 'gname', 'event':'fim_event.type', 'md5':'md5', 'sha1':'sha1', 'max(scanDate)': 'max(date)',
                                       'inode':'inode','uid':'uid','gid':'gid', 'octalMode':'perm', 'filetype':'fim_file.type'})
-        self.summary = summary
+        self.summary = False if summary == 'no' or not summary else True
 
 
     def default_query(self):
