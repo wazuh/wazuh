@@ -40,6 +40,7 @@ All notable changes to this project will be documented in this file.
 - Include the file owner SID in Syscheck alerts.
 - Change no previous checksum error message to information log. ([#897](https://github.com/wazuh/wazuh/pull/897))
 - Changed default Syscheck scan speed: 100 files per second. ([#975](https://github.com/wazuh/wazuh/pull/975))
+- Show network protocol used by the agent when connecting to the manager. ([#980](https://github.com/wazuh/wazuh/pull/980))
 
 ### Fixed
 
