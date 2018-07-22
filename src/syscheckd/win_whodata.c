@@ -961,7 +961,7 @@ int set_policies() {
     static const char *WPOL_HANDLE_SUC = ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n";
 
     if (!IsFile(WPOL_BACKUP_FILE) && remove(WPOL_BACKUP_FILE)) {
-        merror("'%s' could not be removed. Error code: %d.", WPOL_BACKUP_FILE, errno);
+        merror("'%s' could not be removed: %s (%d).", WPOL_BACKUP_FILE, strerror(errno), errno);
         goto end;
     }
 
@@ -977,11 +977,11 @@ int set_policies() {
     output = NULL;
 
     if (f_backup = fopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
-        merror("'%s' could not be opened. Error code: %d.", WPOL_BACKUP_FILE, errno);
+        merror("'%s' could not be opened: %s (%d).", WPOL_BACKUP_FILE, strerror(errno), errno);
         goto end;
     }
     if (f_new = fopen (WPOL_NEW_FILE, "w"), !f_new) {
-        merror("'%s' could not be removed. Error code: %d.", WPOL_NEW_FILE, errno);
+        merror("'%s' could not be removed: %s (%d).", WPOL_NEW_FILE, strerror(errno), errno);
         goto end;
     }
 
