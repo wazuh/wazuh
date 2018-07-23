@@ -574,7 +574,7 @@ class WazuhDBQuery(object):
         self.data = get_data
         self.total_items = 0
         self.min_select_fields = min_select_fields
-        self.query_regex = re.compile(r"(\w+)([=!<>]{1,2})([\w _\-.]+)([,;])?")
+        self.query_regex = re.compile(r"([\w\.]+)([=!<>]{1,2})([\w _\-.]+)([,;])?")
         self.query_operators = {"=","!=","<",">"}
         self.query_separators = {',':'OR',';':'AND','':''}
         self.q = query
@@ -661,6 +661,7 @@ class WazuhDBQuery(object):
 
         for filter in self.filters:
             field_name = filter['field'].split('$',1)[0]
+            field_filter = filter['field'].replace('.','_')
 
             if self.pass_filter(filter['value']):
                 continue
@@ -671,8 +672,8 @@ class WazuhDBQuery(object):
                 self.filter_last_keep_alive(filter)
             else:
                 if filter['value'] is not None:
-                    self.request[filter['field']] = filter['value'] if filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', filter['value'])
-                    self.query += '{} {} :{}'.format(self.fields[field_name], filter['operator'], filter['field'])
+                    self.request[field_filter] = filter['value'] if filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', filter['value'])
+                    self.query += '{} {} :{}'.format(self.fields[field_name], filter['operator'], field_filter)
                 else:
                     self.query += '{} IS null'.format(self.fields[field_name])
 
