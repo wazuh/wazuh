@@ -12,9 +12,10 @@ function install
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Start-Process." >> .\upgrade.log
-	$installer = (Get-Item wazuh-agent*.msi).Basename
-	$proc = Start-Process "msiexec" -ArgumentList "$('/i "' + $($installer) + '.msi" /quiet /L*V install.log')" -Passthru
+    $installer = (Get-Item wazuh-agent*.msi).Basename
+    $proc = Start-Process "msiexec" -ArgumentList "$('/i "' + $($installer) + '.msi" /quiet /L*V install.log')" -Passthru
     $proc.WaitForExit()
+    Get-Service -Name "Wazuh" | Start-Service
 }
 
 function restore
@@ -32,20 +33,43 @@ write-output "$(Get-Date -format u) - Current version: $($current_version)" > .\
 write-output "$(Get-Date -format u) - Generating backup." >> .\upgrade.log
 backup
 
+# Ensure process is stopped before launch upgrade
+Get-Service -Name "Wazuh" | Stop-Service
+$process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id
+$counter = 5
+while($process_id -ne $null -And $counter -gt 0)
+{
+    write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade.log
+    $counter--
+    Get-Service -Name "Wazuh" | Stop-Service 
+    taskkill /pid $process_id /f /T
+    Start-Sleep 2
+    $process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id 
+}
+
 # Install
-write-output "$(Get-Date -format u) - Installing" >> .\upgrade.log
 install
-write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade.log
+write-output "$(Get-Date -format u) - Installation in progress." >> .\upgrade.log
+
+# Check new version
+$new_version = (Get-Content VERSION)
+$counter = 10
+while($new_version -eq $current_version)
+{
+    write-output "$(Get-Date -format u) - Waiting for the installation end." >> .\upgrade.log
+    counter --
+    Start-Sleep 2
+}
 
 # Check process status
-$process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id
+$process_id = (Get-Process ossec-agent).id
 $counter = 5
 while($process_id -eq $null -And $counter -gt 0)
 {
     $counter--
-    Start-Service -Name "Wazuh" -ErrorAction SilentlyContinue
+    Start-Service -Name "Wazuh"
     Start-Sleep 2
-    $process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id
+    $process_id = (Get-Process ossec-agent).id
 }
 write-output "$(Get-Date -format u) - Process ID: $($process_id)" >> .\upgrade.log
 
@@ -75,4 +99,3 @@ Else
     $new_version = (Get-Content VERSION)
     write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade.log
 }
-
