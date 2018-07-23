@@ -226,4 +226,6 @@ char *syscheck_opts2str(char *buf, int buflen, int opts);
 /* Frees the Syscheck struct  */
 void Free_Syscheck(syscheck_config * config);
 
+void log_realtime_status(int);
+
 #endif /* __SYSCHECKC_H */

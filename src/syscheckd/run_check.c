@@ -24,7 +24,6 @@
 
 /* Prototypes */
 static void send_sk_db(void);
-static void log_realtime_status(int);
 
 
 
@@ -89,10 +88,12 @@ void start_daemon()
     int day_scanned = 0;
     int curr_day = 0;
     time_t curr_time = 0;
-    time_t prev_time_rk = 0;
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
+
+    /* Launch rootcheck thread */
+    w_create_thread(w_rootcheck_thread,&syscheck);
 
 #ifdef INOTIFY_ENABLED
     /* To be used by select */
@@ -149,8 +150,6 @@ void start_daemon()
         /* Send database completed message */
         send_syscheck_msg(HC_SK_DB_COMPLETED);
         mdebug2("Sending database completed message.");
-    } else {
-        prev_time_rk = time(0);
     }
 
     /* Before entering in daemon mode itself */
@@ -235,14 +234,6 @@ void start_daemon()
             }
         }
 
-        /* If time elapsed is higher than the rootcheck_time, run it */
-        if (syscheck.rootcheck) {
-            if (((curr_time - prev_time_rk) > rootcheck.time) || run_now) {
-                log_realtime_status(2);
-                run_rk_check();
-                prev_time_rk = time(0);
-            }
-        }
 
         /* If time elapsed is higher than the syscheck time, run syscheck time */
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
