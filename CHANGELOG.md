@@ -23,7 +23,6 @@ All notable changes to this project will be documented in this file.
 - Added missing debug options for modules in the internal options file. ([#901](https://github.com/wazuh/wazuh/pull/901))
 - Added recursion limits when reading directories. ([#947](https://github.com/wazuh/wazuh/pull/947))
 
-
 ### Changed
 
 - Renamed cluster _client_ node type to ___worker___ ([#850](https://github.com/wazuh/wazuh/pull/850)).
@@ -78,7 +77,7 @@ All notable changes to this project will be documented in this file.
 - Fix error in syscollector API calls when Wazuh is installed in a directory different than `/var/ossec`. ([#942](https://github.com/wazuh/wazuh/pull/942)).
 - Fix error in CentOS 6 when `wazuh-cluster` is disabled. ([#944](https://github.com/wazuh/wazuh/pull/944)).
 - Fix Remoted connection failed warning in TCP mode due to timeout. ([#958](https://github.com/wazuh/wazuh/pull/958))
-
+- Fix option 'rule_id' in syslog client. ([#979](https://github.com/wazuh/wazuh/pull/979))
 
 ## [v3.3.1] 2018-06-18
 
