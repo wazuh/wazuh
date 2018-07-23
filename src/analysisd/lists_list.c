@@ -158,13 +158,14 @@ static int OS_DBSearchKeyValue(ListRule *lrule, char *key)
             vlen = cdb_datalen(&lrule->db->cdb);
             val = (char *) calloc(vlen + 1, sizeof(char));
 
+            w_mutex_unlock(&lrule->mutex);
             if (!val){
-                w_mutex_unlock(&lrule->mutex);
                 return 0;
             }
-
+          
+            w_mutex_lock(&lrule->db->cdb.mutex)
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
-            w_mutex_unlock(&lrule->mutex);
+            w_mutex_unlock(&lrule->db->cdb.mutex);
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
             return result;
@@ -245,9 +246,9 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
             vpos = cdb_datapos(&lrule->db->cdb);
             vlen = cdb_datalen(&lrule->db->cdb);
             val = (char *) malloc(vlen);
-            w_mutex_lock(&lrule->mutex);
+            w_mutex_lock(&lrule->db->cdb.mutex)
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
-            w_mutex_unlock(&lrule->mutex);
+            w_mutex_unlock(&lrule->db->cdb.mutex)
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
             return result;
@@ -261,9 +262,9 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
                         vpos = cdb_datapos(&lrule->db->cdb);
                         vlen = cdb_datalen(&lrule->db->cdb);
                         val = (char *) malloc(vlen);
-                        w_mutex_lock(&lrule->mutex);
+                        w_mutex_lock(&lrule->db->cdb.mutex)
                         cdb_read(&lrule->db->cdb, val, vlen, vpos);
-                        w_mutex_unlock(&lrule->mutex);
+                        w_mutex_unlock(&lrule->db->cdb.mutex)
                         result = OSMatch_Execute(val, vlen, lrule->matcher);
                         free(val);
                         free(tmpkey);
