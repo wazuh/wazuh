@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "rootcheck.h"
+#include "config/syscheck-config.h"
 
 
 /* Report a problem */
@@ -298,3 +299,33 @@ void run_rk_check()
     mtdebug1(ARGV0, "Leaving run_rk_check");
     return;
 }
+
+void * w_rootcheck_thread(__attribute__((unused)) void * args) {
+
+    time_t curr_time = 0;
+    time_t prev_time_rk = 0;
+    syscheck_config *syscheck = args;
+
+    sleep(syscheck->tsleep * 10);
+
+    while (1) {
+        int run_now = 0;
+
+        /* Check if syscheck should be restarted */
+        run_now = os_check_restart_syscheck();
+        curr_time = time(0);
+
+        /* If time elapsed is higher than the rootcheck_time, run it */
+        if (syscheck->rootcheck) {
+            if (((curr_time - prev_time_rk) > rootcheck.time) || run_now) {
+                log_realtime_status(2);
+                run_rk_check();
+                prev_time_rk = time(0);
+            }
+        }
+        sleep(1);
+    }
+
+    return NULL;
+}
+
