@@ -160,7 +160,7 @@ def print_db(agent_id=None, q="", offset=0, limit=common.database_limit, sort=No
                                      select=select, count=True, get_data=True, query=q)
     db_query.run()
 
-    return {'totalItems': db_query.total_items, 'data':[{key:val for key,val in zip(db_query.select['fields'], tuple)
+    return {'totalItems': db_query.total_items, 'data':[{db_query.inverse_fields[key]:val for key,val in zip(db_query.select['fields'], tuple)
                                                          if val is not None} for tuple in db_query.conn]}
 
 
