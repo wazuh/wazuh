@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
 - Added support for unified WPK. ([#865](https://github.com/wazuh/wazuh/pull/865))
 - Added missing debug options for modules in the internal options file. ([#901](https://github.com/wazuh/wazuh/pull/901))
+- Added recursion limits when reading directories. ([#947](https://github.com/wazuh/wazuh/pull/947))
 
 
 ### Changed
