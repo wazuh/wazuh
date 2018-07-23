@@ -319,7 +319,9 @@ WriteAgent()
     WriteOpenSCAP "agent"
 
     # CIS-CAT configuration
-    WriteCISCAT "agent"
+    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
+        WriteCISCAT "agent"
+    fi
 
     # Syscheck
     WriteSyscheck "agent"
@@ -411,7 +413,9 @@ WriteManager()
     WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
-    WriteCISCAT "manager"
+    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
+        WriteCISCAT "manager"
+    fi
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -521,7 +525,9 @@ WriteLocal()
     WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
-    WriteCISCAT "agent"
+    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
+        WriteCISCAT "agent"
+    fi
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
