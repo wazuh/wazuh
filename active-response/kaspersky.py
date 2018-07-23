@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
  ###
- #Integration of Wazuh agent with Kaspersky endpoint security for Linux
+ # Integration of Wazuh agent with Kaspersky endpoint security for Linux
  # Copyright (C) 2018 Wazuh, Inc.
  #
  # This program is free software; you can redistribute it and/or modify
@@ -15,10 +15,12 @@
 # Kaspersky Integration 
 # yum install https://products.s.kaspersky-labs.com/multilanguage/endpoints/keslinux10/kesl-10.1.0-5960.x86_64.rpm
 ##################################################################################################################
+
 import argparse
 import logging
 import socket
 import os
+import sys
 from os.path import dirname, abspath
 
 parser = argparse.ArgumentParser()
@@ -37,6 +39,15 @@ exclusive.add_argument("--custom_flags", metavar = 'flags', type = str, required
 
 args = parser.parse_args()
 
+
+##################################################################################################################
+# Kaspersky endpoint CLI settings
+##################################################################################################################
+
+bin_path = '/opt/kaspersky/kesl/bin'
+binary = '/kesl-control'
+
+
 ##################################################################################################################
 # Configure the log settings
 ##################################################################################################################
@@ -48,31 +59,29 @@ def set_logger(name, foreground=None):
 		format = '%(asctime)s {0} {1}: %(message)s'.format(hostname, name)
 		logging.basicConfig(level=logging.INFO, format=format, datefmt="%Y-%m-%d %H:%M:%S")
 
+
 ##################################################################################################################
 # Prepares the parameters to be executed by Kaspersky.
 ##################################################################################################################
 
 def run_kaspersky():
 
-	logging.info("Kaspersky: Starting.")
-	bin_path = '/opt/kaspersky/kesl/bin'
-	binary = '/kesl-control'
 	task = ''
 
 	if args.full_scan:
 		logging.info("Kaspersky: Scan my computer.")
 		task = '--start-task 2'
-	elif args.boot_scan:
+	if args.boot_scan:
 		logging.info("Kaspersky: Boot scan.")
 		task = '--start-task 4'
-	elif args.memory_scan:
+	if args.memory_scan:
 		logging.info("Kaspersky: Memory scan.")
 		task = '--start-task 5'
-	elif args.custom_scan_folder:	
+	if args.custom_scan_folder:	
 		if os.path.exists(args.custom_scan_folder):
 			logging.info("Kaspersky: Custom scan folder.")
 			scan_folder(args.custom_scan_folder)
-	elif args.custom_scan_file:	
+	if args.custom_scan_file:	
 		if os.path.exists(args.custom_scan_file):	
 			if args.action:
 				logging.info("Kaspersky: Custom scan file with action.")
@@ -80,27 +89,27 @@ def run_kaspersky():
 			else:
 				logging.info("Kaspersky: Custom scan file.")
 				task = '--scan-file {}'.format(args.custom_scan_file)
-	elif args.update_application:
+	if args.update_application:
 		logging.info("Kaspersky: Update application.")
 		task = '--update-application'
-	elif args.get_task_list:
+	if args.get_task_list:
 		logging.info("Kaspersky: Get task list.")
 		task = '--get-task-list'
-	elif args.get_task_state:
+	if args.get_task_state:
 		logging.info("Kaspersky: Get task state.")
 		if args.get_task_state > 0:
 			task = '--get-task-state {}'.format(args.get_task_state)
-	elif args.custom_flags:
+	if args.custom_flags:
 		logging.info("Kaspersky: Run custom flags: {}.".format(args.custom_flags))
 		task = '{}'.format(args.custom_flags)
-	else:
-		task = ''
+	
 	if task != '':
 		kesl_control = '{}{} {}'.format(bin_path, binary, task)
 		logging.info("Kaspersky: {}.".format(kesl_control))
 		send_kaspersky(kesl_control)
 
 	logging.info("Kaspersky: End.")
+
 
 ##################################################################################################################
 # Run Kaspersky with the corresponding task. 
@@ -117,8 +126,6 @@ def send_kaspersky(task):
 
 def scan_folder(folder_path):
 
-	bin_path = '/opt/kaspersky/kesl/bin'
-	binary = '/kesl-control '
 	task_name = 'custom_folder_scan_1 '
 	task_get = '--get-settings ' + task_name
 	task_set = '--set-settings ' + task_name
@@ -170,6 +177,7 @@ def get_previous_path(path, get_query):
 				break
 	return delete_path
 
+
 ##################################################################################################################
 # Creates a custom option file to add the path of the directory to be scanned. 
 ##################################################################################################################
@@ -198,13 +206,60 @@ def remove_custom_settings_file(path):
 	os.remove(path)
 
 ##################################################################################################################
+# Check if there are any tasks in execution (ignoring the ones that are always in execution).
+# If there is a task in progress, abort the run. 
+##################################################################################################################
+
+def check_tasks_status():
+
+	logging.info("Kaspersky: Starting.")
+	logging.info("Kaspersky: Checking the status of tasks. ")
+	task = '--get-task-list'
+	ignore_list = ["1","9","10"]
+	all_tasks = '{}{} {}'.format(bin_path, binary, task)
+	tasks_info = os.popen(all_tasks).read()
+	tasks_states_dict = parse_tasks_states(tasks_info)
+	keylist = tasks_states_dict.keys()
+	for key in keylist:
+		if key not in ignore_list:
+			if tasks_states_dict[key] !="Stopped":
+				logging.info("Kaspersky: There is at least one task in progress. Task ID:{} Status:{}. Exit.".format(key,tasks_states_dict[key]))
+				sys.exit(1)
+				print(key, tasks_states_dict[key])
+
+
+##################################################################################################################
+# Obtains the status of each task together with its ID.
+##################################################################################################################
+
+def parse_tasks_states(tasks):
+
+	ids = []
+	states = []
+	logging.info("Kaspersky: Getting the status of tasks. ")
+	tasks = tasks.split(os.linesep)
+	for line in tasks:
+		if " ID " in line:
+			id_fields = line.split(":")
+			ids.append(id_fields[len(id_fields)-1].replace(" ",""))
+		if " State " in line:
+			states_fields = line.split(":")
+			states.append(states_fields[len(states_fields)-1].replace(" ",""))	
+
+	states_dict = dict(zip(ids, states))
+	return states_dict
+
+
+##################################################################################################################
 # Main function
 ##################################################################################################################
 
 def main():
 
 	set_logger('wazuh-kaspersky', foreground=args.verbose)
+	check_tasks_status()
 	run_kaspersky()
+
 
 if __name__ == "__main__":
 	main()
