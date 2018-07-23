@@ -1,8 +1,8 @@
 # TODO: mysql and postgresql?
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-HAS_CHECKMODULE = $(shell which checkmodule)
-HAS_SEMODULE_PACKAGE = $(shell which semodule_package)
+HAS_CHECKMODULE = $(shell which checkmodule > /dev/null && echo YES)
+HAS_SEMODULE_PACKAGE = $(shell which semodule_package > /dev/null && echo YES)
 
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_LUA=external/lua-5.2.3/
