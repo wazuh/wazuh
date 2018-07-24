@@ -372,7 +372,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             operation_value = (char *)sqlite3_column_text(stmt, 10);
             pending = sqlite3_column_int(stmt, 11);
 
-            if (*updated == '\0') {
+            if (!(updated && *updated)) {
                 updated = published;
             }
             if (pending) {
