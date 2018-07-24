@@ -264,7 +264,7 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
         for name in zipf.namelist():
             if name == ko_files_name:
                 with zipf.open(name) as file:
-                    ko_files = json.loads(file.read())
+                    ko_files = json.loads(file.read().decode('utf-8'))
             else:
                 filename = "{}/{}".format(zip_dir, path.dirname(name))
                 if not path.exists(filename):
