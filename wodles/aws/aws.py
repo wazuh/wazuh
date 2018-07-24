@@ -5,6 +5,7 @@
 # Author: Wazuh, Inc.
 # Copyright: GPLv3
 #
+# Updated by Jeremy Phillips <jeremy@uranusbytes.com>
 # Full re-work of AWS wodle as per #510
 # - Scalability and functional enhancements for parsing of CloudTrail
 # - Support for existing config params
@@ -284,11 +285,11 @@ def main(argv):
                         type=arg_valid_accountid)
     parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debu')
     parser.add_argument('-a', '--access_key', dest='access_key', help='S3 Access key credential', default=None)
-    parser.add_argument('-k', '--secret_key', dest='secret_key', help='S3 Secrety key credential', default=None)
+    parser.add_argument('-k', '--secret_key', dest='secret_key', help='S3 Secret key credential', default=None)
     # Beware, once you delete history it's gone.
     parser.add_argument('-R', '--remove', action='store_true', dest='deleteFile',
                         help='Remove processed files from the AWS S3 bucket', default=False)
-    parser.add_argument('-p', '--aws_profile', dest='aws_profile', help='The name of credneitla profile to use',
+    parser.add_argument('-p', '--aws_profile', dest='aws_profile', help='The name of credential profile to use',
                         default=None)
     parser.add_argument('-i', '--iam_role_arn', dest='iam_role_arn',
                         help='ARN of IAM role to assume for access to S3 bucket',
@@ -436,7 +437,7 @@ def main(argv):
             }
             if filter_marker:
                 filter_args['StartAfter'] = filter_marker
-                debug('+++ Marker: {0}'.format(filter_marker))
+                debug('+++ Marker: {0}'.format(filter_marker), 2)
 
             try:
                 bucket_files = s3_client.list_objects_v2(**filter_args)
