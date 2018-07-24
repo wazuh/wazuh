@@ -534,6 +534,25 @@ class WazuhVersion:
         return (not (self < new_version) or self == new_version)
 
 
+def get_timeframe_in_seconds(timeframe):
+    """
+    Gets number of seconds from a timeframe.
+    :param timeframe: Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s".
+
+    :return: Time in seconds.
+    """
+    if not timeframe.isdigit():
+        regex, seconds = re.compile('(\d+)(\w)'), 0
+        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's':1}
+        for time, unit in regex.findall(timeframe):
+            # it's not necessarry to check whether the unit is in the dictionary, because it's been validated before.
+            seconds += int(time) * time_equivalence_seconds[unit]
+    else:
+        seconds = int(timeframe)
+
+    return seconds
+
+
 class WazuhDBQuery(object):
     """
     This class describes a database query for wazuh
