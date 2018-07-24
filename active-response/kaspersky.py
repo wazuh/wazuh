@@ -23,7 +23,47 @@ import os
 import sys
 from os.path import dirname, abspath
 
+##################################################################################################################
+# Parser custom flags. 
+##################################################################################################################
+
+def parser_custom_flags(arr):
+
+	my_list = []
+	if "-v" in arr:
+		if len(arr)== 4:
+			if arr[len(arr)-1] == "-v": #### arg0 --custom_flags, arg1 --get-task-state, arg2 2, arg3 -v
+				my_list.append(arr[0])
+				my_list.append(arr[1] + " " + arr[2])
+				my_list.append(arr[3])
+				return my_list 
+			else:   					#### arg0 -v, arg1 --custom_flags, arg2 --get-task-state, arg3 2
+				my_list.append(arr[0])
+				my_list.append(arr[1])
+				my_list.append(arr[2] + " " + arr[3])
+				return my_list
+		else:
+			return arr
+	else:
+		if len(arr) == 3:  #### arg0 --custom_flags, arg1 --get-task-state, arg2 2
+			my_list.append(arr[0])
+			my_list.append(arr[1] + " " + arr[2])
+			return my_list
+		else:
+			return arr
+
+##################################################################################################################
+# Read arguments.
+##################################################################################################################			
+
+arr = sys.argv[8]
+arr = arr.split(" ")
+
+if "--custom_flags" in arr:
+	arr = parser_custom_flags(arr)
+
 parser = argparse.ArgumentParser()
+
 parser.add_argument("-v", "--verbose", action='store_true', required = False, help="Debug mode. Example of use: Kaspersky.py -v --boot_scan")
 exclusive = parser.add_mutually_exclusive_group()
 exclusive.add_argument("--full_scan", action='store_true', required = False, help="Full computer scan. Example of use: Kaspersky.py --full_scan")
@@ -31,13 +71,13 @@ exclusive.add_argument("--boot_scan", action='store_true', required = False, hel
 exclusive.add_argument("--memory_scan", action='store_true', required = False, help="Memory scan. Example of use: Kaspersky.py --memory_scan")
 exclusive.add_argument("--custom_scan_folder", metavar = 'folderpath', type = str, required = False, help="Custom scan folder. Example of use: Kaspersky.py --custom_scan_folder '/etc'")
 exclusive.add_argument("--custom_scan_file", metavar = 'filepath', type = str, required = False, help="Custom scan file. Example of use: Kaspersky.py --custom_scan_file '/home/centos/sample.txt'")
-exclusive.add_argument("--action", metavar = 'fileaction', type = str, required = False, help="Action to apply to the file after scanning. Only used with --custom_scan_file. Example of use: Kaspersky.py --custom_scan_file '/home/centos/sample.txt' --action Cure ")
+parser.add_argument("--action", metavar = 'fileaction', type = str, required = False, help="Action to apply to the file after scanning. Only used with --custom_scan_file. Example of use: Kaspersky.py --custom_scan_file '/home/centos/sample.txt' --action Cure ")
 exclusive.add_argument("--update_application", action='store_true', required = False, help="Update application. Example of use: Kaspersky.py --update_application")
 exclusive.add_argument("--get_task_list", action='store_true', required = False, help="List all the tasks. Example of use: Kaspersky.py --get_task_list")
 exclusive.add_argument("--get_task_state", metavar = 'ID', type = str, required = False, help="Get the status of the number of the task entered. Example of use: Kaspersky.py --get_task_state 2, Kaspersky.py --get_task_state Scan_My_Computer")
 exclusive.add_argument("--custom_flags", metavar = 'flags', type = str, required = False, help="Run custom flags. Example of use: Kaspersky.py --custom_flags '--get-task-state Scan_My_Computer' ")
 
-args = parser.parse_args()
+args = parser.parse_args(arr)
 
 
 ##################################################################################################################
@@ -66,22 +106,28 @@ def set_logger(name, foreground=None):
 
 def run_kaspersky():
 
+	logging.info("Kaspersky: Starting.")
 	task = ''
 
 	if args.full_scan:
+		check_tasks_status()
 		logging.info("Kaspersky: Scan my computer.")
 		task = '--start-task 2'
 	if args.boot_scan:
+		check_tasks_status()
 		logging.info("Kaspersky: Boot scan.")
 		task = '--start-task 4'
 	if args.memory_scan:
+		check_tasks_status()
 		logging.info("Kaspersky: Memory scan.")
 		task = '--start-task 5'
 	if args.custom_scan_folder:	
+		check_tasks_status()
 		if os.path.exists(args.custom_scan_folder):
 			logging.info("Kaspersky: Custom scan folder.")
 			scan_folder(args.custom_scan_folder)
-	if args.custom_scan_file:	
+	if args.custom_scan_file:
+		check_tasks_status()	
 		if os.path.exists(args.custom_scan_file):	
 			if args.action:
 				logging.info("Kaspersky: Custom scan file with action.")
@@ -90,6 +136,7 @@ def run_kaspersky():
 				logging.info("Kaspersky: Custom scan file.")
 				task = '--scan-file {}'.format(args.custom_scan_file)
 	if args.update_application:
+		check_tasks_status()
 		logging.info("Kaspersky: Update application.")
 		task = '--update-application'
 	if args.get_task_list:
@@ -100,6 +147,7 @@ def run_kaspersky():
 		if args.get_task_state > 0:
 			task = '--get-task-state {}'.format(args.get_task_state)
 	if args.custom_flags:
+		check_tasks_status()
 		logging.info("Kaspersky: Run custom flags: {}.".format(args.custom_flags))
 		task = '{}'.format(args.custom_flags)
 	
@@ -126,11 +174,11 @@ def send_kaspersky(task):
 
 def scan_folder(folder_path):
 
-	task_name = 'custom_folder_scan_1 '
-	task_get = '--get-settings ' + task_name
-	task_set = '--set-settings ' + task_name
-	task_start = '--start-task ' + task_name
-	task_create = '--create-task {} --type ODS --file '.format(task_name)
+	task_name = ' custom_folder_scan_1 '
+	task_get = ' --get-settings ' + task_name
+	task_set = ' --set-settings ' + task_name
+	task_start = ' --start-task ' + task_name
+	task_create = ' --create-task {} --type ODS --file '.format(task_name)
 	get_query = bin_path + binary + task_get
 	set_query = bin_path + binary + task_set
 	start_query = bin_path + binary + task_start
@@ -186,7 +234,7 @@ def create_custom_settings_file(folder_path):
 
 	current_path = dirname(abspath(__file__))
 	file_name = "/temporal_configuration_file"
-	logging.info("Kaspersky: Custom scan folder: Creating the custom file: {}.".format(file_path))
+	logging.info("Kaspersky: Custom scan folder: Creating the custom file: {}.".format(file_name))
 	path = current_path + file_name
 	content = '[ScanScope.item_0000]\nAreaDesc=All objects\nUseScanArea=Yes\nPath={}\nAreaMask.item_0000=*'.format(folder_path)
 	custom_file = open(path, 'w')
@@ -212,10 +260,9 @@ def remove_custom_settings_file(path):
 
 def check_tasks_status():
 
-	logging.info("Kaspersky: Starting.")
 	logging.info("Kaspersky: Checking the status of tasks. ")
 	task = '--get-task-list'
-	ignore_list = ["1","9","10"]
+	ignore_list = ["1","9","10","12"]
 	all_tasks = '{}{} {}'.format(bin_path, binary, task)
 	tasks_info = os.popen(all_tasks).read()
 	tasks_states_dict = parse_tasks_states(tasks_info)
@@ -257,7 +304,6 @@ def parse_tasks_states(tasks):
 def main():
 
 	set_logger('wazuh-kaspersky', foreground=args.verbose)
-	check_tasks_status()
 	run_kaspersky()
 
 
