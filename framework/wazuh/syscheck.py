@@ -182,7 +182,7 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
                               query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
-                              min_select_fields=min_select_fields, table='fim_event, fim_file',
+                              min_select_fields=min_select_fields, table='fim_event, fim_file', date_fields={'scanDate','modificationDate'},
                               fields={'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'path', 'size': 'size', 'user': 'uname',
                                       'group': 'gname', 'event':'fim_event.type', 'md5':'md5', 'sha1':'sha1', 'max(scanDate)': 'max(date)',
                                       'inode':'inode','uid':'uid','gid':'gid', 'octalMode':'perm', 'filetype':'fim_file.type'})

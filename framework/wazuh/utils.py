@@ -558,7 +558,7 @@ class WazuhDBQuery(object):
     This class describes a database query for wazuh
     """
     def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
-                 get_data, default_sort_order='ASC', min_select_fields=set()):
+                 get_data, default_sort_order='ASC', min_select_fields=set(), date_fields=set()):
         """
         Wazuh DB Query constructor
 
@@ -575,6 +575,7 @@ class WazuhDBQuery(object):
         :param default_sort_order: by default, return elements sorted in this order
         :param min_select_fields: fields that must be always be selected because they're necessary to compute other fields
         :param count: whether to compute totalItems or not
+        :param date_fields: database fields that represent a date
         :param get_data: whether to return data or not
         """
         self.offset = offset
@@ -593,9 +594,11 @@ class WazuhDBQuery(object):
         self.data = get_data
         self.total_items = 0
         self.min_select_fields = min_select_fields
-        self.query_regex = re.compile(r"([\w\.]+)([=!<>]{1,2})([\w _\-.]+)([,;])?")
+        self.query_regex = re.compile(r"([\w\.]+)([=!<>]{1,2})([\w _\-.:]+)([,;])?")
+        self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.query_operators = {"=","!=","<",">"}
         self.query_separators = {',':'OR',';':'AND','':''}
+        self.date_fields = date_fields
         self.q = query
         self.inverse_fields = {v:k for k,v in self.fields.items()}
         if not glob.glob(db_path):
@@ -687,8 +690,10 @@ class WazuhDBQuery(object):
 
             if field_name == "status":
                 self.filter_status(filter)
-            elif field_name == "lastKeepAlive":
-                self.filter_last_keep_alive(filter)
+            elif field_name in self.date_fields and not self.date_regex.match(filter['value']):
+                # filter a date, but only if it is in timeframe format.
+                # If it matches the same format as DB (YYYY-MM-DD hh:mm:ss), filter directly by value (next if cond).
+                self.filter_date(filter, field_name)
             else:
                 if filter['value'] is not None:
                     self.request[field_filter] = filter['value'] if filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', filter['value'])
@@ -712,8 +717,14 @@ class WazuhDBQuery(object):
         raise NotImplementedError
 
 
-    def filter_last_keep_alive(self, older_than_filter):
-        raise NotImplementedError
+    def filter_date(self, date_filter, filter_db_name):
+        self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
+        query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
+
+        self.query += "({0} IS NOT NULL AND CAST(strftime('%s', {0}) AS INTEGER) {1}" \
+                      " CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{2}) ".format(self.fields[filter_db_name],
+                                                                                            query_operator,
+                                                                                            date_filter['field'])
 
 
     def run(self):

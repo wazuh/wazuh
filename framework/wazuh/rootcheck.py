@@ -23,7 +23,8 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_event', sort=sort, search=search, select=select,
                               fields=fields, default_sort_field=default_sort_field, default_sort_order='DESC', query=query,
-                              db_path=db_path[0], min_select_fields=set(), count=count, get_data=get_data)
+                              db_path=db_path[0], min_select_fields=set(), count=count, get_data=get_data,
+                              date_fields={'oldDay','readDate'})
 
     def filter_status(self, filter_status):
         partial = """SELECT {0} AS status, date_first, date_last, log, pci_dss, cis FROM pm_event AS t

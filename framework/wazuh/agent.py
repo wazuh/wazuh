@@ -3,7 +3,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, WazuhDBQueryDistinct
+from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
+                        get_fields_to_nest, WazuhDBQuery, WazuhDBQueryDistinct
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -47,32 +48,13 @@ def create_exception_dic(id, e):
     return exception_dic
 
 
-def get_timeframe_in_seconds(timeframe):
-    """
-    Gets number of seconds from a timeframe.
-    :param timeframe: Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s".
-
-    :return: Time in seconds.
-    """
-    if not timeframe.isdigit():
-        regex = re.compile('(\d*)(\w)$')
-        g = regex.findall(timeframe)
-        number = int(g[0][0])
-        unit = g[0][1]
-        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's':1}
-        seconds = number * time_equivalence_seconds[unit]
-    else:
-        seconds = int(timeframe)
-
-    return seconds
-
-
 class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset, limit, sort, search, select, count, get_data, query, default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data)
+                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
+                              date_fields={'lastKeepAlive','dateAdd'})
 
 
     def filter_status(self, status_filter):
@@ -96,17 +78,9 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             raise WazuhException(1729, status_filter['value'])
 
 
-    def filter_last_keep_alive(self, older_than_filter):
-        self.request[older_than_filter['field']] = get_timeframe_in_seconds(older_than_filter['value'])
-        query_operator = '>' if older_than_filter['operator'] == '<' or older_than_filter['operator'] == '=' else '<'
-
-        # If the status is not neverconnected, compare older_than with the last keepalive:
-        self.query += "(last_keepalive IS NOT NULL AND id != 0 AND CAST(strftime('%s', last_keepalive) AS INTEGER) {}" \
-                      " CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{}) ".format(query_operator, older_than_filter['field'])
-        self.query += "OR "
-        # If the status is neverconnected, compare older_than with the date add:
-        self.query += "(last_keepalive IS NULL AND id != 0 AND CAST(strftime('%s', date_Add) AS INTEGER) {} " \
-                      "CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{}) ".format(query_operator, older_than_filter['field'])
+    def filter_date(self, date_filter, filter_db_name):
+        WazuhDBQuery.filter_date(self, date_filter, filter_db_name)
+        self.query += ' AND id != 0 '
 
 
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
