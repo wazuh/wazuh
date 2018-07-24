@@ -135,7 +135,7 @@ def last_scan(agent_id):
     return data
 
 
-def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, q=""):
+def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q=""):
     """
     Return a list of files from the database that match the filters
 
@@ -157,7 +157,7 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
         q = 'filetype=file' + ('' if not q else ';'+q)
 
     db_query = WazuhDBQuerySyscheck(offset=offset, limit=limit, sort=sort, search=search, count=True, get_data=True,
-                                    query=q, agent_id=agent_id, summary=summary)
+                                    query=q, agent_id=agent_id, summary=summary, select=select)
     db_query.run()
     data = {'items': [{db_query.inverse_fields[key]:value for key,value in zip(db_query.select['fields'], tuple)} for tuple in db_query.conn], 'totalItems': db_query.total_items}
 
@@ -166,7 +166,7 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):
 
-    def __init__(self, agent_id, summary, offset, limit, sort, search, query, count, get_data, default_sort_order='ASC', min_select_fields=set()):
+    def __init__(self, agent_id, summary, offset, limit, sort, search, select, query, count, get_data, default_sort_order='ASC', min_select_fields=set()):
 
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_agent:
@@ -174,11 +174,12 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
         else:
             db_agent = db_agent[0]
 
-        if summary:
-            select = {'fields':["max(scanDate)", "modificationDate", "event", "file"]}
+        self.summary = False if summary == 'no' or not summary else True
+        if self.summary:
+            select = {'fields':["max(scanDate)", "modificationDate", "event", "file"]} if not select else select
         else:
             select = {'fields':["scanDate", "modificationDate", "event", "file", "size", "octalMode", "user", "group", "md5", "sha1",
-                      "group", "inode"]}
+                                "group", "inode"]} if not select else select
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
                               query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
@@ -186,7 +187,6 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
                               fields={'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'path', 'size': 'size', 'user': 'uname',
                                       'group': 'gname', 'event':'fim_event.type', 'md5':'md5', 'sha1':'sha1', 'max(scanDate)': 'max(date)',
                                       'inode':'inode','uid':'uid','gid':'gid', 'octalMode':'perm', 'filetype':'fim_file.type'})
-        self.summary = False if summary == 'no' or not summary else True
 
 
     def default_query(self):
