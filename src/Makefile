@@ -2,6 +2,8 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
+HAS_CHECKMODULE = $(shell which checkmodule)
+HAS_SEMODULE_PACKAGE = $(shell which semodule_package)
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -27,12 +29,25 @@ OSSEC_USER?=ossec
 OSSEC_USER_MAIL?=ossecm
 OSSEC_USER_REM?=ossecr
 SHARED=so
+SELINUX_MODULE=selinux/wazuh.mod
+SELINUX_ENFORCEMENT=selinux/wazuh.te
+SELINUX_POLICY=selinux/wazuh.pp
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
+
+ifneq ($(HAS_CHECKMODULE),)
+ifneq ($(HAS_SEMODULE_PACKAGE),)
+USE_SELINUX=yes
+else
+USE_SELINUX=no
+endif
+else
+USE_SELINUX=no
+endif
 
 ONEWAY?=no
 CLEANFULL?=no
@@ -425,6 +440,7 @@ settings:
 	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:   ${USE_BIG_ENDIAN}"
+	@echo "    USE_SELINUX:      ${USE_SELINUX}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"
 	@echo "    libs:             ${ML}"
@@ -438,7 +454,6 @@ settings:
 	@echo "    LDFLAGS         ${OSSEC_LDFLAGS}"
 	@echo "    CC              ${CC}"
 	@echo "    MAKE            ${MAKE}"
-
 
 BUILD_SERVER+=ossec-maild -
 BUILD_SERVER+=ossec-csyslogd -
@@ -469,7 +484,8 @@ BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
 
-.PHONY: server local hybrid agent
+.PHONY: server local hybrid agent selinux
+
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
@@ -493,6 +509,18 @@ $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
 agent: external
 	${MAKE} ${BUILD_AGENT}
+
+ifneq (,$(filter ${USE_SELINUX},yes y Y 1))
+server local hybrid agent: selinux
+endif
+
+selinux: $(SELINUX_POLICY)
+
+$(SELINUX_POLICY): $(SELINUX_MODULE)
+	semodule_package -o $@ -m $?
+
+$(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
+	checkmodule -M -m -o $@ $?
 
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
@@ -1454,6 +1482,8 @@ clean-internals:
 	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o}
 	rm -f ${wdb_o}
+	rm -f ${SELINUX_MODULE}
+	rm -f ${SELINUX_POLICY}
 
 clean-windows:
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll

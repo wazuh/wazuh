@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
     - Limit the frequency of agent keys reloading.
     - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
 - Module to download shared files for agent groups dinamically. ([#519](https://github.com/wazuh/wazuh/pull/519))
+- Option to download the wpk using http in `agent_upgrade`. ([#798](https://github.com/wazuh/wazuh/pull/798))
 
 ### Changed
 
@@ -47,6 +48,8 @@ All notable changes to this project will be documented in this file.
 - Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
 - Fix bug in Rootcheck for Windows that searches for keys in 32-bit mode only. ([#566](https://github.com/wazuh/wazuh/pull/566))
 - Alert when unmerge files fails on agent. ([#731](https://github.com/wazuh/wazuh/pull/731))
+- Fixed bugs reading logs in framework. ([#856](https://github.com/wazuh/wazuh/pull/856))
+- Ignore uppercase and lowercase sorting an array in framework. ([#814](https://github.com/wazuh/wazuh/pull/814))
 
 ### Removed
 
@@ -63,6 +66,11 @@ All notable changes to this project will be documented in this file.
 - Syscheck in frequency time show alerts from deleted files. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Added an option `target` to customize output format per-target in Logcollector. ([#863](https://github.com/wazuh/wazuh/pull/863))
 - New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
+- Remove old snapshot files for FIM. ([#872](https://github.com/wazuh/wazuh/pull/872))
+- Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
+- Added support for unified WPK. ([#865](https://github.com/wazuh/wazuh/pull/865))
+- Added missing debug options for modules in the internal options file. ([#901](https://github.com/wazuh/wazuh/pull/901))
+
 
 ### Changed
 
@@ -112,6 +120,9 @@ All notable changes to this project will be documented in this file.
 - Prevent files from remaining open in the cluster. ([#874](https://github.com/wazuh/wazuh/pull/874))
 - Fix network unreachable error when cluster starts. ([#800](https://github.com/wazuh/wazuh/pull/800))
 - Fix empty rules and decoders file check. ([#887](https://github.com/wazuh/wazuh/pull/887))
+- Prevent to access an unexisting hash table from 'whodata' thread. ([#911](https://github.com/wazuh/wazuh/pull/911))
+
+
 
 ## [v3.3.1]
 

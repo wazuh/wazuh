@@ -394,32 +394,27 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 
     /* sha1 sum */
     if (oldsum[5] == '+') {
-        delete_target_file(file_name);
         sha1sum = 1;
-    } else if (oldsum[5] == 's') {
-        sha1sum = 1;
-    } else if (oldsum[5] == 'n') {
-        sha1sum = 0;
-    } else if (oldsum[5] == '-') {
-        delete_target_file(file_name);
-        sha1sum = 0;
     }
 
     /* Modification time */
-    if (oldsum[6] == '+')
+    if (oldsum[6] == '+') {
         mtime = 1;
+    }
 
     /* Inode */
-    if (oldsum[7] == '+')
+    if (oldsum[7] == '+') {
         inode = 1;
+    }
 
     /* sha256 sum */
     if (oldsum[8] == '+') {
         sha256sum = 1;
-    } else if (oldsum[8] == 's') {
-        sha256sum = 1;
-    } else if (oldsum[8] == 'n') {
-        sha256sum = 0;
+    }
+
+    /* Report changes */
+    if (oldsum[9] == '-') {
+        delete_target_file(file_name);
     }
 
     /* Generate new checksum */

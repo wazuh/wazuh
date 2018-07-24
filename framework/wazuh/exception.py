@@ -109,7 +109,7 @@ class WazuhException(Exception):
         1730: 'Node does not exist',
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
-
+        1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
         # Manager:
 
         # Database:

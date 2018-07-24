@@ -32,12 +32,23 @@
 #define ARCH_64BIT          1
 #define ARCH_BOTH           2
 
-#include <stdio.h>
+#ifdef WIN32
+/* Whodata  states */
+#define WD_STATUS_FILE_TYPE 1
+#define WD_STATUS_DIR_TYPE  2
+#define WD_STATUS_UNK_TYPE  3
+#define WD_STATUS_EXISTS    0x0000001
+#define WD_CHECK_WHODATA    0x0000002
+#define WD_CHECK_REALTIME   0x0000004
+#define WD_IGNORE_REST      0x0000008
+#endif
 
+#include <stdio.h>
 #include "os_regex/os_regex.h"
 
 #ifdef WIN32
 typedef struct whodata_event_node whodata_event_node;
+typedef struct whodata_dir_status whodata_dir_status;
 #endif
 
 typedef struct _rtfim {
@@ -76,6 +87,12 @@ typedef struct whodata_evt {
 
 #ifdef WIN32
 
+typedef struct whodata_dir_status {
+    int status;
+    char object_type;
+    SYSTEMTIME last_check;
+} whodata_dir_status;
+
 typedef struct whodata_event_node {
     struct whodata_event_node *next;
     struct whodata_event_node *previous;
@@ -94,15 +111,16 @@ typedef struct whodata_event_list {
 } whodata_event_list;
 
 typedef struct whodata_directory {
-    time_t timestamp;
+    SYSTEMTIME timestamp;
     int position;
 } whodata_directory;
 
 typedef struct whodata {
-    OSHash *fd;                 // Open file descriptors
-    OSHash *ignored_paths;      // Open file descriptors
-    OSHash *directories;      // Open file descriptors
-    int *ignore_rest;           // List of directories whose SACL will not be restored
+    OSHash *fd;                         // Open file descriptors
+    OSHash *ignored_paths;              // Files or directories marked as ignored
+    OSHash *directories;                // Directories checked by whodata mode
+    int interval_scan;                  // Time interval between scans of the checking thread
+    whodata_dir_status *dirs_status;    // Status list
 } whodata;
 
 typedef struct registry {
@@ -116,6 +134,11 @@ typedef struct registry_regex {
 } registry_regex;
 
 #endif
+
+typedef struct syscheck_node {
+    char *checksum;
+    int dir_position;
+} syscheck_node;
 
 typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */
