@@ -2,8 +2,8 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
-HAS_CHECKMODULE = $(shell which checkmodule)
-HAS_SEMODULE_PACKAGE = $(shell which semodule_package)
+HAS_CHECKMODULE = $(shell which checkmodule > /dev/null && echo YES)
+HAS_SEMODULE_PACKAGE = $(shell which semodule_package > /dev/null && echo YES)
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -38,6 +38,7 @@ USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
+USE_AUDIT=no
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -76,9 +77,13 @@ ifeq (${uname_S},Linux)
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		OSSEC_LIBS+=-lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
-		OSSEC_LDFLAGS+=-pthread -lrt -ldl -L$(EXTERNAL_AUDIT)lib/.libs -laudit
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
-		CFLAGS+=-I$(EXTERNAL_AUDIT)lib -Wl,--start-group
+		CFLAGS+=-Wl,--start-group
+		USE_AUDIT=yes
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
+endif
 else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
@@ -147,6 +152,7 @@ endif # AIX
 endif # Linux
 else
 		SHARED=dll
+		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
 endif # winagent
 
 ifndef DISABLE_SYSC
@@ -180,6 +186,10 @@ endif
 
 ifneq (,$(filter ${ONEWAY},yes y Y 1))
 	DEFINES+=-DONEWAY_ENABLED
+endif
+
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+        DEFINES+=-DENABLE_AUDIT
 endif
 
 OSSEC_CFLAGS+=${DEFINES}
@@ -441,6 +451,7 @@ settings:
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:   ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:      ${USE_SELINUX}"
+	@echo "    USE_AUDIT:        ${USE_AUDIT}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"
 	@echo "    libs:             ${ML}"
@@ -568,7 +579,11 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB)
 endif
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(AUDIT_LIB)
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+EXTERNAL_LIBS += ${AUDIT_LIB}
+endif
+
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
 endif
 endif
 
@@ -707,7 +722,7 @@ ${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
 
 $(EXTERNAL_AUDIT)Makefile:
 
-	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
 
 ################################
 #### External dependencies  ####
@@ -1119,9 +1134,13 @@ rootcheck.a: ${rootcheck_o_lib}
 
 syscheck_c := $(wildcard syscheckd/*.c)
 syscheck_o := $(syscheck_c:.c=.o)
+syscheck_eventchannel_o := $(syscheck_c:.c=-event.o)
 
 syscheckd/%.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
+
+syscheckd/%-event.o: syscheckd/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
 
 ossec-syscheckd: ${syscheck_o} rootcheck.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
@@ -1389,7 +1408,7 @@ win32/ui/%.o: win32/ui/%.c
 win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
+win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o}
@@ -1442,7 +1461,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
-	-cd ${EXTERNAL_AUDIT} && make clean
+	-cd ${EXTERNAL_AUDIT} && make distclean
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
@@ -1475,7 +1494,7 @@ clean-internals:
 	rm -f ${addagent_o}
 	rm -f ${util_o} ${util_programs}
 	rm -f ${rootcheck_o} ${rootcheck_rk_o} rootcheck.a
-	rm -f ${syscheck_o}
+	rm -f ${syscheck_o} ${syscheck_eventchannel_o}
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h

@@ -61,8 +61,13 @@ All notable changes to this project will be documented in this file.
 
 - Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
 - Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
-- Add a field to the containing those attributes that changed in last alert. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Added two options in the tag <auto_ignore> `frequency` and `timeframe` to hide alerts when they are played several times in a given period of time. ([#857](https://github.com/wazuh/wazuh/pull/857))
+- Include who-data in Syscheck for file integrity monitoring. ([#756](https://github.com/wazuh/wazuh/pull/756))
+  - Linux Audit setup and monitoring to watch directories configured with who-data.
+  - Direct communication with Auditd on Linux to catch who-data related events.
+  - Setup of SACL for monitored directories on Windows.
+  - Windows Audit events monitoring through Windows Event Channel.
+  - Auto setup of audit configuration and reset when the agent quits.
 - Syscheck in frequency time show alerts from deleted files. ([#857](https://github.com/wazuh/wazuh/pull/857))
 - Added an option `target` to customize output format per-target in Logcollector. ([#863](https://github.com/wazuh/wazuh/pull/863))
 - New option for the JSON decoder to choose the treatment of NULL values. ([#677](https://github.com/wazuh/wazuh/pull/677))
@@ -70,7 +75,7 @@ All notable changes to this project will be documented in this file.
 - Distinct operation in agents. ([#920](https://github.com/wazuh/wazuh/pull/920))
 - Added support for unified WPK. ([#865](https://github.com/wazuh/wazuh/pull/865))
 - Added missing debug options for modules in the internal options file. ([#901](https://github.com/wazuh/wazuh/pull/901))
-
+- Added recursion limits when reading directories. ([#947](https://github.com/wazuh/wazuh/pull/947))
 
 ### Changed
 
@@ -88,6 +93,8 @@ All notable changes to this project will be documented in this file.
 - Improve output of `DELETE/agents` when no agents were removed. ([#868](https://github.com/wazuh/wazuh/pull/868))
 - Include the file owner SID in Syscheck alerts.
 - Change no previous checksum error message to information log. ([#897](https://github.com/wazuh/wazuh/pull/897))
+- Changed default Syscheck scan speed: 100 files per second. ([#975](https://github.com/wazuh/wazuh/pull/975))
+- Show network protocol used by the agent when connecting to the manager. ([#980](https://github.com/wazuh/wazuh/pull/980))
 
 ### Fixed
 
@@ -121,10 +128,13 @@ All notable changes to this project will be documented in this file.
 - Fix network unreachable error when cluster starts. ([#800](https://github.com/wazuh/wazuh/pull/800))
 - Fix empty rules and decoders file check. ([#887](https://github.com/wazuh/wazuh/pull/887))
 - Prevent to access an unexisting hash table from 'whodata' thread. ([#911](https://github.com/wazuh/wazuh/pull/911))
+- Fix CA verification with more than one 'ca_store' definitions. ([#927](https://github.com/wazuh/wazuh/pull/927))
+- Fix error in syscollector API calls when Wazuh is installed in a directory different than `/var/ossec`. ([#942](https://github.com/wazuh/wazuh/pull/942)).
+- Fix error in CentOS 6 when `wazuh-cluster` is disabled. ([#944](https://github.com/wazuh/wazuh/pull/944)).
+- Fix Remoted connection failed warning in TCP mode due to timeout. ([#958](https://github.com/wazuh/wazuh/pull/958))
+- Fix option 'rule_id' in syslog client. ([#979](https://github.com/wazuh/wazuh/pull/979))
 
-
-
-## [v3.3.1]
+## [v3.3.1] 2018-06-18
 
 ### Added
 
@@ -159,7 +169,7 @@ All notable changes to this project will be documented in this file.
 - Avoid infinite attempts to download CVE databases when it fails. ([#792](https://github.com/wazuh/wazuh/pull/792))
 
 
-## [v3.3.0]
+## [v3.3.0] 2018-06-06
 
 ### Added
 
@@ -186,7 +196,7 @@ All notable changes to this project will be documented in this file.
 - Fixes the feature to group with the option multi-line. ([#754](https://github.com/wazuh/wazuh/pull/754))
 
 
-## [v3.2.4]
+## [v3.2.4] 2018-06-01
 
 ### Fixed
 - Fixed segmentation fault in maild when `<queue-size>` is included in the global configuration.
@@ -196,7 +206,7 @@ All notable changes to this project will be documented in this file.
 - Fixed several bugs using python3 with the Python framework. ([#701](https://github.com/wazuh/wazuh/pull/701))
 
 
-## [v3.2.3]
+## [v3.2.3] 2018-05-28
 
 ### Added
 
@@ -239,7 +249,7 @@ All notable changes to this project will be documented in this file.
 - Removed cluster database and internal cluster daemon.
 
 
-## [v3.2.2]
+## [v3.2.2] 2018-05-07
 
 ### Added
 

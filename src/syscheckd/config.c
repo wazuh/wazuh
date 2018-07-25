@@ -39,9 +39,11 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
     syscheck.remove_old_diff= 1;
-#ifdef WIN32
+#ifdef WIN_WHODATA
     syscheck.wdata.interval_scan = 0;
     syscheck.wdata.fd      = NULL;
+#endif
+#ifdef WIN32
     syscheck.registry       = NULL;
     syscheck.reg_fp         = NULL;
     syscheck.max_fd_win_rt  = 0;

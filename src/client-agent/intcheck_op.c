@@ -27,9 +27,9 @@ int intcheck_file(const char *file_name, const char *dir)
 #endif
 
     /* Clean sums */
-    strncpy(mf_sum,  "xxx", 4);
-    strncpy(sf_sum,  "xxx", 4);
-    strncpy(sf256_sum, "xxx", 4);
+    strncpy(mf_sum,  "", 1);
+    strncpy(sf_sum,  "", 1);
+    strncpy(sf256_sum, "", 1);
 
     newsum[0] = '\0';
     newsum[1172] = '\0';

@@ -334,7 +334,9 @@ WriteAgent()
     WriteOpenSCAP "agent"
 
     # CIS-CAT configuration
-    WriteCISCAT "agent"
+    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
+        WriteCISCAT "agent"
+    fi
 
     # Write osquery
     WriteOsquery "agent"
@@ -432,7 +434,9 @@ WriteManager()
     WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
-    WriteCISCAT "manager"
+    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
+        WriteCISCAT "manager"
+    fi
 
     # Write osquery
     WriteOsquery "manager"
@@ -548,7 +552,9 @@ WriteLocal()
     WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
-    WriteCISCAT "agent"
+    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
+        WriteCISCAT "agent"
+    fi
 
     # Write osquery
     WriteOsquery "manager"
@@ -765,6 +771,12 @@ InstallCommon(){
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
+  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/selinux
+
+  if [ -f selinux/wazuh.pp ]
+  then
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} selinux/wazuh.pp ${PREFIX}/var/selinux/
+  fi
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 

@@ -34,9 +34,10 @@ int connect_server(int initial_id)
         agt->sock = -1;
 
         if (agt->server[1].rip) {
-            minfo("Closing connection to server (%s:%d).",
+            minfo("Closing connection to server (%s:%d/%s).",
                     agt->server[rc].rip,
-                    agt->server[rc].port);
+                    agt->server[rc].port,
+                    agt->server[rc].protocol == UDP_PROTO ? "udp" : "tcp");
         }
     }
 
@@ -77,9 +78,10 @@ int connect_server(int initial_id)
             tmp_str = agt->server[rc].rip;
         }
 
-        minfo("Trying to connect to server (%s:%d).",
+        minfo("Trying to connect to server (%s:%d/%s).",
                 agt->server[rc].rip,
-                agt->server[rc].port);
+                agt->server[rc].port,
+                agt->server[rc].protocol == UDP_PROTO ? "udp" : "tcp");
 
         if (agt->server[rc].protocol == UDP_PROTO) {
             agt->sock = OS_ConnectUDP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
@@ -213,7 +215,7 @@ void start_agent(int is_startup)
                     available_server = time(0);
 
                     minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                            agt->server[agt->rip_id].port);
+                            agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == UDP_PROTO ? "udp" : "tcp");
 
                     if (is_startup) {
                         /* Send log message about start up */

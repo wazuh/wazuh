@@ -42,7 +42,7 @@ int create_db(void);
 int run_dbcheck(void);
 
 /* Scan directory */
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int enable_recursion);
+int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth);
 
 /* Check the registry for changes */
 void os_winreg_check(void);

@@ -683,8 +683,8 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             split_data = data.split('%--%', 5)
             filter_status = split_data[0] if split_data[0] != 'None' else None
             filter_nodes = split_data[1] if split_data[1] != 'None' else None
-            offset = split_data[2] if split_data[2] != 'None' else None
-            limit = split_data[3] if split_data[3] != 'None' else None
+            offset = int(split_data[2]) if split_data[2] != 'None' and split_data[2].isdigit() else None
+            limit = int(split_data[3]) if split_data[3] != 'None' and split_data[3].isdigit() else None
             response = get_agents_status(filter_status, filter_nodes, offset, limit)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
