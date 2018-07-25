@@ -70,8 +70,6 @@ static void wm_sync_manager();
 // Get agent's architecture
 static char * wm_get_os_arch(char * os_header);
 
-static char * wm_get_os_arch(char * os_header);
-
 #ifndef LOCAL
 
 static void wm_check_agents();
