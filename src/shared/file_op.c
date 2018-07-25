@@ -2144,8 +2144,7 @@ int OS_MoveFile(const char *src, const char *dst) {
 
     fclose(fp_src);
     fclose(fp_dst);
-    unlink(dst);
-    return status;
+    return status ? status : unlink(src);
 }
 
 // Make directory recursively
