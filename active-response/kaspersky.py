@@ -24,43 +24,40 @@ import sys
 from os.path import dirname, abspath
 
 ##################################################################################################################
-# Parser custom flags. 
+# Parser custom flags. Adapts the input of the argument --custom_flags to be used by argparser. 
 ##################################################################################################################
 
 def parser_custom_flags(arr):
 
 	my_list = []
+	verbose = "false"
+	sections = arr.split(" ")
+	custom_field = arr.replace("--custom_flags ","")
+
 	if "-v" in arr:
-		if len(arr)== 4:
-			if arr[len(arr)-1] == "-v": #### arg0 --custom_flags, arg1 --get-task-state, arg2 2, arg3 -v
-				my_list.append(arr[0])
-				my_list.append(arr[1] + " " + arr[2])
-				my_list.append(arr[3])
-				return my_list 
-			else:   					#### arg0 -v, arg1 --custom_flags, arg2 --get-task-state, arg3 2
-				my_list.append(arr[0])
-				my_list.append(arr[1])
-				my_list.append(arr[2] + " " + arr[3])
-				return my_list
+		verbose = "true"
+		if sections[0] == "-v": 			
+			custom_field = custom_field.replace("-v ","")
 		else:
-			return arr
-	else:
-		if len(arr) == 3:  #### arg0 --custom_flags, arg1 --get-task-state, arg2 2
-			my_list.append(arr[0])
-			my_list.append(arr[1] + " " + arr[2])
-			return my_list
-		else:
-			return arr
+			custom_field = custom_field.replace(" -v","")
+
+	my_list.append("--custom_flags")
+	my_list.append(custom_field)
+	if verbose == "true":
+		my_list.append("-v")
+	return my_list
+
 
 ##################################################################################################################
-# Read arguments.
+# Read and parser arguments.
 ##################################################################################################################			
 
 arr = sys.argv[8]
-arr = arr.split(" ")
 
 if "--custom_flags" in arr:
 	arr = parser_custom_flags(arr)
+else:
+	arr = arr.split(" ")
 
 parser = argparse.ArgumentParser()
 
