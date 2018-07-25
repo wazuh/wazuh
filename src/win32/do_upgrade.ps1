@@ -41,10 +41,10 @@ while($process_id -ne $null -And $counter -gt 0)
 {
     write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade.log
     $counter--
-    Get-Service -Name "Wazuh" | Stop-Service 
+    Get-Service -Name "Wazuh" | Stop-Service
     taskkill /pid $process_id /f /T
     Start-Sleep 2
-    $process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id 
+    $process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id
 }
 
 # Install
@@ -54,10 +54,10 @@ write-output "$(Get-Date -format u) - Installation in progress." >> .\upgrade.lo
 # Check new version
 $new_version = (Get-Content VERSION)
 $counter = 10
-while($new_version -eq $current_version)
+while($new_version -eq $current_version -And $counter -gt 0)
 {
     write-output "$(Get-Date -format u) - Waiting for the installation end." >> .\upgrade.log
-    counter --
+    $counter--
     Start-Sleep 2
 }
 
