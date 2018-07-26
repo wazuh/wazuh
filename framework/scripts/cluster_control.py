@@ -248,7 +248,6 @@ def sync_master(filter_node):
 ### Get agents
 def print_agents(filter_status=None, filter_node=None):
     total_agents = 0
-    
 
     try:
         gen_agents = get_agents(filter_status, filter_node)
@@ -264,7 +263,6 @@ def print_agents(filter_status=None, filter_node=None):
     except Exception as e:
         print ("{}".format(e))
         exit(1)
-
 
     if filter_status:
         print ("\nFound {} agent(s) with status '{}'.".format(total_agents, filter_status))
