@@ -21,43 +21,20 @@ import logging
 import socket
 import os
 import sys
+import json
 from os.path import dirname, abspath
+from socket import socket, AF_UNIX, SOCK_DGRAM
 
 ##################################################################################################################
-# Parser custom flags. Adapts the input of the argument --custom_flags to be used by argparser. 
+# Sets the sockets path
 ##################################################################################################################
 
-def parser_custom_flags(arr):
-
-	my_list = []
-	verbose = "false"
-	sections = arr.split(" ")
-	custom_field = arr.replace("--custom_flags ","")
-
-	if "-v" in arr:
-		verbose = "true"
-		if sections[0] == "-v": 			
-			custom_field = custom_field.replace("-v ","")
-		else:
-			custom_field = custom_field.replace(" -v","")
-
-	my_list.append("--custom_flags")
-	my_list.append(custom_field)
-	if verbose == "true":
-		my_list.append("-v")
-	return my_list
-
+wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+wazuh_queue = '{0}/queue/ossec/queue'.format(wazuh_path)
 
 ##################################################################################################################
 # Read and parser arguments.
 ##################################################################################################################			
-
-arr = sys.argv[8]
-
-if "--custom_flags" in arr:
-	arr = parser_custom_flags(arr)
-else:
-	arr = arr.split(" ")
 
 parser = argparse.ArgumentParser()
 
@@ -74,7 +51,7 @@ exclusive.add_argument("--get_task_list", action='store_true', required = False,
 exclusive.add_argument("--get_task_state", metavar = 'ID', type = str, required = False, help="Get the status of the number of the task entered. Example of use: Kaspersky.py --get_task_state 2, Kaspersky.py --get_task_state Scan_My_Computer")
 exclusive.add_argument("--custom_flags", metavar = 'flags', type = str, required = False, help="Run custom flags. Example of use: Kaspersky.py --custom_flags '--get-task-state Scan_My_Computer' ")
 
-args = parser.parse_args(arr)
+args, unknown = parser.parse_known_args()
 
 
 ##################################################################################################################
@@ -92,9 +69,21 @@ binary = '/kesl-control'
 def set_logger(name, foreground=None):
 
 	if foreground:
-		hostname = socket.gethostname()
-		format = '%(asctime)s {0} {1}: %(message)s'.format(hostname, name)
+		format = '%(asctime)s {}: %(message)s'.format(name)
 		logging.basicConfig(level=logging.INFO, format=format, datefmt="%Y-%m-%d %H:%M:%S")
+
+
+##################################################################################################################
+# Kaspersky logs management. 
+##################################################################################################################
+
+def logger(msg, mode, foreground=None):
+
+	send_msg(wazuh_queue, msg)
+
+	if foreground:
+		if mode == "INFO":
+			logging.info(msg)
 
 
 ##################################################################################################################
@@ -103,57 +92,70 @@ def set_logger(name, foreground=None):
 
 def run_kaspersky():
 
-	logging.info("Kaspersky: Starting.")
+	log_message = "Starting."
+	logger(log_message, "INFO", foreground = args.verbose)
 	task = ''
 
 	if args.full_scan:
 		check_tasks_status()
-		logging.info("Kaspersky: Scan my computer.")
+		log_message = "Scan my computer."
+		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--start-task 2'
 	if args.boot_scan:
 		check_tasks_status()
-		logging.info("Kaspersky: Boot scan.")
+		log_message = "Boot scan."
+		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--start-task 4'
 	if args.memory_scan:
 		check_tasks_status()
-		logging.info("Kaspersky: Memory scan.")
+		log_message = "Memory scan."
+		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--start-task 5'
 	if args.custom_scan_folder:	
 		check_tasks_status()
 		if os.path.exists(args.custom_scan_folder):
-			logging.info("Kaspersky: Custom scan folder.")
+			log_message = "Custom scan folder."
+			logger(log_message, "INFO", foreground = args.verbose)
 			scan_folder(args.custom_scan_folder)
 	if args.custom_scan_file:
 		check_tasks_status()	
 		if os.path.exists(args.custom_scan_file):	
 			if args.action:
-				logging.info("Kaspersky: Custom scan file with action.")
+				log_message = "Custom scan file with action."
+				logger(log_message, "INFO", foreground = args.verbose)
 				task = '--scan-file {} --action {}'.format(args.custom_scan_file, args.action)
 			else:
-				logging.info("Kaspersky: Custom scan file.")
+				log_message = "Custom scan file."
+				logger(log_message, "INFO", foreground = args.verbose)
 				task = '--scan-file {}'.format(args.custom_scan_file)
 	if args.update_application:
 		check_tasks_status()
-		logging.info("Kaspersky: Update application.")
+		log_message = "Update application."
+		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--update-application'
 	if args.get_task_list:
-		logging.info("Kaspersky: Get task list.")
+		log_message = "Get task list."
+		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--get-task-list'
 	if args.get_task_state:
-		logging.info("Kaspersky: Get task state.")
+		log_message = "Get task state."
+		logger(log_message, "INFO", foreground = args.verbose)
 		if args.get_task_state > 0:
 			task = '--get-task-state {}'.format(args.get_task_state)
 	if args.custom_flags:
 		check_tasks_status()
-		logging.info("Kaspersky: Run custom flags: {}.".format(args.custom_flags))
+		log_message = "Run custom flags: {}.".format(args.custom_flags)
+		logger(log_message, "INFO", foreground = args.verbose)
 		task = '{}'.format(args.custom_flags)
 	
 	if task != '':
 		kesl_control = '{}{} {}'.format(bin_path, binary, task)
-		logging.info("Kaspersky: {}.".format(kesl_control))
+		log_message = "{}.".format(kesl_control)
+		logger(log_message, "INFO", foreground = args.verbose)
 		send_kaspersky(kesl_control)
 
-	logging.info("Kaspersky: End.")
+	log_message = "End."
+	logger(log_message, "INFO", foreground = args.verbose)
 
 
 ##################################################################################################################
@@ -181,25 +183,30 @@ def scan_folder(folder_path):
 	start_query = bin_path + binary + task_start
 	create_query = bin_path + binary + task_create
 
-	logging.info("Kaspersky: Custom scan folder: Checking if the custom task exists.")
+	log_message = "Custom scan folder: Checking if the custom task exists."
+	logger(log_message, "INFO", foreground = args.verbose)
 	check_task = os.system(get_query)
 
 	if check_task == 0:
 		add_path = '--add-path ' + folder_path
-		logging.info("Kaspersky: Custom scan folder: Adding the new folder path: {}.".format(folder_path))
+		log_message = "Custom scan folder: Adding the new folder path: {}.".format(folder_path)
+		logger(log_message, "INFO", foreground = args.verbose)
 		send_kaspersky(set_query + add_path)
 		previous_path = get_previous_path(folder_path, get_query)
 		if previous_path != '' and previous_path != folder_path:
 			delete_path = '--del-path ' + previous_path
-			logging.info("Kaspersky: Custom scan folder: Deleting the previous path: {}.".format(previous_path))
+			log_message = "Custom scan folder: Deleting the previous path: {}.".format(previous_path)
+			logger(log_message, "INFO", foreground = args.verbose)
 			send_kaspersky(set_query + delete_path)
 	else:
 		file_path = create_custom_settings_file(folder_path)
-		logging.info("Kaspersky: Custom scan folder: Creating the new task from the custom file: {}.".format(file_path))
+		log_message = "Custom scan folder: Creating the new task from the custom file: {}.".format(file_path)
+		logger(log_message, "INFO", foreground = args.verbose)
 		send_kaspersky(create_query + file_path)
 		remove_custom_settings_file(file_path)
 
-	logging.info("Kaspersky: {}.".format(start_query))
+	log_message = "{}.".format(start_query)
+	logger(log_message, "INFO", foreground = args.verbose)
 	send_kaspersky(start_query)
 
 
@@ -210,7 +217,8 @@ def scan_folder(folder_path):
 def get_previous_path(path, get_query):
 
 	task = get_query
-	logging.info("Kaspersky: Custom scan folder: Creating the new task from the custom file: {}.".format(path))
+	log_message = "Custom scan folder: Creating the new task from the custom file: {}.".format(path)
+	logger(log_message, "INFO", foreground = args.verbose)
 	settings = os.popen(task).read()
 	settings = settings.split(os.linesep)
 	delete_path = ''
@@ -231,7 +239,8 @@ def create_custom_settings_file(folder_path):
 
 	current_path = dirname(abspath(__file__))
 	file_name = "/temporal_configuration_file"
-	logging.info("Kaspersky: Custom scan folder: Creating the custom file: {}.".format(file_name))
+	log_message = "Custom scan folder: Creating the custom file: {}.".format(file_name)
+	logger(log_message, "INFO", foreground = args.verbose)
 	path = current_path + file_name
 	content = '[ScanScope.item_0000]\nAreaDesc=All objects\nUseScanArea=Yes\nPath={}\nAreaMask.item_0000=*'.format(folder_path)
 	custom_file = open(path, 'w')
@@ -247,7 +256,8 @@ def create_custom_settings_file(folder_path):
 
 def remove_custom_settings_file(path):
 
-	logging.info("Kaspersky: Custom scan folder: Removing the custom file: {}.".format(path))
+	log_message = "Custom scan folder: Removing the custom file: {}.".format(path)
+	logger(log_message, "INFO", foreground = args.verbose)
 	os.remove(path)
 
 ##################################################################################################################
@@ -257,9 +267,10 @@ def remove_custom_settings_file(path):
 
 def check_tasks_status():
 
-	logging.info("Kaspersky: Checking the status of tasks. ")
+	log_message = "Checking the status of tasks. "
+	logger(log_message, "INFO", foreground = args.verbose)
 	task = '--get-task-list'
-	ignore_list = ["1","9","10","12"]
+	ignore_list = ["1","9","10","11","12"]
 	all_tasks = '{}{} {}'.format(bin_path, binary, task)
 	tasks_info = os.popen(all_tasks).read()
 	tasks_states_dict = parse_tasks_states(tasks_info)
@@ -267,7 +278,8 @@ def check_tasks_status():
 	for key in keylist:
 		if key not in ignore_list:
 			if tasks_states_dict[key] !="Stopped":
-				logging.info("Kaspersky: There is at least one task in progress. Task ID:{} Status:{}. Exit.".format(key,tasks_states_dict[key]))
+				log_message = "There is at least one task in progress. Task ID:{} Status:{}. Exit.".format(key,tasks_states_dict[key])
+				logger(log_message, "INFO", foreground = args.verbose)
 				sys.exit(1)
 				print(key, tasks_states_dict[key])
 
@@ -280,7 +292,8 @@ def parse_tasks_states(tasks):
 
 	ids = []
 	states = []
-	logging.info("Kaspersky: Getting the status of tasks. ")
+	log_message = "Kaspersky: Getting the status of tasks. "
+	logger(log_message, "INFO", foreground = args.verbose)
 	tasks = tasks.split(os.linesep)
 	for line in tasks:
 		if " ID " in line:
@@ -295,11 +308,33 @@ def parse_tasks_states(tasks):
 
 
 ##################################################################################################################
+# Send logs events by socket. 
+##################################################################################################################
+
+def send_msg(wazuh_queue, msg):
+
+	send_id = 1
+	send_location = "kaspersky-integration"
+	formatted = {}
+	formatted['integration'] = 'kaspersky'
+	formatted['message'] = msg
+	json.dumps(formatted, indent=4)
+	content = '{}:{}:{}'.format(send_id, send_location, json.dumps(formatted))
+	s = socket(AF_UNIX, SOCK_DGRAM)
+	try:
+		s.connect(wazuh_queue)
+	except:
+		print('Error: Wazuh must be running.')
+		sys.exit(1)
+	s.send(content.encode())
+	s.close()
+
+
+##################################################################################################################
 # Main function
 ##################################################################################################################
 
 def main():
-
 	set_logger('wazuh-kaspersky', foreground=args.verbose)
 	run_kaspersky()
 
