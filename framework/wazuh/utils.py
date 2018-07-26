@@ -785,7 +785,7 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
 
     def default_count_query(self):
-        return "COUNT (DISTINCT {0})".format(','.join(self.select['fields']))
+        return "COUNT (DISTINCT {0})".format(self.select['fields'][0])
 
 
     def add_filters_to_query(self):
@@ -793,3 +793,9 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
         self.query += ' WHERE ' if not self.q else ' AND '
         self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(field) for field in self.select['fields']])
 
+
+    def add_select_to_query(self):
+        if len(self.select['fields']) > 1:
+            raise WazuhException(1410)
+
+        WazuhDBQuery.add_select_to_query(self)

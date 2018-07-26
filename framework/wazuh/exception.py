@@ -64,6 +64,7 @@ class WazuhException(Exception):
         1407: 'query does not match expected format',
         1408: 'Field does not exist.',
         1409: 'Invalid query operator.',
+        1410: 'Selecting more than one field in distinct mode',
 
         # Decoders: 1500 - 1599
         1500: 'Error reading decoders from ossec.conf',
