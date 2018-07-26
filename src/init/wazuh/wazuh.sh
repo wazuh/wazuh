@@ -16,7 +16,8 @@ InstallSELinuxPolicyPackage(){
             if [ $(getenforce) != "Disabled" ]; then
                 if ! (semodule -l | grep wazuh > /dev/null); then
                     echo "Installing Wazuh policy for SELinux."
-                    semodule -i selinux/wazuh.pp
+                    cp selinux/wazuh.pp /tmp && semodule -i /tmp/wazuh.pp
+                    rm -f /tmp/wazuh.pp
                     semodule -e wazuh
                 else
                     echo "Skipping installation of Wazuh policy for SELinux: module already installed."

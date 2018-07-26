@@ -119,6 +119,8 @@ class WazuhException(Exception):
         2003: 'Error in database request',
         2004: 'Database query not valid',
         2005: 'Could not connect to wdb socket',
+        2006: 'Received JSON from Wazuh DB is not correctly formatted',
+        2007: 'Error retrieving data from Wazuh DB',
 
         # Cluster
         3000: 'Cluster',

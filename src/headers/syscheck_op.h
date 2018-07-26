@@ -155,6 +155,11 @@ int delete_target_file(const char *path);
 
 void sk_sum_clean(sk_sum_t * sum);
 
+int fim_find_child_depth(const char *parent, const char *child);
+
+//Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
+void normalize_path(char *path);
+
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);

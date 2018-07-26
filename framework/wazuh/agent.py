@@ -732,9 +732,6 @@ class Agent:
                                        else (Agent.calculate_status(item.get('lastKeepAlive'), item.get('version') is None, today)
                                              if key == 'status' else value) for key,value in item.items() if key in user_select_fields or key=='id'} for item in agent_items]
 
-        if len(agent_items) > 0 and agent_items[0]['id'] == '000' and 'ip' in user_select_fields:
-            agent_items[0]['ip'] = '127.0.0.1'
-
         agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
 
         return agent_items

@@ -87,7 +87,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
     int local_addr, rem_addr;
-    in_addr_t local, remote;
+    struct in_addr local, remote;
     char *laddress, *raddress;
     char read_buff[OS_MAXSTR];
     char file[OS_MAXSTR];
@@ -121,11 +121,11 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 &d, &local_addr, &local_port, &rem_addr, &rem_port, &state, &txq, &rxq,
                 &timer_run, &time_len, &retr, &uid, &timeout, &inode);
 
-            local = local_addr;
-            remote = rem_addr;
+            local.s_addr = local_addr;
+            remote.s_addr = rem_addr;
 
-            snprintf(laddress, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &local));
-            snprintf(raddress, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &remote));
+            snprintf(laddress, NI_MAXHOST, "%s", inet_ntoa(local));
+            snprintf(raddress, NI_MAXHOST, "%s", inet_ntoa(remote));
 
             cJSON *object = cJSON_CreateObject();
             cJSON *port = cJSON_CreateObject();
@@ -1671,7 +1671,7 @@ char* get_default_gateway(char *ifa_name){
     char interface[IFNAME_LENGTH] = "";
     char if_name[IFNAME_LENGTH] = "";
     char string[OS_MAXSTR];
-    in_addr_t address = 0;
+    struct in_addr address;
     int destination, gateway;
     char * def_gateway;
     os_calloc(NI_MAXHOST, sizeof(char) + 1, def_gateway);
@@ -1686,7 +1686,7 @@ char* get_default_gateway(char *ifa_name){
 
             if (sscanf(string, "%s %8x %8x", if_name, &destination, &gateway) == 3){
                 if (destination == 00000000 && !strcmp(if_name, interface)){
-                    address = gateway;
+                    address.s_addr = gateway;
                     snprintf(def_gateway, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &address));
                     fclose(fp);
                     return def_gateway;
@@ -1727,6 +1727,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     if (!proc) {
         mterror(WM_SYS_LOGTAG, "Running process inventory: could not create libproc context.");
+        free(timestamp);
         return;
     }
 

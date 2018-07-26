@@ -572,7 +572,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             cvss3 = (char *)sqlite3_column_text(stmt, 15);
             patch = (char *)sqlite3_column_text(stmt, 16);
 
-            if (!updated || *updated == '\0') {
+            if (!(updated && *updated)) {
                 updated = published;
             }
 
