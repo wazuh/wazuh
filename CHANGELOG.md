@@ -53,6 +53,7 @@ All notable changes to this project will be documented in this file.
 - Ignore uppercase and lowercase sorting an array in framework. ([#814](https://github.com/wazuh/wazuh/pull/814))
 - Cluster: reject connection if the client node has a different cluster name. ([#892](https://github.com/wazuh/wazuh/pull/892))
 - Fix long sleep times in vulnerability detector.
+- Fix inconsistency in the alerts format for the manager in vulnerability-detector.
 
 ### Removed
 

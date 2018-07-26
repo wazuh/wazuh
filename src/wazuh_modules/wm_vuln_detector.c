@@ -518,6 +518,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char *cvss3;
     char *patch;
     int i;
+    char send_queue;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -648,11 +649,20 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             }
 
             str_json = cJSON_PrintUnformatted(alert);
-            snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, agents_it->agent_id, agents_it->agent_name, agents_it->agent_ip);
-            snprintf(alert_msg, OS_MAXSTR, VU_ALERT_JSON, str_json);
+
+            // Send an alert as a manager if there is no IP assigned
+            if (agents_it->agent_ip) {
+                snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, agents_it->agent_id, agents_it->agent_name, agents_it->agent_ip);
+                snprintf(alert_msg, OS_MAXSTR, VU_ALERT_JSON, str_json);
+                send_queue = SECURE_MQ;
+            } else {
+                snprintf(header, OS_SIZE_256, "%s", VU_WM_NAME);
+                snprintf(alert_msg, OS_MAXSTR, "%s", str_json);
+                send_queue = LOCALFILE_MQ;
+            }
             free(str_json);
 
-            if (wm_sendmsg(usec, *vu_queue, alert_msg, header, SECURE_MQ) < 0) {
+            if (wm_sendmsg(usec, *vu_queue, alert_msg, header, send_queue) < 0) {
                 mterror(WM_VULNDETECTOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 if ((*vu_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
                     mterror_exit(WM_VULNDETECTOR_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
@@ -2614,10 +2624,10 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         }
 
         os_strdup(id, agents->agent_id);
-        if (ip) {
+        if (strcmp(ip, "127.0.0.1")) {
             os_strdup(ip, agents->agent_ip);
         } else {
-            os_strdup("local", agents->agent_ip);
+            agents->agent_ip = NULL;
         }
         os_strdup(name, agents->agent_name);
         os_strdup(agent_os, agents->OS);
