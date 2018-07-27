@@ -79,10 +79,7 @@ static void help_authd()
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
-    print_out("    -i          Use client's source IP address instead of any.");
     print_out("    -F <time>   Force insertion: remove old agent with same name or IP if its keepalive has more than <time> seconds.");
-    print_out("    -F no       Disable force insertion.");
-    print_out("    -r          Do not keep removed agents (purge).");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
@@ -209,7 +206,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'i':
-                    use_ip_address = 1;
+                    mwarn(DEPRECATED_OPTION_WARN,"-i");
                     break;
 
                 case 'g':
@@ -286,7 +283,7 @@ int main(int argc, char **argv)
                     }
 
                     if (!strcmp(optarg, "no")) {
-                        force_insert = -1;
+                        mwarn(DEPRECATED_OPTION_WARN,"-F");
                     } else {
                         force_insert = strtol(optarg, &end, 10);
 
@@ -294,11 +291,10 @@ int main(int argc, char **argv)
                             merror_exit("Invalid value for -%c", c);
                         }
                     }
-
                     break;
 
                 case 'r':
-                    clear_removed = 1;
+                    mwarn(DEPRECATED_OPTION_WARN,"-r");
                     break;
 
                 case 'a':
