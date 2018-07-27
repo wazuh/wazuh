@@ -63,5 +63,6 @@ void w_free_groups();
 int w_init_shared_download();
 int w_prepare_parsing();
 void w_create_group(char *group);
+void w_yaml_create_groups();
 
 #endif /* __SHARED_DOWNLOAD_H */
