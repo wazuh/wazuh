@@ -54,6 +54,7 @@ All notable changes to this project will be documented in this file.
 - Cluster: reject connection if the client node has a different cluster name. ([#892](https://github.com/wazuh/wazuh/pull/892))
 - Fix long sleep times in vulnerability detector.
 - Fix inconsistency in the alerts format for the manager in vulnerability-detector.
+- Fix bug when processing the packages in vulnerability-detector.
 
 ### Removed
 

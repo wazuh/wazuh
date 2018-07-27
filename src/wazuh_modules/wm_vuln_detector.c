@@ -2191,6 +2191,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     cJSON *obj = NULL;
     cJSON *package_list = NULL;
     last_scan *scan;
+    int result;
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
     for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 0; i++) {
@@ -2358,7 +2359,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
                 sqlite3_bind_text(stmt, 3, version->valuestring, -1, NULL);
                 sqlite3_bind_text(stmt, 4, architecture->valuestring, -1, NULL);
 
-                if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+                if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                     sqlite3_finalize(stmt);
                     close(sock);
                     return wm_vulnerability_detector_sql_error(db);
