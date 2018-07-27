@@ -1469,6 +1469,15 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             }
         } else if (!strcmp(node[i]->element, XML_TITLE)) {
                 os_strdup(node[i]->content, parsed_oval->info_cves->title);
+                // Debian Wheezy OVAL has its CVE of the title
+                if (dist == DIS_DEBIAN && !strcmp(parsed_oval->OS, vu_dist_tag[DIS_WHEEZY])) {
+                    if (!parsed_oval->info_cves->cveid) {
+                        os_strdup(node[i]->content, parsed_oval->info_cves->cveid);
+                    }
+                    if (!parsed_oval->vulnerabilities->cve_id) {
+                        os_strdup(node[i]->content, parsed_oval->vulnerabilities->cve_id);
+                    }
+                }
         } else if (!strcmp(node[i]->element, XML_CRITERIA)) {
             if (!node[i]->attributes) {
                 if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
