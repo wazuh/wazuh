@@ -27,6 +27,7 @@
 #define W_PARSER_EXPECTED_AGENT_ID "Expected agent ID"
 #define W_PARSER_POLL "Wrong poll value: %s."
 #define W_PARSER_FILE_CHANGED "File '%s' changed. Reloading data"
+#define W_PARSER_GROUP_TOO_LARGE "The group name is too large. The maximum length is %d"
 
 typedef struct _file{
     char *name;
@@ -61,5 +62,6 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
 void w_free_groups();
 int w_init_shared_download();
 int w_prepare_parsing();
+void w_create_group(char *group);
 
 #endif /* __SHARED_DOWNLOAD_H */
