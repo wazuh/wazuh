@@ -85,6 +85,11 @@ def _get_distinct_items(valid_select_fields, table, select={}, offset=0, limit=c
                         search={}, sort={}, nest=[], filter_fields={}):
     offset = int(offset)
     limit = int(limit)
+    if limit:
+        if limit > common.maximum_database_limit:
+            raise WazuhException(1405, str(limit))
+    elif limit == 0:
+        raise WazuhException(1406)
 
     if select:
         incorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fields.keys()))
