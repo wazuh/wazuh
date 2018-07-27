@@ -84,7 +84,7 @@ const char *vu_dist_tag[] = {
     "WS2012R2",
     "WS2016",
     "MACOSX",
-    "UNKNOW"
+    "UNKNOWN"
 };
 
 const char *vu_dist_ext[] = {
@@ -115,7 +115,7 @@ const char *vu_dist_ext[] = {
     "Windows Server 2012 R2",
     "Windows Server 2016",
     "Mac OS X",
-    "Unknow OS"
+    "Unknown OS"
 };
 
 const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *agent_dist) {
@@ -611,7 +611,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 cJSON * jPackage = cJSON_CreateObject();
                 cJSON_AddStringToObject(alert_cve, "cve", cve);
                 cJSON_AddStringToObject(alert_cve, "title", title);
-                cJSON_AddStringToObject(alert_cve, "severity", severity);
+                cJSON_AddStringToObject(alert_cve, "severity", (severity) ? severity : "Unknown");
                 cJSON_AddStringToObject(alert_cve, "published", published);
                 cJSON_AddStringToObject(alert_cve, "updated", updated);
                 cJSON_AddStringToObject(alert_cve, "reference", reference);
@@ -1688,7 +1688,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                 }
 
                 if (!inf->severity) {
-                    os_strdup("Unknow", inf->severity);
+                    os_strdup("Unknown", inf->severity);
                 }
             }
         } else if (!strcmp(node[i]->element, XML_SEVERITY)) {
@@ -1701,7 +1701,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     os_strdup(node[i]->content, parsed_oval->info_cves->severity);
                 }
             } else {
-                os_strdup("Unknow", parsed_oval->info_cves->severity);
+                os_strdup("Unknown", parsed_oval->info_cves->severity);
             }
         } else if (!strcmp(node[i]->element, XML_UPDATED)) {
             if (node[i]->attributes) {
