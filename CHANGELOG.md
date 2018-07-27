@@ -29,7 +29,10 @@ All notable changes to this project will be documented in this file.
     - Message input buffer in Analysisd to prevent control messages starvation in Remoted.
 - Module to download shared files for agent groups dinamically. ([#519](https://github.com/wazuh/wazuh/pull/519))
 - Option to download the wpk using http in `agent_upgrade`. ([#798](https://github.com/wazuh/wazuh/pull/798))
+- Add `172.0.0.1` as manager IP when creating `global.db`. ([#970](https://github.com/wazuh/wazuh/pull/970))
+- New requests for Syscollector. ([#728](https://github.com/wazuh/wazuh/pull/728))
 - `cluster_control` shows an error if the status does not exist. ([#1002](https://github.com/wazuh/wazuh/pull/1002))
+
 
 ### Changed
 
@@ -54,6 +57,7 @@ All notable changes to this project will be documented in this file.
 - Fixed bugs reading logs in framework. ([#856](https://github.com/wazuh/wazuh/pull/856))
 - Ignore uppercase and lowercase sorting an array in framework. ([#814](https://github.com/wazuh/wazuh/pull/814))
 - Cluster: reject connection if the client node has a different cluster name. ([#892](https://github.com/wazuh/wazuh/pull/892))
+- Prevent `the JSON object must be str, not 'bytes'` error. ([#997](https://github.com/wazuh/wazuh/pull/997))
 
 ### Removed
 
