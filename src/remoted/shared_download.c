@@ -520,24 +520,26 @@ void w_create_group(char *group){
 
         if (!group_dir) {
             /* Create the group */
-            mode_t old_mask = umask(0);
             if(mkdir(group_path,0770) < 0){
                 switch (errno) {
-                case EEXIST:
-                    if (IsDir(group_path) < 0) {
-                        merror("Couldn't make dir '%s': not a directory.", group_path);
-                    }
-                    break;
+                    case EEXIST:
+                        if (IsDir(group_path) < 0) {
+                            merror("Couldn't make dir '%s': not a directory.", group_path);
+                        }
+                        break;
 
-                case EISDIR:
-                    break;
+                    case EISDIR:
+                        break;
 
-                default:
-                    merror("Couldn't make dir '%s': %s", group_path, strerror(errno));
-                    break;
+                    default:
+                        merror("Couldn't make dir '%s': %s", group_path, strerror(errno));
+                        break;
+                }
+            } else {
+                if(chmod(group_path,0770) < 0){
+                    merror("Error in chmod setting permissions for path: %s",group_path);
                 }
             }
-            umask(old_mask);
         }
         closedir(group_dir);
     }
