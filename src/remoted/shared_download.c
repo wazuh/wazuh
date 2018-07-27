@@ -32,6 +32,16 @@ void *w_parser_get_agent(const char *name){
     return NULL;
 }
 
+void w_yaml_create_groups() {
+    int i;
+
+    if (agent_remote_group) {
+        for (i = 0; agent_remote_group[i].name; i++) {
+            w_create_group(agent_remote_group[i].name);
+        }
+    }
+}
+
 const char *w_read_scalar_value(yaml_event_t * event){
     return (const char *)event->data.scalar.value;
 }
@@ -565,7 +575,6 @@ int w_prepare_parsing()
             if (agent_remote_group) {
                 for(i = 0; agent_remote_group[i].name; i++) {
                     OSHash_Add(ptable, agent_remote_group[i].name, &agent_remote_group[i]);
-                    w_create_group(agent_remote_group[i].name);
                 }
             }
 

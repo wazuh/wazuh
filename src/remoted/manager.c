@@ -795,6 +795,7 @@ void *update_shared_files(__attribute__((unused)) void *none) {
             // Check if the yaml file has changed and reload it
             if(w_yaml_file_has_changed()){
                 w_yaml_file_update_structs();
+                w_yaml_create_groups();
             }
 
             c_files();
@@ -813,6 +814,7 @@ void manager_init()
     _stime = time(0);
     mdebug1("Running manager_init");
     c_files();
+    w_yaml_create_groups();
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
 }
