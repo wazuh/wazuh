@@ -194,7 +194,7 @@ int main(int argc, char **argv)
                 sender_ip = optarg;
                 break;
             case 'i':
-                mwarn(DEPRECATED_OPTION_WARN,"-i");
+                use_src_ip = 1;
                 break;
             default:
                 help_agent_auth();
@@ -362,6 +362,13 @@ int main(int argc, char **argv)
         char opt_buf[256] = {0};
         snprintf(opt_buf,254," IP:'%s'",sender_ip);
         strncat(buf,opt_buf,254);
+    }
+
+    if(use_src_ip)
+    {
+        char opt_buf[10] = {0};
+        snprintf(opt_buf,10," IP:'src'");
+        strncat(buf,opt_buf,10);
     }
 
     /* Append new line character */
