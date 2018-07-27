@@ -595,6 +595,14 @@ static void read_controlmsg(const char *agent_id, char *msg)
         group[0] = '\0';
     }
 
+    // If no group defined or it's "default", look at the download list file
+    if (!(group[0] && strcmp(group, "default"))) {
+        if (agt_group = w_parser_get_agent(agent_id), agt_group) {
+            strncpy(group, agt_group->group, KEYSIZE);
+            group[KEYSIZE - 1] = '\0';
+        }
+    }
+
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
 
@@ -659,16 +667,6 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             set_agent_group(agent_id, group);
-        }
-
-        // Check if the group is set in the yaml file
-        // Check if the group we want to set is "default", apply yaml configuration
-        if (!strcmp(group, "default")) {
-            if (agt_group = w_parser_get_agent(agent_id), agt_group) {
-                if(set_agent_group(agent_id, agt_group->group) == -1){
-                    merror("Could not set group '%s' specified in the yaml file for agent '%s'",agt_group->group,agent_id);
-                }
-            }
         }
 
         /* New agents only have merged.mg */

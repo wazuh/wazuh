@@ -31,6 +31,8 @@ All notable changes to this project will be documented in this file.
 - Option to download the wpk using http in `agent_upgrade`. ([#798](https://github.com/wazuh/wazuh/pull/798))
 - Add `172.0.0.1` as manager IP when creating `global.db`. ([#970](https://github.com/wazuh/wazuh/pull/970))
 - New requests for Syscollector. ([#728](https://github.com/wazuh/wazuh/pull/728))
+- `cluster_control` shows an error if the status does not exist. ([#1002](https://github.com/wazuh/wazuh/pull/1002))
+
 
 ### Changed
 
@@ -42,6 +44,7 @@ All notable changes to this project will be documented in this file.
 - Extract CVE instead of RHSA codes into vulnerability-detector. ([#549](https://github.com/wazuh/wazuh/pull/549))
 - Merge external libraries into a unique shared library. ([#620](https://github.com/wazuh/wazuh/pull/620))
 - Cluster log rotation: set correct permissions and store rotations in /logs/ossec. ([#667](https://github.com/wazuh/wazuh/pull/667))
+-`Distinct` requests don't allow `limit=0` or `limit>maximun_limit`. ([#1007](https://github.com/wazuh/wazuh/pull/1007))
 
 ### Fixed
 
