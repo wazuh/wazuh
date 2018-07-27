@@ -507,6 +507,42 @@ int w_yaml_file_update_structs(){
     return 0;
 }
 
+void w_create_group(char *group){
+       
+    char group_path[PATH_MAX] = {0};
+
+    if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",group) >= PATH_MAX){
+        minfo(W_PARSER_GROUP_TOO_LARGE,PATH_MAX);
+    }
+    else{
+        /* Check if group exists */
+        DIR *group_dir = opendir(group_path);
+
+        if (!group_dir) {
+            /* Create the group */
+            mode_t old_mask = umask(0);
+            if(mkdir(group_path,0770) < 0){
+                switch (errno) {
+                case EEXIST:
+                    if (IsDir(group_path) < 0) {
+                        merror("Couldn't make dir '%s': not a directory.", group_path);
+                    }
+                    break;
+
+                case EISDIR:
+                    break;
+
+                default:
+                    merror("Couldn't make dir '%s': %s", group_path, strerror(errno));
+                    break;
+                }
+            }
+            umask(old_mask);
+        }
+        closedir(group_dir);
+    }
+}
+
 int w_prepare_parsing()
 {
 
@@ -526,6 +562,7 @@ int w_prepare_parsing()
             if (agent_remote_group) {
                 for(i = 0; agent_remote_group[i].name; i++) {
                     OSHash_Add(ptable, agent_remote_group[i].name, &agent_remote_group[i]);
+                    w_create_group(agent_remote_group[i].name);
                 }
             }
 
