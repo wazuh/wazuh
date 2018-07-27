@@ -509,6 +509,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
 
         free(sys_info->cpu_name);
+        free(sys_info);
     }
 
     /* Send interface data in JSON format */
@@ -618,6 +619,10 @@ hw_info *get_system_bsd(){
     }else{
         long cpu_free_kb = (vmt.t_free * (u_int64_t)page_size) / 1024;
         info->ram_free = cpu_free_kb;
+
+        if (info->ram_total > 0 && info->ram_free >= 0) {
+            info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
+        }
     }
 
 #endif

@@ -850,6 +850,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
         cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
         cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
+        cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
         free(sys_info->cpu_name);
         free(sys_info);
@@ -1045,9 +1046,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                 continue;
             }
 
-            family = ifa->ifa_addr->sa_family;
+            if (ifa->ifa_addr)
+                family = ifa->ifa_addr->sa_family;
 
-            if (family == AF_INET) {
+            if (family == AF_INET && ifa->ifa_addr != NULL) {
 
                 /* Get IPv4 address */
                 char host[NI_MAXHOST] = "";
@@ -1062,43 +1064,45 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                 }
 
                 /* Get Netmask for IPv4 address */
-                char netmask[NI_MAXHOST] = "";
-                result = getnameinfo(ifa->ifa_netmask,
-                    sizeof(struct sockaddr_in),
-                    netmask, NI_MAXHOST,
-                    NULL, 0, NI_NUMERICHOST);
-
-                if (result == 0) {
-                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
-                } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
-                }
-
-                /* Get broadcast address (or destination address in a Point to Point connection) */
-                if ((host[0] != '\0') && (netmask[0] != '\0')) {
-                    char * broadaddr;
-                    broadaddr = get_broadcast_addr(host, netmask);
-                    if (strncmp(broadaddr, "unknown", 7)) {
-                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
-                        free(broadaddr);
-                    } else {
-                        mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
-                    }
-                } else if (ifa->ifa_ifu.ifu_broadaddr != NULL){
-                    char broadaddr[NI_MAXHOST];
-                    result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
+                if (ifa->ifa_netmask != NULL) {
+                    char netmask[NI_MAXHOST] = "";
+                    result = getnameinfo(ifa->ifa_netmask,
                         sizeof(struct sockaddr_in),
-                        broadaddr, NI_MAXHOST,
+                        netmask, NI_MAXHOST,
                         NULL, 0, NI_NUMERICHOST);
 
                     if (result == 0) {
-                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                        cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
                     } else {
                         mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                     }
+
+                    /* Get broadcast address (or destination address in a Point to Point connection) */
+                    if ((host[0] != '\0') && (netmask[0] != '\0')) {
+                        char * broadaddr;
+                        broadaddr = get_broadcast_addr(host, netmask);
+                        if (strncmp(broadaddr, "unknown", 7)) {
+                            cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                            free(broadaddr);
+                        } else {
+                            mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
+                        }
+                    } else if (ifa->ifa_ifu.ifu_broadaddr != NULL){
+                        char broadaddr[NI_MAXHOST];
+                        result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
+                            sizeof(struct sockaddr_in),
+                            broadaddr, NI_MAXHOST,
+                            NULL, 0, NI_NUMERICHOST);
+
+                        if (result == 0) {
+                            cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                        } else {
+                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        }
+                    }
                 }
 
-            } else if (family == AF_INET6) {
+            } else if (family == AF_INET6 && ifa->ifa_addr != NULL) {
 
                 /* Get IPv6 address */
                 char host[NI_MAXHOST];
@@ -1121,16 +1125,18 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                 }
 
                 /* Get Netmask for IPv6 address */
-                char netmask6[NI_MAXHOST];
-                result = getnameinfo(ifa->ifa_netmask,
-                    sizeof(struct sockaddr_in6),
-                    netmask6, NI_MAXHOST,
-                    NULL, 0, NI_NUMERICHOST);
+                if (ifa->ifa_netmask != NULL) {
+                    char netmask6[NI_MAXHOST];
+                    result = getnameinfo(ifa->ifa_netmask,
+                        sizeof(struct sockaddr_in6),
+                        netmask6, NI_MAXHOST,
+                        NULL, 0, NI_NUMERICHOST);
 
-                if (result == 0) {
-                    cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
-                } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                    if (result == 0) {
+                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
+                    } else {
+                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                    }
                 }
 
                 /* Get broadcast address (or destination address in a Point to Point connection) for IPv6*/
@@ -1342,6 +1348,10 @@ hw_info *get_system_linux(){
                 info->ram_free = strtol(aux_string, &end_string, 10);
 
             }
+        }
+
+        if (info->ram_total > 0 && info->ram_free >= 0) {
+            info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
         }
         free(aux_string);
         fclose(fp);
