@@ -89,12 +89,18 @@ def _get_distinct_items(valid_select_fields, table, select={}, offset=0, limit=c
     if select:
         incorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fields.keys()))
         if incorrect_fields:
-            raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+            raise WazuhException(1724, "Allowed fields: {0}. Fields {1}".\
                 format(', '.join(valid_select_fields.keys()), ','.join(incorrect_fields)))
 
         select_fields = {field:valid_select_fields[field] for field in select['fields'] if field in valid_select_fields.keys()}
     else:
         select_fields = valid_select_fields
+
+    if filter_fields:
+        incorrect_fields = map(lambda x: str(x), set(filter_fields['fields']) - set(valid_select_fields.keys()))
+        if incorrect_fields:
+            raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
+                format(', '.join(valid_select_fields.keys()), ','.join(incorrect_fields)))
 
     if sort:
         if not set(sort.get('fields')).issubset(select_fields.keys()):
