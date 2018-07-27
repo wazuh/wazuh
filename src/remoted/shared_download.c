@@ -508,11 +508,11 @@ int w_yaml_file_update_structs(){
 }
 
 void w_create_group(char *group){
-       
+
     char group_path[PATH_MAX] = {0};
 
     if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",group) >= PATH_MAX){
-        minfo(W_PARSER_GROUP_TOO_LARGE,PATH_MAX);
+        mwarn(W_PARSER_GROUP_TOO_LARGE,PATH_MAX);
     }
     else{
         /* Check if group exists */
@@ -540,8 +540,9 @@ void w_create_group(char *group){
                     merror("Error in chmod setting permissions for path: %s",group_path);
                 }
             }
+        } else {
+            closedir(group_dir);
         }
-        closedir(group_dir);
     }
 }
 
