@@ -50,8 +50,8 @@ typedef struct _agent_group{
 
 int w_yaml_file_has_changed();
 int w_yaml_file_update_structs();
-void *w_parser_get_group(const char *name);
-void *w_parser_get_agent(const char *name);
+remote_files_group * w_parser_get_group(const char * name);
+agent_group * w_parser_get_agent(const char * name);
 const char *w_read_scalar_value(yaml_event_t * event);
 int w_move_next(yaml_parser_t * parser, yaml_event_t * event);
 agent_group * w_read_agents(yaml_parser_t * parser);
