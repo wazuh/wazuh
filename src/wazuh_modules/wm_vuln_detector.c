@@ -84,7 +84,7 @@ const char *vu_dist_tag[] = {
     "WS2012R2",
     "WS2016",
     "MACOSX",
-    "UNKNOW"
+    "UNKNOWN"
 };
 
 const char *vu_dist_ext[] = {
@@ -115,7 +115,7 @@ const char *vu_dist_ext[] = {
     "Windows Server 2012 R2",
     "Windows Server 2016",
     "Mac OS X",
-    "Unknow OS"
+    "Unknown OS"
 };
 
 const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *agent_dist) {
@@ -518,6 +518,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char *cvss3;
     char *patch;
     int i;
+    char send_queue;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -610,7 +611,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 cJSON * jPackage = cJSON_CreateObject();
                 cJSON_AddStringToObject(alert_cve, "cve", cve);
                 cJSON_AddStringToObject(alert_cve, "title", title);
-                cJSON_AddStringToObject(alert_cve, "severity", severity);
+                cJSON_AddStringToObject(alert_cve, "severity", (severity) ? severity : "Unknown");
                 cJSON_AddStringToObject(alert_cve, "published", published);
                 cJSON_AddStringToObject(alert_cve, "updated", updated);
                 cJSON_AddStringToObject(alert_cve, "reference", reference);
@@ -648,11 +649,20 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             }
 
             str_json = cJSON_PrintUnformatted(alert);
-            snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, agents_it->agent_id, agents_it->agent_name, agents_it->agent_ip);
-            snprintf(alert_msg, OS_MAXSTR, VU_ALERT_JSON, str_json);
+
+            // Send an alert as a manager if there is no IP assigned
+            if (agents_it->agent_ip) {
+                snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, agents_it->agent_id, agents_it->agent_name, agents_it->agent_ip);
+                snprintf(alert_msg, OS_MAXSTR, VU_ALERT_JSON, str_json);
+                send_queue = SECURE_MQ;
+            } else {
+                snprintf(header, OS_SIZE_256, "%s", VU_WM_NAME);
+                snprintf(alert_msg, OS_MAXSTR, "%s", str_json);
+                send_queue = LOCALFILE_MQ;
+            }
             free(str_json);
 
-            if (wm_sendmsg(usec, *vu_queue, alert_msg, header, SECURE_MQ) < 0) {
+            if (wm_sendmsg(usec, *vu_queue, alert_msg, header, send_queue) < 0) {
                 mterror(WM_VULNDETECTOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 if ((*vu_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
                     mterror_exit(WM_VULNDETECTOR_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
@@ -1459,6 +1469,15 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
             }
         } else if (!strcmp(node[i]->element, XML_TITLE)) {
                 os_strdup(node[i]->content, parsed_oval->info_cves->title);
+                // Debian Wheezy OVAL has its CVE of the title
+                if (dist == DIS_DEBIAN && !strcmp(parsed_oval->OS, vu_dist_tag[DIS_WHEEZY])) {
+                    if (!parsed_oval->info_cves->cveid) {
+                        os_strdup(node[i]->content, parsed_oval->info_cves->cveid);
+                    }
+                    if (!parsed_oval->vulnerabilities->cve_id) {
+                        os_strdup(node[i]->content, parsed_oval->vulnerabilities->cve_id);
+                    }
+                }
         } else if (!strcmp(node[i]->element, XML_CRITERIA)) {
             if (!node[i]->attributes) {
                 if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
@@ -1678,7 +1697,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                 }
 
                 if (!inf->severity) {
-                    os_strdup("Unknow", inf->severity);
+                    os_strdup("Unknown", inf->severity);
                 }
             }
         } else if (!strcmp(node[i]->element, XML_SEVERITY)) {
@@ -1691,7 +1710,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     os_strdup(node[i]->content, parsed_oval->info_cves->severity);
                 }
             } else {
-                os_strdup("Unknow", parsed_oval->info_cves->severity);
+                os_strdup("Unknown", parsed_oval->info_cves->severity);
             }
         } else if (!strcmp(node[i]->element, XML_UPDATED)) {
             if (node[i]->attributes) {
@@ -2181,6 +2200,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     cJSON *obj = NULL;
     cJSON *package_list = NULL;
     last_scan *scan;
+    int result;
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
     for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 0; i++) {
@@ -2348,7 +2368,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
                 sqlite3_bind_text(stmt, 3, version->valuestring, -1, NULL);
                 sqlite3_bind_text(stmt, 4, architecture->valuestring, -1, NULL);
 
-                if (wm_vulnerability_detector_step(stmt) != SQLITE_DONE) {
+                if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                     sqlite3_finalize(stmt);
                     close(sock);
                     return wm_vulnerability_detector_sql_error(db);
@@ -2375,7 +2395,7 @@ end:
 }
 
 void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector) {
-    unsigned long time_sleep = 0;
+    time_t time_sleep = 0;
     wm_vulnerability_detector_flags *flags = &vulnerability_detector->flags;
     update_node **updates = vulnerability_detector->updates;
     int i;
@@ -2471,10 +2491,22 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
 
         time_t t_now = time(NULL);
         time_sleep = (vulnerability_detector->last_detection + vulnerability_detector->detection_interval) - t_now;
-        for (i = 0; i < OS_SUPP_SIZE; i++) {
+        if (time_sleep < 0) {
+            time_sleep = 0;
+            i = OS_SUPP_SIZE;
+        } else {
+            i = 0;
+        }
+
+        // Check the remaining time for all updates and adjust the sleep time
+        for (; i < OS_SUPP_SIZE; i++) {
             if (updates[i]) {
-                unsigned long t_diff = (updates[i]->last_update + updates[i]->interval) - t_now;
-                if (t_diff < time_sleep) {
+                time_t t_diff = (updates[i]->last_update + updates[i]->interval) - t_now;
+                // Stop checking if we have any pending updates
+                if (t_diff < 0) {
+                    time_sleep = 0;
+                    break;
+                } else if (t_diff < time_sleep) {
                     time_sleep = t_diff;
                 }
             }
@@ -2602,10 +2634,10 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         }
 
         os_strdup(id, agents->agent_id);
-        if (ip) {
+        if (strcmp(ip, "127.0.0.1")) {
             os_strdup(ip, agents->agent_ip);
         } else {
-            os_strdup("local", agents->agent_ip);
+            agents->agent_ip = NULL;
         }
         os_strdup(name, agents->agent_name);
         os_strdup(agent_os, agents->OS);
