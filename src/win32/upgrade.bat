@@ -17,5 +17,4 @@ DEL do_upgrade.ps1
 DEL wazuh-agent-*.msi
 DEL upgrade.bat
 
-
 :end
