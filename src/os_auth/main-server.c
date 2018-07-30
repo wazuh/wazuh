@@ -176,13 +176,9 @@ int main(int argc, char **argv)
 
     {
         int c;
-        char *end;
         int use_pass = 0;
         int auto_method = 0;
         int validate_host = 0;
-        int use_ip_address = 0;
-        int clear_removed = 0;
-        int force_insert = -2;
         int no_limit = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
@@ -278,19 +274,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'F':
-                    if (!optarg) {
-                        merror_exit("-%c needs an argument", c);
-                    }
-
-                    if (!strcmp(optarg, "no")) {
-                        mwarn(DEPRECATED_OPTION_WARN,"-F");
-                    } else {
-                        force_insert = strtol(optarg, &end, 10);
-
-                        if (*end != '\0' || force_insert < 0) {
-                            merror_exit("Invalid value for -%c", c);
-                        }
-                    }
+                    mwarn(DEPRECATED_OPTION_WARN,"-F");
                     break;
 
                 case 'r':
@@ -330,30 +314,8 @@ int main(int argc, char **argv)
             config.flags.verify_host = 1;
         }
 
-        if (use_ip_address){
-            config.flags.use_source_ip = 1;
-        }
-
-        if (clear_removed) {
-            config.flags.clear_removed = 1;
-        }
-
         if (run_foreground) {
             config.flags.disabled = 0;
-        }
-
-        switch (force_insert) {
-        case -2:
-            break;
-
-        case -1:
-            config.flags.force_insert = 0;
-            config.force_time = -1;
-            break;
-
-        default:
-            config.flags.force_insert = 1;
-            config.force_time = force_insert;
         }
 
         if (ciphers) {
