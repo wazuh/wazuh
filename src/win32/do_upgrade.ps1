@@ -7,15 +7,13 @@ function backup
     Copy-Item $env:temp\backup\* .\backup -force
 }
 
+# Stop UI and launch the msi installer
 function install
 {
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
-    write-output "$(Get-Date -format u) - Start-Process." >> .\upgrade.log
-    $installer = (Get-Item wazuh-agent*.msi).Basename
-    $proc = Start-Process "msiexec" -ArgumentList "$('/i "' + $($installer) + '.msi" /quiet /L*V install.log')" -Passthru
-    $proc.WaitForExit()
-    Get-Service -Name "Wazuh" | Start-Service
+    write-output "$(Get-Date -format u) - Starting upgrade processs." >> .\upgrade\upgrade.log
+    cmd /c start (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
 }
 
 function restore
@@ -23,23 +21,39 @@ function restore
     Copy-Item .\backup\* .\ -force
 }
 
+# Check new version and restart the Wazuh service
+function check-installation
+{
+    $new_version = (Get-Content VERSION)
+    $counter = 5
+    while($new_version -eq $current_version -And $counter -gt 0)
+    {
+        write-output "$(Get-Date -format u) - Waiting for the installation end." >> .\upgrade\upgrade.log
+        $counter--
+        Start-Sleep 2
+        $new_version = (Get-Content VERSION)
+    }
+    write-output "$(Get-Date -format u) - Restarting Wazuh service." >> .\upgrade\upgrade.log
+    Get-Service -Name "Wazuh" | Start-Service
+}
 
 # Get current version
 $current_version = (Get-Content VERSION)
 $current_file_date = (Get-Item ".\ossec-agent.exe").LastWriteTime
-write-output "$(Get-Date -format u) - Current version: $($current_version)" > .\upgrade.log
+write-output "$(Get-Date -format u) - Current version: $($current_version)" > .\upgrade\upgrade.log
 
 # Generating backup
-write-output "$(Get-Date -format u) - Generating backup." >> .\upgrade.log
+write-output "$(Get-Date -format u) - Generating backup." >> .\upgrade\upgrade.log
 backup
 
-# Ensure process is stopped before launch upgrade
-Get-Service -Name "Wazuh" | Stop-Service
+# Ensure implicated processes are stopped before launch the upgrade
+Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
+Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
 $process_id = (Get-Process ossec-agent -ErrorAction SilentlyContinue).id
 $counter = 5
 while($process_id -ne $null -And $counter -gt 0)
 {
-    write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade.log
+    write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade\upgrade.log
     $counter--
     Get-Service -Name "Wazuh" | Stop-Service
     taskkill /pid $process_id /f /T
@@ -49,17 +63,8 @@ while($process_id -ne $null -And $counter -gt 0)
 
 # Install
 install
-write-output "$(Get-Date -format u) - Installation in progress." >> .\upgrade.log
-
-# Check new version
-$new_version = (Get-Content VERSION)
-$counter = 10
-while($new_version -eq $current_version -And $counter -gt 0)
-{
-    write-output "$(Get-Date -format u) - Waiting for the installation end." >> .\upgrade.log
-    $counter--
-    Start-Sleep 2
-}
+check-installation
+write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
 
 # Check process status
 $process_id = (Get-Process ossec-agent).id
@@ -71,7 +76,7 @@ while($process_id -eq $null -And $counter -gt 0)
     Start-Sleep 2
     $process_id = (Get-Process ossec-agent).id
 }
-write-output "$(Get-Date -format u) - Process ID: $($process_id)" >> .\upgrade.log
+write-output "$(Get-Date -format u) - Process ID: $($process_id)" >> .\upgrade\upgrade.log
 
 # Check status file
 $status = Get-Content .\ossec-agent.state | select-string "status='connected'" -SimpleMatch
@@ -82,20 +87,20 @@ while($status -eq $null -And $counter -gt 0)
     Start-Sleep 2
     $status = Get-Content .\ossec-agent.state | select-string "status='connected'" -SimpleMatch
 }
-write-output "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgrade.log
+write-output "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgrade\upgrade.log
 
 If ($status -eq $null)
 {
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
     restore
-    write-output "$(Get-Date -format u) - Upgrade failed: Restoring." >> .\upgrade.log
-    .\ossec-agent.exe install-service >> .\upgrade.log
+    write-output "$(Get-Date -format u) - Upgrade failed: Restoring." >> .\upgrade\upgrade.log
+    .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
     Start-Service -Name "ossec-agent" -ErrorAction SilentlyContinue
 }
 Else
 {
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade.log
+    write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
     $new_version = (Get-Content VERSION)
-    write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade.log
+    write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade\upgrade.log
 }
