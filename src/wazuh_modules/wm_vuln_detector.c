@@ -543,7 +543,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
             return wm_vulnerability_detector_sql_error(db, stmt);
         }
         sqlite3_bind_int(stmt, 1,  strtol(agents_it->agent_id, NULL, 10));
-        sqlite3_bind_text(stmt, 2, agents_it->OS, -1, NULL);
+        sqlite3_bind_text(stmt, 2, agents_it->agent_OS, -1, NULL);
 
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             char *package;
@@ -2478,6 +2478,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
                     agent_software *agent_aux = agent->next;
                     free(agent->agent_id);
                     free(agent->agent_name);
+                    free(agent->agent_OS);
                     free(agent->arch);
                     free(agent->agent_ip);
                     free(agent);
@@ -2646,7 +2647,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
             agents->agent_ip = NULL;
         }
         os_strdup(name, agents->agent_name);
-        os_strdup(agent_os, agents->OS);
+        os_strdup(agent_os, agents->agent_OS);
         os_strdup(arch, agents->arch);
         agents->dist = agent_dist;
         agents->info = 0;
@@ -2687,6 +2688,7 @@ void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerabili
         agent_software *agent_aux = agent->next;
         free(agent->agent_id);
         free(agent->agent_name);
+        free(agent->agent_OS);
         free(agent->agent_ip);
         free(agent);
 

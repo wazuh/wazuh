@@ -132,7 +132,7 @@ typedef struct agent_software {
     char *agent_id;
     char *agent_name;
     char *agent_ip;
-    const char *OS;
+    char *agent_OS;
     char *arch;
     distribution dist;
     char info;
