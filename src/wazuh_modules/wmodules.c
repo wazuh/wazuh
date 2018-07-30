@@ -10,6 +10,9 @@
  */
 
 #include "wmodules.h"
+#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha1/sha1_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
@@ -315,6 +318,7 @@ int wm_relative_path(const char * path) {
     return 0;
 }
 
+
 // Get time in seconds to the specified hour in hh:mm
 int get_time_to_hour(const char * hour) {
 
@@ -352,6 +356,7 @@ int get_time_to_hour(const char * hour) {
 
     return (int)diff;
 }
+
 
 // Get time to reach a particular day of the week and hour
 int get_time_to_day(int wday, const char * hour) {
@@ -446,4 +451,122 @@ int check_day_to_scan(int day, const char *hour) {
     }
 
     return -1;
+}
+
+
+// Get binary full path
+int wm_get_path(const char *binary, char **validated_comm){
+
+#ifdef WIN32
+    const char sep[2] = ";";
+#else
+    const char sep[2] = ":";
+#endif
+    char *path;
+    char *full_path;
+    char *validated = NULL;
+    char *env_path = NULL;
+
+    if (binary[0] == '/') {
+        // Check binary full path
+        if (IsFile(binary) == -1) {
+            return 0;
+        }
+        validated = strdup(binary);
+
+    } else {
+
+        env_path = getenv("PATH");
+        path = strtok(env_path, sep);
+
+        while (path != NULL) {
+            full_path = calloc(strlen(path) + strlen(binary) + 2, sizeof(char));
+#ifdef WIN32
+            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s\\%s", path, binary);
+#else
+            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s/%s", path, binary);
+#endif
+            if (IsFile(full_path) == 0) {
+                validated = strdup(full_path);
+                free(full_path);
+                break;
+            }
+            free(full_path);
+            path = strtok(NULL, sep);
+        }
+
+        // Check binary found
+        if (validated == NULL) {
+            return 0;
+        }
+    }
+
+    if (*validated_comm) {
+        *validated_comm = strdup(validated);
+    }
+
+    free(validated);
+    return 1;
+}
+
+
+/**
+ Check the binary wich executes a commad has the specified hash.
+ Returns:
+     1 if the binary matchs with the specified digest, 0 if not.
+    -1 if the binary doesn't exist.
+    -2 invalid parameters.
+*/
+int wm_validate_command(const char *command, const char *digest, crypto_type ctype) {
+
+    os_md5 md5_binary;
+    os_sha1 sha1_binary;
+    os_sha256 sha256_binary;
+    int match = 0;
+    char *binary;
+    char *validated;
+    char **argv;
+
+    if (command == NULL || digest == NULL) {
+        return -2;
+    }
+
+    argv = wm_strtok((char*)command);
+    binary = argv[0];
+
+    if (!wm_get_path(binary, &validated)) {
+        return -1;
+    }
+
+    switch (ctype) {
+
+        case MD5SUM:
+            // Get binary MD5
+            OS_MD5_File(validated, md5_binary, 1);
+            // Compare MD5 sums
+            if (strcmp(md5_binary, digest) == 0) {
+                match = 1;
+            }
+            break;
+
+        case SHA1SUM:
+            // Get binary SHA1
+            OS_SHA1_File(validated, sha1_binary, 1);
+            // Compare SHA1 sums
+            if (strcmp(sha1_binary, digest) == 0) {
+                match = 1;
+            }
+            break;
+
+        case SHA256SUM:
+            // Get binary SHA256
+            OS_SHA256_File(validated, sha256_binary, 1);
+            // Compare SHA256 sums
+            if (strcmp(sha256_binary, digest) == 0) {
+                match = 1;
+            }
+    }
+
+    free(validated);
+    return match;
 }

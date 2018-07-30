@@ -30,6 +30,71 @@ void * wm_command_main(wm_command_t * command) {
     size_t extag_len;
     char * extag;
     int usec = 1000000 / wm_max_eps;
+    int validation;
+
+    // Verify command
+    if (command->md5_hash && command->md5_hash[0]) {
+        validation = wm_validate_command(command->command, command->md5_hash, MD5SUM);
+
+        switch (validation) {
+            case 1:
+                mdebug1("MD5 hash matched: %s\n", command->command);
+                break;
+
+            case 0:
+                merror("MD5 hash does not match: '%s' \n", command->command);
+                if (!command->skip_verification)
+                    pthread_exit(NULL);
+                break;
+
+            case -1:
+                merror("Cannot check binary: '%s' \n", command->command);
+                pthread_exit(NULL);
+                break;
+        }
+    }
+
+    if (command->sha1_hash && command->sha1_hash[0]) {
+        validation = wm_validate_command(command->command, command->sha1_hash, SHA1SUM);
+
+        switch (validation) {
+            case 1:
+                mdebug1("SHA1 hash matched: %s\n", command->command);
+                break;
+
+            case 0:
+                merror("SHA1 hash does not match: '%s' \n", command->command);
+                if (!command->skip_verification)
+                    pthread_exit(NULL);
+                break;
+
+            case -1:
+                merror("Cannot check binary: '%s' \n", command->command);
+                pthread_exit(NULL);
+                break;
+        }
+    }
+
+    if (command->sha256_hash && command->sha256_hash[0]) {
+        validation = wm_validate_command(command->command, command->sha256_hash, SHA256SUM);
+
+        switch (validation) {
+            case 1:
+                mdebug1("SHA256 hash matched: %s\n", command->command);
+                break;
+
+            case 0:
+                merror("SHA256 hash does not match: '%s' \n", command->command);
+                if (!command->skip_verification)
+                    pthread_exit(NULL);
+                break;
+
+            case -1:
+                merror("Cannot check binary: '%s' \n", command->command);
+                pthread_exit(NULL);
+                break;
+        }
+    }
 
     if (!command->enabled) {
         mtwarn(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
