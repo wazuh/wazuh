@@ -70,6 +70,7 @@ All notable changes to this project will be documented in this file.
 ### Removed
 
 - Deleted Lua language support.
+- Deleted integration with Vuls. ([#879](https://github.com/wazuh/wazuh/issues/879))
 
 ## [v3.4.0]
 
