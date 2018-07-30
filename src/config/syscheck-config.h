@@ -161,7 +161,7 @@ typedef struct _config {
     int realtime_count;
     int max_depth;                  /* max level of recursivity allowed */
 
-    int remove_old_diff;            /* delete not monitorized files history */
+    int remove_old_diff;            /* delete not monitored files history */
 
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */

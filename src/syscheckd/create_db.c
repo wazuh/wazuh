@@ -147,11 +147,11 @@ void remove_local_diff(){
         }
     }
 #endif
-    /* Delete local files that aren't monitorized */
+    /* Delete local files that aren't monitored */
     for (i = 0; i <= syscheck.local_hash->rows; i++) {
         curr_node_local = syscheck.local_hash->table[i];
         if (curr_node_local && curr_node_local->key) {
-            mdebug1("Deleting '%s'. Not monitorized anymore.", curr_node_local->key);
+            mdebug1("Deleting '%s'. Not monitored anymore.", curr_node_local->key);
             if (rmdir_ex(curr_node_local->key) != 0) {
                 mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
             }
