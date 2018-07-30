@@ -514,8 +514,7 @@ int wm_get_path(const char *binary, char **validated_comm){
  Check the binary wich executes a commad has the specified hash.
  Returns:
      1 if the binary matchs with the specified digest, 0 if not.
-    -1 if the binary doesn't exist.
-    -2 invalid parameters.
+    -1 invalid parameters.
 */
 int wm_validate_command(const char *command, const char *digest, crypto_type ctype) {
 
@@ -523,18 +522,8 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
     os_sha1 sha1_binary;
     os_sha256 sha256_binary;
     int match = 0;
-    char *binary;
-    char *validated;
-    char **argv;
 
     if (command == NULL || digest == NULL) {
-        return -2;
-    }
-
-    argv = wm_strtok((char*)command);
-    binary = argv[0];
-
-    if (!wm_get_path(binary, &validated)) {
         return -1;
     }
 
@@ -542,7 +531,7 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 
         case MD5SUM:
             // Get binary MD5
-            OS_MD5_File(validated, md5_binary, 1);
+            OS_MD5_File(command, md5_binary, 1);
             // Compare MD5 sums
             if (strcmp(md5_binary, digest) == 0) {
                 match = 1;
@@ -551,7 +540,7 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 
         case SHA1SUM:
             // Get binary SHA1
-            OS_SHA1_File(validated, sha1_binary, 1);
+            OS_SHA1_File(command, sha1_binary, 1);
             // Compare SHA1 sums
             if (strcmp(sha1_binary, digest) == 0) {
                 match = 1;
@@ -560,13 +549,12 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 
         case SHA256SUM:
             // Get binary SHA256
-            OS_SHA256_File(validated, sha256_binary, 1);
+            OS_SHA256_File(command, sha256_binary, 1);
             // Compare SHA256 sums
             if (strcmp(sha256_binary, digest) == 0) {
                 match = 1;
             }
     }
 
-    free(validated);
     return match;
 }
