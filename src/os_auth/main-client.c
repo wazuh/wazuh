@@ -56,6 +56,7 @@ static void help_agent_auth()
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -G <group>  Set the group for centralized configuration");
     print_out("    -I <IP>     Set the agent IP address");
+    print_out("    -i          Let the agent IP address be set by the manager connection");
     print_out(" ");
     exit(1);
 }
