@@ -56,6 +56,13 @@ typedef struct wmodule {
     struct wmodule *next;               // Pointer to next module
 } wmodule;
 
+// Verification type
+typedef enum crypto_type {
+    MD5SUM,
+    SHA1SUM,
+    SHA256SUM
+} crypto_type;
+
 // Inclusion of modules
 
 #include "wm_oscap.h"
@@ -149,5 +156,17 @@ int get_time_to_day(int wday, const char * hour);
 
 // Function to look for the correct day of the month to run a wodle
 int check_day_to_scan(int day, const char *hour);
+
+// Get binary full path
+int wm_get_path(const char *binary, char **validated_comm);
+
+/**
+ Check the binary wich executes a commad has the specified hash.
+ Returns:
+     1 if the binary matchs with the specified digest, 0 if not.
+    -1 if the binary doesn't exist.
+    -2 invalid parameters.
+*/
+int wm_validate_command(const char *command, const char *digest, crypto_type ctype);
 
 #endif // W_MODULES

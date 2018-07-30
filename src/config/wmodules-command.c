@@ -21,7 +21,7 @@ static const char *XML_TIMEOUT = "timeout";
 static const char *XML_VERIFY_MD5 = "verify_md5";
 static const char *XML_VERIFY_SHA1 = "verify_sha1";
 static const char *XML_VERIFY_SHA256 = "verify_sha256";
-static const char *XML_FORCE_RUN = "force_run";
+static const char *XML_SKIP_VERIFICATION = "skip_verification";
 
 // Parse XML
 
@@ -40,9 +40,12 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
     os_calloc(1, sizeof(wm_command_t), command);
     command->enabled = 1;
     command->run_on_start = 1;
-    command->force_run = 0;
+    command->skip_verification = 0;
     command->interval = WM_COMMAND_DEFAULT_INTERVAL;
     command->agent_cfg = agent_cfg;
+    command->md5_hash = NULL;
+    command->sha1_hash = NULL;
+    command->sha256_hash = NULL;
     module->context = &WM_COMMAND_CONTEXT;
     module->data = command;
 
@@ -153,13 +156,13 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 
             free(command->sha256_hash);
             os_strdup(nodes[i]->content, command->sha256_hash);
-        } else if (!strcmp(nodes[i]->element, XML_FORCE_RUN)) {
+        } else if (!strcmp(nodes[i]->element, XML_SKIP_VERIFICATION)) {
             if (!strcmp(nodes[i]->content, "yes"))
-                command->force_run = 1;
+                command->skip_verification = 1;
             else if (!strcmp(nodes[i]->content, "no"))
-                command->force_run = 0;
+                command->skip_verification = 0;
             else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_FORCE_RUN, WM_COMMAND_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_VERIFICATION, WM_COMMAND_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {
