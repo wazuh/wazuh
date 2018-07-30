@@ -809,7 +809,6 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 list_agents ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 ossec-regex ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 syscheck_update ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${PREFIX}/bin/
