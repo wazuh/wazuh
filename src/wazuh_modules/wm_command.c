@@ -31,70 +31,71 @@ void * wm_command_main(wm_command_t * command) {
     char * extag;
     int usec = 1000000 / wm_max_eps;
     int validation;
+    char *full_command;
+    char *binary;
+    char *full_path;
+    char **argv;
 
     // Verify command
+    full_command = strdup(command->command);
+    argv = wm_strtok(full_command);
+    binary = argv[0];
+
+    if (!wm_get_path(binary, &full_path)) {
+        mterror(WM_COMMAND_LOGTAG, "Cannot check binary: '%s'. Cannot stat binary file.", command->command);
+        pthread_exit(NULL);
+    }
+
     if (command->md5_hash && command->md5_hash[0]) {
-        validation = wm_validate_command(command->command, command->md5_hash, MD5SUM);
+        validation = wm_validate_command(full_path, command->md5_hash, MD5SUM);
 
         switch (validation) {
             case 1:
-                mdebug1("MD5 hash matched: %s\n", command->command);
+                mtdebug1(WM_COMMAND_LOGTAG, "MD5 checksum verification succeded for command: '%s'", command->command);
                 break;
 
             case 0:
-                merror("MD5 hash does not match: '%s' \n", command->command);
+                mterror(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command: '%s'", command->command);
                 if (!command->skip_verification)
                     pthread_exit(NULL);
-                break;
-
-            case -1:
-                merror("Cannot check binary: '%s' \n", command->command);
-                pthread_exit(NULL);
                 break;
         }
     }
 
     if (command->sha1_hash && command->sha1_hash[0]) {
-        validation = wm_validate_command(command->command, command->sha1_hash, SHA1SUM);
+        validation = wm_validate_command(full_path, command->sha1_hash, SHA1SUM);
 
         switch (validation) {
             case 1:
-                mdebug1("SHA1 hash matched: %s\n", command->command);
+                mtdebug1(WM_COMMAND_LOGTAG, "SHA1 checksum verification succeded for command: '%s'", command->command);
                 break;
 
             case 0:
-                merror("SHA1 hash does not match: '%s' \n", command->command);
+                mterror(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command: '%s'", command->command);
                 if (!command->skip_verification)
                     pthread_exit(NULL);
-                break;
-
-            case -1:
-                merror("Cannot check binary: '%s' \n", command->command);
-                pthread_exit(NULL);
                 break;
         }
     }
 
     if (command->sha256_hash && command->sha256_hash[0]) {
-        validation = wm_validate_command(command->command, command->sha256_hash, SHA256SUM);
+        validation = wm_validate_command(full_path, command->sha256_hash, SHA256SUM);
 
         switch (validation) {
             case 1:
-                mdebug1("SHA256 hash matched: %s\n", command->command);
+                mtdebug1(WM_COMMAND_LOGTAG, "SHA256 checksum verification succeded for command: '%s'", command->command);
                 break;
 
             case 0:
-                merror("SHA256 hash does not match: '%s' \n", command->command);
+                mterror(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command: '%s'", command->command);
                 if (!command->skip_verification)
                     pthread_exit(NULL);
                 break;
-
-            case -1:
-                merror("Cannot check binary: '%s' \n", command->command);
-                pthread_exit(NULL);
-                break;
         }
     }
+
+    free(full_command);
+    free(full_path);
 
     if (!command->enabled) {
         mtwarn(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
