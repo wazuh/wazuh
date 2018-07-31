@@ -22,6 +22,7 @@ typedef struct wm_command_state_t {
 typedef struct wm_command_t {
     char * tag;
     char * command;
+    char * full_command;
     unsigned long interval;
     char *md5_hash;
     char *sha1_hash;
