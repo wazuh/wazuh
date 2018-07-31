@@ -67,6 +67,8 @@ All notable changes to this project will be documented in this file.
 - Fix long sleep times in vulnerability detector.
 - Fix inconsistency in the alerts format for the manager in vulnerability-detector.
 - Fix bug when processing the packages in vulnerability-detector.
+- Prevent to process Syscollector events by the JSON decoder. ([#674](https://github.com/wazuh/wazuh/pull/674))
+- Stop Syscollector data storage into Wazuh DB when an error appears. ([#674](https://github.com/wazuh/wazuh/pull/674))
 
 ### Removed
 
