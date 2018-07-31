@@ -501,7 +501,7 @@ int wm_get_path(const char *binary, char **validated_comm){
         }
     }
 
-    if (*validated_comm) {
+    if (validated_comm) {
         *validated_comm = strdup(validated);
     }
 
