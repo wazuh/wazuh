@@ -55,14 +55,16 @@ void * wm_command_main(wm_command_t * command) {
 
         switch (validation) {
             case 1:
-                mtdebug1(WM_COMMAND_LOGTAG, "MD5 checksum verification succeded for command: '%s'", command->full_command);
+                mtdebug1(WM_COMMAND_LOGTAG, "MD5 checksum verification succeded for command '%s'.", command->full_command);
                 break;
 
             case 0:
-                mterror(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command: '%s'", command->full_command);
-                if (!command->skip_verification)
+                if (!command->skip_verification) {
+                    mterror(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command '%s'.", command->full_command);
                     pthread_exit(NULL);
-                break;
+                } else {
+                    mtwarn(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command '%s'. Skipping...", command->full_command);
+                }
         }
     }
 
@@ -71,14 +73,16 @@ void * wm_command_main(wm_command_t * command) {
 
         switch (validation) {
             case 1:
-                mtdebug1(WM_COMMAND_LOGTAG, "SHA1 checksum verification succeded for command: '%s'", command->full_command);
+                mtdebug1(WM_COMMAND_LOGTAG, "SHA1 checksum verification succeded for command '%s'.", command->full_command);
                 break;
 
             case 0:
-                mterror(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command: '%s'", command->full_command);
-                if (!command->skip_verification)
+                if (!command->skip_verification) {
+                    mterror(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command '%s'.", command->full_command);
                     pthread_exit(NULL);
-                break;
+                } else {
+                    mtwarn(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command '%s'. Skipping...", command->full_command);
+                }
         }
     }
 
@@ -87,14 +91,16 @@ void * wm_command_main(wm_command_t * command) {
 
         switch (validation) {
             case 1:
-                mtdebug1(WM_COMMAND_LOGTAG, "SHA256 checksum verification succeded for command: '%s'", command->full_command);
+                mtdebug1(WM_COMMAND_LOGTAG, "SHA256 checksum verification succeded for command '%s'.", command->full_command);
                 break;
 
             case 0:
-                mterror(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command: '%s'", command->full_command);
-                if (!command->skip_verification)
+                if (!command->skip_verification) {
+                    mterror(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command '%s'.", command->full_command);
                     pthread_exit(NULL);
-                break;
+                } else {
+                    mtwarn(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command '%s'. Skipping...", command->full_command);
+                }
         }
     }
 
