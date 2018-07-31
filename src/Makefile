@@ -439,6 +439,7 @@ settings:
 	@echo "    DATABASE:         ${DATABASE}"
 	@echo "    ONEWAY:           ${ONEWAY}"
 	@echo "    CLEANFULL:        ${CLEANFULL}"
+	@echo "    RESOURCES_URL:    ${RESOURCES_URL}"
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:      ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:       ${OSSEC_USER}"
