@@ -1031,12 +1031,18 @@ int decode_process(char *agent_id, cJSON * logJSON) {
 
     int i;
     char * msg = NULL;
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
 
     cJSON * inventory;
+    cJSON * scan_id;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+
+    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+        free(msg);
+        return -1;
+    }
 
     if (inventory = cJSON_GetObjectItem(logJSON, "process"), inventory) {
-        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
         if (error_process) {
             if (scan_id->valueint == prev_process_id) {
                 free(msg);
@@ -1315,8 +1321,6 @@ int decode_process(char *agent_id, cJSON * logJSON) {
             free(msg);
             return -1;
         } else if (strcmp(msg_type, "process_end") == 0) {
-
-            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
 
             if (error_process) {
                 if (scan_id->valueint == prev_process_id) {
