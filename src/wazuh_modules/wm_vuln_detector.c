@@ -2074,22 +2074,29 @@ check_timestamp:
                     if (sqlite3_step(stmt) == SQLITE_ROW) {
                         char *close_tag;
                         timst = strstr(timst, ">");
+                        if (!timst) {
+                            update = 0;
+                            sqlite3_finalize(stmt);
+                            sqlite3_close_v2(db);
+                            mterror(WM_VULNDETECTOR_LOGTAG, VU_DB_TIMESTAMP_OVAL_ERROR, OS);
+                            goto free_mem;
+                        }
                         timst++;
                         if (close_tag = strstr(timst, "<"), close_tag) {
                             *close_tag = '\0';
                             snprintf(stored_timestamp, KEY_SIZE, "%s", sqlite3_column_text(stmt, 0));
 
                             for (i = 0; stored_timestamp[i] != '\0'; i++) {
-                                 if (stored_timestamp[i] == '-' ||
-                                     stored_timestamp[i] == ' ' ||
-                                     stored_timestamp[i] == ':' ||
-                                     stored_timestamp[i] == 'T') {
+                                if (stored_timestamp[i] == '-' ||
+                                        stored_timestamp[i] == ' ' ||
+                                        stored_timestamp[i] == ':' ||
+                                        stored_timestamp[i] == 'T') {
                                     continue;
-                                 }
-                                 if (stored_timestamp[i] < timst[i]) {
-                                     update = 0;
-                                     break;
-                                 }
+                                }
+                                if (stored_timestamp[i] < timst[i]) {
+                                    update = 0;
+                                    break;
+                                }
                             }
 
                             *close_tag = '<';

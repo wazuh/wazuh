@@ -349,6 +349,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     os_realloc(upd->allowed_OS_list, (size + 2)*sizeof(char *), upd->allowed_OS_list);
                     if (format_os_version(OS, &upd->allowed_OS_list[size], &upd->allowed_ver_list[size])) {
                         merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
+                        OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }
                     upd->allowed_OS_list[size + 1] = NULL;
