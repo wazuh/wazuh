@@ -1405,7 +1405,7 @@ void sys_proc_windows(const char* LOCATION) {
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
     }else{
-        char *string;
+
         while(fgets(read_buff, OS_MAXSTR, output) && strncmp(read_buff, "Node,ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize", 132) != 0);
 
         while(fgets(read_buff, OS_MAXSTR, output)){
@@ -1437,12 +1437,13 @@ void sys_proc_windows(const char* LOCATION) {
         }
 
         cJSON_ArrayForEach(item, proc_array) {
+            char *string;
             string = cJSON_PrintUnformatted(item);
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
             wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+            free(string);
         }
 
-        free(string);
         cJSON_Delete(proc_array);
 
         if (status = pclose(output), status) {
