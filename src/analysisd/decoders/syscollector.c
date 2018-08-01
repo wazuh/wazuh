@@ -1087,13 +1087,9 @@ int decode_process(char *agent_id, cJSON * logJSON) {
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s process save", agent_id);
 
-        if (scan_id) {
-            char id[OS_MAXSTR];
-            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
-            wm_strcat(&msg, id, ' ');
-        } else {
-            wm_strcat(&msg, "NULL", ' ');
-        }
+        char id[OS_MAXSTR];
+        snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+        wm_strcat(&msg, id, ' ');
 
         if (scan_time) {
             wm_strcat(&msg, scan_time->valuestring, '|');
