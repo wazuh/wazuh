@@ -48,7 +48,7 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
 
 
 def get_results_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={},
-                                nested=True):
+                                nested=True, array=False):
     offset = int(offset)
     limit = int(limit)
 
@@ -58,7 +58,7 @@ def get_results_agent(agent_id, offset=0, limit=common.database_limit, select={}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select,
                           search=search, sort=sort, filters=filters, allowed_sort_fields=valid_select_fields,
-                          valid_select_fields=valid_select_fields, table=table, nested=nested)
+                          valid_select_fields=valid_select_fields, table=table, nested=nested, array=array)
 
 
 def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False):
@@ -70,7 +70,7 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
 
     for agent in agents:
         items = func(agent_id=agent['id'], select=select, filters=filters, limit=limit, offset=offset, search=search,
-                     sort=sort, nested=True)
+                     sort=sort, nested=True, array=array)
         if items == {}:
             continue
 
