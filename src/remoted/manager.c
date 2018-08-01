@@ -220,7 +220,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     char merged[PATH_MAX + 1];
     char file[PATH_MAX + 1];
     unsigned int i;
-    remote_files_group *r_group;
+    remote_files_group *r_group = NULL;
 
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
