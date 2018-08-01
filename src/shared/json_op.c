@@ -43,7 +43,7 @@ cJSON * json_fread(const char * path) {
 
     // Get file and parse into JSON
     size_t read;
-    if (read = fread(buffer, 1, size, fp), read != size) {
+    if (read = fread(buffer, 1, size, fp), read != (size_t)size) {
         mdebug1(FREAD_ERROR, path, errno, strerror(errno));
         goto end;
     }
