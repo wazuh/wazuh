@@ -87,7 +87,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
     int local_addr, rem_addr;
-    in_addr_t local, remote;
+    struct in_addr local, remote;
     char *laddress, *raddress;
     char read_buff[OS_MAXSTR];
     char file[OS_MAXSTR];
@@ -121,11 +121,11 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 &d, &local_addr, &local_port, &rem_addr, &rem_port, &state, &txq, &rxq,
                 &timer_run, &time_len, &retr, &uid, &timeout, &inode);
 
-            local = local_addr;
-            remote = rem_addr;
+            local.s_addr = local_addr;
+            remote.s_addr = rem_addr;
 
-            snprintf(laddress, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &local));
-            snprintf(raddress, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &remote));
+            snprintf(laddress, NI_MAXHOST, "%s", inet_ntoa(local));
+            snprintf(raddress, NI_MAXHOST, "%s", inet_ntoa(remote));
 
             cJSON *object = cJSON_CreateObject();
             cJSON *port = cJSON_CreateObject();
@@ -396,6 +396,7 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): failed to initialize the DB handler: %s", db_strerror(ret));
+        free(timestamp);
         return -1;
     }
 
@@ -406,11 +407,13 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     if ((ret = dbp->open(dbp, NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
+        free(timestamp);
         return -1;
     }
 
     if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Error creating cursor: %s", db_strerror(ret));
+        free(timestamp);
         return -1;
     }
 
@@ -420,11 +423,6 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
     int j = 0;
 
     while((ret = cursor->c_get(cursor, &key, &data, DB_NEXT)) == 0) {
-
-        if (ret == DB_NOTFOUND){
-            mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
-            break;
-        }
 
         // First header is not a package
 
@@ -566,11 +564,12 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
         }
     }
 
-    if (cursor != NULL)
-        cursor->c_close(cursor);
+    if (ret == DB_NOTFOUND){
+        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
+    }
 
-    if (dbp != NULL)
-        dbp->close(dbp, 0);
+    cursor->c_close(cursor);
+    dbp->close(dbp, 0);
 
     object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
@@ -784,6 +783,7 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
     } else {
 
         mterror(WM_SYS_LOGTAG, "Unable to open the file '%s'", file);
+        free(timestamp);
         return -1;
 
     }
@@ -850,6 +850,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
         cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
         cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
+        cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
         free(sys_info->cpu_name);
         free(sys_info);
@@ -917,17 +918,21 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 char* get_broadcast_addr(char* ip, char* netmask){
 
     struct in_addr host, mask, broadcast;
-    char* broadcast_addr = calloc(NI_MAXHOST, sizeof(char));
+    char * broadcast_addr;
+    os_calloc(NI_MAXHOST, sizeof(char), broadcast_addr);
 
     if (inet_pton(AF_INET, ip, &host) == 1 && inet_pton(AF_INET, netmask, &mask) == 1){
         broadcast.s_addr = host.s_addr | ~mask.s_addr;
+
+        if (inet_ntop(AF_INET, &broadcast, broadcast_addr, NI_MAXHOST) != NULL) {
+            return broadcast_addr;
+        } else {
+            free(broadcast_addr);
+        }
     }
 
-    if (inet_ntop(AF_INET, &broadcast, broadcast_addr, NI_MAXHOST) != NULL){
-        return broadcast_addr;
-    }
-
-    return "unknown";
+    os_strdup("unknown", broadcast_addr);
+    return broadcast_addr;
 }
 
 // Get network inventory
@@ -936,7 +941,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
     int i = 0, j = 0, k = 0, found;
-    int family;
+    int family = 0;
     struct ifaddrs *ifaddr, *ifa;
     int ID = os_random();
     char *timestamp;
@@ -1045,134 +1050,139 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                 continue;
             }
 
-            family = ifa->ifa_addr->sa_family;
+            if (ifa->ifa_addr) {
+                family = ifa->ifa_addr->sa_family;
 
-            if (family == AF_INET) {
+                if (family == AF_INET) {
 
-                /* Get IPv4 address */
-                char host[NI_MAXHOST] = "";
-                int result = getnameinfo(ifa->ifa_addr,
-                        sizeof(struct sockaddr_in),
-                        host, NI_MAXHOST,
-                        NULL, 0, NI_NUMERICHOST);
-                if (result == 0) {
-                    cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
-                } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
-                }
-
-                /* Get Netmask for IPv4 address */
-                char netmask[NI_MAXHOST] = "";
-                result = getnameinfo(ifa->ifa_netmask,
-                    sizeof(struct sockaddr_in),
-                    netmask, NI_MAXHOST,
-                    NULL, 0, NI_NUMERICHOST);
-
-                if (result == 0) {
-                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
-                } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
-                }
-
-                /* Get broadcast address (or destination address in a Point to Point connection) */
-                if ((host[0] != '\0') && (netmask[0] != '\0')) {
-                    char * broadaddr;
-                    broadaddr = get_broadcast_addr(host, netmask);
-                    if (strncmp(broadaddr, "unknown", 7)) {
-                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
-                        free(broadaddr);
-                    } else {
-                        mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
-                    }
-                } else if (ifa->ifa_ifu.ifu_broadaddr != NULL){
-                    char broadaddr[NI_MAXHOST];
-                    result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
-                        sizeof(struct sockaddr_in),
-                        broadaddr, NI_MAXHOST,
-                        NULL, 0, NI_NUMERICHOST);
-
+                    /* Get IPv4 address */
+                    char host[NI_MAXHOST] = "";
+                    int result = getnameinfo(ifa->ifa_addr,
+                            sizeof(struct sockaddr_in),
+                            host, NI_MAXHOST,
+                            NULL, 0, NI_NUMERICHOST);
                     if (result == 0) {
-                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                        cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
                     } else {
                         mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                     }
-                }
 
-            } else if (family == AF_INET6) {
+                    /* Get Netmask for IPv4 address */
+                    if (ifa->ifa_netmask != NULL) {
+                        char netmask[NI_MAXHOST] = "";
+                        result = getnameinfo(ifa->ifa_netmask,
+                            sizeof(struct sockaddr_in),
+                            netmask, NI_MAXHOST,
+                            NULL, 0, NI_NUMERICHOST);
 
-                /* Get IPv6 address */
-                char host[NI_MAXHOST];
-                int result = getnameinfo(ifa->ifa_addr,
-                        sizeof(struct sockaddr_in6),
-                        host, NI_MAXHOST,
-                        NULL, 0, NI_NUMERICHOST);
-                if (result == 0) {
-                    char ** parts = NULL;
-                    char *ip_addrr;
-                    parts = OS_StrBreak('%', host, 2);
-                    ip_addrr = w_strtrim(parts[0]);
-                    cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
-                    for (k=0; parts[k]; k++){
-                        free(parts[k]);
+                        if (result == 0) {
+                            cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
+                        } else {
+                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        }
+
+                        /* Get broadcast address (or destination address in a Point to Point connection) */
+                        if ((host[0] != '\0') && (netmask[0] != '\0')) {
+                            char * broadaddr;
+                            broadaddr = get_broadcast_addr(host, netmask);
+                            if (strncmp(broadaddr, "unknown", 7)) {
+                                cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                                free(broadaddr);
+                            } else {
+                                mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
+                            }
+                        } else if (ifa->ifa_ifu.ifu_broadaddr != NULL){
+                            char broadaddr[NI_MAXHOST];
+                            result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
+                                sizeof(struct sockaddr_in),
+                                broadaddr, NI_MAXHOST,
+                                NULL, 0, NI_NUMERICHOST);
+
+                            if (result == 0) {
+                                cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                            } else {
+                                mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                            }
+                        }
                     }
-                    free(parts);
-                } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
-                }
 
-                /* Get Netmask for IPv6 address */
-                char netmask6[NI_MAXHOST];
-                result = getnameinfo(ifa->ifa_netmask,
-                    sizeof(struct sockaddr_in6),
-                    netmask6, NI_MAXHOST,
-                    NULL, 0, NI_NUMERICHOST);
+                } else if (family == AF_INET6) {
 
-                if (result == 0) {
-                    cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
-                } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
-                }
-
-                /* Get broadcast address (or destination address in a Point to Point connection) for IPv6*/
-                if (ifa->ifa_ifu.ifu_broadaddr != NULL){
-                    char broadaddr6[NI_MAXHOST];
-                    result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
-                        sizeof(struct sockaddr_in6),
-                        broadaddr6, NI_MAXHOST,
-                        NULL, 0, NI_NUMERICHOST);
-
+                    /* Get IPv6 address */
+                    char host[NI_MAXHOST];
+                    int result = getnameinfo(ifa->ifa_addr,
+                            sizeof(struct sockaddr_in6),
+                            host, NI_MAXHOST,
+                            NULL, 0, NI_NUMERICHOST);
                     if (result == 0) {
-                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
+                        char ** parts = NULL;
+                        char *ip_addrr;
+                        parts = OS_StrBreak('%', host, 2);
+                        ip_addrr = w_strtrim(parts[0]);
+                        cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
+                        for (k=0; parts[k]; k++){
+                            free(parts[k]);
+                        }
+                        free(parts);
                     } else {
                         mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                     }
+
+                    /* Get Netmask for IPv6 address */
+                    if (ifa->ifa_netmask != NULL) {
+                        char netmask6[NI_MAXHOST];
+                        result = getnameinfo(ifa->ifa_netmask,
+                            sizeof(struct sockaddr_in6),
+                            netmask6, NI_MAXHOST,
+                            NULL, 0, NI_NUMERICHOST);
+
+                        if (result == 0) {
+                            cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
+                        } else {
+                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        }
+                    }
+
+                    /* Get broadcast address (or destination address in a Point to Point connection) for IPv6*/
+                    if (ifa->ifa_ifu.ifu_broadaddr != NULL){
+                        char broadaddr6[NI_MAXHOST];
+                        result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
+                            sizeof(struct sockaddr_in6),
+                            broadaddr6, NI_MAXHOST,
+                            NULL, 0, NI_NUMERICHOST);
+
+                        if (result == 0) {
+                            cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
+                        } else {
+                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        }
+                    }
+
+                } else if (family == AF_PACKET && ifa->ifa_data != NULL){
+
+                    /* Get MAC address and stats */
+                    char MAC[MAC_LENGTH];
+                    struct link_stats *stats = ifa->ifa_data;
+                    struct sockaddr_ll *addr = (struct sockaddr_ll*)ifa->ifa_addr;
+                    snprintf(MAC, MAC_LENGTH, "%02X:%02X:%02X:%02X:%02X:%02X", addr->sll_addr[0], addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3], addr->sll_addr[4], addr->sll_addr[5]);
+                    cJSON_AddStringToObject(interface, "MAC", MAC);
+                    cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
+                    cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
+                    cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
+                    cJSON_AddNumberToObject(interface, "rx_bytes", stats->rx_bytes);
+                    cJSON_AddNumberToObject(interface, "tx_errors", stats->tx_errors);
+                    cJSON_AddNumberToObject(interface, "rx_errors", stats->rx_errors);
+                    cJSON_AddNumberToObject(interface, "tx_dropped", stats->tx_dropped);
+                    cJSON_AddNumberToObject(interface, "rx_dropped", stats->rx_dropped);
+
+                    /* MTU */
+                    char *mtu;
+                    int mtu_value;
+                    mtu = get_mtu(ifaces_list[i]);
+                    mtu_value = atoi(mtu);
+                    cJSON_AddNumberToObject(interface, "MTU", mtu_value);
+                    free(mtu);
                 }
-
-            } else if (family == AF_PACKET && ifa->ifa_data != NULL){
-
-                /* Get MAC address and stats */
-                char MAC[MAC_LENGTH];
-                struct link_stats *stats = ifa->ifa_data;
-                struct sockaddr_ll *addr = (struct sockaddr_ll*)ifa->ifa_addr;
-                snprintf(MAC, MAC_LENGTH, "%02X:%02X:%02X:%02X:%02X:%02X", addr->sll_addr[0], addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3], addr->sll_addr[4], addr->sll_addr[5]);
-                cJSON_AddStringToObject(interface, "MAC", MAC);
-                cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
-                cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
-                cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
-                cJSON_AddNumberToObject(interface, "rx_bytes", stats->rx_bytes);
-                cJSON_AddNumberToObject(interface, "tx_errors", stats->tx_errors);
-                cJSON_AddNumberToObject(interface, "rx_errors", stats->rx_errors);
-                cJSON_AddNumberToObject(interface, "tx_dropped", stats->tx_dropped);
-                cJSON_AddNumberToObject(interface, "rx_dropped", stats->rx_dropped);
-
-                /* MTU */
-                char *mtu;
-                int mtu_value;
-                mtu = get_mtu(ifaces_list[i]);
-                mtu_value = atoi(mtu);
-                cJSON_AddNumberToObject(interface, "MTU", mtu_value);
-                free(mtu);
-
             }
         }
 
@@ -1342,6 +1352,10 @@ hw_info *get_system_linux(){
                 info->ram_free = strtol(aux_string, &end_string, 10);
 
             }
+        }
+
+        if (info->ram_total > 0 && info->ram_free >= 0) {
+            info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
         }
         free(aux_string);
         fclose(fp);
@@ -1671,7 +1685,7 @@ char* get_default_gateway(char *ifa_name){
     char interface[IFNAME_LENGTH] = "";
     char if_name[IFNAME_LENGTH] = "";
     char string[OS_MAXSTR];
-    in_addr_t address = 0;
+    struct in_addr address;
     int destination, gateway;
     char * def_gateway;
     os_calloc(NI_MAXHOST, sizeof(char) + 1, def_gateway);
@@ -1686,7 +1700,7 @@ char* get_default_gateway(char *ifa_name){
 
             if (sscanf(string, "%s %8x %8x", if_name, &destination, &gateway) == 3){
                 if (destination == 00000000 && !strcmp(if_name, interface)){
-                    address = gateway;
+                    address.s_addr = gateway;
                     snprintf(def_gateway, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &address));
                     fclose(fp);
                     return def_gateway;
@@ -1727,6 +1741,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     if (!proc) {
         mterror(WM_SYS_LOGTAG, "Running process inventory: could not create libproc context.");
+        free(timestamp);
         return;
     }
 

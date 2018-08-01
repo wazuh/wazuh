@@ -43,6 +43,8 @@ off_t FileSize(const char * path);
 
 int IsDir(const char *file) __attribute__((nonnull));
 
+int check_path_type(const char *dir) __attribute__((nonnull));
+
 int IsFile(const char *file) __attribute__((nonnull));
 
 int IsSocket(const char * file) __attribute__((nonnull));
@@ -66,8 +68,6 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode) __attribute__((nonnull(1)));
 
 int TestUnmergeFiles(const char *finalpath, int mode) __attribute__((nonnull(1)));
-
-int w_backup_file(File *file, const char *source) __attribute__((nonnull(1, 2)));
 
 /* Daemonize a process */
 void goDaemon(void);

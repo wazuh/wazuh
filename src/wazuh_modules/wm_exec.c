@@ -477,6 +477,8 @@ void wm_kill_children() {
                     break;
 
                 case 0: // Child
+
+                    w_mutex_unlock(&wm_children_mutex);
                     kill(-sid, SIGTERM);
 
                     do {

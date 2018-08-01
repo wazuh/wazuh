@@ -7,18 +7,17 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "shared.h"
+#include "hash_op.h"
+#include "syscheck.h"
 
-#ifdef WIN32
+#ifdef WIN_WHODATA
 
-#define _WIN32_WINNT 0x600  // Windows Vista or later (must be included in the dll)
 #include <winsock2.h>
 #include <windows.h>
 #include <aclapi.h>
 #include <sddl.h>
 #include <winevt.h>
-#include "shared.h"
-#include "hash_op.h"
-#include "syscheck.h"
 
 #define WLIST_ALERT_THRESHOLD 80 // 80%
 #define WLIST_REMOVE_MAX 10 // 10%
@@ -48,6 +47,7 @@ static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 static LPCTSTR priv = "SeSecurityPrivilege";
 static unsigned int criteria = FILE_WRITE_DATA | DELETE;
+static int restore_policies = 0;
 
 // Whodata function headers
 void restore_sacls();
@@ -227,6 +227,9 @@ end:
     if (new_sacl) {
         LocalFree((HLOCAL)new_sacl);
     }
+    if (ace) {
+        LocalFree((HLOCAL)ace);
+    }
     return retval;
 }
 
@@ -299,13 +302,18 @@ int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 
 int run_whodata_scan() {
     wchar_t query[OS_MAXSTR];
+    int result;
 
     // Set the signal handler to restore the policies
     atexit(audit_restore);
     // Set the system audit policies
-    if (set_policies()) {
-        merror("Local audit policies could not be configured.");
-        return 1;
+    if (result = set_policies(), result) {
+        if (result == 2) {
+            mwarn("Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+        } else {
+            mwarn("Local audit policies could not be configured.");
+            return 1;
+        }
     }
     // Select the interesting fields
     if (context = EvtCreateRenderContext(fields_number, event_fields, EvtRenderContextValues), !context) {
@@ -326,7 +334,9 @@ int run_whodata_scan() {
 
 void audit_restore() {
     restore_sacls();
-    restore_audit_policies();
+    if (restore_policies) {
+        restore_audit_policies();
+    }
 }
 
 /* Removes added security audit policies */
@@ -538,7 +548,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 // Check if it is a known file
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     // Check if it is not a directory
-                    if (strchr(path, ':') && IsDir(path)) {
+                    if (strchr(path, ':') && check_path_type(path) == 1) {
                         if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
                             // Discard the file if its monitoring has not been activated
                             mdebug2("'%s' is discarded because its monitoring is not activated.", path);
@@ -565,7 +575,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     }
 
                     // If the file or directory is already in the hash table, it is not necessary to set its position
-                    if (!IsDir(path)) {
+                    if (check_path_type(path) == 2) {
                         is_directory = 1;
                     }
                 }
@@ -753,10 +763,9 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     int exists;
     whodata_dir_status *d_status;
     SYSTEMTIME utc;
-    DIR *dp;
     int interval;
 
-    if (syscheck.wdata.interval_scan == 0) {
+    if (!syscheck.wdata.interval_scan) {
         interval = WDATA_DEFAULT_INTERVAL_SCAN;
     } else {
         interval = syscheck.wdata.interval_scan;
@@ -774,18 +783,21 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                 continue;
             }
 
-            if (dp = opendir(syscheck.dir[i]), dp) { // Directory
-                exists = 1;
-                syscheck.wdata.dirs_status[i].object_type = WD_STATUS_DIR_TYPE;
-            } else if (errno == ENOTDIR) { // File
-                exists = 1;
-                syscheck.wdata.dirs_status[i].object_type = WD_STATUS_FILE_TYPE;
-            } else {
-                // Unknown device type or does not exist
-                exists = 0;
-            }
+            switch (check_path_type(syscheck.dir[i])) {
+                case 0:
+                    // Unknown device type or does not exist
+                    exists = 0;
+                break;
+                case 1:
+                    exists = 1;
+                    syscheck.wdata.dirs_status[i].object_type = WD_STATUS_FILE_TYPE;
+                break;
+                case 2:
+                    exists = 1;
+                    syscheck.wdata.dirs_status[i].object_type = WD_STATUS_DIR_TYPE;
+                break;
 
-            closedir(dp);
+            }
 
             if (exists) {
                 if (!(d_status->status & WD_STATUS_EXISTS)) {
@@ -940,60 +952,66 @@ void send_whodata_del(whodata_evt *w_evt) {
 int set_policies() {
     char *output = NULL;
     int result_code = 0;
-    FILE *f_backup;
-    FILE *f_new;
+    FILE *f_backup = NULL;
+    FILE *f_new = NULL;
     char buffer[OS_MAXSTR];
     char command[OS_SIZE_1024];
-    char *found;
-    char *state;
-    static const char *WPOL_HANDLE_MAN = ",System,Handle Manipulation,";
-    static const char *WPOL_FILE_SYSTEM = ",System,File System,";
-    static const char *WPOL_NO_AUDITING = ",No Auditing,";
-    static const char *WPOL_FAILURE = ",Failure,";
-    static const char *WPOL_SUCCESS = ",Success,,1";
+    int retval = 1;
+    static const char *WPOL_FILE_SYSTEM_SUC = ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n";
+    static const char *WPOL_HANDLE_SUC = ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n";
 
     if (!IsFile(WPOL_BACKUP_FILE) && remove(WPOL_BACKUP_FILE)) {
-        return 1;
+        merror("'%s' could not be removed: %s (%d).", WPOL_BACKUP_FILE, strerror(errno), errno);
+        goto end;
     }
 
     snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
     // Get the current policies
     if (wm_exec(command, &output, &result_code, 5), result_code) {
-        merror("Auditpol backup error: '%s'.", output);
-        return 1;
+        retval = 2;
+        goto end;
     }
 
-    if (!(f_backup = fopen (WPOL_BACKUP_FILE, "r")) ||
-        !(f_new = fopen (WPOL_NEW_FILE, "w"))) {
-        return 1;
+    free(output);
+    output = NULL;
+
+    if (f_backup = fopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
+        merror("'%s' could not be opened: %s (%d).", WPOL_BACKUP_FILE, strerror(errno), errno);
+        goto end;
+    }
+    if (f_new = fopen (WPOL_NEW_FILE, "w"), !f_new) {
+        merror("'%s' could not be removed: %s (%d).", WPOL_NEW_FILE, strerror(errno), errno);
+        goto end;
     }
 
-    // Merge the policies
-    while (fgets(buffer, OS_MAXSTR - 20, f_backup)) {
-        if ((found = strstr(buffer, WPOL_HANDLE_MAN)) ||
-            (found = strstr(buffer, WPOL_FILE_SYSTEM))) {
-            if ((state = strstr(found, WPOL_NO_AUDITING)) ||
-                (state = strstr(found, WPOL_FAILURE))) {
-                snprintf(state, 20, "%s\n", WPOL_SUCCESS);
-            }
-        }
+    // Copy the policies
+    while (fgets(buffer, OS_MAXSTR - 60, f_backup)) {
         fprintf(f_new, buffer);
     }
 
+    // Add the new policies
+    fprintf(f_new, WPOL_FILE_SYSTEM_SUC);
+    fprintf(f_new, WPOL_HANDLE_SUC);
+
     fclose(f_new);
-    fclose(f_backup);
 
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
 
     // Set the new policies
     if (wm_exec(command, &output, &result_code, 5), result_code) {
-        merror("Auditpol restore error: '%s'.", output);
-        return 1;
+        retval = 2;
+        goto end;
     }
 
+    retval = 0;
+    restore_policies = 1;
+end:
     free(output);
-    return 0;
+    if (f_backup) {
+        fclose(f_backup);
+    }
+    return retval;
 }
 
 void set_subscription_query(wchar_t *query) {
@@ -1146,5 +1164,4 @@ void notify_SACL_change(char *dir) {
     snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 }
-
 #endif

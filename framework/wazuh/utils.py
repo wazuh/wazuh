@@ -97,12 +97,13 @@ def cut_array(array, offset, limit):
     :return: cut array.
     """
 
-    if limit > common.maximum_database_limit:
-        raise WazuhException(1405, str(limit))
-    elif limit == 0:
-        raise WazuhException(1406)
+    if limit is not None:
+        if limit > common.maximum_database_limit:
+            raise WazuhException(1405, str(limit))
+        elif limit == 0:
+            raise WazuhException(1406)
 
-    if not array or limit is None:
+    elif not array or limit is None:
         return array
 
     offset = int(offset)
@@ -185,7 +186,7 @@ def get_values(o, fields=None):
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
     else:
-        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else obj)
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else str(obj))
 
     return strings
 
@@ -206,8 +207,6 @@ def search_array(array, text, negation=False, fields=None):
     for item in array:
 
         values = get_values(o=item, fields=fields)
-
-        # print("'{0}' in '{1}'?".format(text, values))
 
         if not negation:
             for v in values:

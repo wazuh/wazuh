@@ -26,6 +26,7 @@
 #define POSTGRESQL_MQ    'b'
 #define AUTH_MQ          'c'
 #define SYSCOLLECTOR_MQ  'd'
+#define CISCAT_MQ        'e'
 
 extern int sock_fail_time;
 

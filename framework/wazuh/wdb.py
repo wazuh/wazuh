@@ -5,23 +5,21 @@
 
 from wazuh import common
 from wazuh.exception import WazuhException
-from os.path import isfile
 from os import strerror
 import socket
-from operator import or_, itemgetter
 import re
 import json
 
-class WazuhDBConnection():
+class WazuhDBConnection:
     """
     Represents a connection to the wdb socket
     """
 
-    def __init__(self, socket_path=common.wdb_socket_path, request_slice=20, max_size=6144):
+    def __init__(self, request_slice=20, max_size=6144):
         """
         Constructor
         """
-        self.socket_path = socket_path
+        self.socket_path = common.wdb_socket_path
         self.request_slice = request_slice
         self.max_size = max_size
         self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -94,6 +92,17 @@ class WazuhDBConnection():
         """
         Sends a sql query to wdb socket
         """
+        def send_request_to_wdb(query_lower, step, off, response):
+            try:
+                request = "{} limit {} offset {}".format(query_lower, step, off)
+                response.extend(self.__send(request))
+            except ValueError:
+                # if the step is already 1, it can't be divided
+                if step == 1:
+                    raise WazuhException(2007)
+                send_request_to_wdb(query_lower, step // 2, off, response)
+                send_request_to_wdb(query_lower, step // 2, step // 2 + off, response)
+
         query_lower = self.__query_lower(query)
 
         self.__query_input_validation(query_lower)
@@ -119,9 +128,13 @@ class WazuhDBConnection():
 
             response = []
             step = limit if limit < self.request_slice and limit > 0  else self.request_slice
-            for off in range(offset, limit+offset, step):
-                request = "{} limit {} offset {}".format(query_lower, step, off)
-                response.extend(self.__send(request))
+            try:
+                for off in range(offset, limit+offset, step):
+                    send_request_to_wdb(query_lower, step, off, response)
+            except ValueError as e:
+                raise WazuhException(2006, str(e))
+            except Exception as e:
+                raise WazuhException(2007, str(e))
 
             if count:
                 return response, total

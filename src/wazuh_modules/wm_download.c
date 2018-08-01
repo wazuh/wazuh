@@ -89,7 +89,9 @@ void * wm_download_main(wm_download_t * data) {
         default:
             buffer[length] = '\0';
             wm_download_dispatch(buffer);
-            send(peer, buffer, strlen(buffer), 0);
+            if( send(peer, buffer, strlen(buffer), 0) < 0) {
+                merror("send(): %s (%d)",strerror(errno), errno);
+            }
         }
 
         close(peer);

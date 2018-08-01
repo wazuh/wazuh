@@ -70,8 +70,6 @@ static void wm_sync_manager();
 // Get agent's architecture
 static char * wm_get_os_arch(char * os_header);
 
-static char * wm_get_os_arch(char * os_header);
-
 #ifndef LOCAL
 
 static void wm_check_agents();
@@ -662,6 +660,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 
     free(os_major);
+    free(os_arch);
     free(os_minor);
     free(os_build);
     fclose(fp);

@@ -12,6 +12,9 @@
 
 #include "eventinfo.h"
 
+/* Decoder for Cis-cat events */
+int DecodeCiscat(Eventinfo *lf);
+
 /* Plugin decoder for OpenBSD PF */
 void *PF_Decoder_Init(void);
 void *PF_Decoder_Exec(Eventinfo *lf);

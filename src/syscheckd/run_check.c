@@ -331,15 +331,16 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     os_md5 mf_sum;
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
+    syscheck_node *s_node;
 #ifdef WIN32
     char *sid;
     const char *user;
 #endif
 
     /* Clean sums */
-    strncpy(mf_sum, "xxx", 4);
-    strncpy(sf_sum, "xxx", 4);
-    strncpy(sf256_sum, "xxx", 4);
+    strncpy(mf_sum,  "", 1);
+    strncpy(sf_sum,  "", 1);
+    strncpy(sf256_sum, "", 1);
 
     /* Stat the file */
 #ifdef WIN32
@@ -359,8 +360,17 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             *wd_sum = '\0';
         }
 
+        //Alert for deleted file
         snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s", wd_sum, file_name);
         send_syscheck_msg(alert_msg);
+
+        // Delete from hash table
+        if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
+            free(s_node->checksum);
+            free(s_node);
+        }
+        struct timeval timeout = {0, syscheck.rt_delay * 1000};
+        select(0, NULL, NULL, NULL, &timeout);
 
         return (-1);
     }
@@ -419,7 +429,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 
     /* Generate new checksum */
     newsum[0] = '\0';
-    newsum[511] = '\0';
+    newsum[OS_MAXSTR] = '\0';
     if (S_ISREG(statbuf.st_mode))
     {
         if (sha1sum || md5sum || sha256sum) {
@@ -448,32 +458,32 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             }
         }
     }
-    snprintf(newsum, 511, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+    snprintf(newsum, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
         size == 0 ? 0 : (long)statbuf.st_size,
         perm == 0 ? 0 : (int)statbuf.st_mode,
         owner == 0 ? 0 : (int)statbuf.st_uid,
         group == 0 ? 0 : (int)statbuf.st_gid,
-        md5sum   == 0 ? "xxx" : mf_sum,
-        sha1sum  == 0 ? "xxx" : sf_sum,
+        md5sum   == 0 ? "" : mf_sum,
+        sha1sum  == 0 ? "" : sf_sum,
         owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
         group == 0 ? "" : get_group(statbuf.st_gid),
         mtime ? (long)statbuf.st_mtime : 0,
         inode ? (long)statbuf.st_ino : 0,
-        sha256sum  == 0 ? "xxx" : sf256_sum);
+        sha256sum  == 0 ? "" : sf256_sum);
 #else
     user = get_user(file_name, statbuf.st_uid, &sid);
 
-    snprintf(newsum, 511, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
+    snprintf(newsum, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
         size == 0 ? 0 : (long)statbuf.st_size,
         perm == 0 ? 0 : (int)statbuf.st_mode,
         (owner == 0) && sid ? "" : sid,
-        md5sum   == 0 ? "xxx" : mf_sum,
-        sha1sum  == 0 ? "xxx" : sf_sum,
+        md5sum   == 0 ? "" : mf_sum,
+        sha1sum  == 0 ? "" : sf_sum,
         owner == 0 ? "" : user,
         group == 0 ? "" : get_group(statbuf.st_gid),
         mtime ? (long)statbuf.st_mtime : 0,
         inode ? (long)statbuf.st_ino : 0,
-        sha256sum  == 0 ? "xxx" : sf256_sum);
+        sha256sum  == 0 ? "" : sf256_sum);
 
         if (sid) {
             LocalFree(sid);

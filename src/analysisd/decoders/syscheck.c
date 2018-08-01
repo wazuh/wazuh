@@ -312,6 +312,9 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
             saved_name[sn_size] = '\0';
         }
 
+        //Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
+        normalize_path(saved_name);
+
         /* If name is different, go to next one */
         if (strcmp(f_name, saved_name) != 0) {
             /* Save current location */
@@ -470,7 +473,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                     }
                 }
                 /* MD5 message */
-                if (strcmp(newsum.md5, oldsum.md5) == 0) {
+                if (!*newsum.md5 || !*oldsum.md5 || strcmp(newsum.md5, oldsum.md5) == 0) {
                     sdb.md5[0] = '\0';
                 } else {
                     changes = 1;
@@ -481,7 +484,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 }
 
                 /* SHA-1 message */
-                if (strcmp(newsum.sha1, oldsum.sha1) == 0) {
+                if (!*newsum.sha1 || !*oldsum.sha1 || strcmp(newsum.sha1, oldsum.sha1) == 0) {
                     sdb.sha1[0] = '\0';
                 } else {
                     changes = 1;
@@ -492,7 +495,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 }
 
                 /* SHA-256 message */
-                if(newsum.sha256)
+                if(newsum.sha256 && *newsum.sha256)
                 {
                     if(oldsum.sha256) {
                         if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
@@ -541,7 +544,6 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 /* Provide information about the file */
                 comment_buf = snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
                         "'%.756s'\n"
-                        "Attributes changed: %s\n"
                         "%s"
                         "%s"
                         "%s"
@@ -556,7 +558,6 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                         "%s"
                         "%s",
                         f_name,
-                        lf->fields[SK_CHFIELDS].value,
                         sdb.size,
                         sdb.perm,
                         sdb.owner,
@@ -742,6 +743,9 @@ int DecodeSyscheck(Eventinfo *lf)
     /* Zero to get the check sum */
     *f_name = '\0';
     f_name++;
+
+    //Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
+    normalize_path(f_name);
 
     /* Get diff */
     lf->data = strchr(f_name, '\n');

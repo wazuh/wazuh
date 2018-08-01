@@ -230,21 +230,22 @@ int wpk_verify_cert(X509 * cert, const char ** ca_store) {
 
     OpenSSL_add_all_algorithms();
 
-    if (store = X509_STORE_new(), !store) {
-        merror("Couldn't create new store.");
-        return -1;
-    }
-
     store_ctx = X509_STORE_CTX_new();
 
     for (i = 0; ca_store[i]; i++) {
-        int r;
 
         // If empty string, ignore
 
         if (ca_store[i][0] == '\0') {
             continue;
         }
+
+        if (store = X509_STORE_new(), !store) {
+            merror("Couldn't create new store.");
+            return -1;
+        }
+
+        int r;
 
         if (stat(ca_store[i], &statbuf) < 0) {
             merror(FSTAT_ERROR, ca_store[i], errno, strerror(errno));
@@ -267,41 +268,43 @@ int wpk_verify_cert(X509 * cert, const char ** ca_store) {
 
         if (r < 0) {
             merror("Couldn't add CA '%s'", ca_store[i]);
-            goto cleanup;
-        }
-    }
-
-    X509_STORE_CTX_init(store_ctx, store, cert, NULL);
-
-    switch (X509_verify_cert(store_ctx)) {
-    case -1:
-        ERR_load_crypto_strings();
-
-        while (err = ERR_get_error(), err) {
-            merror("At wpk_verify_cert(): %s (%lu)", ERR_reason_error_string(err), err);
+            X509_STORE_free(store);
+            continue;
         }
 
-        goto cleanup;
+        X509_STORE_CTX_init(store_ctx, store, cert, NULL);
 
-    case 0:
-        ERR_load_crypto_strings();
+        r = X509_verify_cert(store_ctx);
 
-        err = X509_STORE_CTX_get_error(store_ctx);
-        merror("Certificate couldn't be verified by CA: %s (%lu)", X509_verify_cert_error_string(err), err);
-        break;
+        if (r == -1) {
+            ERR_load_crypto_strings();
 
-    case 1:
-        result = 0;
-        break;
+            while (err = ERR_get_error(), err) {
+                mdebug1("At wpk_verify_cert(): %s (%lu)", ERR_reason_error_string(err), err);
+            }
 
-    default:
-        merror("At wpk_verify_cert(): unexpected result.");
+        } else if (r == 0) {
+            ERR_load_crypto_strings();
+
+            err = X509_STORE_CTX_get_error(store_ctx);
+            mdebug1("Certificate couldn't be verified by CA '%s': %s (%lu)", ca_store[i], X509_verify_cert_error_string(err), err);
+
+        } else if (r == 1) {
+
+            result = 0;
+
+        } else {
+            mdebug1("At wpk_verify_cert(): unexpected result.");
+        }
+
+        X509_STORE_CTX_cleanup(store_ctx);
+        X509_STORE_free(store);
+
+        if (result == 0)
+            break;
     }
-
-cleanup:
 
     X509_STORE_CTX_free(store_ctx);
-    X509_STORE_free(store);
 
     return result;
 }

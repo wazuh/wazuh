@@ -17,6 +17,12 @@
 <group name="ciscat,">
 
   <rule id="87401" level="0">
+    <category>ossec</category>
+    <decoded_as>ciscat</decoded_as>
+    <description>Event decoded by CIS-CAT decoder</description>
+  </rule>
+
+  <rule id="87402" level="0">
     <decoded_as>json</decoded_as>
     <field name="type">\.+</field>
     <field name="scan_id">\.+</field>
@@ -24,7 +30,7 @@
     <description>CIS-CAT events.</description>
   </rule>
 
-  <rule id="87402" level="0">
+  <rule id="87403" level="0">
     <decoded_as>json</decoded_as>
     <field name="type">\.+</field>
     <field name="scan_id">\.+</field>
@@ -32,115 +38,115 @@
     <description>Old CIS-CAT events.</description>
   </rule>
 
-  <rule id="87403" level="3">
-      <if_sid>87401</if_sid>
+  <rule id="87404" level="3">
+      <if_sid>87401, 87402</if_sid>
       <field name="type">^scan_info$</field>
       <description>CIS-CAT: assessment information for scan $(scan_id)</description>
       <group></group>
   </rule>
 
   <!-- Rule to support CIS-CAT rules of Wazuh 3.1 -->
-  <rule id="87404" level="3">
-      <if_sid>87402</if_sid>
+  <rule id="87405" level="3">
+      <if_sid>87403</if_sid>
       <field name="type">^scan_info$</field>
       <description>CIS-CAT: assessment information for scan $(scan_id)</description>
       <group></group>
   </rule>
 
-  <rule id="87405" level="0">
-      <if_sid>87401</if_sid>
+  <rule id="87406" level="0">
+      <if_sid>87401, 87402</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis.result">^pass$</field>
       <description>CIS-CAT: $(cis.rule_title) (passed)</description>
   </rule>
 
-  <rule id="87406" level="0">
-      <if_sid>87402</if_sid>
+  <rule id="87407" level="0">
+      <if_sid>87403</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis-data.result">^pass$</field>
       <description>CIS-CAT: $(cis-data.rule_title) (passed)</description>
   </rule>
 
-  <rule id="87407" level="0">
-      <if_sid>87401</if_sid>
+  <rule id="87408" level="0">
+      <if_sid>87401, 87402</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis.result">^notchecked$</field>
       <description>CIS-CAT: $(cis.rule_title) (not checked)</description>
   </rule>
 
-  <rule id="87408" level="0">
-      <if_sid>87402</if_sid>
+  <rule id="87409" level="0">
+      <if_sid>87403</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis-data.result">^notchecked$</field>
       <description>CIS-CAT: $(cis-data.rule_title) (not checked)</description>
   </rule>
 
-  <rule id="87409" level="0">
-      <if_sid>87401</if_sid>
+  <rule id="87410" level="0">
+      <if_sid>87401, 87402</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis.result">^notselected$</field>
       <description>CIS-CAT: $(cis.rule_title) (not selected)</description>
   </rule>
 
-  <rule id="87410" level="0">
-      <if_sid>87402</if_sid>
+  <rule id="87411" level="0">
+      <if_sid>87403</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis-data.result">^notselected$</field>
       <description>CIS-CAT: $(cis-data.rule_title) (not selected)</description>
   </rule>
 
-  <rule id="87411" level="3">
-      <if_sid>87401</if_sid>
+  <rule id="87412" level="3">
+      <if_sid>87401, 87402</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis.result">^error$</field>
       <description>CIS-CAT: $(cis.rule_title) (error)</description>
   </rule>
 
-  <rule id="87412" level="3">
-      <if_sid>87402</if_sid>
+  <rule id="87413" level="3">
+      <if_sid>87403</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis-data.result">^error$</field>
       <description>CIS-CAT: $(cis-data.rule_title) (error)</description>
   </rule>
 
-  <rule id="87413" level="3">
-      <if_sid>87401</if_sid>
+  <rule id="87414" level="3">
+      <if_sid>87401, 87402</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis.result">^unknown$</field>
       <description>CIS-CAT: $(cis.rule_title) (unknown)</description>
   </rule>
 
-  <rule id="87414" level="3">
-      <if_sid>87402</if_sid>
+  <rule id="87415" level="3">
+      <if_sid>87403</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis-data.result">^unknown$</field>
       <description>CIS-CAT: $(cis-data.rule_title) (unknown)</description>
   </rule>
 
-  <rule id="87415" level="1">
-      <if_sid>87401</if_sid>
+  <rule id="87416" level="1">
+      <if_sid>87401, 87402</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis.result">^informational$</field>
       <description>CIS-CAT: $(cis.rule_title) (informational)</description>
   </rule>
 
-  <rule id="87416" level="1">
-      <if_sid>87402</if_sid>
+  <rule id="87417" level="1">
+      <if_sid>87403</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis-data.result">^informational$</field>
       <description>CIS-CAT: $(cis-data.rule_title) (informational)</description>
   </rule>
 
-  <rule id="87417" level="7">
-      <if_sid>87401</if_sid>
+  <rule id="87418" level="7">
+      <if_sid>87401, 87402</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis.result">^fail$</field>
       <description>CIS-CAT: $(cis.rule_title) (failed)</description>
       <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="87418" level="7">
-      <if_sid>87402</if_sid>
+  <rule id="87419" level="7">
+      <if_sid>87403</if_sid>
       <field name="type">^scan_result$</field>
       <field name="cis-data.result">^fail$</field>
       <description>CIS-CAT: $(cis-data.rule_title) (failed)</description>
@@ -151,53 +157,53 @@
 {"type":"scan_info","scan_id":75459013,"cis":{"benchmark":"CIS Ubuntu Linux 16.04 LTS Benchmark","hostname":"ubuntu","timestamp":"2017-12-21T03:16:54.431-08:00","score":76}}
 -->
 
-  <rule id="87419" level="4">
-    <if_sid>87401</if_sid>
+  <rule id="87420" level="4">
+    <if_sid>87401, 87402</if_sid>
     <field name="cis.score">^8\d</field>
     <description>CIS-CAT Report overview: Score less than 90% ($(cis.score))</description>
   </rule>
 
-  <rule id="87420" level="4">
-    <if_sid>87402</if_sid>
+  <rule id="87421" level="4">
+    <if_sid>87403</if_sid>
     <field name="cis-data.score">^8\d</field>
     <description>CIS-CAT Report overview: Score less than 90% ($(cis-data.score) %)</description>
   </rule>
 
-  <rule id="87421" level="5">
-    <if_sid>87401</if_sid>
+  <rule id="87422" level="5">
+    <if_sid>87401, 87402</if_sid>
     <field name="cis.score">^7\d|^6\d|^5\d</field>
     <description>CIS-CAT Report overview: Score less than 80% ($(cis.score))</description>
   </rule>
 
-  <rule id="87422" level="5">
-    <if_sid>87402</if_sid>
+  <rule id="87423" level="5">
+    <if_sid>87403</if_sid>
     <field name="cis-data.score">^7\d|^6\d|^5\d</field>
     <description>CIS-CAT Report overview: Score less than 80% ($(cis-data.score) %)</description>
   </rule>
 
-  <rule id="87423" level="7">
-    <if_sid>87401</if_sid>
+  <rule id="87424" level="7">
+    <if_sid>87401, 87402</if_sid>
     <field name="cis.score">^4\d|^3\d</field>
     <description>CIS-CAT Report overview: Score less than 50% ($(cis.score))</description>
     <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="87424" level="7">
-    <if_sid>87402</if_sid>
+  <rule id="87425" level="7">
+    <if_sid>87403</if_sid>
     <field name="cis-data.score">^4\d|^3\d</field>
     <description>CIS-CAT Report overview: Score less than 50% ($(cis-data.score) %)</description>
     <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="87425" level="9">
-    <if_sid>87401</if_sid>
+  <rule id="87426" level="9">
+    <if_sid>87401, 87402</if_sid>
     <field name="cis.score">^2\d|^1\d|^\d$</field>
     <description>CIS-CAT Report overview: Score less than 30% ($(cis.score))</description>
     <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="87426" level="9">
-    <if_sid>87402</if_sid>
+  <rule id="87427" level="9">
+    <if_sid>87403</if_sid>
     <field name="cis-data.score">^2\d|^1\d|^\d$</field>
     <description>CIS-CAT Report overview: Score less than 30% ($(cis-data.score) %)</description>
     <group>gdpr_IV_35.7.d,</group>

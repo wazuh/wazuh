@@ -34,6 +34,9 @@
 #define WM_POOL_SIZE    8                           // Child process pool size.
 #define WM_HEADER_SIZE  OS_SIZE_2048
 
+#define DAY_SEC    86400
+#define WEEK_SEC   604800
+
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
 // Module context: this should be defined for every module
@@ -137,5 +140,14 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 // Check if a path is relative or absolute.
 // Returns 0 if absolute, 1 if relative or -1 on error.
 int wm_relative_path(const char * path);
+
+// Get time in seconds to the specified hour in hh:mm
+int get_time_to_hour(const char * hour);
+
+// Get time to reach a particular day of the week and hour
+int get_time_to_day(int wday, const char * hour);
+
+// Function to look for the correct day of the month to run a wodle
+int check_day_to_scan(int day, const char *hour);
 
 #endif // W_MODULES

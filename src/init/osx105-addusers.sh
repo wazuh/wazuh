@@ -107,3 +107,7 @@ for U in ${NEWUSERS}; do
 
     i=$[i+1]
 done
+
+sudo ${DSCL} . create /Users/ossec IsHidden 1
+sudo ${DSCL} . create /Users/ossecm IsHidden 1
+sudo ${DSCL} . create /Users/ossecr IsHidden 1

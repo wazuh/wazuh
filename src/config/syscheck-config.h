@@ -10,6 +10,10 @@
 #ifndef __SYSCHECKC_H
 #define __SYSCHECKC_H
 
+#if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
+#define WIN_WHODATA 1
+#endif
+
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
@@ -37,6 +41,9 @@
 #define WD_STATUS_FILE_TYPE 1
 #define WD_STATUS_DIR_TYPE  2
 #define WD_STATUS_UNK_TYPE  3
+#define WD_SETUP_AUTO       0
+#define WD_SETUP_SUCC       1
+#define WD_SETUP_SUCC_FAIL  2
 #define WD_STATUS_EXISTS    0x0000001
 #define WD_CHECK_WHODATA    0x0000002
 #define WD_CHECK_REALTIME   0x0000004
@@ -120,8 +127,13 @@ typedef struct whodata {
     OSHash *ignored_paths;              // Files or directories marked as ignored
     OSHash *directories;                // Directories checked by whodata mode
     int interval_scan;                  // Time interval between scans of the checking thread
+    int whodata_setup;
     whodata_dir_status *dirs_status;    // Status list
 } whodata;
+
+#endif /* End WIN32*/
+
+#ifdef WIN32
 
 typedef struct registry {
     char *entry;
@@ -147,8 +159,9 @@ typedef struct _config {
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;
     int realtime_count;
+    int max_depth;                  /* max level of recursivity allowed */
 
-    int remove_old_diff;            /* delete not monitorized files history */
+    int remove_old_diff;            /* delete not monitored files history */
 
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */

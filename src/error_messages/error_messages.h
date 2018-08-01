@@ -231,7 +231,7 @@
 
 /* Agent errors */
 #define AG_WAIT_SERVER  "(4101): Waiting for server reply (not started). Tried: '%s'."
-#define AG_CONNECTED    "(4102): Connected to the server (%s:%d)."
+#define AG_CONNECTED    "(4102): Connected to the server (%s:%d/%s)."
 #define AG_USINGIP      "(4103): Server IP address already set. Trying that before the hostname."
 #define AG_INV_HOST     "(4104): Invalid hostname: '%s'."
 #define AG_INV_IP       "(4105): No valid server IP found."

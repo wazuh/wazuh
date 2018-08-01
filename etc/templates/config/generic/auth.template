@@ -5,10 +5,10 @@
   <auth>
     <disabled>no</disabled>
     <port>1515</port>
-    <use_source_ip>no</use_source_ip>
-    <force_insert>no</force_insert>
+    <use_source_ip>yes</use_source_ip>
+    <force_insert>yes</force_insert>
     <force_time>0</force_time>
-    <purge>no</purge>
+    <purge>yes</purge>
     <use_password>no</use_password>
     <limit_maxagents>yes</limit_maxagents>
     <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>

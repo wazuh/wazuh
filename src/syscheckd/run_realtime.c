@@ -18,9 +18,7 @@
 #include "shared.h"
 #include "syscheck.h"
 
-#ifndef WIN32
 volatile int audit_thread_active;
-#endif
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
@@ -34,6 +32,8 @@ volatile int audit_thread_active;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
+pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Prototypes */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
@@ -46,35 +46,15 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name);
 
     if (s_node != NULL) {
-        char c_sum[512];
+        char c_sum[OS_MAXSTR + 1];
         size_t c_sum_size;
 
         buf = s_node->checksum;
         c_sum[0] = '\0';
-        c_sum[511] = '\0';
+        c_sum[OS_MAXSTR] = '\0';
 
         /* If it returns < 0, we have already alerted */
         if (c_read_file(file_name, buf, c_sum, evt) < 0) {
-            char alert_msg[OS_MAXSTR + 1];
-            char wd_sum[OS_SIZE_6144 + 1];
-
-            // Extract the whodata sum here to not include it in the hash table
-            if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
-                *wd_sum = '\0';
-            }
-
-            snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s", wd_sum, file_name);
-
-            // Update database
-            snprintf(c_sum, sizeof(c_sum), "%.*s -1", SK_DB_NATTR, buf);
-            free(buf);
-
-            s_node->checksum = strdup(c_sum);
-
-            send_syscheck_msg(alert_msg);
-            struct timeval timeout = {0, syscheck.rt_delay * 1000};
-            select(0, NULL, NULL, NULL, &timeout);
             return (0);
         }
 
@@ -103,10 +83,10 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, 912, "%s!%s %s", c_sum, wd_sum, file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
                 }
             } else {
-                snprintf(alert_msg, 912, "%s!%s %s", c_sum, wd_sum, file_name);
+                snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
             }
             send_syscheck_msg(alert_msg);
             struct timeval timeout = {0, syscheck.rt_delay * 1000};
@@ -123,24 +103,23 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     } else {
         /* New file */
         int pos;
-#ifdef WIN32
-        if (!evt) {
-#endif
-            if (pos = find_dir_pos(file_name, 1, 0, 0), pos > -1) {
-                mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, pos, evt, 1);
-            }
-#ifdef WIN32
+#ifdef WIN_WHODATA
+        if (evt) {
+            pos = evt->dir_position;
         } else {
-            if (pos = evt->dir_position, pos >= 0) {
-                mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-                read_dir(file_name, pos, evt, 1);
-            } else {
-                mdebug1("'%s' has been deleted while another file was writing to it.", file_name);
-            }
+#endif
+        pos = find_dir_pos(file_name, 1, 0, 0);
+#ifdef WIN_WHODATA
         }
 #endif
+        if (pos >= 0) {
+            mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
+            int diff = fim_find_child_depth(syscheck.dir[pos], file_name);
+            read_dir(file_name, pos, evt, syscheck.max_depth - diff);
+        }
+
     }
+
 
     return (0);
 }
@@ -223,12 +202,8 @@ int realtime_start()
 /* Add a directory to real time checking */
 int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
-    if (!syscheck.realtime) {
-        realtime_start();
-    }
-
     if (whodata && audit_thread_active) {
-        mdebug2("Monitoring with Audit: '%s'.", dir);
+        mdebug1("Monitoring with Audit: '%s'.", dir);
 
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
@@ -236,6 +211,10 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         w_mutex_unlock(&audit_mutex);
 
     } else {
+
+        if (!syscheck.realtime) {
+            realtime_start();
+        }
 
         /* Check if it is ready to use */
         if (syscheck.realtime->fd < 0) {
@@ -265,7 +244,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                 snprintf(wdchar, 32, "%d", wd);
 
                 /* Entry not present */
-                if (!OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
+                if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                     char *ndir;
 
                     ndir = strdup(dir);
@@ -432,9 +411,11 @@ int realtime_adddir(const char *dir, int whodata)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
-    DIR *dp;
 
     if (whodata) {
+#ifdef WIN_WHODATA
+        int type;
+
         if (!syscheck.wdata.fd && whodata_audit_start()) {
             return 0;
         }
@@ -445,33 +426,33 @@ int realtime_adddir(const char *dir, int whodata)
         syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_CHECK_REALTIME;
 
         // Check if the file or directory exists
-        if (dp = opendir(dir), dp) {
+        if (type = check_path_type(dir), type == 2) {
             syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_DIR_TYPE;
             syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
-        } else if (errno == ENOTDIR) {
+        } else if (type == 1) {
             syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
             syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
         } else {
             mwarn("'%s' does not exist. Monitoring discarded.", dir);
             syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
             syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
-            closedir(dp);
             return 0;
         }
 
-        closedir(dp);
         GetSystemTime(&syscheck.wdata.dirs_status[whodata - 1].last_check);
         if (set_winsacl(dir, whodata - 1)) {
             merror("Unable to add directory to whodata monitoring: '%s'.", dir);
             return 0;
         }
         return 1;
+#endif
     }
-
 
     if (!syscheck.realtime) {
         realtime_start();
     }
+
+    w_mutex_lock(&adddir_mutex);
 
     /* Maximum limit for realtime on Windows */
     if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
@@ -482,8 +463,9 @@ int realtime_adddir(const char *dir, int whodata)
     /* Set key for hash */
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
-    if(OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
+    if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
         mdebug2("Entry '%s' already exists in the RT hash.", wdchar);
+        w_mutex_unlock(&adddir_mutex);
     }
     else {
         os_calloc(1, sizeof(win32rtfim), rtlocald);
@@ -504,6 +486,7 @@ int realtime_adddir(const char *dir, int whodata)
             return (0);
         }
         syscheck.realtime->fd++;
+        w_mutex_unlock(&adddir_mutex);
 
         /* Add final elements to the hash */
         os_strdup(dir, rtlocald->dir);
@@ -530,7 +513,7 @@ int realtime_start()
     return (0);
 }
 
-int realtime_adddir(__attribute__((unused)) const char *dir, int whodata)
+int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unused))int whodata)
 {
     return (0);
 }

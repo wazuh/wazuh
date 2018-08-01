@@ -220,6 +220,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     char merged[PATH_MAX + 1];
     char file[PATH_MAX + 1];
     unsigned int i;
+    remote_files_group *r_group = NULL;
 
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
@@ -232,8 +233,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
 
-    remote_files_group *r_group = w_parser_get_group(group);
-    if(r_group){
+    if (!logr.nocmerged && (r_group = w_parser_get_group(group), r_group)) {
         if(r_group->current_polling_time <= 0){
             r_group->current_polling_time = r_group->poll;
 
@@ -595,6 +595,14 @@ static void read_controlmsg(const char *agent_id, char *msg)
         group[0] = '\0';
     }
 
+    // If no group defined or it's "default", look at the download list file
+    if (!(group[0] && strcmp(group, "default"))) {
+        if (agt_group = w_parser_get_agent(agent_id), agt_group) {
+            strncpy(group, agt_group->group, KEYSIZE);
+            group[KEYSIZE - 1] = '\0';
+        }
+    }
+
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
 
@@ -659,16 +667,6 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             set_agent_group(agent_id, group);
-        }
-
-        // Check if the group is set in the yaml file
-        // Check if the group we want to set is "default", apply yaml configuration
-        if (!strcmp(group, "default")) {
-            if (agt_group = w_parser_get_agent(agent_id), agt_group) {
-                if(set_agent_group(agent_id, agt_group->group) == -1){
-                    merror("Could not set group '%s' specified in the yaml file for agent '%s'",agt_group->group,agent_id);
-                }
-            }
         }
 
         /* New agents only have merged.mg */
@@ -797,6 +795,7 @@ void *update_shared_files(__attribute__((unused)) void *none) {
             // Check if the yaml file has changed and reload it
             if(w_yaml_file_has_changed()){
                 w_yaml_file_update_structs();
+                w_yaml_create_groups();
             }
 
             c_files();
@@ -815,6 +814,7 @@ void manager_init()
     _stime = time(0);
     mdebug1("Running manager_init");
     c_files();
+    w_yaml_create_groups();
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
 }
