@@ -2146,7 +2146,6 @@ free_mem:
         SSL_CTX_free(ctx);
     }
     if (success) {
-        close(sock);
         return 0;
     } else {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_FETCH_ERROR, OS);

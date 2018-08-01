@@ -918,24 +918,21 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 char* get_broadcast_addr(char* ip, char* netmask){
 
     struct in_addr host, mask, broadcast;
-    char * broadcast_addr = calloc(NI_MAXHOST, sizeof(char));
-    char * _broadcast = broadcast_addr;
+    char * broadcast_addr;
+    os_calloc(NI_MAXHOST, sizeof(char), broadcast_addr);
 
     if (inet_pton(AF_INET, ip, &host) == 1 && inet_pton(AF_INET, netmask, &mask) == 1){
         broadcast.s_addr = host.s_addr | ~mask.s_addr;
 
-        if (inet_ntop(AF_INET, &broadcast, _broadcast, NI_MAXHOST) != NULL){
-            if (!_broadcast) {
-                free(broadcast_addr);
-            } else {
-                return broadcast_addr;
-            }
+        if (inet_ntop(AF_INET, &broadcast, broadcast_addr, NI_MAXHOST) != NULL) {
+            return broadcast_addr;
         } else {
             free(broadcast_addr);
         }
     }
 
-    return "unknown";
+    os_strdup("unknown", broadcast_addr);
+    return broadcast_addr;
 }
 
 // Get network inventory
