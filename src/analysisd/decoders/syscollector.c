@@ -598,12 +598,17 @@ int decode_osinfo(char *agent_id, cJSON * logJSON) {
 int decode_port(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
+    cJSON * scan_id;
+
+    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+        return -1;
+    }
+
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
     cJSON * inventory;
 
     if (inventory = cJSON_GetObjectItem(logJSON, "port"), inventory) {
-        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
         if (error_port) {
             if (scan_id->valueint == prev_port_id) {
                 free(msg);
@@ -627,13 +632,9 @@ int decode_port(char *agent_id, cJSON * logJSON) {
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s port save", agent_id);
 
-        if (scan_id) {
-            char id[OS_MAXSTR];
-            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
-            wm_strcat(&msg, id, ' ');
-        } else {
-            wm_strcat(&msg, "NULL", ' ');
-        }
+        char id[OS_MAXSTR];
+        snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+        wm_strcat(&msg, id, ' ');
 
         if (scan_time) {
             wm_strcat(&msg, scan_time->valuestring, '|');
@@ -736,9 +737,6 @@ int decode_port(char *agent_id, cJSON * logJSON) {
             free(msg);
             return -1;
         } else if (strcmp(msg_type, "port_end") == 0) {
-
-            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
-
             if (error_port) {
                 if (scan_id->valueint == prev_port_id) {
                     free(msg);
@@ -861,12 +859,16 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
 int decode_package(char *agent_id, cJSON * logJSON) {
 
     char * msg = NULL;
+    cJSON * package;
+    cJSON * scan_id;
+
+    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+        return -1;
+    }
+
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
-    cJSON * package;
-
     if (package = cJSON_GetObjectItem(logJSON, "program"), package) {
-        cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
         if (error_package) {
             if (scan_id->valueint == prev_package_id) {
                 free(msg);
@@ -892,13 +894,9 @@ int decode_package(char *agent_id, cJSON * logJSON) {
 
         snprintf(msg, OS_MAXSTR - 1, "agent %s package save", agent_id);
 
-        if (scan_id) {
-            char id[OS_MAXSTR];
-            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
-            wm_strcat(&msg, id, ' ');
-        } else {
-            wm_strcat(&msg, "NULL", ' ');
-        }
+        char id[OS_MAXSTR];
+        snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+        wm_strcat(&msg, id, ' ');
 
         if (scan_time) {
             wm_strcat(&msg, scan_time->valuestring, '|');
@@ -1004,9 +1002,6 @@ int decode_package(char *agent_id, cJSON * logJSON) {
             free(msg);
             return -1;
         } else if (strcmp(msg_type, "program_end") == 0) {
-
-            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
-
             if (error_package) {
                 if (scan_id->valueint == prev_package_id) {
                     free(msg);
