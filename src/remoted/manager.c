@@ -220,6 +220,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     char merged[PATH_MAX + 1];
     char file[PATH_MAX + 1];
     unsigned int i;
+    remote_files_group *r_group;
 
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
@@ -232,8 +233,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
 
-    remote_files_group *r_group = w_parser_get_group(group);
-    if(r_group){
+    if (!logr.nocmerged && (r_group = w_parser_get_group(group), r_group)) {
         if(r_group->current_polling_time <= 0){
             r_group->current_polling_time = r_group->poll;
 
