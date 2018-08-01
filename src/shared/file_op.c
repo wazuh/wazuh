@@ -769,7 +769,6 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     char buf[2048 + 1];
     FILE *fp;
     FILE *finalfp;
-    struct stat statbuff;
     char newpath[PATH_MAX];
     DIR *dir;
     struct dirent *ent;
@@ -813,29 +812,9 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
         }
     }
 
-    if (stat(files, &statbuff) < 0) {
-        merror("at %s(): " FSTAT_ERROR, __func__, files, errno, strerror(errno));
-        return 0;
-    }
+    /* Is a file */
+    if (dir = opendir(files), !dir) {
 
-    if (S_ISDIR(statbuff.st_mode)) {
-        mdebug2("Merging directory: %s", files);
-
-        if (dir = opendir(files), !dir) {
-            merror("Couldn't open directory '%s': %s (%d)", files, strerror(errno), errno);
-            return 0;
-        }
-
-        while ((ent = readdir(dir)) != NULL) {
-            // Skip . and ..
-            if (ent->d_name[0] != '.' || (ent->d_name[1] && (ent->d_name[1] != '.' || ent->d_name[2]))) {
-                snprintf(newpath, PATH_MAX, "%s/%s", files, ent->d_name);
-                MergeAppendFile(finalpath, newpath, tag, path_offset);
-            }
-        }
-
-        closedir(dir);
-    } else {
         finalfp = fopen(finalpath, "a");
         if (!finalfp) {
             merror("Unable to append merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
@@ -867,6 +846,19 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
 
         fclose(fp);
         fclose(finalfp);
+    }
+    else { /* Is a directory */
+        mdebug2("Merging directory: %s", files);
+
+        while ((ent = readdir(dir)) != NULL) {
+            // Skip . and ..
+            if (ent->d_name[0] != '.' || (ent->d_name[1] && (ent->d_name[1] != '.' || ent->d_name[2]))) {
+                snprintf(newpath, PATH_MAX, "%s/%s", files, ent->d_name);
+                MergeAppendFile(finalpath, newpath, tag, path_offset);
+            }
+        }
+
+        closedir(dir);
     }
 
     return (1);
@@ -927,89 +919,6 @@ int MergeFiles(const char *finalpath, char **files, const char *tag)
 
     fclose(finalfp);
     return (ret);
-}
-
-int w_backup_file(File *file, const char *source) {
-    FILE *fp_src;
-    int fd;
-    char template[OS_FLSIZE + 1];
-    mode_t old_mask;
-
-	/* Check if source file exists */
-	FILE *fsource;
-	fsource = fopen(source,"r");
-
-	if(!fsource)
-	{
-        merror(FOPEN_ERROR, source, errno, strerror(errno));
-		return -1;
-	}
-
-    snprintf(template, OS_FLSIZE, "%s.backup", source);
-    old_mask = umask(0177);
-
-    fd = open(template,O_WRONLY | O_CREAT,old_mask);
-    umask(old_mask);
-
-    if (fd < 0) {
-        return -1;
-    }
-
-#ifndef WIN32
-    struct stat buf;
-
-    if (stat(source, &buf) == 0) {
-        if (fchmod(fd, buf.st_mode) < 0) {
-            close(fd);
-            unlink(template);
-            return -1;
-        }
-    } else {
-        mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
-    }
-
-#endif
-
-    file->fp = fdopen(fd, "w");
-
-    if (!file->fp) {
-        close(fd);
-        unlink(template);
-        return -1;
-    }
-
-
-    size_t count_r;
-    size_t count_w;
-    char buffer[4096];
-
-    if (fp_src = fopen(source, "r"), fp_src) {
-        while (!feof(fp_src)) {
-            count_r = fread(buffer, 1, 4096, fp_src);
-
-            if (ferror(fp_src)) {
-                fclose(fp_src);
-                fclose(file->fp);
-                unlink(template);
-                return -1;
-            }
-
-            count_w = fwrite(buffer, 1, count_r, file->fp);
-
-            if (count_w != count_r || ferror(file->fp)) {
-                fclose(fp_src);
-                fclose(file->fp);
-                unlink(template);
-                return -1;
-            }
-        }
-
-        fclose(fp_src);
-    }
-
-
-    file->name = strdup(template);
-    return 0;
 }
 
 
