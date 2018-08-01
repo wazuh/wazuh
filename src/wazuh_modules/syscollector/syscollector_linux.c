@@ -396,6 +396,7 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): failed to initialize the DB handler: %s", db_strerror(ret));
+        free(timestamp);
         return -1;
     }
 
@@ -406,11 +407,13 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     if ((ret = dbp->open(dbp, NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
+        free(timestamp);
         return -1;
     }
 
     if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Error creating cursor: %s", db_strerror(ret));
+        free(timestamp);
         return -1;
     }
 
@@ -420,11 +423,6 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
     int j = 0;
 
     while((ret = cursor->c_get(cursor, &key, &data, DB_NEXT)) == 0) {
-
-        if (ret == DB_NOTFOUND){
-            mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
-            break;
-        }
 
         // First header is not a package
 
@@ -564,6 +562,10 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
             free(info->tag);
             free(info);
         }
+    }
+
+    if (ret == DB_NOTFOUND){
+        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
     }
 
     cursor->c_close(cursor);
@@ -781,6 +783,7 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
     } else {
 
         mterror(WM_SYS_LOGTAG, "Unable to open the file '%s'", file);
+        free(timestamp);
         return -1;
 
     }
@@ -915,14 +918,21 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
 char* get_broadcast_addr(char* ip, char* netmask){
 
     struct in_addr host, mask, broadcast;
-    char* broadcast_addr = calloc(NI_MAXHOST, sizeof(char));
+    char * broadcast_addr = calloc(NI_MAXHOST, sizeof(char));
+    char * _broadcast = broadcast_addr;
 
     if (inet_pton(AF_INET, ip, &host) == 1 && inet_pton(AF_INET, netmask, &mask) == 1){
         broadcast.s_addr = host.s_addr | ~mask.s_addr;
-    }
 
-    if (inet_ntop(AF_INET, &broadcast, broadcast_addr, NI_MAXHOST) != NULL){
-        return broadcast_addr;
+        if (inet_ntop(AF_INET, &broadcast, _broadcast, NI_MAXHOST) != NULL){
+            if (!_broadcast) {
+                free(broadcast_addr);
+            } else {
+                return broadcast_addr;
+            }
+        } else {
+            free(broadcast_addr);
+        }
     }
 
     return "unknown";
@@ -934,7 +944,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
     int i = 0, j = 0, k = 0, found;
-    int family;
+    int family = 0;
     struct ifaddrs *ifaddr, *ifa;
     int ID = os_random();
     char *timestamp;

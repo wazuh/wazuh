@@ -464,6 +464,10 @@ int decode_netinfo(char *agent_id, cJSON * logJSON) {
             if (sc_send_db(msg) < 0) {
                 return -1;
             }
+        } else {
+            merror("at decode_netinfo(): unknown type found.");
+            free(msg);
+            return -1;
         }
     }
 
