@@ -674,7 +674,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
 char * wm_ciscat_get_profile() {
 
-    char * profile;
+    char * profile = NULL;
     char readbuff[OS_MAXSTR];
     char file[OS_MAXSTR];
     FILE *fp;
@@ -686,7 +686,6 @@ char * wm_ciscat_get_profile() {
         snprintf(file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/ciscat-report.xml");
     #endif
 
-    os_strdup("unknown", profile);
 
 #ifdef WIN32
     if ((fp = fopen(file, "rb"))) {
@@ -709,6 +708,10 @@ char * wm_ciscat_get_profile() {
         free(parts);
 
         fclose(fp);
+    }
+
+    if (profile == NULL) {
+        os_strdup("unknown", profile);
     }
 
     return profile;

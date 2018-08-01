@@ -179,6 +179,7 @@ int DecodeCiscat(Eventinfo *lf)
         } else {
             mdebug1("Unable to parse CIS-CAT event for agent '%s'", lf->agent_id);
             cJSON_Delete(logJSON);
+            free(msg);
             return (0);
         }
     }
