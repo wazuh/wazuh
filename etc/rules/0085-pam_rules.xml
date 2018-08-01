@@ -61,7 +61,7 @@
     <description>PAM: Ignoring events with a user or a password.</description>
   </rule>
 
-  <rule id="5551" level="10" frequency="6" timeframe="180">
+  <rule id="5551" level="10" frequency="8" timeframe="180">
     <if_matched_sid>5503</if_matched_sid>
     <same_source_ip />
     <description>PAM: Multiple failed logins in a small period of time.</description>

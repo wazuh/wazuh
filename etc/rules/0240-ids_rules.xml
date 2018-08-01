@@ -6,7 +6,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<var name="IDS_FREQ">8</var>
+<var name="IDS_FREQ">10</var>
 
 <group name="ids,">
   <rule id="20100" level="8">
@@ -79,7 +79,7 @@
      - the same thing all the time. We will skip those events
      - since they became just noise.
      -->
-  <rule id="20161" level="11" frequency="3" timeframe="3800">
+  <rule id="20161" level="11" frequency="5" timeframe="3800">
     <if_matched_sid>20151</if_matched_sid>
     <same_source_ip />
     <same_id />
@@ -89,7 +89,7 @@
     <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="20162" level="11" frequency="3" timeframe="3800">
+  <rule id="20162" level="11" frequency="5" timeframe="3800">
     <if_matched_sid>20152</if_matched_sid>
     <same_id />
     <ignore>id</ignore>

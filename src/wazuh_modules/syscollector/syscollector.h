@@ -99,6 +99,7 @@ typedef struct hw_info {
     double cpu_MHz;
     int ram_total;  // kB
     int ram_free;   // kB
+    int ram_usage;  // Percentage
 } hw_info;
 
 typedef struct wm_sys_flags_t {

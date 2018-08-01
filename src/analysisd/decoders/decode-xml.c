@@ -175,6 +175,7 @@ int ReadDecodeXML(const char *file)
     const char *xml_fts = "fts";
     const char *xml_ftscomment = "ftscomment";
     const char *xml_accumulate = "accumulate";
+    const char *xml_nullfield = "json_null_field";
 
     int i = 0;
     OSDecoderInfo *NULL_Decoder_tmp = NULL;
@@ -198,6 +199,12 @@ int ReadDecodeXML(const char *file)
     /* Apply any variables found */
     if (OS_ApplyVariables(&xml) != 0) {
         merror(XML_ERROR_VAR, file, xml.err);
+        goto cleanup;
+    }
+
+    /* Check if the file is empty */
+    if(FileSize(file) == 0){
+        retval = 0;
         goto cleanup;
     }
 
@@ -285,6 +292,7 @@ int ReadDecodeXML(const char *file)
         pi->get_next = 0;
         pi->regex_offset = 0;
         pi->prematch_offset = 0;
+        pi->flags = SHOW_STRING;
 
         regex = NULL;
         prematch = NULL;
@@ -412,6 +420,19 @@ int ReadDecodeXML(const char *file)
 
                 if (pi->plugin_offset & AFTER_ERROR) {
                     merror_exit(DEC_REGEX_ERROR, pi->name);
+                }
+            }
+
+            else if (strcasecmp(elements[j]->element, xml_nullfield) == 0) {
+                if (strcmp(elements[j]->content, "discard") == 0) {
+                    pi->flags = DISCARD;
+                } else if (strcmp(elements[j]->content, "empty") == 0) {
+                    pi->flags = EMPTY;
+                } else if (strcmp(elements[j]->content, "string") == 0) {
+                    pi->flags = SHOW_STRING;
+                } else {
+                    merror(INVALID_ELEMENT, elements[j]->element, elements[j]->content);
+                    goto cleanup;
                 }
             }
 
@@ -759,6 +780,7 @@ int SetDecodeXML()
     addDecoder2list(HOSTINFO_NEW);
     addDecoder2list(HOSTINFO_MOD);
     addDecoder2list(SYSCOLLECTOR_MOD);
+    addDecoder2list(CISCAT_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {

@@ -160,8 +160,8 @@ class Handler(asyncore.dispatcher_with_send):
         self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
         self.inbuffer = b''
         self.lock = threading.Lock()  # Box lock
-        self.workers_lock = threading.Lock()
-        self.workers = {}
+        self.worker_threads_lock = threading.Lock()
+        self.worker_threads = {}
         self.stopper = threading.Event()
         self.my_fernet = Fernet(base64_encoding(key)) if key else None
 
@@ -170,50 +170,50 @@ class Handler(asyncore.dispatcher_with_send):
         logger.debug("[Transport-Handler] Cleaning handler threads. Start.")
         self.stopper.set()
 
-        with self.workers_lock:
-            worker_ids = self.workers.keys()
+        with self.worker_threads_lock:
+            worker_thread_ids = self.worker_threads.keys()
 
-        for worker_id in worker_ids:
-            logger.debug2("[Transport-Handler] Cleaning handler thread: '{0}'.".format(worker_id))
+        for worker_thread_id in worker_thread_ids:
+            logger.debug2("[Transport-Handler] Cleaning handler thread: '{0}'.".format(worker_thread_id))
 
-            with self.workers_lock:
-                my_worker = self.workers[worker_id]
+            with self.worker_threads_lock:
+                my_worker_thread = self.worker_threads[worker_thread_id]
 
             try:
-                my_worker.join(timeout=2)
+                my_worker_thread.join(timeout=2)
             except Exception as e:
-                logger.error("[Transport-Handler] Cleaning '{0}' thread. Error: '{1}'.".format(worker_id, str(e)))
+                logger.error("[Transport-Handler] Cleaning '{0}' thread. Error: '{1}'.".format(worker_thread_id, str(e)))
 
-            if my_worker.isAlive():
-                logger.warning("[Transport-Handler] Cleaning '{0}' thread. Timeout.".format(worker_id))
+            if my_worker_thread.isAlive():
+                logger.warning("[Transport-Handler] Cleaning '{0}' thread. Timeout.".format(worker_thread_id))
             else:
-                logger.debug2("[Transport-Handler] Cleaning '{0}' thread. Terminated.".format(worker_id))
+                logger.debug2("[Transport-Handler] Cleaning '{0}' thread. Terminated.".format(worker_thread_id))
 
         logger.debug("[Transport-Handler] Cleaning handler threads. End.")
 
 
-    def set_worker(self, command, worker, filename):
-        thread_id = '{}-{}-{}'.format(command, worker.ident, os.path.basename(filename))
-        with self.workers_lock:
-            self.workers[thread_id] = worker
-        worker.id = thread_id
+    def set_worker_thread(self, command, worker_thread, filename):
+        thread_id = '{}-{}-{}'.format(command, worker_thread.ident, os.path.basename(filename))
+        with self.worker_threads_lock:
+            self.worker_threads[thread_id] = worker_thread
+        worker_thread.id = thread_id
         return thread_id
 
 
-    def del_worker(self, worker_id):
-        with self.workers_lock:
-            if worker_id in self.workers:
-                del self.workers[worker_id]
+    def del_worker_thread(self, worker_thread_id):
+        with self.worker_threads_lock:
+            if worker_thread_id in self.worker_threads:
+                del self.worker_threads[worker_thread_id]
 
 
-    def get_worker(self, data):
-        # the worker worker_id will be the first element spliting the data by spaces
-        worker_id = data.split(b' ', 1)[0].decode()
-        with self.workers_lock:
-            if worker_id in self.workers:
-                return self.workers[worker_id], 'ack', 'Command received for {}'.format(worker_id)
+    def get_worker_thread(self, data):
+        # the worker_thread worker_thread_id will be the first element spliting the data by spaces
+        worker_thread_id = data.split(b' ', 1)[0].decode()
+        with self.worker_threads_lock:
+            if worker_thread_id in self.worker_threads:
+                return self.worker_threads[worker_thread_id], 'ack', 'Command received for {}'.format(worker_thread_id)
             else:
-                return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(worker_id)
+                return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(worker_thread_id)
 
 
     def compute_md5(self, my_file, blocksize=2 ** 20):
@@ -243,15 +243,15 @@ class Handler(asyncore.dispatcher_with_send):
         :param reason: command to send before starting to send the file_to_send
         :param remove: whether to remove the file_to_send after sending it or not
         """
-        # response will be of form 'ack worker_id'
-        _, worker_id = self.execute(reason, os.path.basename(file_to_send)).split(' ', 1)
+        # response will be of form 'ack worker_thread_id'
+        _, worker_thread_id = self.execute(reason, os.path.basename(file_to_send)).split(' ', 1)
 
         try:
-            res, data = self.execute("file_open", "{}".format(worker_id)).split(' ', 1)
+            res, data = self.execute("file_open", "{}".format(worker_thread_id)).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
-            base_msg = "{} ".format(worker_id).encode()
+            base_msg = "{} ".format(worker_thread_id).encode()
             chunk_size = max_msg_size - len(base_msg)
 
             with open(file_to_send, 'rb') as f:
@@ -261,7 +261,7 @@ class Handler(asyncore.dispatcher_with_send):
                         raise Exception(data)
                     time.sleep(interval_file_transfer_send)
 
-            res, data = self.execute("file_close", "{} {}".format(worker_id, self.compute_md5(file_to_send))).split(' ', 1)
+            res, data = self.execute("file_close", "{} {}".format(worker_thread_id, self.compute_md5(file_to_send))).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
@@ -397,9 +397,9 @@ class Handler(asyncore.dispatcher_with_send):
             return 'ok ', data.decode()
         elif command == "file_open" or command == "file_update" or command == "file_close":
             # At this moment, the thread should exists
-            worker, cmd, message = self.get_worker(data)
-            if worker:
-                worker.set_command(command, data)
+            worker_thread, cmd, message = self.get_worker_thread(data)
+            if worker_thread:
+                worker_thread.set_command(command, data)
             return cmd, message
         else:
             message = "'{0}' - Unknown command received '{1}'.".format(self.name, command)
@@ -438,7 +438,7 @@ class ServerHandler(Handler):
 
     def handle_close(self):
         if self.name:
-            self.server.remove_client(self.name)
+            self.server.remove_worker(self.name)
             logger.info("[Master] [{0}]: Disconnected.".format(self.name))
         else:
             logger.info("[Master] Connection with {} closed.".format(self.addr))
@@ -456,16 +456,16 @@ class ServerHandler(Handler):
     def hello(self, data):
 
         try:
-            # Check client version
-            client_version = WazuhVersion(data.split(' ')[2])
+            # Check worker version
+            worker_version = WazuhVersion(data.split(' ')[2])
             server_version = WazuhVersion(__version__)
-            if server_version.to_array()[0] != client_version.to_array()[0] or server_version.to_array()[1] != client_version.to_array()[1]:
-                raise Exception("Incompatible client version ({})".format(client_version))
+            if server_version.to_array()[0] != worker_version.to_array()[0] or server_version.to_array()[1] != worker_version.to_array()[1]:
+                raise Exception("Incompatible worker version ({})".format(worker_version))
 
-            client_id = self.server.add_client(data, self.addr, self)
+            worker_id = self.server.add_worker(data, self.addr, self)
 
-            self.name = client_id  # TO DO: change self.name to self.client_id
-            logger.info("[Master] [{0}]: Connected.".format(client_id))
+            self.name = worker_id  # TO DO: change self.name to self.worker_id
+            logger.info("[Master] [{0}]: Connected.".format(worker_id))
         except Exception as e:
             logger.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, e))
             self.handle_close()
@@ -473,7 +473,7 @@ class ServerHandler(Handler):
         return None
 
 
-    def get_client(self):
+    def get_worker(self):
         return self.name
 
 
@@ -481,8 +481,8 @@ class Server(asyncore.dispatcher):
 
     def __init__(self, host, port, handle_type, asyncore_map = {}):
         asyncore.dispatcher.__init__(self, map=asyncore_map)
-        self._clients = {}
-        self._clients_lock = threading.Lock()
+        self._workers = {}
+        self._workers_lock = threading.Lock()
 
         self.map = asyncore_map
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -499,9 +499,9 @@ class Server(asyncore.dispatcher):
             sock, addr = pair
             logger.debug("[Transport-Server] Incoming connection.")
 
-            if self.find_client_by_ip(addr[0]):
+            if self.find_worker_by_ip(addr[0]):
                 sock.close()
-                logger.warning("[Transport-Server] Incoming connection from '{0}' rejected: Client is already connected.".format(repr(addr)))
+                logger.warning("[Transport-Server] Incoming connection from '{0}' rejected: Worker is already connected.".format(repr(addr)))
                 return
 
             # addr is a tuple of form (ip, port)
@@ -522,24 +522,30 @@ class Server(asyncore.dispatcher):
         logger.debug("[Transport-Server] Error: '{}' - '{}'.".format(t, tbinfo))
 
 
-    def find_client_by_ip(self, client_ip):
+    def find_worker_by_ip(self, worker_ip):
 
-        with self._clients_lock:
-            for client in self._clients:
-                if self._clients[client]['info']['ip'] == client_ip:
-                    return client
+        with self._workers_lock:
+            for worker in self._workers:
+                if self._workers[worker]['info']['ip'] == worker_ip:
+                    return worker
 
         return None
 
 
-    def add_client(self, data, ip, handler):
+    def add_worker(self, data, ip, handler):
         name, node_type, version = data.split(' ')
+        name, cluster_name = name.split('*')
         node_id = name
-        with self._clients_lock:
-            if node_id in self._clients or node_id == handler.server.config['node_name']:
+
+        if cluster_name != handler.server.config['name']:
+            raise Exception("Incoming connection from '{0}' rejected: cluster name is different ({1}/{2}).".format(
+                                ip, cluster_name, handler.server.config['name']))
+
+        with self._workers_lock:
+            if node_id in self._workers or node_id == handler.server.config['node_name']:
                 raise Exception("Incoming connection from '{0}' rejected: There is already a node with the same ID ('{1}') connected.".format(ip, node_id))
 
-            self._clients[node_id] = {
+            self._workers[node_id] = {
                 'handler': handler,
                 'info': {
                     'name': name,
@@ -576,42 +582,42 @@ class Server(asyncore.dispatcher):
         return node_id
 
 
-    def remove_client(self, client_id):
-        with self._clients_lock:
+    def remove_worker(self, worker_id):
+        with self._workers_lock:
             try:
                 # Remove threads
-                self._clients[client_id]['handler'].exit()
+                self._workers[worker_id]['handler'].exit()
 
-                del self._clients[client_id]
+                del self._workers[worker_id]
             except KeyError:
-                logger.error("[Transport-Server] Client '{}'' is already disconnected.".format(client_id))
+                logger.error("[Transport-Server] Worker '{}'' is already disconnected.".format(worker_id))
 
 
-    def get_connected_clients(self):
-        with self._clients_lock:
-            return self._clients
+    def get_connected_workers(self):
+        with self._workers_lock:
+            return self._workers
 
 
-    def get_client_info(self, client_name):
-        with self._clients_lock:
+    def get_worker_info(self, worker_name):
+        with self._workers_lock:
             try:
-                return self._clients[client_name]
+                return self._workers[worker_name]
             except KeyError:
-                error_msg = "Client {} is disconnected.".format(client_name)
+                error_msg = "Worker {} is disconnected.".format(worker_name)
                 logger.error("[Transport-Server] {}".format(error_msg))
                 raise Exception(error_msg)
 
 
-    def send_file(self, client_name, reason, file_to_send, remove = False):
-        return self.get_client_info(client_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
+    def send_file(self, worker_name, reason, file_to_send, remove = False):
+        return self.get_worker_info(worker_name)['handler'].send_file(reason, file_to_send, remove, self.interval_file_transfer_send)
 
 
-    def send_request(self, client_name, command, data=None):
+    def send_request(self, worker_name, command, data=None):
 
-        if client_name in self.get_connected_clients():
-            response = self.get_client_info(client_name)['handler'].execute(command, data)
+        if worker_name in self.get_connected_workers():
+            response = self.get_worker_info(worker_name)['handler'].execute(command, data)
         else:
-            error_msg = "Trying to send and the client '{0}' is not connected.".format(client_name)
+            error_msg = "Trying to send and the worker '{0}' is not connected.".format(worker_name)
             logger.error("[Transport-Server] {0}.".format(error_msg))
             response = "err " + error_msg
 
@@ -620,37 +626,42 @@ class Server(asyncore.dispatcher):
 
     def send_request_broadcast(self, command, data=None):
 
-        for c_name in self.get_connected_clients():
-            response = self.get_client_info(c_name)['handler'].execute(command, data)
+        for c_name in self.get_connected_workers():
+            response = self.get_worker_info(c_name)['handler'].execute(command, data)
             yield c_name, response
 
 
-class ClientHandler(Handler):
+class WorkerHandler(Handler):
 
-    def __init__(self, key, host, port, name, asyncore_map = {}):
+    def __init__(self, key, host, port, name, cluster_name, asyncore_map = {}):
         Handler.__init__(self, key=key, asyncore_map=asyncore_map)
+        self.name = name
         self.map = asyncore_map
         self.host = host
         self.port = port
+        self.cluster_name = cluster_name
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        ok = self.connect( (host, port) )
-        self.name = name
+        try:
+            ok = self.connect( (host, port) )
+        except socket.error as e:
+            self.socket.close()
+            raise e
         self.my_connected = False
 
 
     def handle_connect(self):
-        logger.info("[Client] Connecting to {0}:{1}.".format(self.host, self.port))
+        logger.info("[Worker] Connecting to {0}:{1}.".format(self.host, self.port))
         counter = self.nextcounter()
-        payload = msgbuild(counter, 'hello', self.my_fernet, '{} {} {}'.format(self.name, 'client', __version__))
+        payload = msgbuild(counter, 'hello', self.my_fernet, '{}*{} {} {}'.format(self.name, self.cluster_name, 'worker', __version__))
         self.send(payload)
         self.my_connected = True
-        logger.info("[Client] Connected.")
+        logger.info("[Worker] Connected.")
 
 
     def handle_close(self):
         Handler.handle_close(self)
         self.my_connected = False
-        logger.info("[Client] Disconnected.")
+        logger.info("[Worker] Disconnected.")
 
 
     def send_request(self, command, data=None):
@@ -659,7 +670,7 @@ class ClientHandler(Handler):
             response = self.execute(command, data)
         else:
             error_msg = "Trying to send and there is no connection with the server"
-            logger.error("[Transport-ClientHandler] {0}.".format(error_msg))
+            logger.error("[Transport-WorkerHandler] {0}.".format(error_msg))
             response = "err " + error_msg
 
         return response
@@ -822,7 +833,7 @@ def send_to_internal_socket(socket_name, message):
 
 class ProcessFiles(ClusterThread):
 
-    def __init__(self, manager_handler, filename, client_name, stopper):
+    def __init__(self, manager_handler, filename, worker_name, stopper):
         """
         Abstract class which defines the necessary methods to receive a file
         """
@@ -830,7 +841,7 @@ class ProcessFiles(ClusterThread):
 
         self.manager_handler = manager_handler  # handler object
         self.filename = filename                # filename of the file to receive
-        self.name = client_name                 # name of the sender
+        self.name = worker_name                 # name of the sender
         self.command_queue = Queue()            # queue to store received file commands
         self.received_all_information = False   # flag to indicate whether all file has been received
         self.received_error = False             # flag to indicate there has been an error in receiving process
@@ -854,7 +865,7 @@ class ProcessFiles(ClusterThread):
         Stops the thread
         """
         if self.id:
-            self.manager_handler.del_worker(self.id)
+            self.manager_handler.del_worker_thread(self.id)
         ClusterThread.stop(self)
 
 
@@ -928,7 +939,7 @@ class ProcessFiles(ClusterThread):
 
     def check_connection(self):
         """
-        Check if the node is connected. Only defined in client nodes.
+        Check if the node is connected. Only defined in worker nodes.
         """
         raise NotImplementedError
 

@@ -148,11 +148,6 @@ void wm_setup()
         exit(EXIT_SUCCESS);
     }
 
-    // Create PID file
-
-    if (CreatePID(ARGV0, getpid()) < 0)
-        merror_exit("Couldn't create PID file: (%s)", strerror(errno));
-
     // Signal management
 
     atexit(wm_cleanup);
@@ -162,6 +157,11 @@ void wm_setup()
         sigaction(SIGHUP, &action, NULL);
         sigaction(SIGINT, &action, NULL);
     }
+
+    // Create PID file
+
+    if (CreatePID(ARGV0, getpid()) < 0)
+        merror_exit("Couldn't create PID file: (%s)", strerror(errno));
 }
 
 // Cleanup function, called on exiting.

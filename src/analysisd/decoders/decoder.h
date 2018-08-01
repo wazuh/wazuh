@@ -18,6 +18,11 @@
 #define AFTER_PREVREGEX 0x004   /* 4   */
 #define AFTER_ERROR     0x010
 
+// JSON decoder null treatment
+#define DISCARD     0
+#define EMPTY       1
+#define SHOW_STRING 2
+
 struct _Eventinfo;
 
 /* Decoder structure */
@@ -25,6 +30,7 @@ typedef struct {
     u_int8_t  get_next;
     u_int8_t  type;
     u_int8_t  use_own_name;
+    u_int8_t  flags;
 
     u_int16_t id;
     u_int16_t regex_offset;
@@ -67,6 +73,8 @@ void HostinfoInit(void);
 void SyscheckInit(void);
 void RootcheckInit(void);
 void SyscollectorInit(void);
+void CiscatInit(void);
+int sc_send_db(char * msg);
 
 int ReadDecodeXML(const char *file);
 

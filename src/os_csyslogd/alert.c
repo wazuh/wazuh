@@ -345,7 +345,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
             return 0;
         }
 
-        for (i = 0; syslog_config->rule_id[i] && (int)syslog_config->rule_id[i] != item->valueint; i++);
+        for (i = 0; syslog_config->rule_id[i] && (int)syslog_config->rule_id[i] != atoi(item->valuestring); i++);
 
         /* If we found, id is going to be a valid rule */
 
@@ -382,7 +382,10 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
     now = time(NULL);
     localtime_r(&now, &tm);
 
-    if (end = strptime(timestamp->valuestring, "%FT%T%z", &tm), !end || *end) {
+    if (end = strchr(timestamp->valuestring, '.'), end)
+        *end = '\0';
+
+    if (end = strptime(timestamp->valuestring, "%FT%T", &tm), !end || *end) {
         merror("Could not parse timestamp '%s'.", timestamp->valuestring);
     }
 

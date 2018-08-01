@@ -129,6 +129,7 @@
 
   <!-- Ignore syscollector events -->
   <rule id="221" level="0">
+    <category>ossec</category>
     <decoded_as>syscollector</decoded_as>
     <description>Syscollector event.</description>
   </rule>

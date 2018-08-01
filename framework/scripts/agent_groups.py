@@ -56,7 +56,7 @@ def show_group(agent_id):
 
 
 def show_agents_with_group(group_id):
-    agents_data = Agent.get_agent_group(group_id, limit=0)
+    agents_data = Agent.get_agent_group(group_id, limit=None)
 
     if agents_data['totalItems'] == 0:
         print("No agents found in group '{0}'.".format(group_id))

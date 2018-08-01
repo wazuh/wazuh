@@ -281,7 +281,11 @@ class Agent:
             query = query.replace("from {} and".format(table), "from {} where".format(table))
 
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' limit {} offset {}'.format(limit, offset)
+        elif limit == 0:
+            raise WazuhException(1406)
 
         if sort and sort['fields']:
             str_order = "desc" if sort['order'] == 'asc' else "asc"
@@ -798,9 +802,6 @@ class Agent:
         else:
             agent_items = [dict(item, id=str(item['id']).zfill(3)) for item in agent_items]
 
-        if len(agent_items) > 0 and agent_items[0]['id'] == '000' and 'ip' in user_select_fields:
-            agent_items[0]['ip'] = '127.0.0.1'
-
         agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
 
         return agent_items
@@ -960,7 +961,7 @@ class Agent:
                     # Order by status ASC is the same that order by last_keepalive DESC.
                     if i == 'status':
                         str_order = "desc" if sort['order'] == 'asc' else "asc"
-                        order_str_field = '{0} {1}'.format(Agent.fields[i], str_order)
+                        order_str_field = '{0} {1}'.format(Agent.fields['lastKeepAlive'], str_order)
                     # Order by version is order by major and minor
                     elif i == 'os.version':
                         order_str_field = "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(sort['order'])
@@ -977,9 +978,13 @@ class Agent:
 
 
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         conn.execute(query.format(','.join(min_select_fields)), request)
 
@@ -1080,9 +1085,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         conn.execute(query.format(','.join(select)), request)
 
@@ -1110,6 +1119,8 @@ class Agent:
             oq.close()
             return ret_msg
         else:
+            if not agent_id:
+                raise WazuhException(1732)
             failed_ids = list()
             affected_agents = list()
             if isinstance(agent_id, list):
@@ -1252,7 +1263,7 @@ class Agent:
                     failed_ids.append(create_exception_dic(id, e))
 
         if not failed_ids:
-            message = 'All selected agents were removed'
+            message = 'All selected agents were removed' if affected_agents else "No agents were removed"
         else:
             message = 'Some agents were not removed'
 
@@ -1372,9 +1383,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         # Data query
         conn.execute(query.format(','.join(select)), request)
@@ -1446,10 +1461,10 @@ class Agent:
             item = {'count':conn.fetch()[0], 'name': entry}
 
             if merged_sum:
-                item['merged_sum'] = merged_sum
+                item['mergedSum'] = merged_sum
 
             if conf_sum:
-                item['conf_sum'] = conf_sum
+                item['configSum'] = conf_sum
 
             data.append(item)
 
@@ -1586,9 +1601,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         if 'group' in select_fields:
             select_fields.remove('group')
@@ -1870,9 +1889,13 @@ class Agent:
 
         # OFFSET - LIMIT
         if limit:
+            if limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(limit))
             query += ' LIMIT :offset,:limit'
             request['offset'] = offset
             request['limit'] = limit
+        elif limit == 0:
+            raise WazuhException(1406)
 
         # Data query
         conn.execute(query.format(','.join(select)), request)
@@ -1894,17 +1917,34 @@ class Agent:
         return data
 
 
-    def _get_versions(self, wpk_repo=common.wpk_repo_url):
+    def _get_protocol(self, wpk_repo, use_http=False):
+        protocol = ""
+        if "http://" not in wpk_repo and "https://" not in wpk_repo:
+            protocol = "https://" if not use_http else "http://"
+
+        return protocol
+
+    def _get_versions(self, wpk_repo=common.wpk_repo_url, desired_version=None, use_http=False):
         """
         Generates a list of available versions for its distribution and version.
         """
-        if self.os['platform']=="windows":
-            versions_url = wpk_repo + "windows/versions"
+        invalid_platforms = ["darwin", "solaris", "aix", "hpux", "bsd"]
+        not_valid_versions = [("sles", 11), ("rhel", 5), ("centos", 5)]
+
+        if self.os['platform'] in invalid_platforms or (self.os['platform'], self.os['major']) in not_valid_versions:
+            error = "The WPK for this platform is not available."
+            raise WazuhException(1713, error)
+
+        protocol = self._get_protocol(wpk_repo, use_http)
+        if (desired_version is None or desired_version[:4] >= "v3.4") and self.os['platform'] != "windows":
+            versions_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/versions"
         else:
-            if self.os['platform']=="ubuntu":
-                versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/versions"
+            if self.os['platform']=="windows":
+                versions_url = protocol + wpk_repo + "windows/versions"
+            elif self.os['platform']=="ubuntu":
+                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/versions"
             else:
-                versions_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
+                versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
 
         try:
             result = urlopen(versions_url)
@@ -1930,17 +1970,17 @@ class Agent:
         return versions
 
 
-    def _get_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False):
+    def _get_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, use_http=False):
         """
         Searchs latest Wazuh WPK file for its distribution and version. Downloads the WPK if it is not in the upgrade folder.
         """
         agent_new_ver = None
+        versions = self._get_versions(wpk_repo, use_http)
         if not version:
-            versions = self._get_versions(wpk_repo)
             agent_new_ver = versions[0][0]
             agent_new_shasum = versions[0][1]
         else:
-            for versions in self._get_versions(wpk_repo):
+            for versions in versions:
                 if versions[0] == version:
                     agent_new_ver = versions[0]
                     agent_new_shasum = versions[1]
@@ -1967,14 +2007,24 @@ class Agent:
         if (WazuhVersion(agent_ver.split(" ")[1]) >= WazuhVersion(agent_new_ver) and not force):
             raise WazuhException(1716, "Agent ver: {0} / Agent new ver: {1}".format(agent_ver.split(" ")[1], agent_new_ver))
 
+        protocol = self._get_protocol(wpk_repo, use_http)
         # Generating file name
         if self.os['platform']=="windows":
             wpk_file = "wazuh_agent_{0}_{1}.wpk".format(agent_new_ver, self.os['platform'])
+            wpk_url = protocol + wpk_repo + "windows/" + wpk_file
+
         else:
-            if self.os['platform']=="ubuntu":
-                wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
+            if version is None or version[:4] >= "v3.4":
+                wpk_file = "wazuh_agent_{0}_linux_{1}.wpk".format(agent_new_ver, self.os['arch'])
+                wpk_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/" + wpk_file
+
             else:
-                wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
+                if self.os['platform']=="ubuntu":
+                    wpk_file = "wazuh_agent_{0}_{1}_{2}.{3}_{4}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['minor'], self.os['arch'])
+                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
+                else:
+                    wpk_file = "wazuh_agent_{0}_{1}_{2}_{3}.wpk".format(agent_new_ver, self.os['platform'], self.os['major'], self.os['arch'])
+                    wpk_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/" + wpk_file
 
         wpk_file_path = "{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)
 
@@ -1992,14 +2042,6 @@ class Agent:
                 return [wpk_file, sha1hash]
 
         # Download WPK file
-        if self.os['platform']=="windows":
-            wpk_url = wpk_repo + "windows/" + wpk_file
-        else:
-            if self.os['platform']=="ubuntu":
-                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "." + self.os['minor'] + "/" + self.os['arch'] + "/" + wpk_file
-            else:
-                wpk_url = wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/" + wpk_file
-
         if debug:
             print("Downloading WPK file from: {0}".format(wpk_url))
 
@@ -2029,14 +2071,14 @@ class Agent:
         return [wpk_file, sha1hash]
 
 
-    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries):
+    def _send_wpk_file(self, wpk_repo=common.wpk_repo_url, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, timeout=common.open_retries, use_http=False):
         """
         Sends WPK file to agent.
         """
         if not chunk_size:
             chunk_size = common.wpk_chunk_size
         # Check WPK file
-        _get_wpk = self._get_wpk_file(wpk_repo, debug, version, force)
+        _get_wpk = self._get_wpk_file(wpk_repo=wpk_repo, debug=debug, version=version, force=force, use_http=use_http)
         wpk_file = _get_wpk[0]
         file_sha1 = _get_wpk[1]
         wpk_file_size = stat("{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)).st_size
@@ -2148,7 +2190,7 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
 
-    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1):
+    def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None, rl_timeout=-1, use_http=False):
         """
         Upgrade agent using a WPK file.
         """
@@ -2175,7 +2217,8 @@ class Agent:
             wpk_repo = wpk_repo + '/'
 
         # Send file to agent
-        sending_result = self._send_wpk_file(wpk_repo, debug, version, force, show_progress, chunk_size, rl_timeout)
+        sending_result = self._send_wpk_file(wpk_repo=wpk_repo, debug=debug, version=version, force=force,
+                                             show_progress=show_progress, chunk_size=chunk_size, rl_timeout=rl_timeout, use_http=use_http)
         if debug:
             print(sending_result[0])
 
@@ -2205,7 +2248,7 @@ class Agent:
 
 
     @staticmethod
-    def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False, chunk_size=None):
+    def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False, chunk_size=None, use_http=False):
         """
         Read upgrade result output from agent.
 
@@ -2213,7 +2256,7 @@ class Agent:
         :return: Upgrade message.
         """
 
-        return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force)==1 else False, chunk_size=chunk_size)
+        return Agent(agent_id).upgrade(wpk_repo=wpk_repo, version=version, force=True if int(force)==1 else False, chunk_size=chunk_size, use_http=use_http)
 
 
     def upgrade_result(self, debug=False, timeout=common.upgrade_result_retries):

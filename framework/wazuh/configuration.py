@@ -17,8 +17,15 @@ except ImportError:
     from configparser import RawConfigParser, NoOptionError
     from io import StringIO
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Aux functions
 
+# Type of configuration sections:
+#   * Duplicate -> there can be multiple independent sections. Must be returned as multiple json entries.
+#   * Merge -> there can be multiple sections but all are dependent with each other. Must be returned as a single json entry.
+#   * Last -> there can be multiple sections in the configuration but only the last one will be returned. The rest are ignored.
 conf_sections = {
     'active-response': { 'type': 'duplicate', 'list_options': [] },
     'command': { 'type': 'duplicate', 'list_options': [] },
@@ -26,51 +33,49 @@ conf_sections = {
     'localfile': { 'type': 'duplicate', 'list_options': [] },
     'remote': { 'type': 'duplicate', 'list_options': [] },
     'syslog_output': { 'type': 'duplicate', 'list_options': [] },
+    'integration': { 'type': 'duplicate', 'list_options': [] },
 
-    'alerts': { 'type': 'simple', 'list_options': [] },
-    'client': { 'type': 'simple', 'list_options': [] },
-    'database_output': { 'type': 'simple', 'list_options': [] },
-    'email_alerts': { 'type': 'simple', 'list_options': [] },
-    'reports': { 'type': 'simple', 'list_options': [] },
+    'alerts': { 'type': 'merge', 'list_options': [] },
+    'client': { 'type': 'merge', 'list_options': [] },
+    'database_output': { 'type': 'merge', 'list_options': [] },
+    'email_alerts': { 'type': 'merge', 'list_options': [] },
+    'reports': { 'type': 'merge', 'list_options': [] },
     'global': {
-        'type': 'simple',
+        'type': 'merge',
         'list_options': ['white_list']
     },
     'open-scap': {
-        'type': 'simple',
+        'type': 'merge',
         'list_options': ['content']
     },
     'cis-cat': {
-        'type': 'simple',
+        'type': 'merge',
         'list_options': []
     },
     'syscollector': {
-        'type': 'simple',
+        'type': 'merge',
         'list_options': []
     },
     'rootcheck': {
-        'type': 'simple',
+        'type': 'merge',
         'list_options': ['rootkit_files', 'rootkit_trojans', 'windows_audit', 'system_audit', 'windows_apps', 'windows_malware']
     },
     'ruleset': {
-        'type': 'simple',
+        'type': 'merge',
         'list_options':  ['include', 'rule', 'rule_dir', 'decoder', 'decoder_dir', 'list', 'rule_exclude', 'decoder_exclude']
     },
     'syscheck': {
-        'type': 'simple',
+        'type': 'merge',
         'list_options': ['directories', 'ignore', 'nodiff']
     },
-    'cluster': {
-        'type': 'simple',
-        'list_options': ['nodes']
-    },
     'auth': {
-        'type': 'simple',
+        'type': 'merge',
         'list_options': []
     },
-    'integration': {
-        'type': 'duplicate',
-        'list_options': []
+
+    'cluster': {
+        'type': 'last',
+        'list_options': ['nodes']
     }
 }
 
@@ -105,7 +110,7 @@ def _insert_section(json_dst, section_name, section_data):
             json_dst[section_name].append(section_data)  # Append new values
         else:
             json_dst[section_name] = [section_data]  # Create as list
-    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'simple':
+    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'merge':
         if section_name in json_dst:
             for option in section_data:
                 if option in json_dst[section_name] and option in conf_sections[section_name]['list_options']:
@@ -114,6 +119,11 @@ def _insert_section(json_dst, section_name, section_data):
                     json_dst[section_name][option] = section_data[option]  # Update values
         else:
             json_dst[section_name] = section_data  # Create
+    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'last':
+        if section_name in json_dst:
+            # if the option already exists it is overwritten. But a warning is shown.
+            logger.warning("There are multiple {} sections in configuration. Using only last section.".format(section_name))
+        json_dst[section_name] = section_data  # Create
 
 
 def _read_option(section_name, opt):
@@ -427,7 +437,6 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
     :return: agent.conf as dictionary.
     """
-
     if group_id:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
@@ -488,14 +497,14 @@ def get_file_conf(filename, group_id=None, type_conf=None):
     if type_conf:
         if type_conf in types:
             if type_conf == 'conf':
-                data = types[type_conf](group_id, limit=0, filename=filename)
+                data = types[type_conf](group_id, limit=None, filename=filename)
             else:
                 data = types[type_conf](file_path)
         else:
             raise WazuhException(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
     else:
         if filename == "agent.conf":
-            data = get_agent_conf(group_id, limit=0, filename=filename)
+            data = get_agent_conf(group_id, limit=None, filename=filename)
         elif filename == "rootkit_files.txt":
             data = _rootkit_files2json(file_path)
         elif filename == "rootkit_trojans.txt":

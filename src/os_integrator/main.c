@@ -40,6 +40,7 @@ int main(int argc, char **argv)
     int uid = 0;
     int gid = 0;
     int run_foreground = 0;
+    int debug_level = 0;
 
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
@@ -63,6 +64,7 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                debug_level = 1;
                 break;
             case 'u':
                 if(!optarg)
@@ -83,6 +85,15 @@ int main(int argc, char **argv)
             default:
                 help(ARGV0);
                 break;
+        }
+    }
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = getDefine_Int("monitord", "debug", 0, 2);
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
         }
     }
 

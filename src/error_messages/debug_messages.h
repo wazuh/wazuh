@@ -23,7 +23,7 @@
 #define VU_START_REFRESH_DB   "(5458): Refreshing %s databases..."
 #define VU_STOP_REFRESH_DB    "(5459): Refresh of %s database finished."
 #define VU_DB_TIMESTAMP_OVAL  "(5460): %s OVAL has not been downloaded before, so the download continues."
-#define VU_STARTING_UPDATE    "(5461): Starting %s DB update..."
+#define VU_STARTING_UPDATE    "(5461): Starting %s database update..."
 #define VU_AGENT_SOFTWARE_REQ "(5462): Getting agent %s software..."
 #define VU_AGENT_UNSOPPORTED  "(5463): Agent %s has an unsupported Wazuh version."
 #define VU_UNS_OS_VERSION     "(5464): %s version not supported (agent %s)."

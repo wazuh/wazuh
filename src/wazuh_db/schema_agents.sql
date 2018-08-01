@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS sys_hwinfo (
     cpu_mhz REAL CHECK (cpu_mhz > 0),
     ram_total INTEGER CHECK (ram_total > 0),
     ram_free INTEGER CHECK (ram_free > 0),
+    ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
     PRIMARY KEY (scan_id, board_serial)
 );
 
@@ -219,6 +220,22 @@ CREATE TABLE IF NOT EXISTS sys_processes (
 );
 
 CREATE INDEX IF NOT EXISTS processes_id ON sys_processes (scan_id);
+
+CREATE TABLE IF NOT EXISTS ciscat_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER,
+    scan_time TEXT,
+    benchmark TEXT,
+    profile TEXT,
+    pass INTEGER,
+    fail INTEGER,
+    error INTEGER,
+    notchecked INTEGER,
+    unknown INTEGER,
+    score INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS ciscat_id ON ciscat_results (scan_id);
 
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,

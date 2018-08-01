@@ -24,9 +24,17 @@
     <ignore>/etc/cups/certs</ignore>
     <ignore>/etc/dumpdates</ignore>
     <ignore>/etc/svc/volatile</ignore>
+    <ignore>/sys/kernel/security</ignore>
+    <ignore>/sys/kernel/debug</ignore>
 
     <!-- Check the file, but never compute the diff -->
     <nodiff>/etc/ssl/private.key</nodiff>
 
     <skip_nfs>yes</skip_nfs>
+
+    <!-- Remove not monitored files -->
+    <remove_old_diff>yes</remove_old_diff>
+
+    <!-- Allow the system to restart Auditd after installing the plugin -->
+    <restart_audit>yes</restart_audit>
   </syscheck>

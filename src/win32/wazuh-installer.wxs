@@ -68,7 +68,7 @@
                     <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
                         <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="..\wazuh_modules\syscollector\syscollector_win_ext.dll" />
                     </Component>
-                    <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A"/>
+                    <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
                     <Component Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
@@ -209,10 +209,8 @@
             </Directory>
         </Directory>
         <DirectoryRef Id="ACTIVE_RESPONSE">
-            <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes">
+            <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
-                <RemoveFile Id="purgue_active_response" Name="*.*" On="uninstall" />
-                <RemoveFolder Id="purgue_active_response_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="TMP">
@@ -223,49 +221,49 @@
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="QUEUE">
-            <Component Id="CMP_QUEUE" Guid="1CA9BF16-F0B2-4E91-BA09-023518E50624" KeyPath="yes">
+            <Component Id="CMP_QUEUE" Guid="1CA9BF16-F0B2-4E91-BA09-023518E50624" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_queue" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_queue_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="DIFF">
-            <Component Id="CMP_DIFF" Guid="AF666E2C-5C12-4355-9BB7-8FA9463ACDF2" KeyPath="yes">
+            <Component Id="CMP_DIFF" Guid="AF666E2C-5C12-4355-9BB7-8FA9463ACDF2" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_diff" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_diff_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="BOOKMARKS">
-            <Component Id="CMP_BOOKMARKS" Guid="1A441B10-7735-4507-9DB7-6158CA5D7687" KeyPath="yes">
+            <Component Id="CMP_BOOKMARKS" Guid="1A441B10-7735-4507-9DB7-6158CA5D7687" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_bookmarks" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_bookmarks_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="LOGS">
-            <Component Id="CMP_LOGS" Guid="17C9F68D-D1E6-4452-8C3E-992F6D7F0CF1" KeyPath="yes">
+            <Component Id="CMP_LOGS" Guid="17C9F68D-D1E6-4452-8C3E-992F6D7F0CF1" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_logs" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_logs_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="WODLES">
-            <Component Id="CMP_WODLES" Guid="A6811CB8-C2E2-4A1A-A2E5-DCE8221828C6" KeyPath="yes">
+            <Component Id="CMP_WODLES" Guid="A6811CB8-C2E2-4A1A-A2E5-DCE8221828C6" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_wodles" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_wodles_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="RIDS">
-            <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes">
+            <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_rids" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_rids_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="SYSCHECK">
-            <Component Id="CMP_SYSCHECK" Guid="F6841291-B9C5-4B74-82ED-CB9031C85C31" KeyPath="yes">
+            <Component Id="CMP_SYSCHECK" Guid="F6841291-B9C5-4B74-82ED-CB9031C85C31" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_syscheck" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_syscheck_dir" On="uninstall" />
@@ -279,14 +277,14 @@
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="UPGRADE">
-            <Component Id="CMP_UPGRADE" Guid="9FB42D24-217F-4E13-9598-01B62040F768" KeyPath="yes">
+            <Component Id="CMP_UPGRADE" Guid="9FB42D24-217F-4E13-9598-01B62040F768" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_upgrade" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_upgrade_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="SHARED">
-            <Component Id="CMP_SHARED" Guid="9FB42D24-222F-4E13-9598-01B62040F768" KeyPath="yes">
+            <Component Id="CMP_SHARED" Guid="9FB42D24-222F-4E13-9598-01B62040F768" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_shared" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_shared_dir" On="uninstall" />

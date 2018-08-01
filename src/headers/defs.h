@@ -175,9 +175,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
-/* Syscollector directory */
-#define SYSCOLLECTOR_DIR    "/queue/syscollector"
-
 /* Backup directory for agents */
 #define AGNBACKUP_DIR    "/backup/agents"
 
