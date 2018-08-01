@@ -85,7 +85,7 @@ static int Handle_Queue(file_queue *fileq, int flags)
     }
 
     /* File change time */
-    if (fstat(fileno(fileq->fp), &fileq->f_status) < 0) {
+    if (!fileq->fp || fstat(fileno(fileq->fp), &fileq->f_status) < 0) {
         merror(FSTAT_ERROR, fileq->file_name, errno, strerror(errno));
         fclose(fileq->fp);
         fileq->fp = NULL;
