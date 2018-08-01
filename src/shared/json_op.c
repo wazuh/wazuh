@@ -42,8 +42,8 @@ cJSON * json_fread(const char * path) {
     os_malloc(size + 1, buffer);
 
     // Get file and parse into JSON
-
-    if (fread(buffer, 1, size, fp) == 0) {
+    size_t read;
+    if (read = fread(buffer, 1, size, fp), read != size) {
         mdebug1(FREAD_ERROR, path, errno, strerror(errno));
         goto end;
     }
@@ -61,10 +61,7 @@ cJSON * json_fread(const char * path) {
 
 end:
 
-    if (fp) {
-        fclose(fp);
-    }
-
+    fclose(fp);
     free(buffer);
     return item;
 }
