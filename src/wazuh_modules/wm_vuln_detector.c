@@ -1845,8 +1845,12 @@ free_mem:
     OS_ClearNode(node);
     OS_ClearNode(chld_node);
     OS_ClearXML(&xml);
-    remove(CVE_TEMP_FILE);
-    remove(CVE_FIT_TEMP_FILE);
+    if (remove(CVE_TEMP_FILE) < 0) {
+        mterror(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_TEMP_FILE, strerror(errno));
+    }
+    if (remove(CVE_FIT_TEMP_FILE) < 0) {
+        mterror(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_FIT_TEMP_FILE, strerror(errno));
+    }
 
     if (success) {
         return 0;
@@ -1965,7 +1969,7 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
         }
 
         snprintf(repo, OS_SIZE_2048, "%s", update->url + offset);
-        if (limit = strchr(repo, '/'), repo) {
+        if (limit = strchr(repo, '/'), limit) {
             snprintf(repo_file, OS_SIZE_2048, "%s", limit);
             *limit = '\0';
         } else {
