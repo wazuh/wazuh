@@ -30,13 +30,13 @@ hw_info *get_system_bsd();    // Get system information
 
 #if defined(__MACH__)
 
-char* sys_parse_pkg(const char * app_folder, const char * timestamp, int ID);
+char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id);
 
 // Get installed programs inventory
 
 void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
-    int ID = os_random();
+    int random_id = os_random();
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -62,8 +62,8 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     /* Set positive random ID for each event */
 
-    if (ID < 0)
-        ID = -ID;
+    if (random_id < 0)
+        random_id = -random_id;
 
     dr = opendir(MAC_APPS);
 
@@ -79,7 +79,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, de->d_name);
                 char * string = NULL;
-                if (string = sys_parse_pkg(path, timestamp, ID), string) {
+                if (string = sys_parse_pkg(path, timestamp, random_id), string) {
 
                     mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
@@ -106,7 +106,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, de->d_name);
                 char * string = NULL;
-                if (string = sys_parse_pkg(path, timestamp, ID), string) {
+                if (string = sys_parse_pkg(path, timestamp, random_id), string) {
 
                     mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
@@ -138,7 +138,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             cJSON *object = cJSON_CreateObject();
             cJSON *package = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
-            cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddNumberToObject(object, "ID", random_id);
             cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "program", package);
             cJSON_AddStringToObject(package, "format", "pkg");
@@ -188,7 +188,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
@@ -200,7 +200,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     free(timestamp);
 }
 
-char* sys_parse_pkg(const char * app_folder, const char * timestamp, int ID) {
+char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id) {
 
     char read_buff[OS_MAXSTR];
     FILE *fp;
@@ -215,7 +215,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int ID) {
         cJSON *object = cJSON_CreateObject();
         cJSON *package = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "program");
-        cJSON_AddNumberToObject(object, "ID", ID);
+        cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "program", package);
         cJSON_AddStringToObject(package, "format", "pkg");
@@ -309,7 +309,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     char *command;
     FILE *output;
     int i;
-    int ID = os_random();
+    int random_id = os_random();
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -331,8 +331,8 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     /* Set positive random ID for each event */
 
-    if (ID < 0)
-        ID = -ID;
+    if (random_id < 0)
+        random_id = -random_id;
 
     os_calloc(COMMAND_LENGTH, sizeof(char), command);
     snprintf(command, COMMAND_LENGTH - 1, "%s", "pkg query -a '\%n|%m|%v|%q|\%c'");
@@ -346,7 +346,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             cJSON *object = cJSON_CreateObject();
             cJSON *package = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
-            cJSON_AddNumberToObject(object, "ID", ID);
+            cJSON_AddNumberToObject(object, "ID", random_id);
             cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "program", package);
             cJSON_AddStringToObject(package, "format", "pkg");
@@ -391,7 +391,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
@@ -410,7 +410,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
     char *string;
-    int ID = os_random();
+    int random_id = os_random();
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -424,15 +424,15 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    if (ID < 0)
-        ID = -ID;
+    if (random_id < 0)
+        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "hardware");
-    cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
@@ -639,7 +639,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     int i = 0, j = 0, found;
     struct ifaddrs *ifaddrs_ptr, *ifa;
     int family;
-    int ID = os_random();
+    int random_id = os_random();
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -656,8 +656,8 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    if (ID < 0)
-        ID = -ID;
+    if (random_id < 0)
+        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
@@ -705,7 +705,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         cJSON *object = cJSON_CreateObject();
         cJSON *interface = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "network");
-        cJSON_AddNumberToObject(object, "ID", ID);
+        cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "iface", interface);
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
@@ -947,7 +947,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
+    cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
     char *string;
