@@ -11,11 +11,6 @@
  #
  ###
 
-##################################################################################################################
-# Kaspersky Integration 
-# yum install https://products.s.kaspersky-labs.com/multilanguage/endpoints/keslinux10/kesl-10.1.0-5960.x86_64.rpm
-##################################################################################################################
-
 import argparse
 import logging
 import socket
