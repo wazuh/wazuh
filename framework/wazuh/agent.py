@@ -1803,7 +1803,7 @@ class Agent:
             new_file = False if path.exists(agent_group_path) else True
 
             f_group = open(agent_group_path, 'w')
-            f_group.write(group_id)
+            f_group.write("{0}\n".format(group_id))
             f_group.close()
 
             if new_file:
