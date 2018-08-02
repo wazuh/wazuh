@@ -1030,16 +1030,15 @@ int decode_process(char *agent_id, cJSON * logJSON) {
 
     int i;
     char * msg = NULL;
-
-    cJSON * inventory;
     cJSON * scan_id;
+
+    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+        return -1;
+    }
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
 
-    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
-        free(msg);
-        return -1;
-    }
+    cJSON * inventory;
 
     if (inventory = cJSON_GetObjectItem(logJSON, "process"), inventory) {
         if (error_process) {
