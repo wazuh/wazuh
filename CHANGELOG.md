@@ -71,6 +71,7 @@ All notable changes to this project will be documented in this file.
 - Prevent to process Syscollector events by the JSON decoder. ([#674](https://github.com/wazuh/wazuh/pull/674))
 - Stop Syscollector data storage into Wazuh DB when an error appears. ([#674](https://github.com/wazuh/wazuh/pull/674))
 - Fix bug in Syscheck that reported false positive about removed files. ([#1044](https://github.com/wazuh/wazuh/pull/1044))
+- Fix bug in Syscheck that misinterpreted no_diff option. ([#1046](https://github.com/wazuh/wazuh/pull/1046))
 
 ### Removed
 
