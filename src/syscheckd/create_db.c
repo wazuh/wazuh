@@ -611,7 +611,7 @@ int run_dbcheck()
         last_backup = syscheck.last_check;
 
         // Prepare last_check for next scan
-        syscheck.last_check = OSHash_Duplicate(syscheck.fp);
+        syscheck.last_check = OSHash_Duplicate_ex(syscheck.fp);
         w_mutex_unlock(&lastcheck_mutex);
 
         // Send messages for deleted files
@@ -621,6 +621,7 @@ int run_dbcheck()
                 mdebug2("Sending delete msg for file: %s", curr_node->key);
                 snprintf(alert_msg, PATH_MAX + 4, "-1 %s", curr_node->key);
                 send_syscheck_msg(alert_msg);
+                OSHash_Delete_ex(syscheck.last_check, curr_node->key);
                 if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
                     free(data->checksum);
                     free(data);
