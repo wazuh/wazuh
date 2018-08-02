@@ -70,6 +70,7 @@ All notable changes to this project will be documented in this file.
 - Fix bug when processing the packages in vulnerability-detector.
 - Prevent to process Syscollector events by the JSON decoder. ([#674](https://github.com/wazuh/wazuh/pull/674))
 - Stop Syscollector data storage into Wazuh DB when an error appears. ([#674](https://github.com/wazuh/wazuh/pull/674))
+- Fix bug in Syscheck that reported false positive about removed files. ([#1044](https://github.com/wazuh/wazuh/pull/1044))
 
 ### Removed
 
