@@ -422,7 +422,12 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     int j = 0;
 
-    while((ret = cursor->c_get(cursor, &key, &data, DB_NEXT)) == 0) {
+    ret = cursor->c_get(cursor, &key, &data, DB_NEXT);
+    if (ret == DB_NOTFOUND){
+        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
+    }
+
+    while(ret == 0) {
 
         // First header is not a package
 
@@ -562,10 +567,8 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
             free(info->tag);
             free(info);
         }
-    }
 
-    if (ret == DB_NOTFOUND){
-        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
+        ret = cursor->c_get(cursor, &key, &data, DB_NEXT);
     }
 
     cursor->c_close(cursor);
