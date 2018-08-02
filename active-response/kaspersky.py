@@ -50,6 +50,10 @@ exclusive.add_argument("--update_application", action='store_true', required = F
 exclusive.add_argument("--get_task_list", action='store_true', required = False, help="List all the tasks. Example of use: Kaspersky.py --get_task_list")
 exclusive.add_argument("--get_task_state", metavar = 'ID', type = str, required = False, help="Get the status of the number of the task entered. Example of use: Kaspersky.py --get_task_state 2, Kaspersky.py --get_task_state Scan_My_Computer")
 exclusive.add_argument("--custom_flags", metavar = 'flags', type = str, required = False, help="Run custom flags. Example of use: Kaspersky.py --custom_flags '--get-task-state Scan_My_Computer' ")
+exclusive.add_argument("--enable_realtime", action='store_true', required = False, help="Enable Realtime protection. Example of use: Kaspersky.py --enable_realtime")
+exclusive.add_argument("--disable_realtime", action='store_true', required = False, help="Disable Realtime protection. Example of use: Kaspersky.py --disable_realtime")
+
+
 
 args, unknown = parser.parse_known_args()
 
@@ -146,6 +150,16 @@ def run_kaspersky():
 		log_message = "{}.".format(kesl_control)
 		logger(log_message, "INFO", foreground = args.verbose)
 		send_kaspersky(kesl_control)
+		
+	if args.enable_realtime:
+        	log_message = "Enable realtime."
+        	logger(log_message, "INFO", foreground=args.verbose)
+        	task = '--start-task 2'
+
+    	if args.disable_realtime:
+        	log_message = "Disable realtime."
+        	logger(log_message, "INFO", foreground=args.verbose)
+        	task = '--stop-task 2'	
 
 	log_message = "End."
 	logger(log_message, "INFO", foreground = args.verbose)
