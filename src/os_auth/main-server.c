@@ -765,6 +765,17 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 /* If IP: != 'src' overwrite the srcip */
                 if(strncmp(client_source_ip,"src",3) != 0)
                 {
+                    if (!OS_IsValidIP(client_source_ip, NULL)) {
+                        merror("Invalid IP: '%s'", client_source_ip);
+                        snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        continue;
+                    }
+
                     memcpy(srcip,client_source_ip,IPSIZE);
                 }
 
