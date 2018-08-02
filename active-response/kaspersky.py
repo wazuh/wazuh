@@ -97,28 +97,23 @@ def run_kaspersky():
 	task = ''
 
 	if args.full_scan:
-		check_tasks_status()
 		log_message = "Scan my computer."
 		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--start-task 2'
 	if args.boot_scan:
-		check_tasks_status()
 		log_message = "Boot scan."
 		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--start-task 4'
 	if args.memory_scan:
-		check_tasks_status()
 		log_message = "Memory scan."
 		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--start-task 5'
 	if args.custom_scan_folder:	
-		check_tasks_status()
 		if os.path.exists(args.custom_scan_folder):
 			log_message = "Custom scan folder."
 			logger(log_message, "INFO", foreground = args.verbose)
 			scan_folder(args.custom_scan_folder)
-	if args.custom_scan_file:
-		check_tasks_status()	
+	if args.custom_scan_file:	
 		if os.path.exists(args.custom_scan_file):	
 			if args.action:
 				log_message = "Custom scan file with action."
@@ -129,7 +124,6 @@ def run_kaspersky():
 				logger(log_message, "INFO", foreground = args.verbose)
 				task = '--scan-file {}'.format(args.custom_scan_file)
 	if args.update_application:
-		check_tasks_status()
 		log_message = "Update application."
 		logger(log_message, "INFO", foreground = args.verbose)
 		task = '--update-application'
@@ -143,7 +137,6 @@ def run_kaspersky():
 		if args.get_task_state > 0:
 			task = '--get-task-state {}'.format(args.get_task_state)
 	if args.custom_flags:
-		check_tasks_status()
 		log_message = "Run custom flags: {}.".format(args.custom_flags)
 		logger(log_message, "INFO", foreground = args.verbose)
 		task = '{}'.format(args.custom_flags)
