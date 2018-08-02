@@ -253,28 +253,7 @@ def remove_custom_settings_file(path):
 	logger(log_message, "INFO", foreground = args.verbose)
 	os.remove(path)
 
-##################################################################################################################
-# Check if there are any tasks in execution (ignoring the ones that are always in execution).
-# If there is a task in progress, abort the run. 
-##################################################################################################################
 
-def check_tasks_status():
-
-	log_message = "Checking the status of tasks. "
-	logger(log_message, "INFO", foreground = args.verbose)
-	task = '--get-task-list'
-	ignore_list = ["1","9","10","11","12"]
-	all_tasks = '{}{} {}'.format(bin_path, binary, task)
-	tasks_info = os.popen(all_tasks).read()
-	tasks_states_dict = parse_tasks_states(tasks_info)
-	keylist = tasks_states_dict.keys()
-	for key in keylist:
-		if key not in ignore_list:
-			if tasks_states_dict[key] !="Stopped":
-				log_message = "There is at least one task in progress. Task ID:{} Status:{}. Exit.".format(key,tasks_states_dict[key])
-				logger(log_message, "INFO", foreground = args.verbose)
-				sys.exit(1)
-				print(key, tasks_states_dict[key])
 
 
 ##################################################################################################################
