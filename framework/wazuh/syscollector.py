@@ -6,7 +6,7 @@
 from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
-from wazuh.utils import plain_dict_to_nested_dict
+from wazuh.utils import plain_dict_to_nested_dict, get_fields_to_nest
 from operator import itemgetter
 
 
@@ -188,7 +188,7 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
     total = 0
 
     for agent in agents:
-        items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search, sort=sort, nested=True)
+        items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search, sort=sort, nested=False)
         if items == {}:
             continue
 
@@ -204,7 +204,8 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
     if sort and sort['fields']:
         result = sorted(result, key=itemgetter(sort['fields'][0]), reverse=True if sort['order'] == "desc" else False)
 
-    return {'items': result, 'totalItems': total}
+    fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '_')
+    return {'items': list(map(lambda x: plain_dict_to_nested_dict(x, fields_to_nest, non_nested), result)), 'totalItems': total}
 
 
 def get_packages(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}):
