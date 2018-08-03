@@ -589,18 +589,15 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
     for (msg++; (*msg == '\"' || *msg == '!') && (end = strchr(msg, '\n')); msg = end + 1);
 
+
     // Get agent group
 
-    if (get_agent_group(agent_id, group, KEYSIZE) < 0) {
+    if (agt_group = w_parser_get_agent(agent_id), agt_group) {
+        strncpy(group, agt_group->group, KEYSIZE);
+        group[KEYSIZE - 1] = '\0';
+        set_agent_group(agent_id, group);
+    } else if (get_agent_group(agent_id, group, KEYSIZE) < 0) {
         group[0] = '\0';
-    }
-
-    // If no group defined or it's "default", look at the download list file
-    if (!(group[0] && strcmp(group, "default"))) {
-        if (agt_group = w_parser_get_agent(agent_id), agt_group) {
-            strncpy(group, agt_group->group, KEYSIZE);
-            group[KEYSIZE - 1] = '\0';
-        }
     }
 
     /* Lock mutex */
