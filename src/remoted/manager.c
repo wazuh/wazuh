@@ -240,6 +240,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
             char *file_url;
             char *file_name;
             char destination_path[PATH_MAX + 1];
+            char download_path[PATH_MAX];
             int downloaded;
 
             // Check if we have merged.mg file in this group
@@ -247,7 +248,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
                 file_url = r_group->files[r_group->merge_file_index].url;
                 file_name = SHAREDCFG_FILENAME;
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
-                mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
+                mdebug1("Downloading shared file '%s' from '%s'", merged, file_url);
                 downloaded = wurl_request(file_url,destination_path);
                 w_download_status(downloaded,file_url,destination_path);
                 r_group->merged_is_downloaded = !downloaded;
@@ -280,9 +281,13 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
                         file_url = r_group->files[i].url;
                         file_name = r_group->files[i].name;
                         snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                        snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                         mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                        downloaded = wurl_request(file_url,destination_path);
-                        w_download_status(downloaded,file_url,destination_path);
+                        downloaded = wurl_request(file_url,download_path);
+
+                        if (!w_download_status(downloaded, file_url, destination_path)) {
+                            OS_MoveFile(download_path, destination_path);
+                        }
                     }
                 }
             }

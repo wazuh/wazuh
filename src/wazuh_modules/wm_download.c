@@ -158,7 +158,7 @@ void wm_download_dispatch(char * buffer) {
 
     switch (wurl_get(url, jpath)) {
     case OS_CONNERR:
-        mdebug1(WURL_DOWNLOAD_FILE_ERROR, url);
+        mdebug1(WURL_DOWNLOAD_FILE_ERROR, jpath, url);
         snprintf(buffer, OS_MAXSTR, "err connecting to url");
         break;
 
