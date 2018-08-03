@@ -141,20 +141,20 @@ def run_kaspersky():
 		task = '{}'.format(args.custom_flags)
 	
 	if args.enable_realtime:
-        	log_message = "Enable realtime."
-        	logger(log_message, "INFO", foreground=args.verbose)
-        	task = '--start-task 1'
+		log_message = "Enable realtime."
+		logger(log_message, "INFO", foreground=args.verbose)
+		task = '--start-task 1'
 
-    	if args.disable_realtime:
-        	log_message = "Disable realtime."
-        	logger(log_message, "INFO", foreground=args.verbose)
-        	task = '--stop-task 1'	
+	if args.disable_realtime:
+		log_message = "Disable realtime."
+		logger(log_message, "INFO", foreground=args.verbose)
+		task = '--stop-task 1'	
 
-        if task != '':
-                kesl_control = '{}{} {}'.format(bin_path, binary, task)
-                log_message = "{}.".format(kesl_control)
-                logger(log_message, "INFO", foreground = args.verbose)
-                send_kaspersky(kesl_control)
+	if task != '':
+		kesl_control = '{}{} {}'.format(bin_path, binary, task)
+		log_message = "{}.".format(kesl_control)
+		logger(log_message, "INFO", foreground = args.verbose)
+		send_kaspersky(kesl_control)
 
 
 	log_message = "End."
