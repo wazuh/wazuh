@@ -37,6 +37,7 @@ All notable changes to this project will be documented in this file.
 - `cluster_control` shows an error if the status does not exist. ([#1002](https://github.com/wazuh/wazuh/pull/1002))
 - Get Windows hardware inventory natively. ([#831](https://github.com/wazuh/wazuh/pull/831))
 - Get processes and ports inventory by the Syscollector module.
+- Added an integration with Kaspersky Endpoint Security for Linux via Active Response. ([#1056](https://github.com/wazuh/wazuh/pull/1056))
 
 ### Changed
 
