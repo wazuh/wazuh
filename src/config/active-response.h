@@ -17,6 +17,8 @@ typedef struct _ar_command {
 
     char *name;
     char *executable;
+    char *extra_args;
+
 } ar_command;
 
 /* Active response data */

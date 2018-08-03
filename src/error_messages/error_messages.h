@@ -145,7 +145,7 @@
 
 /* Active Response */
 #define AR_CMD_MISS     "(1280): Missing command options. " \
-                        "You must specify a 'name', 'executable' and 'expect'."
+                        "You must specify a 'name' and 'executable'."
 #define AR_MISS         "(1281): Missing options in the active response " \
                         "configuration. "
 #define ARQ_ERROR       "(1301): Unable to connect to active response queue."
