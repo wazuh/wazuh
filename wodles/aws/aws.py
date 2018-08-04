@@ -22,6 +22,8 @@
 # - Move connect error so not confused with general error
 # - If fail to parse log, and skip_on_error, attempt to send me msg to wazuh
 # - Support existing configurations by migrating data, inferring other required params
+# - Reparse flag to support re-parsing of log files from s3 bucket
+# - Use CloudTrail timestamp for ES timestamp
 #
 # Future
 # ToDo: Integrity check logs against digest
@@ -76,37 +78,17 @@ wazuh_queue = '{0}/queue/ossec/queue'.format(wazuh_path)
 wazuh_wodle = '{0}/wodles/aws'.format(wazuh_path)
 
 
-def send_msg(wazuh_queue, queue_buffer, msg):
-    formatted = {
-        'integration': 'aws',
-        'aws': msg
-    }
-    debug(json.dumps(formatted, indent=4), 3)
-    formatted = '{0}{1}'.format(msg_header, json.dumps(formatted))
-    formatted = formatted.encode()
-    # if msg too large to send to socket
-    for shrink in ['requestParameters', 'responseElements']:
-        if len(formatted) > queue_buffer:
-            debug('++ Message truncated because too large; removing {shrink}'.format(shrink=shrink), 2)
-            msg[shrink] = 'Value truncated because too large for socket buffer'
-            formatted = {
-                'integration': 'aws',
-                'aws': msg
-            }
-            formatted = '{0}{1}'.format(msg_header, json.dumps(formatted))
-            formatted.encode()
-        else:
-            # Message not too large; skip out
-            break
-
-    s = socket(AF_UNIX, SOCK_DGRAM)
+def send_msg(wazuh_queue, msg):
     try:
+        ossec_header = "1:Wazuh-AWS:"
+        debug(msg, 3)
+        s = socket(AF_UNIX, SOCK_DGRAM)
         s.connect(wazuh_queue)
+        s.send("{header}{msg}".format(header=ossec_header, msg=json.dumps(msg).encode()))
+        s.close()
     except:
         print('ERROR: Wazuh must be running.')
         sys.exit(11)
-    s.send(formatted)
-    s.close()
 
 
 def handler(signal, frame):
@@ -133,8 +115,12 @@ def already_processed(downloaded_file, aws_account_id, aws_region, db_connector)
     return False
 
 
-def mark_complete(aws_account_id, aws_region, log_key, db_connector):
-    if db_connector:
+def mark_complete(aws_account_id, aws_region, log_key, db_connector, options):
+    if options.reparse:
+        if already_processed(log_key, aws_account_id, aws_region, db_connector):
+            debug('+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_key), 2)
+            return
+    try:
         db_connector.execute(
             """
               INSERT INTO trail_progress (
@@ -150,6 +136,9 @@ def mark_complete(aws_account_id, aws_region, log_key, db_connector):
                                            log_key=log_key))
         debug('+++ Mark log complete: {log_key}'.format(log_key=log_key), 2)
         db_connector.commit()
+    except:
+        debug('+++ Error marking log completed', 2)
+        raise
 
 
 def debug(msg, msg_level):
@@ -234,7 +223,7 @@ def marker_only_logs_after(options, aws_account_id, aws_region):
     return filter_marker
 
 
-def migrate_legacy_table(db_connector):
+def migrate_legacy_table(db_connector, options):
     debug('++ Query legacy table records', 1)
     query_results = db_connector.execute("""
                                            SELECT 
@@ -256,7 +245,7 @@ def migrate_legacy_table(db_connector):
                     date_path=datetime.strftime(log_timestamp,'%Y/%m/%d'),
                     log_filename=row[0]
                 )
-                mark_complete(aws_account_id, aws_region, log_key, db_connector)
+                mark_complete(aws_account_id, aws_region, log_key, db_connector, options)
             except:
                 debug('++ Error parsing log file name: {}'.format(row[0]), 1)
 
@@ -306,6 +295,8 @@ def main(argv):
                         default='', type=arg_valid_regions)
     parser.add_argument('-e', '--skip_on_error', action='store_true', dest='skip_on_error',
                         help='If fail to parse a file, error out instead of skipping the file', default=True)
+    parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
+                        help='Parse the log file, even if its been parsed before', default=True)
     options = parser.parse_args()
 
     db_connector = None
@@ -367,7 +358,7 @@ def main(argv):
     # Legacy table exists; migrate progress to new table
     if legacy_table_exists:
         debug('+++ Migrate legacy table data', 1)
-        migrate_legacy_table(db_connector)
+        migrate_legacy_table(db_connector, options)
 
     # Connect to Amazon S3 Bucket
     s3_client = get_s3_client(options)
@@ -403,31 +394,38 @@ def main(argv):
         for aws_region in aws_account_regions:
             debug('+++ Working on {aws_account_id} - {aws_region}'.format(aws_account_id=aws_account_id,
                                                                           aws_region=aws_region), 1)
-            # Where did we end last run thru on this account/region?
-            query_results = db_connector.execute(
-                """
-                  SELECT 
-                    log_key 
-                  FROM 
-                    trail_progress 
-                  WHERE 
-                    aws_account_id='{aws_account_id}' AND 
-                    aws_region = '{aws_region}' 
-                  ORDER BY 
-                    ROWID DESC 
-                  LIMIT 1;""".format(aws_account_id=aws_account_id,
-                                     aws_region=aws_region))
-            try:
-                filter_marker = query_results.fetchone()[0]
-                # Existing logs processed, but older than only_logs_after
-                if int(filter_marker.split('/')[-1].split('_')[-2].split('T')[0]) < options.only_logs_after:
-                    filter_marker = marker_only_logs_after(options, aws_account_id, aws_region)
-            except TypeError:
-                # No logs processed for this account/region, but if only_logs_after has been set
+            # If reparse flag set
+            if options.reparse:
                 if options.only_logs_after:
                     filter_marker = marker_only_logs_after(options, aws_account_id, aws_region)
                 else:
                     filter_marker = ''
+            else:
+                # Where did we end last run thru on this account/region?
+                query_results = db_connector.execute(
+                    """
+                      SELECT 
+                        log_key 
+                      FROM 
+                        trail_progress 
+                      WHERE 
+                        aws_account_id='{aws_account_id}' AND 
+                        aws_region = '{aws_region}' 
+                      ORDER BY 
+                        ROWID DESC 
+                      LIMIT 1;""".format(aws_account_id=aws_account_id,
+                                         aws_region=aws_region))
+                try:
+                    filter_marker = query_results.fetchone()[0]
+                    # Existing logs processed, but older than only_logs_after
+                    if int(filter_marker.split('/')[-1].split('_')[-2].split('T')[0]) < options.only_logs_after:
+                        filter_marker = marker_only_logs_after(options, aws_account_id, aws_region)
+                except TypeError:
+                    # No logs processed for this account/region, but if only_logs_after has been set
+                    if options.only_logs_after:
+                        filter_marker = marker_only_logs_after(options, aws_account_id, aws_region)
+                    else:
+                        filter_marker = ''
 
             filter_args = {
                 'Bucket': options.logBucket,
@@ -451,11 +449,14 @@ def main(argv):
                         # Fail safe in case an older log gets thru StartAfter; probably redundant
                         if int(bucket_file['Key'].split('/')[-1].split('_')[-2].split('T')[0]) < options.only_logs_after:
                             debug("++ Skipping file dated before only_logs_after: {file}".format(file=bucket_file['Key']), 1)
-                            mark_complete(aws_account_id, aws_region, bucket_file['Key'], db_connector)
+                            mark_complete(aws_account_id, aws_region, bucket_file['Key'], db_connector, options)
                             continue
                         if already_processed(bucket_file['Key'], aws_account_id, aws_region, db_connector):
-                            debug("++ Skipping previously processed file {file}".format(file=bucket_file['Key']), 1)
-                            continue
+                            if options.reparse:
+                                debug("++ File previously processed, but reparse flag set: {file}".format(file=bucket_file['Key']), 1)
+                            else:
+                                debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                                continue
                         debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
 
                         try:
@@ -466,9 +467,18 @@ def main(argv):
                                 debug("++ Failed to decompress file; skipping...", 1)
                                 try:
                                     error_msg = {
-                                        'eventSource'
+                                        'integration': 'aws',
+                                        'aws': {
+                                            'cloudtrail': {
+                                                'aws_account_id': aws_account_id,
+                                                'aws_account_alias': options.aws_account_alias,
+                                                'log_file': bucket_file['Key'],
+                                                'error_msg': 'Failed to decompress file; skipping...',
+                                                's3bucket': options.logBucket
+                                            }
+                                        }
                                     }
-                                    send_msg(wazuh_queue, queue_buffer, aws_log)
+                                    send_msg(wazuh_queue, error_msg)
                                 except:
                                     debug("++ Failed to send message to Wazuh", 1)
                             else:
@@ -476,35 +486,83 @@ def main(argv):
                                 sys.exit(8)
 
                         try:
-                            j = json.loads(uncompressed_object)
+                            log_json = json.loads(uncompressed_object)
                         except:
                             if options.skip_on_error:
                                 debug("++ Unable to parse file {0}; skipping...".format(bucket_file['Key']), 1)
                                 try:
-                                    error_msg = {}
-                                    send_msg(wazuh_queue, queue_buffer, aws_log)
+                                    error_msg = {
+                                        'integration': 'aws',
+                                        'aws': {
+                                            'cloudtrail': {
+                                                'aws_account_id': aws_account_id,
+                                                'aws_account_alias': options.aws_account_alias,
+                                                'log_file': bucket_file['Key'],
+                                                'error_msg': 'Unable to parse file; skipping...',
+                                                's3bucket': options.logBucket
+                                            }
+                                        }
+                                    }
+                                    send_msg(wazuh_queue, error_msg)
                                 except:
                                     debug("++ Failed to send message to Wazuh", 1)
                             else:
                                 print "ERROR: Failed to parse file: {0}".format(bucket_file['Key'])
                                 sys.exit(9)
-                        if "Records" not in j:
+                        if "Records" not in log_json:
                             continue
-                        for cloudtrail_event in j["Records"]:
+                        for cloudtrail_event in log_json["Records"]:
                             # Parse out all the values of 'None'
-                            aws_log = dict((key, value) for key, value in cloudtrail_event.iteritems() if value)
-                            aws_log['log_file'] = bucket_file['Key']
-                            aws_log['aws_account_alias'] = options.aws_account_alias
-                            send_msg(wazuh_queue, queue_buffer, aws_log)
+                            event_msg = {
+                                'integration': 'aws',
+                                'aws': {
+                                    'cloudtrail': {
+                                        'aws_account_id': aws_account_id,
+                                        'aws_account_alias': options.aws_account_alias,
+                                        'log_file': bucket_file['Key'],
+                                        'event': dict((key, value) for key, value in cloudtrail_event.iteritems() if value),
+                                        's3bucket': options.logBucket
+                                    }
+                                }
+                            }
+
+                            # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
+                            for field_to_str in ['additionalEventData', 'responseElements', 'requestParameters']:
+                                if field_to_str in event_msg['aws']['cloudtrail']['event']:
+                                    try:
+                                        event_msg['aws']['cloudtrail']['event'][field_to_str] = json.dumps(event_msg['aws']['cloudtrail']['event'][field_to_str],
+                                                                           ensure_ascii=True,
+                                                                           indent=2,
+                                                                           sort_keys=True)
+                                    except:
+                                        event_msg['aws']['cloudtrail']['event'][field_to_str] = 'Unable to convert field to string: {field}'.format(field=field_to_str)
+
+                            # If msg too large, start truncating
+                            for field_to_shrink in ['additionalEventData', 'responseElements', 'requestParameters']:
+                                if field_to_shrink not in event_msg['aws']['cloudtrail']['event']:
+                                    continue
+                                if event_msg['aws']['cloudtrail']['event'][field_to_shrink] == 'Unable to convert field to string: {field}'.format(field=field_to_shrink):
+                                    continue
+
+                                if len(json.dumps(event_msg).encode()) > queue_buffer:
+                                    debug('++ Message too large; truncating {field}'.format(field=field_to_shrink), 2)
+                                    event_msg['aws']['cloudtrail']['event'][field_to_shrink] = 'Value truncated because event msg too large for socket buffer'
+                                else:
+                                    # Message not too large; skip out
+                                    break
+
+                            # Send the message
+                            send_msg(wazuh_queue, event_msg)
 
                         # Remove file from S3 Bucket
                         if options.deleteFile:
                             debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                             s3_client.delete_object(Bucket=options.logBucket, Key=bucket_file['Key'])
-                        mark_complete(aws_account_id, aws_region, bucket_file['Key'], db_connector)
+                        mark_complete(aws_account_id, aws_region, bucket_file['Key'], db_connector, options)
             except SystemExit:
                 raise
-            except:
+            except Exception as err:
+                debug("+++ Unexpected error: {}".format(err), 2)
                 print "ERROR: Unexpected error querying/working with objects in S3"
                 sys.exit(7)
 
