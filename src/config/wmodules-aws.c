@@ -116,15 +116,6 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_ON_ERROR, WM_AWS_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(nodes[i]->element, XML_SKIP_ON_ERROR)) {
-            if (!strcmp(nodes[i]->content, "yes"))
-                aws_config->skip_on_error = 1;
-            else if (!strcmp(nodes[i]->content, "no"))
-                aws_config->skip_on_error = 0;
-            else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_ON_ERROR, WM_AWS_CONTEXT.name);
-                return OS_INVALID;
-            }
         } else if (!strcmp(nodes[i]->element, XML_REMOVE_FORM_BUCKET)) {
             if (!strcmp(nodes[i]->content, "yes"))
                 aws_config->remove_from_bucket = 1;
