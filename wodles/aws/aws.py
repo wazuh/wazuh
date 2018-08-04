@@ -296,7 +296,7 @@ def main(argv):
     parser.add_argument('-e', '--skip_on_error', action='store_true', dest='skip_on_error',
                         help='If fail to parse a file, error out instead of skipping the file', default=True)
     parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
-                        help='Parse the log file, even if its been parsed before', default=True)
+                        help='Parse the log file, even if its been parsed before', default=False)
     options = parser.parse_args()
 
     db_connector = None
