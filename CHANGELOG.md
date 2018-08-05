@@ -157,6 +157,7 @@ All notable changes to this project will be documented in this file.
 - Fix error in CentOS 6 when `wazuh-cluster` is disabled. ([#944](https://github.com/wazuh/wazuh/pull/944)).
 - Fix Remoted connection failed warning in TCP mode due to timeout. ([#958](https://github.com/wazuh/wazuh/pull/958))
 - Fix option 'rule_id' in syslog client. ([#979](https://github.com/wazuh/wazuh/pull/979))
+- Fixed bug in legacy agent's server options that prevented it from setting port and protocol.
 
 ## [v3.3.1] 2018-06-18
 
