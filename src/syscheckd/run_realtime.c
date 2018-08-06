@@ -336,12 +336,22 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     TCHAR finalfile[MAX_PATH];
 
     if (dwBytes == 0) {
-        merror("real time call back called, but 0 bytes.");
-        return;
+        mwarn("Real time process: no data. Probably buffer overflow.");
     }
 
     if (dwerror != ERROR_SUCCESS) {
-        merror("real time call back called, but error is set.");
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
+
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwerror, 0, (LPTSTR) &messageBuffer, 0, NULL);
+
+        if (end = strchr(messageBuffer, '\r'), end) {
+            *end = '\0';
+        }
+
+        merror("Real time process: %s (%lx).", messageBuffer, dwerror);
+        LocalFree(messageBuffer);
+
         return;
     }
 
@@ -354,24 +364,25 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
         return;
     }
 
-    do {
-        pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
-        offset += pinfo->NextEntryOffset;
+    if (dwBytes) {
+        do {
+            pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
+            offset += pinfo->NextEntryOffset;
 
-        lcount = WideCharToMultiByte(CP_ACP, 0, pinfo->FileName,
-                                     pinfo->FileNameLength / sizeof(WCHAR),
-                                     finalfile, MAX_PATH - 1, NULL, NULL);
-        finalfile[lcount] = TEXT('\0');
+            lcount = WideCharToMultiByte(CP_ACP, 0, pinfo->FileName,
+                                         pinfo->FileNameLength / sizeof(WCHAR),
+                                         finalfile, MAX_PATH - 1, NULL, NULL);
+            finalfile[lcount] = TEXT('\0');
 
-        final_path[MAX_LINE] = '\0';
-        snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
+            final_path[MAX_LINE] = '\0';
+            snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
 
-        /* Check the change */
-        realtime_checksumfile(final_path, NULL);
-    } while (pinfo->NextEntryOffset != 0);
+            /* Check the change */
+            realtime_checksumfile(final_path, NULL);
+        } while (pinfo->NextEntryOffset != 0);
+    }
 
     realtime_win32read(rtlocald);
-
     return;
 }
 
