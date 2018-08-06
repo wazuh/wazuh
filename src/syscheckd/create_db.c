@@ -175,7 +175,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char wd_sum[OS_SIZE_6144 + 1];
 #ifdef WIN32
     const char *user;
-    char *sid;
+    char *sid = NULL;
 #endif
 
     opts = syscheck.opts[dir_position];
