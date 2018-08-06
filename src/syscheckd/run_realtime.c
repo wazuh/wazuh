@@ -320,7 +320,7 @@ typedef struct _win32rtfim {
     OVERLAPPED overlap;
 
     char *dir;
-    TCHAR buffer[12288];
+    TCHAR buffer[65536];
 } win32rtfim;
 
 int realtime_win32read(win32rtfim *rtlocald);
