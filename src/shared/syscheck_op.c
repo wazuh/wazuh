@@ -472,18 +472,26 @@ const char *get_user(const char *path, __attribute__((unused)) int uid, char **s
 
     // Check GetLastError for CreateFile error code.
     if (hFile == INVALID_HANDLE_VALUE) {
-        DWORD dwErrorCode = 0;
+        DWORD dwErrorCode = GetLastError();
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
 
-        dwErrorCode = GetLastError();
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
 
-        switch (dwErrorCode) {
-        case ERROR_SHARING_VIOLATION: // 32
-            mdebug1("CreateFile (%s) error = %lu", path, dwErrorCode);
-            break;
-        default:
-            merror("CreateFile (%s) error = %lu", path, dwErrorCode);
+        if (end = strchr(messageBuffer, '\r'), end) {
+            *end = '\0';
         }
 
+        switch (dwErrorCode) {
+        case ERROR_ACCESS_DENIED:     // 5
+        case ERROR_SHARING_VIOLATION: // 32
+            mdebug1("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+            break;
+        default:
+            mwarn("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+        }
+
+        LocalFree(messageBuffer);
         *AcctName = '\0';
         goto end;
     }
