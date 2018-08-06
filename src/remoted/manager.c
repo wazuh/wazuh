@@ -240,7 +240,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
             char *file_url;
             char *file_name;
             char destination_path[PATH_MAX + 1];
-            char download_path[PATH_MAX];
+            char download_path[PATH_MAX + 1];
             int downloaded;
 
             // Check if we have merged.mg file in this group
