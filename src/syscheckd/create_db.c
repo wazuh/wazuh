@@ -193,10 +193,15 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
+        char alert_msg[PATH_MAX + 4];
 
-        if (errno == ENOTDIR) {
+        switch (errno) {
+        case ENOENT:
+            mwarn("Cannot access '%s': it was removed during scan.", file_name);
+            return (-1);
+
+        case ENOTDIR:
             /*Deletion message sending*/
-            char alert_msg[PATH_MAX + 4];
             alert_msg[PATH_MAX + 3] = '\0';
             snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
             send_syscheck_msg(alert_msg);
@@ -208,8 +213,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             return (0);
-        } else {
-            merror("Error accessing '%s'.", file_name);
+
+        default:
+            merror("Error accessing '%s': %s (%d)", file_name, strerror(errno), errno);
             return (-1);
         }
     }
@@ -524,12 +530,12 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #else
         if (defaultfilesn[di] == NULL) {
 #endif
-            mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
+            mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
         } else {
             return 0;
         }
 #else
-        mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
+        mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
 #endif /* WIN32 */
         return (-1);
     }
