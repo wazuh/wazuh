@@ -53,6 +53,7 @@ All notable changes to this project will be documented in this file.
 - Cluster log rotation: set correct permissions and store rotations in /logs/ossec. ([#667](https://github.com/wazuh/wazuh/pull/667))
 - `Distinct` requests don't allow `limit=0` or `limit>maximun_limit`. ([#1007](https://github.com/wazuh/wazuh/pull/1007))
 - Deprecated arguments -i, -F and -r for Authd. ([#1013](https://github.com/wazuh/wazuh/pull/1013))
+- Increase the internal memory for real-time from 12 KiB to 64 KiB. ([#1062](https://github.com/wazuh/wazuh/pull/1062))
 
 ### Fixed
 
@@ -73,6 +74,9 @@ All notable changes to this project will be documented in this file.
 - Stop Syscollector data storage into Wazuh DB when an error appears. ([#674](https://github.com/wazuh/wazuh/pull/674))
 - Fix bug in Syscheck that reported false positive about removed files. ([#1044](https://github.com/wazuh/wazuh/pull/1044))
 - Fix bug in Syscheck that misinterpreted no_diff option. ([#1046](https://github.com/wazuh/wazuh/pull/1046))
+- Fixes in file integrity monitoring for Windows. ([#1062](https://github.com/wazuh/wazuh/pull/1062))
+  - Fix Windows agent crash if FIM fails to extract the file owner.
+  - Prevent FIM real-time mode on Windows from stopping if the internal buffer gets overflowed.
 
 ### Removed
 
