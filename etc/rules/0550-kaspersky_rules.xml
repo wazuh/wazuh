@@ -1,0 +1,6 @@
+<group name="kaspersky,">
+    <rule id="17000" level="3">
+        <decoded_as>kes_parent</decoded_as>
+        <description>Kaspersky Endpoint Security - Task $(TaskName) changed to state $(TaskState)</description>
+    </rule>
+</group>
