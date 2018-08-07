@@ -93,7 +93,7 @@ void *read_multiline(int pos, int *rc, int drop_it)
 
         /* Incorrect message size */
         if (__ms) {
-            merror("Large message size: '%s'", str);
+            merror("Large message size from file '%s' (length = %zu): '%.*s'...", logff[pos].file, strlen(str), sample_log_length, str);
             while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
                 /* Get the last occurrence of \n */
                 if ((p = strrchr(str, '\n')) != NULL) {

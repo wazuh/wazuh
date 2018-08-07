@@ -85,5 +85,6 @@ extern logsocket *logsk;
 extern int vcheck_files;
 extern int maximum_lines;
 extern logsocket default_agent;
+extern int sample_log_length;
 
 #endif /* __LOGREADER_H */
