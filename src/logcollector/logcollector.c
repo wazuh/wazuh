@@ -21,6 +21,7 @@ logreader *logff;
 logsocket *logsk;
 int vcheck_files;
 int maximum_lines;
+int sample_log_length;
 static int _cday = 0;
 logsocket default_agent = { .name = "agent" };
 

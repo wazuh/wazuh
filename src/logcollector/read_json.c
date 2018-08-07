@@ -99,11 +99,7 @@ void *read_json(int pos, int *rc, int drop_it)
         if (__ms) {
             // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
             // truncate str before logging to ossec.log
-#define OUTSIZE 4096
-            char buf[OUTSIZE + 1];
-            buf[OUTSIZE] = '\0';
-            snprintf(buf, OUTSIZE, "%s", str);
-            merror("Large message size(length=%d): '%s...'", (int)strlen(str), buf);
+            merror("Large message size from file '%s' (length = %zu): '%.*s'...", logff[pos].file, strlen(str), sample_log_length, str);
             while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
                 /* Get the last occurrence of \n */
                 if (strrchr(str, '\n') != NULL) {
