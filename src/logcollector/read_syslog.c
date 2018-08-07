@@ -45,7 +45,7 @@ void *read_syslog(int pos, int *rc, int drop_it)
             __ms = 1;
         } else {
             /* Message not complete. Return. */
-            mdebug1("Message not complete. Trying again: '%s'", str);
+            mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", logff[pos].file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
             fsetpos(logff[pos].fp, &fp_pos);
             break;
         }
@@ -68,7 +68,7 @@ void *read_syslog(int pos, int *rc, int drop_it)
         }
 #endif
 
-        mdebug2("Reading syslog message: '%s'", str);
+        mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
 
         /* Send message to queue */
         if (drop_it == 0) {
