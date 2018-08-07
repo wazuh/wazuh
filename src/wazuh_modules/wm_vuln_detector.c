@@ -1925,7 +1925,6 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
     FILE *fp = NULL;
     char timestamp_found = 0;
     char octet_stream;
-    int attemps = 0;
     *need_update = 1;
     unsigned char success = 1;
     in_port_t port = update->port;
@@ -2044,9 +2043,9 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
         goto check_timestamp;
     }
 
-    for (attemps = 0; attemps < VU_MAX_TIMESTAMP_ATTEMPS && (oval_size != readed || octet_stream) &&
+    while ((oval_size != readed || octet_stream) &&
            (size = wm_vulnerability_ssl_request_size(octet_stream, &octet_rem, ssl, oval_size, readed)) > 0 &&
-           (size = SSL_read(ssl, buffer, size)) > 0; ++attemps) {
+           (size = SSL_read(ssl, buffer, size)) > 0) {
         buffer[size] = '\0';
         readed += size;
         octet_rem -= size;
@@ -2121,14 +2120,6 @@ check_timestamp:
         }
         fwrite(buffer, 1, size, fp);
         memset(buffer,0,sizeof(buffer));
-    }
-
-    if (attemps == VU_MAX_TIMESTAMP_ATTEMPS) {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_TIMESTAMP_LABEL_ERROR, VU_MAX_TIMESTAMP_ATTEMPS);
-        close(sock);
-        sock = -1;
-        success = 0;
-        goto free_mem;
     }
 
 free_mem:
