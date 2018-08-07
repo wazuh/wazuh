@@ -77,6 +77,7 @@ All notable changes to this project will be documented in this file.
 - Fixes in file integrity monitoring for Windows. ([#1062](https://github.com/wazuh/wazuh/pull/1062))
   - Fix Windows agent crash if FIM fails to extract the file owner.
   - Prevent FIM real-time mode on Windows from stopping if the internal buffer gets overflowed.
+- Prevent large logs from flooding the log file by Logcollector. ([#1067](https://github.com/wazuh/wazuh/pull/1067))
 
 ### Removed
 
