@@ -17,6 +17,7 @@
 void *read_json(int pos, int *rc, int drop_it)
 {
     int __ms = 0;
+    int __ms_reported = 0;
     int i;
     char *p, *jsonParsed;
     char str[OS_MAXSTR + 1];
@@ -98,8 +99,14 @@ void *read_json(int pos, int *rc, int drop_it)
         /* Incorrect message size */
         if (__ms) {
             // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
-            // truncate str before logging to ossec.log
-            merror("Large message size from file '%s' (length = %zu): '%.*s'...", logff[pos].file, strlen(str), sample_log_length, str);
+
+            if (!__ms_reported) {
+                merror("Large message size from file '%s' (length = %zu): '%.*s'...", logff[pos].file, strlen(str), sample_log_length, str);
+                __ms_reported = 1;
+            } else {
+                mdebug2("Large message size from file '%s' (length = %zu): '%.*s'...", logff[pos].file, strlen(str), sample_log_length, str);
+            }
+
             while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
                 /* Get the last occurrence of \n */
                 if (strrchr(str, '\n') != NULL) {
