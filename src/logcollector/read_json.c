@@ -47,7 +47,7 @@ void *read_json(int pos, int *rc, int drop_it)
             __ms = 1;
         } else {
             /* Message not complete. Return. */
-            mdebug1("Message not complete. Trying again: '%s'", str);
+            mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", logff[pos].file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
             fsetpos(logff[pos].fp, &fp_pos);
             break;
         }
@@ -79,11 +79,11 @@ void *read_json(int pos, int *rc, int drop_it)
           cJSON_Delete(obj);
         } else {
           cJSON_Delete(obj);
-          mdebug1("Line '%s' read from '%s' is not a JSON object.", str, logff[pos].file);
+          mdebug1("Line '%.*s'%s read from '%s' is not a JSON object.", sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "", logff[pos].file);
           continue;
         }
 
-        mdebug2("Reading json message: '%s'", jsonParsed);
+        mdebug2("Reading json message: '%.*s'%s", sample_log_length, jsonParsed, strlen(jsonParsed) > (size_t)sample_log_length ? "..." : "");
 
         /* Send message to queue */
         if (drop_it == 0) {

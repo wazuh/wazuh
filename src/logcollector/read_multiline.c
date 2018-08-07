@@ -50,7 +50,7 @@ void *read_multiline(int pos, int *rc, int drop_it)
             __ms = 1;
         } else {
             /* Message not complete. Return. */
-            mdebug1("Message not complete. Trying again: '%s'", str);
+            mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", logff[pos].file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
             fsetpos(logff[pos].fp, &fp_pos);
             break;
         }
@@ -61,7 +61,7 @@ void *read_multiline(int pos, int *rc, int drop_it)
         }
 #endif
 
-        mdebug2("Reading message: '%s'", str);
+        mdebug2("Reading message: '%.*s'%s", sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
 
         /* Add to buffer */
         buffer_size = strlen(buffer);
