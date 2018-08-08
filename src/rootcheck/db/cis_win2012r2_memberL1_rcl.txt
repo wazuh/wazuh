@@ -322,6 +322,7 @@ r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> !LmCompatibilityLev
 #
 #
 #2.3.11.8 Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.8 Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher] [any] [https://workbench.cisecurity.org/benchmarks/288]
 r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP -> LDAPClientIntegrity -> !1;
 #
 #
