@@ -636,7 +636,7 @@ add_whodata_evt:
                                     goto clean;
                                 }
                                 if (!get_file_time(buffer[8].FileTimeVal, &system_time)) {
-                                    merror("Could not get the time of the event whose handler is '%I64d'.", handle_id);
+                                    merror("Could not get the time of the event whose handler is '%llu'.", handle_id);
                                     goto clean;
                                 }
 
