@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.5.1]
 
+### Changed
+
+- Let hostname field be the name of the agent, without the location part. ([#1080](https://github.com/wazuh/wazuh/pull/1080))
+
 ### Fixed
 
 - Fix agent ID zero-padding in alerts coming from Vulnerability Detector. ([#1083](https://github.com/wazuh/wazuh/pull/1083))
