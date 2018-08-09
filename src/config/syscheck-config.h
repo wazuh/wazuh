@@ -50,6 +50,9 @@
 #define WD_IGNORE_REST      0x0000008
 #endif
 
+//Max allowed value for recursion
+#define MAX_DEPTH_ALLOWED 320
+
 #include <stdio.h>
 #include "os_regex/os_regex.h"
 
@@ -187,6 +190,7 @@ typedef struct _config {
 
     char **dir;                     /* array of directories to be scanned */
     OSMatch **filerestrict;
+    int *recursion_level;
 
     /* Windows only registry checking */
 #ifdef WIN32
@@ -212,7 +216,7 @@ typedef struct _config {
 } syscheck_config;
 
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile) __attribute__((nonnull(1, 2)));
+int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile, int recursion_level) __attribute__((nonnull(1, 2)));
 
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 

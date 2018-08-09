@@ -107,7 +107,7 @@ int Start_win32_Syscheck()
         /* Disabled */
         if (!syscheck.dir) {
             minfo(SK_NO_DIR);
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0);
         } else if (!syscheck.dir[0]) {
             minfo(SK_NO_DIR);
         }
@@ -121,7 +121,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_entry(&syscheck, "", 0, 1, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0);
         }
         syscheck.registry[0].entry = NULL;
 
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
             if (!test_config) {
                 minfo(SK_NO_DIR);
             }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
                 minfo(SK_NO_DIR);
