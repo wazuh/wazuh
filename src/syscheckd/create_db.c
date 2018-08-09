@@ -173,6 +173,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     syscheck_node *s_node;
     struct stat statbuf;
     char wd_sum[OS_SIZE_6144 + 1];
+    int recursion_limit;
 #ifdef WIN32
     const char *user;
     char *sid = NULL;
@@ -607,7 +608,7 @@ int run_dbcheck()
             }
         }
 #endif
-        read_dir(syscheck.dir[i], i, NULL, syscheck.max_depth);
+        read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i]);
         i++;
     }
 
@@ -679,7 +680,7 @@ int create_db()
     /* Read all available directories */
     __counter = 0;
     do {
-        if (read_dir(syscheck.dir[i], i, NULL, syscheck.max_depth) == 0) {
+        if (read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i]) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
 #ifdef WIN32
