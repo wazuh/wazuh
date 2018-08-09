@@ -662,7 +662,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
 
             // Send an alert as a manager if there is no IP assigned
             if (agents_it->agent_ip) {
-                snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, agents_it->agent_id, agents_it->agent_name, agents_it->agent_ip);
+                snprintf(header, OS_SIZE_256, VU_ALERT_HEADER, atoi(agents_it->agent_id), agents_it->agent_name, agents_it->agent_ip);
                 snprintf(alert_msg, OS_MAXSTR, VU_ALERT_JSON, str_json);
                 send_queue = SECURE_MQ;
             } else {
