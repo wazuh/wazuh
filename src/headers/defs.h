@@ -302,6 +302,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SHAREDCFG_DIR   "shared"
 #endif
 
+/* Multi-groups directory */
+#ifndef WIN32
+#define MULTIGROUPS_DIR   "/var/multigroups"
+#endif
+
 // Incoming directory
 #ifndef WIN32
 #define INCOMING_DIR   "/var/incoming"
