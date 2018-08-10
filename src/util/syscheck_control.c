@@ -28,6 +28,7 @@ static void helpmsg()
     printf("\t-D          Debug mode.\n\n");
     printf("\t-l          List available (active or not) agents.\n");
     printf("\t-lc         List only active agents.\n");
+    printf("\t-ln         List only disconnected agents.\n");
     printf("\t-u <id>     Updates (clear) the database for the agent.\n");
     printf("\t-u all      Updates (clear) the database for all agents.\n");
     printf("\t-i <id>     List modified files for the agent.\n");
@@ -55,6 +56,7 @@ int main(int argc, char **argv)
         list_agents = 0, zero_counter = 0,
         registry_only = 0;
     int active_only = 0, csv_output = 0, json_output = 0;
+    int inactive_only = 0;
 
     char shost[512];
     cJSON *json_root = NULL;
@@ -67,7 +69,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VhzrDdlcsju:i:f:")) != -1) {
+    while ((c = getopt(argc, argv, "VhzrDdlcsju:i:f:n")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -121,6 +123,9 @@ int main(int argc, char **argv)
                 }
                 agent_id = optarg;
                 update_syscheck = 1;
+                break;
+            case 'n':
+                inactive_only++;
                 break;
             default:
                 helpmsg();
@@ -186,7 +191,7 @@ int main(int argc, char **argv)
                    "Active/Local\n", shost);
         }
 
-        print_agents(1, active_only, csv_output, json_agents);
+        print_agents(1, active_only, inactive_only, csv_output, json_agents);
 
         if (json_output) {
             cJSON_AddItemToObject(json_root, "data", json_agents);
