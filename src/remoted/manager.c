@@ -32,8 +32,8 @@ typedef struct group_t {
 
 /* Internal functions prototypes */
 static void read_controlmsg(const char *agent_id, char *msg);
-static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum);
-static void c_group(const char *group, char ** files, file_sum ***_f_sum);
+static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
+static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
 static void c_multi_group(char *multi_group);
 static void c_files(void);
 static file_sum** find_sum(const char *group);
@@ -214,7 +214,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     }
 }
 
-void c_group(const char *group, char ** files, file_sum ***_f_sum) {
+void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir) {
     os_md5 md5sum;
     unsigned int f_size = 0;
     file_sum **f_sum;
@@ -233,7 +233,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     f_sum[f_size]->name = NULL;
     f_sum[f_size]->sum[0] = '\0';
 
-    snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
+    snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
     if (!logr.nocmerged && (r_group = w_parser_get_group(group), r_group)) {
         if(r_group->current_polling_time <= 0){
@@ -282,7 +282,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
                     {
                         file_url = r_group->files[i].url;
                         file_name = r_group->files[i].name;
-                        snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                        snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, file_name);
                         snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                         mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
                         downloaded = wurl_request(file_url,download_path);
@@ -347,7 +347,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
                 continue;
             }
 
-            snprintf(file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
+            snprintf(file, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, files[i]);
 
             if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
                 merror("Accessing file '%s'", file);
@@ -391,17 +391,23 @@ void c_multi_group(char *multi_group) {
     DIR *dp;
     char *group;
     unsigned int p_size = 0;
-    const char delim[2] = "#";
+    const char delim[2] = "-";
     char path[PATH_MAX + 1];
     char ** files;
     char ** subdir;
+    char agent_conf_multi_path[PATH_MAX + 1] = {0};
+    char multi_group_cpy[PATH_MAX+1] = {0};
     struct dirent *entry;
 
+    snprintf(multi_group_cpy,PATH_MAX + 1,"%s",multi_group);
     /* Get each group of the multi-group */
     group = strtok(multi_group, delim);
 
+    /* Delete agent.conf from multi group before appending to it */
+    snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,multi_group_cpy,"agent.conf");
+    unlink(agent_conf_multi_path);
+
     while( group != NULL ) {
-        group = strtok(NULL, delim);
         /* Now for each group copy the files to the multi-group folder */
         char dir[PATH_MAX + 1] = {0};
 
@@ -434,12 +440,21 @@ void c_multi_group(char *multi_group) {
             char source_path[PATH_MAX + 1] = {0};
 
             snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
-            snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, multi_group, files[i]);
+            snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, multi_group_cpy, files[i]);
 
-            w_copy_file(source_path,destination_path);
+            /* If the file is agent.conf, append */
+            if(strcmp(files[i],"agent.conf") == 0){
+                w_copy_file(source_path,destination_path,'a');
+            }
+            else {
+                w_copy_file(source_path,destination_path,'c');
+            }
+            
         }
+        group = strtok(NULL, delim);
         free_strarray(files);
         closedir(dp);
+        
     }
 
     /* Open de multi-group files and generate merged */
@@ -475,7 +490,7 @@ void c_multi_group(char *multi_group) {
         os_calloc(1, sizeof(group_t), groups[p_size]);
         groups[p_size]->group = strdup(entry->d_name);
         groups[p_size + 1] = NULL;
-        c_group(entry->d_name, subdir, &groups[p_size]->f_sum);
+        c_group(entry->d_name, subdir, &groups[p_size]->f_sum,MULTIGROUPS_DIR);
         free_strarray(subdir);
         p_size++;
     }
@@ -488,6 +503,7 @@ static void c_files()
     DIR *dp;
     char ** subdir;
     struct dirent *entry;
+    struct dirent *entry_multi_groups;
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
 
@@ -560,7 +576,7 @@ static void c_files()
         os_calloc(1, sizeof(group_t), groups[p_size]);
         groups[p_size]->group = strdup(entry->d_name);
         groups[p_size + 1] = NULL;
-        c_group(entry->d_name, subdir, &groups[p_size]->f_sum);
+        c_group(entry->d_name, subdir, &groups[p_size]->f_sum,SHAREDCFG_DIR);
         free_strarray(subdir);
         p_size++;
     }
@@ -576,13 +592,14 @@ static void c_files()
         return;
     }
 
-    while (entry = readdir(dp), entry) {
+    while (entry_multi_groups = readdir(dp), entry_multi_groups) {
         // Skip "." and ".."
-        if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
+        
+        if (entry_multi_groups->d_name[0] == '.' && (entry_multi_groups->d_name[1] == '\0' || (entry_multi_groups->d_name[1] == '.' && entry_multi_groups->d_name[2] == '\0'))) {
             continue;
         }
 
-        if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
+        if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", entry_multi_groups->d_name) > PATH_MAX) {
             merror("At c_files(): path too long.");
             break;
         }
@@ -597,10 +614,10 @@ static void c_files()
             continue;
         }
         free_strarray(subdir);
-
-        c_multi_group(entry->d_name);
+        c_multi_group(entry_multi_groups->d_name);
         p_size++;
     }
+
 
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
@@ -644,7 +661,7 @@ file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE])
 /* Send a file to the agent
  * Returns -1 on error
  */
-int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum)
+int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir)
 {
     int i = 0;
     size_t n = 0;
@@ -652,7 +669,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     char buf[OS_SIZE_1024 + 1];
     FILE *fp;
 
-    snprintf(file, OS_SIZE_1024, "%s/%s/%s", SHAREDCFG_DIR, group, name);
+    snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
     fp = fopen(file, "r");
     if (!fp) {
         merror(FOPEN_ERROR, file, errno, strerror(errno));
@@ -821,11 +838,20 @@ static void read_controlmsg(const char *agent_id, char *msg)
             if (tmp_sum[0] && strcmp(tmp_sum, md5) != 0) {
                 mdebug1("Sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
 
-                /* If the agent has super group, change the origin path */
-                if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum) < 0) {
-                    merror(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
+                /* If the agent has multi group, change the shared path */
+                char *multi_group = strchr(group,'-');
+                char sharedcfg_dir[128] = {0};
+
+                if(multi_group) {
+                    strcpy(sharedcfg_dir,MULTIGROUPS_DIR);
+                } else {
+                    strcpy(sharedcfg_dir,SHAREDCFG_DIR);
                 }
 
+                if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum,sharedcfg_dir) < 0) {
+                    merror(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
+                }
+               
                 mdebug2("End sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
             }
 
@@ -854,7 +880,18 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 (f_sum[i]->mark == 0)) {
 
             mdebug1("Sending file '%s/%s' to agent '%s'.", group, f_sum[i]->name, agent_id);
-            if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum) < 0) {
+
+            /* If the agent has multi group, change the shared path */
+            char *multi_group = strchr(group,'-');
+            char sharedcfg_dir[128] = {0};
+
+            if(multi_group) {
+                strcpy(sharedcfg_dir,MULTIGROUPS_DIR);
+            } else {
+                strcpy(sharedcfg_dir,SHAREDCFG_DIR);
+            }
+
+            if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum,sharedcfg_dir) < 0) {
                 merror(SHARED_ERROR, f_sum[i]->name, agent_id);
             }
         }
