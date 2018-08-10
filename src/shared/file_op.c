@@ -2056,7 +2056,7 @@ int OS_MoveFile(const char *src, const char *dst) {
     return status ? status : unlink(src);
 }
 
-int w_copy_file(const char *src, const char *dst) {
+int w_copy_file(const char *src, const char *dst,char mode) {
     FILE *fp_src;
     FILE *fp_dst;
     size_t count_r;
@@ -2071,12 +2071,18 @@ int w_copy_file(const char *src, const char *dst) {
         return -1;
     }
 
-    fp_dst = fopen(dst, "w");
+    /* Append to file */
+    if(mode == 'a'){
+        fp_dst = fopen(dst, "a");
+    }
+    else {
+        fp_dst = fopen(dst, "w");
+    }
+    
 
     if (!fp_dst) {
         merror("Couldn't open file '%s'", dst);
         fclose(fp_src);
-        unlink(src);
         return -1;
     }
 
