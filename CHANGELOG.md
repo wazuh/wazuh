@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.5.1]
 
+### Added
+
+- Added inactive agent filtering option to agent_control, syscheck_control and rootcheck control_tools. ([#1088](https://github.com/wazuh/wazuh/pull/1088))
+
 ### Changed
 
 - Let hostname field be the name of the agent, without the location part. ([#1080](https://github.com/wazuh/wazuh/pull/1080))
