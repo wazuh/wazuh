@@ -670,8 +670,12 @@ InstallCommon(){
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        ${INSTALL} -m 0750 -o root -g 0 libwazuhext.dylib ${PREFIX}/lib
-    else
+        if [ -f libwazuhext.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 libwazuhext.dylib ${PREFIX}/lib
+        fi
+    elif [ -f libwazuhext.so ]
+    then
         ${INSTALL} -m 0750 -o root -g 0 libwazuhext.so ${PREFIX}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
@@ -770,12 +774,12 @@ InstallCommon(){
   if [ -f selinux/wazuh.pp ]
   then
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} selinux/wazuh.pp ${PREFIX}/var/selinux/
+    InstallSELinuxPolicyPackage
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
   ./init/fw-check.sh execute
-  InstallSELinuxPolicyPackage
 }
 
 InstallLocal(){

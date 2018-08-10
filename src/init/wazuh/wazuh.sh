@@ -11,7 +11,7 @@ WazuhSetup(){
 
 InstallSELinuxPolicyPackage(){
 
-    if which semodule > /dev/null && which getenforce > /dev/null; then
+    if command -v semodule > /dev/null && command -v getenforce > /dev/null; then
         if [ -f selinux/wazuh.pp ]; then
             if [ $(getenforce) != "Disabled" ]; then
                 if ! (semodule -l | grep wazuh > /dev/null); then
