@@ -2,8 +2,8 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
-HAS_CHECKMODULE = $(shell which checkmodule > /dev/null && echo YES)
-HAS_SEMODULE_PACKAGE = $(shell which semodule_package > /dev/null && echo YES)
+HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
+HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -136,7 +136,9 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-D_REENTRANT
 		DEFINES+=-DOS_BIG_ENDIAN
 		OSSEC_LDFLAGS+=-lrt
+ifndef DISABLE_SHARED
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+endif
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
