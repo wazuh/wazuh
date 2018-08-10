@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS fim_event (
     uname TEXT,
     gname TEXT,
     mtime TEXT,
-    inode INTEGER
+    inode INTEGER,
+    sha256 TEXT
 );
 
 CREATE INDEX IF NOT EXISTS fim_event_type ON fim_event (type);
@@ -36,6 +37,7 @@ CREATE INDEX IF NOT EXISTS fim_event_file ON fim_event (id_file);
 CREATE INDEX IF NOT EXISTS fim_event_date ON fim_event (date);
 CREATE INDEX IF NOT EXISTS fim_event_md5 ON fim_event (md5);
 CREATE INDEX IF NOT EXISTS fim_event_sha1 ON fim_event (sha1);
+CREATE INDEX IF NOT EXISTS fim_event_sha256 ON fim_event (sha256);
 
 CREATE TABLE IF NOT EXISTS fim_entry (
     file TEXT PRIMARY KEY,
@@ -51,7 +53,8 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     uname TEXT,
     gname TEXT,
     mtime INTEGER,
-    inode TEXT
+    inode TEXT,
+    sha256 TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pm_event (

@@ -307,11 +307,19 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     int r;
 
-    if (sum->uname || sum->gname || sum->mtime || sum->inode) {
-        r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld", sum->size, sum->perm, sum->uid, sum->gid, sum->md5, sum->sha1, sum->uname, sum->gname, sum->mtime, sum->inode);
-    } else {
-        r = snprintf(output, size, "%s:%d:%s:%s:%s:%s", sum->size, sum->perm, sum->uid, sum->gid, sum->md5, sum->sha1);
-    }
+    r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld:%s",
+            sum->size,
+            sum->perm,
+            sum->uid,
+            sum->gid,
+            sum->md5,
+            sum->sha1,
+            sum->uname? sum->uname : "",
+            sum->gname? sum->gname : "",
+            sum->mtime? sum->mtime : 0,
+            sum->inode? sum->inode : 0,
+            sum->sha256? sum->sha256 : ""
+    );
 
     return r < (int)size ? 0 : -1;
 }

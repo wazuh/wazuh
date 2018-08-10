@@ -11,7 +11,7 @@
 
 #include "wdb.h"
 
-static const char *SQL_INSERT_EVENT = "INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, datetime(?, 'unixepoch', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch', 'localtime'), ?);";
+static const char *SQL_INSERT_EVENT = "INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256) VALUES (?, ?, datetime(?, 'unixepoch', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch', 'localtime'), ?, ?);";
 static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (path, type) VALUES (?, ?);";
 static const char *SQL_FIND_FILE = "SELECT id FROM fim_file WHERE type = ? AND path = ?;";
 static const char *SQL_SELECT_LAST_EVENT = "SELECT type FROM fim_event WHERE id = (SELECT MAX(fim_event.id) FROM fim_event, fim_file WHERE fim_file.type = ? AND path = ? AND fim_file.id = id_file);";
@@ -159,6 +159,11 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
             sqlite3_bind_int64(stmt, 13, sum->inode);
         else // Old agents
             sqlite3_bind_null(stmt, 13); // inode
+
+        if (sum->sha256)
+            sqlite3_bind_text(stmt, 14, sum->sha256, -1, NULL);
+        else // Old agents
+            sqlite3_bind_null(stmt, 14); // sha256
     } else {
         sqlite3_bind_null(stmt, 4);
         sqlite3_bind_null(stmt, 5);
@@ -170,6 +175,7 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
         sqlite3_bind_null(stmt, 11);
         sqlite3_bind_null(stmt, 12);
         sqlite3_bind_null(stmt, 13);
+        sqlite3_bind_null(stmt, 14);
     }
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(db) : -1;
@@ -287,6 +293,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         sum.gname = (char *)sqlite3_column_text(stmt, 8);
         sum.mtime = (long)sqlite3_column_int64(stmt, 9);
         sum.inode = (long)sqlite3_column_int64(stmt, 10);
+        sum.sha256 = (char *)sqlite3_column_text(stmt, 11);
 
         strncpy(output, s_changes, size - 1);
         output[size - 1] = '\0';
@@ -407,6 +414,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     sqlite3_bind_text(stmt, 10, sum->gname, -1, NULL);
     sqlite3_bind_int64(stmt, 11, sum->mtime);
     sqlite3_bind_int64(stmt, 12, sum->inode);
+    sqlite3_bind_text(stmt, 13, sum->sha256, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
@@ -440,6 +448,7 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_bind_int64(stmt, 9, sum->mtime);
     sqlite3_bind_int64(stmt, 10, sum->inode);
     sqlite3_bind_text(stmt, 11, file, -1, NULL);
+    sqlite3_bind_text(stmt, 12, sum->sha256, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
