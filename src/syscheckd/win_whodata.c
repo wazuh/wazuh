@@ -932,6 +932,7 @@ void send_whodata_del(whodata_evt *w_evt) {
     static char del_msg[PATH_MAX + OS_SIZE_6144 + 6];
     static char wd_sum[OS_SIZE_6144 + 1];
     syscheck_node *s_node;
+    int pos;
 
     // Remove the file from the syscheck hash table
     if (s_node = OSHash_Delete_ex(syscheck.fp, w_evt->path), !s_node) {
@@ -945,7 +946,10 @@ void send_whodata_del(whodata_evt *w_evt) {
         *wd_sum = '\0';
     }
 
-    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s", wd_sum, w_evt->path);
+    /* Find tag if defined for this file */
+    pos = find_dir_pos(curr_node->key, 1, 0, 0);
+
+    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s!%s", wd_sum, w_evt->path, syscheck.tag[pos] ? syscheck.tag[pos] : "");
     send_syscheck_msg(del_msg);
 }
 

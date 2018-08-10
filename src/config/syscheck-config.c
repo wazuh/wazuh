@@ -13,7 +13,7 @@
 
 
 int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg,
-        const char *restrictfile, int recursion_limit)
+        const char *restrictfile, int recursion_limit, const char *tag)
 {
     unsigned int pl = 0;
 
@@ -69,6 +69,10 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             os_calloc(2, sizeof(int *), syscheck->recursion_level);
             syscheck->recursion_level[pl] = recursion_limit;
             syscheck->recursion_level[pl + 1] = 0;
+
+            os_calloc(2, sizeof(char *), syscheck->tag);
+            syscheck->tag[pl] = NULL;
+            syscheck->tag[pl + 1] = NULL;
         } else {
             while (syscheck->dir[pl] != NULL) {
                 pl++;
@@ -96,6 +100,11 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
                        syscheck->recursion_level);
             syscheck->recursion_level[pl] = recursion_limit;
             syscheck->recursion_level[pl + 1] = 0;
+
+            os_realloc(syscheck->tag, (pl + 2) * sizeof(char *),
+                       syscheck->tag);
+            syscheck->tag[pl] = NULL;
+            syscheck->tag[pl + 1] = NULL;
         }
         if (restrictfile) {
             os_calloc(1, sizeof(OSMatch), syscheck->filerestrict[pl]);
@@ -108,6 +117,9 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
                 free(syscheck->filerestrict[pl]);
                 syscheck->filerestrict[pl] = NULL;
             }
+        }
+        if (tag) {
+            os_strdup(tag, syscheck->tag[pl]);
         }
 
         if (vals & CHECK_WHODATA) {
@@ -234,7 +246,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch)
         }
 
         /* Add new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0);
+        dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, NULL);
 
         /* Next entry */
         free(entry[j]);
@@ -264,9 +276,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_check_sha256sum = "check_sha256sum";
     const char *xml_whodata = "whodata";
     const char *xml_recursion_level = "recursion_level";
-
+    const char *xml_tag = "tag";
     char *restrictfile = NULL;
     int recursion_limit = syscheck->max_depth;
+    char *tag = NULL;
+    char *clean_tag = NULL;
     char **dir;
     char *tmp_str;
     dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE); /* Max number */
@@ -289,6 +303,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         tmp_dir = *dir;
         restrictfile = NULL;
+        tag = NULL;
 
         /* Remove spaces at the beginning */
         while (*tmp_dir == ' ') {
@@ -519,6 +534,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
                     recursion_limit = MAX_DEPTH_ALLOWED;
                 }
+            } else if (strcmp(*attrs, xml_tag) == 0) {
+                if (tag) {
+                    free(tag);
+                    tag = NULL;
+                }
+                os_strdup(*values, tag);
             } else {
                 merror(SK_INV_ATTR, *attrs);
                 ret = 0;
@@ -533,6 +554,13 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             mwarn(SYSCHECK_NO_OPT, dirs);
             ret = 0;
             goto out_free;
+        }
+
+        /* Remove spaces from tag */
+
+        if (tag) {
+            if (clean_tag = os_strip_char(tag, ' '), !clean_tag)
+                merror("Processing tag '%s'.", tag);
         }
 
         /* Add directory - look for the last available */
@@ -572,22 +600,30 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
 
             while (g.gl_pathv[gindex]) {
-                dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit);
+                dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag);
                 gindex++;
             }
 
             globfree(&g);
         }
         else {
-            dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit);
+            dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag);
         }
 #else
-	    dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit);
+	    dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag);
 #endif
 
         if (restrictfile) {
             free(restrictfile);
             restrictfile = NULL;
+        }
+
+        if (tag) {
+            free(tag);
+            if (clean_tag)
+                free(clean_tag);
+            tag = NULL;
+            clean_tag = NULL;
         }
 
         /* Next entry */
@@ -605,6 +641,8 @@ out_free:
 
     free(dir_org);
     free(restrictfile);
+    free(tag);
+    free(clean_tag);
 
     return ret;
 }

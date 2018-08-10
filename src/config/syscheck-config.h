@@ -192,6 +192,8 @@ typedef struct _config {
     OSMatch **filerestrict;
     int *recursion_level;
 
+    char **tag;                     /* array of tags for each directory */
+
     /* Windows only registry checking */
 #ifdef WIN32
     registry *registry_ignore;                  /* list of registry entries to ignore */
@@ -216,7 +218,7 @@ typedef struct _config {
 } syscheck_config;
 
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile, int recursion_level) __attribute__((nonnull(1, 2)));
+int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag) __attribute__((nonnull(1, 2)));
 
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 
