@@ -180,7 +180,7 @@ void OS_LogOutput(Eventinfo *lf)
 
     /* FIM events */
 
-    if (lf->filename) {
+    if (lf->filename && lf->event_type != FIM_DELETED) {
         printf("Attributes:\n");
 
         if (lf->size_after){
@@ -224,9 +224,16 @@ void OS_LogOutput(Eventinfo *lf)
             }
         }
 
-        if (lf->sk_tag) {
-            if (strcmp(lf->sk_tag, "") != 0) {
-                fprintf(_aflog, " - Tags: %s\n", lf->sk_tag);
+    }
+
+    if (lf->filename && lf->sk_tag) {
+        if (strcmp(lf->sk_tag, "") != 0) {
+            printf("\nTags:\n");
+            char * tag;
+            tag = strtok(lf->sk_tag, ",");
+            while (tag != NULL) {
+                printf(" - %s\n", tag);
+                tag = strtok(NULL, ",");
             }
         }
     }
@@ -380,10 +387,20 @@ void OS_Log(Eventinfo *lf)
             }
         }
 
-        if (lf->sk_tag) {
-            if (strcmp(lf->sk_tag, "") != 0) {
-                fprintf(_aflog, " - Tags: %s\n", lf->sk_tag);
+    }
+
+    if (lf->filename && lf->sk_tag) {
+        if (strcmp(lf->sk_tag, "") != 0) {
+            char * tags;
+            os_strdup(lf->sk_tag, tags);
+            fprintf(_aflog, "\nTags:\n");
+            char * tag;
+            tag = strtok(tags, ",");
+            while (tag != NULL) {
+                fprintf(_aflog, " - %s\n", tag);
+                tag = strtok(NULL, ",");
             }
+            free(tags);
         }
     }
 

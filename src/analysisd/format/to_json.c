@@ -263,7 +263,17 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
         if(lf->sk_tag) {
             if (strcmp(lf->sk_tag, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "tag", lf->sk_tag);
+                cJSON *tags = cJSON_CreateArray();
+                cJSON_AddItemToObject(file_diff, "tags", tags);
+                char * tag;
+                char * aux_tags;
+                os_strdup(lf->sk_tag, aux_tags);
+                tag = strtok(aux_tags, ",");
+                while (tag != NULL) {
+                    cJSON_AddItemToArray(tags, cJSON_CreateString(tag));
+                    tag = strtok(NULL, ",");
+                }
+                free(aux_tags);
             }
         }
 
