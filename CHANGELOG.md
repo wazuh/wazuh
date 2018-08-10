@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.5.0]
+## [v3.5.0] 2018-08-10
 
 ### Added
 
@@ -83,8 +83,9 @@ All notable changes to this project will be documented in this file.
 
 - Deleted Lua language support.
 - Deleted integration with Vuls. ([#879](https://github.com/wazuh/wazuh/issues/879))
+- Deleted agent_list tool, replaced by agent_control. ([#ba0265b](https://github.com/wazuh/wazuh/commit/ba0265b6e9e3fed133d60ef2df3450fdf26f7da4#diff-f57f2991a6aa25fe45d8036c51bf8b4d))
 
-## [v3.4.0]
+## [v3.4.0] 2018-07-24
 
 ### Added
 
