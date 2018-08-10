@@ -47,13 +47,14 @@ static int wm_vulnerability_detector_compare(char *version_it, char *cversion_it
 static const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vulnerability_set_oval);
 static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
 static int check_timestamp(const char *OS, char *timst, char *ret_timst);
+cJSON *wm_vulnerability_detector_dump(const wm_vulnerability_detector_t * vulnerability_detector);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
     "vulnerability-detector",
     (wm_routine)wm_vulnerability_detector_main,
     (wm_routine)wm_vulnerability_detector_destroy,
-    NULL
+    (cJSON * (*)(const void *))wm_vulnerability_detector_dump
 };
 
 const char *vu_dist_tag[] = {
@@ -2561,6 +2562,18 @@ void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerabili
         }
     }
     free(vulnerability_detector);
+}
+
+
+cJSON *wm_vulnerability_detector_dump(const wm_vulnerability_detector_t * vulnerability_detector){
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_vd = cJSON_CreateObject();
+    if (vulnerability_detector)
+    cJSON_AddItemToObject(root,"vulnerability-detector",wm_vd);
+
+    return root;
+
 }
 
 #endif
