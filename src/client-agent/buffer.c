@@ -34,11 +34,11 @@ struct{
   unsigned int normal:1;
 } buff;
 
-char ** buffer;
-pthread_mutex_t mutex_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond_no_empty = PTHREAD_COND_INITIALIZER;
+static char ** buffer;
+static pthread_mutex_t mutex_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond_no_empty = PTHREAD_COND_INITIALIZER;
 
-time_t start, end;
+static time_t start, end;
 
 static void delay(unsigned int ms);
 
