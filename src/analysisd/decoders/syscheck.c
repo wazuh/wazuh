@@ -722,11 +722,12 @@ int DecodeSyscheck(Eventinfo *lf)
     char *c_sum;
     char *w_sum;
     char *f_name;
+    char *tag;
 
     /* Every syscheck message must be in the following format:
-     * checksum filename
+     * checksum filename<!optional_tag>
      * or
-     * checksum!whodatasum filename
+     * checksum!whodatasum filename<!optional_tag>
      */
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
@@ -745,6 +746,13 @@ int DecodeSyscheck(Eventinfo *lf)
     /* Zero to get the check sum */
     *f_name = '\0';
     f_name++;
+
+    /* Look for a defined tag */
+    if (tag = wstr_chr(f_name, '!'), tag) {
+        *tag = '\0';
+        tag++;
+        lf->sk_tag = tag;
+    }
 
     //Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
     normalize_path(f_name);
@@ -776,6 +784,7 @@ int DecodeSyscheck(Eventinfo *lf)
     c_sum = lf->log;
 
     /* Get w_sum */
+
     if (w_sum = strchr(c_sum, '!'), w_sum) {
         *(w_sum++) = '\0';
     }

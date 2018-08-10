@@ -69,6 +69,9 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 *wd_sum = '\0';
             }
 
+            /* Find tag position for the evaluated file name */
+            int pos = find_dir_pos(file_name, 1, 0, 0);
+
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
             s_node->checksum = strdup(alert_msg);
@@ -79,15 +82,16 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if (buf[9] == '+') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s!%s\n%s", c_sum, wd_sum, file_name, syscheck.tag[pos] ? syscheck.tag[pos] : "", fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s!%s", c_sum, wd_sum, file_name, syscheck.tag[pos] ? syscheck.tag[pos] : "");
                 }
             } else {
-                snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
+                snprintf(alert_msg, OS_MAXSTR, "%s!%s %s!%s", c_sum, wd_sum, file_name, syscheck.tag[pos] ? syscheck.tag[pos] : "");
             }
+
             send_syscheck_msg(alert_msg);
             struct timeval timeout = {0, syscheck.rt_delay * 1000};
             select(0, NULL, NULL, NULL, &timeout);

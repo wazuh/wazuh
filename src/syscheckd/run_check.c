@@ -360,8 +360,11 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             *wd_sum = '\0';
         }
 
+        /* Find tag position for the evaluated file name */
+        int pos = find_dir_pos(file_name, 1, 0, 0);
+
         //Alert for deleted file
-        snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s", wd_sum, file_name);
+        snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s!%s", wd_sum, file_name, syscheck.tag[pos] ? syscheck.tag[pos] : "");
         send_syscheck_msg(alert_msg);
 
         // Delete from hash table
@@ -441,6 +444,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             }
         }
     }
+
 #ifndef WIN32
     /* If it is a link, check if the actual file is valid */
     else if (S_ISLNK(statbuf.st_mode)) {

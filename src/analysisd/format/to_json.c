@@ -261,6 +261,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddStringToObject(file_diff, "diff", lf->diff);
             }
         }
+        if(lf->sk_tag) {
+            if (strcmp(lf->sk_tag, "") != 0) {
+                cJSON_AddStringToObject(file_diff, "tag", lf->sk_tag);
+            }
+        }
 
         switch (lf->event_type) {
         case FIM_ADDED:
