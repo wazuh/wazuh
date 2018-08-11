@@ -84,30 +84,30 @@ wazuh_wodle = '{0}/wodles/aws'.format(wazuh_path)
 # DB Query SQL
 sql_already_processed = """
                           SELECT
-                            count(*) 
-                          FROM 
-                            trail_progress 
-                          WHERE 
-                            aws_account_id='{aws_account_id}' AND 
-                            aws_region='{aws_region}' AND 
+                            count(*)
+                          FROM
+                            trail_progress
+                          WHERE
+                            aws_account_id='{aws_account_id}' AND
+                            aws_region='{aws_region}' AND
                             log_key='{log_name}'"""
 
 sql_mark_complete = """
                       INSERT INTO trail_progress (
-                        aws_account_id, 
-                        aws_region, 
-                        log_key, 
+                        aws_account_id,
+                        aws_region,
+                        log_key,
                         processed_date) VALUES (
-                        '{aws_account_id}', 
-                        '{aws_region}', 
-                        '{log_key}', 
+                        '{aws_account_id}',
+                        '{aws_region}',
+                        '{log_key}',
                         DATETIME('now'))"""
 
 sql_select_migrate_legacy = """
-                               SELECT 
+                               SELECT
                                  log_name,
-                                 processed_date 
-                               FROM 
+                                 processed_date
+                               FROM
                                  log_progress;"""
 
 sql_rename_migrate_legacy = """
@@ -115,46 +115,46 @@ sql_rename_migrate_legacy = """
                                 RENAME TO legacy_log_progress;"""
 
 sql_find_table_names = """
-                           SELECT 
-                             tbl_name 
-                           FROM 
-                             sqlite_master 
-                           WHERE 
+                           SELECT
+                             tbl_name
+                           FROM
+                             sqlite_master
+                           WHERE
                              type='table';"""
 
 sql_create_table = """
                       CREATE TABLE
                         trail_progress (
-                          aws_account_id 'text' NOT NULL, 
-                          aws_region 'text' NOT NULL, 
-                          log_key 'text' NOT NULL, 
-                          processed_date 'text' NOT NULL, 
+                          aws_account_id 'text' NOT NULL,
+                          aws_region 'text' NOT NULL,
+                          log_key 'text' NOT NULL,
+                          processed_date 'text' NOT NULL,
                           PRIMARY KEY (aws_account_id, aws_region, log_key));"""
 
 sql_find_last_log_processed = """
-                                  SELECT 
-                                    log_key 
-                                  FROM 
-                                    trail_progress 
-                                  WHERE 
-                                    aws_account_id='{aws_account_id}' AND 
-                                    aws_region = '{aws_region}' 
-                                  ORDER BY 
-                                    ROWID DESC 
+                                  SELECT
+                                    log_key
+                                  FROM
+                                    trail_progress
+                                  WHERE
+                                    aws_account_id='{aws_account_id}' AND
+                                    aws_region = '{aws_region}'
+                                  ORDER BY
+                                    ROWID DESC
                                   LIMIT 1;"""
 
 sql_db_maintenance = """DELETE
-                       FROM 
-                         trail_progress 
+                       FROM
+                         trail_progress
                        WHERE
-                         aws_account_id='{aws_account_id}' AND 
-                         aws_region='{aws_region}' AND 
-                         rowid NOT IN 
-                           (SELECT ROWID 
-                            FROM 
+                         aws_account_id='{aws_account_id}' AND
+                         aws_region='{aws_region}' AND
+                         rowid NOT IN
+                           (SELECT ROWID
+                            FROM
                               trail_progress
-                            WHERE 
-                              aws_account_id='{aws_account_id}' AND 
+                            WHERE
+                              aws_account_id='{aws_account_id}' AND
                               aws_region='{aws_region}'
                             ORDER BY
                               ROWID DESC
@@ -178,7 +178,7 @@ def send_msg(wazuh_queue, msg):
 
 
 def handler(signal, frame):
-    print "ERROR: SIGINT received, bye!"
+    print("ERROR: SIGINT received, bye!")
     sys.exit(2)
 
 
@@ -275,7 +275,7 @@ def get_s3_client(options):
     try:
         s3_client.head_bucket(Bucket=options.logBucket)
     except botocore.exceptions.ClientError as e:
-        print "ERROR: Bucket %s access error: %s" % (options.logBucket, e)
+        print("ERROR: Bucket %s access error: %s" % (options.logBucket, e))
         sys.exit(3)
     return s3_client
 
@@ -322,7 +322,6 @@ def migrate_legacy_table(db_connector, options):
 
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
-                                     version="%(prog)s 1.1",
                                      description="Wazuh wodle for monitoring of AWS CloudTrail logs in S3 bucket",
                                      formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS CloudTrail logs',
@@ -330,7 +329,7 @@ def get_script_arguments():
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
                         help='AWS Account ID for CloudTrail logs', required=True,
                         type=arg_valid_accountid)
-    parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debu')
+    parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debug')
     parser.add_argument('-a', '--access_key', dest='access_key', help='S3 Access key credential', default=None)
     parser.add_argument('-k', '--secret_key', dest='secret_key', help='S3 Secret key credential', default=None)
     # Beware, once you delete history it's gone.
@@ -460,7 +459,7 @@ def get_log_file(s3_client, options, aws_account_id, log_key):
             except:
                 debug("++ Failed to send message to Wazuh", 1)
         else:
-            print "ERROR: Failed to decompress file: {0}".format(log_key)
+            print("ERROR: Failed to decompress file: {0}".format(log_key))
             sys.exit(8)
 
     # Parse the log json
@@ -479,7 +478,7 @@ def get_log_file(s3_client, options, aws_account_id, log_key):
             except:
                 debug("++ Failed to send message to Wazuh", 1)
         else:
-            print "ERROR: Failed to parse file: {0}".format(log_key)
+            print("ERROR: Failed to parse file: {0}".format(log_key))
             sys.exit(9)
     return log_json
 
@@ -521,7 +520,7 @@ def main(argv):
     except sqlite3.OperationalError:
         db_exists = False
     except:
-        print "ERROR: Unexpected error accessing SQLite DB"
+        print("ERROR: Unexpected error accessing SQLite DB")
         sys.exit(5)
 
     # DB does exist yet
@@ -531,7 +530,7 @@ def main(argv):
             db_connector.execute(sql_create_table)
             db_connector.commit()
         except:
-            print "ERROR: Unable to create SQLite DB"
+            print("ERROR: Unable to create SQLite DB")
             sys.exit(6)
 
     # Legacy table exists; migrate progress to new table
@@ -573,9 +572,9 @@ def main(argv):
         for aws_region in aws_account_regions:
             debug('+++ Working on {aws_account_id} - {aws_region}'.format(aws_account_id=aws_account_id,
                                                                           aws_region=aws_region), 1)
-            
+
             s3_filter_args = build_s3_filter_args(options, db_connector, aws_account_id, aws_region)
-            
+
             try:
                 bucket_files = s3_client.list_objects_v2(**s3_filter_args)
                 if 'Contents' not in bucket_files:
@@ -628,7 +627,7 @@ def main(argv):
                     debug("+++ Unexpected error: {}".format(err.message), 2)
                 else:
                     debug("+++ Unexpected error: {}".format(err), 2)
-                print "ERROR: Unexpected error querying/working with objects in S3"
+                print("ERROR: Unexpected error querying/working with objects in S3")
                 sys.exit(7)
 
             debug("+++ DB Maintenance", 1)
@@ -639,9 +638,9 @@ def main(argv):
                                                                retain_db_records=retain_db_records))
                 db_connector.commit()
             except:
-                print "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}".format(
+                print("ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}".format(
                     aws_account_id=aws_account_id,
-                    aws_region=aws_region)
+                    aws_region=aws_region))
                 sys.exit(10)
 
     db_connector.execute(sql_db_optimize)
