@@ -179,7 +179,7 @@ def send_msg(wazuh_queue, msg):
 
 def handler(signal, frame):
     print("ERROR: SIGINT received, bye!")
-    sys.exit(2)
+    sys.exit(12)
 
 
 def already_processed(downloaded_file, aws_account_id, aws_region, db_connector):

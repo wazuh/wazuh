@@ -255,7 +255,7 @@ void wm_aws_run_cloudtrail(wm_aws_cloudtrail *exec_cloudtrail) {
             if(status == 1)
                 mtwarn(WM_AWS_LOGTAG, "%s Unknown error", trail_title);
             else if(status == 2)
-                mtwarn(WM_AWS_LOGTAG, "%s SIGINT received", trail_title);
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, strstr(output, "aws.py: error:"));
             else if(status == 3)
                 mtwarn(WM_AWS_LOGTAG, "%s Invalid credentials to access S3 Bucket", trail_title);
             else if(status == 4)
@@ -274,6 +274,8 @@ void wm_aws_run_cloudtrail(wm_aws_cloudtrail *exec_cloudtrail) {
                 mtwarn(WM_AWS_LOGTAG, "%s Failed to execute DB cleanup.", trail_title);
             else if(status == 11)
                 mtwarn(WM_AWS_LOGTAG, "%s Unable to connect to Wazuh", trail_title);
+            else if (status == 12)
+                mtwarn(WM_AWS_LOGTAG, "%s SIGINT Received", trail_title);
             else
                 mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
         } else {
