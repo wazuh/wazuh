@@ -327,7 +327,7 @@ def get_script_arguments():
     parser.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS CloudTrail logs',
                         action='store', required=True)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
-                        help='AWS Account ID for CloudTrail logs', required=True,
+                        help='AWS Account ID for CloudTrail logs', required=False,
                         type=arg_valid_accountid)
     parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debug')
     parser.add_argument('-a', '--access_key', dest='access_key', help='S3 Access key credential', default=None)
@@ -549,7 +549,7 @@ def main(argv):
                                                            trail_prefix=options.trail_prefix),
                                                        Delimiter='/')['CommonPrefixes']:
             if common_prefix['Prefix'].split('/')[-2].isdigit():
-                options.aws_account_id.append(common_prefix['Prefix'].split('/')[-2])
+                options.aws_account_id = [common_prefix['Prefix'].split('/')[-2]]
 
     for aws_account_id in options.aws_account_id:
         # No regions provided, so find which exist for this AWS account
