@@ -56,12 +56,20 @@ void os_delwait()
 #ifdef WIN32
 void os_wait()
 {
+    static int just_unlocked = 0;
+
     if (!__wait_lock) {
+        just_unlocked = 1;
         return;
     }
 
     /* Wait until the lock is gone */
-    mwarn(WAITING_MSG);
+
+    if (just_unlocked) {
+        mwarn(WAITING_MSG);
+    } else {
+        mdebug1(WAITING_MSG);
+    }
     while (1) {
         if (!__wait_lock) {
             break;
@@ -71,7 +79,14 @@ void os_wait()
         sleep(LOCK_LOOP);
     }
 
-    minfo(WAITING_FREE);
+    if (just_unlocked) {
+        minfo(WAITING_FREE);
+    } else {
+        mdebug1(WAITING_FREE);
+    }
+
+    just_unlocked = 1;
+
     return;
 
 }
