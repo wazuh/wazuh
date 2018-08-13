@@ -751,7 +751,7 @@ int DecodeSyscheck(Eventinfo *lf)
     if (tag = wstr_chr(f_name, '!'), tag) {
         *tag = '\0';
         tag++;
-        lf->sk_tag = tag;
+        os_strdup(tag, lf->sk_tag);
     }
 
     //Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
