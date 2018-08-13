@@ -229,7 +229,7 @@ def arg_valid_prefix(arg_string):
 
 
 def arg_valid_accountid(arg_string):
-    if not arg_string:
+    if arg_string is None:
         return []
     account_ids = arg_string.split(',')
     for account in account_ids:
@@ -359,7 +359,7 @@ def get_script_arguments():
 
 def get_alert_msg(aws_account_id, aws_account_alias, log_key, s3_bucket, cloudtrail_event, error_msg=""):
     msg = {
-        'integration': 'aws',
+        'integration': 'aws-cloudtrail',
         'aws': {
             'cloudtrail': {
                 'aws_account_id': aws_account_id,
@@ -411,23 +411,31 @@ def build_s3_filter_args(options, db_connector, aws_account_id, aws_region):
 
 
 def reformat_msg(event_msg, max_queue_buffer):
-    debug('++ Reformat message', 2)
+    debug('++ Reformat message', 3)
     # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
     for field_to_str in ['additionalEventData', 'responseElements', 'requestParameters']:
         if field_to_str in event_msg['aws']['cloudtrail']['event']:
             try:
-                debug('++ Reformat field: {}'.format(field_to_str), 2)
+                debug('++ Reformat field: {}'.format(field_to_str), 3)
+                # Nested json
+                if 'policyDocument' in event_msg['aws']['cloudtrail']['event'][field_to_str]:
+                    event_msg['aws']['cloudtrail']['event']['{}_policyDocument'.format(field_to_str)] = json.dumps(
+                        event_msg['aws']['cloudtrail']['event'][field_to_str]['policyDocument'],
+                        ensure_ascii=True,
+                        indent=2,
+                        sort_keys=True)
+                    event_msg['aws']['cloudtrail']['event'][field_to_str]['policyDocument'] = 'See field {}_policyDocument'.format(field_to_str)
                 event_msg['aws']['cloudtrail']['event'][field_to_str] = json.dumps(
                     event_msg['aws']['cloudtrail']['event'][field_to_str],
                     ensure_ascii=True,
                     indent=2,
                     sort_keys=True)
             except:
-                debug('++ Failed to convert field to string: {}'.format(field_to_str), 2)
+                debug('++ Failed to convert field to string: {}'.format(field_to_str), 1)
                 event_msg['aws']['cloudtrail']['event'][
                     field_to_str] = 'Unable to convert field to string: {field}'.format(field=field_to_str)
 
-    debug('++ Shrink message', 2)
+    debug('++ Shrink message', 3)
     # If msg too large, start truncating
     for field_to_shrink in ['additionalEventData', 'responseElements', 'requestParameters']:
         if field_to_shrink not in event_msg['aws']['cloudtrail']['event']:
@@ -441,7 +449,7 @@ def reformat_msg(event_msg, max_queue_buffer):
             event_msg['aws']['cloudtrail']['event'][
                 field_to_shrink] = 'Value truncated because event msg too large for socket buffer'
         else:
-            debug('++ Message not too large; skip out', 2)
+            debug('++ Message not too large; skip out', 3)
             break
     return event_msg
 
@@ -550,6 +558,7 @@ def main(argv):
 
     # No accounts provided, so find which exist in s3 bucket
     if not options.aws_account_id:
+        options.aws_account_id = []
         for common_prefix in s3_client.list_objects_v2(Bucket=options.logBucket,
                                                        Prefix='{trail_prefix}AWSLogs/'.format(
                                                            trail_prefix=options.trail_prefix),
