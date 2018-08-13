@@ -357,7 +357,7 @@ def get_script_arguments():
     return parser.parse_args()
 
 
-def get_alert_msg(aws_account_id, aws_account_alias, log_key, s3_bucket):
+def get_alert_msg(aws_account_id, aws_account_alias, log_key, s3_bucket, cloudtrail_event, error_msg=""):
     msg = {
         'integration': 'aws',
         'aws': {
@@ -369,6 +369,10 @@ def get_alert_msg(aws_account_id, aws_account_alias, log_key, s3_bucket):
             }
         }
     }
+    if cloudtrail_event:
+        msg['aws']['cloudtrail']['event'] = {key:value for key,value in filter(lambda x: x[1] is not None, cloudtrail_event.items())}
+    if error_msg:
+        msg['error_msg'] = error_msg
     return msg
 
 
@@ -453,8 +457,9 @@ def get_log_file(s3_client, options, aws_account_id, log_key):
                 error_msg = get_alert_msg(aws_account_id,
                                           options.aws_account_alias,
                                           log_key,
-                                          options.logBucket)
-                error_msg['error_msg'] = 'Failed to decompress file; skipping...'
+                                          options.logBucket,
+                                          None,
+                                          'Failed to decompress file; skipping...')
                 send_msg(wazuh_queue, error_msg)
             except:
                 debug("++ Failed to send message to Wazuh", 1)
@@ -472,8 +477,9 @@ def get_log_file(s3_client, options, aws_account_id, log_key):
                 error_msg = get_alert_msg(aws_account_id,
                                           options.aws_account_alias,
                                           log_key,
-                                          options.logBucket)
-                error_msg['error_msg'] = 'Unable to parse log file contents; skipping...'
+                                          options.logBucket,
+                                          None,
+                                          'Unable to parse log file contents; skipping...')
                 send_msg(wazuh_queue, error_msg)
             except:
                 debug("++ Failed to send message to Wazuh", 1)
@@ -607,9 +613,8 @@ def main(argv):
                             event_msg = get_alert_msg(aws_account_id,
                                                       options.aws_account_alias,
                                                       bucket_file['Key'],
-                                                      options.logBucket)
-                            # Parse out all the values of 'None'
-                            event_msg['aws']['cloudtrail']['event'] = dict((key, value) for key, value in cloudtrail_event.iteritems() if value)
+                                                      options.logBucket,
+                                                      cloudtrail_event)
                             # Change dynamic fields to strings; truncate values as needed
                             event_msg = reformat_msg(event_msg, max_queue_buffer)
                             # Send the message
