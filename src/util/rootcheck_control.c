@@ -167,9 +167,13 @@ int main(int argc, char **argv)
         if (!csv_output) {
             printf("\n%s %s. List of available agents:",
                    __ossec_name, ARGV0);
-            printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, "
-                   "Active/Local\n", shost);
-        } else {
+
+            if (inactive_only) {
+                puts("");
+            } else {
+                printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n", shost);
+            }
+        } else if (!inactive_only) {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
         print_agents(1, active_only, inactive_only, csv_output, 0);
