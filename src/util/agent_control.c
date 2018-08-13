@@ -261,24 +261,31 @@ int main(int argc, char **argv)
         if (!csv_output && !json_output) {
             printf("\n%s %s. List of available agents:",
                    __ossec_name, ARGV0);
-            printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
-                   shost);
+
+            if (inactive_only) {
+                puts("");
+            } else {
+                printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n", shost);
+            }
         } else if(json_output){
-                cJSON *first = cJSON_CreateObject();
+                cJSON *first;
                 agents = cJSON_CreateArray();
 
-                if (!(first && root && agents))
+                if (!(root && agents))
                     exit(1);
 
                 cJSON_AddNumberToObject(root, "error", 0);
                 cJSON_AddItemToObject(root, "data", agents);
 
-                cJSON_AddStringToObject(first, "id", "000");
-                cJSON_AddStringToObject(first, "name", shost);
-                cJSON_AddStringToObject(first, "ip", "127.0.0.1");
-                cJSON_AddStringToObject(first, "status", "Active");
-                cJSON_AddItemToArray(agents, first);
-        } else {
+                if (!inactive_only) {
+                    first = cJSON_CreateObject();
+                    cJSON_AddStringToObject(first, "id", "000");
+                    cJSON_AddStringToObject(first, "name", shost);
+                    cJSON_AddStringToObject(first, "ip", "127.0.0.1");
+                    cJSON_AddStringToObject(first, "status", "Active");
+                    cJSON_AddItemToArray(agents, first);
+                }
+        } else if (!inactive_only) {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
 
