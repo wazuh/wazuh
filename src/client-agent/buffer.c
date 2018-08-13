@@ -212,6 +212,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         }
 
         delay(wait_ms);
+        os_wait();
         send_msg(msg_output, -1);
         free(msg_output);
     }
