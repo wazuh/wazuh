@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
   - Periodically rescan of new files.
   - New options have been added to internal_options.conf file.
 - Added a recursion level option to Syscheck to set the directory scanning depth. ([#1081](https://github.com/wazuh/wazuh/pull/1081))
+- Added custom tags to FIM directories and registries. ([#1096](https://github.com/wazuh/wazuh/pull/1096))
+
 
 ### Changed
 
@@ -42,7 +44,6 @@ All notable changes to this project will be documented in this file.
 ### Removed
 
 - The 'T' multiplier has been removed from option `max_output_size`. ([#1089](https://github.com/wazuh/wazuh/pull/1089))
-
 
 ## [v3.5.0] 2018-08-10
 
