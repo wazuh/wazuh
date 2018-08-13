@@ -124,6 +124,8 @@ void os_wait()
         mdebug1(WAITING_FREE);
     }
 
+    just_unlocked = 1;
+
     return;
 }
 
