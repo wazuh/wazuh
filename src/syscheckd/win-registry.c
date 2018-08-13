@@ -30,7 +30,7 @@ int ig_count = 0;
 int run_count = 0;
 
 /* Prototypes */
-void os_winreg_open_key(char *subkey, char *fullkey_name, int arch);
+void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char * tag);
 
 
 int os_winreg_changed(char *key, char *md5, char *sha1, int arch)
@@ -146,7 +146,7 @@ char *os_winreg_sethkey(char *reg_entry)
 }
 
 /* Query the key and get all its values */
-void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
+void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch, const char * tag)
 {
     int rc;
     DWORD i, j;
@@ -216,7 +216,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
                 }
 
                 /* Open subkey */
-                os_winreg_open_key(new_key, new_key_full, arch);
+                os_winreg_open_key(new_key, new_key_full, arch, tag);
             }
         }
     }
@@ -301,8 +301,8 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
         /* Look for p_key on the reg db */
         if (os_winreg_changed(full_key_name, mf_sum, sf_sum, arch)) {
             char reg_changed[MAX_LINE + 1];
-            snprintf(reg_changed, MAX_LINE, "0:0:0:0:%s:%s %s%s",
-                     mf_sum, sf_sum, arch == ARCH_64BIT ? "[x64] " : "", full_key_name);
+            snprintf(reg_changed, MAX_LINE, "0:0:0:0:%s:%s %s%s!%s",
+                     mf_sum, sf_sum, arch == ARCH_64BIT ? "[x64] " : "", full_key_name, tag ? tag : "");
 
             /* Notify server */
             notify_registry(reg_changed, 0);
@@ -313,7 +313,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
 }
 
 /* Open the registry key */
-void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
+void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *tag)
 {
     int i = 0;
     HKEY oshkey;
@@ -350,7 +350,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
         return;
     }
 
-    os_winreg_querykey(oshkey, subkey, fullkey_name, arch);
+    os_winreg_querykey(oshkey, subkey, fullkey_name, arch, tag);
     RegCloseKey(oshkey);
     return;
 }
@@ -398,7 +398,7 @@ void os_winreg_check()
             continue;
         }
 
-        os_winreg_open_key(rk, syscheck.registry[i].entry, syscheck.registry[i].arch);
+        os_winreg_open_key(rk, syscheck.registry[i].entry, syscheck.registry[i].arch, syscheck.registry[i].tag);
         i++;
     }
 
