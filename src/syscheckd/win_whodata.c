@@ -947,7 +947,7 @@ void send_whodata_del(whodata_evt *w_evt) {
     }
 
     /* Find tag if defined for this file */
-    pos = find_dir_pos(curr_node->key, 1, 0, 0);
+    pos = find_dir_pos(w_evt->path, 1, 0, 0);
 
     snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s %s!%s", wd_sum, w_evt->path, syscheck.tag[pos] ? syscheck.tag[pos] : "");
     send_syscheck_msg(del_msg);

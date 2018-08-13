@@ -141,6 +141,7 @@ typedef struct whodata {
 typedef struct registry {
     char *entry;
     int arch;
+    char *tag;
 } registry;
 
 typedef struct registry_regex {
