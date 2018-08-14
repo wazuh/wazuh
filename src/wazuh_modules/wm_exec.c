@@ -279,11 +279,15 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             dup2(pipe_fd[1], STDERR_FILENO);
             close(pipe_fd[1]);
         } else {
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
-        }
+            int fd = open("/dev/null", O_RDWR, 0);
 
-        close(STDIN_FILENO);
+            if (fd < 0) {
+                merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
+            }
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
+            dup2(fd, STDIN_FILENO);
+        }
 
         setsid();
         if (nice(wm_task_nice)) {}
@@ -298,54 +302,49 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         // Parent
 
         wm_append_sid(pid);
+        close(pipe_fd[1]);
+        tinfo.pipe = pipe_fd[0];
 
-        if (output) {
-            close(pipe_fd[1]);
-            tinfo.pipe = pipe_fd[0];
+        // Launch thread
 
-            // Launch thread
+        pthread_mutex_lock(&tinfo.mutex);
 
-            pthread_mutex_lock(&tinfo.mutex);
-
-            if (pthread_create(&thread, NULL, reader, &tinfo)) {
-                merror("Couldn't create reading thread.");
-                pthread_mutex_unlock(&tinfo.mutex);
-                return -1;
-            }
-
-            gettime(&timeout);
-            timeout.tv_sec += secs;
-
-            // Wait for reading termination
-
-            switch (secs ? pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout) : pthread_cond_wait(&tinfo.finished, &tinfo.mutex)) {
-            case 0:
-                retval = 0;
-                break;
-
-            case ETIMEDOUT:
-                retval = WM_ERROR_TIMEOUT;
-                kill(-pid, SIGTERM);
-                pthread_cancel(thread);
-                break;
-
-            default:
-                kill(-pid, SIGTERM);
-                pthread_cancel(thread);
-            }
-
-            // Wait for thread
-
+        if (pthread_create(&thread, NULL, reader, &tinfo)) {
+            merror("Couldn't create reading thread.");
             pthread_mutex_unlock(&tinfo.mutex);
-            pthread_join(thread, NULL);
-
-            // Cleanup
-
-            pthread_mutex_destroy(&tinfo.mutex);
-            pthread_cond_destroy(&tinfo.finished);
-        } else {
-            retval = 0;
+            return -1;
         }
+
+        gettime(&timeout);
+        timeout.tv_sec += secs;
+
+        // Wait for reading termination
+
+       switch (secs ? pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout) : pthread_cond_wait(&tinfo.finished, &tinfo.mutex)) {
+        case 0:
+            retval = 0;
+            break;
+
+        case ETIMEDOUT:
+            retval = WM_ERROR_TIMEOUT;
+            kill(-pid, SIGTERM);
+            pthread_cancel(thread);
+            break;
+
+        default:
+            kill(-pid, SIGTERM);
+            pthread_cancel(thread);
+        }
+
+        // Wait for thread
+
+        pthread_mutex_unlock(&tinfo.mutex);
+        pthread_join(thread, NULL);
+
+        // Cleanup
+
+        pthread_mutex_destroy(&tinfo.mutex);
+        pthread_cond_destroy(&tinfo.finished);
 
         // Wait for child process
 
