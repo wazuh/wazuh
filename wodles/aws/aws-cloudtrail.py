@@ -603,7 +603,7 @@ def main(argv):
                                                                                                    aws_region=aws_region), 1)
                     continue
 
-                for bucket_file in s3_client.list_objects_v2(**s3_filter_args)['Contents']:
+                for bucket_file in bucket_files['Contents']:
                     if bucket_file['Key'] != "":
                         # Fail safe in case an older log gets thru StartAfter; probably redundant
                         if int(bucket_file['Key'].split('/')[-1].split('_')[-2].split('T')[0]) < options.only_logs_after:
