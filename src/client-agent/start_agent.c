@@ -88,6 +88,7 @@ int connect_server(int initial_id)
         } else {
             if (agt->sock >= 0) {
                 close(agt->sock);
+                agt->sock = -1;
             }
 
             agt->sock = OS_ConnectTCP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
