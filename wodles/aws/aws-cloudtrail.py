@@ -170,7 +170,7 @@ def send_msg(wazuh_queue, msg):
         s = socket(AF_UNIX, SOCK_DGRAM)
         s.connect(wazuh_queue)
         s.send("{header}{msg}".format(header=ossec_header,
-                                      msg=json.dumps(msg).encode()))
+                                      msg=json.dumps(msg)).encode())
         s.close()
     except:
         print('ERROR: Wazuh must be running.')
