@@ -40,6 +40,9 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     os_strdup("/etc/osquery/osquery.conf", osquery_monitor->config_path);
 #endif
 
+    if (!nodes)
+        return 0;
+
     for(i = 0; nodes[i]; i++)
     {
         if(!nodes[i]->element)
