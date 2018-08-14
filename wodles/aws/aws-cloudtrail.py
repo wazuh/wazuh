@@ -262,18 +262,18 @@ def get_s3_client(options):
     boto_session = boto3.Session(**conn_args)
 
     # If using a role, create session using that
-    if options.iam_role_arn:
-        sts_client = boto_session.client('sts')
-        sts_role_assumption = sts_client.assume_role(RoleArn=options.iam_role_arn,
-                                                     RoleSessionName='WazuhCloudTrailLogParsing')
-        sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
-                                    aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
-                                    aws_session_token=sts_role_assumption['Credentials']['SessionToken'])
-        s3_client = sts_session.client(service_name='s3')
-    else:
-        s3_client = boto_session.client(service_name='s3')
     try:
-        s3_client.head_bucket(Bucket=options.logBucket)
+        if options.iam_role_arn:
+            sts_client = boto_session.client('sts')
+            sts_role_assumption = sts_client.assume_role(RoleArn=options.iam_role_arn,
+                                                         RoleSessionName='WazuhCloudTrailLogParsing')
+            sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
+                                        aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
+                                        aws_session_token=sts_role_assumption['Credentials']['SessionToken'])
+            s3_client = sts_session.client(service_name='s3')
+        else:
+            s3_client = boto_session.client(service_name='s3')
+            s3_client.head_bucket(Bucket=options.logBucket)
     except botocore.exceptions.ClientError as e:
         print("ERROR: Bucket {} access error: {}".format(options.logBucket, e))
         sys.exit(3)
