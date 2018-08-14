@@ -49,8 +49,7 @@ import signal
 import sys
 import sqlite3
 import argparse
-
-from socket import socket, AF_UNIX, SOCK_DGRAM
+import socket
 
 try:
     import boto3
@@ -167,14 +166,21 @@ def send_msg(wazuh_queue, msg):
     try:
         ossec_header = "1:Wazuh-AWS:"
         debug(msg, 3)
-        s = socket(AF_UNIX, SOCK_DGRAM)
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         s.connect(wazuh_queue)
         s.send("{header}{msg}".format(header=ossec_header,
                                       msg=json.dumps(msg)).encode())
         s.close()
-    except:
-        print('ERROR: Wazuh must be running.')
-        sys.exit(11)
+    except socket.error as e:
+        if e.errno == 111:
+            print('ERROR: Wazuh must be running.')
+            sys.exit(11)
+        else:
+            print("ERROR: Error sending message to wazuh: {}".format(e))
+            sys.exit(13)
+    except Exception as e:
+        print("ERROR: Error sending message to wazuh: {}".format(e))
+        sys.exit(13)
 
 
 def handler(signal, frame):
