@@ -17,7 +17,7 @@
 #define WM_AWS_LOGTAG ARGV0 ":aws-cloudtrail"
 #define WM_AWS_DEFAULT_INTERVAL 5
 #define WM_AWS_DEFAULT_DIR WM_DEFAULT_DIR "/aws"
-#define WM_AWS_SCRIPT_PATH WM_AWS_DEFAULT_DIR "/aws-cloudtrail.py"
+#define WM_AWS_SCRIPT_PATH WM_AWS_DEFAULT_DIR "/aws-cloudtrail"
 
 typedef struct wm_aws_state_t {
     time_t next_time;               // Absolute time for next scan
