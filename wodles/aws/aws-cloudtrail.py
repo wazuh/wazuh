@@ -55,7 +55,7 @@ from socket import socket, AF_UNIX, SOCK_DGRAM
 try:
     import boto3
 except ImportError:
-    print('ERROR: No module found boto3.')
+    print('ERROR: boto3 module is required.')
     sys.exit(4)
 import botocore
 import json
@@ -178,7 +178,7 @@ def send_msg(wazuh_queue, msg):
 
 
 def handler(signal, frame):
-    print("ERROR: SIGINT received, bye!")
+    print("ERROR: SIGINT received.")
     sys.exit(12)
 
 
@@ -275,7 +275,7 @@ def get_s3_client(options):
     try:
         s3_client.head_bucket(Bucket=options.logBucket)
     except botocore.exceptions.ClientError as e:
-        print("ERROR: Bucket %s access error: %s" % (options.logBucket, e))
+        print("ERROR: Bucket {} access error: {}".format(options.logBucket, e))
         sys.exit(3)
     return s3_client
 
@@ -458,9 +458,9 @@ def get_log_file(s3_client, options, aws_account_id, log_key):
     try:
         raw_gz_object = s3_client.get_object(Bucket=options.logBucket, Key=log_key)['Body']
         uncompressed_object = zlib.decompress(raw_gz_object.read(), 16 + zlib.MAX_WBITS)
-    except:
+    except Exception as e:
         if options.skip_on_error:
-            debug("++ Failed to decompress file; skipping...", 1)
+            debug("++ Failed to decompress file ({}); skipping...".format(e), 1)
             try:
                 error_msg = get_alert_msg(aws_account_id,
                                           options.aws_account_alias,
@@ -472,15 +472,15 @@ def get_log_file(s3_client, options, aws_account_id, log_key):
             except:
                 debug("++ Failed to send message to Wazuh", 1)
         else:
-            print("ERROR: Failed to decompress file: {0}".format(log_key))
+            print("ERROR: Failed to decompress file {}: {}".format(log_key, e))
             sys.exit(8)
 
     # Parse the log json
     try:
         log_json = json.loads(uncompressed_object)
-    except:
+    except Exception as e:
         if options.skip_on_error:
-            debug("++ Unable to parse file {0}; skipping...".format(log_key), 1)
+            debug("++ Unable to parse file {} ({}); skipping...".format(log_key, e), 1)
             try:
                 error_msg = get_alert_msg(aws_account_id,
                                           options.aws_account_alias,
@@ -492,7 +492,7 @@ def get_log_file(s3_client, options, aws_account_id, log_key):
             except:
                 debug("++ Failed to send message to Wazuh", 1)
         else:
-            print("ERROR: Failed to parse file: {0}".format(log_key))
+            print("ERROR: Failed to parse file {}: {}".format(log_key, e))
             sys.exit(9)
     return log_json
 
@@ -533,8 +533,8 @@ def main(argv):
         db_exists = True
     except sqlite3.OperationalError:
         db_exists = False
-    except:
-        print("ERROR: Unexpected error accessing SQLite DB")
+    except Exception as e:
+        print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
         sys.exit(5)
 
     # DB does exist yet
@@ -543,8 +543,8 @@ def main(argv):
             debug('+++ Table does not exist; create', 1)
             db_connector.execute(sql_create_table)
             db_connector.commit()
-        except:
-            print("ERROR: Unable to create SQLite DB")
+        except Exception as e:
+            print("ERROR: Unable to create SQLite DB: {}".format(e))
             sys.exit(6)
 
     # Legacy table exists; migrate progress to new table
@@ -641,7 +641,7 @@ def main(argv):
                     debug("+++ Unexpected error: {}".format(err.message), 2)
                 else:
                     debug("+++ Unexpected error: {}".format(err), 2)
-                print("ERROR: Unexpected error querying/working with objects in S3")
+                print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
                 sys.exit(7)
 
             debug("+++ DB Maintenance", 1)
@@ -651,10 +651,11 @@ def main(argv):
                                                                aws_region=aws_region,
                                                                retain_db_records=retain_db_records))
                 db_connector.commit()
-            except:
-                print("ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}".format(
+            except Exception as e:
+                print("ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
                     aws_account_id=aws_account_id,
-                    aws_region=aws_region))
+                    aws_region=aws_region,
+                    error_msg=e))
                 sys.exit(10)
 
     db_connector.execute(sql_db_optimize)
@@ -669,4 +670,6 @@ if __name__ == '__main__':
         sys.exit(0)
     except Exception as e:
         print("Unknown error: {}".format(e))
+        if debug_level > 0:
+            raise
         sys.exit(1)

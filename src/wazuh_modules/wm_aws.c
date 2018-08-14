@@ -260,27 +260,9 @@ void wm_aws_run_cloudtrail(wm_aws_cloudtrail *exec_cloudtrail) {
                     mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, unknown_error_msg);
             }
             else if(status == 2)
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, strstr(output, "aws.py: error:"));
-            else if(status == 3)
-                mtwarn(WM_AWS_LOGTAG, "%s Invalid credentials to access S3 Bucket", trail_title);
-            else if(status == 4)
-                mtwarn(WM_AWS_LOGTAG, "%s boto3 module is required.", trail_title);
-            else if(status == 5)
-                mtwarn(WM_AWS_LOGTAG, "%s Unexpected error accessing SQLite DB.", trail_title);
-            else if(status == 6)
-                mtwarn(WM_AWS_LOGTAG, "%s Unable to create SQLite DB.", trail_title);
-            else if(status == 7)
-                mtwarn(WM_AWS_LOGTAG, "%s Unexpected error querying/working with objects in S3.", trail_title);
-            else if(status == 8)
-                mtwarn(WM_AWS_LOGTAG, "%s Failed to decompress file.", trail_title);
-            else if(status == 9)
-                mtwarn(WM_AWS_LOGTAG, "%s Failed to parse file.", trail_title);
-            else if(status == 10)
-                mtwarn(WM_AWS_LOGTAG, "%s Failed to execute DB cleanup.", trail_title);
-            else if(status == 11)
-                mtwarn(WM_AWS_LOGTAG, "%s Unable to connect to Wazuh", trail_title);
-            else if (status == 12)
-                mtwarn(WM_AWS_LOGTAG, "%s SIGINT Received", trail_title);
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, strstr(output, "aws.py: error:")+14);
+            else if(status > 2)
+                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, strstr(output, "ERROR: ")+7);
             else
                 mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
         } else {
