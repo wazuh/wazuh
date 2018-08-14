@@ -252,8 +252,13 @@ void wm_aws_run_cloudtrail(wm_aws_cloudtrail *exec_cloudtrail) {
     case 0:
         if (status > 0) {
             mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
-            if(status == 1)
-                mtwarn(WM_AWS_LOGTAG, "%s Unknown error", trail_title);
+            if(status == 1) {
+                char * unknown_error_msg = strstr(output,"Unknown error");
+                if (unknown_error_msg == NULL)
+                    mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", trail_title);
+                else
+                    mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, unknown_error_msg);
+            }
             else if(status == 2)
                 mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, strstr(output, "aws.py: error:"));
             else if(status == 3)

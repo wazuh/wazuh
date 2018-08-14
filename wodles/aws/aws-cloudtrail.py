@@ -662,7 +662,11 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    debug('Args: {args}'.format(args=str(sys.argv)), 2)
-    signal.signal(signal.SIGINT, handler)
-    main(sys.argv[1:])
-    sys.exit(0)
+    try:
+        debug('Args: {args}'.format(args=str(sys.argv)), 2)
+        signal.signal(signal.SIGINT, handler)
+        main(sys.argv[1:])
+        sys.exit(0)
+    except Exception as e:
+        print("Unknown error: {}".format(e))
+        sys.exit(1)
