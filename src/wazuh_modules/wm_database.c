@@ -461,7 +461,7 @@ void wm_clean_dangling_db() {
 
 char * wm_get_os_arch(char * os_header) {
     const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
-    char * os_arch;
+    char * os_arch = NULL;
     int i;
 
     for (i = 0; ARCHS[i]; i++) {

@@ -208,7 +208,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         } else if (ciscat->state.next_time > time_start) {
 
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", ciscat->state.next_time - time_start);
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", (long)(ciscat->state.next_time - time_start));
             delay(1000 * ciscat->state.next_time - time_start);
 
         }

@@ -571,6 +571,10 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->location);
     }
 
+    if (lf->hostname) {
+        free(lf->hostname);
+    }
+
     if (lf->srcip) {
         free(lf->srcip);
     }
