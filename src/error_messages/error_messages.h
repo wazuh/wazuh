@@ -187,7 +187,7 @@
 #define NEW_GLOB_FILE   "(1957): New file that matches the '%s' pattern: '%s'."
 #define DUP_FILE        "(1958): Log file '%s' is duplicated."
 #define FORGET_FILE     "(1959): File '%s' does not exist. Forgetting."
-#define FILE_LIMIT      "(1960): File limit has been reached."
+#define FILE_LIMIT      "(1960): File limit has been reached. Please reduce the number of files or increase \"logcollector.max_file\"."
 #define CURRENT_FILES   "(1961): Files being monitored: %i/%i."
 
 

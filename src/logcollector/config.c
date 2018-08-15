@@ -31,7 +31,7 @@ int LogCollectorConfig(const char *cfgfile)
     open_file_attempts = getDefine_Int("logcollector", "open_attempts", 2, 998);
     vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
     maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
-    maximum_files = getDefine_Int("logcollector", "max_files", 0, 100000);
+    maximum_files = getDefine_Int("logcollector", "max_files", 1, 1000000);
     sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
 
     if (maximum_lines > 0 && maximum_lines < 100) {
