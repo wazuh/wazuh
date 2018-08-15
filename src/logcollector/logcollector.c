@@ -999,7 +999,6 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
 
         w_mutex_unlock(&mutex);
         w_msg_queue_push(msg, str, file, size, &targets[i], queue_mq);
-        return 0;
     }
 
     return 0;
