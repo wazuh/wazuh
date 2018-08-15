@@ -296,9 +296,8 @@ void LogCollectorStart()
                 FILE *tf;
                 tf = fopen(current->file, "r");
                 if(tf == NULL) {
-                    merror(FOPEN_ERROR, current->file, errno, strerror(errno));
                     if (errno == ENOENT) {
-                        minfo(REM_FILE, current->file);
+                        minfo(FORGET_FILE, current->file);
                         // Only expanded files that have been deleted will be forgotten
                         if (j >= 0) {
                             if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
@@ -310,6 +309,8 @@ void LogCollectorStart()
                                 continue;
                             }
                         }
+                    } else {
+                        merror(FOPEN_ERROR, current->file, errno, strerror(errno));
                     }
                 }
 
