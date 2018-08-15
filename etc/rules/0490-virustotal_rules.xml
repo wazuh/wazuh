@@ -24,6 +24,7 @@
         <if_sid>87100</if_sid>
         <field name="virustotal.error">403</field>
         <description>VirusTotal: Error: Check credentials</description>
+        <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="87103" level="3">
@@ -43,6 +44,7 @@
         <if_sid>87100</if_sid>
         <field name="virustotal.malicious">1</field>
         <description>VirusTotal: Alert - $(virustotal.source.file) - $(virustotal.positives) engines detected this file</description>
+        <group>gdpr_IV_35.7.d,</group>
     </rule>
  
 </group>

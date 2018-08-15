@@ -3,39 +3,40 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import ast
+import fcntl
+import fnmatch
+import json
 import logging
+import os
+import shutil
 import threading
 import time
-import shutil
-import json
-import os
-import fcntl
-import ast
 from datetime import datetime
-import fnmatch
 from operator import itemgetter
 
-from wazuh.exception import WazuhException
-from wazuh import common
-from wazuh.cluster.cluster import get_cluster_items, _update_file, \
-                                  decompress_files, get_files_status, \
-                                  compress_files, compare_files, get_agents_status, \
-                                  read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
-from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
-                                        Handler, InternalSocketHandler, ClusterThread
-from wazuh.utils import mkdir_with_mode
+from wazuh import common, WazuhException
 from wazuh.agent import Agent
+from wazuh.cluster import __version__
+from wazuh.cluster.cluster import get_cluster_items, _update_file, \
+    decompress_files, get_files_status, \
+    compress_files, compare_files, get_agents_status, \
+    read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
+from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
+    InternalSocketHandler, ClusterThread
+from wazuh.utils import mkdir_with_mode
+
 
 logger = logging.getLogger(__name__)
 
 #
 # Master Handler
-# There is a MasterManagerHandler for each connected client
+# There is a MasterManagerHandler for each connected worker
 #
 class MasterManagerHandler(ServerHandler):
 
-    def __init__(self, sock, server, map, addr=None):
-        ServerHandler.__init__(self, sock, server, map, addr)
+    def __init__(self, sock, server, asyncore_map, addr=None):
+        ServerHandler.__init__(self, sock, server, asyncore_map, addr)
         self.manager = server
 
     # Overridden methods
@@ -46,37 +47,51 @@ class MasterManagerHandler(ServerHandler):
         if command == 'echo-c':  # Echo
             return 'ok-c ', data.decode()
         elif command == 'sync_i_c_m_p':
-            result = self.manager.get_client_status(client_id=self.name, key='sync_integrity_free')
+            result = self.manager.get_worker_status(worker_id=self.name, key='sync_integrity_free')
             return 'ack', str(result)
         elif command == 'sync_ai_c_mp':
-            return 'ack', str(self.manager.get_client_status(client_id=self.name, key='sync_agentinfo_free'))
+            return 'ack', str(self.manager.get_worker_status(worker_id=self.name, key='sync_agentinfo_free'))
         elif command == 'sync_ev_c_mp':
-            return 'ack', str(self.manager.get_client_status(client_id=self.name, key='sync_extravalid_free'))
-        elif command == 'sync_i_c_m':  # Client syncs integrity
+            return 'ack', str(self.manager.get_worker_status(worker_id=self.name, key='sync_extravalid_free'))
+        elif command == 'sync_i_c_m':  # Worker syncs integrity
             data = data.decode()
-            pci_thread = ProcessClientIntegrity(manager=self.manager, manager_handler=self, filename=data, stopper=self.stopper)
+            pci_thread = ProcessWorkerIntegrity(manager=self.manager, manager_handler=self, filename=data, stopper=self.stopper)
             pci_thread.start()
             # data will contain the filename
-            return 'ack', self.set_worker(command, pci_thread, data)
+            return 'ack', self.set_worker_thread(command, pci_thread, data)
         elif command == 'sync_ai_c_m':
             data = data.decode()
-            mcf_thread = ProcessClientFiles(manager_handler=self, filename=data, stopper=self.stopper)
+            mcf_thread = ProcessWorkerFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
             # data will contain the filename
-            return 'ack', self.set_worker(command, mcf_thread, data)
+            return 'ack', self.set_worker_thread(command, mcf_thread, data)
         elif command == 'sync_ev_c_m':
             data = data.decode()
             mcf_thread = ProcessExtraValidFiles(manager_handler=self, filename=data, stopper=self.stopper)
             mcf_thread.start()
-            return 'ack', self.set_worker(command, mcf_thread, data)
+            return 'ack', self.set_worker_thread(command, mcf_thread, data)
         elif command == 'get_nodes':
-            response = {name:data['info'] for name,data in self.server.get_connected_clients().iteritems()}
+            data = data.decode()
+            response = {name:data['info'] for name,data in self.server.get_connected_workers().items()}
             cluster_config = read_config()
-            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
+            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master",  "version": __version__}})
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         elif command == 'get_health':
-            response = self.manager.get_healthcheck()
+            filter_nodes = data.decode()
+            response = self.manager.get_healthcheck(filter_nodes)
+            serialized_response = ['ok', json.dumps(response)]
+            return serialized_response
+        elif command == 'get_agents':
+            data = data.decode()
+            split_data = data.split('%--%', 5)
+            filter_status = split_data[0] if split_data[0] != 'None' else None
+            filter_nodes = split_data[1] if split_data[1] != 'None' else None
+            offset = split_data[2] if split_data[2] != 'None' else None
+            limit = split_data[3] if split_data[3] != 'None' else None
+            sort = split_data[4] if split_data[4] != 'None' else None
+            search = split_data[5] if split_data[5] != 'None' else None
+            response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
         else:  # Non-master requests
@@ -89,10 +104,8 @@ class MasterManagerHandler(ServerHandler):
 
         logger.debug("[Master] [{0}] [Response-R]: '{1}'.".format(self.name, answer))
 
-        response_data = None
-
         if answer == 'ok-m':  # test
-            response_data = '[response_only_for_master] Client answered: {}.'.format(payload)
+            response_data = '[response_only_for_master] Worker answered: {}.'.format(payload)
         else:
             response_data = ServerHandler.process_response(self, response)
 
@@ -100,14 +113,15 @@ class MasterManagerHandler(ServerHandler):
 
 
     # Private methods
-    def _update_client_files_in_master(self, json_file, files_to_update_json, zip_dir_path, client_name, cluster_control_key, cluster_control_subkey, tag):
+    def _update_worker_files_in_master(self, json_file, zip_dir_path, worker_name, cluster_control_key, cluster_control_subkey, tag):
         def update_file(n_errors, name, data, file_time=None, content=None, agents=None):
             # Full path
             full_path = common.ossec_path + name
+            error_updating_file = False
 
             # Cluster items information: write mode and umask
             w_mode = cluster_items[data['cluster_item_key']]['write_mode']
-            umask = int(cluster_items[data['cluster_item_key']]['umask'], base=0)
+            umask = cluster_items[data['cluster_item_key']]['umask']
 
             if content is None:
                 zip_path = "{}/{}".format(zip_dir_path, name)
@@ -119,26 +133,33 @@ class MasterManagerHandler(ServerHandler):
             try:
                 fcntl.lockf(lock_file, fcntl.LOCK_EX)
                 _update_file(file_path=name, new_content=content,
-                umask_int=umask, mtime=file_time, w_mode=w_mode,
-                tmp_dir=tmp_path, whoami='master', agents=agents)
+                             umask_int=umask, mtime=file_time, w_mode=w_mode,
+                             tmp_dir=tmp_path, whoami='master', agents=agents)
 
+            except WazuhException as e:
+                logger.debug2("{}: Warning updating file '{}': {}".format(tag, name, e))
+                error_tag = 'warnings'
+                error_updating_file = True
             except Exception as e:
                 logger.debug2("{}: Error updating file '{}': {}".format(tag, name, e))
-                n_errors[data['cluster_item_key']] = 1 if not n_errors.get(data['cluster_item_key']) \
-                                                          else n_errors[data['cluster_item_key']] + 1
+                error_tag = 'errors'
+                error_updating_file = True
+
+            if error_updating_file:
+                n_errors[error_tag][data['cluster_item_key']] = 1 if not n_errors[error_tag].get(data['cluster_item_key']) \
+                                                                  else n_errors[error_tag][data['cluster_item_key']] + 1
 
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
             lock_file.close()
 
-            return n_errors
+            return n_errors, error_updating_file
 
 
         # tmp path
-        tmp_path = "/queue/cluster/{}/tmp_files".format(client_name)
+        tmp_path = "/queue/cluster/{}/tmp_files".format(worker_name)
         cluster_items = get_cluster_items()['files']
-        n_agentsinfo = 0
-        n_agentgroups = 0
-        n_errors = {}
+        n_merged_files = 0
+        n_errors = {'errors': {}, 'warnings': {}}
 
         # create temporary directory for lock files
         lock_directory = "{}/queue/cluster/lockdir".format(common.ossec_path)
@@ -149,7 +170,6 @@ class MasterManagerHandler(ServerHandler):
             agents = Agent.get_agents_overview(select={'fields':['name']}, limit=None)['items']
             agent_names = set(map(itemgetter('name'), agents))
             agent_ids = set(map(itemgetter('id'), agents))
-            agents = None
         except Exception as e:
             logger.debug2("{}: Error getting agent ids and names: {}".format(tag, e))
             agent_names, agent_ids = {}, {}
@@ -159,46 +179,49 @@ class MasterManagerHandler(ServerHandler):
             for filename, data in json_file.items():
                 if data['merged']:
                     for file_path, file_data, file_time in unmerge_agent_info(data['merge_type'], zip_dir_path, data['merge_name']):
-                        n_errors = update_file(n_errors, file_path, data, file_time, file_data, (agent_names, agent_ids))
-                        if data['merge_type'] == 'agent-info':
-                            n_agentsinfo += 1
-                        else:
-                            n_agentgroups += 1
+                        n_errors, error_updating_file = update_file(n_errors, file_path, data, file_time, file_data, (agent_names, agent_ids))
+                        if not error_updating_file:
+                            n_merged_files += 1
 
                         if self.stopper.is_set():
                             break
                 else:
-                    n_errors = update_file(n_errors, filename, data)
+                    n_errors, _ = update_file(n_errors, filename, data)
 
         except Exception as e:
-            logger.error("{}: Error updating client files: '{}'.".format(tag, e))
+            logger.error("{}: Error updating worker files: '{}'.".format(tag, e))
             raise e
 
         after = time.time()
-        logger.debug("{0}: Time updating client files: {1:.2f}s. Agents-info updated total: {2}. Agent-groups updated total: {3}.".format(tag, after - before, n_agentsinfo, n_agentgroups))
+        logger.debug("{0}: Time updating worker files: {1:.2f}s. Total of updated worker files: {2}.".format(tag, after - before, n_merged_files))
 
-        if sum(n_errors.values()) > 0:
-            logging.error("{}: Errors updating client files: {}".format(tag,
-                ' | '.join(['{}: {}'.format(key, value) for key, value in n_errors.items()])
+        if sum(n_errors['errors'].values()) > 0:
+            logging.error("{}: Errors updating worker files: {}".format(tag,
+                ' | '.join(['{}: {}'.format(key, value) for key, value in n_errors['errors'].items()])
             ))
+        if sum(n_errors['warnings'].values()) > 0:
+            for key, value in n_errors['warnings'].items():
+                if key == '/queue/agent-info/':
+                    logger.warning("Received {} agent statuses for non-existent agents. Skipping.".format(value))
+                elif key == '/queue/agent-groups/':
+                    logger.warning("Received {} group assignments for non-existent agents. Skipping.".format(value))
 
         # Save info for healthcheck
-        status_number = n_agentsinfo if cluster_control_key == 'last_sync_agentinfo' else n_agentgroups
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status=status_number)
+        self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status=n_merged_files)
 
 
     # New methods
-    def process_files_from_client(self, client_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
+    def process_files_from_worker(self, worker_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
         sync_result = False
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status="In progress")
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status="In progress")
+        self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
+        self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey="date_end_master", status="In progress")
+        self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status="In progress")
         # ---
 
         if not tag:
-            tag = "[Master] [process_files_from_client]"
+            tag = "[Master] [process_files_from_worker]"
 
         # Extract received data
         logger.info("{0}: Analyzing received files: Start.".format(tag))
@@ -210,7 +233,7 @@ class MasterManagerHandler(ServerHandler):
             raise e
 
         if json_file:
-            client_files_json = json_file['client_files']
+            worker_files_json = json_file['worker_files']
         else:
             raise Exception("cluster_control.json not included in received zip file")
 
@@ -219,8 +242,7 @@ class MasterManagerHandler(ServerHandler):
         logger.info("{0}: Updating master files: Start.".format(tag))
 
         # Update files
-        self._update_client_files_in_master(client_files_json, client_files_json,
-                                            zip_dir_path, client_name,
+        self._update_worker_files_in_master(worker_files_json, zip_dir_path, worker_name,
                                             cluster_control_key, cluster_control_subkey,
                                             tag)
 
@@ -232,20 +254,17 @@ class MasterManagerHandler(ServerHandler):
         sync_result = True
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
 
         return sync_result
 
 
-    def process_integrity_from_client(self, client_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
-        ko_files = False
-        data_for_client = None
-
+    def process_integrity_from_worker(self, worker_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
         if not tag:
-            tag = "[Master] [process_integrity_from_client]"
+            tag = "[Master] [process_integrity_from_worker]"
 
         # Extract received data
-        logger.info("{0}: Analyzing client integrity: Start.".format(tag))
+        logger.info("{0}: Analyzing worker integrity: Start.".format(tag))
 
         try:
             json_file, zip_dir_path = decompress_files(data_received)
@@ -254,27 +273,27 @@ class MasterManagerHandler(ServerHandler):
             raise e
 
         if json_file:
-            master_files_from_client = json_file['master_files']
+            master_files_from_worker = json_file['master_files']
         else:
             raise Exception("cluster_control.json not included in received zip file")
 
-        logger.info("{0}: Analyzing client integrity: Received {1} files to check.".format(tag, len(master_files_from_client)))
+        logger.info("{0}: Analyzing worker integrity: Received {1} files to check.".format(tag, len(master_files_from_worker)))
 
-        logger.info("{0}: Analyzing client integrity: Checking files.".format(tag, len(master_files_from_client)))
+        logger.info("{0}: Analyzing worker integrity: Checking files.".format(tag, len(master_files_from_worker)))
 
         # Get master files
         master_files = self.server.get_integrity_control()
 
         # Compare
-        client_files_ko = compare_files(master_files, master_files_from_client)
+        worker_files_ko = compare_files(master_files, master_files_from_worker)
 
         agent_groups_to_merge = {key:fnmatch.filter(values.keys(), '*/agent-groups/*')
-                                 for key,values in client_files_ko.items()}
+                                 for key,values in worker_files_ko.items()}
         merged_files = {key:merge_agent_info(merge_type="agent-groups", files=values,
                                          file_type="-"+key, time_limit_seconds=0)
                         for key,values in agent_groups_to_merge.items()}
 
-        for ko, merged in zip(client_files_ko.items(), agent_groups_to_merge.items()):
+        for ko, merged in zip(worker_files_ko.items(), agent_groups_to_merge.items()):
             ko_type, ko_files = ko
             if ko_type == "extra" or "extra_valid":
                 continue
@@ -286,53 +305,53 @@ class MasterManagerHandler(ServerHandler):
                 ko_files[merged_file] = {'cluster_item_key': '/queue/agent-groups/', 'merged': True}
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="missing", status=len(client_files_ko['missing']))
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="shared", status=len(client_files_ko['shared']))
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="extra", status=len(client_files_ko['extra']))
-        self.manager.set_client_status(client_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="extra_valid", status=len(client_files_ko['extra_valid']))
+        self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="missing", status=len(worker_files_ko['missing']))
+        self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="shared", status=len(worker_files_ko['shared']))
+        self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="extra", status=len(worker_files_ko['extra']))
+        self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, subsubkey="extra_valid", status=len(worker_files_ko['extra_valid']))
         # ---
 
         # Remove tmp directory created when zip file was received
         shutil.rmtree(zip_dir_path)
 
         # Step 3: KO files
-        if len(list(filter(lambda x: x == {}, client_files_ko.values()))) == len(client_files_ko):
-            logger.info("{0}: Analyzing client integrity: Files checked. There are no KO files.".format(tag))
+        if len(list(filter(lambda x: x == {}, worker_files_ko.values()))) == len(worker_files_ko):
+            logger.info("{0}: Analyzing worker integrity: Files checked. There are no KO files.".format(tag))
 
             ko_files = False
-            data_for_client = None
+            data_for_worker = None
 
         else:
-            logger.info("{0}: Analyzing client integrity: Files checked. There are KO files.".format(tag))
+            logger.info("{0}: Analyzing worker integrity: Files checked. There are KO files.".format(tag))
 
             # Compress data: master files (only KO shared and missing)
-            logger.debug("{0} Analyzing client integrity: Files checked. Compressing KO files.".format(tag))
+            logger.debug("{0} Analyzing worker integrity: Files checked. Compressing KO files.".format(tag))
 
-            master_files_paths = [item for item in client_files_ko['shared']]
-            master_files_paths.extend([item for item in client_files_ko['missing']])
+            master_files_paths = [item for item in worker_files_ko['shared']]
+            master_files_paths.extend([item for item in worker_files_ko['missing']])
 
-            compressed_data = compress_files('master', client_name, master_files_paths, client_files_ko)
+            compressed_data = compress_files(worker_name, master_files_paths, worker_files_ko)
 
-            logger.debug("{0} Analyzing client integrity: Files checked. KO files compressed.".format(tag))
+            logger.debug("{0} Analyzing worker integrity: Files checked. KO files compressed.".format(tag))
 
             ko_files = True
-            data_for_client = compressed_data
+            data_for_worker = compressed_data
 
-        logger.info("{0}: Analyzing client integrity: End.".format(tag))
+        logger.info("{0}: Analyzing worker integrity: End.".format(tag))
 
-        return ko_files, data_for_client
+        return ko_files, data_for_worker
 
 
 #
-# Threads (workers) created by MasterManagerHandler
+# Threads (worker_threads) created by MasterManagerHandler
 #
 
 
-class ProcessClient(ProcessFiles):
+class ProcessWorker(ProcessFiles):
 
     def __init__(self, manager_handler, filename, stopper):
         ProcessFiles.__init__(self, manager_handler, filename,
-                              manager_handler.get_client(),
+                              manager_handler.get_worker(),
                               stopper)
 
     def check_connection(self):
@@ -342,7 +361,7 @@ class ProcessClient(ProcessFiles):
     def lock_status(self, status):
         # status_type is used to indicate whether a lock is free or not.
         # if the lock is True, the status should be False because it is not free
-        self.manager_handler.manager.set_client_status(self.name, self.status_type, not status)
+        self.manager_handler.manager.set_worker_status(self.name, self.status_type, not status)
 
 
     def process_file(self):
@@ -354,49 +373,49 @@ class ProcessClient(ProcessFiles):
         ProcessFiles.unlock_and_stop(self, reason, send_err_request)
 
 
-class ProcessClientIntegrity(ProcessClient):
+class ProcessWorkerIntegrity(ProcessWorker):
 
     def __init__(self, manager, manager_handler, filename, stopper):
-        ProcessClient.__init__(self, manager_handler, filename, stopper)
+        ProcessWorker.__init__(self, manager_handler, filename, stopper)
         self.manager = manager
         self.thread_tag = "[Master] [{0}] [Integrity-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_integrity_free"
-        self.function = self.manager_handler.process_integrity_from_client
+        self.function = self.manager_handler.process_integrity_from_worker
         self.cluster_control_key = "last_sync_integrity"
         self.cluster_control_subkey = "total_files"
 
     # Overridden methods
     def process_file(self):
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status="In progress")
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="missing", status="In progress")
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="shared", status="In progress")
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="extra", status="In progress")
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="extra_valid", status="In progress")
+        self.manager.set_worker_status(worker_id=self.name, key=self.cluster_control_key, subkey="date_start_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
+        self.manager.set_worker_status(worker_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status="In progress")
+        self.manager.set_worker_status(worker_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="missing", status="In progress")
+        self.manager.set_worker_status(worker_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="shared", status="In progress")
+        self.manager.set_worker_status(worker_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="extra", status="In progress")
+        self.manager.set_worker_status(worker_id=self.name, key=self.cluster_control_key, subkey=self.cluster_control_subkey, subsubkey="extra_valid", status="In progress")
         # ---
 
         sync_result = False
 
-        ko_files, data_for_client = self.function(self.name, self.filename, self.cluster_control_key, self.cluster_control_subkey, self.thread_tag)
+        ko_files, data_for_worker = self.function(self.name, self.filename, self.cluster_control_key, self.cluster_control_subkey, self.thread_tag)
 
         if ko_files:
-            logger.info("{0}: Sending Sync-KO to client.".format(self.thread_tag))
-            response = self.manager.send_file(self.name, 'sync_m_c', data_for_client, True)
+            logger.info("{0}: Sending Sync-KO to worker.".format(self.thread_tag))
+            response = self.manager.send_file(self.name, 'sync_m_c', data_for_worker, True)
         else:
-            logger.info("{0}: Sending Synk-OK to client.".format(self.thread_tag))
+            logger.info("{0}: Sending Synk-OK to worker.".format(self.thread_tag))
             response = self.manager.send_request(self.name, 'sync_m_c_ok')
 
         processed_response = self.manager_handler.process_response(response)
 
         if processed_response:
             sync_result = True
-            logger.info("{0}: Sync accepted by the client.".format(self.thread_tag))
+            logger.info("{0}: Sync accepted by the worker.".format(self.thread_tag))
         else:
-            logger.error("{0}: Sync error reported by the client.".format(self.thread_tag))
+            logger.error("{0}: Sync error reported by the worker.".format(self.thread_tag))
 
         # Save info for healthcheck
-        self.manager.set_client_status(client_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        self.manager.set_worker_status(worker_id=self.name, key=self.cluster_control_key, subkey="date_end_master", status=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4])
 
         return sync_result
 
@@ -405,38 +424,38 @@ class ProcessClientIntegrity(ProcessClient):
 
         # Send Err
         if send_err_request:
-            logger.info("{0}: Sending Sync-Error to client.".format(self.thread_tag))
+            logger.info("{0}: Sending Sync-Error to worker.".format(self.thread_tag))
             response = self.manager.send_request(self.name, 'sync_m_c_err')
 
             processed_response = self.manager_handler.process_response(response)
 
             if processed_response:
-                logger.info("{0}: Sync accepted by the client.".format(self.thread_tag))
+                logger.info("{0}: Sync accepted by the worker.".format(self.thread_tag))
             else:
-                logger.error("{0}: Sync error reported by the client.".format(self.thread_tag))
+                logger.error("{0}: Sync error reported by the worker.".format(self.thread_tag))
 
         # Unlock and stop
-        ProcessClient.unlock_and_stop(self, reason)
+        ProcessWorker.unlock_and_stop(self, reason)
 
 
-class ProcessClientFiles(ProcessClient):
+class ProcessWorkerFiles(ProcessWorker):
 
    def __init__(self, manager_handler, filename, stopper):
-        ProcessClient.__init__(self, manager_handler, filename, stopper)
+        ProcessWorker.__init__(self, manager_handler, filename, stopper)
         self.thread_tag = "[Master] [{0}] [AgentInfo-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_agentinfo_free"
-        self.function = self.manager_handler.process_files_from_client
+        self.function = self.manager_handler.process_files_from_worker
         self.cluster_control_key = "last_sync_agentinfo"
         self.cluster_control_subkey = "total_agentinfo"
 
 
-class ProcessExtraValidFiles(ProcessClient):
+class ProcessExtraValidFiles(ProcessWorker):
 
     def __init__(self, manager_handler, filename, stopper):
-        ProcessClient.__init__(self, manager_handler, filename, stopper)
+        ProcessWorker.__init__(self, manager_handler, filename, stopper)
         self.thread_tag = "[Master] [{0}] [AgentGroup-R ]".format(self.manager_handler.name)
         self.status_type = "sync_extravalid_free"
-        self.function = self.manager_handler.process_files_from_client
+        self.function = self.manager_handler.process_files_from_worker
         self.cluster_control_key = "last_sync_agentgroups"
         self.cluster_control_subkey = "total_agentgroups"
 
@@ -467,13 +486,13 @@ class MasterManager(Server):
 
 
     # Overridden methods
-    def add_client(self, data, ip, handler):
-        id = Server.add_client(self, data, ip, handler)
+    def add_worker(self, data, ip, handler):
+        worker_id = Server.add_worker(self, data, ip, handler)
         # create directory in /queue/cluster to store all node's file there
-        node_path = "{}/queue/cluster/{}".format(common.ossec_path, id)
+        node_path = "{}/queue/cluster/{}".format(common.ossec_path, worker_id)
         if not os.path.exists(node_path):
             mkdir_with_mode(node_path)
-        return id
+        return worker_id
 
 
     # Private methods
@@ -486,32 +505,32 @@ class MasterManager(Server):
         logger.debug("[Master] Threads created.")
 
     # New methods
-    def set_client_status(self, client_id, key, status, subkey=None, subsubkey=None):
+    def set_worker_status(self, worker_id, key, status, subkey=None, subsubkey=None):
         result = False
-        with self._clients_lock:
-            if client_id in self._clients:
+        with self._workers_lock:
+            if worker_id in self._workers:
                 if subsubkey:
-                    self._clients[client_id]['status'][key][subkey][subsubkey] = status
+                    self._workers[worker_id]['status'][key][subkey][subsubkey] = status
                 elif subkey:
-                    self._clients[client_id]['status'][key][subkey] = status
+                    self._workers[worker_id]['status'][key][subkey] = status
                 else:
-                    self._clients[client_id]['status'][key] = status
+                    self._workers[worker_id]['status'][key] = status
                 result = True
 
         return result
 
 
-    def get_client_status(self, client_id, key):
+    def get_worker_status(self, worker_id, key):
         result = False
 
-        with self._clients_lock:
-            if client_id in self._clients:
-                result = self._clients[client_id]['status'][key]
+        with self._workers_lock:
+            if worker_id in self._workers:
+                result = self._workers[worker_id]['status'][key]
 
         return result
 
 
-    def req_file_status_to_clients(self):
+    def req_file_status_to_workers(self):
         responses = list(self.send_request_broadcast(command = 'file_status'))
         nodes_file = {node:json.loads(data.split(' ',1)[1]) for node,data in responses}
         return 'ok', json.dumps(nodes_file)
@@ -529,13 +548,21 @@ class MasterManager(Server):
             self._integrity_control = new_integrity_control
 
 
-    def get_healthcheck(self):
-        clients_info = {name:{"info":data['info'], "status":data['status']} for name,data in self.get_connected_clients().iteritems()}
+    def get_healthcheck(self, filter_nodes=None):
+        workers_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_workers().items() if not filter_nodes or name in filter_nodes}
+        n_connected_nodes = len(self.get_connected_workers().items()) + 1 # workers + master
 
         cluster_config = read_config()
-        clients_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}}})
+        if  not filter_nodes or cluster_config['node_name'] in filter_nodes:
+            workers_info.update({cluster_config['node_name']:{"info":{"name": cluster_config['node_name'],
+                                                                  "ip": cluster_config['nodes'][0], "version": __version__,
+                                                                  "type": "master"}}})
 
-        health_info = {"n_connected_nodes":len(clients_info), "nodes": clients_info}
+        # Get active agents by node
+        for node_name in workers_info.keys():
+            workers_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
+
+        health_info = {"n_connected_nodes":n_connected_nodes, "nodes": workers_info}
         return health_info
 
 
@@ -559,10 +586,10 @@ class MasterManager(Server):
                 logger.debug2("[Master] Cleaning '{0}' thread. Terminated.".format(thread))
 
         # Cleaning handler threads
-        logger.debug("[Master] Cleaning threads generated to handle clients.")
-        clients = self.get_connected_clients().copy().keys()
-        for client in clients:
-            self.remove_client(id=client)
+        logger.debug("[Master] Cleaning threads generated to handle workers.")
+        workers = self.get_connected_workers().copy().keys()
+        for worker in workers:
+            self.remove_worker(worker_id=worker)
 
         logger.debug("[Master] Cleaning threads. End.")
 
@@ -595,16 +622,16 @@ class FileStatusUpdateThread(ClusterThread):
 # Internal socket
 #
 class MasterInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, map=map)
+    def __init__(self, sock, manager, asyncore_map):
+        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
         serialized_response = ""
+        data = data.decode()
 
         if command == 'get_files':
             split_data = data.split('%--%', 2)
-            file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
             node_list = ast.literal_eval(split_data[1]) if split_data[1] else None
             get_my_files = False
 
@@ -615,7 +642,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                     if node == read_config()['node_name']:
                         get_my_files = True
                         continue
-                    node_file = self.manager.send_request(client_name=node, command='file_status', data='')
+                    node_file = self.manager.send_request(worker_name=node, command='file_status', data='')
 
                     if node_file.split(' ', 1)[0] == 'err': # Error response
                         response.update({node:node_file.split(' ', 1)[1]})
@@ -629,12 +656,12 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                 for node,data in node_file:
                     try:
                         response.update({node:json.loads(data.split(' ',1)[1])})
-                    except: # Error response
+                    except ValueError: # json.loads will raise a ValueError
                         response.update({node:data.split(' ',1)[1]})
 
             if get_my_files:
                 my_files = get_files_status('master', get_md5=True)
-                my_files.update(get_files_status('client', get_md5=True))
+                my_files.update(get_files_status('worker', get_md5=True))
                 response.update({read_config()['node_name']:my_files})
 
             # Filter files
@@ -645,29 +672,26 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         elif command == 'get_nodes':
-            split_data = data.split(' ', 1)
-            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-
-            response = {name:data['info'] for name,data in self.manager.get_connected_clients().iteritems()}
+            response = {name:data['info'] for name,data in self.manager.get_connected_workers().items()}
             cluster_config = read_config()
-            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master"}})
-
-            if node_list:
-                response = {node:info for node, info in response.iteritems() if node in node_list}
+            response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
 
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
 
         elif command == 'get_agents':
-            split_data = data.split('%--%', 1)
+            split_data = data.split('%--%', 5)
             filter_status = split_data[0] if split_data[0] != 'None' else None
             filter_nodes = split_data[1] if split_data[1] != 'None' else None
-            response = get_agents_status(filter_status, filter_nodes)
+            offset = int(split_data[2]) if split_data[2] != 'None' and split_data[2].isdigit() else None
+            limit = int(split_data[3]) if split_data[3] != 'None' and split_data[3].isdigit() else None
+            response = get_agents_status(filter_status, filter_nodes, offset, limit)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 
         elif command == 'get_health':
-            response = self.manager.get_healthcheck()
+            node_list = data if data != 'None' else None
+            response = self.manager.get_healthcheck(node_list)
             serialized_response = ['ok',  json.dumps(response)]
             return serialized_response
 
@@ -678,7 +702,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
             if node_list:
                 for node in node_list:
-                    response = {node:self.manager.send_request(client_name=node, command=command, data="")}
+                    response = {node:self.manager.send_request(worker_name=node, command=command, data="")}
                 serialized_response = ['ok', json.dumps(response)]
             else:
                 response = list(self.manager.send_request_broadcast(command=command, data=data))
@@ -686,22 +710,4 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return serialized_response
 
         else:
-            split_data = data.split(' ', 1)
-            host = split_data[0]
-            data = split_data[1] if len(split_data) > 1 else None
-
-            if host == 'all':
-                response = list(self.manager.send_request_broadcast(command=command, data=data))
-                serialized_response = ['ok', json.dumps({node:data for node,data in response})]
-            else:
-                response = self.manager.send_request(client_name=host, command=command, data=data)
-                if response:
-                    type_response = node_response[0]
-                    response = node_response[1]
-
-                    if type_response == "err":
-                        serialized_response = {"err":response}
-                    else:
-                        serialized_response = response
-
-            return serialized_response
+            return ['err', json.dumps({'err': "Received an unknown command '{}'".format(command)})]

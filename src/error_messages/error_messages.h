@@ -35,7 +35,7 @@
 //#define PIPE_ERROR    "%s(1120): ERROR: Pipe error."
 #define GLOB_ERROR    "(1121): Glob error. Invalid pattern: '%s'."
 #define GLOB_NFOUND   "(1122): No file found by pattern: '%s'."
-//#define UNLINK_ERROR  "%s(1123): ERROR: Unable to delete file: '%s'."
+#define UNLINK_ERROR  "(1123): Unable to delete file: '%s' due to [(%d)-(%s)]."
 #define RENAME_ERROR  "(1124): Could not rename file '%s' to '%s' due to [(%d)-(%s)]."
 //#define INT_ERROR     "%s(1125): ERROR: Internal error (undefined)."
 #define OPEN_ERROR    "(1126): Unable to open file '%s' due to [(%d)-(%s)]."
@@ -48,11 +48,11 @@
 #define CHDIR_ERROR   "(1133): Unable to chdir to directory '%s' due to [(%d)-(%s)]."
 #define LINK_ERROR    "(1134): Unable to link from '%s' to '%s' due to [(%d)-(%s)]."
 #define CHOWN_ERROR   "(1135): Could not chown object '%s' due to [(%d)-(%s)]."
-#define CHOWN_ERROR   "(1135): Could not chown object '%s' due to [(%d)-(%s)]."
 #define EPOLL_ERROR   "(1136): Could not handle epoll descriptor."
 #define LOST_ERROR   "(1137): Lost connection with manager. Setting lock."
 #define KQUEUE_ERROR   "(1138): Could not handle kqueue descriptor."
 #define FTELL_ERROR     "(1139): Could not get position from file '%s' due to [(%d)-(%s)]."
+#define FCLOSE_ERROR  "(1140): Could not close file '%s' due to [(%d)-(%s)]."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
@@ -60,7 +60,7 @@
 #define USER_ERROR      "(1203): Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR  "(1204): Invalid connection type: '%s'."
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
-#define BIND_ERROR      "(1206): Unable to Bind port '%d'"
+#define BIND_ERROR      "(1206): Unable to Bind port '%d' due to [(%d)-(%s)]"
 #define RCONFIG_ERROR   "(1207): %s remote configuration in '%s' is corrupted."
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up.."
@@ -68,7 +68,7 @@
 #define DENYIP_WARN     "(1213): Message from '%s' not allowed."
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
-#define CONNS_ERROR     "(1216): Unable to connect to '%s'."
+#define CONNS_ERROR     "(1216): Unable to connect to '%s': '%s'."
 #define UNABLE_CONN     "(1242): Unable to connect to server. Exhausted all options."
 #define SEC_ERROR       "(1217): Error creating encrypted message."
 #define SEND_ERROR      "(1218): Unable to send message to '%s': %s"
@@ -145,7 +145,7 @@
 
 /* Active Response */
 #define AR_CMD_MISS     "(1280): Missing command options. " \
-                        "You must specify a 'name', 'executable' and 'expect'."
+                        "You must specify a 'name' and 'executable'."
 #define AR_MISS         "(1281): Missing options in the active response " \
                         "configuration. "
 #define ARQ_ERROR       "(1301): Unable to connect to active response queue."
@@ -237,7 +237,7 @@
 
 /* Agent errors */
 #define AG_WAIT_SERVER  "(4101): Waiting for server reply (not started). Tried: '%s'."
-#define AG_CONNECTED    "(4102): Connected to the server (%s:%d)."
+#define AG_CONNECTED    "(4102): Connected to the server (%s:%d/%s)."
 #define AG_USINGIP      "(4103): Server IP address already set. Trying that before the hostname."
 #define AG_INV_HOST     "(4104): Invalid hostname: '%s'."
 #define AG_INV_IP       "(4105): No valid server IP found."
@@ -317,14 +317,15 @@
 #define VU_NO_SYSC_SCANS            "(5434): No Syscollector scans found for agent %s, so their vulnerabilities will not be checked."
 #define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
 #define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
+#define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds..."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
 #define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"
 #define MSG_SOCKET_SIZE "(unix_domain) Maximum send buffer set to: '%d'."
 
-#define NO_SYSLOG       "(1501): No IP or network allowed in the access list" \
-                        " for syslog. No reason for running it. Exiting."
+#define NO_SYSLOG       "(1501): IP or network must be present in syslog" \
+                        " access list (allowed-ips). Syslog server disabled."
 #define CONN_TO     "Connected to '%s' (%s queue)"
 #define MAIL_DIS    "E-Mail notification disabled. Clean Exit."
 

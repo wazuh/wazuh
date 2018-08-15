@@ -25,7 +25,6 @@ AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
-REMOTE_SYS_TEMPLATE="./etc/templates/config/generic/remote-syslog.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 
@@ -33,7 +32,6 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
-SYSC_TEMPLATE="./etc/templates/config/generic/wodle-syscollector.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 ##########
@@ -121,6 +119,19 @@ WriteSyscollector()
     cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
+##########
+# Osquery()
+##########
+WriteOsquery()
+{
+    # Adding to the config file
+    OSQUERY_TEMPLATE=$(GetTemplate "osquery.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+        OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+}
 
 ##########
 # WriteCISCAT()
@@ -129,8 +140,7 @@ WriteCISCAT()
 {
     # Adding to the config file
     CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]
-    then
+    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
     sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG
@@ -300,8 +310,8 @@ WriteAgent()
         fi
       fi
     fi
-    echo "    <notify_time>60</notify_time>" >> $NEWCONFIG
-    echo "    <time-reconnect>300</time-reconnect>" >> $NEWCONFIG
+    echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
+    echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
@@ -322,10 +332,15 @@ WriteAgent()
     WriteOpenSCAP "agent"
 
     # CIS-CAT configuration
-    WriteCISCAT "agent"
+    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
+        WriteCISCAT "agent"
+    fi
+
+    # Write osquery
+    WriteOsquery "agent"
 
     # Syscollector configuration
-    WriteSyscollector "manager"
+    WriteSyscollector "agent"
 
     # Syscheck
     WriteSyscheck "agent"
@@ -361,6 +376,7 @@ WriteAgent()
         echo "    <ca_store>${CA_STORE}</ca_store>" >> $NEWCONFIG
     fi
 
+    echo "    <ca_verification>yes</ca_verification>" >> $NEWCONFIG
     echo "  </active-response>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -404,12 +420,6 @@ WriteManager()
     echo "" >> $NEWCONFIG
 
     # Remote connection secure
-    if [ "X$RLOG" = "Xyes" ]; then
-      cat ${REMOTE_SYS_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    # Remote connection syslog
     if [ "X$SLOG" = "Xyes" ]; then
       cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
@@ -422,7 +432,12 @@ WriteManager()
     WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
-    WriteCISCAT "manager"
+    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
+        WriteCISCAT "manager"
+    fi
+
+    # Write osquery
+    WriteOsquery "manager"
 
     # Syscollector configuration
     WriteSyscollector "manager"
@@ -535,7 +550,12 @@ WriteLocal()
     WriteOpenSCAP "manager"
 
     # CIS-CAT configuration
-    WriteCISCAT "agent"
+    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
+        WriteCISCAT "agent"
+    fi
+
+    # Write osquery
+    WriteOsquery "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -606,14 +626,6 @@ InstallCommon(){
     OSSEC_USER='ossec'
     OSSEC_USER_MAIL='ossecm'
     OSSEC_USER_REM='ossecr'
-    EXTERNAL_BERKELEY='external/libdb/build_unix/'
-    EXTERNAL_LIBYAML='external/libyaml/'
-    EXTERNAL_CURL='external/curl/'
-    EXTERNAL_JSON="external/cJSON/"
-    EXTERNAL_SQLITE="external/sqlite/"
-    EXTERNAL_SSL="external/openssl/"
-    EXTERNAL_PROCPS="external/procps/"
-    EXTERNAL_ZLIB="external/zlib/"
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -658,20 +670,16 @@ InstallCommon(){
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_JSON}libcjson.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl.1.1.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto.1.1.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_ZLIB}libz.1.dylib ${PREFIX}/lib
-    else
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_JSON}libcjson.so ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libssl.so.1.1 ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SSL}libcrypto.so.1.1 ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_ZLIB}libz.so.1 ${PREFIX}/lib
-
-        if [ ${NUNAME} = 'Linux' ]
+        if [ -f libwazuhext.dylib ]
         then
-            ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_BERKELEY}.libs/libdb-6.2.so ${PREFIX}/lib
-            ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_PROCPS}libproc.so ${PREFIX}/lib
+            ${INSTALL} -m 0750 -o root -g 0 libwazuhext.dylib ${PREFIX}/lib
+        fi
+    elif [ -f libwazuhext.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g 0 libwazuhext.so ${PREFIX}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/libwazuhext.so
         fi
     fi
 
@@ -698,11 +706,6 @@ InstallCommon(){
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
 
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/vuls
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/vuls/go
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/vuls.py ${PREFIX}/wodles/vuls
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/vuls/deploy_vuls.sh ${PREFIX}/wodles/vuls
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws.py ${PREFIX}/wodles/aws
 
@@ -736,7 +739,11 @@ InstallCommon(){
     fi
 
     if [ ! -f ${PREFIX}/etc/client.keys ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+        if [ ${INSTYPE} = 'agent' ]; then
+            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+        else
+            ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+        fi
     fi
 
     if [ ! -f ${PREFIX}/etc/ossec.conf ]; then
@@ -756,13 +763,21 @@ InstallCommon(){
   ${INSTALL} -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
 
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.py ${PREFIX}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/upgrade
+  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/selinux
 
-      ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
+  if [ -f selinux/wazuh.pp ]
+  then
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} selinux/wazuh.pp ${PREFIX}/var/selinux/
+    InstallSELinuxPolicyPackage
+  fi
+
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
   ./init/fw-check.sh execute
 }
@@ -792,7 +807,6 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 list_agents ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 ossec-regex ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 syscheck_update ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${PREFIX}/bin/
@@ -801,17 +815,6 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 ossec-integratord ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 -b update/ruleset/update_ruleset ${PREFIX}/bin/update_ruleset
-
-    if [ ${NUNAME} = 'Darwin' ]
-    then
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SQLITE}libsqlite3.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.2.dylib ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_CURL}lib/.libs/libcurl.4.dylib ${PREFIX}/lib
-    else
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_SQLITE}libsqlite3.so ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_LIBYAML}src/.libs/libyaml-0.so.2 ${PREFIX}/lib
-        ${INSTALL} -m 0750 -o root -g 0 ${EXTERNAL_CURL}lib/.libs/libcurl.so.4 ${PREFIX}/lib
-    fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
@@ -826,21 +829,21 @@ InstallLocal(){
     ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX}
 
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
     if [ ! -f ${PREFIX}/etc/rules/local_rules.xml ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${PREFIX}/etc/lists ]; then
         ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
     fi
     if [ ! -f ${PREFIX}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
-        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
+        ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -867,10 +870,11 @@ InstallServer(){
     InstallLocal
 
     # Install cluster files
-    ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/cluster.log
-    ${INSTALL} -d 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/cluster
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/cluster
+    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/cluster
 
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
+    ${INSTALL} -d -m 760 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
+    ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
 
     TransferShared
@@ -888,10 +892,10 @@ InstallServer(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
 
-    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
+    ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
 
     if [ ! -f ${PREFIX}/etc/shared/default/agent.conf ]; then
-        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
     fi
 
     GenerateAuthCert

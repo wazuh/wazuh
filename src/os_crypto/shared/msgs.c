@@ -302,14 +302,14 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
         case W_METH_BLOWFISH:
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->key,
                         buffer_size, OS_DECRYPT)) {
-                merror(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
+                mwarn(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
                 return (NULL);
             }
             break;
         case W_METH_AES:
             if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->key,
                 buffer_size-4, OS_DECRYPT)) {
-                merror(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
+                mwarn(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
                 return (NULL);
             }
             break;
@@ -483,7 +483,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
         return (NULL);
     }
 
-    merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
+    mwarn(ENCKEY_ERROR, srcip);
     return (NULL);
 }
 

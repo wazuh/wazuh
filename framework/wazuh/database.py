@@ -13,7 +13,7 @@ import sqlite3
 if LooseVersion(sqlite3.sqlite_version) < LooseVersion('3.7.0.0'):
     msg = str(sqlite3.sqlite_version)
     msg += "\nTry to export the internal SQLite library:"
-    msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/framework/lib".format(common.ossec_path)
+    msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/lib".format(common.ossec_path)
     raise WazuhException(2001, msg)
 
 
@@ -79,7 +79,7 @@ class Connection:
                     raise WazuhException(2003, error_text)
 
             except Exception as e:
-                raise Exception (str(e))
+                raise WazuhException (2003, str(e))
 
             if n_attempts > self.max_attempts:
                 raise WazuhException(2002, error_text)

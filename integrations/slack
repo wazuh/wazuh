@@ -86,7 +86,7 @@ def generate_msg(alert):
     msg['color'] = color
     msg['pretext'] = "WAZUH Alert"
     msg['title'] = alert['rule']['description']
-    msg['text'] = alert['full_log']
+    msg['text'] = alert.get('full_log')
     agent = { "title":"Agent", "value":"({0}) - {1}".format(alert['agent']['id'],alert['agent']['name']) }
     location = { "title":"Location", "value":alert['location'] }
     rule = { "title":"Rule ID", "value":"{0} _(Level {1})_".format(alert['rule']['id'],level) }

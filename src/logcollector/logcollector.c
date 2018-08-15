@@ -32,6 +32,7 @@ logsocket *logsk;
 int vcheck_files;
 int maximum_lines;
 int maximum_files;
+int sample_log_length;
 int current_files = 0;
 int total_files = 0;
 static int _cday = 0;
@@ -82,7 +83,7 @@ void LogCollectorStart()
     struct stat tmp_stat;
 
     check_pattern_expand(current);
-    
+
     /* Set the files mutexes */
     w_set_file_mutexes();
 #else
@@ -485,7 +486,7 @@ void LogCollectorStart()
             w_rwlock_unlock(&files_update_rwlock);
         }
         rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
-        SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);    
+        SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
         sleep(1);
     }
 }
@@ -699,7 +700,7 @@ void set_read(logreader *current, int i, int j) {
     minfo(READING_FILE, current->file);
     /* Initialize the files */
     if (current->ffile) {
-        
+
         /* Day must be zero for all files to be initialized */
         _cday = 0;
         if (update_fname(i, j)) {
@@ -716,7 +717,7 @@ void set_read(logreader *current, int i, int j) {
         }
     }
 
-    
+
 
     tg = 0;
     if (current->target) {
@@ -885,9 +886,14 @@ static void set_sockets() {
             break;
         }
 
+        os_malloc(sizeof(logtarget), current->log_target);
+
         for (j = 0; current->target[j]; j++) {
+            os_realloc(current->log_target, (j + 2) * sizeof(logtarget), current->log_target);
+            memset(current->log_target + j, 0, sizeof(logtarget));
+
             if (strcmp(current->target[j], "agent") == 0) {
-                current->target_socket[j] = &default_agent;
+                current->log_target[j].log_socket = &default_agent;
                 w_msg_hash_queues_add_entry("agent");
                 continue;
             }
@@ -901,8 +907,39 @@ static void set_sockets() {
             if (found != 0) {
                 merror_exit("Socket '%s' for '%s' is not defined.", current->target[j], file);
             } else {
-                current->target_socket[j] = &logsk[k];
+                current->log_target[j].log_socket = &logsk[k];
                 w_msg_hash_queues_add_entry(logsk[k].name);
+            }
+        }
+
+        memset(current->log_target + j, 0, sizeof(logtarget));
+
+        // Add output formats
+
+        if (current->out_format) {
+            for (j = 0; current->out_format[j]; ++j) {
+                if (current->out_format[j]->target) {
+                    // Fill the corresponding target
+
+                    for (k = 0; current->target[k]; ++k) {
+                        if (strcmp(current->target[k], current->out_format[j]->target) == 0) {
+                            current->log_target[k].format = current->out_format[j]->format;
+                            break;
+                        }
+                    }
+
+                    if (!current->target[k]) {
+                        mwarn("Log target '%s' not found for the output format of localfile '%s'.", current->out_format[j]->target, current->file);
+                    }
+                } else {
+                    // Fill the targets that don't yet have a format
+
+                    for (k = 0; current->target[k]; k++) {
+                        if (!current->log_target[k].format) {
+                            current->log_target[k].format = current->out_format[j]->format;
+                        }
+                    }
+                }
             }
         }
     }
@@ -948,21 +985,20 @@ int w_msg_hash_queues_add_entry(const char *key){
     return result;
 }
 
-int w_msg_hash_queues_push(const char *str,char *file,char *outformat,unsigned long size,logsocket **target_socket,char queue_mq){
+int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq) {
     w_msg_queue_t *msg;
     int i;
 
-    for (i = 0; target_socket[i] && target_socket[i]->name; i++)
+    for (i = 0; targets[i].log_socket; i++)
     {
         w_mutex_lock(&mutex);
 
-        while (msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table,target_socket[i]->name), !msg) {
+        while (msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table, targets[i].log_socket->name), !msg) {
             w_cond_wait(&available, &mutex);
         }
 
         w_mutex_unlock(&mutex);
-
-        w_msg_queue_push(msg,str,file,outformat,size,target_socket,queue_mq);
+        w_msg_queue_push(msg, str, file, size, &targets[i], queue_mq);
         return 0;
     }
 
@@ -986,7 +1022,7 @@ w_message_t * w_msg_hash_queues_pop(const char *key){
     return NULL;
 }
 
-int w_msg_queue_push(w_msg_queue_t * msg,const char * buffer,char *file,char *outformat, unsigned long size,logsocket **target_socket,char queue_mq){
+int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq) {
     w_message_t *message;
     static int reported = 0;
     int result;
@@ -998,11 +1034,10 @@ int w_msg_queue_push(w_msg_queue_t * msg,const char * buffer,char *file,char *ou
     memcpy(message->buffer,buffer,size);
     message->size = size;
     message->file = file;
-    message->outformat = outformat;
-    message->target_socket = target_socket;
+    message->log_target = log_target;
     message->queue_mq = queue_mq;
 
-   
+
     if (result = queue_push(msg->msg_queue, message), result == 0) {
         w_cond_signal(&msg->available);
     }
@@ -1051,9 +1086,9 @@ void * w_output_thread(void * args){
         /* Pop message from the queue */
         message = w_msg_queue_pop(msg_queue);
 
-        if (SendMSGtoSCK(logr_queue, message->buffer, message->file,
-                        message->queue_mq, message->target_socket, message->outformat) < 0) {
-                merror(QUEUE_SEND);
+        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
+            merror(QUEUE_SEND);
+
             if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                 merror_exit(QUEUE_FATAL, DEFAULTQPATH);
             }
@@ -1061,7 +1096,7 @@ void * w_output_thread(void * args){
 
         free(message->buffer);
         free(message);
-    }  
+    }
 
     return NULL;
 }
@@ -1128,7 +1163,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
         /* Check for messages in the event viewer */
         win_readel();
 #endif
-        
+
         f_check++;
 
         /* Check which file is available */
@@ -1145,7 +1180,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 }
             }
             w_rwlock_unlock(&files_update_rwlock);
-               
+
             if (pthread_mutex_trylock(&current->mutex) == 0){
 
                 if (!current->fp) {

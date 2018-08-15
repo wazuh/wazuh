@@ -55,7 +55,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.3.0"
+#define __ossec_version "v3.6.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -141,11 +141,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AR_BINDIR       "/active-response/bin"
 #define AGENTCONFIGINT  "/etc/shared/agent.conf"
 #define AGENTCONFIG     DEFAULTDIR "/etc/shared/agent.conf"
+#define DEF_CA_STORE    DEFAULTDIR "/etc/wpk_root.pem"
 #else
 #define DEFAULTAR       "shared/" DEFAULTAR_FILE
 #define AR_BINDIR       "active-response/bin"
 #define AGENTCONFIG     "shared/agent.conf"
 #define AGENTCONFIGINT  "shared/agent.conf"
+#define DEF_CA_STORE    "wpk_root.pem"
 #endif
 
 /* Exec queue */
@@ -172,9 +174,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
-
-/* Syscollector directory */
-#define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
 /* Backup directory for agents */
 #define AGNBACKUP_DIR    "/backup/agents"

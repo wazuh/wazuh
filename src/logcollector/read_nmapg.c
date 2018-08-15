@@ -238,7 +238,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
 
         if (drop_it == 0) {
             /* Send message to queue */
-            w_msg_hash_queues_push(final_msg,lf->file,lf->outformat,strlen(final_msg)+1,lf->target_socket,HOSTINFO_MQ);
+            w_msg_hash_queues_push(final_msg, lf->file, strlen(final_msg) + 1, lf->log_target, HOSTINFO_MQ);
         }
 
         /* Get next */

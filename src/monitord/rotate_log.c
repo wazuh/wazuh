@@ -116,7 +116,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                 snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d-001.log.gz", month_dir, tm.tm_mday);
                 counter = 1;
                 while (counter < daily_rotations) {
-                    if (rename(old_rename_path, rename_path) != 0) {
+                    if (rename_ex(old_rename_path, rename_path) != 0) {
                         merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
                         return;
                     }
@@ -129,7 +129,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
         }
 
         if (!IsFile(old_path)) {
-            if (rename(old_path, new_path) == 0) {
+            if (rename_ex(old_path, new_path) == 0) {
                 if (compress) {
                     OS_CompressLog(new_path);
                 }
@@ -160,7 +160,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                 snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d-001.json.gz", month_dir, tm.tm_mday);
                 counter = 1;
                 while (counter < daily_rotations) {
-                    if (rename(old_rename_path, rename_path) != 0) {
+                    if (rename_ex(old_rename_path, rename_path) != 0) {
                         merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
                         return;
                     }
@@ -173,7 +173,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
         }
 
         if (!IsFile(old_path_json)) {
-            if (rename(old_path_json, new_path_json) == 0) {
+            if (rename_ex(old_path_json, new_path_json) == 0) {
                 if (compress) {
                     OS_CompressLog(new_path_json);
                 }

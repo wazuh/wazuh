@@ -70,7 +70,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
 
                     /* Send the message */
                     if (drop_it == 0) {
-                        w_msg_hash_queues_push(str,lf->file,lf->outformat,strlen(f_msg),lf->target_socket,LOCALFILE_MQ);
+                        w_msg_hash_queues_push(str, lf->file, strlen(f_msg), lf->log_target, LOCALFILE_MQ);
                     }
 
                     f_msg[0] = '\0';
@@ -88,7 +88,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
 
                     /* Send the message */
                     if (drop_it == 0) {
-                        w_msg_hash_queues_push(str,lf->file,lf->outformat,strlen(str)+1,lf->target_socket,LOCALFILE_MQ);
+                        w_msg_hash_queues_push(str, lf->file, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
                     }
 
                     f_msg[0] = '\0';

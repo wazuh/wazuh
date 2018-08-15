@@ -1,6 +1,9 @@
 # TODO: mysql and postgresql?
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
+HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
+HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -9,11 +12,12 @@ EXTERNAL_SQLITE=external/sqlite/
 EXTERNAL_OPENSSL=external/openssl/
 EXTERNAL_LIBYAML=external/libyaml/
 EXTERNAL_CURL=external/curl/
+EXTERNAL_AUDIT=external/audit-userspace/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
-MAXAGENTS?=8000
+MAXAGENTS?=14000
 REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
@@ -25,12 +29,26 @@ OSSEC_USER?=ossec
 OSSEC_USER_MAIL?=ossecm
 OSSEC_USER_REM?=ossecr
 SHARED=so
+SELINUX_MODULE=selinux/wazuh.mod
+SELINUX_ENFORCEMENT=selinux/wazuh.te
+SELINUX_POLICY=selinux/wazuh.pp
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
+USE_AUDIT=no
+
+ifneq ($(HAS_CHECKMODULE),)
+ifneq ($(HAS_SEMODULE_PACKAGE),)
+USE_SELINUX=yes
+else
+USE_SELINUX=no
+endif
+else
+USE_SELINUX=no
+endif
 
 ONEWAY?=no
 CLEANFULL?=no
@@ -47,39 +65,44 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-OSSEC_CFLAGS = -pthread ${CFLAGS}
-OSSEC_LDFLAGS = -pthread -L${EXTERNAL_OPENSSL} -L$(EXTERNAL_JSON) -L$(EXTERNAL_ZLIB) ${LDFLAGS}
-OSSEC_LIBS = -lcjson -lm -lssl -lcrypto -lz $(LIBS)
+OSSEC_CFLAGS = ${CFLAGS}
+OSSEC_LDFLAGS = ${LDFLAGS}
+OSSEC_LIBS = $(LIBS)
 
 ifneq (${TARGET},winagent)
-ifneq (${TARGET},agent)
-		OSSEC_LDFLAGS += -L$(EXTERNAL_SQLITE) -L${EXTERNAL_CURL}lib/.libs -L${EXTERNAL_LIBYAML}src/.libs
-		OSSEC_LIBS += -lsqlite3 -lcurl -lyaml
-endif
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_CFLAGS+=-I${EXTERNAL_LIBDB}
-		OSSEC_LDFLAGS+=-L$(EXTERNAL_PROCPS)
-		OSSEC_LDFLAGS+=-L${EXTERNAL_LIBDB}.libs
+		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		OSSEC_LIBS+=-lrt -ldl -lproc -ldb-6.2
+		OSSEC_LIBS+=-lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
+		OSSEC_LDFLAGS+=-pthread -lrt -ldl
+#		OSSEC_LDFLAGS+=-lmagic
+		CFLAGS+=-Wl,--start-group
+		USE_AUDIT=yes
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
+endif
 else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/vac/bin
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		CC=gcc
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-std=gnu99
+		DEFINES+=-D_REENTRANT
+ifneq (${uname_P},sparc)
 		OSSEC_LDFLAGS+=-z relax=secadj
+endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt
+		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
 #		This is necessary in order to compile libcurl
@@ -89,22 +112,29 @@ else
 ifeq (${uname_S},Darwin)
 		DEFINES+=-DDarwin
 		DEFINES+=-DHIGHFIRST
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
 		SHARED=dylib
+		OSSEC_LIBS+=-framework Security
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
-		OSSEC_CFLAGS+=-I/usr/local/include
+		OSSEC_CFLAGS+=-pthread -I/usr/local/include
+		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 else
 ifeq (${uname_S},NetBSD)
 		DEFINES+=-DNetBSD
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 else
 ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
-		DEFINES+=-pthread
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 else
@@ -112,10 +142,14 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
 		DEFINES+=-DHIGHFIRST
-		DEFINES+=-D_REENTRANT
 		DEFINES+=-DOS_BIG_ENDIAN
+		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-lrt
+ifndef DISABLE_SHARED
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+endif
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
@@ -131,6 +165,9 @@ endif # AIX
 endif # Linux
 else
 		SHARED=dll
+		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 endif # winagent
 
 ifndef DISABLE_SYSC
@@ -139,6 +176,10 @@ endif
 
 ifndef DISABLE_CISCAT
 	DEFINES+=-DENABLE_CISCAT
+endif
+
+ifndef DISABLE_SHARED
+	DEFINES+=-DENABLE_SHARED
 endif
 
 ifdef DEBUGAD
@@ -160,6 +201,10 @@ endif
 
 ifneq (,$(filter ${ONEWAY},yes y Y 1))
 	DEFINES+=-DONEWAY_ENABLED
+endif
+
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+        DEFINES+=-DENABLE_AUDIT
 endif
 
 OSSEC_CFLAGS+=${DEFINES}
@@ -409,6 +454,7 @@ settings:
 	@echo "    DATABASE:         ${DATABASE}"
 	@echo "    ONEWAY:           ${ONEWAY}"
 	@echo "    CLEANFULL:        ${CLEANFULL}"
+	@echo "    RESOURCES_URL:    ${RESOURCES_URL}"
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:      ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:       ${OSSEC_USER}"
@@ -420,6 +466,8 @@ settings:
 	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
 	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:   ${USE_BIG_ENDIAN}"
+	@echo "    USE_SELINUX:      ${USE_SELINUX}"
+	@echo "    USE_AUDIT:        ${USE_AUDIT}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"
 	@echo "    libs:             ${ML}"
@@ -433,7 +481,6 @@ settings:
 	@echo "    LDFLAGS         ${OSSEC_LDFLAGS}"
 	@echo "    CC              ${CC}"
 	@echo "    MAKE            ${MAKE}"
-
 
 BUILD_SERVER+=ossec-maild -
 BUILD_SERVER+=ossec-csyslogd -
@@ -464,7 +511,8 @@ BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=wazuh-modulesd
 
-.PHONY: server local hybrid agent
+.PHONY: server local hybrid agent selinux
+
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
@@ -489,6 +537,18 @@ endif
 agent: external
 	${MAKE} ${BUILD_AGENT}
 
+ifneq (,$(filter ${USE_SELINUX},yes y Y 1))
+server local hybrid agent: selinux
+endif
+
+selinux: $(SELINUX_POLICY)
+
+$(SELINUX_POLICY): $(SELINUX_MODULE)
+	semodule_package -o $@ -m $?
+
+$(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
+	checkmodule -M -m -o $@ $?
+
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -496,7 +556,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/libwinpthread-1.dll
+winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
@@ -516,29 +576,29 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 #### External ######
 ####################
 
-ifeq (${TARGET},winagent)
-OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl-1_1.$(SHARED)
-ZLIB_LIB    = $(EXTERNAL_ZLIB)/zlib1.$(SHARED)
-else
-OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.$(SHARED)
-CRYPTO_LIB = $(EXTERNAL_OPENSSL)libcrypto.$(SHARED)
-ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.$(SHARED)
-endif
+ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.a
+OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.a
+CRYPTO_LIB = $(EXTERNAL_OPENSSL)libcrypto.a
 
-SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.$(SHARED)
-JSON_LIB    = $(EXTERNAL_JSON)libcjson.$(SHARED)
-PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.$(SHARED)
-DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.$(SHARED)
-LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.$(SHARED)
-LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.$(SHARED)
+SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
+JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
+PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
+DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
+LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
+LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
+AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
 
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB)
 endif
 ifeq (${uname_S},Linux)
+ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
+EXTERNAL_LIBS += ${AUDIT_LIB}
+endif
+
 EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
 endif
 endif
@@ -553,7 +613,9 @@ endif
 
 #### OpenSSL ##########
 
-OPENSSL_FLAGS = enable-weak-ssl-ciphers
+OPENSSL_FLAGS = enable-weak-ssl-ciphers no-shared
+
+${CRYPTO_LIB}: ${OPENSSL_LIB}
 
 ${OPENSSL_LIB}:
 ifeq (${TARGET},winagent)
@@ -561,9 +623,6 @@ ifeq (${TARGET},winagent)
 else
 ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
-	install_name_tool -id "@rpath/libssl.1.1.dylib" $(OPENSSL_LIB)
-	install_name_tool -id "@rpath/libcrypto.1.1.dylib" $(CRYPTO_LIB)
-	install_name_tool -change /usr/local/lib/libcrypto.1.1.dylib @rpath/libcrypto.1.1.dylib $(OPENSSL_LIB)
 else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
@@ -585,12 +644,9 @@ endif
 
 $(ZLIB_LIB):
 ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} zlib1.dll
+	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
 else
-	cd ${EXTERNAL_ZLIB} && ./configure && ${MAKE} shared
-ifeq (${uname_S},Darwin)
-	install_name_tool -id "@rpath/libz.1.dylib" $@
-endif
+	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure && ${MAKE} libz.a
 endif
 
 ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
@@ -603,15 +659,12 @@ os_zlib/%.o: os_zlib/%.c
 
 #### SQLite #########
 
-ifeq (${uname_S},Darwin)
-SQLITE_SHFLAGS=-install_name @rpath/libsqlite3.$(SHARED)
-endif
-
 sqlite_c = ${EXTERNAL_SQLITE}sqlite3.c
 sqlite_o = ${EXTERNAL_SQLITE}sqlite3.o
 
 $(SQLITE_LIB): $(sqlite_o)
-	${OSSEC_SHARED} ${OSSEC_CFLAGS} $(SQLITE_SHFLAGS) -o $@ $^
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
 
 $(sqlite_o): $(sqlite_c)
 	${OSSEC_CC} ${OSSEC_CFLAGS} -w -fPIC -c $^ -o $@ -fPIC
@@ -626,7 +679,8 @@ cjson_c := ${EXTERNAL_JSON}cJSON.c
 cjson_o := $(cjson_c:.c=.o)
 
 $(JSON_LIB): ${cjson_o}
-	${OSSEC_SHARED} ${OSSEC_CFLAGS} $(JSON_SHFLAGS) -o $@ $^
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
 
 ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
@@ -635,27 +689,21 @@ ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
 
 ${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
 	$(MAKE) -C $(EXTERNAL_LIBYAML)
-ifeq (${uname_S},Darwin)
-	install_name_tool -id "@rpath/libyaml-0.2.dylib" $@
-endif
 
 $(EXTERNAL_LIBYAML)Makefile:
-	cd $(EXTERNAL_LIBYAML) && ./configure
+	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes
 
 #### curl ##########
 
 ${LIBCURL_LIB}: $(EXTERNAL_CURL)Makefile
 	${MAKE} -C $(EXTERNAL_CURL)lib
-ifeq (${uname_S},Darwin)
-	install_name_tool -id "@rpath/libcurl.4.dylib" $@
-endif
 
 ifeq (${uname_S},Darwin)
 $(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl
+	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl --disable-ldap --without-libidn2
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LD_LIBRARY_PATH="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap
 endif
 
 
@@ -670,14 +718,27 @@ ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
 $(PROCPS_LIB): ${procps_o}
-	${OSSEC_SHARED} ${OSSEC_CFLAGS} -o $@ $^
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
 
 #### Berkeley DB ######
 
-${DB_LIB}:
 ifeq (${uname_S},Linux)
-	cd ${EXTERNAL_LIBDB} && ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics --enable-shared --enable-static=no && ${MAKE} library_build
+${DB_LIB}: $(EXTERNAL_LIBDB)Makefile
+	 ${MAKE} -C $(EXTERNAL_LIBDB) libdb.a
+
+$(EXTERNAL_LIBDB)Makefile:
+	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics
 endif
+
+#### Audit lib ####
+
+${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
+	make -C $(EXTERNAL_AUDIT)lib CC=$(CC)
+
+$(EXTERNAL_AUDIT)Makefile:
+
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
 
 ################################
 #### External dependencies  ####
@@ -691,7 +752,7 @@ space +=
 VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 
-EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib
+EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib audit-userspace
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -704,11 +765,18 @@ external/%.tar.gz:
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 
+
 ####################
 #### OSSEC Libs ####
 ####################
 
-BUILD_LIBS = libwazuh.a
+ifdef DISABLE_SHARED
+BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
+endif
+ifndef DISABLE_SHARED
+WAZUHEXT_LIB = libwazuhext.$(SHARED)
+BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
+endif
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
@@ -787,7 +855,7 @@ wazuh_modules/%.o: wazuh_modules/%.c
 
 ifeq (${TARGET},winagent)
 wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/syscollector_win_ext.o
-	${OSSEC_SHARED} ${OSSEC_LDFLAGS} $^ -o $@ $(OSSEC_LIBS)
+	${OSSEC_SHARED} ${OSSEC_LDFLAGS} $^ -o $@ $(OSSEC_LIBS) $(JSON_LIB) -liphlpapi -lws2_32
 endif # DLL for Windows
 
 ifndef DISABLE_SYSC
@@ -880,6 +948,30 @@ crypto_o := ${crypto_blowfish_o} \
 libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
+
+### libwazuhext #########
+
+ifndef DISABLE_SHARED
+ifeq (${uname_S},Darwin)
+WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
+
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
+else
+ifeq (${TARGET}, winagent)
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+ifeq (${uname_P},sparc)
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
+endif
+endif
+endif
 
 #### os_mail #########
 
@@ -990,7 +1082,7 @@ manage_agents: ${addagent_o}
 
 #### Util ##########
 
-util_programs = syscheck_update clear_stats list_agents agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex
+util_programs = syscheck_update clear_stats agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex
 
 $(util_programs): $(BUILD_LIBS)
 
@@ -1007,9 +1099,6 @@ syscheck_update: util/syscheck_update.o addagent/validate.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 clear_stats: util/clear_stats.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-list_agents: util/list_agents.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 verify-agent-conf: util/verify-agent-conf.o
@@ -1058,9 +1147,13 @@ rootcheck.a: ${rootcheck_o_lib}
 
 syscheck_c := $(wildcard syscheckd/*.c)
 syscheck_o := $(syscheck_c:.c=.o)
+syscheck_eventchannel_o := $(syscheck_c:.c=-event.o)
 
 syscheckd/%.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
+
+syscheckd/%-event.o: syscheckd/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
 
 ossec-syscheckd: ${syscheck_o} rootcheck.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
@@ -1328,7 +1421,7 @@ win32/ui/%.o: win32/ui/%.c
 win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
+win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o wazuh_modules/syscollector/syscollector_win_ext.dll
 	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o}
@@ -1381,6 +1474,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
+	-cd ${EXTERNAL_AUDIT} && make distclean
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
@@ -1413,13 +1507,15 @@ clean-internals:
 	rm -f ${addagent_o}
 	rm -f ${util_o} ${util_programs}
 	rm -f ${rootcheck_o} ${rootcheck_rk_o} rootcheck.a
-	rm -f ${syscheck_o}
+	rm -f ${syscheck_o} ${syscheck_eventchannel_o}
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o}
 	rm -f ${wdb_o}
+	rm -f ${SELINUX_MODULE}
+	rm -f ${SELINUX_POLICY}
 
 clean-windows:
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll

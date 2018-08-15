@@ -779,9 +779,9 @@ void OS_RemoveAgentTimestamp(const char *id)
     File file;
     char *buffer;
     char line[OS_BUFFER_SIZE];
-    int idlen = strlen(id);
     int pos = 0;
     struct stat fp_stat;
+    char * sep;
 
     fp = fopen(TIMESTAMP_FILE, "r");
 
@@ -797,7 +797,14 @@ void OS_RemoveAgentTimestamp(const char *id)
     os_calloc(fp_stat.st_size + 1, sizeof(char), buffer);
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
-        if (strncmp(id, line, idlen)) {
+        if (sep = strchr(line, ' '), sep) {
+            *sep = '\0';
+        } else {
+            continue;
+        }
+
+        if (strcmp(id, line)) {
+            *sep = ' ';
             strncpy(&buffer[pos], line, fp_stat.st_size - pos);
             pos += strlen(line);
         }

@@ -85,11 +85,13 @@ static int Handle_Queue(file_queue *fileq, int flags)
     }
 
     /* File change time */
-    if (fstat(fileno(fileq->fp), &fileq->f_status) < 0) {
-        merror(FSTAT_ERROR, fileq->file_name, errno, strerror(errno));
-        fclose(fileq->fp);
-        fileq->fp = NULL;
-        return (-1);
+    if (fileq->fp) {
+        if (fstat(fileno(fileq->fp), &fileq->f_status) < 0) {
+            merror(FSTAT_ERROR, fileq->file_name, errno, strerror(errno));
+            fclose(fileq->fp);
+            fileq->fp = NULL;
+            return (-1);
+        }
     }
 
     fileq->last_change = fileq->f_status.st_mtime;

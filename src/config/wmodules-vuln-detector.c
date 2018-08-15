@@ -228,6 +228,9 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
         vulnerability_detector->updates[i] = NULL;
     }
 
+    if (!nodes)
+        return 0;
+
     for (i = 0; nodes[i]; i++) {
         if (!nodes[i]->element) {
             merror(XML_ELEMNULL);
@@ -273,6 +276,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             os_calloc(1, sizeof(update_node), upd);
             upd->allowed_OS_list = NULL;
             upd->allowed_ver_list = NULL;
+            upd->attempted = 0;
 
 
             if (os_index = set_oval_version(feed, version, vulnerability_detector->updates, upd), os_index == OS_INVALID) {
@@ -345,6 +349,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     os_realloc(upd->allowed_OS_list, (size + 2)*sizeof(char *), upd->allowed_OS_list);
                     if (format_os_version(OS, &upd->allowed_OS_list[size], &upd->allowed_ver_list[size])) {
                         merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
+                        OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }
                     upd->allowed_OS_list[size + 1] = NULL;
@@ -438,6 +443,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         continue;
                     }
                     upd->interval = interval;
+                    upd->attempted = 0;
                 }
                 if (trusty) {
                     os_calloc(1, sizeof(update_node), upd);
@@ -447,6 +453,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         continue;
                     }
                     upd->interval = interval;
+                    upd->attempted = 0;
                 }
                 if (xenial) {
                     os_calloc(1, sizeof(update_node), upd);
@@ -456,6 +463,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         continue;
                     }
                     upd->interval = interval;
+                    upd->attempted = 0;
                 }
             }
         } else if (!strcmp(nodes[i]->element, XML_UPDATE_REDHAT_OVAL)) {
@@ -519,6 +527,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         continue;
                     }
                     upd->interval = interval;
+                    upd->attempted = 0;
                 }
                 if (rhel6) {
                     os_calloc(1, sizeof(update_node), upd);
@@ -528,6 +537,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         continue;
                     }
                     upd->interval = interval;
+                    upd->attempted = 0;
                 }
                 if (rhel7) {
                     os_calloc(1, sizeof(update_node), upd);
@@ -537,6 +547,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         continue;
                     }
                     upd->interval = interval;
+                    upd->attempted = 0;
                 }
             }
         } else {

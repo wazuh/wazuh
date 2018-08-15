@@ -72,7 +72,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     memset(logf + pl, 0, sizeof(logreader));
     //os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
     logf[pl].ign = 360;
-    os_calloc(2, sizeof(logsocket *), logf[pl].target_socket);
 
     /* Search for entries related to files */
     i = 0;
@@ -99,13 +98,33 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
             logf[pl].target = OS_StrBreak(',', node[i]->content, count);
+            char * tmp;
             for (n=0; n<count; n++) {
-                os_strdup(w_strtrim(logf[pl].target[n]), logf[pl].target[n]);
+                os_strdup(w_strtrim(logf[pl].target[n]), tmp);
+                free(logf[pl].target[n]);
+                logf[pl].target[n] = tmp;
             }
-            os_realloc(logf[pl].target_socket, (count + 1) * sizeof(logsocket *), logf[pl].target_socket);
-            memset(logf[pl].target_socket + count, 0, sizeof(logsocket *));
         } else if (strcmp(node[i]->element, xml_localfile_outformat) == 0) {
-            os_strdup(node[i]->content, logf[pl].outformat);
+            char * target = NULL;
+            int j, n;
+
+            // Get attribute
+
+            for (j = 0; node[i]->attributes && node[i]->attributes[j]; ++j) {
+                if (strcmp(node[i]->attributes[j], xml_localfile_target) == 0) {
+                    target = node[i]->values[j];
+                } else {
+                    mwarn("Invalid attribute '%s' for <%s>", node[i]->attributes[j], xml_localfile_outformat);
+                }
+            }
+
+            for (n = 0; logf[pl].out_format && logf[pl].out_format[n]; ++n);
+
+            os_realloc(logf[pl].out_format, (n + 2) * sizeof(outformat *), logf[pl].out_format);
+            os_malloc(sizeof(outformat), logf[pl].out_format[n]);
+            logf[pl].out_format[n]->target = target ? strdup(target) : NULL;
+            os_strdup(node[i]->content, logf[pl].out_format[n]->format);
+            logf[pl].out_format[n + 1] = NULL;
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             char *key_value = 0;
             int j;
@@ -204,35 +223,27 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, "full_command") == 0) {
             } else if (strcmp(logf[pl].logformat, "audit") == 0) {
             } else if (strncmp(logf[pl].logformat, "multi-line", 10) == 0) {
-                int x = 0;
-                logf[pl].logformat += 10;
 
-                while (logf[pl].logformat[0] == ' ') {
-                    logf[pl].logformat++;
+                char *p_lf = logf[pl].logformat;
+                p_lf += 10;
+
+                while (p_lf[0] == ' ') {
+                    p_lf++;
                 }
 
-                if (logf[pl].logformat[0] != ':') {
+                if (*p_lf != ':') {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
-                logf[pl].logformat++;
+                p_lf++;
 
-                while (*logf[pl].logformat == ' ') {
-                    logf[pl].logformat++;
-                }
+                char *end;
 
-                while (logf[pl].logformat[x] >= '0' && logf[pl].logformat[x] <= '9') {
-                    x++;
-                }
-
-                while (logf[pl].logformat[x] == ' ') {
-                    x++;
-                }
-
-                if (logf[pl].logformat[x] != '\0') {
+                if (logf[pl].linecount = strtol(p_lf, &end, 10), end == p_lf || logf[pl].linecount < 1 ) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
+
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
             } else {
@@ -281,7 +292,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     } else {
         current_files++;
     }
-
 
     /* Deploy glob entries */
     if (!logf[pl].command) {
@@ -430,8 +440,15 @@ void Free_Logreader(logreader * logf) {
             fclose(logf->fp);
         }
 
-        free(logf->target_socket);
-        free(logf->outformat);
+        if (logf->out_format) {
+            for (i = 0; logf->out_format[i]; ++i) {
+                free(logf->out_format[i]->target);
+                free(logf->out_format[i]->format);
+                free(logf->out_format[i]);
+            }
+
+            free(logf->out_format);
+        }
     }
 }
 

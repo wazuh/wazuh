@@ -70,8 +70,6 @@ static void wm_sync_manager();
 // Get agent's architecture
 static char * wm_get_os_arch(char * os_header);
 
-static char * wm_get_os_arch(char * os_header);
-
 #ifndef LOCAL
 
 static void wm_check_agents();
@@ -233,7 +231,6 @@ void wm_sync_manager() {
     OS_ClearXML(&xml);
 
     if ((os_uname = strdup(getuname()))) {
-        os_arch = (char *) malloc(50);
         os_arch = wm_get_os_arch(os_uname);
         char *ptr;
 
@@ -464,7 +461,7 @@ void wm_clean_dangling_db() {
 
 char * wm_get_os_arch(char * os_header) {
     const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
-    char * os_arch;
+    char * os_arch = NULL;
     int i;
 
     for (i = 0; ARCHS[i]; i++) {
@@ -481,6 +478,7 @@ char * wm_get_os_arch(char * os_header) {
     mtdebug2(WM_DATABASE_LOGTAG, "Detected architecture from %s: %s", os_header, os_arch);
     return os_arch;
 }
+
 
 int wm_sync_agentinfo(int id_agent, const char *path) {
     char header[OS_MAXSTR];
@@ -662,6 +660,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 
     free(os_major);
+    free(os_arch);
     free(os_minor);
     free(os_build);
     fclose(fp);
@@ -955,7 +954,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
 
         *(f_name++) = '\0';
 
-        switch (sk_decode_sum(&sum, c_sum)) {
+        switch (sk_decode_sum(&sum, c_sum, NULL)) {
         case 0:
             switch (wdb_get_last_fim(db, f_name, type)) {
             case WDB_FIM_NOT_FOUND:

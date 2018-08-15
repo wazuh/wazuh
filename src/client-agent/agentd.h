@@ -119,4 +119,6 @@ extern keystore keys;
 extern agent *agt;
 extern agent_state_t agent_state;
 
+static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge shared file.";
+
 #endif /* __AGENTD_H */

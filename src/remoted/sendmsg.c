@@ -34,21 +34,16 @@ void key_unlock()
 /* Check for key updates */
 int check_keyupdate()
 {
-    int retval = 0;
-
     /* Check key for updates */
     if (!OS_CheckUpdateKeys(&keys)) {
         return (0);
     }
 
+    minfo(ENCFILE_CHANGED);
     key_lock_write();
-
-    if (OS_UpdateKeys(&keys)) {
-        retval = 1;
-    }
-
+    OS_UpdateKeys(&keys);
     key_unlock();
-    return retval;
+    return 1;
 }
 
 /* Send message to an agent
@@ -80,7 +75,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
 
-    if (msg_size == 0) {
+    if (msg_size <= 0) {
         key_unlock();
         merror(SEC_ERROR);
         return (-1);

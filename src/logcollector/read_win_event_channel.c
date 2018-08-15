@@ -19,10 +19,6 @@
 /* Bookmarks directory */
 #define BOOKMARKS_DIR "bookmarks"
 
-#ifndef WC_ERR_INVALID_CHARS
-#define WC_ERR_INVALID_CHARS 0x80
-#endif
-
 /* Logging levels */
 #define WINEVENT_AUDIT		0
 #define WINEVENT_CRITICAL	1
@@ -77,62 +73,6 @@ void free_event(os_event *event)
     free(event->computer);
     free(event->message);
     free(event->timestamp);
-}
-
-char *convert_windows_string(LPCWSTR string)
-{
-    char *dest = NULL;
-    size_t size = 0;
-    int result = 0;
-
-    if (string == NULL) {
-        return (NULL);
-    }
-
-    /* Determine size required */
-    size = WideCharToMultiByte(CP_UTF8,
-                               WC_ERR_INVALID_CHARS,
-                               string,
-                               -1,
-                               NULL,
-                               0,
-                               NULL,
-                               NULL);
-
-    if (size == 0) {
-        mferror(
-            "Could not WideCharToMultiByte() when determining size which returned (%lu)",
-            GetLastError());
-        return (NULL);
-    }
-
-    if ((dest = calloc(size, sizeof(char))) == NULL) {
-        mferror(
-            "Could not calloc() memory for WideCharToMultiByte() which returned [(%d)-(%s)]",
-            errno,
-            strerror(errno)
-        );
-        return (NULL);
-    }
-
-    result = WideCharToMultiByte(CP_UTF8,
-                                 WC_ERR_INVALID_CHARS,
-                                 string,
-                                 -1,
-                                 dest,
-                                 size,
-                                 NULL,
-                                 NULL);
-
-    if (result == 0) {
-        mferror(
-            "Could not WideCharToMultiByte() which returned (%lu)",
-            GetLastError());
-        free(dest);
-        return (NULL);
-    }
-
-    return (dest);
 }
 
 wchar_t *convert_unix_string(char *string)
@@ -426,17 +366,8 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     wchar_t *buffer = NULL;
     int result = 0;
     int status = 0;
-    int clean_tmp = 0;
     EVT_HANDLE bookmark = NULL;
     FILE *fp = NULL;
-    char tmp_file[OS_MAXSTR];
-
-    /* Create temporary bookmark file name */
-    snprintf(tmp_file,
-             sizeof(tmp_file),
-             "%s/%s-XXXXXX",
-             TMP_DIR,
-             channel->bookmark_name);
 
     if ((bookmark = EvtCreateBookmark(NULL)) == NULL) {
         mferror(
@@ -497,33 +428,20 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if (mkstemp_ex(tmp_file)) {
-        mferror(
-            "Could not mkstemp_ex() temporary bookmark (%s) for (%s)",
-            tmp_file,
-            channel->evt_log);
-        goto cleanup;
-    }
-
-    if ((fp = fopen(tmp_file, "w")) == NULL) {
-        mferror(
-            "Could not fopen() temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            tmp_file,
+    if ((fp = fopen(channel->bookmark_filename, "w")) == NULL) {
+        mwarn(
+            "Could not fopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
             channel->evt_log,
             errno,
             strerror(errno));
         goto cleanup;
     }
 
-    /* Help to determine whether or not temporary file needs to be removed when
-     * function cleans up after itself
-     */
-    clean_tmp = 1;
-
     if ((fwrite(buffer, 1, size, fp)) < size) {
         mferror(
-            "Could not fwrite() to temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            tmp_file,
+            "Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            channel->bookmark_filename,
             channel->evt_log,
             errno,
             strerror(errno));
@@ -531,15 +449,6 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     fclose(fp);
-
-    if (rename_ex(tmp_file, channel->bookmark_filename)) {
-        mferror(
-            "Could not rename_ex() temporary bookmark (%s) to (%s) for (%s)",
-            tmp_file,
-            channel->bookmark_filename,
-            channel->evt_log);
-        goto cleanup;
-    }
 
     /* Success */
     status = 1;
@@ -553,13 +462,6 @@ cleanup:
 
     if (fp) {
         fclose(fp);
-    }
-
-    if (status == 0 && clean_tmp == 1 && unlink(tmp_file)) {
-        mferror(DELETE_ERROR,
-                 tmp_file,
-                 errno,
-                 strerror(errno));
     }
 
     return (status);

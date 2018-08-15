@@ -58,7 +58,7 @@
         <if_sid>80000</if_sid>
         <match>^Permission denied </match>
         <description>Puppet Master: Permission denied</description>
-        <group>gpg13_4.14,</group>
+        <group>gpg13_4.14,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <!--
@@ -109,7 +109,7 @@
         <if_sid>80000</if_sid>
         <match>^Could not run: Address already in use</match>
         <description>Puppet Master: not run - address in use</description>
-        <group>gpg13_4.3,</group>
+        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="80007" level="5">
@@ -117,14 +117,14 @@
         <match>^Could not|^You cannot|^too few arguments|^Duplicate declaration|^Unrecognised escape sequence|^Invalid parameter|is not|has not been tested|Unknown function|failed|has failure</match>
         <regex>manifests</regex>
         <description>Puppet Master: Manifest Error</description>
-        <group>gpg13_4.3,</group>
+        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="80008" level="4">
         <if_sid>80000</if_sid>
         <match>^Could not|not found|^Not collecting|^The environment must be|^Syntax error|^Failed|failed|has failure</match>
         <description>Puppet Master: Error</description>
-        <group>gpg13_4.3,</group>
+        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
 
@@ -144,6 +144,7 @@
         <program_name>puppet-master</program_name>
         <match>^Compiled catalog|^Reopening log</match>
         <description>Puppet Master: Info</description>
+        <group></group>
     </rule>
 
     <rule id="80010" level="2">
@@ -151,6 +152,7 @@
         <program_name>puppet-master</program_name>
         <match>^Compiled catalog|^Reopening log|is deprecated|are deprecated</match>
         <description>Puppet Master: Deprecated</description>
+        <group></group>
     </rule>
 
 
@@ -261,14 +263,14 @@
         <if_sid>80001</if_sid>
         <match>Connection refused - connect</match>
         <description>Puppet Agent: connection refused</description>
-        <group>gpg13_4.3,</group>
+        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="80059" level="4">
         <if_sid>80001</if_sid>
         <match>^Unable to fetch|does not support|Not using cache|Could not retrieve|Failed|failed|has failure</match>
         <description>Puppet Agent: Error</description>
-        <group>gpg13_4.3,</group>
+        <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--

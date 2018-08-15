@@ -14,81 +14,83 @@
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
+#include "string_op.h"
+#include "shared.h"
+#include "syscheck.h"
 
-#ifdef WIN32
-#define sleep(x) Sleep(x * 1000)
-#endif
+volatile int audit_thread_active;
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 #define OS_SIZE_6144    6144
 #define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc */
-#else
-#include "shared.h"
 #endif
 
 #include "fs_op.h"
 #include "hash_op.h"
 #include "debug_op.h"
 #include "syscheck.h"
-#include "error_messages/error_messages.h"
-#include "error_messages/debug_messages.h"
+#include "syscheck_op.h"
+
+pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Prototypes */
-int realtime_checksumfile(const char *file_name) __attribute__((nonnull));
-
+int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
 /* Checksum of the realtime file being monitored */
-int realtime_checksumfile(const char *file_name)
+int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 {
     char *buf;
+    syscheck_node *s_node;
 
-    buf = (char *) OSHash_Get(syscheck.fp, file_name);
-    if (buf != NULL) {
-        char c_sum[256 + 2];
+    s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name);
 
+    if (s_node != NULL) {
+        char c_sum[OS_MAXSTR + 1];
+        size_t c_sum_size;
+
+        buf = s_node->checksum;
         c_sum[0] = '\0';
-        c_sum[255] = '\0';
+        c_sum[OS_MAXSTR] = '\0';
 
         /* If it returns < 0, we have already alerted */
-        if (c_read_file(file_name, buf, c_sum) < 0) {
-            // Update database
-            snprintf(c_sum, sizeof(c_sum), "%.*s -1", SK_DB_NATTR, buf);
-            free(buf);
-
-            if (!OSHash_Update(syscheck.fp, file_name, strdup(c_sum))) {
-                merror("Unable to update file to db: %s", file_name);
-            }
-
+        if (c_read_file(file_name, buf, c_sum, evt) < 0) {
             return (0);
         }
 
-        if (strcmp(c_sum, buf + SK_DB_NATTR) != 0) {
+        c_sum_size = strlen(buf + SK_DB_NATTR);
+        if (strncmp(c_sum, buf + SK_DB_NATTR, c_sum_size)) {
             char alert_msg[OS_MAXSTR + 1];
+            char wd_sum[OS_SIZE_6144 + 1];
+
+            // Extract the whodata sum here to not include it in the hash table
+            if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                *wd_sum = '\0';
+            }
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
-
-            if (!OSHash_Update(syscheck.fp, file_name, strdup(alert_msg))) {
-                merror("Unable to update file to db: %s", file_name);
-            }
+            s_node->checksum = strdup(alert_msg);
 
             alert_msg[OS_MAXSTR] = '\0';
             char *fullalert = NULL;
 
-            if (buf[6] == 's' || buf[6] == 'n') {
+            if (buf[9] == '+') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s %s\n%s", c_sum, file_name, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
                 }
             } else {
-                snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+                snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
             }
             send_syscheck_msg(alert_msg);
+            struct timeval timeout = {0, syscheck.rt_delay * 1000};
+            select(0, NULL, NULL, NULL, &timeout);
 
             free(buf);
 
@@ -100,32 +102,71 @@ int realtime_checksumfile(const char *file_name)
         return (0);
     } else {
         /* New file */
-        char *c;
-        int i;
-        buf = strdup(file_name);
+        int pos;
+#ifdef WIN_WHODATA
+        if (evt) {
+            pos = evt->dir_position;
+        } else {
+#endif
+        pos = find_dir_pos(file_name, 1, 0, 0);
+#ifdef WIN_WHODATA
+        }
+#endif
+        if (pos >= 0) {
+            mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
+            int diff = fim_find_child_depth(syscheck.dir[pos], file_name);
+            read_dir(file_name, pos, evt, syscheck.max_depth - diff);
+        }
 
-        /* Find container directory */
+    }
 
-        while (c = strrchr(buf, '/'), c && c != buf) {
-            *c = '\0';
 
-            for (i = 0; syscheck.dir[i]; i++) {
-                if (strcmp(syscheck.dir[i], buf) == 0) {
-                    mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, buf);
-                    read_dir(file_name, syscheck.opts[i], syscheck.filerestrict[i]);
-                    break;
-                }
+    return (0);
+}
+
+/* Find container directory */
+int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) {
+    char buf[PATH_MAX];
+    int i;
+    char *c;
+    int retval = -1;
+    int path_length = PATH_MAX;
+
+    if (full_compare) {
+        snprintf(buf, strlen(filename) + 2, "%s%c", filename, PATH_SEP);
+    } else {
+        snprintf(buf, strlen(filename) + 1, "%s", filename);
+    }
+
+    while (c = strrchr(buf, PATH_SEP), c && c != buf) {
+        *c = '\0';
+
+        for (i = 0; syscheck.dir[i]; i++) {
+            if (check_find && !(syscheck.opts[i] & check_find)) {
+                continue;
             }
-
-            if (syscheck.dir[i]) {
+            if (!strcmp(syscheck.dir[i], buf)) {
+                // If deep_search is activated we will continue searching for parent directories
+                if (deep_search) {
+                    int buf_len = strlen(buf);
+                    if (buf_len < path_length) {
+                        path_length = buf_len;
+                        retval = i;
+                    }
+                } else {
+                    retval = i;
+                }
                 break;
             }
         }
 
-        free(buf);
+        if (!deep_search && syscheck.dir[i]) {
+            // The directory has been found
+            break;
+        }
     }
 
-    return (0);
+    return retval;
 }
 
 #ifdef INOTIFY_ENABLED
@@ -159,50 +200,61 @@ int realtime_start()
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir)
+int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
-    if (!syscheck.realtime) {
-        realtime_start();
-    }
+    if (whodata && audit_thread_active) {
+        mdebug1("Monitoring with Audit: '%s'.", dir);
 
-    /* Check if it is ready to use */
-    if (syscheck.realtime->fd < 0) {
-        return (-1);
+        // Save dir into saved rules list
+        w_mutex_lock(&audit_mutex);
+        W_Vector_insert(audit_added_dirs, dir);
+        w_mutex_unlock(&audit_mutex);
+
     } else {
-        int wd = 0;
 
-        if(syscheck.skip_nfs) {
-            short is_nfs = IsNFS(dir);
-            if( is_nfs == 1 ) {
-                merror("%s NFS Directories do not support iNotify.", dir);
-            	return(-1);
-            }
-            else {
-                mdebug2("syscheck.skip_nfs=%d, %s::is_nfs=%d", syscheck.skip_nfs, dir, is_nfs);
-            }
+        if (!syscheck.realtime) {
+            realtime_start();
         }
 
-        wd = inotify_add_watch(syscheck.realtime->fd,
-                               dir,
-                               REALTIME_MONITOR_FLAGS);
-        if (wd < 0) {
-            merror("Unable to add directory to real time monitoring: '%s'. %d %d", dir, wd, errno);
+        /* Check if it is ready to use */
+        if (syscheck.realtime->fd < 0) {
+            return (-1);
         } else {
-            char wdchar[32 + 1];
-            wdchar[32] = '\0';
-            snprintf(wdchar, 32, "%d", wd);
+            int wd = 0;
 
-            /* Entry not present */
-            if (!OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
-                char *ndir;
-
-                ndir = strdup(dir);
-                if (ndir == NULL) {
-                    merror_exit("Out of memory. Exiting.");
+            if(syscheck.skip_nfs) {
+                short is_nfs = IsNFS(dir);
+                if( is_nfs == 1 ) {
+                    merror("%s NFS Directories do not support iNotify.", dir);
+                	return(-1);
                 }
+                else {
+                    mdebug2("syscheck.skip_nfs=%d, %s::is_nfs=%d", syscheck.skip_nfs, dir, is_nfs);
+                }
+            }
 
-                OSHash_Add(syscheck.realtime->dirtb, wdchar, ndir);
-                mdebug1("Directory added for real time monitoring: '%s'.", ndir);
+            wd = inotify_add_watch(syscheck.realtime->fd,
+                                   dir,
+                                   REALTIME_MONITOR_FLAGS);
+            if (wd < 0) {
+                merror("Unable to add directory to real time monitoring: '%s'. %d %d", dir, wd, errno);
+            } else {
+                char wdchar[32 + 1];
+                wdchar[32] = '\0';
+                snprintf(wdchar, 32, "%d", wd);
+
+                /* Entry not present */
+                if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+                    char *ndir;
+
+                    ndir = strdup(dir);
+                    if (ndir == NULL) {
+                        merror_exit("Out of memory. Exiting.");
+                    }
+
+                    OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir);
+                    mdebug1("Directory added for real time monitoring: '%s'.", ndir);
+                }
             }
         }
     }
@@ -247,7 +299,7 @@ int realtime_process()
                 struct timeval timeout = {0, syscheck.rt_delay * 1000};
                 select(0, NULL, NULL, NULL, &timeout);
 
-                realtime_checksumfile(final_name);
+                realtime_checksumfile(final_name, NULL);
             }
 
             i += REALTIME_EVENT_SIZE + event->len;
@@ -257,13 +309,18 @@ int realtime_process()
     return (0);
 }
 
+int run_whodata_scan(void) {
+    return 0;
+}
+
+
 #elif defined(WIN32)
 typedef struct _win32rtfim {
     HANDLE h;
     OVERLAPPED overlap;
 
     char *dir;
-    TCHAR buffer[12288];
+    TCHAR buffer[65536];
 } win32rtfim;
 
 int realtime_win32read(win32rtfim *rtlocald);
@@ -272,7 +329,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 {
     int lcount;
     size_t offset = 0;
-    char *ptfile;
     char wdchar[260 + 1];
     char final_path[MAX_LINE + 1];
     win32rtfim *rtlocald;
@@ -280,12 +336,22 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     TCHAR finalfile[MAX_PATH];
 
     if (dwBytes == 0) {
-        merror("real time call back called, but 0 bytes.");
-        return;
+        mwarn("Real time process: no data. Probably buffer overflow.");
     }
 
     if (dwerror != ERROR_SUCCESS) {
-        merror("real time call back called, but error is set.");
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
+
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwerror, 0, (LPTSTR) &messageBuffer, 0, NULL);
+
+        if (end = strchr(messageBuffer, '\r'), end) {
+            *end = '\0';
+        }
+
+        merror("Real time process: %s (%lx).", messageBuffer, dwerror);
+        LocalFree(messageBuffer);
+
         return;
     }
 
@@ -298,40 +364,31 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
         return;
     }
 
-    do {
-        pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
-        offset += pinfo->NextEntryOffset;
+    if (dwBytes) {
+        do {
+            pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
+            offset += pinfo->NextEntryOffset;
 
-        lcount = WideCharToMultiByte(CP_ACP, 0, pinfo->FileName,
-                                     pinfo->FileNameLength / sizeof(WCHAR),
-                                     finalfile, MAX_PATH - 1, NULL, NULL);
-        finalfile[lcount] = TEXT('\0');
+            lcount = WideCharToMultiByte(CP_ACP, 0, pinfo->FileName,
+                                         pinfo->FileNameLength / sizeof(WCHAR),
+                                         finalfile, MAX_PATH - 1, NULL, NULL);
+            finalfile[lcount] = TEXT('\0');
 
-        /* Change forward slashes to backslashes on finalfile */
-        ptfile = strchr(finalfile, '\\');
-        while (ptfile) {
-            *ptfile = '/';
-            ptfile++;
+            final_path[MAX_LINE] = '\0';
+            snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
 
-            ptfile = strchr(ptfile, '\\');
-        }
-
-        final_path[MAX_LINE] = '\0';
-        snprintf(final_path, MAX_LINE, "%s/%s", rtlocald->dir, finalfile);
-
-        /* Check the change */
-        realtime_checksumfile(final_path);
-    } while (pinfo->NextEntryOffset != 0);
+            /* Check the change */
+            realtime_checksumfile(final_path, NULL);
+        } while (pinfo->NextEntryOffset != 0);
+    }
 
     realtime_win32read(rtlocald);
-
     return;
 }
 
 int realtime_start()
 {
     minfo("Initializing real time file monitoring engine.");
-
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
     syscheck.realtime->dirtb = (void *)OSHash_Create();
     syscheck.realtime->fd = -1;
@@ -360,14 +417,53 @@ int realtime_win32read(win32rtfim *rtlocald)
     return (0);
 }
 
-int realtime_adddir(const char *dir)
+// In Windows the whodata parameter contains the directory position + 1 to be able to reference it
+int realtime_adddir(const char *dir, int whodata)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
 
+    if (whodata) {
+#ifdef WIN_WHODATA
+        int type;
+
+        if (!syscheck.wdata.fd && whodata_audit_start()) {
+            return 0;
+        }
+
+        // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
+        // regardless of it was checked in the initial configuration (CHECK_WHODATA in opts)
+        syscheck.wdata.dirs_status[whodata - 1].status |= WD_CHECK_WHODATA;
+        syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_CHECK_REALTIME;
+
+        // Check if the file or directory exists
+        if (type = check_path_type(dir), type == 2) {
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_DIR_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
+        } else if (type == 1) {
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
+        } else {
+            mwarn("'%s' does not exist. Monitoring discarded.", dir);
+            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
+            syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
+            return 0;
+        }
+
+        GetSystemTime(&syscheck.wdata.dirs_status[whodata - 1].last_check);
+        if (set_winsacl(dir, whodata - 1)) {
+            merror("Unable to add directory to whodata monitoring: '%s'.", dir);
+            return 0;
+        }
+        return 1;
+#endif
+    }
+
     if (!syscheck.realtime) {
         realtime_start();
     }
+
+    w_mutex_lock(&adddir_mutex);
 
     /* Maximum limit for realtime on Windows */
     if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
@@ -378,8 +474,9 @@ int realtime_adddir(const char *dir)
     /* Set key for hash */
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
-    if(OSHash_Get(syscheck.realtime->dirtb, wdchar)) {
+    if(OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
         mdebug2("Entry '%s' already exists in the RT hash.", wdchar);
+        w_mutex_unlock(&adddir_mutex);
     }
     else {
         os_calloc(1, sizeof(win32rtfim), rtlocald);
@@ -400,11 +497,12 @@ int realtime_adddir(const char *dir)
             return (0);
         }
         syscheck.realtime->fd++;
+        w_mutex_unlock(&adddir_mutex);
 
         /* Add final elements to the hash */
         os_strdup(dir, rtlocald->dir);
         os_strdup(dir, rtlocald->overlap.Pointer);
-        OSHash_Add(syscheck.realtime->dirtb, wdchar, rtlocald);
+        OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald);
 
         /* Add directory to be monitored */
         realtime_win32read(rtlocald);
@@ -415,6 +513,10 @@ int realtime_adddir(const char *dir)
 
 #else /* !WIN32 */
 
+int run_whodata_scan() {
+    return 0;
+}
+
 int realtime_start()
 {
     merror("Unable to initialize real time file monitoring.");
@@ -422,7 +524,7 @@ int realtime_start()
     return (0);
 }
 
-int realtime_adddir(__attribute__((unused)) const char *dir)
+int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unused))int whodata)
 {
     return (0);
 }

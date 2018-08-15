@@ -115,10 +115,9 @@ OSHash * msg_queues_table;
 typedef struct w_message_t {
     char *file;
     char *buffer;
-    char *outformat;
     char queue_mq;
     unsigned int size;
-    logsocket **target_socket;
+    logtarget *log_target;
 } w_message_t;
 
 
@@ -139,13 +138,13 @@ void w_msg_hash_queues_init();
 int w_msg_hash_queues_add_entry(const char *key);
 
 /* Push message into the hash queue */
-int w_msg_hash_queues_push(const char *str,char *file,char *outformat,unsigned long size,logsocket **target_socket,char queue_mq);
+int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq);
 
 /* Pop message from the hash queue */
 w_message_t * w_msg_hash_queues_pop(const char *key);
 
 /* Push message into the queue */
-int w_msg_queue_push(w_msg_queue_t * msg,const char * buffer,char *file,char *outformat, unsigned long size,logsocket **target_socket,char queue_mq);
+int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq);
 
 /* Pop message from the queue */
 w_message_t * w_msg_queue_pop(w_msg_queue_t * queue);
@@ -164,5 +163,6 @@ void w_create_input_threads();
 
 /* Set mutexes for each file */
 void w_set_file_mutexes();
+extern int sample_log_length;
 
 #endif /* __LOGREADER_H */

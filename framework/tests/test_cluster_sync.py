@@ -7,7 +7,7 @@ import argparse
 import sys
 import os
 import shutil
-from os import path, listdir, rename, utime, environ, umask, stat, chmod, devnull, strerror, remove
+from os import path, chmod
 from stat import S_IRWXG, S_IRWXU
 
 class WazuhHelpFormatter(argparse.ArgumentParser):
@@ -75,7 +75,7 @@ def updt(total, progress):
 
 agent_id = 999
 
-def client(ossec_path="/var/ossec", n_agents=5):
+def worker(ossec_path="/var/ossec", n_agents=5):
     print ("Executing test for WORKER node...")
 
     ###
@@ -96,7 +96,7 @@ def client(ossec_path="/var/ossec", n_agents=5):
     else:
         print (" - Directory '{}' (extra).".format(directory))
 
-    file = "{}/test_file".format(directory)
+    file = "{}/merged.mg".format(directory)
     if not os.path.exists(file):
         with open("{}".format(file), 'w') as ck:
             ck.write("Text asdfghjklqwertyuiop\n")
@@ -104,18 +104,6 @@ def client(ossec_path="/var/ossec", n_agents=5):
         print (" - Created file '{}' (extra).".format(file))
     else:
         print (" - File '{}' (extra).".format(file))
-
-    file2 = "{}/etc/shared/default/cis_rhel7_linux_rcl.txt".format(ossec_path)
-    if os.path.exists(file2):
-        os.remove("{}".format(file2))
-        print (" - Removed file '{}' (missing).".format(file2))
-    else:
-        print (" - File '{}' doesn't exist (missing).".format(file2))
-
-    file3 = "{}/etc/shared/default/cis_mysql5-6_community_rcl.txt".format(ossec_path)
-    with open("{}".format(file3), 'a') as ck:
-        ck.write("\n# Modified\n")
-    print (" - Modified file '{}' (shared).".format(file3))
     ###
 
 
@@ -243,7 +231,7 @@ def master(ossec_path="/var/ossec"):
     else:
         print (" - Directory '{}' (missing).".format(directory))
 
-    file = "{}/test_file".format(directory)
+    file = "{}/merged.mg".format(directory)
     if not os.path.exists(file):
         with open("{}".format(file), 'w') as ck:
             ck.write("Text asdfghjklqwertyuiop\n")
@@ -251,19 +239,6 @@ def master(ossec_path="/var/ossec"):
         print (" - Created file '{}' (missing).".format(file))
     else:
         print (" - File '{}' (missing).".format(file))
-
-    file2 = "{}/etc/shared/default/cis_rhel7_linux_rcl.txt".format(ossec_path)
-    if os.path.exists(file2):
-        os.remove("{}".format(file2))
-        print (" - Removed file '{}' (extra).".format(file2))
-    else:
-        print (" - File '{}' doesn't exist (extra).".format(file2))
-
-    file3 = "{}/etc/shared/default/cis_mysql5-6_community_rcl.txt".format(ossec_path)
-    with open("{}".format(file3), 'a') as ck:
-        ck.write("\n# Modified\n")
-    chmod(path.dirname(file3), S_IRWXU | S_IRWXG)
-    print (" - Modified file '{}' (shared).".format(file3))
     ###
 
 
@@ -348,9 +323,9 @@ def master(ossec_path="/var/ossec"):
     else:
         print (" - Directory '{}' doesn't exist (extra).".format(directory2))
     ###
-    
-    
-def check_client_test_client(ossec_path="/var/ossec"): 
+
+
+def check_worker_test_worker(ossec_path="/var/ossec"):
     print ('Checking missing and shared files...')
     ###
     print ('/etc/shared/')
@@ -360,18 +335,12 @@ def check_client_test_client(ossec_path="/var/ossec"):
     else:
         print (" - Directory '{}' doesn't exist (OK).".format(directory))
 
-    file = "{}/test_file".format(directory)
+    file = "{}/merged.mg".format(directory)
     if os.path.exists(file):
         pass
         #print (" - File '{}' exists (X) (*ToDo*).".format(file))
     else:
         print (" - File '{}' doesn't exist (OK).".format(file))
-
-    file2 = "{}/etc/shared/default/cis_rhel7_linux_rcl.txt".format(ossec_path)
-    if os.path.exists(file2):
-        print (" - File '{}' exist (OK).".format(file2))
-    else:
-        print (" - File '{}' doesn't exists (X).".format(file2))
     ###
 
 
@@ -436,9 +405,9 @@ def check_client_test_client(ossec_path="/var/ossec"):
     else:
         print (" - Directory '{}' doesn't exist (X).".format(directory2))
     ###
-    
-    
-def check_client_test_master(ossec_path="/var/ossec"): 
+
+
+def check_worker_test_master(ossec_path="/var/ossec"):
     print ('Checking missing and shared files...')
     ###
     print ('/etc/shared/')
@@ -448,17 +417,11 @@ def check_client_test_master(ossec_path="/var/ossec"):
     else:
         print (" - Directory '{}' doesn't exist (X).".format(directory))
 
-    file = "{}/test_file".format(directory)
+    file = "{}/merged.mg".format(directory)
     if os.path.exists(file):
         print (" - File '{}' exists (OK).".format(file))
     else:
         print (" - File '{}' doesn't exist (X).".format(file))
-
-    file2 = "{}/etc/shared/default/cis_rhel7_linux_rcl.txt".format(ossec_path)
-    if os.path.exists(file2):
-        print (" - File '{}' exist (X).".format(file2))
-    else:
-        print (" - File '{}' doesn't exists (OK).".format(file2))
     ###
 
 
@@ -539,17 +502,11 @@ def clean(ossec_path="/var/ossec"):
 
     ###
     directory = "{}/etc/shared/tests".format(ossec_path)
-    file = "{}/test_file".format(directory)
+    file = "{}/merged.mg".format(directory)
     if os.path.exists(file):
         os.remove("{}".format(file))
     if os.path.exists(directory):
         shutil.rmtree("{}".format(directory))
-
-    file2 = "{}/etc/shared/default/cis_rhel7_linux_rcl.txt".format(ossec_path)
-    if not os.path.exists(file2):
-        with open("{}".format(file2), 'w') as ck:
-            ck.write("#Text\n")
-        chmod(path.dirname(file2), S_IRWXU | S_IRWXG)
     ###
 
 
@@ -610,7 +567,7 @@ if __name__ == "__main__":
     if args.worker:
         n_agents = args.n_agents if args.n_agents else 5
         ossec_path = args.ossec_path if args.ossec_path else "/var/ossec"
-        client(ossec_path=ossec_path, n_agents=n_agents)
+        worker(ossec_path=ossec_path, n_agents=n_agents)
 
     elif args.master:
         ossec_path = args.ossec_path if args.ossec_path else "/var/ossec"
@@ -618,9 +575,9 @@ if __name__ == "__main__":
 
     elif args.check:
         if args.check == "master":
-            check_client_test_master()
+            check_worker_test_master()
         elif args.check == "worker":
-            check_client_test_client()
+            check_worker_test_worker()
         else:
             print ("Expected argument: master or worker")
 

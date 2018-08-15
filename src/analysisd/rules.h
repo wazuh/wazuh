@@ -151,6 +151,7 @@ typedef struct _RuleInfo {
     OSMatch *hostname;
     OSMatch *program_name;
     OSMatch *extra_data;
+    OSMatch *location;
     FieldInfo **fields;
     char *action;
 
@@ -246,6 +247,7 @@ int _setlevels(RuleNode *node, int nnode);
 #define SYSCHECK_NEW        "syscheck_new_entry"
 #define SYSCHECK_DEL        "syscheck_deleted"
 #define SYSCOLLECTOR_MOD    "syscollector"
+#define CISCAT_MOD          "ciscat"
 
 /* Global variables */
 extern int _max_freq;

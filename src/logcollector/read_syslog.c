@@ -16,6 +16,7 @@
 /* Read syslog files */
 void *read_syslog(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
+    int __ms_reported = 0;
     char *p;
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
@@ -43,7 +44,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             __ms = 1;
         } else {
             /* Message not complete. Return. */
-            mdebug1("Message not complete. Trying again: '%s'", str);
+            mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
             fsetpos(lf->fp, &fp_pos);
             break;
         }
@@ -66,11 +67,11 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
-        mdebug2("Reading syslog message: '%s'", str);
+        mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
 
         /* Send message to queue */
         if (drop_it == 0) {
-            w_msg_hash_queues_push(str,lf->file,lf->outformat,strlen(str)+1,lf->target_socket,LOCALFILE_MQ);
+            w_msg_hash_queues_push(str, lf->file, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
         }
         /* Incorrect message size */
         if (__ms) {
@@ -80,7 +81,14 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             char buf[OUTSIZE + 1];
             buf[OUTSIZE] = '\0';
             snprintf(buf, OUTSIZE, "%s", str);
-            merror("Large message size(length=%d): '%s...'", (int)strlen(str), buf);
+
+            if (!__ms_reported) {
+                merror("Large message size from file '%s' (length = %zu): '%.*s'...", lf->file, strlen(str), sample_log_length, str);
+                __ms_reported = 1;
+            } else {
+                mdebug2("Large message size from file '%s' (length = %zu): '%.*s'...", lf->file, strlen(str), sample_log_length, str);
+            }
+
             while (fgets(str, OS_MAXSTR - 2, lf->fp) != NULL) {
                 /* Get the last occurrence of \n */
                 if (strrchr(str, '\n') != NULL) {

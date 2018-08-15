@@ -201,8 +201,6 @@ void DecodeEvent(Eventinfo *lf)
 
                     nnode->regex->sub_strings[i] = NULL;
                 }
-
-                break;
             } else {
                 /* If we don't have a regex, we may leave now */
                 return;

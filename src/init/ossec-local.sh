@@ -213,6 +213,11 @@ start()
 
     checkpid;
 
+    # Delete all files in temporary folder
+    TO_DELETE="$DIR/tmp/*"
+    rm -f $TO_DELETE
+
+
     # We actually start them now.
     for i in ${SDAEMONS}; do
         pstatus ${i};

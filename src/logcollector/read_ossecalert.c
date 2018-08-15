@@ -99,7 +99,7 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
 
     /* Send message to queue */
     if (drop_it == 0) {
-        w_msg_hash_queues_push(syslog_msg,lf->file,lf->outformat,strlen(syslog_msg)+1,lf->target_socket,LOCALFILE_MQ);
+        w_msg_hash_queues_push(syslog_msg, lf->file, strlen(syslog_msg) + 1, lf->log_target, LOCALFILE_MQ);
     }
 
     return (NULL);

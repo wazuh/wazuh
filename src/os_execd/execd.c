@@ -76,6 +76,7 @@ int main(int argc, char **argv)
     int test_config = 0, run_foreground = 0;
     gid_t gid;
     int m_queue = 0;
+    int debug_level = 0;
 
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
@@ -92,6 +93,7 @@ int main(int argc, char **argv)
                 help_execd();
                 break;
             case 'd':
+                debug_level = 1;
                 nowDebug();
                 break;
             case 'f':
@@ -115,6 +117,15 @@ int main(int argc, char **argv)
             default:
                 help_execd();
                 break;
+        }
+    }
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = getDefine_Int("execd", "debug", 0, 2);
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
         }
     }
 
@@ -158,6 +169,10 @@ int main(int argc, char **argv)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
+
+#ifdef CLIENT
+    CheckExecConfig();
+#endif
 
     /* Start exec queue */
     if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {

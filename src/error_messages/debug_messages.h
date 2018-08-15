@@ -23,7 +23,7 @@
 #define VU_START_REFRESH_DB   "(5458): Refreshing %s databases..."
 #define VU_STOP_REFRESH_DB    "(5459): Refresh of %s database finished."
 #define VU_DB_TIMESTAMP_OVAL  "(5460): %s OVAL has not been downloaded before, so the download continues."
-#define VU_STARTING_UPDATE    "(5461): Starting %s DB update..."
+#define VU_STARTING_UPDATE    "(5461): Starting %s database update..."
 #define VU_AGENT_SOFTWARE_REQ "(5462): Getting agent %s software..."
 #define VU_AGENT_UNSOPPORTED  "(5463): Agent %s has an unsupported Wazuh version."
 #define VU_UNS_OS_VERSION     "(5464): %s version not supported (agent %s)."
@@ -39,7 +39,7 @@
 #define VU_AGENT_INFO_ERROR   "(5474): Agent %s operating system could not be obtained. Maybe it is never connected. It will be omitted..."
 #define VU_NO_SOFTWARE        "(5475): No changes have been found with respect to the last syscollector scan for agent %s."
 #define VU_AG_NO_TARGET       "(5476): The analysis can not be launched because there are no target agents."
-#define VU_SYS_CHECKED        "(5477): The last syscollector scan for the agent %s (ID: %s) has already been checked. The vulnerability search is omitted."
+#define VU_AG_DISC            "(5477): The vulnerabilities of the agent %s will not be checked because it is disconnected."
 #define VU_LOCAL_FETCH        "(5478): Fetching OVAL from '%s'..."
 #define VU_OPERATION_NOT_REC  "(5479): Operation '%s' not recognized."
 #define VU_DOUBLE_NOT_VULN    "(5480): The '%s' package from agent %s is not vulnerable to %s. Condition: package version (%s) %s %s and %s %s."
@@ -47,5 +47,6 @@
 #define VU_UNEXP_VALUE        "(5482): Unexpected %s attribute."
 #define VU_SOL_PATCHES        "(5483): Solving patches..."
 #define VU_INS_TEST_SEC       "(5484): Inserting test section..."
+#define VU_SYS_CHECKED        "(5485): The last syscollector scan for the agent %s (ID: %s) has already been checked. The vulnerability search is omitted."
 
 #endif

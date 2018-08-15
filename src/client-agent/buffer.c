@@ -34,11 +34,11 @@ struct{
   unsigned int normal:1;
 } buff;
 
-char ** buffer;
-pthread_mutex_t mutex_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond_no_empty = PTHREAD_COND_INITIALIZER;
+static char ** buffer;
+static pthread_mutex_t mutex_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond_no_empty = PTHREAD_COND_INITIALIZER;
 
-time_t start, end;
+static time_t start, end;
 
 static void delay(unsigned int ms);
 
@@ -134,7 +134,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         pthread_mutex_lock(&mutex_lock);
 
         while(empty(i, j)){
-            mdebug2("Agent buffer empty.");
             pthread_cond_wait(&cond_no_empty, &mutex_lock);
         }
         /* Check if buffer usage reaches any lower level */
@@ -213,6 +212,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         }
 
         delay(wait_ms);
+        os_wait();
         send_msg(msg_output, -1);
         free(msg_output);
     }

@@ -35,6 +35,7 @@ extern time_t pending_upg;
 
 void WinExecdRun(char *exec_msg);
 int ReadExecConfig(void);
+void CheckExecConfig();
 char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);

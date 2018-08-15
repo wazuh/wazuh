@@ -120,7 +120,7 @@ int is_nodiff(const char *filename){
         int i;
         for (i = 0; syscheck.nodiff[i] != NULL; i++){
             if (strncasecmp(syscheck.nodiff[i], filename,
-                            strlen(filename)) == 0) {
+                            strlen(syscheck.nodiff[i])) == 0) {
                 return (TRUE);
             }
         }
@@ -151,7 +151,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     snprintf(path, PATH_MAX, "%s/local/%s/diff.%d",
              DIFF_DIR_PATH, filename + PATH_OFFSET, (int)alert_diff_time);
 
-    fp = fopen(path, "r");
+    fp = fopen(path, "rb");
     if (!fp) {
         merror("Unable to generate diff alert.");
         return (NULL);
@@ -204,12 +204,12 @@ static int seechanges_dupfile(const char *old, const char *current)
 
     buf[2048] = '\0';
 
-    fpr = fopen(old, "r");
+    fpr = fopen(old, "rb");
     if (!fpr) {
         return (0);
     }
 
-    fpw = fopen(current, "w");
+    fpw = fopen(current, "wb");
     if (!fpw) {
         fclose(fpr);
         return (0);
@@ -248,14 +248,22 @@ static int seechanges_createpath(const char *filename)
 
     os_strdup(filename, buffer);
     newdir = buffer;
+#ifdef WIN32
     tmpstr = strtok(buffer + PATH_OFFSET, "/\\");
+#else
+    tmpstr = strtok(buffer + PATH_OFFSET, "/");
+#endif
     if (!tmpstr) {
         merror("Invalid path name: '%s'", filename);
         free(buffer);
         return (0);
     }
 
+#ifdef WIN32
     while (next = strtok(NULL, "/\\"), next) {
+#else
+    while (next = strtok(NULL, "/"), next) {
+#endif
         if (IsDir(newdir) != 0) {
 #ifndef WIN32
             if (mkdir(newdir, 0770) == -1)
@@ -370,7 +378,7 @@ char *seechanges_addfile(const char *filename)
         /* Dont leak sensible data with a diff hanging around */
         FILE *fdiff;
         char* nodiff_message = "<Diff truncated because nodiff option>";
-        fdiff = fopen(diff_location, "w");
+        fdiff = fopen(diff_location, "wb");
         if (!fdiff){
             merror("Unable to open file for writing `%s`", diff_location);
             goto cleanup;

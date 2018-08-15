@@ -14,7 +14,7 @@
 /* Read multiline logs */
 void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
-    int linecount;
+    int __ms_reported = 0;
     int linesgot = 0;
     size_t buffer_size = 0;
     char *p;
@@ -27,8 +27,6 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     buffer[OS_MAXSTR] = '\0';
     str[OS_MAXSTR] = '\0';
     *rc = 0;
-
-    linecount = atoi(lf->logformat);
 
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
@@ -51,7 +49,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
             __ms = 1;
         } else {
             /* Message not complete. Return. */
-            mdebug1("Message not complete. Trying again: '%s'", str);
+            mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
             fsetpos(lf->fp, &fp_pos);
             break;
         }
@@ -62,7 +60,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
-        mdebug2("Reading message: '%s'", str);
+        mdebug2("Reading message: '%.*s'%s", sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
 
         /* Add to buffer */
         buffer_size = strlen(buffer);
@@ -73,14 +71,16 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
         strncpy(buffer + buffer_size, str, OS_MAXSTR - buffer_size - 2);
 
-        if (linesgot < linecount) {
+        if (linesgot < lf->linecount) {
             continue;
         }
         linesgot = 0;
 
+        linesgot = 0;
+
         /* Send message to queue */
         if (drop_it == 0) {
-            w_msg_hash_queues_push(buffer,lf->file,lf->outformat,strlen(buffer)+1,lf->target_socket,LOCALFILE_MQ);
+            w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
 
         buffer[0] = '\0';
@@ -88,7 +88,13 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
         /* Incorrect message size */
         if (__ms) {
-            merror("Large message size: '%s'", str);
+            if (!__ms_reported) {
+                merror("Large message size from file '%s' (length = %zu): '%.*s'...", lf->file, strlen(str), sample_log_length, str);
+                __ms_reported = 1;
+            } else {
+                mdebug2("Large message size from file '%s' (length = %zu): '%.*s'...", lf->file, strlen(str), sample_log_length, str);
+            }
+
             while (fgets(str, OS_MAXSTR - 2, lf->fp) != NULL) {
                 /* Get the last occurrence of \n */
                 if ((p = strrchr(str, '\n')) != NULL) {

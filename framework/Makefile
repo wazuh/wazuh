@@ -18,13 +18,11 @@ all:
 install:
 	$(INSTALL_DIR) $(PREFIX)/framework
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh
-	$(INSTALL_DIR) $(PREFIX)/framework/lib
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/cluster
 
 	$(INSTALL_FILE) wazuh/*.py ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) wazuh/cluster/*.json ${PREFIX}/framework/wazuh/cluster
 	$(INSTALL_FILE) wazuh/cluster/*.py ${PREFIX}/framework/wazuh/cluster
-	$(INSTALL_FILE) ../src/external/sqlite/libsqlite3.so ${PREFIX}/framework/lib/libsqlite3.so.0
 
 #	Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)

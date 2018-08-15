@@ -333,6 +333,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     const char *command_expect = "expect";
     const char *command_executable = "executable";
     const char *timeout_allowed = "timeout_allowed";
+    const char *extra_args = "extra_args";
 
     ar_command *tmp_command;
 
@@ -347,6 +348,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     tmp_command->expect = 0;
     tmp_command->executable = NULL;
     tmp_command->timeout_allowed = 0;
+    tmp_command->extra_args = NULL;
 
     /* Search for the commands */
     while (node[i]) {
@@ -379,6 +381,8 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 free(tmp_command);
                 return (OS_INVALID);
             }
+        } else if (strcmp(node[i]->element, extra_args) == 0) {
+            tmp_command->extra_args = strdup(node[i]->content);
         } else {
             merror(XML_INVELEM, node[i]->element);
             free(tmp_str);
@@ -388,7 +392,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         i++;
     }
 
-    if (!tmp_command->name || !tmp_str || !tmp_command->executable) {
+    if (!tmp_command->name || !tmp_command->executable) {
         merror(AR_CMD_MISS);
         free(tmp_str);
         free(tmp_command);
@@ -396,7 +400,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     }
 
     /* Get the expect */
-    if (strlen(tmp_str) >= 4) {
+    if (tmp_str && strlen(tmp_str) >= 4) {
         if (OS_Regex("user", tmp_str)) {
             tmp_command->expect |= USERNAME;
         }

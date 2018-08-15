@@ -41,6 +41,9 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     FILE *fp;
 
+    unsigned char md5_digest[16];
+    unsigned char md[SHA_DIGEST_LENGTH];
+
     /* Clear the memory */
     memset(logfilesum, '\0', OS_FLSIZE + 1);
     memset(logfilesum_old, '\0', OS_FLSIZE + 1);
@@ -55,24 +58,25 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     MD5_Init(&md5_ctx);
     SHA1_Init(&sha1_ctx);
+    SHA256_Init(&sha256_ctx);
 
     /* Generate MD5 of the old file */
     if (OS_MD5_File(logfilesum_old, mf_sum_old, OS_TEXT) < 0) {
-        merror("No previous md5 checksum found: '%s'. "
+        minfo("No previous md5 checksum found: '%s'. "
                "Starting over.", logfilesum_old);
         strncpy(mf_sum_old, "none", 6);
     }
 
     /* Generate SHA-1 of the old file  */
     if (OS_SHA1_File(logfilesum_old, sf_sum_old, OS_TEXT) < 0) {
-        merror("No previous sha1 checksum found: '%s'. "
+        minfo("No previous sha1 checksum found: '%s'. "
                "Starting over.", logfilesum_old);
         strncpy(sf_sum_old, "none", 6);
     }
 
     /* Generate SHA-256 of the old file  */
     if (OS_SHA256_File(logfilesum_old, sf256_sum_old, OS_TEXT) < 0) {
-        merror("No previous sha256 checksum found: '%s'. "
+        minfo("No previous sha256 checksum found: '%s'. "
                "Starting over.", logfilesum_old);
         strncpy(sf256_sum_old, "none", 6);
     }
@@ -103,6 +107,20 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
                 merror(FOPEN_ERROR, logfile_r, errno, strerror(errno));
                 break;
             }
+        }
+
+        MD5_Final(md5_digest, &md5_ctx);
+        char *mpos = mf_sum;
+        for (n = 0; n < 16; n++) {
+            snprintf(mpos, 3, "%02x", md5_digest[n]);
+            mpos += 2;
+        }
+
+        SHA1_Final(&(md[0]), &sha1_ctx);
+        char *spos = sf_sum;
+        for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+            snprintf(spos, 3, "%02x", md[n]);
+            spos += 2;
         }
     } else {
         strncpy(mf_sum, "none", 6);

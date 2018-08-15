@@ -18,6 +18,8 @@ runInit()
         fi
     fi
 
+    update_only=$2
+
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
         if [ "X$1" = "Xserver" ] || [ "X$1" = "Xlocal" ]; then
@@ -28,7 +30,12 @@ runInit()
         cp -p ./src/systemd/wazuh-$type.service /etc/systemd/system/
         chown root:ossec /etc/systemd/system/"wazuh-"$type.service
         systemctl daemon-reload
-        systemctl enable "wazuh-"$type
+
+        if [ "X${update_only}" = "X" ]
+        then
+            systemctl enable "wazuh-"$type
+        fi
+
         return 0;
     fi
 
@@ -40,7 +47,12 @@ runInit()
             cp -pr ./src/init/ossec-hids-rh.init /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
             chown root:ossec /etc/rc.d/init.d/${service}
-            /sbin/chkconfig --add ${service} > /dev/null 2>&1
+
+            if [ "X${update_only}" = "X" ]
+            then
+                /sbin/chkconfig --add ${service} > /dev/null 2>&1
+            fi
+
             return 0;
         fi
     fi
@@ -51,7 +63,12 @@ runInit()
         cp -pr ./src/init/ossec-hids-gentoo.init /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
         chown root:ossec /etc/init.d/${service}
-        rc-update add ${service} default
+
+        if [ "X${update_only}" = "X" ]
+        then
+            rc-update add ${service} default
+        fi
+
         return 0;
     fi
 
@@ -64,7 +81,11 @@ runInit()
         chmod 755 /etc/init.d/${service}
         chown root:ossec /etc/init.d/${service}
 
-        /sbin/chkconfig --add ${service} > /dev/null 2>&1
+        if [ "X${update_only}" = "X" ]
+        then
+            /sbin/chkconfig --add ${service} > /dev/null 2>&1
+        fi
+
         return 0;
     fi
 
@@ -101,8 +122,13 @@ runInit()
         echo " - ${modifiedinit}"
         cp -pr ./src/init/ossec-hids-solaris.init /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
-        ln -s /etc/init.d/${service} /etc/rc2.d/S97${service}
-        ln -s /etc/init.d/${service} /etc/rc3.d/S97${service}
+
+        if [ "X${update_only}" = "X" ]
+        then
+            ln -s /etc/init.d/${service} /etc/rc2.d/S97${service}
+            ln -s /etc/init.d/${service} /etc/rc3.d/S97${service}
+        fi
+
         return 0;
     fi
 
@@ -111,8 +137,13 @@ runInit()
         echo " - ${modifiedinit}"
         cp -pr ./src/init/ossec-hids-hpux.init /sbin/init.d/${service}
         chmod 755 /sbin/init.d/${service}
-        ln -s /sbin/init.d/${service} /sbin/rc2.d/S97${service}
-        ln -s /sbin/init.d/${service} /sbin/rc3.d/S97${service}
+
+        if [ "X${update_only}" = "X" ]
+        then
+            ln -s /sbin/init.d/${service} /sbin/rc2.d/S97${service}
+            ln -s /sbin/init.d/${service} /sbin/rc3.d/S97${service}
+        fi
+
         return 0;
     fi
 
@@ -121,8 +152,13 @@ runInit()
         echo " - ${modifiedinit}"
         cp -pr ./src/init/ossec-hids-aix.init /etc/rc.d/init.d/${service}
         chmod 755 /etc/rc.d/init.d/${service}
-        ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc2.d/S97${service}
-        ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc3.d/S97${service}
+
+        if [ "X${update_only}" = "X" ]
+        then
+            ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc2.d/S97${service}
+            ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc3.d/S97${service}
+        fi
+
         return 0;
     fi
 
@@ -162,7 +198,12 @@ runInit()
             chmod +x /etc/init.d/${service}
             chmod go-w /etc/init.d/${service}
             chown root:ossec /etc/init.d/${service}
-            update-rc.d ${service} defaults > /dev/null 2>&1
+
+            if [ "X${update_only}" = "X" ]
+            then
+                update-rc.d ${service} defaults > /dev/null 2>&1
+            fi
+
             return 0;
         else
             echo " - ${noboot}"

@@ -14,7 +14,7 @@
 #define MAX_HEADER 64
 
 /* Compile message from cache and send through queue */
-static void audit_send_msg(char **cache, int top, const char *file, int drop_it, logsocket **tsockets, const char * pattern) {
+static void audit_send_msg(char **cache, int top, const char *file, int drop_it, logtarget * targets) {
     int i;
     size_t n = 0;
     size_t z;
@@ -36,7 +36,7 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
 
     if (!drop_it) {
         message[n] = '\0';
-        w_msg_hash_queues_push(message,(char *)file,(char *)pattern,strlen(message)+1,tsockets,LOCALFILE_MQ);
+        w_msg_hash_queues_push(message, (char *)file, strlen(message) + 1, targets, LOCALFILE_MQ);
     }
 }
 
@@ -91,7 +91,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         if (strncmp(id, header, z)) {
             // Current message belongs to another event: send cached messages
             if (icache > 0)
-                audit_send_msg(cache, icache, lf->file, drop_it, lf->target_socket, lf->outformat);
+                audit_send_msg(cache, icache, lf->file, drop_it, lf->log_target);
 
             // Store current event
             *cache = strdup(buffer);
@@ -107,7 +107,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     }
 
     if (icache > 0)
-        audit_send_msg(cache, icache, lf->file, drop_it, lf->target_socket, lf->outformat);
+        audit_send_msg(cache, icache, lf->file, drop_it, lf->log_target);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return NULL;

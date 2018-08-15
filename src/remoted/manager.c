@@ -220,6 +220,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     char merged[PATH_MAX + 1];
     char file[PATH_MAX + 1];
     unsigned int i;
+    remote_files_group *r_group = NULL;
 
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
@@ -232,14 +233,14 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
 
-    remote_files_group *r_group = w_parser_get_group(group);
-    if(r_group){
+    if (!logr.nocmerged && (r_group = w_parser_get_group(group), r_group)) {
         if(r_group->current_polling_time <= 0){
             r_group->current_polling_time = r_group->poll;
 
             char *file_url;
             char *file_name;
             char destination_path[PATH_MAX + 1];
+            char download_path[PATH_MAX + 1];
             int downloaded;
 
             // Check if we have merged.mg file in this group
@@ -247,7 +248,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
                 file_url = r_group->files[r_group->merge_file_index].url;
                 file_name = SHAREDCFG_FILENAME;
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
-                mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
+                mdebug1("Downloading shared file '%s' from '%s'", merged, file_url);
                 downloaded = wurl_request(file_url,destination_path);
                 w_download_status(downloaded,file_url,destination_path);
                 r_group->merged_is_downloaded = !downloaded;
@@ -280,9 +281,13 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
                         file_url = r_group->files[i].url;
                         file_name = r_group->files[i].name;
                         snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                        snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                         mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                        downloaded = wurl_request(file_url,destination_path);
-                        w_download_status(downloaded,file_url,destination_path);
+                        downloaded = wurl_request(file_url,download_path);
+
+                        if (!w_download_status(downloaded, file_url, destination_path)) {
+                            OS_MoveFile(download_path, destination_path);
+                        }
                     }
                 }
             }
@@ -314,7 +319,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
         if (!logr.nocmerged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
             // First call, truncate merged file
-            MergeAppendFile(merged_tmp, NULL, group);
+            MergeAppendFile(merged_tmp, NULL, group, -1);
         }
 
         if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
@@ -325,7 +330,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
 
             if (!logr.nocmerged) {
-                MergeAppendFile(merged_tmp, DEFAULTAR, NULL);
+                MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
             }
 
             f_size++;
@@ -354,7 +359,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
             os_strdup(files[i], f_sum[f_size]->name);
 
             if (!logr.nocmerged) {
-                MergeAppendFile(merged_tmp, file, NULL);
+                MergeAppendFile(merged_tmp, file, NULL, -1);
             }
 
             f_size++;
@@ -367,7 +372,10 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
         }
 
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-            merror("Accessing file '%s'", merged);
+            if (!logr.nocmerged) {
+                merror("Accessing file '%s'", merged);
+            }
+
             f_sum[0]->sum[0] = '\0';
         }
 
@@ -568,6 +576,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     file_sum **f_sum = NULL;
     os_md5 tmp_sum;
     char *end;
+    agent_group *agt_group;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -585,9 +594,14 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
     for (msg++; (*msg == '\"' || *msg == '!') && (end = strchr(msg, '\n')); msg = end + 1);
 
+
     // Get agent group
 
-    if (get_agent_group(agent_id, group, KEYSIZE) < 0) {
+    if (agt_group = w_parser_get_agent(agent_id), agt_group) {
+        strncpy(group, agt_group->group, KEYSIZE);
+        group[KEYSIZE - 1] = '\0';
+        set_agent_group(agent_id, group);
+    } else if (get_agent_group(agent_id, group, KEYSIZE) < 0) {
         group[0] = '\0';
     }
 
@@ -653,16 +667,8 @@ static void read_controlmsg(const char *agent_id, char *msg)
                     return;
                 }
             }
-        }
 
-        // Check if the group is set in the yaml file
-        agent_group *agt_group = w_parser_get_agent(agent_id);
-
-        // Check if the group we want to set is "default", apply yaml configuration
-        if(agt_group && !strncmp(group,"default",7)){
-            if(set_agent_group(agent_id, agt_group->group) == -1){
-                merror("Could not set group '%s' specified in the yaml file for agent '%s'",agt_group->group,agent_id);
-            }
+            set_agent_group(agent_id, group);
         }
 
         /* New agents only have merged.mg */
@@ -791,6 +797,7 @@ void *update_shared_files(__attribute__((unused)) void *none) {
             // Check if the yaml file has changed and reload it
             if(w_yaml_file_has_changed()){
                 w_yaml_file_update_structs();
+                w_yaml_create_groups();
             }
 
             c_files();
@@ -809,6 +816,7 @@ void manager_init()
     _stime = time(0);
     mdebug1("Running manager_init");
     c_files();
+    w_yaml_create_groups();
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
 }

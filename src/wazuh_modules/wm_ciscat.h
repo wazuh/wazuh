@@ -22,6 +22,8 @@
 #define WM_CISCAT_DEFAULT_DIR_WIN "wodles\\ciscat"
 #define WM_CISCAT_REPORTS DEFAULTDIR "/tmp"
 
+#define WM_CISCAT_PROFILE       "<Profile id="
+#define WM_CISCAT_PROFILE2      "<xccdf:Profile id="
 #define WM_CISCAT_GROUP_START   "<Group id="
 #define WM_CISCAT_RESULT_START  "<TestResult"
 #define WM_CISCAT_RULE_START    "<Rule id="
@@ -67,6 +69,9 @@ typedef struct wm_ciscat_state {
 
 typedef struct wm_ciscat {
     unsigned int interval;          // Default time interval between cycles
+    int scan_day;                   // Day of month to run the CIS-CAT scan
+    int scan_wday;                  // Day of the week to run the CIS-CAT scan
+    char *scan_time;                // Time of the day to run the CIS-CAT scan
     unsigned int timeout;           // Default execution time limit (seconds)
     char *java_path;                // Path to Java Runtime Environment
     char *ciscat_path;              // Path to CIS-CAT scanner tool
@@ -77,6 +82,7 @@ typedef struct wm_ciscat {
 
 typedef struct wm_scan_data {
     char *benchmark;                // Benchmark evaluated
+    char *profile;                  // Profile evaluated
     char *timestamp;                // Time of scan
     char *hostname;                 // Target of the evaluation
     unsigned int pass;              // Number of checks passed

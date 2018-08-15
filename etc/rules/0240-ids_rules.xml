@@ -6,7 +6,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<var name="IDS_FREQ">8</var>
+<var name="IDS_FREQ">10</var>
 
 <group name="ids,">
   <rule id="20100" level="8">
@@ -63,7 +63,7 @@
     <same_id />
     <check_if_ignored>id</check_if_ignored>
     <description>Multiple IDS alerts for same id.</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="20151" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">
@@ -71,7 +71,7 @@
     <same_source_ip />
     <check_if_ignored>srcip, id</check_if_ignored>
     <description>Multiple IDS events from same source ip.</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
 
@@ -79,20 +79,22 @@
      - the same thing all the time. We will skip those events
      - since they became just noise.
      -->
-  <rule id="20161" level="11" frequency="3" timeframe="3800">
+  <rule id="20161" level="11" frequency="5" timeframe="3800">
     <if_matched_sid>20151</if_matched_sid>
     <same_source_ip />
     <same_id />
     <ignore>srcip, id</ignore>
     <description>Multiple IDS events from same source ip </description>
     <description>(ignoring now this srcip and id).</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="20162" level="11" frequency="3" timeframe="3800">
+  <rule id="20162" level="11" frequency="5" timeframe="3800">
     <if_matched_sid>20152</if_matched_sid>
     <same_id />
     <ignore>id</ignore>
     <description>Multiple IDS alerts for same id </description>
     <description>(ignoring now this id).</description>
+    <group>gdpr_IV_35.7.d,</group>
   </rule>
 </group>

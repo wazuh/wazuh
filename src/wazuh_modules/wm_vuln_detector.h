@@ -17,6 +17,7 @@
 #define VU_WM_NAME "vulnerability-detector"
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
 #define WM_VULNDETECTOR_DEFAULT_INTERVAL 60 // 1M
+#define WM_VULNDETECTOR_RETRY_UPDATE  300 // 5 minutes
 #define VU_DEF_IGNORE_TIME 21600 // 6H
 #define CVE_TEMP_FILE TMP_PATH "/cve"
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
@@ -45,7 +46,7 @@
 #define VU_MAX_WAZUH_DB_ATTEMPS 5
 #define VU_MAX_TIMESTAMP_ATTEMPS 4
 #define VU_AGENT_REQUEST_LIMIT   0
-#define VU_ALERT_HEADER "[%s] (%s) %s"
+#define VU_ALERT_HEADER "[%03d] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
 #define VU_MODERATE   "Moderate"
 #define VU_MEDIUM     "Medium"
@@ -131,7 +132,8 @@ typedef struct agent_software {
     char *agent_id;
     char *agent_name;
     char *agent_ip;
-    const char *OS;
+    char *agent_OS;
+    char *arch;
     distribution dist;
     char info;
     struct agent_software *next;
@@ -176,6 +178,7 @@ typedef struct update_node {
     char *path;
     char **allowed_OS_list;
     char **allowed_ver_list;
+    unsigned int attempted:1;
 } update_node;
 
 typedef struct wm_vulnerability_detector_t {
@@ -213,6 +216,8 @@ typedef struct info_state {
     char *id;
     char *operation;
     char *operation_value;
+    char *arch_operation;
+    char *arch_value;
     struct info_state *prev;
 } info_state;
 

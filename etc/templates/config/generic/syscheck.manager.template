@@ -10,8 +10,8 @@
     <!-- Generate alert when new file detected -->
     <alert_new_files>yes</alert_new_files>
 
-    <!-- Don't ignore files that change more than 3 times -->
-    <auto_ignore>no</auto_ignore>
+    <!-- Don't ignore files that change more than 'frequency' times -->
+    <auto_ignore frequency="10" timeframe="3600">no</auto_ignore>
 
     <!-- Directories to check  (perform all possible verifications) -->
     <directories check_all="yes">/etc,/usr/bin,/usr/sbin</directories>
@@ -30,9 +30,17 @@
     <ignore>/etc/cups/certs</ignore>
     <ignore>/etc/dumpdates</ignore>
     <ignore>/etc/svc/volatile</ignore>
+    <ignore>/sys/kernel/security</ignore>
+    <ignore>/sys/kernel/debug</ignore>
 
     <!-- Check the file, but never compute the diff -->
     <nodiff>/etc/ssl/private.key</nodiff>
 
     <skip_nfs>yes</skip_nfs>
+
+    <!-- Remove not monitored files -->
+    <remove_old_diff>yes</remove_old_diff>
+
+    <!-- Allow the system to restart Auditd after installing the plugin -->
+    <restart_audit>yes</restart_audit>
   </syscheck>

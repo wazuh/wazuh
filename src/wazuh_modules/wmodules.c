@@ -77,12 +77,13 @@ int wm_check() {
     wmodule *i = wmodules;
     wmodule *j;
     wmodule *next;
-    wmodule *prev;
+    wmodule *prev = wmodules;
 
     // Discard empty configurations
 
     while (i) {
         if (i->context) {
+            prev = i;
             i = i->next;
         } else {
             next = i->next;
@@ -90,6 +91,8 @@ int wm_check() {
 
             if (i == wmodules) {
                 wmodules = next;
+            } else {
+                prev->next = next;
             }
 
             i = next;
@@ -310,4 +313,137 @@ int wm_relative_path(const char * path) {
 #endif
 
     return 0;
+}
+
+// Get time in seconds to the specified hour in hh:mm
+int get_time_to_hour(const char * hour) {
+
+    time_t curr_time;
+    time_t target_time;
+    struct tm * time_now;
+    double diff;
+    int i;
+
+    char ** parts = OS_StrBreak(':', hour, 2);
+
+    // Get current time
+    curr_time = time(NULL);
+    time_now = localtime(&curr_time);
+
+    struct tm t_target = *time_now;
+
+    // Look for the particular hour
+    t_target.tm_hour = atoi(parts[0]);
+    t_target.tm_min = atoi(parts[1]);
+    t_target.tm_sec = 0;
+
+    // Calculate difference between hours
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+
+    if (diff < 0) {
+        diff += (24*60*60);
+    }
+
+    for (i=0; parts[i]; i++)
+        free(parts[i]);
+
+    free(parts);
+
+    return (int)diff;
+}
+
+// Get time to reach a particular day of the week and hour
+int get_time_to_day(int wday, const char * hour) {
+
+    time_t curr_time;
+    time_t target_time;
+    struct tm * time_now;
+    double diff;
+    int i, ret;
+
+    // Get exact hour and minute to go to
+    char ** parts = OS_StrBreak(':', hour, 2);
+
+    // Get current time
+    curr_time = time(NULL);
+    time_now = localtime(&curr_time);
+
+    struct tm t_target = *time_now;
+
+    // Look for the particular hour
+    t_target.tm_hour = atoi(parts[0]);
+    t_target.tm_min = atoi(parts[1]);
+    t_target.tm_sec = 0;
+
+    // Calculate difference between hours
+    target_time = mktime(&t_target);
+    diff = difftime(target_time, curr_time);
+
+    if (wday == time_now->tm_wday) {    // We are in the desired day
+
+        if (diff < 0) {
+            diff += (7*24*60*60);   // Seconds of a week
+        }
+
+    } else if (wday > time_now->tm_wday) {  // We are looking for a future day
+
+        while (wday > time_now->tm_wday) {
+            diff += (24*60*60);
+            time_now->tm_wday++;
+        }
+
+    } else if (wday < time_now->tm_wday) { // We have past the desired day
+
+        ret = 7 - (time_now->tm_wday - wday);
+        for (i = 0; i < ret; i++) {
+            diff += (24*60*60);
+        }
+    }
+
+    free(parts);
+
+    return (int)diff;
+
+}
+
+// Function to look for the correct day of the month to run a wodle
+int check_day_to_scan(int day, const char *hour) {
+
+    time_t curr_time;
+    time_t target_time;
+    struct tm * time_now;
+    double diff;
+    int i;
+
+    // Get current time
+    curr_time = time(NULL);
+    time_now = localtime(&curr_time);
+
+    if (day == time_now->tm_mday) {    // Day of the scan
+
+        struct tm t_target = *time_now;
+
+        char ** parts = OS_StrBreak(':', hour, 2);
+
+        // Look for the particular hour
+        t_target.tm_hour = atoi(parts[0]);
+        t_target.tm_min = atoi(parts[1]);
+        t_target.tm_sec = 0;
+
+        // Calculate difference between hours
+        target_time = mktime(&t_target);
+        diff = difftime(target_time, curr_time);
+
+        for (i=0; parts[i]; i++)
+            free(parts[i]);
+
+        free(parts);
+
+        if (diff >= 0) {
+            return 0;
+        }
+    }
+
+    return -1;
 }

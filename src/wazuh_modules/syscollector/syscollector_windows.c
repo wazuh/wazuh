@@ -1058,8 +1058,11 @@ void sys_hw_windows(const char* LOCATION){
             cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
         if (sys_info->ram_free)
             cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
+        if (sys_info->ram_usage)
+            cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
         free(sys_info->cpu_name);
+        free(sys_info);
     }
 
     /* Send interface data in JSON format */
@@ -1282,192 +1285,77 @@ void sys_network_windows(const char* LOCATION){
         mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll: %s (%lu)", messageBuffer, error);
         LocalFree(messageBuffer);
     }
-
 }
 
 hw_info *get_system_windows(){
 
     hw_info *info;
-    char *command;
-    char *end;
-    FILE *output;
-    size_t buf_length = 1024;
-    char read_buff[buf_length];
-    int status;
+    DWORD retVal;
+    HKEY RegistryKey;
+    char subkey[KEY_LENGTH];
+    TCHAR name[MAX_VALUE_NAME];
+    DWORD frequency = 0;
+    DWORD dwCount = MAX_VALUE_NAME;
 
     os_calloc(1,sizeof(hw_info),info);
 
-    memset(read_buff, 0, buf_length);
-    command = "wmic cpu get Name";
-    output = popen(command, "r");
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+    // Get CPU name and frequency
+
+    snprintf(subkey, KEY_LENGTH - 1, "%s", "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0");
+
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
         info->cpu_name = strdup("unknown");
-    }else{
-        if (fgets(read_buff, buf_length, output)) {
-            if (strncmp(read_buff ,"Name",4) == 0) {
-                if (!fgets(read_buff, buf_length, output)){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU Name.");
-                    info->cpu_name = strdup("unknown");
-                }else if(strstr(read_buff, "Error")){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU Name. Incompatible command.");
-                    info->cpu_name = strdup("unknown");
-                }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
-                    }
-                    info->cpu_name = strdup(read_buff);
-                }else
-                    info->cpu_name = strdup("unknown");
-            }
-        } else {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU Name (bad header).");
+        mterror(WM_SYS_LOGTAG, SK_REG_OPEN, subkey);
+    } else {
+        retVal = RegQueryValueEx(RegistryKey, TEXT("ProcessorNameString"), NULL, NULL, (LPBYTE)&name, &dwCount);
+        if (retVal != ERROR_SUCCESS) {
             info->cpu_name = strdup("unknown");
-        }
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting CPU name.", status);
-        }
-    }
-
-    memset(read_buff, 0, buf_length);
-    char *cores;
-    command = "wmic cpu get NumberOfCores";
-    output = popen(command, "r");
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-    }else{
-        if (fgets(read_buff, buf_length, output)) {
-            if (strncmp(read_buff, "NumberOfCores",13) == 0) {
-                if (!fgets(read_buff, buf_length, output)){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get number of cores.");
-                }else if(strstr(read_buff, "Error")){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get number of cores. Incompatible command.");
-                }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
-                    }
-                    cores = strdup(read_buff);
-                    info->cpu_cores = atoi(cores);
-                }
-            }
+            mterror(WM_SYS_LOGTAG, "Error reading 'CPU name' from Windows registry. (Error %u)",(unsigned int)retVal);
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to get number of cores (bad header).");
+            info->cpu_name = strdup(name);
         }
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting number of cores.", status);
-        }
-    }
-
-    memset(read_buff, 0, buf_length);
-    char *frec;
-    command = "wmic cpu get CurrentClockSpeed";
-    output = popen(command, "r");
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-    }else{
-        if (fgets(read_buff, buf_length, output)) {
-            if (strncmp(read_buff, "CurrentClockSpeed",17) == 0) {
-                if (!fgets(read_buff, buf_length, output)){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU clock speed.");
-                }else if(strstr(read_buff, "Error")){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU clock speed. Incompatible command.");
-                }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
-                    }
-                    frec = strdup(read_buff);
-                    info->cpu_MHz = atof(frec);
-                }
-            }
+        retVal = RegQueryValueEx(RegistryKey, TEXT("~MHz"), NULL, NULL, (LPBYTE)&frequency, &dwCount);
+        if (retVal != ERROR_SUCCESS) {
+            mterror(WM_SYS_LOGTAG, "Error reading 'CPU frequency' from Windows registry. (Error %u)",(unsigned int)retVal);
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to get CPU clock speed (bad header).");
+            info->cpu_MHz = (unsigned int)frequency;
         }
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting clock speed.", status);
-        }
+        RegCloseKey(RegistryKey);
     }
 
-    memset(read_buff, 0, buf_length);
-    char *total;
-    command = "wmic computersystem get TotalPhysicalMemory";
-    output = popen(command, "r");
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-    }else{
-        if (fgets(read_buff, buf_length, output)) {
-            if (strncmp(read_buff, "TotalPhysicalMemory", 19) == 0) {
-                if (!fgets(read_buff, buf_length, output)){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get physical memory information.");
-                }else if(strstr(read_buff, "Error")){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get physical memory information. Incompatible command.");
-                }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
-                    }
-                    total = strdup(read_buff);
-                    info->ram_total = (atof(total)) / 1024;
-                }
-            }
-        } else {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to get physical memory information (bad header).");
-        }
-    }
+    // Get number of cores
 
-    if (status = pclose(output), status) {
-        mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting physical memory.", status);
-    }
+    SYSTEM_INFO siSysInfo;
 
-    memset(read_buff, 0, buf_length);
-    char *mem_free;
-    command = "wmic os get FreePhysicalMemory";
-    output = popen(command, "r");
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-    }else{
-        if (fgets(read_buff, buf_length, output)) {
-            if (strncmp(read_buff, "FreePhysicalMemory", 18) == 0) {
-                if (!fgets(read_buff, buf_length, output)){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get free memory of the system.");
-                }else if(strstr(read_buff, "Error")){
-                    mtdebug1(WM_SYS_LOGTAG, "Unable to get free memory of the system. Incompatible command.");
-                }else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
-                    }
-                    mem_free = strdup(read_buff);
-                    info->ram_free = atoi(mem_free);
-                }
-            }
-        } else {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to get free memory of the system (bad header).");
+    GetSystemInfo(&siSysInfo);
+    info->cpu_cores = (int)siSysInfo.dwNumberOfProcessors;
+
+    // RAM memory
+
+    MEMORYSTATUSEX statex;
+    statex.dwLength = sizeof (statex);
+
+    if (!GlobalMemoryStatusEx(&statex)) {
+        DWORD error = GetLastError();
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
+
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
+
+        if (end = strchr(messageBuffer, '\r'), end) {
+            *end = '\0';
         }
 
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting free memory.", status);
-        }
+        mterror(WM_SYS_LOGTAG, "Unable to call GlobalMemoryStatusEx(): %s (%lu)", messageBuffer, error);
+        LocalFree(messageBuffer);
+    } else {
+        info->ram_total = statex.ullTotalPhys/1024;
+        info->ram_free = statex.ullAvailPhys/1024;
+        info->ram_usage = statex.dwMemoryLoad;
     }
 
     return info;
 }
-
 
 void sys_proc_windows(const char* LOCATION) {
     char *command;
@@ -1517,7 +1405,7 @@ void sys_proc_windows(const char* LOCATION) {
     if (!output){
         mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
     }else{
-        char *string;
+
         while(fgets(read_buff, OS_MAXSTR, output) && strncmp(read_buff, "Node,ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize", 132) != 0);
 
         while(fgets(read_buff, OS_MAXSTR, output)){
@@ -1549,12 +1437,13 @@ void sys_proc_windows(const char* LOCATION) {
         }
 
         cJSON_ArrayForEach(item, proc_array) {
+            char *string;
             string = cJSON_PrintUnformatted(item);
             mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
             wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+            free(string);
         }
 
-        free(string);
         cJSON_Delete(proc_array);
 
         if (status = pclose(output), status) {

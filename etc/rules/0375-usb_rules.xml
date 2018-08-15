@@ -27,6 +27,7 @@
         <if_sid>81100</if_sid>
         <match>USB disconnect</match>
         <description>USB device disconnected</description>
+        <group></group>
     </rule>
 
 </group>
