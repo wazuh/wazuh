@@ -406,12 +406,16 @@ void LogCollectorStart()
                     if (handle_file(i, j, 1, 1) ) {
                         current->ign++;
                     }
-                }
+                } else {
 #ifdef WIN32
-                else {
                     CloseHandle(h1);
-                }
+
+                    /* Update file size */
+                    current->size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
+#else
+                    current->size = tmp_stat.st_size;
 #endif
+                }
             }
 
 
@@ -455,13 +459,6 @@ void LogCollectorStart()
                     continue;
                 }
             }
-
-            /* Update file size */
-#ifdef WIN32
-            current->size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
-#else
-            current->size = tmp_stat.st_size;
-#endif
         }
 
 #ifndef WIN32
