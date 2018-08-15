@@ -1,5 +1,7 @@
 [Unit]
 Description=Wazuh manager
+Wants=network-online.target
+After=network.target network-online.target
 
 [Service]
 Type=forking
