@@ -99,8 +99,6 @@ int main(int argc, char **argv)
         }
     }
 
-    mdebug1(STARTED_MSG);
-
     /* Init message queue */
     w_msg_hash_queues_init();
 
@@ -153,6 +151,8 @@ int main(int argc, char **argv)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
+
+    mdebug1(STARTED_MSG);
 
     /* Wait 6 seconds for the analysisd/agentd to settle */
     mdebug1("Waiting main daemons to settle.");

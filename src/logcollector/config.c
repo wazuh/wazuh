@@ -55,11 +55,5 @@ int LogCollectorConfig(const char *cfgfile)
     globs = log_config.globs;
     logsk = log_config.socket_list;
 
-    // List readed sockets
-    unsigned int sk;
-    for (sk=0; logsk && logsk[sk].name; sk++) {
-        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
-    }
-
     return (1);
 }

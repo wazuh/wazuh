@@ -871,6 +871,12 @@ static void set_sockets() {
     logreader *current;
     char *file;
 
+    // List readed sockets
+    unsigned int sk;
+    for (sk=0; logsk && logsk[sk].name; sk++) {
+        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
+    }
+
     for (i = 0, t = -1;; i++) {
         if (t == -1 && logff && logff[i].file) {
             current = &logff[i];
