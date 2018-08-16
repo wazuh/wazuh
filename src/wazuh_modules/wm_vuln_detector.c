@@ -2340,7 +2340,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
 
     // Avoid checking the same packages again
     size = snprintf(buffer, OS_MAXSTR, vu_queries[VU_SYSC_UPDATE_SCAN], agent->agent_id, scan_id);
-    if (send(sock, buffer, size + 1, 0) < size) {
+    if (send(sock, buffer, size + 1, 0) < size || (size = recv(sock, buffer, OS_MAXSTR, 0)) < 1) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
         retval = OS_INVALID;
         goto end;
