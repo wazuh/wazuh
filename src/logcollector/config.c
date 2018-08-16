@@ -33,6 +33,7 @@ int LogCollectorConfig(const char *cfgfile)
     maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
     maximum_files = getDefine_Int("logcollector", "max_files", 1, 1000000);
     sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
+    sample_log_length = getDefine_Int("logcollector", "sample_log_length", 1, 4096);
 
     if (maximum_lines > 0 && maximum_lines < 100) {
         merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");

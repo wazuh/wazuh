@@ -14,7 +14,7 @@
 #define ARGV0 "ossec-logcollector"
 #endif
 
-#define N_MIN_INPUT_THREADS 4
+#define N_MIN_INPUT_THREADS 1
 #define N_OUPUT_THREADS 1
 #define OUTPUT_MIN_QUEUE_SIZE 128
 
