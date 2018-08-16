@@ -220,10 +220,8 @@ void LogCollectorStart()
     for (r=0; logff[r].logformat; r++) {
         if (!logff[r].file && !logff[r].ffile) {
             // It is a command
-            current_files--;
         }
     }
-
 
     /* Create the output threads */
     w_create_output_threads();
@@ -834,7 +832,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
     int r, k;
     logreader *dup;
 
-    if (current->file) {
+    if (current->file && !current->command) {
         for (r = 0, k = -1;; r++) {
             if (f_control = update_current(&dup, &r, &k), f_control) {
                 if (f_control == NEXT_IT) {
