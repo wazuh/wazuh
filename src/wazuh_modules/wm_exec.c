@@ -41,7 +41,7 @@ static volatile HANDLE wm_children[WM_POOL_SIZE] = { NULL };   // Child process 
 
 // Execute command with timeout of secs
 
-int wm_exec(char *command, char **output, int *status, int secs) {
+int wm_popen(char *command, char **output, int *status, int secs) {
     HANDLE hThread = NULL;
     DWORD dwCreationFlags;
     STARTUPINFO sinfo = { 0 };
@@ -239,7 +239,7 @@ static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child
 
 // Execute command with timeout of secs
 
-int wm_exec(char *command, char **output, int *exitcode, int secs)
+int wm_popen(char *command, char **output, int *exitcode, int secs)
 {
     char **argv;
     pid_t pid;
@@ -253,7 +253,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
     // Create pipe for child's stdout
 
     if (output && pipe(pipe_fd) < 0) {
-        merror("At wm_exec(): pipe(): %s", strerror(errno));
+        merror("At wm_popen(): pipe(): %s", strerror(errno));
         return -1;
     }
 
@@ -378,7 +378,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                                 exit(EXIT_SUCCESS);
                             
                             default:
-                                merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                merror("At wm_popen(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
                                 exit(EXIT_FAILURE);
                         }
 

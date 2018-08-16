@@ -93,7 +93,7 @@ void * wm_aws_main(wm_aws_t * config) {
         // Get time and execute
         time_start = time(NULL);
 
-        switch (wm_exec(command, &output, &status, 0)) {
+        switch (wm_popen(command, &output, &status, 0)) {
         case 0:
             if (status > 0) {
                 mtwarn(WM_AWS_LOGTAG, "Returned exit code %d.", status);

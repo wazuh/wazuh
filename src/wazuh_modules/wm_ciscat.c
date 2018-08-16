@@ -458,7 +458,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
     mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
-    switch (wm_exec(command, &output, &status, eval->timeout)) {
+    switch (wm_popen(command, &output, &status, eval->timeout)) {
         case 0:
 
             mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
@@ -596,7 +596,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
             mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
-            switch (wm_exec(command, &output, &status, eval->timeout)) {
+            switch (wm_popen(command, &output, &status, eval->timeout)) {
                 case 0:
                     if (status > 0) {
                         ciscat->flags.error = 1;

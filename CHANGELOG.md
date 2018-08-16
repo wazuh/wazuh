@@ -103,6 +103,7 @@ All notable changes to this project will be documented in this file.
   - Fix Windows agent crash if FIM fails to extract the file owner.
   - Prevent FIM real-time mode on Windows from stopping if the internal buffer gets overflowed.
 - Prevent large logs from flooding the log file by Logcollector. ([#1067](https://github.com/wazuh/wazuh/pull/1067))
+- Fix allowing more than one wodle command and compute command timeout when ignore_output is enabled. ([#1102](https://github.com/wazuh/wazuh/pull/1102))
 
 ### Removed
 

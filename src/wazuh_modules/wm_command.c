@@ -49,7 +49,7 @@ void * wm_command_main(wm_command_t * command) {
 
     extag_len = strlen(WM_COMMAND_CONTEXT.name) + strlen(command->tag) + 2;
     os_malloc(extag_len * sizeof(char), extag);
-    snprintf(extag, extag_len, "%s_%s", WM_COMMAND_CONTEXT.name, command->tag);    
+    snprintf(extag, extag_len, "%s_%s", WM_COMMAND_CONTEXT.name, command->tag);
 
     if (wm_state_io(extag, WM_IO_READ, &command->state, sizeof(command->state)) < 0) {
         memset(&command->state, 0, sizeof(command->state));
@@ -92,7 +92,7 @@ void * wm_command_main(wm_command_t * command) {
         // Get time and execute
         time_start = time(NULL);
 
-        switch (wm_exec(command->command, command->ignore_output ? NULL : &output, &status, command->timeout)) {
+        switch (wm_popen(command->command, command->ignore_output ? NULL : &output, &status, command->timeout)) {
         case 0:
             if (status > 0) {
                 mtwarn(WM_COMMAND_LOGTAG, "Command '%s' returned exit code %d.", command->tag, status);
