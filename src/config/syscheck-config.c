@@ -512,7 +512,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     goto out_free;
                 }
                 recursion_limit = (unsigned int) atoi(*values);
-                if (recursion_limit < 0 || recursion_limit > MAX_DEPTH_ALLOWED) {
+                if (recursion_limit < 0) {
+                    mwarn("Invalid recursion level value: %d. Setting default (%d).", recursion_limit, syscheck->max_depth);
+                    recursion_limit = syscheck->max_depth;
+                } else if (recursion_limit > MAX_DEPTH_ALLOWED) {
+                    mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
                     recursion_limit = MAX_DEPTH_ALLOWED;
                 }
             } else {
