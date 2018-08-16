@@ -268,10 +268,18 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         return -1;
 
     case 0:
-
+        
         // Child
 
         argv = wm_strtok(command);
+        
+        int fd = open("/dev/null", O_RDWR, 0);
+
+        if (fd < 0) {
+            merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
+        }
+
+        dup2(fd, STDIN_FILENO);
 
         if (output) {
             close(pipe_fd[0]);
@@ -279,14 +287,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             dup2(pipe_fd[1], STDERR_FILENO);
             close(pipe_fd[1]);
         } else {
-            int fd = open("/dev/null", O_RDWR, 0);
-
-            if (fd < 0) {
-                merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
-            }
+           
             dup2(fd, STDOUT_FILENO);
             dup2(fd, STDERR_FILENO);
-            dup2(fd, STDIN_FILENO);
         }
 
         setsid();
@@ -294,7 +297,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         if (execve(argv[0], argv, environ) < 0)
             exit(EXECVE_ERROR);
-
+        
         break;
 
     default:
@@ -303,63 +306,89 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         wm_append_sid(pid);
         close(pipe_fd[1]);
-        tinfo.pipe = pipe_fd[0];
 
-        // Launch thread
+        if (output) {
+            tinfo.pipe = pipe_fd[0];
 
-        pthread_mutex_lock(&tinfo.mutex);
+            // Launch thread
 
-        if (pthread_create(&thread, NULL, reader, &tinfo)) {
-            merror("Couldn't create reading thread.");
+            pthread_mutex_lock(&tinfo.mutex);
+
+            if (pthread_create(&thread, NULL, reader, &tinfo)) {
+                merror("Couldn't create reading thread.");
+                pthread_mutex_unlock(&tinfo.mutex);
+                return -1;
+            }
+
+            gettime(&timeout);
+            timeout.tv_sec += secs;
+
+            // Wait for reading termination
+            
+            switch (secs ? pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout) : pthread_cond_wait(&tinfo.finished, &tinfo.mutex)) {
+                case 0:
+                    retval = 0;
+                    break;
+
+                case ETIMEDOUT:
+                    retval = WM_ERROR_TIMEOUT;
+                    kill(-pid, SIGTERM);
+                    pthread_cancel(thread);
+                    break;
+
+                default:
+                    kill(-pid, SIGTERM);
+                    pthread_cancel(thread);
+            }
+            // Wait for thread
+
             pthread_mutex_unlock(&tinfo.mutex);
-            return -1;
-        }
+            pthread_join(thread, NULL);
 
-        gettime(&timeout);
-        timeout.tv_sec += secs;
+            // Cleanup
 
-        // Wait for reading termination
+            pthread_mutex_destroy(&tinfo.mutex);
+            pthread_cond_destroy(&tinfo.finished);
 
-       switch (secs ? pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout) : pthread_cond_wait(&tinfo.finished, &tinfo.mutex)) {
-        case 0:
-            retval = 0;
-            break;
+            // Wait for child process
 
-        case ETIMEDOUT:
-            retval = WM_ERROR_TIMEOUT;
-            kill(-pid, SIGTERM);
-            pthread_cancel(thread);
-            break;
-
-        default:
-            kill(-pid, SIGTERM);
-            pthread_cancel(thread);
-        }
-
-        // Wait for thread
-
-        pthread_mutex_unlock(&tinfo.mutex);
-        pthread_join(thread, NULL);
-
-        // Cleanup
-
-        pthread_mutex_destroy(&tinfo.mutex);
-        pthread_cond_destroy(&tinfo.finished);
-
-        // Wait for child process
-
-        switch (waitpid(pid, &status, 0)) {
-        case -1:
-            merror("waitpid()");
-            retval = -1;
-            break;
-
-        default:
-            if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+            switch (waitpid(pid, &status, 0)) {
+            case -1:
+                merror("waitpid()");
                 retval = -1;
-            } else if (exitcode)
-                *exitcode = WEXITSTATUS(status);
+                break;
+
+            default:
+                if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                    merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    retval = -1;
+                } else if (exitcode)
+                    *exitcode = WEXITSTATUS(status);
+            }
+
+        } else {
+            // Kill and timeout
+            do {
+                sleep(1);
+
+                switch (kill(-pid,0)){
+                    case -1:
+                        switch(errno){
+                            case ESRCH:
+                                exit(EXIT_SUCCESS);
+                            
+                            default:
+                                merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                exit(EXIT_FAILURE);
+                        }
+
+                    default:
+                        secs--;
+                }
+            } while(secs);
+
+            kill(-pid,SIGTERM);
+
         }
 
         wm_remove_sid(pid);
