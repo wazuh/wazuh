@@ -891,7 +891,7 @@ static void set_sockets() {
 
         for (j = 0; current->target[j]; j++) {
             os_realloc(current->log_target, (j + 2) * sizeof(logtarget), current->log_target);
-            memset(current->log_target + j, 0, sizeof(logtarget));
+            memset(current->log_target + j, 0, 2 * sizeof(logtarget));
 
             if (strcmp(current->target[j], "agent") == 0) {
                 current->log_target[j].log_socket = &default_agent;
@@ -982,7 +982,11 @@ int w_msg_hash_queues_add_entry(const char *key){
     msg->mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
     msg->available = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
 
-    result = OSHash_Add(msg_queues_table, key, msg);
+    if (result = OSHash_Add(msg_queues_table, key, msg), result != 2) {
+        queue_free(msg->msg_queue);
+        free(msg);
+    }
+
     return result;
 }
 
