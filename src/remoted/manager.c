@@ -613,12 +613,21 @@ static void c_files()
 
             continue;
         }
-        free_strarray(subdir);
+
+        os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
+        os_calloc(1, sizeof(group_t), groups[p_size]);
+        groups[p_size]->group = strdup(entry_multi_groups->d_name);
+        groups[p_size + 1] = NULL;
         c_multi_group(entry_multi_groups->d_name);
+        free_strarray(subdir);
         p_size++;
     }
 
-
+    int j = 0;
+    /*for (j=0;j < p_size;j++ ){
+        merror("******GROUP: %s", groups[j]->group);
+    }*/
+    
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
 
