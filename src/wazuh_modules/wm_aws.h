@@ -33,7 +33,8 @@ typedef struct wm_aws_cloudtrail {
     char *aws_account_alias;            // AWS account alias
     char *trail_prefix;                 // Trail prefix
     char *only_logs_after;              // Date (YYYY-MMM-DD) to only parse logs after
-    char *regions;                       // CSV of regions to parse
+    char *regions;                      // CSV of regions to parse
+    char *type;                         // String defining bucket type.
     unsigned int remove_from_bucket:1;  // Remove the logs from the bucket
     struct wm_aws_cloudtrail *next;     // Pointer to next
 } wm_aws_cloudtrail;

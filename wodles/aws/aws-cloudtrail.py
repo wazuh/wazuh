@@ -58,9 +58,13 @@ except ImportError:
     sys.exit(4)
 import botocore
 import json
+import csv
 import gzip
+import zipfile
+import re
 from io import BytesIO
 from datetime import datetime
+from os import path
 import operator
 
 ################################################################################
@@ -288,17 +292,8 @@ class AWSBucket:
                 raise e
 
 
-    def get_extra_data_from_filename(self, filename):
-        raise NotImplementedError
-
-
     def migrate_legacy_table(self):
-        for row in filter(lambda x: x[0] != '', self.db_connector(sql_select_migrate_legacy)):
-            try:
-                aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
-                self.mark_complete(aws_account_id, aws_region, new_filename)
-            except Exception as e:
-                debug("++ Error parsing log file name: {}".format(row[0]),1)
+        raise NotImplementedError
 
 
     def create_table(self):
@@ -343,7 +338,10 @@ class AWSBucket:
 
 
     def marker_only_logs_after(self, aws_region, aws_account_id):
-        raise NotImplementedError
+        return '{init}{only_logs_after}'.format(
+            init = self.get_full_prefix(aws_account_id, aws_region),
+            only_logs_after = self.only_logs_after.strftime('%Y/%m/%d')
+        )
 
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg = ""):
@@ -396,6 +394,7 @@ class AWSBucket:
             debug('+++ Marker: {0}'.format(filter_marker),2)
         return filter_args
 
+
     def reformat_msg(self, event):
         raise NotImplementedError
 
@@ -404,19 +403,41 @@ class AWSBucket:
         raw_object = BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
         if log_key[-3:] == '.gz':
             return gzip.GzipFile(fileobj=raw_object)
+        elif log_key[-4:] == '.zip':
+            zipfile_object = zipfile.ZipFile(raw_object)
+            return zipfile_object.open(zipfile_object.namelist()[0])
+        elif log_key[-7:] == '.snappy':
+            raise TypeError("Snappy compression is not supported yet.")
+        else:
+            return raw_object
 
 
     def load_information_from_file(self, log_key):
         """
-        Gets logs from the file.
-
+        AWS logs are stored in different formats depending on the service:
+        * A JSON with an unique field "Records" which is an array of jsons. The filename has .json extension. (Cloudtrail)
+        * Multiple JSONs stored in the same line and with no separation. The filename has no extension. (GuardDuty, IAM, Macie, Inspector)
+        * TSV format. The filename has no extension. Has multiple lines. (VPC)
         :param log_key: name of the log file
         :return: list of events in json format.
         """
+        def json_event_generator(data):
+            while data:
+                json_data, json_index = decoder.raw_decode(data.decode())
+                data = data[json_index:]
+                yield json_data
+
         with self.decompress_file(log_key=log_key) as f:
             if '.json' in log_key:
                 json_file = json.load(f)
                 return None if 'Records' not in json_file else json_file['Records']
+            elif f.read(1) == b'{':
+                decoder = json.JSONDecoder()
+                return [event['detail'] for event in json_event_generator(b'{' + f.read()) if 'detail' in event]
+            else:
+                fieldnames = ("version","account_id","interface_id","srcaddr","dstaddr","srcport","dstport","protocol","packets","bytes","start","end","action","log_status")
+                tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+                return list(tsv_file)
 
 
     def get_log_file(self, aws_account_id, log_key):
@@ -437,9 +458,9 @@ class AWSBucket:
 
         try:
             return self.load_information_from_file(log_key=log_key)
-        except IOError as e:
+        except (TypeError, IOError, zipfile.BadZipfile, zipfile.LargeZipFile) as e:
             exception_handler("Failed to decompress file {}: {}".format(log_key, e), 8)
-        except ValueError as e:
+        except (ValueError, csv.Error) as e:
             exception_handler("Failed to parse file {}: {}".format(log_key,e), 9)
         except Exception as e:
             exception_handler("Unkown error reading/parsing file {}: {}".format(log_key,e),1)
@@ -454,8 +475,7 @@ class AWSBucket:
 
 
     def iter_regions_and_accounts(self, account_id, regions):
-        self.iter_files_in_bucket('','')
-        self.db_maintenance('','')
+        raise NotImplementedError
 
 
     def iter_events(self, event_list, log_key, aws_account_id):
@@ -515,8 +535,12 @@ class AWSCloudtrailBucket(AWSBucket):
             aws_account_id=account_id,
             aws_region=account_region)
 
+
     def get_creation_date(self,log_key):
-        return int(log_key.split('/')[-1].split('_')[-2].split('T')[0])
+        # An example of cloudtrail filename would be
+        # AWSLogs/11111111/CloudTrail/ap-northeast-1/2018/08/10/111111_CloudTrail_ap-northeast-1_20180810T0115Z_DgrtLuV9YQvGGdN6.json.gz
+        # the following line extracts this part -> 20180810
+        return int(path.basename(log_key).split('_')[-2].split('T')[0])
 
 
     def get_extra_data_from_filename(self, filename):
@@ -533,11 +557,13 @@ class AWSCloudtrailBucket(AWSBucket):
         return aws_region, aws_account_id, log_key
 
 
-    def marker_only_logs_after(self, aws_region, aws_account_id):
-        filter_marker = '{init}/{only_logs_after}'.format(
-            init=self.get_full_prefix(aws_account_id,aws_region),
-            only_logs_after=self.only_logs_after.strftime('%Y/%m/%d'))
-        return filter_marker
+    def migrate_legacy_table(self):
+        for row in filter(lambda x: x[0] != '', self.db_connector(sql_select_migrate_legacy)):
+            try:
+                aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
+                self.mark_complete(aws_account_id, aws_region, new_filename)
+            except Exception as e:
+                debug("++ Error parsing log file name: {}".format(row[0]),1)
 
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg = ""):
@@ -628,6 +654,32 @@ class AWSCloudtrailBucket(AWSBucket):
                 self.db_maintenance(aws_account_id,aws_region)
 
 
+class AWSFirehouseBucket(AWSBucket):
+
+    def get_creation_date(self, log_key):
+        # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
+        name_regex = re.match(r"^[\w\-]+(\d\d\d\d-\d\d-\d\d)[\w\-.]+$", path.basename(log_key))
+        return int(name_regex.group(1).replace('-',''))
+
+
+    def migrate_legacy_table(self):
+        # Firehouse events aren't legacy. No migration is needed.
+        debug("+++ Migrating firehouse events. Skipping...",1)
+
+
+    def get_full_prefix(self, account_id, account_region):
+        return self.prefix
+
+
+    def reformat_msg(self, event):
+        pass
+
+
+    def iter_regions_and_accounts(self, account_id, regions):
+        self.iter_files_in_bucket('','')
+        self.db_maintenance('','')
+
+
 ################################################################################
 # Functions
 ################################################################################
@@ -652,7 +704,7 @@ def arg_valid_date(arg_string):
 
 
 def arg_valid_prefix(arg_string):
-    if arg_string and arg_string[-1:] != '/':
+    if arg_string and arg_string[-1] != '/' and arg_string[-1] != "\\":
         return '{arg_string}/'.format(arg_string=arg_string)
     return arg_string
 
@@ -714,6 +766,7 @@ def get_script_arguments():
                         help='If fail to parse a file, error out instead of skipping the file', default=True)
     parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
                         help='Parse the log file, even if its been parsed before', default=False)
+    parser.add_argument('-t','--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
     return parser.parse_args()
 
 
@@ -734,7 +787,8 @@ def main(argv):
         debug_level = int(options.debug)
         debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
 
-    bucket = AWSCloudtrailBucket(options.reparse, options.access_key, options.secret_key,
+    bucket_type = AWSCloudtrailBucket if options.type.lower() == 'cloudtrail' else AWSFirehouseBucket
+    bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
                                 options.aws_profile, options.iam_role_arn, options.logBucket,
                                 options.only_logs_after, options.skip_on_error,
                                 options.aws_account_alias, max_queue_buffer,

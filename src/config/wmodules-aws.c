@@ -27,6 +27,7 @@ static const char *XML_AWS_ACCOUNT_ALIAS = "aws_account_alias";
 static const char *XML_TRAIL_PREFIX = "trail_prefix";
 static const char *XML_ONLY_LOGS_AFTER = "only_logs_after";
 static const char *XML_REGION = "regions";
+static const char *XML_BUCKET_TYPE = "type";
 
 static const char *LEGACY_AWS_ACCOUNT_ID = "";
 static const char *LEGACY_AWS_ACCOUNT_ALIAS = "LEGACY";
@@ -238,6 +239,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     if (strlen(children[j]->content) != 0) {
                         free(cur_cloudtrail->regions);
                         os_strdup(children[j]->content, cur_cloudtrail->regions);
+                    }
+                } else if (!strcmp(children[j]->element, XML_BUCKET_TYPE)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_cloudtrail->type);
+                        os_strdup(children[j]->content, cur_cloudtrail->type);
                     }
                 } else {
                     merror("No such child tag '%s' of cloudtrail at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);

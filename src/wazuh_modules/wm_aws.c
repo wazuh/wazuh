@@ -218,6 +218,10 @@ void wm_aws_run_cloudtrail(wm_aws_cloudtrail *exec_cloudtrail) {
         wm_strcat(&command, "--regions", ' ');
         wm_strcat(&command, exec_cloudtrail->regions, ' ');
     }
+    if (exec_cloudtrail->type) {
+        wm_strcat(&command, "--type", ' ');
+        wm_strcat(&command, exec_cloudtrail->type, ' ');
+    }
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');
         if (isDebug() > 2) {
