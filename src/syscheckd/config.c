@@ -143,6 +143,7 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.disabled) cJSON_AddStringToObject(syscfg,"disabled","yes"); else cJSON_AddStringToObject(syscfg,"disabled","no");
     cJSON_AddNumberToObject(syscfg,"frequency",syscheck.time);
     if (syscheck.skip_nfs) cJSON_AddStringToObject(syscfg,"skip_nfs","yes"); else cJSON_AddStringToObject(syscfg,"skip_nfs","no");
+    if (syscheck.restart_audit) cJSON_AddStringToObject(syscfg,"restart_audit","yes"); else cJSON_AddStringToObject(syscfg,"restart_audit","no");
     if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
@@ -162,6 +163,7 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.opts[i] & CHECK_REALTIME) cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
             if (syscheck.opts[i] & CHECK_SEECHANGES) cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
             if (syscheck.opts[i] & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
+            if (syscheck.opts[i] & CHECK_WHODATA) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
             cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
             cJSON_AddItemToArray(dirs, pair);
@@ -183,6 +185,7 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddItemToObject(syscfg,"ignore",igns);
     }
 #ifdef WIN32
+    cJSON_AddNumberToObject(syscfg,"windows_audit_interval",syscheck->wdata.interval_scan);
     if (syscheck.registry) {
         cJSON *rg = cJSON_CreateArray();
         for (i=0;syscheck.registry[i].entry;i++) {
@@ -222,16 +225,18 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON_AddNumberToObject(syscheckd,"sleep",syscheck.tsleep);
     cJSON_AddNumberToObject(syscheckd,"sleep_after",syscheck.sleep_after);
     cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
+    cJSON_AddNumberToObject(syscheckd,"max_depth",syscheck.max_depth);
     cJSON_AddNumberToObject(syscheckd,"debug",sys_debug_level);
+#ifdef WIN32
+    cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);
+#endif
 
     cJSON_AddItemToObject(internals,"syscheck",syscheckd);
 
     cJSON *rootcheckd = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(rootcheckd,"sleep",rootcheck.tsleep);
-
     cJSON_AddItemToObject(internals,"rootcheck",rootcheckd);
-
     cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
