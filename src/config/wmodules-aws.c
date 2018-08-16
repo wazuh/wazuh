@@ -297,7 +297,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     }
 
     if (!aws_config->cloudtrails) {
-        mtwarn("No CloudTrails definitions found at module '%s'.", WM_AWS_CONTEXT.name);
+        mtwarn(WM_AWS_LOGTAG, "No CloudTrails definitions found at module '%s'.", WM_AWS_CONTEXT.name);
         return OS_INVALID;
     }
 
