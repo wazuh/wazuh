@@ -71,7 +71,7 @@ static char *rand_keepalive_str(char *dst, int size)
 /* Handle file management */
 void LogCollectorStart()
 {
-    int i = 0, r = 0, j = -1, tg;
+    int i = 0, j = -1, tg;
     int f_check = 0;
     IT_control f_control = 0;
     char keepalive[1024];
@@ -216,13 +216,6 @@ void LogCollectorStart()
         }
     }
 
-    /* Update number of files */
-    for (r=0; logff[r].logformat; r++) {
-        if (!logff[r].file && !logff[r].ffile) {
-            // It is a command
-        }
-    }
-
     /* Create the output threads */
     w_create_output_threads();
 
@@ -301,7 +294,6 @@ void LogCollectorStart()
                             if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
                                 merror(REM_ERROR, current->file);
                             } else {
-                                current_files--;
                                 mdebug2(CURRENT_FILES, current_files, maximum_files);
                                 i--;
                                 continue;
@@ -853,7 +845,6 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 if (result) {
                     merror_exit(REM_ERROR, current->file);
                 } else {
-                    current_files--;
                     mdebug2(CURRENT_FILES, current_files, maximum_files);
                 }
                 d_control = NEXT_IT;

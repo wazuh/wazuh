@@ -301,7 +301,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             strchr(logf[pl].file, '[')) {
             glob_t g;
             int err;
-            current_files--;
 
             if (err = glob(logf[pl].file, 0, NULL, &g), err && err != GLOB_NOMATCH) {
                 merror(GLOB_ERROR, logf[pl].file);
@@ -479,6 +478,7 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
             if (!size)
                 size = 1;
             os_realloc(*logf, size*sizeof(logreader), *logf);
+            current_files--;
             return 0;
         }
     }
