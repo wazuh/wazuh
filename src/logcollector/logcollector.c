@@ -88,6 +88,7 @@ void LogCollectorStart()
     w_set_file_mutexes();
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
+    int r;
 
     /* Check if we are on Windows Vista */
     checkVista();
@@ -231,225 +232,232 @@ void LogCollectorStart()
 
         f_check++;
 
-        if(f_check > vcheck_files){
+        if(f_check > vcheck_files) {
             w_rwlock_wrlock(&files_update_rwlock);
             f_check = 0;
             int i;
             int j = -1;
-        /* Check if any file has been renamed/removed */
-        for (i = 0, j = -1;; i++) {
-            if (f_control = update_current(&current, &i, &j), f_control) {
-                if (f_control == NEXT_IT) {
-                    continue;
-                } else {
-                    break;
+            /* Check if any file has been renamed/removed */
+            for (i = 0, j = -1;; i++) {
+                if (f_control = update_current(&current, &i, &j), f_control) {
+                    if (f_control == NEXT_IT) {
+                        continue;
+                    } else {
+                        break;
+                    }
                 }
-            }
 
-            /* These are the windows logs or ignored files */
-            if (!current->file) {
-                continue;
-            }
+                /* These are the windows logs or ignored files */
+                if (!current->file) {
+                    continue;
+                }
 
-            /* Files with date -- check for day change */
-            if (current->ffile) {
-                if (update_fname(i, j)) {
+                /* Files with date -- check for day change */
+                if (current->ffile) {
+                    minfo("~~~check0  '%s'     -> %s", current->file, current->ffile);
+                    if (update_fname(i, j)) {
+                        minfo("~~~check1  '%s'     -> %s", current->file, current->ffile);
+                        if (current->fp) {
+                            fclose(current->fp);
+#ifdef WIN32
+                            CloseHandle(current->h);
+#endif
+                        }
+                        minfo("~~~check2  '%s'     -> %s", current->file, current->ffile);
+                        current->fp = NULL;
+                        if (handle_file(i, j, 0, 1)) {
+                            minfo("~~~check3  '%s'     -> %s", current->file, current->ffile);
+                            current->ign++;
+                        }
+                        minfo("~~~check4  '%s'     -> %s", current->file, current->ffile);
+                        continue;
+                    }
+
+                    /* Variable file name */
+                    else if (!current->fp) {
+                        minfo("~~~check+++++++0  '%s'     -> %s", current->file, current->ffile);
+                        if (handle_file(i, j, 0, 1)) {
+                            minfo("~~~check+++++++1  '%s'     -> %s", current->file, current->ffile);
+                            current->ign++;
+                        }
+                        continue;
+                    }
+                }
+
+                /* Check for file change -- if the file is open already */
+                if (current->fp) {
+#ifndef WIN32
+
+                    /* To help detect a file rollover, temporarily open the file a second time.
+                     * Previously the fstat would work on "cached" file data, but this should
+                     * ensure it's fresh when hardlinks are used (like alerts.log).
+                     */
+                    FILE *tf;
+                    tf = fopen(current->file, "r");
+                    if(tf == NULL) {
+                        if (errno == ENOENT) {
+                            minfo(FORGET_FILE, current->file);
+                            // Only expanded files that have been deleted will be forgotten
+                            if (j >= 0) {
+                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                                    merror(REM_ERROR, current->file);
+                                } else {
+                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    i--;
+                                    continue;
+                                }
+                            }
+                        } else {
+                            merror(FOPEN_ERROR, current->file, errno, strerror(errno));
+                        }
+                    }
+
+                    else if ((fstat(fileno(tf), &tmp_stat)) == -1) {
+                        fclose(current->fp);
+                        fclose(tf);
+                        current->fp = NULL;
+
+                        merror(FSTAT_ERROR, current->file, errno, strerror(errno));
+                    }
+                    else if (fclose(tf) == EOF) {
+                        merror("Closing the temporary file %s did not work (%d): %s", current->file, errno, strerror(errno));
+                    }
+#else
+                    HANDLE h1;
+
+                    h1 = CreateFile(current->file, GENERIC_READ,
+                                    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                    if (h1 == INVALID_HANDLE_VALUE) {
+                        fclose(current->fp);
+                        CloseHandle(current->h);
+                        current->fp = NULL;
+                        merror(FILE_ERROR, current->file);
+                    } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
+                        fclose(current->fp);
+                        CloseHandle(current->h);
+                        CloseHandle(h1);
+                        current->fp = NULL;
+                        merror(FILE_ERROR, current->file);
+                    }
+#endif
+
+#ifdef WIN32
+                    else if (current->fd != (lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh))
+#else
+                    else if (current->fd != tmp_stat.st_ino)
+#endif
+                    {
+                        char msg_alert[512 + 1];
+
+                        snprintf(msg_alert, 512, "ossec: File rotated (inode "
+                                 "changed): '%s'.",
+                                 current->file);
+
+                        /* Send message about log rotated */
+                        SendMSG(logr_queue, msg_alert,
+                                "ossec-logcollector", LOCALFILE_MQ);
+
+                        mdebug1("File inode changed. %s",
+                               current->file);
+
+                        fclose(current->fp);
+
+#ifdef WIN32
+                        CloseHandle(current->h);
+                        CloseHandle(h1);
+#endif
+
+                        current->fp = NULL;
+                        if (handle_file(i, j, 0, 1) ) {
+                            current->ign++;
+                        }
+                        continue;
+                    }
+#ifdef WIN32
+                    else if (current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+#else
+                    else if (current->size > tmp_stat.st_size)
+#endif
+                    {
+                        char msg_alert[512 + 1];
+
+                        snprintf(msg_alert, 512, "ossec: File size reduced "
+                                 "(inode remained): '%s'.",
+                                 current->file);
+
+                        /* Send message about log rotated */
+                        SendMSG(logr_queue, msg_alert,
+                                "ossec-logcollector", LOCALFILE_MQ);
+
+                        mdebug1("File size reduced. %s",
+                                current->file);
+
+                        /* Get new file */
+                        fclose(current->fp);
+
+#ifdef WIN32
+                        CloseHandle(current->h);
+                        CloseHandle(h1);
+#endif
+                        current->fp = NULL;
+                        if (handle_file(i, j, 1, 1) ) {
+                            current->ign++;
+                        }
+                    } else {
+#ifdef WIN32
+                        CloseHandle(h1);
+
+                        /* Update file size */
+                        current->size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
+#else
+                        current->size = tmp_stat.st_size;
+#endif
+                    }
+                }
+
+
+                /* Too many errors for the file */
+                if (current->ign > open_file_attempts) {
+                    /* 999 Maximum ignore */
+                    if (current->ign == 999) {
+                        continue;
+                    }
+
+                    minfo(LOGC_FILE_ERROR, current->file);
                     if (current->fp) {
                         fclose(current->fp);
 #ifdef WIN32
                         CloseHandle(current->h);
 #endif
                     }
+
                     current->fp = NULL;
-                    if (handle_file(i, j, 0, 1)) {
-                        current->ign++;
+
+                    /* If the file has a variable date, ignore it for today only */
+                    if (!current->ffile) {
+                        /* Variable log files should always be attempted
+                         * to be open...
+                         */
+                        //current->file = NULL;
                     }
+                    current->ign = 999;
                     continue;
                 }
 
-                /* Variable file name */
-                else if (!current->fp) {
-                    if (handle_file(i, j, 0, 1)) {
-                        current->ign++;
-                    }
-                    continue;
-                }
-            }
-
-            /* Check for file change -- if the file is open already */
-            if (current->fp) {
-#ifndef WIN32
-
-                /* To help detect a file rollover, temporarily open the file a second time.
-                 * Previously the fstat would work on "cached" file data, but this should
-                 * ensure it's fresh when hardlinks are used (like alerts.log).
-                 */
-                FILE *tf;
-                tf = fopen(current->file, "r");
-                if(tf == NULL) {
-                    if (errno == ENOENT) {
-                        minfo(FORGET_FILE, current->file);
-                        // Only expanded files that have been deleted will be forgotten
-                        if (j >= 0) {
-                            if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
-                                merror(REM_ERROR, current->file);
-                            } else {
-                                mdebug2(CURRENT_FILES, current_files, maximum_files);
-                                i--;
-                                continue;
-                            }
-                        }
+                /* File not open */
+                if (!current->fp) {
+                    if (current->ign >= 999) {
+                        continue;
                     } else {
-                        merror(FOPEN_ERROR, current->file, errno, strerror(errno));
+                        /* Try for a few times to open the file */
+                        if (handle_file(i, j, 1, 1) < 0) {
+                            current->ign++;
+                        }
+                        continue;
                     }
-                }
-
-                else if ((fstat(fileno(tf), &tmp_stat)) == -1) {
-                    fclose(current->fp);
-                    fclose(tf);
-                    current->fp = NULL;
-
-                    merror(FSTAT_ERROR, current->file, errno, strerror(errno));
-                }
-                else if (fclose(tf) == EOF) {
-                    merror("Closing the temporary file %s did not work (%d): %s", current->file, errno, strerror(errno));
-                }
-#else
-                HANDLE h1;
-
-                h1 = CreateFile(current->file, GENERIC_READ,
-                                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-                if (h1 == INVALID_HANDLE_VALUE) {
-                    fclose(current->fp);
-                    CloseHandle(current->h);
-                    current->fp = NULL;
-                    merror(FILE_ERROR, current->file);
-                } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
-                    fclose(current->fp);
-                    CloseHandle(current->h);
-                    CloseHandle(h1);
-                    current->fp = NULL;
-                    merror(FILE_ERROR, current->file);
-                }
-#endif
-
-#ifdef WIN32
-                else if (current->fd != (lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh))
-#else
-                else if (current->fd != tmp_stat.st_ino)
-#endif
-                {
-                    char msg_alert[512 + 1];
-
-                    snprintf(msg_alert, 512, "ossec: File rotated (inode "
-                             "changed): '%s'.",
-                             current->file);
-
-                    /* Send message about log rotated */
-                    SendMSG(logr_queue, msg_alert,
-                            "ossec-logcollector", LOCALFILE_MQ);
-
-                    mdebug1("File inode changed. %s",
-                           current->file);
-
-                    fclose(current->fp);
-
-#ifdef WIN32
-                    CloseHandle(current->h);
-                    CloseHandle(h1);
-#endif
-
-                    current->fp = NULL;
-                    if (handle_file(i, j, 0, 1) ) {
-                        current->ign++;
-                    }
-                    continue;
-                }
-#ifdef WIN32
-                else if (current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
-#else
-                else if (current->size > tmp_stat.st_size)
-#endif
-                {
-                    char msg_alert[512 + 1];
-
-                    snprintf(msg_alert, 512, "ossec: File size reduced "
-                             "(inode remained): '%s'.",
-                             current->file);
-
-                    /* Send message about log rotated */
-                    SendMSG(logr_queue, msg_alert,
-                            "ossec-logcollector", LOCALFILE_MQ);
-
-                    mdebug1("File size reduced. %s",
-                            current->file);
-
-                    /* Get new file */
-                    fclose(current->fp);
-
-#ifdef WIN32
-                    CloseHandle(current->h);
-                    CloseHandle(h1);
-#endif
-                    current->fp = NULL;
-                    if (handle_file(i, j, 1, 1) ) {
-                        current->ign++;
-                    }
-                } else {
-#ifdef WIN32
-                    CloseHandle(h1);
-
-                    /* Update file size */
-                    current->size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
-#else
-                    current->size = tmp_stat.st_size;
-#endif
                 }
             }
-
-
-            /* Too many errors for the file */
-            if (current->ign > open_file_attempts) {
-                /* 999 Maximum ignore */
-                if (current->ign == 999) {
-                    continue;
-                }
-
-                minfo(LOGC_FILE_ERROR, current->file);
-                if (current->fp) {
-                    fclose(current->fp);
-#ifdef WIN32
-                    CloseHandle(current->h);
-#endif
-                }
-
-                current->fp = NULL;
-
-                /* If the file has a variable date, ignore it for today only */
-                if (!current->ffile) {
-                    /* Variable log files should always be attempted
-                     * to be open...
-                     */
-                    //current->file = NULL;
-                }
-                current->ign = 999;
-                continue;
-            }
-
-            /* File not open */
-            if (!current->fp) {
-                if (current->ign >= 999) {
-                    continue;
-                } else {
-                    /* Try for a few times to open the file */
-                    if (handle_file(i, j, 1, 1) < 0) {
-                        current->ign++;
-                    }
-                    continue;
-                }
-            }
-        }
 
 #ifndef WIN32
             // Check for new files to be expanded
