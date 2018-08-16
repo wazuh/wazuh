@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Fixed minor issues in the Makefile and the sources installer on HP-UX, Solaris on SPARC and AIX systems. ([#1089](https://github.com/wazuh/wazuh/pull/1089))
 - Fixed SHA256 changes messages in alerts when it is disabled. ([#1100](https://github.com/wazuh/wazuh/pull/1100))
 - Fixed empty configuration blocks for Wazuh modules. ([#1101](https://github.com/wazuh/wazuh/pull/1101))
+- Fix broken pipe error in Wazuh DB by Vulnerability Detector. ([#1111](https://github.com/wazuh/wazuh/pull/1111))
 - Restored firewall-drop AR script for Linux. ([#1114](https://github.com/wazuh/wazuh/pull/1114))
 
 ### Removed
