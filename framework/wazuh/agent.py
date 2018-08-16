@@ -15,7 +15,7 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, move, copytree
+from shutil import copyfile, move, copytree, rmtree
 from platform import platform
 from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat
 from time import time, sleep
@@ -1191,6 +1191,27 @@ class Agent:
         """
 
         return Agent(agent_id).get_key()
+    
+    @staticmethod
+    def get_group_by_name(group_name, select=None):
+        """
+        Gets an existing group called group_name.
+
+        :param group_name: Group name.
+        :return: The group id.
+        """
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+        conn.execute("SELECT id FROM groups WHERE name = :name", {'name': group_name})
+        try:
+            group_id = conn.fetch()[0]
+        except TypeError as e:
+            raise WazuhException(1701, group_name)
+
+        return group_id
 
     @staticmethod
     def remove_agent(agent_id, backup=False, purge=False):
@@ -1290,6 +1311,47 @@ class Agent:
 
         new_agent = Agent(name=name, ip=ip, force=force)
         return {'id': new_agent.id, 'key': new_agent.key}
+    
+    @staticmethod
+    def add_group_to_agent(agent_id,group_id,force=False):
+        """
+        Adds an existing group to an agent
+
+        :param group_id: name of the group.
+        :param agent_id: ID of the agent.
+        :param force: No check if agent exists
+        :return: Agent ID.
+        """
+        # Check if agent exists
+        if not force:
+            agent_info = Agent(agent_id).get_basic_information()
+        
+        # Check if the group already belongs to the agent
+        if agent_info["group"].find(group_id) > -1:
+            return "Group '{0}' already belongs to agent'{1}'.".format(group_id, agent_id)
+
+        agent_group = agent_info["group"] + "-" + group_id
+
+        # Connect DB
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+
+        # Query
+        query = "UPDATE agent SET `group` = :agent_group WHERE id = :agent_id"
+        request = {'agent_group': agent_group,'agent_id': agent_id}
+        conn.execute(query,request)
+        conn.commit()
+
+        # If the new multi group doesnt exists, create it
+        if not Agent().multi_group_exists(agent_group):
+            Agent.create_multi_group(agent_group)
+
+        Agent().set_multi_group(str(agent_id),agent_group)
+
+        return "Group '{0}' added to agent '{1}'.".format(group_id, agent_id)
 
     @staticmethod
     def insert_agent(name, id, key, ip='any', force=-1):
@@ -1527,6 +1589,23 @@ class Agent:
             return False
 
     @staticmethod
+    def multi_group_exists(group_id):
+        """
+        Checks if the group exists
+
+        :param group_id: Group ID.
+        :return: True if group exists, False otherwise
+        """
+        # Input Validation of group_id
+        #if not InputValidator().group(group_id):
+        #    raise WazuhException(1722)
+
+        if path.exists("{0}/{1}".format(common.multi_groups_path, group_id)):
+            return True
+        else:
+            return False
+
+    @staticmethod
     def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
         """
         Gets the agents in a group
@@ -1721,7 +1800,100 @@ class Agent:
         except Exception as e:
             raise WazuhException(1005, str(e))
 
+        # Create group in global.db
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+
+        query = "INSERT into GROUPS(name) VALUES(?)"
+        conn.execute(query, (group_id,))
+        conn.commit()
+
         return msg
+
+    @staticmethod
+    def create_multi_group(group_id):
+        """
+        Creates a multi group.
+
+        :param group_id: Group ID.
+        :return: Confirmation message.
+        """
+        # Input Validation of group_id
+        #if not InputValidator().group(group_id):
+        #    raise WazuhException(1722)
+
+        group_path = "{0}/{1}".format(common.multi_groups_path, group_id)
+
+        if group_id.lower() == "default" or path.exists(group_path):
+            raise WazuhException(1711, group_id)
+
+        # Create group in /var/multigroups
+        group_def_path = "{0}/default".format(common.shared_path)
+            
+        try:
+            copytree(group_def_path, group_path)
+            chown_r(group_path, common.ossec_uid, common.ossec_gid)
+            chmod_r(group_path, 0o660)
+            chmod(group_path, 0o770)
+            msg = "Group '{0}' created.".format(group_id)
+        except Exception as e:
+            raise WazuhException(1005, str(e))
+
+        return msg
+
+    @staticmethod
+    def remove_multi_group(group_id):
+
+        # Connect DB
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+
+        # Query
+        query = "SELECT id, `group` FROM agent WHERE `group` LIKE ?"
+        conn.execute(query,('%'+group_id+'%',))
+
+        while True:
+            agent = conn.fetch()
+            if agent == None:
+                return
+
+            agent_id = agent[0]
+            agent_group = agent[1]
+            agent_group = agent_group.replace(group_id,'')
+
+            # Check if it has multi group
+            multi_group = agent_group.count('-')
+
+            if multi_group == 1:
+                agent_group = agent_group.replace('-','')
+            elif multi_group > 1:
+                if agent_group[0] == '-':
+                    agent_group = agent_group[1:]
+                elif agent_group[-1:] == '-':
+                    agent_group = agent_group[:-1]
+                elif agent_group.find('--') > 0:
+                    agent_group = agent_group.replace('--','-')
+
+                # If the new multi group doesnt exists, create it
+                if not Agent().multi_group_exists(agent_group):
+                    Agent.create_multi_group(agent_group)
+
+                Agent().set_multi_group(str(agent_id),agent_group)
+                
+            else: # Has only one group
+                agent_group = "default"
+
+            # Update agent `group`
+            query = "UPDATE agent SET `group` = :agent_group WHERE id = :agent_id"
+            request = {'agent_group': agent_group,'agent_id': agent_id}
+            conn.execute(query,request)
+            conn.commit()
 
 
     @staticmethod
@@ -1737,6 +1909,36 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhException(1722)
 
+        # Connect DB
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+
+        Agent().remove_multi_group(group_id)
+
+        # Query
+        query = "SELECT id FROM groups WHERE name = :group_id"
+        request = {'group_id': group_id}
+
+        # Fetch the group id
+        conn.execute(query,request)
+        id_group = conn.fetch()[0]
+
+        # Query
+        query = "DELETE FROM groups WHERE name = :group_id"
+        request = {'group_id': group_id}
+
+        # Delete the group from the groups table
+        conn.execute(query,request)
+        conn.commit()
+
+        # Delete from belongs table
+        query = "DELETE FROM belongs WHERE id_group = :id"
+        request = {'id': id_group}
+        conn.execute(query,request)
+        conn.commit()
 
         failed_ids = []
         ids = []
@@ -1795,7 +1997,33 @@ class Agent:
 
         # Check if agent exists
         if not force:
-            Agent(agent_id).get_basic_information()
+            agent_info = Agent(agent_id).get_basic_information()
+
+        # Connect DB
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+
+        # Check if multi group still exists in other agents
+        query = "SELECT COUNT(*) FROM agent WHERE `group` = ?"
+        conn.execute(query,(agent_info["group"],))
+    
+        # Check if it is a multi group
+        if agent_info["group"].find("-") > -1:
+            multi_group = conn.fetch()[0]
+
+            # The multi group is not being used in other agents, delete it from multi groups
+            if multi_group <= 1:
+                if Agent().multi_group_exists(agent_info["group"]):
+                    agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, agent_info["group"])
+                    rmtree(agent_multi_group_path)
+            
+        # Delete from table belongs
+        query = "DELETE FROM belongs WHERE id_agent = ?"
+        conn.execute(query,(agent_id,))
+        conn.commit()
 
         # Assign group in /queue/agent-groups
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
@@ -1816,8 +2044,80 @@ class Agent:
         if not Agent.group_exists(group_id):
             Agent.create_group(group_id)
 
+        # Add group to belongs table
+        query = "SELECT id FROM groups WHERE name = :name"
+        conn.execute(query, {'name': group_id})
+
+        try:
+            id_group = conn.fetch()[0]
+        except TypeError as e:
+            raise WazuhException(1701, group_id)
+
+        query = "INSERT INTO belongs(id_agent,id_group) VALUES(?,?)"
+        conn.execute(query,(agent_id,id_group,))
+        conn.commit()
+
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
+    @staticmethod
+    def set_multi_group(agent_id, group_id, force=False):
+        """
+        Set a multi group to an agent.
+
+        :param agent_id: Agent ID.
+        :param group_id: Group ID.
+        :param force: No check if agent exists
+        :return: Confirmation message.
+        """
+        # Input Validation of group_id
+        #if not InputValidator().group(group_id):
+        #    raise WazuhException(1722)
+
+        agent_id = agent_id.zfill(3)
+        if agent_id == "000":
+            raise WazuhException(1703)
+
+        # Check if agent exists
+        if not force:
+            Agent(agent_id).get_basic_information()
+
+        # Assign group in /queue/agent-groups
+        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
+        try:
+            new_file = False if path.exists(agent_group_path) else True
+
+            f_group = open(agent_group_path, 'w')
+            f_group.write("{0}\n".format(group_id))
+            f_group.close()
+
+            if new_file:
+                chown(agent_group_path, common.ossec_uid, common.ossec_gid)
+                chmod(agent_group_path, 0o660)
+        except Exception as e:
+            raise WazuhException(1005, str(e))
+
+        # Connect DB
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+
+        # Delete from belongs table 
+        query = "DELETE FROM belongs WHERE id_agent = :id"
+        request = {'id': agent_id}
+        conn.execute(query,request)
+        conn.commit()
+
+        # Update belongs table
+        groups = [x for x in group_id.split('-')]
+        for x in groups:
+            id_group = Agent().get_group_by_name(x)
+            query = "INSERT INTO belongs(id_agent,id_group) VALUES(?,?)"
+            conn.execute(query,(agent_id,id_group,))
+            conn.commit()
+
+        return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
     @staticmethod
     def unset_group(agent_id, force=False):
@@ -1830,13 +2130,52 @@ class Agent:
         """
         # Check if agent exists
         if not force:
-            Agent(agent_id).get_basic_information()
+            agent_info = Agent(agent_id).get_basic_information()
+
+        # Connect DB
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+
+        # Check if multi group still exists in other agents
+        query = "SELECT COUNT(*) FROM agent WHERE `group` = ?"
+        conn.execute(query,(agent_info["group"],))
+    
+        # Check if it is a multi group
+        if agent_info["group"].find("-") > -1:
+            multi_group = conn.fetch()[0]
+
+            # The multi group is not being used in other agents, delete it from multi groups
+            if multi_group <= 1:
+                if Agent().multi_group_exists(agent_info["group"]):
+                    agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, agent_info["group"])
+                    rmtree(agent_multi_group_path)
+            
+        # Delete from table belongs
+        query = "DELETE FROM belongs WHERE id_agent = ?"
+        conn.execute(query,(agent_id,))
+        conn.commit()
+
+        # Query
+        query = "SELECT id FROM groups WHERE name = :group_id"
+        request = {'group_id': "default"}
+
+        # Fetch the group id
+        conn.execute(query,request)
+        id_group = conn.fetch()[0]
+
+        # Update table belongs
+        query = "INSERT INTO belongs(id_agent,id_group) VALUES(?,?)"
+        conn.execute(query,(agent_id,id_group,))
+        conn.commit()
 
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
         if path.exists(agent_group_path):
             with open(agent_group_path, "w+") as fo:
                 fo.write("default")
-
+        
         return "Group unset for agent '{0}'.".format(agent_id)
 
     @staticmethod
