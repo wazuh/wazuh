@@ -17,7 +17,7 @@ from datetime import date, datetime, timedelta
 from base64 import b64encode
 from shutil import copyfile, move, copytree, rmtree
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat
+from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk
 from time import time, sleep
 import socket
 import hashlib
@@ -1893,6 +1893,13 @@ class Agent:
             conn.execute(query,request)
             conn.commit()
 
+            # Delete from multi groups folder
+            root, multi_group_dirs, files = walk(common.multi_groups_path).next()
+            
+            for multi_dir in multi_group_dirs:
+                if multi_dir.find(group_id) > -1:
+                    agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path,multi_dir)
+                    rmtree(agent_multi_group_path)
 
     @staticmethod
     def remove_group(group_id):
