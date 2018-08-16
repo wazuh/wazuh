@@ -1897,7 +1897,7 @@ class Agent:
 
             # Delete from multi groups folder
             root, multi_group_dirs, files = walk(common.multi_groups_path).next()
-            
+
             for multi_dir in multi_group_dirs:
                 if multi_dir.find(group_id) > -1:
                     agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path,multi_dir)
@@ -2183,6 +2183,11 @@ class Agent:
             with open(agent_group_path, "w+") as fo:
                 fo.write("default")
         
+        # Update agent `group`
+        query = "UPDATE agent SET `group` = ? WHERE id = ?"
+        conn.execute(query,("default",agent_id,))
+        conn.commit()
+
         return "Group unset for agent '{0}'.".format(agent_id)
 
     @staticmethod
