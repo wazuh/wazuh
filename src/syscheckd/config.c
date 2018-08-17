@@ -185,7 +185,7 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddItemToObject(syscfg,"ignore",igns);
     }
 #ifdef WIN32
-    cJSON_AddNumberToObject(syscfg,"windows_audit_interval",syscheck->wdata.interval_scan);
+    cJSON_AddNumberToObject(syscfg,"windows_audit_interval",syscheck.wdata.interval_scan);
     if (syscheck.registry) {
         cJSON *rg = cJSON_CreateArray();
         for (i=0;syscheck.registry[i].entry;i++) {
