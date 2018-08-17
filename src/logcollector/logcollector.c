@@ -786,7 +786,7 @@ int check_pattern_expand(logreader *current) {
             }
             while (g.gl_pathv[glob_offset] != NULL) {
                 if (current_files >= maximum_files) {
-                    mwarn(FILE_LIMIT);
+                    mwarn(FILE_LIMIT, maximum_files);
                     break;
                 }
                 found = 0;
