@@ -57,6 +57,19 @@ CREATE TABLE agent
     PRIMARY KEY  (id, server_id)
     );
 
+CREATE TABLE groups 
+    (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT
+    );
+
+CREATE TABLE belongs
+    ( 
+    id_agent INTEGER, 
+    id_group INTEGER, 
+    PRIMARY KEY (id_agent, id_group)
+    );
+
 CREATE TABLE location
     (
     id              SERIAL          NOT NULL,
