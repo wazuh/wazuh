@@ -675,7 +675,10 @@ class AWSFirehouseBucket(AWSBucket):
 
 
     def reformat_msg(self, event):
-        pass
+        # remove aws.macie.event.trigger field, since it has repeated data and increases log size.
+        if 'macie' in event['aws']:
+            del event['aws']['macie']['event']['trigger']
+        return event
 
 
     def iter_regions_and_accounts(self, account_id, regions):
