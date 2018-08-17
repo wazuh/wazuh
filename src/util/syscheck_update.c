@@ -79,7 +79,7 @@ int main(int argc, char **argv)
     } else if (strcmp(argv[1], "-l") == 0) {
         printf("\n%s %s: Updates the integrity check database.",
                __ossec_name, ARGV0);
-        print_agents(0, 0, 0, 0);
+        print_agents(0, 0, 0, 0, 0);
         printf("\n");
         exit(0);
     } else if (strcmp(argv[1], "-u") == 0) {

@@ -23,7 +23,8 @@ static void helpmsg()
     printf("Available options:\n");
     printf("\t-h                This help message.\n");
     printf("\t-l                List available (active or not) agents.\n");
-    printf("\t-lc               List active agents.\n");
+    printf("\t-lc               List active agents only.\n");
+    printf("\t-ln               List disconnected agents only.\n");
     printf("\t-i <id>           Extracts information from an agent.\n");
     printf("\t-R -a             Restart all agents.\n");
     printf("\t-R -u <id>        Restart the specified agent.\n");
@@ -67,6 +68,7 @@ int main(int argc, char **argv)
     int end_time = 0;
     int restart_agent = 0;
     int show_max_agents = 0;
+    int inactive_only = 0;
 
     char shost[512];
 
@@ -80,7 +82,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VehdlLcsjarmu:i:b:f:R")) != -1) {
+    while ((c = getopt(argc, argv, "VehdlLcsjarmu:i:b:f:Rn")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -151,6 +153,9 @@ int main(int argc, char **argv)
                 break;
             case 'a':
                 restart_all_agents = 1;
+                break;
+            case 'n':
+                inactive_only++;
                 break;
             default:
                 helpmsg();
@@ -256,28 +261,35 @@ int main(int argc, char **argv)
         if (!csv_output && !json_output) {
             printf("\n%s %s. List of available agents:",
                    __ossec_name, ARGV0);
-            printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
-                   shost);
+
+            if (inactive_only) {
+                puts("");
+            } else {
+                printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n", shost);
+            }
         } else if(json_output){
-                cJSON *first = cJSON_CreateObject();
+                cJSON *first;
                 agents = cJSON_CreateArray();
 
-                if (!(first && root && agents))
+                if (!(root && agents))
                     exit(1);
 
                 cJSON_AddNumberToObject(root, "error", 0);
                 cJSON_AddItemToObject(root, "data", agents);
 
-                cJSON_AddStringToObject(first, "id", "000");
-                cJSON_AddStringToObject(first, "name", shost);
-                cJSON_AddStringToObject(first, "ip", "127.0.0.1");
-                cJSON_AddStringToObject(first, "status", "Active");
-                cJSON_AddItemToArray(agents, first);
-        } else {
+                if (!inactive_only) {
+                    first = cJSON_CreateObject();
+                    cJSON_AddStringToObject(first, "id", "000");
+                    cJSON_AddStringToObject(first, "name", shost);
+                    cJSON_AddStringToObject(first, "ip", "127.0.0.1");
+                    cJSON_AddStringToObject(first, "status", "Active");
+                    cJSON_AddItemToArray(agents, first);
+                }
+        } else if (!inactive_only) {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
 
-        print_agents(1, active_only, csv_output, agents);
+        print_agents(1, active_only, inactive_only, csv_output, agents);
         // Closing JSON Object array
         if(json_output) {
             char *render = cJSON_PrintUnformatted(root);

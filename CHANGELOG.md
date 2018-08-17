@@ -11,9 +11,19 @@ All notable changes to this project will be documented in this file.
   - A thread is created for each type of output socket.
   - Periodically rescan of new files.
   - New options have been added to internal_options.conf file.
+- Added a recursion level option to Syscheck to set the directory scanning depth. ([#1081](https://github.com/wazuh/wazuh/pull/1081))
+
+### Changed
+
+- Changed logcollector analysis message order. ([#675](https://github.com/wazuh/wazuh/pull/675))
+- The internal option `syscheck.max_depth` has been renamed to `syscheck.default_max_depth`. ([#1081](https://github.com/wazuh/wazuh/pull/1081))
 
 
 ## [v3.5.1]
+
+### Added
+
+- Added inactive agent filtering option to agent_control, syscheck_control and rootcheck control_tools. ([#1088](https://github.com/wazuh/wazuh/pull/1088))
 
 ### Changed
 
@@ -24,6 +34,10 @@ All notable changes to this project will be documented in this file.
 - Fix agent ID zero-padding in alerts coming from Vulnerability Detector. ([#1083](https://github.com/wazuh/wazuh/pull/1083))
 - Fix multiple warnings when agent is offline. ([#1086](https://github.com/wazuh/wazuh/pull/1086))
 - Fixed minor issues in the Makefile and the sources installer on HP-UX, Solaris on SPARC and AIX systems. ([#1089](https://github.com/wazuh/wazuh/pull/1089))
+- Fixed SHA256 changes messages in alerts when it is disabled. ([#1100](https://github.com/wazuh/wazuh/pull/1100))
+- Fixed empty configuration blocks for Wazuh modules. ([#1101](https://github.com/wazuh/wazuh/pull/1101))
+- Fix broken pipe error in Wazuh DB by Vulnerability Detector. ([#1111](https://github.com/wazuh/wazuh/pull/1111))
+- Restored firewall-drop AR script for Linux. ([#1114](https://github.com/wazuh/wazuh/pull/1114))
 
 ### Removed
 
@@ -76,9 +90,6 @@ All notable changes to this project will be documented in this file.
 - Extracts agent's OS from the database instead of the agent-info.
 - Increases the maximum size of XML parser to 20KB.
 - Extract CVE instead of RHSA codes into vulnerability-detector. ([#549](https://github.com/wazuh/wazuh/pull/549))
-<<<<<<< HEAD
-- Changed logcollector analysis message order. ([#675](https://github.com/wazuh/wazuh/pull/675))
-=======
 - Store CIS-CAT results into Wazuh DB. ([#568](https://github.com/wazuh/wazuh/pull/568))
 - Add profile information to CIS-CAT reports. ([#658](https://github.com/wazuh/wazuh/pull/658))
 - Merge external libraries into a unique shared library. ([#620](https://github.com/wazuh/wazuh/pull/620))
@@ -86,7 +97,6 @@ All notable changes to this project will be documented in this file.
 - `Distinct` requests don't allow `limit=0` or `limit>maximun_limit`. ([#1007](https://github.com/wazuh/wazuh/pull/1007))
 - Deprecated arguments -i, -F and -r for Authd. ([#1013](https://github.com/wazuh/wazuh/pull/1013))
 - Increase the internal memory for real-time from 12 KiB to 64 KiB. ([#1062](https://github.com/wazuh/wazuh/pull/1062))
->>>>>>> 3.6
 
 ### Fixed
 
@@ -95,10 +105,6 @@ All notable changes to this project will be documented in this file.
 - Fix problem comparing releases of ubuntu packages. ([#556](https://github.com/wazuh/wazuh/pull/556))
 - Windows delete pending active-responses before reset agent. ([#563](https://github.com/wazuh/wazuh/pull/563))
 - Fix bug in Rootcheck for Windows that searches for keys in 32-bit mode only. ([#566](https://github.com/wazuh/wazuh/pull/566))
-<<<<<<< HEAD
-- Prevent command injection in Agentless daemon. ([#600](https://github.com/wazuh/wazuh/pull/600))
-- Fix multiline events concatenation in logcollector.
-=======
 - Alert when unmerge files fails on agent. ([#731](https://github.com/wazuh/wazuh/pull/731))
 - Fixed bugs reading logs in framework. ([#856](https://github.com/wazuh/wazuh/pull/856))
 - Ignore uppercase and lowercase sorting an array in framework. ([#814](https://github.com/wazuh/wazuh/pull/814))
@@ -115,7 +121,6 @@ All notable changes to this project will be documented in this file.
   - Fix Windows agent crash if FIM fails to extract the file owner.
   - Prevent FIM real-time mode on Windows from stopping if the internal buffer gets overflowed.
 - Prevent large logs from flooding the log file by Logcollector. ([#1067](https://github.com/wazuh/wazuh/pull/1067))
->>>>>>> 3.6
 
 ### Removed
 

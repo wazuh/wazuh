@@ -50,8 +50,8 @@ static void read_internal(int debug_level)
     syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
     syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
-    syscheck.max_depth = getDefine_Int("syscheck", "max_depth", 1, 320);
-    
+    syscheck.max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
+
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
 #endif
@@ -107,7 +107,7 @@ int Start_win32_Syscheck()
         /* Disabled */
         if (!syscheck.dir) {
             minfo(SK_NO_DIR);
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0);
         } else if (!syscheck.dir[0]) {
             minfo(SK_NO_DIR);
         }
@@ -121,7 +121,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_entry(&syscheck, "", 0, 1, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0);
         }
         syscheck.registry[0].entry = NULL;
 
@@ -281,7 +281,7 @@ int main(int argc, char **argv)
             if (!test_config) {
                 minfo(SK_NO_DIR);
             }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
                 minfo(SK_NO_DIR);

@@ -68,7 +68,7 @@ int auth_remove_agent(int sock, const char *id, int json_format);
 int OS_LoadUid();
 
 /* Print available agents */
-int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output);
+int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output);
 int list_agents(int cmdlist);
 
 /* Clear a line */
