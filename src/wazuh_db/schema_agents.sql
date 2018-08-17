@@ -6,39 +6,12 @@
  * and/or modify it under the terms of GPLv2.
  */
 
-CREATE TABLE IF NOT EXISTS fim_file (
+
+CREATE TABLE IF NOT EXISTS info_agent (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    path TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('file', 'registry'))
+    first_fim_scan INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS fim_file_path ON fim_file (type, path);
-
-CREATE TABLE IF NOT EXISTS fim_event (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_file INTEGER NOT NULL REFERENCES fim_file (id),
-    type TEXT NOT NULL CHECK (type IN ('added', 'modified', 'readded', 'deleted')),
-    date TEXT,
-    size INTEGER,
-    perm TEXT,
-    uid INTEGER,
-    gid INTEGER,
-    md5 TEXT,
-    sha1 TEXT,
-    uname TEXT,
-    gname TEXT,
-    mtime TEXT,
-    inode INTEGER,
-    sha256 TEXT
-);
-
-CREATE INDEX IF NOT EXISTS fim_event_type ON fim_event (type);
-CREATE INDEX IF NOT EXISTS fim_event_file ON fim_event (id_file);
-CREATE INDEX IF NOT EXISTS fim_event_date ON fim_event (date);
-CREATE INDEX IF NOT EXISTS fim_event_md5 ON fim_event (md5);
-CREATE INDEX IF NOT EXISTS fim_event_sha1 ON fim_event (sha1);
-CREATE INDEX IF NOT EXISTS fim_event_sha256 ON fim_event (sha256);
-
+ 
 CREATE TABLE IF NOT EXISTS fim_entry (
     file TEXT PRIMARY KEY,
     type TEXT NOT NULL CHECK (type IN ('file', 'registry')),

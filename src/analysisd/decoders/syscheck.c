@@ -29,9 +29,10 @@ static void InsertWhodata(const sk_sum_t * sum);
 // Compare the first common fields between sum strings
 static int SumCompare(const char *s1, const char *s2);
 // Clean sdb memory
-void fim_clean_sdb_mem();
+static void fim_clean_sdb_mem();
 // Check for exceed num of changes
 static int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf);
+
 
 // Initialize the necessary information to process the syscheck information
 void SyscheckInit()
@@ -404,6 +405,7 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output) {
 
     return retval;
 }
+
 
 int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf) {
     int changes = 0;
