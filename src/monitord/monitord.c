@@ -69,6 +69,9 @@ void Monitord()
         merror(QUEUE_SEND);
     }
 
+    // Start com request thread
+    w_create_thread(moncom_main, NULL);
+
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
@@ -118,4 +121,24 @@ void Monitord()
 
         sleep(1);
     }
+}
+
+
+cJSON *getMonitorInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *monconf = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(monconf,"day_wait",mond.day_wait);
+    cJSON_AddNumberToObject(monconf,"compress",mond.compress);
+    cJSON_AddNumberToObject(monconf,"sign",mond.sign);
+    cJSON_AddNumberToObject(monconf,"monitor_agents",mond.monitor_agents);
+    cJSON_AddNumberToObject(monconf,"keep_log_days",mond.keep_log_days);
+    cJSON_AddNumberToObject(monconf,"rotate_log",mond.rotate_log);
+    cJSON_AddNumberToObject(monconf,"size_rotate",mond.size_rotate);
+    cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
+
+    cJSON_AddItemToObject(root,"monitord",monconf);
+
+    return root;
 }
