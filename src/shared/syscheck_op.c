@@ -25,12 +25,18 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_perm;
     char *c_mtime;
     char *c_inode;
+    char *tag;
     int retval = 0;
 
     memset(sum, 0, sizeof(sk_sum_t));
 
     if (c_sum[0] == '-' && c_sum[1] == '1') {
         retval = 1;
+        /* Look for a defined tag */
+        if (tag = strchr(c_sum, ':'), tag) {
+            *(tag++) = '\0';
+            sum->tag = tag;
+        }
     } else {
         sum->size = c_sum;
 
@@ -84,6 +90,12 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
             if ((sum->sha256 = strchr(c_inode, ':')))
                 *(sum->sha256++) = '\0';
+
+            /* Look for a defined tag */
+            if (tag = strchr(sum->sha256, ':'), tag) {
+                *(tag++) = '\0';
+                sum->tag = tag;
+            }
 
             sum->mtime = atol(c_mtime);
             sum->inode = atol(c_inode);
@@ -239,6 +251,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     if(sum->sha256) {
         os_strdup(sum->sha256, lf->sha256_after);
         os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
+    }
+
+    if(sum->tag) {
+        os_strdup(sum->tag, lf->sk_tag);
+        os_strdup(sum->tag, lf->fields[SK_TAG].value);
     }
 
     if(sum->wdata.user_id) {

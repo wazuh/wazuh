@@ -581,8 +581,18 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         /* Remove spaces from tag */
 
         if (tag) {
-            if (clean_tag = os_strip_char(tag, ' '), !clean_tag)
+            if (clean_tag = os_strip_char(tag, ' '), !clean_tag) {
                 merror("Processing tag '%s'.", tag);
+                goto out_free;
+            } else {
+                free(tag);
+                tag = NULL;
+                os_strdup(clean_tag, tag);
+            }
+            if (clean_tag = os_strip_char(tag, '!'), !clean_tag) {
+                merror("Processing tag '%s'.", tag);
+                goto out_free;
+            }
         }
 
         /* Add directory - look for the last available */
@@ -663,8 +673,12 @@ out_free:
 
     free(dir_org);
     free(restrictfile);
-    free(tag);
-    free(clean_tag);
+    if (tag) {
+        free(tag);
+    }
+    if (clean_tag) {
+        free(clean_tag);
+    }
 
     return ret;
 }
