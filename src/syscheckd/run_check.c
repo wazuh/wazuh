@@ -364,7 +364,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         int pos = find_dir_pos(file_name, 1, 0, 0);
 
         //Alert for deleted file
-        snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s!%s", wd_sum, file_name, syscheck.tag[pos] ? syscheck.tag[pos] : "");
+        snprintf(alert_msg, sizeof(alert_msg), "-1:%s!%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", wd_sum, file_name);
         send_syscheck_msg(alert_msg);
 
         // Delete from hash table
