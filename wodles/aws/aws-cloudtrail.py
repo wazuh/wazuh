@@ -667,6 +667,9 @@ class AWSCloudtrailBucket(AWSBucket):
 
 
 class AWSFirehouseBucket(AWSBucket):
+    def __init__(self, *args):
+        AWSBucket.__init__(self, *args)
+        self.retain_db_records = 1000 # in firehouse logs there are no regions/users, this number must be increased.
 
     def get_creation_date(self, log_file):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
@@ -694,8 +697,10 @@ class AWSFirehouseBucket(AWSBucket):
 
 
     def iter_regions_and_accounts(self, account_id, regions):
-        self.iter_files_in_bucket('','')
-        self.db_maintenance('','')
+        # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
+        # would prevent to loose lots of logs from different buckets.
+        self.iter_files_in_bucket('',self.bucket)
+        self.db_maintenance('',self.bucket)
 
 
 ################################################################################
