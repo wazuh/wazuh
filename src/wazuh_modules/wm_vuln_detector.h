@@ -44,6 +44,7 @@
 #define VU_MEDIUM     "Medium"
 #define VU_HIGH       "High"
 #define VU_IMPORTANT  "Important"
+#define VU_SHARED_SEVERITY 2
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
@@ -230,13 +231,16 @@ typedef struct file_test {
 typedef struct info_cve {
     char *cveid;
     char *title;
-    char *severity;
+    // This value can be shared by several vulnerabilities when working with patches. That's why we use double pointer
+    // This will occur when a vulnerability extracted from a patch does not contain the 'impact' field
+    char **severity;
     char *published;
     char *updated;
     char *reference;
     char *description;
     char *cvss2;
     char *cvss3;
+    int flags;
     struct info_cve *prev;
 } info_cve;
 

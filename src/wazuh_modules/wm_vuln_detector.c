@@ -117,6 +117,8 @@ const char *vu_dist_ext[] = {
     "Unknown OS"
 };
 
+const char *unknown_value = "Unknown";
+
 const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *agent_dist) {
     const char *retval = NULL;
     int i;
@@ -590,7 +592,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 cJSON * jPackage = cJSON_CreateObject();
                 cJSON_AddStringToObject(alert_cve, "cve", cve);
                 cJSON_AddStringToObject(alert_cve, "title", title);
-                cJSON_AddStringToObject(alert_cve, "severity", (severity) ? severity : "Unknown");
+                cJSON_AddStringToObject(alert_cve, "severity", (severity) ? severity : unknown_value);
                 cJSON_AddStringToObject(alert_cve, "published", published);
                 cJSON_AddStringToObject(alert_cve, "updated", updated);
                 cJSON_AddStringToObject(alert_cve, "reference", reference);
@@ -844,10 +846,9 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
                 if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_CVE_INFO], -1, &stmt, NULL) != SQLITE_OK) {
                     return wm_vulnerability_detector_sql_error(db, stmt);
                 }
-
                 sqlite3_bind_text(stmt, 1, cve_it->cveid, -1, NULL);
                 sqlite3_bind_text(stmt, 2, NULL, -1, NULL);
-                sqlite3_bind_text(stmt, 3, cve_it->severity, -1, NULL);
+                sqlite3_bind_text(stmt, 3, (cve_it->severity) ? *cve_it->severity : unknown_value, -1, NULL);
                 sqlite3_bind_text(stmt, 4, cve_it->published, -1, NULL);
                 sqlite3_bind_text(stmt, 5, NULL, -1, NULL);
                 sqlite3_bind_text(stmt, 6, cve_it->reference, -1, NULL);
@@ -866,6 +867,9 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
                 cve_it = cve_it->prev;
                 free(cve_aux->cveid);
                 free(cve_aux->title);
+                if (cve_aux->severity && ((cve_aux->flags & VU_SHARED_SEVERITY) != VU_SHARED_SEVERITY)) {
+                    free(*cve_aux->severity);
+                }
                 free(cve_aux->severity);
                 free(cve_aux->published);
                 free(cve_aux->reference);
@@ -997,7 +1001,7 @@ set_op:
 
         sqlite3_bind_text(stmt, 1, info_it->cveid, -1, NULL);
         sqlite3_bind_text(stmt, 2, info_it->title, -1, NULL);
-        sqlite3_bind_text(stmt, 3, info_it->severity, -1, NULL);
+        sqlite3_bind_text(stmt, 3, (info_it->severity) ? *info_it->severity : unknown_value, -1, NULL);
         sqlite3_bind_text(stmt, 4, info_it->published, -1, NULL);
         sqlite3_bind_text(stmt, 5, info_it->updated, -1, NULL);
         sqlite3_bind_text(stmt, 6, info_it->reference, -1, NULL);
@@ -1408,6 +1412,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         cves->reference = NULL;
                         cves->cvss2 = NULL;
                         cves->cvss3 = NULL;
+                        cves->flags = 0;
                         cves->prev = parsed_oval->info_cves;
 
                         parsed_oval->vulnerabilities = vuln;
@@ -1636,13 +1641,15 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                 pat->cve_ref = inf;
                 os_strdup(node[i]->content, inf->cveid);
                 inf->title = NULL;
-                inf->severity = NULL;
                 inf->published = NULL;
                 inf->updated = NULL;
                 inf->reference = NULL;
                 inf->cvss2 = NULL;
                 inf->cvss3 = NULL;
                 inf->description = NULL;
+                inf->flags = 0;
+                inf->severity = NULL;
+
                 if (node[i]->attributes) {
                     for (j = 0; node[i]->attributes[j]; j++) {
                         if (!strcmp(node[i]->attributes[j], XML_CVSS2)) {
@@ -1652,13 +1659,14 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                         } else if (!strcmp(node[i]->attributes[j], XML_HREF)) {
                             os_strdup(node[i]->values[j], inf->reference);
                         } else if (!strcmp(node[i]->attributes[j], XML_IMPACT)) {
+                            os_calloc(1, sizeof(char *), inf->severity);
                             *node[i]->values[j] = toupper(*node[i]->values[j]);
                             if (!strcmp(node[i]->values[j], VU_MODERATE)) {
-                                os_strdup(VU_MEDIUM, inf->severity);
+                                os_strdup(VU_MEDIUM, *inf->severity);
                             } else if (!strcmp(node[i]->values[j], VU_IMPORTANT)) {
-                                os_strdup(VU_HIGH, inf->severity);
+                                os_strdup(VU_HIGH, *inf->severity);
                             } else {
-                                os_strdup(node[i]->values[j], inf->severity);
+                                os_strdup(node[i]->values[j], *inf->severity);
                             }
                         } else if (!strcmp(node[i]->attributes[j], XML_PUBLIC)) {
                             if (strlen(node[i]->values[j]) > 7) {
@@ -1671,21 +1679,24 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
                     }
                 }
 
+                // If it does not contain a specific severity, the path
                 if (!inf->severity) {
-                    os_strdup("Unknown", inf->severity);
+                    inf->flags |= VU_SHARED_SEVERITY;
+                    inf->severity = parsed_oval->info_cves->severity;
                 }
             }
         } else if (!strcmp(node[i]->element, XML_SEVERITY)) {
+            os_calloc(1, sizeof(char *), parsed_oval->info_cves->severity);
             if (*node[i]->content != '\0') {
                 if (!strcmp(node[i]->content, VU_MODERATE)) {
-                    os_strdup(VU_MEDIUM, parsed_oval->info_cves->severity);
+                    os_strdup(VU_MEDIUM, *parsed_oval->info_cves->severity);
                 } else if (!strcmp(node[i]->content, VU_IMPORTANT)) {
-                    os_strdup(VU_HIGH, parsed_oval->info_cves->severity);
+                    os_strdup(VU_HIGH, *parsed_oval->info_cves->severity);
                 } else {
-                    os_strdup(node[i]->content, parsed_oval->info_cves->severity);
+                    os_strdup(node[i]->content, *parsed_oval->info_cves->severity);
                 }
             } else {
-                os_strdup("Unknown", parsed_oval->info_cves->severity);
+                *parsed_oval->info_cves->severity = NULL;
             }
         } else if (!strcmp(node[i]->element, XML_UPDATED)) {
             if (node[i]->attributes) {
