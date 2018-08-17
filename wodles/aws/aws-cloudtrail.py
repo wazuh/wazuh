@@ -244,11 +244,12 @@ class AWSBucket:
         :param msg: JSON message to be sent.
         """
         try:
-            debug(msg, 3)
+            json_msg = json.dumps(msg)
+            debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
             s.send("{header}{msg}".format(header=self.msg_header,
-                                          msg=json.dumps(msg)).encode())
+                                          msg=json_msg).encode())
             s.close()
         except socket.error as e:
             if e.errno == 111:
@@ -345,10 +346,12 @@ class AWSBucket:
 
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg = ""):
+        # error_msg will only have a value when event is None and vice versa
+        event_type = 'error' if error_msg else event['source']
         msg = {
             'integration': 'aws',
             'aws': {
-                'cloudtrail': {
+                event_type: {
                     'aws_account_alias': self.account_alias,
                     'log_file': log_key,
                     's3bucket': self.bucket
@@ -356,8 +359,8 @@ class AWSBucket:
             }
         }
         if event:
-            msg['aws']['cloudtrail']['event'] = {key:value for key,value in filter(lambda x: x[1] is not None, event.items())}
-        if error_msg:
+            msg['aws'][event_type]['event'] = {key:value for key,value in filter(lambda x: x[1] is not None, event.items())}
+        elif error_msg:
             msg['error_msg'] = error_msg
         return msg
 
@@ -430,14 +433,14 @@ class AWSBucket:
         with self.decompress_file(log_key=log_key) as f:
             if '.json' in log_key:
                 json_file = json.load(f)
-                return None if 'Records' not in json_file else json_file['Records']
+                return None if 'Records' not in json_file else [dict(x, source='cloudtrail') for x in json_file['Records']]
             elif f.read(1) == b'{':
                 decoder = json.JSONDecoder()
-                return [event['detail'] for event in json_event_generator(b'{' + f.read()) if 'detail' in event]
+                return [dict(event['detail'], source=event['source'].replace('aws.','')) for event in json_event_generator(b'{' + f.read()) if 'detail' in event]
             else:
                 fieldnames = ("version","account_id","interface_id","srcaddr","dstaddr","srcport","dstport","protocol","packets","bytes","start","end","action","log_status")
                 tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
-                return list(tsv_file)
+                return [dict(x, source='vpc') for x in tsv_file]
 
 
     def get_log_file(self, aws_account_id, log_key):
