@@ -254,30 +254,23 @@ void LogCollectorStart()
 
                 /* Files with date -- check for day change */
                 if (current->ffile) {
-                    minfo("~~~check0  '%s'     -> %s", current->file, current->ffile);
                     if (update_fname(i, j)) {
-                        minfo("~~~check1  '%s'     -> %s", current->file, current->ffile);
                         if (current->fp) {
                             fclose(current->fp);
 #ifdef WIN32
                             CloseHandle(current->h);
 #endif
                         }
-                        minfo("~~~check2  '%s'     -> %s", current->file, current->ffile);
                         current->fp = NULL;
                         if (handle_file(i, j, 0, 1)) {
-                            minfo("~~~check3  '%s'     -> %s", current->file, current->ffile);
                             current->ign++;
                         }
-                        minfo("~~~check4  '%s'     -> %s", current->file, current->ffile);
                         continue;
                     }
 
                     /* Variable file name */
                     else if (!current->fp) {
-                        minfo("~~~check+++++++0  '%s'     -> %s", current->file, current->ffile);
                         if (handle_file(i, j, 0, 1)) {
-                            minfo("~~~check+++++++1  '%s'     -> %s", current->file, current->ffile);
                             current->ign++;
                         }
                         continue;
