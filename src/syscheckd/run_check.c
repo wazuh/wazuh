@@ -357,14 +357,13 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         // Extract the whodata sum here to not include it in the hash table
         if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
             merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
-            *wd_sum = '\0';
         }
 
         /* Find tag position for the evaluated file name */
         int pos = find_dir_pos(file_name, 1, 0, 0);
 
         //Alert for deleted file
-        snprintf(alert_msg, sizeof(alert_msg), "-1:%s!%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", wd_sum, file_name);
+        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
         send_syscheck_msg(alert_msg);
 
         // Delete from hash table

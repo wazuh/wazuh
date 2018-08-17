@@ -592,6 +592,14 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             if (clean_tag = os_strip_char(tag, '!'), !clean_tag) {
                 merror("Processing tag '%s'.", tag);
                 goto out_free;
+            } else {
+                free(tag);
+                tag = NULL;
+                os_strdup(clean_tag, tag);
+            }
+            if (clean_tag = os_strip_char(tag, ':'), !clean_tag) {
+                merror("Processing tag '%s'.", tag);
+                goto out_free;
             }
         }
 
