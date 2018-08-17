@@ -12,8 +12,7 @@
 
 
 /* Read snort_full files */
-void *read_snortfull(int pos, int *rc, int drop_it)
-{
+void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     int f_msg_size = OS_MAXSTR;
     const char *one = "one";
     const char *two = "two";
@@ -27,7 +26,7 @@ void *read_snortfull(int pos, int *rc, int drop_it)
     str[OS_MAXSTR] = '\0';
     f_msg[OS_MAXSTR] = '\0';
 
-    while (fgets(str, OS_MAXSTR, logff[pos].fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Remove \n at the end of the string */
@@ -71,13 +70,7 @@ void *read_snortfull(int pos, int *rc, int drop_it)
 
                     /* Send the message */
                     if (drop_it == 0) {
-                        if (SendMSGtoSCK(logr_queue, f_msg, logff[pos].file,
-                                    LOCALFILE_MQ, logff[pos].log_target) < 0) {
-                            merror(QUEUE_SEND);
-                            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                            }
-                        }
+                        w_msg_hash_queues_push(str, lf->file, strlen(f_msg), lf->log_target, LOCALFILE_MQ);
                     }
 
                     f_msg[0] = '\0';
@@ -95,13 +88,7 @@ void *read_snortfull(int pos, int *rc, int drop_it)
 
                     /* Send the message */
                     if (drop_it == 0) {
-                        if (SendMSGtoSCK(logr_queue, f_msg, logff[pos].file,
-                                    LOCALFILE_MQ, logff[pos].log_target) < 0) {
-                            merror(QUEUE_SEND);
-                            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                            }
-                        }
+                        w_msg_hash_queues_push(str, lf->file, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
                     }
 
                     f_msg[0] = '\0';
@@ -124,6 +111,6 @@ file_error:
 
     }
 
-    mdebug2("Read %d lines from %s", lines, logff[pos].file);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }

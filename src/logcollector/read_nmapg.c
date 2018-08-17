@@ -121,8 +121,7 @@ static char *__go_after(char *x, const char *y)
 }
 
 /* Read Nmap grepable files */
-void *read_nmapg(int pos, int *rc, int drop_it)
-{
+void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     int final_msg_s;
     int need_clear = 0;
 
@@ -146,7 +145,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
     port[16] = '\0';
     proto[16] = '\0';
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* If need clear is set, we need to clear the line */
@@ -239,13 +238,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
 
         if (drop_it == 0) {
             /* Send message to queue */
-            if (SendMSGtoSCK(logr_queue, final_msg, logff[pos].file,
-                        HOSTINFO_MQ, logff[pos].log_target) < 0) {
-                merror(QUEUE_SEND);
-                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                }
-            }
+            w_msg_hash_queues_push(final_msg, lf->file, strlen(final_msg) + 1, lf->log_target, HOSTINFO_MQ);
         }
 
         /* Get next */
@@ -260,6 +253,6 @@ file_error:
 
     }
 
-    mdebug2("Read %d lines from %s", lines, logff[pos].file);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }

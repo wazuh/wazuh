@@ -1,14 +1,21 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.6]
+## [v3.6.0]
 
 ### Added
 
+- Add rescanning of expanded files with wildcards in logcollector ([#332](https://github.com/wazuh/wazuh/pull/332))
+- Parallelization of logcollector ([#627](https://github.com/wazuh/wazuh/pull/672))
+  - Now the input of logcollector is multithreaded, reading logs in parallel.
+  - A thread is created for each type of output socket.
+  - Periodically rescan of new files.
+  - New options have been added to internal_options.conf file.
 - Added a recursion level option to Syscheck to set the directory scanning depth. ([#1081](https://github.com/wazuh/wazuh/pull/1081))
 
 ### Changed
 
+- Changed logcollector analysis message order. ([#675](https://github.com/wazuh/wazuh/pull/675))
 - The internal option `syscheck.max_depth` has been renamed to `syscheck.default_max_depth`. ([#1081](https://github.com/wazuh/wazuh/pull/1081))
 
 
