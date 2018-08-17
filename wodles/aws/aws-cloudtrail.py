@@ -276,20 +276,20 @@ class AWSBucket:
         raise NotImplementedError
 
 
-    def mark_complete(self, aws_account_id, aws_region, log_key):
+    def mark_complete(self, aws_account_id, aws_region, log_file):
         if self.reparse:
-            if self.already_processed(log_key, aws_account_id, aws_region):
-                debug('+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_key), 2)
+            if self.already_processed(log_file['Key'], aws_account_id, aws_region):
+                debug('+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']), 2)
         else:
             try:
                 self.db_connector.execute(sql_mark_complete.format(
                     aws_account_id=aws_account_id,
                     aws_region=aws_region,
-                    log_key=log_key,
-                    created_date=self.get_creation_date(log_key)
+                    log_key=log_file['Key'],
+                    created_date=self.get_creation_date(log_file)
                 ))
             except Exception as e:
-                debug("+++ Error marking log {} as completed: {}".format(log_key, e),2)
+                debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e),2)
                 raise e
 
 
@@ -381,7 +381,7 @@ class AWSBucket:
             try:
                 created_date = query_results.fetchone()[0]
                 # Existing logs processed, but older than only_logs_after
-                if int(created_date) < self.only_logs_after:
+                if int(created_date) < int(self.only_logs_after.strftime('%Y%m%d')):
                     filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
             except TypeError:
                 # No logs processed for this account/region, but if only_logs_after has been set
@@ -524,7 +524,7 @@ class AWSBucket:
                 if self.delete_file:
                     debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                self.mark_complete(aws_account_id, aws_region, bucket_file['Key'])
+                self.mark_complete(aws_account_id, aws_region, bucket_file)
         except SystemExit:
             raise
         except Exception as err:
@@ -548,11 +548,11 @@ class AWSCloudtrailBucket(AWSBucket):
             aws_region=account_region)
 
 
-    def get_creation_date(self,log_key):
+    def get_creation_date(self,log_file):
         # An example of cloudtrail filename would be
         # AWSLogs/11111111/CloudTrail/ap-northeast-1/2018/08/10/111111_CloudTrail_ap-northeast-1_20180810T0115Z_DgrtLuV9YQvGGdN6.json.gz
         # the following line extracts this part -> 20180810
-        return int(path.basename(log_key).split('_')[-2].split('T')[0])
+        return int(path.basename(log_file['Key']).split('_')[-2].split('T')[0])
 
 
     def get_extra_data_from_filename(self, filename):
@@ -573,7 +573,7 @@ class AWSCloudtrailBucket(AWSBucket):
         for row in filter(lambda x: x[0] != '', self.db_connector(sql_select_migrate_legacy)):
             try:
                 aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
-                self.mark_complete(aws_account_id, aws_region, new_filename)
+                self.mark_complete(aws_account_id, aws_region, {'Key':new_filename})
             except Exception as e:
                 debug("++ Error parsing log file name: {}".format(row[0]),1)
 
@@ -668,10 +668,13 @@ class AWSCloudtrailBucket(AWSBucket):
 
 class AWSFirehouseBucket(AWSBucket):
 
-    def get_creation_date(self, log_key):
+    def get_creation_date(self, log_file):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
-        name_regex = re.match(r"^[\w\-]+(\d\d\d\d-\d\d-\d\d)[\w\-.]+$", path.basename(log_key))
-        return int(name_regex.group(1).replace('-',''))
+        name_regex = re.match(r"^[\w\-]+(\d\d\d\d-\d\d-\d\d)[\w\-.]+$", path.basename(log_file['Key']))
+        if name_regex is None:
+            return log_file['LastModified'].strftime('%Y%m%d')
+        else:
+            return int(name_regex.group(1).replace('-',''))
 
 
     def migrate_legacy_table(self):
