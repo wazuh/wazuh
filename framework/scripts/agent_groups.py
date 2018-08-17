@@ -63,7 +63,7 @@ def show_agents_with_group(group_id):
     else:
         print("{0} agent(s) in group '{1}':".format(agents_data['totalItems'], group_id))
         for agent in agents_data['items']:
-            print("  ID: {0}  Name: {1}.".format(agent['id'], agent['name']))
+            print("  ID: {0}  Name: {1}. {2}".format(agent['id'], agent['name'], agent['multi_group']))
 
 
 def show_group_files(group_id):
