@@ -62,6 +62,7 @@ typedef enum wdb_stmt {
     WDB_STMT_ADDR_DEL,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
+    WDB_STMT_FIM_DELETE,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -144,6 +145,8 @@ int wdb_fim_find_entry(wdb_t * wdb, const char * path);
 int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum_t * sum);
 
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
+
+int wdb_fim_delete(wdb_t * wdb, const char * file);
 
 /* Insert policy monitoring entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
