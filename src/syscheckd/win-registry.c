@@ -301,8 +301,8 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch, c
         /* Look for p_key on the reg db */
         if (os_winreg_changed(full_key_name, mf_sum, sf_sum, arch)) {
             char reg_changed[MAX_LINE + 1];
-            snprintf(reg_changed, MAX_LINE, "0:0:0:0:%s:%s %s%s!%s",
-                     mf_sum, sf_sum, arch == ARCH_64BIT ? "[x64] " : "", full_key_name, tag ? tag : "");
+            snprintf(reg_changed, MAX_LINE, "0:0:0:0:%s:%s!:::::::::::%s %s%s",
+                     mf_sum, sf_sum, tag ? tag : "", arch == ARCH_64BIT ? "[x64] " : "", full_key_name);
 
             /* Notify server */
             notify_registry(reg_changed, 0);

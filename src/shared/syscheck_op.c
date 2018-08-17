@@ -32,11 +32,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
     if (c_sum[0] == '-' && c_sum[1] == '1') {
         retval = 1;
-        /* Look for a defined tag */
-        if (tag = strchr(c_sum, ':'), tag) {
-            *(tag++) = '\0';
-            sum->tag = tag;
-        }
     } else {
         sum->size = c_sum;
 
@@ -102,7 +97,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
     }
 
-    // Get whodata
+    // Get extra data wdata+tags(optional)
     if (w_sum) {
         sum->wdata.user_id = w_sum;
 
@@ -164,6 +159,13 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             *(sum->wdata.process_id++) = '\0';
         } else {
             return -1;
+        }
+
+        /* Look for a defined tag */
+        if (sum->tag = wstr_chr(sum->wdata.process_id, ':'), sum->tag) {
+            *(sum->tag++) = '\0';
+        } else {
+            sum->tag = NULL;
         }
 
         sum->wdata.user_name = unescape_whodata_sum(sum->wdata.user_name);
@@ -253,11 +255,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
     }
 
-    if(sum->tag) {
-        os_strdup(sum->tag, lf->sk_tag);
-        os_strdup(sum->tag, lf->fields[SK_TAG].value);
-    }
-
     if(sum->wdata.user_id) {
         os_strdup(sum->wdata.user_id, lf->user_id);
         os_strdup(sum->wdata.user_id, lf->fields[SK_USER_ID].value);
@@ -311,6 +308,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     if(sum->wdata.process_id) {
         os_strdup(sum->wdata.process_id, lf->process_id);
         os_strdup(sum->wdata.process_id, lf->fields[SK_PROC_ID].value);
+    }
+
+    if(sum->tag) {
+        os_strdup(sum->tag, lf->sk_tag);
+        os_strdup(sum->tag, lf->fields[SK_TAG].value);
     }
 
     /* Fields */
