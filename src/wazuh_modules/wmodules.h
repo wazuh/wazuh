@@ -93,7 +93,7 @@ void wm_destroy();
  * If the called program timed-out, returns WM_ERROR_TIMEOUT and output may
  * contain data.
  */
-int wm_popen(char *command, char **output, int *exitcode, int secs);
+int wm_exec(char *command, char **output, int *exitcode, int secs);
 
 #ifdef WIN32
 // Add process to pool

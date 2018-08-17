@@ -200,7 +200,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 
     mtdebug1(WM_OSCAP_LOGTAG, "Launching command: %s", command);
 
-    switch (wm_popen(command, &output, &status, eval->timeout)) {
+    switch (wm_exec(command, &output, &status, eval->timeout)) {
     case 0:
         if (status > 0) {
             mtwarn(WM_OSCAP_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);

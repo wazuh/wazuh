@@ -41,7 +41,7 @@ static volatile HANDLE wm_children[WM_POOL_SIZE] = { NULL };   // Child process 
 
 // Execute command with timeout of secs
 
-int wm_popen(char *command, char **output, int *status, int secs) {
+int wm_exec(char *command, char **output, int *status, int secs) {
     HANDLE hThread = NULL;
     DWORD dwCreationFlags;
     STARTUPINFO sinfo = { 0 };
@@ -239,7 +239,7 @@ static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child
 
 // Execute command with timeout of secs
 
-int wm_popen(char *command, char **output, int *exitcode, int secs)
+int wm_exec(char *command, char **output, int *exitcode, int secs)
 {
     char **argv;
     pid_t pid;
@@ -253,7 +253,7 @@ int wm_popen(char *command, char **output, int *exitcode, int secs)
     // Create pipe for child's stdout
 
     if (output && pipe(pipe_fd) < 0) {
-        merror("At wm_popen(): pipe(): %s", strerror(errno));
+        merror("At wm_exec(): pipe(): %s", strerror(errno));
         return -1;
     }
 
@@ -287,7 +287,6 @@ int wm_popen(char *command, char **output, int *exitcode, int secs)
             dup2(pipe_fd[1], STDERR_FILENO);
             close(pipe_fd[1]);
         } else {
-           
             dup2(fd, STDOUT_FILENO);
             dup2(fd, STDERR_FILENO);
         }
@@ -369,25 +368,54 @@ int wm_popen(char *command, char **output, int *exitcode, int secs)
         } else {
             // Kill and timeout
             do {
-                sleep(1);
+                if (waitpid(pid,&status,WNOHANG) == 0){ // Command yet not finished
+                    
+                    switch (kill(pid, 0)){
+                        case -1:
+                            switch(errno){
+                                case ESRCH:
+                                    exit(EXIT_SUCCESS);
+                                
+                                default:
+                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                    retval = -2;
+                                    break;
+                            }
 
-                switch (kill(-pid,0)){
-                    case -1:
-                        switch(errno){
-                            case ESRCH:
-                                exit(EXIT_SUCCESS);
-                            
-                            default:
-                                merror("At wm_popen(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
-                                exit(EXIT_FAILURE);
-                        }
+                        default:
+                            sleep(1);
+                            secs--;
+                    }
 
-                    default:
-                        secs--;
+                    if (retval == -2) {
+                        break;
+                    }
+
+                } else { // Command finished
+                    retval = 0;
+                    break;
                 }
+                
             } while(secs);
 
-            kill(-pid,SIGTERM);
+            if(retval != 0){
+                kill(-pid,SIGTERM);
+                retval = ETIMEDOUT;
+
+                switch (waitpid(pid, &status, 0)) {
+                    case -1:
+                        merror("waitpid()");
+                        retval = -1;
+                        break;
+
+                    default:
+                        if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                            merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                            retval = -1;
+                        } else if (exitcode)
+                            *exitcode = WEXITSTATUS(status);
+                }
+            }
 
         }
 

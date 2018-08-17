@@ -128,7 +128,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         // Error
         break;
 
-        case 0:
+    case 0:
         // Child code
 
         if (flags & W_CHECK_WRITE && !access(path, W_OK)) {
