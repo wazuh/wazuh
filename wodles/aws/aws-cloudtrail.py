@@ -62,7 +62,7 @@ import csv
 import gzip
 import zipfile
 import re
-from io import BytesIO
+import io
 from datetime import datetime
 from os import path
 import operator
@@ -403,16 +403,25 @@ class AWSBucket:
 
 
     def decompress_file(self, log_key):
-        raw_object = BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
+        def decompress_gzip(raw_object):
+            # decompress gzip file in text mode.
+            try:
+                # Python 3
+                return gzip.open(filename=raw_object, mode='rt')
+            except TypeError:
+                # Python 2
+                return gzip.GzipFile(fileobj=raw_object, mode='r')
+
+        raw_object = io.BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
         if log_key[-3:] == '.gz':
-            return gzip.GzipFile(fileobj=raw_object)
+            return decompress_gzip(raw_object)
         elif log_key[-4:] == '.zip':
             zipfile_object = zipfile.ZipFile(raw_object)
             return zipfile_object.open(zipfile_object.namelist()[0])
         elif log_key[-7:] == '.snappy':
             raise TypeError("Snappy compression is not supported yet.")
         else:
-            return raw_object
+            return io.TextIOWrapper(raw_object)
 
 
     def load_information_from_file(self, log_key):
@@ -426,7 +435,7 @@ class AWSBucket:
         """
         def json_event_generator(data):
             while data:
-                json_data, json_index = decoder.raw_decode(data.decode())
+                json_data, json_index = decoder.raw_decode(data)
                 data = data[json_index:]
                 yield json_data
 
@@ -434,9 +443,9 @@ class AWSBucket:
             if '.json' in log_key:
                 json_file = json.load(f)
                 return None if 'Records' not in json_file else [dict(x, source='cloudtrail') for x in json_file['Records']]
-            elif f.read(1) == b'{':
+            elif f.read(1) == '{':
                 decoder = json.JSONDecoder()
-                return [dict(event['detail'], source=event['source'].replace('aws.','')) for event in json_event_generator(b'{' + f.read()) if 'detail' in event]
+                return [dict(event['detail'], source=event['source'].replace('aws.','')) for event in json_event_generator('{' + f.read()) if 'detail' in event]
             else:
                 fieldnames = ("version","account_id","interface_id","srcaddr","dstaddr","srcport","dstport","protocol","packets","bytes","start","end","action","log_status")
                 tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
