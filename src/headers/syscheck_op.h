@@ -135,6 +135,8 @@ typedef struct sk_sum_t {
     long mtime;
     long inode;
     sk_sum_wdata wdata;
+    int changes;
+    long date_alert;
 } sk_sum_t;
 
 extern _sdb sdb;
