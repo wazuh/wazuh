@@ -134,6 +134,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define LESSD_LOCAL_SOCK "/queue/ossec/agentless"
 #define INTG_LOCAL_SOCK "/queue/ossec/integrator"
 #define CSYS_LOCAL_SOCK  "/queue/ossec/csyslog"
+#define MON_LOCAL_SOCK  "/queue/ossec/monitor"
 
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"

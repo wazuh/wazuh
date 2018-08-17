@@ -27,6 +27,12 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext);
 void OS_CompressLog(const char *logfile);
 void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
 
+/* Parse readed config into JSON format */
+cJSON *getMonitorInternalOptions(void);
+size_t moncom_dispatch(char * command, char ** output);
+size_t moncom_getconfig(const char * section, char ** output);
+void * moncom_main(__attribute__((unused)) void * arg);
+
 /* Global variables */
 extern monitor_config mond;
 
