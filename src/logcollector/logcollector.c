@@ -193,7 +193,7 @@ void LogCollectorStart()
             }
         }
 
-        else {
+        else if (j < 0) {
             set_read(current, i, j);
             /* More tweaks for Windows. For some reason IIS places
              * some weird characters at the end of the files and getc
@@ -807,13 +807,12 @@ int check_pattern_expand(logreader *current) {
                     globs[j].gfiles[i].mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
                     globs[j].gfiles[i].fp = NULL;
                     globs[j].gfiles[i + 1].file = NULL;
-                    if (handle_file(i, j, 0, 0) ) {
-                        current->ign++;
-                    }
                     current_files++;
                     mdebug2(CURRENT_FILES, current_files, maximum_files);
                     if  (!i && !globs[j].gfiles[i].read) {
                         set_read(&globs[j].gfiles[i], i, j);
+                    } else if (handle_file(i, j, 1, 1) ) {
+                        current->ign++;
                     }
                 }
                 glob_offset++;
