@@ -1330,6 +1330,10 @@ class Agent:
 
         agent_group = agent_info["group"] + "-" + group_id
 
+        # Check if the group exists
+        if not Agent.group_exists(group_id):
+            raise WazuhException(1710, group_id)
+
         # Connect DB
         db_global = glob(common.database_path_global)
         if not db_global:
@@ -1501,8 +1505,7 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
-        query = "SELECT {0} FROM agent WHERE `group` = :group_id"
-
+    
         # Group names
         data = []
         for entry in listdir(common.shared_path):
@@ -1510,10 +1513,22 @@ class Agent:
             if not path.isdir(full_entry):
                 continue
 
-            # Group count
+            # Get the id of the group
+            query = "SELECT id FROM groups WHERE name = :group_id"
             request = {'group_id': entry}
-            conn.execute(query.format('COUNT(*)'), request)
+            conn.execute(query, request)
+            id_group = conn.fetch()
 
+            if id_group == None:
+                continue
+
+            id_group = id_group[0]
+
+            # Group count
+            query = "SELECT {0} FROM belongs WHERE id_group = :id"
+            request = {'id': id_group}
+            conn.execute(query.format('COUNT(*)'), request)
+          
             # merged.mg and agent.conf sum
             merged_sum = get_hash(entry + "/merged.mg", hash_algorithm)
             conf_sum   = get_hash(entry + "/agent.conf", hash_algorithm)
@@ -1626,8 +1641,8 @@ class Agent:
         search_fields = {"id", "name", "os_name", "ip", "status", "version", "os_platform", "manager_host"}
 
         # Init query
-        query = "SELECT {0} FROM agent WHERE `group` = :group_id" if group_id is not None else "SELECT {0} FROM agent WHERE `group` IS NULL AND id != 0"
-        request = {'group_id': group_id}
+        query = "SELECT {0}, CASE WHEN COUNT(*) > 1 THEN '*' ELSE '' END as num_groups FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent WHERE `group` LIKE :group_id" if group_id is not None else "SELECT {0} FROM agent WHERE `group` IS NULL AND id != 0"
+        request = {'group_id': '%'+group_id+'%'}
 
         # Select
         if select:
@@ -1657,8 +1672,11 @@ class Agent:
                                                                     else search['value'])
 
         # Count
-        conn.execute(query.format('COUNT(*)'), request)
+        conn.execute(query.format('COUNT(DISTINCT a.id)'), request)
         data = {'totalItems': conn.fetch()[0]}
+
+        # Multi group count
+        query += ' GROUP BY a.id '
 
         # Sorting
         if sort:
@@ -1692,11 +1710,17 @@ class Agent:
 
         # Data query
         conn.execute(query.format(','.join(select_fields)), request)
-
+        result = list(conn)
+        
+        conn.execute(query.format(','.join(select_fields)), request)
         data['items'] = Agent.get_agents_dict(conn, select_fields, user_select_fields)
 
-        return data
+        index = 0
+        for d in data['items']:
+            d["multi_group"] = result[index][-1]
+            index = index + 1
 
+        return data
 
     @staticmethod
     def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
