@@ -19,18 +19,20 @@ static const char *XML_SECRET_KEY = "secret_key";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_REMOVE_FORM_BUCKET = "remove_from_bucket";
 static const char *XML_SKIP_ON_ERROR = "skip_on_error";
-static const char *XML_AWS_CLOUDTRAIL = "cloudtrail";
 static const char *XML_AWS_PROFILE = "aws_profile";
 static const char *XML_IAM_ROLE_ARN = "iam_role_arn";
 static const char *XML_AWS_ACCOUNT_ID = "aws_account_id";
 static const char *XML_AWS_ACCOUNT_ALIAS = "aws_account_alias";
-static const char *XML_TRAIL_PREFIX = "trail_prefix";
+static const char *XML_TRAIL_PREFIX = "path";
 static const char *XML_ONLY_LOGS_AFTER = "only_logs_after";
 static const char *XML_REGION = "regions";
 static const char *XML_BUCKET_TYPE = "type";
+static const char *XML_BUCKET_NAME = "name";
 
-static const char *LEGACY_AWS_ACCOUNT_ID = "";
 static const char *LEGACY_AWS_ACCOUNT_ALIAS = "LEGACY";
+
+static const char *CLOUDTRAIL_BUCKET_TYPE = "cloudtrail";
+static const char *CUSTOM_BUCKET_TYPE = "custom";
 
 // Parse XML
 
@@ -41,7 +43,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     xml_node **children = NULL;
     wm_aws *aws_config;
     os_calloc(1, sizeof(wm_aws), aws_config);
-    wm_aws_cloudtrail *cur_cloudtrail = NULL;
+    wm_aws_bucket *cur_bucket = NULL;
 
     if (!nodes) {
         mwarn("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
@@ -137,123 +139,131 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 os_strdup(nodes[i]->content, aws_config->secret_key);
             }
         } else if (!strcmp(nodes[i]->element, XML_BUCKET)) {
-            if (strlen(nodes[i]->content) == 0) {
-                merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            free(aws_config->bucket);
-            os_strdup(nodes[i]->content, aws_config->bucket);
-        } else if (!strcmp(nodes[i]->element, XML_AWS_CLOUDTRAIL)) {
-            mtdebug2(WM_AWS_LOGTAG, "Found a cloudtrail tag");
-
-            // Create cloudtrail node
-            if (cur_cloudtrail) {
-                os_calloc(1, sizeof(wm_aws_cloudtrail), cur_cloudtrail->next);
-                cur_cloudtrail = cur_cloudtrail->next;
-                mtdebug2(WM_AWS_LOGTAG, "Creating another cloudtrail structure");
-            } else {
-                // First cloudtrail
-                os_calloc(1, sizeof(wm_aws_cloudtrail), cur_cloudtrail);
-                aws_config->cloudtrails = cur_cloudtrail;
-                mtdebug2(WM_AWS_LOGTAG, "Creating first cloudtrail structure");
-            }
-
-            // Expand CloudTrail Child Nodes
-
-            if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-                continue;
-            }
-
-            mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
-            for (j = 0; children[j]; j++) {
-
-                mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
-
-                if (!children[j]->element) {
-                    merror(XML_ELEMNULL);
-                    OS_ClearNode(children);
+            if (!nodes[i]->attributes) { // Legacy
+                if (strlen(nodes[i]->content) == 0) {
+                    merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
                     return OS_INVALID;
                 }
 
-                // Start
-                if (!strcmp(children[j]->element, XML_BUCKET)) {
-                    if (strlen(children[j]->content) == 0) {
-                        merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
-                        return OS_INVALID;
-                    }
-                    free(cur_cloudtrail->bucket);
-                    os_strdup(children[j]->content, cur_cloudtrail->bucket);
-                } else if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ID)) {
-                    if (strlen(children[j]->content) == 0) {
-                        merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
-                        return OS_INVALID;
-                    }
-                    free(cur_cloudtrail->aws_account_id);
-                    os_strdup(children[j]->content, cur_cloudtrail->aws_account_id);
-                } else if (!strcmp(children[j]->element, XML_REMOVE_FORM_BUCKET)) {
-                    if (strcmp(children[j]->content, "yes")) {
-                        cur_cloudtrail->remove_from_bucket = 1;
-                    } else if (strcmp(children[j]->content, "no")) {
-                        cur_cloudtrail->remove_from_bucket = 0;
+                free(aws_config->bucket);
+                os_strdup(nodes[i]->content, aws_config->bucket);
+            } else {
+                mtdebug2(WM_AWS_LOGTAG, "Found a bucket tag");
+                // Create bucket node
+                if (cur_bucket) {
+                    os_calloc(1, sizeof(wm_aws_bucket), cur_bucket->next);
+                    cur_bucket = cur_bucket->next;
+                    mtdebug2(WM_AWS_LOGTAG, "Creating another bucket structure");
+                } else {
+                    // First bucket
+                    os_calloc(1, sizeof(wm_aws_bucket), cur_bucket);
+                    aws_config->buckets = cur_bucket;
+                    mtdebug2(WM_AWS_LOGTAG, "Creating first bucket structure");
+                }
+
+                // Expand bucket Child Nodes
+
+                if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
+                    continue;
+                }
+
+                // type is an attribute of the bucket tag
+                if (!strcmp(*nodes[i]->attributes, XML_BUCKET_TYPE)) {
+                    if (!strcmp(*nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE)) {
+                        os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
-                        merror("Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);
+                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CUSTOM_BUCKET_TYPE);
                         return OS_INVALID;
-                    }
-                } else if (!strcmp(children[j]->element, XML_ACCESS_KEY)) {
-                    if (strlen(children[j]->content) != 0) {
-                        free(cur_cloudtrail->access_key);
-                        os_strdup(children[j]->content, cur_cloudtrail->access_key);
-                    }
-                } else if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ALIAS)) {
-                    if (strlen(children[j]->content) != 0) {
-                        free(cur_cloudtrail->aws_account_alias);
-                        os_strdup(children[j]->content, cur_cloudtrail->aws_account_alias);
-                    }
-                } else if (!strcmp(children[j]->element, XML_SECRET_KEY)) {
-                    if (strlen(children[j]->content) != 0) {
-                        free(cur_cloudtrail->secret_key);
-                        os_strdup(children[j]->content, cur_cloudtrail->secret_key);
-                    }
-                } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
-                    if (strlen(children[j]->content) != 0) {
-                        free(cur_cloudtrail->aws_profile);
-                        os_strdup(children[j]->content, cur_cloudtrail->aws_profile);
-                    }
-                } else if (!strcmp(children[j]->element, XML_IAM_ROLE_ARN)) {
-                    if (strlen(children[j]->content) != 0) {
-                        free(cur_cloudtrail->iam_role_arn);
-                        os_strdup(children[j]->content, cur_cloudtrail->iam_role_arn);
-                    }
-                } else if (!strcmp(children[j]->element, XML_TRAIL_PREFIX)) {
-                    if (strlen(children[j]->content) != 0) {
-                        free(cur_cloudtrail->trail_prefix);
-                        os_strdup(children[j]->content, cur_cloudtrail->trail_prefix);
-                    }
-                } else if (!strcmp(children[j]->element, XML_ONLY_LOGS_AFTER)) {
-                    if (strlen(children[j]->content) != 0) {
-                        free(cur_cloudtrail->only_logs_after);
-                        os_strdup(children[j]->content, cur_cloudtrail->only_logs_after);
-                    }
-                } else if (!strcmp(children[j]->element, XML_REGION)) {
-                    if (strlen(children[j]->content) != 0) {
-                        free(cur_cloudtrail->regions);
-                        os_strdup(children[j]->content, cur_cloudtrail->regions);
-                    }
-                } else if (!strcmp(children[j]->element, XML_BUCKET_TYPE)) {
-                    if (strlen(children[j]->content) != 0) {
-                        free(cur_cloudtrail->type);
-                        os_strdup(children[j]->content, cur_cloudtrail->type);
                     }
                 } else {
-                    merror("No such child tag '%s' of cloudtrail at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
-                    OS_ClearNode(children);
+                    mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_BUCKET_TYPE);
                     return OS_INVALID;
                 }
+
+                mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+                for (j = 0; children[j]; j++) {
+
+                    mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+
+                    if (!children[j]->element) {
+                        merror(XML_ELEMNULL);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    }
+
+                    // Start
+                    if (!strcmp(children[j]->element, XML_BUCKET_NAME)) {
+                        if (strlen(children[j]->content) == 0) {
+                            merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET_NAME, WM_AWS_CONTEXT.name);
+                            return OS_INVALID;
+                        }
+                        free(cur_bucket->bucket);
+                        os_strdup(children[j]->content, cur_bucket->bucket);
+                    } else if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ID)) {
+                        if (strlen(children[j]->content) == 0) {
+                            merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                            return OS_INVALID;
+                        }
+                        free(cur_bucket->aws_account_id);
+                        os_strdup(children[j]->content, cur_bucket->aws_account_id);
+                    } else if (!strcmp(children[j]->element, XML_REMOVE_FORM_BUCKET)) {
+                        if (strcmp(children[j]->content, "yes")) {
+                            cur_bucket->remove_from_bucket = 1;
+                        } else if (strcmp(children[j]->content, "no")) {
+                            cur_bucket->remove_from_bucket = 0;
+                        } else {
+                            merror("Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);
+                            return OS_INVALID;
+                        }
+                    } else if (!strcmp(children[j]->element, XML_ACCESS_KEY)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->access_key);
+                            os_strdup(children[j]->content, cur_bucket->access_key);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ALIAS)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->aws_account_alias);
+                            os_strdup(children[j]->content, cur_bucket->aws_account_alias);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_SECRET_KEY)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->secret_key);
+                            os_strdup(children[j]->content, cur_bucket->secret_key);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->aws_profile);
+                            os_strdup(children[j]->content, cur_bucket->aws_profile);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_IAM_ROLE_ARN)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->iam_role_arn);
+                            os_strdup(children[j]->content, cur_bucket->iam_role_arn);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_TRAIL_PREFIX)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->trail_prefix);
+                            os_strdup(children[j]->content, cur_bucket->trail_prefix);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_ONLY_LOGS_AFTER)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->only_logs_after);
+                            os_strdup(children[j]->content, cur_bucket->only_logs_after);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_REGION)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->regions);
+                            os_strdup(children[j]->content, cur_bucket->regions);
+                        }
+                    } else {
+                        merror("No such child tag '%s' of bucket at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    }
+                }
+
+                OS_ClearNode(children);
             }
-
-            OS_ClearNode(children);
-
         } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_AWS_CONTEXT.name);
             return OS_INVALID;
@@ -262,48 +272,46 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     // Support legacy config
     if (aws_config->bucket) {
-        mtwarn(WM_AWS_LOGTAG, "Deprecated CloudTrail config defined; please use current config definition at module '%s'.", WM_AWS_CONTEXT.name);
+        mtwarn(WM_AWS_LOGTAG, "Deprecated config defined; please use current config definition at module '%s'.", WM_AWS_CONTEXT.name);
 
-        // Create cloudtrail node
-        if (cur_cloudtrail) {
-            os_calloc(1, sizeof(wm_aws_cloudtrail), cur_cloudtrail->next);
-            cur_cloudtrail = cur_cloudtrail->next;
+        // Create bucket node
+        if (cur_bucket) {
+            os_calloc(1, sizeof(wm_aws_bucket), cur_bucket->next);
+            cur_bucket = cur_bucket->next;
         } else {
-            // First cloudtrail
-            os_calloc(1, sizeof(wm_aws_cloudtrail), cur_cloudtrail);
-            aws_config->cloudtrails = cur_cloudtrail;
+            // First bucket
+            os_calloc(1, sizeof(wm_aws_bucket), cur_bucket);
+            aws_config->buckets = cur_bucket;
         }
 
         if (aws_config->bucket) {
             if (strlen(aws_config->bucket) != 0) {
-                free(cur_cloudtrail->bucket);
-                os_strdup(aws_config->bucket, cur_cloudtrail->bucket);
+                free(cur_bucket->bucket);
+                os_strdup(aws_config->bucket, cur_bucket->bucket);
             }
         }
         if (aws_config->secret_key) {
             if (strlen(aws_config->secret_key) != 0) {
-                free(cur_cloudtrail->secret_key);
-                os_strdup(aws_config->secret_key, cur_cloudtrail->secret_key);
+                free(cur_bucket->secret_key);
+                os_strdup(aws_config->secret_key, cur_bucket->secret_key);
             }
         }
         if (aws_config->access_key) {
             if (strlen(aws_config->access_key) != 0) {
-                free(cur_cloudtrail->access_key);
-                os_strdup(aws_config->access_key, cur_cloudtrail->access_key);
+                free(cur_bucket->access_key);
+                os_strdup(aws_config->access_key, cur_bucket->access_key);
             }
         } else if (aws_config->remove_from_bucket) {
-            cur_cloudtrail->remove_from_bucket = aws_config->remove_from_bucket;
+            cur_bucket->remove_from_bucket = aws_config->remove_from_bucket;
         }
 
         // Hard code LEGACY references
-        free(cur_cloudtrail->aws_account_id);
-        os_strdup(LEGACY_AWS_ACCOUNT_ID, cur_cloudtrail->aws_account_id);
-        free(cur_cloudtrail->aws_account_alias);
-        os_strdup(LEGACY_AWS_ACCOUNT_ALIAS, cur_cloudtrail->aws_account_alias);
+        free(cur_bucket->aws_account_alias);
+        os_strdup(LEGACY_AWS_ACCOUNT_ALIAS, cur_bucket->aws_account_alias);
     }
 
-    if (!aws_config->cloudtrails) {
-        mtwarn(WM_AWS_LOGTAG, "No CloudTrails definitions found at module '%s'.", WM_AWS_CONTEXT.name);
+    if (!aws_config->buckets) {
+        mtwarn(WM_AWS_LOGTAG, "No buckets definitions found at module '%s'.", WM_AWS_CONTEXT.name);
         return OS_INVALID;
     }
 

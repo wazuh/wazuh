@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Import AWS CloudTrail
+# Import AWS S3
 #
 # Author: Wazuh, Inc.
 # Copyright: GPLv3
@@ -757,12 +757,12 @@ def arg_valid_regions(arg_string):
 
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
-                                     description="Wazuh wodle for monitoring of AWS CloudTrail logs in S3 bucket",
+                                     description="Wazuh wodle for monitoring of AWS logs in S3 bucket",
                                      formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS CloudTrail logs',
+    parser.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS logs',
                         action='store', required=True)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
-                        help='AWS Account ID for CloudTrail logs', required=False,
+                        help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
     parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debug')
     parser.add_argument('-a', '--access_key', dest='access_key', help='S3 Access key credential', default=None)
