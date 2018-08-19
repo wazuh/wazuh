@@ -402,8 +402,8 @@ class AWSBucket:
         if log_key[-3:] == '.gz':
             return decompress_gzip(raw_object)
         elif log_key[-4:] == '.zip':
-            zipfile_object = zipfile.ZipFile(raw_object)
-            return zipfile_object.open(zipfile_object.namelist()[0], mode='r')
+            zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
+            return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
         elif log_key[-7:] == '.snappy':
             raise TypeError("Snappy compression is not supported yet.")
         else:
