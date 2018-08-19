@@ -13,74 +13,30 @@ ID: 80200 - 80499
     <!-- Filter 1: Only AWS (CloudTrail, IAM and Inspector) events -->
     <rule id="80200" level="0">
         <decoded_as>json</decoded_as>
-        <field name="aws.cloudtrail.event.eventSource">\.+</field>
-        <description>Amazon CloudTrail alerts.</description>
-    </rule>
-    <rule id="80205" level="0">
-        <decoded_as>json</decoded_as>
-        <field name="aws.iam.event.eventSource">\.+</field>
-        <description>Amazon IAM alerts.</description>
-    </rule>
-    <rule id="80210" level="0">
-        <decoded_as>json</decoded_as>
-        <field name="aws.inspector.event.eventSource">\.+</field>
-        <description>Amazon Inspector alerts.</description>
+        <field name="aws.event.eventSource">\.+</field>
+        <description>Amazon $(aws.event.source) alerts.</description>
     </rule>
 
     <!-- Filter 2: Only eventSource in etc/lists/amazon/aws-sources -->
     <rule id="80201" level="0">
         <if_sid>80200</if_sid>
-        <list field="aws.cloudtrail.event.eventSource" lookup="match_key">etc/lists/amazon/aws-sources</list>
-        <description>Amazon: $(aws.cloudtrail.event.eventSource).</description>
-    </rule>
-    <rule id="80206" level="0">
-        <if_sid>80205</if_sid>
-        <list field="aws.iam.event.eventSource" lookup="match_key">etc/lists/amazon/aws-sources</list>
-        <description>Amazon: $(aws.iam.event.eventSource).</description>
-    </rule>
-    <rule id="80211" level="0">
-        <if_sid>80210</if_sid>
-        <list field="aws.inspector.event.eventSource" lookup="match_key">etc/lists/amazon/aws-sources</list>
-        <description>Amazon: $(aws.inspector.event.eventSource).</description>
+        <list field="aws.event.eventSource" lookup="match_key">etc/lists/amazon/aws-sources</list>
+        <description>Amazon: $(aws.event.eventSource).</description>
     </rule>
 
     <!-- Filter 3: Only eventName in etc/lists/amazon/aws-eventnames -->
     <rule id="80202" level="3">
         <if_sid>80201</if_sid>
-        <list field="aws.cloudtrail.event.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
-        <description>Amazon: $(aws.cloudtrail.event.eventSource) - $(aws.cloudtrail.event.eventName).</description>
-        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-    </rule>
-    <rule id="80207" level="3">
-        <if_sid>80206</if_sid>
-        <list field="aws.iam.event.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
-        <description>Amazon: $(aws.iam.event.eventSource) - $(aws.iam.event.eventName).</description>
-        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-    </rule>
-    <rule id="80212" level="3">
-        <if_sid>80211</if_sid>
-        <list field="aws.inspector.event.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
-        <description>Amazon: $(aws.inspector.event.eventSource) - $(aws.inspector.event.eventName).</description>
+        <list field="aws.event.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
+        <description>Amazon: $(aws.event.eventSource) - $(aws.event.eventName).</description>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!-- If there is an error code: increase the level and change description -->
     <rule id="80203" level="4">
         <if_sid>80202</if_sid>
-        <field name="aws.cloudtrail.event.errorCode">\.+</field>
-        <description>Amazon: $(aws.cloudtrail.event.eventSource) - $(aws.cloudtrail.event.eventName). Error: $(aws.cloudtrail.event.errorCode).</description>
-        <group>pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,</group>
-    </rule>
-    <rule id="80208" level="4">
-        <if_sid>80207</if_sid>
-        <field name="aws.iam.event.errorCode">\.+</field>
-        <description>Amazon: $(aws.iam.event.eventSource) - $(aws.iam.event.eventName). Error: $(aws.iam.event.errorCode).</description>
-        <group>pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,</group>
-    </rule>
-    <rule id="80213" level="4">
-        <if_sid>80212</if_sid>
-        <field name="aws.inspector.event.errorCode">\.+</field>
-        <description>Amazon: $(aws.inspector.event.eventSource) - $(aws.inspector.event.eventName). Error: $(aws.inspector.event.errorCode).</description>
+        <field name="aws.event.errorCode">\.+</field>
+        <description>Amazon: $(aws.event.eventSource) - $(aws.event.eventName). Error: $(aws.event.errorCode).</description>
         <group>pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,</group>
     </rule>
 
@@ -90,111 +46,43 @@ ID: 80200 - 80499
     <!-- Events with errors -->
     <rule id="80250" level="5">
         <if_sid>80203</if_sid>
-        <field name="aws.cloudtrail.event.errorCode">AccessDenied</field>
-        <description>Amazon: $(aws.cloudtrail.event.eventSource) - $(aws.cloudtrail.event.eventName). Error: $(aws.cloudtrail.event.errorCode).</description>
-        <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    </rule>
-    <rule id="80260" level="5">
-        <if_sid>80208</if_sid>
-        <field name="aws.iam.event.errorCode">AccessDenied</field>
-        <description>Amazon: $(aws.iam.event.eventSource) - $(aws.iam.event.eventName). Error: $(aws.iam.event.errorCode).</description>
-        <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    </rule>
-    <rule id="80270" level="5">
-        <if_sid>80213</if_sid>
-        <field name="aws.inspector.event.errorCode">AccessDenied</field>
-        <description>Amazon: $(aws.inspector.event.eventSource) - $(aws.inspector.event.eventName). Error: $(aws.inspector.event.errorCode).</description>
+        <field name="aws.event.errorCode">AccessDenied</field>
+        <description>Amazon: $(aws.event.eventSource) - $(aws.event.eventName). Error: $(aws.event.errorCode).</description>
         <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <!-- Events with no errors -->
     <rule id="80251" level="3">
         <if_sid>80201</if_sid>
-        <field name="aws.cloudtrail.event.eventName">DeleteObjects</field>
-        <description>Amazon: $(aws.cloudtrail.event.eventSource) - $(aws.cloudtrail.event.eventName).</description>
-        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-    </rule>
-    <rule id="80261" level="3">
-        <if_sid>80206</if_sid>
-        <field name="aws.iam.event.eventName">DeleteObjects</field>
-        <description>Amazon: $(aws.iam.event.eventSource) - $(aws.iam.event.eventName).</description>
-        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-    </rule>
-    <rule id="80271" level="3">
-        <if_sid>80211</if_sid>
-        <field name="aws.inspector.event.eventName">DeleteObjects</field>
-        <description>Amazon: $(aws.inspector.event.eventSource) - $(aws.inspector.event.eventName).</description>
+        <field name="aws.event.eventName">DeleteObjects</field>
+        <description>Amazon: $(aws.event.eventSource) - $(aws.event.eventName).</description>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="80252" level="10" frequency="22" timeframe="600">
         <if_matched_sid>80251</if_matched_sid>
-        <description>Amazon: $(aws.cloudtrail.event.eventSource) - $(aws.cloudtrail.event.eventName) - high number of deleted object.</description>
-        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-    </rule>
-    <rule id="80262" level="10" frequency="22" timeframe="600">
-        <if_matched_sid>80261</if_matched_sid>
-        <description>Amazon: $(aws.iam.event.eventSource) - $(aws.iam.event.eventName) - high number of deleted object.</description>
-        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-    </rule>
-    <rule id="80272" level="10" frequency="22" timeframe="600">
-        <if_matched_sid>80271</if_matched_sid>
-        <description>Amazon: $(aws.inspector.event.eventSource) - $(aws.inspector.event.eventName) - high number of deleted object.</description>
+        <description>Amazon: $(aws.event.eventSource) - $(aws.event.eventName) - high number of deleted object.</description>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!-- Logins -->
     <rule id="80253" level="3">
         <if_sid>80202</if_sid>
-        <field name="aws.cloudtrail.event.eventName">ConsoleLogin</field>
-        <description>Amazon: $(aws.cloudtrail.event.eventSource) - $(aws.cloudtrail.event.eventName) - User Login Success.</description>
-        <group>authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,</group>
-    </rule>
-    <rule id="80263" level="3">
-        <if_sid>80207</if_sid>
-        <field name="aws.iam.event.eventName">ConsoleLogin</field>
-        <description>Amazon: $(aws.iam.event.eventSource) - $(aws.iam.event.eventName) - User Login Success.</description>
-        <group>authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,</group>
-    </rule>
-    <rule id="80273" level="3">
-        <if_sid>80212</if_sid>
-        <field name="aws.inspector.event.eventName">ConsoleLogin</field>
-        <description>Amazon: $(aws.inspector.event.eventSource) - $(aws.inspector.event.eventName) - User Login Success.</description>
+        <field name="aws.event.eventName">ConsoleLogin</field>
+        <description>Amazon: $(aws.event.eventSource) - $(aws.event.eventName) - User Login Success.</description>
         <group>authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="80254" level="5">
         <if_sid>80253</if_sid>
-        <field name="aws.cloudtrail.event.responseElements.ConsoleLogin">Failure</field>
-        <description>Amazon: $(aws.cloudtrail.event.eventSource) - $(aws.cloudtrail.event.eventName) - User Login failed.</description>
+        <field name="aws.event.responseElements.ConsoleLogin">Failure</field>
+        <description>Amazon: $(aws.event.eventSource) - $(aws.event.eventName) - User Login failed.</description>
         <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
-    <rule id="80264" level="5">
-        <if_sid>80263</if_sid>
-        <field name="aws.iam.event.responseElements.ConsoleLogin">Failure</field>
-        <description>Amazon: $(aws.iam.event.eventSource) - $(aws.iam.event.eventName) - User Login failed.</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    </rule>
-    <rule id="80274" level="5">
-        <if_sid>80273</if_sid>
-        <field name="aws.inspector.event.responseElements.ConsoleLogin">Failure</field>
-        <description>Amazon: $(aws.inspector.event.eventSource) - $(aws.inspector.event.eventName) - User Login failed.</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    </rule>
-
+    
     <rule id="80255" level="10" frequency="6" timeframe="360">
         <if_matched_sid>80254</if_matched_sid>
-        <description>Amazon: $(aws.cloudtrail.event.eventSource) - $(aws.cloudtrail.event.eventName) - Possible breaking attempt (high number of login attempts).</description>
-        <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    </rule>
-    <rule id="80265" level="10" frequency="6" timeframe="360">
-        <if_matched_sid>80264</if_matched_sid>
-        <description>Amazon: $(aws.iam.event.eventSource) - $(aws.iam.event.eventName) - Possible breaking attempt (high number of login attempts).</description>
-        <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    </rule>
-    <rule id="80275" level="10" frequency="6" timeframe="360">
-        <if_matched_sid>80274</if_matched_sid>
-        <description>Amazon: $(aws.inspector.event.eventSource) - $(aws.inspector.event.eventName) - Possible breaking attempt (high number of login attempts).</description>
+        <description>Amazon: $(aws.event.eventSource) - $(aws.event.eventName) - Possible breaking attempt (high number of login attempts).</description>
         <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
@@ -203,78 +91,80 @@ ID: 80200 - 80499
     <!-- Documentation: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types.html -->
     <rule id="80300" level="0">
         <decoded_as>json</decoded_as>
-        <field name="aws.guardduty.event.severity">\d+</field>
+        <field name="aws.event.source">guardduty</field>
+        <field name="aws.event.severity">\d+</field>
         <description>Guard Duty Findings.</description>
     </rule>
 
     <!-- Guard Duty severity levels: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_findings.html#guardduty_findings-severity -->
     <rule id="80301" level="3">
         <if_sid>80300</if_sid>
-        <field name="aws.guardduty.event.severity">0|1|2|3</field>
-        <description>Guard Duty Finding with a low level: $(aws.guardduty.event.description)</description>
+        <field name="aws.event.severity">0|1|2|3</field>
+        <description>Guard Duty Finding with a low level: $(aws.event.description)</description>
     </rule>
     <rule id="80302" level="6">
         <if_sid>80300</if_sid>
-        <field name="aws.guardduty.event.severity">4|5|6</field>
-        <description>Guard Duty Finding with a medium level: $(aws.guardduty.event.description)</description>
+        <field name="aws.event.severity">4|5|6</field>
+        <description>Guard Duty Finding with a medium level: $(aws.event.description)</description>
     </rule>
     <rule id="80303" level="10">
         <if_sid>80300</if_sid>
-        <field name="aws.guardduty.event.severity">7|8|9</field>
-        <description>Guard Duty Finding with a high level: $(aws.guardduty.event.description)</description>
+        <field name="aws.event.severity">7|8|9</field>
+        <description>Guard Duty Finding with a high level: $(aws.event.description)</description>
     </rule>
 
     <!-- Macie Alerts -->
     <!-- Documentation: https://docs.aws.amazon.com/macie/latest/userguide/macie-alerts.html#macie-alert-severity -->
     <rule id="80350" level="0">
         <decoded_as>json</decoded_as>
-        <field name="aws.macie.event.severity">\.+</field>
+        <field name="aws.event.source">macie</field>
+        <field name="aws.event.severity">\.+</field>
         <description>Macie Alerts.</description>
     </rule>
 
     <rule id="80351" level="3">
         <if_sid>80350</if_sid>
-        <field name="aws.macie.event.severity">INFORMATIONAL</field>
-        <description>Macie informational alert: $(aws.macie.event.name) - $(aws.macie.event.summary.description)</description>
+        <field name="aws.event.severity">INFORMATIONAL</field>
+        <description>Macie informational alert: $(aws.event.name) - $(aws.event.summary.description)</description>
     </rule>
     <rule id="80352" level="4">
         <if_sid>80350</if_sid>
-        <field name="aws.macie.event.severity">LOW</field>
-        <description>Macie low alert: $(aws.macie.event.name) - $(aws.macie.event.summary.description)</description>
+        <field name="aws.event.severity">LOW</field>
+        <description>Macie low alert: $(aws.event.name) - $(aws.event.summary.description)</description>
     </rule>
     <rule id="80353" level="6">
         <if_sid>80350</if_sid>
-        <field name="aws.macie.event.severity">MEDIUM</field>
-        <description>Macie medium alert: $(aws.macie.event.name) - $(aws.macie.event.summary.description)</description>
+        <field name="aws.event.severity">MEDIUM</field>
+        <description>Macie medium alert: $(aws.event.name) - $(aws.event.summary.description)</description>
     </rule>
     <rule id="80354" level="8">
         <if_sid>80350</if_sid>
-        <field name="aws.macie.event.severity">HIGH</field>
-        <description>Macie high alert: $(aws.macie.event.name) - $(aws.macie.event.summary.description)</description>
+        <field name="aws.event.severity">HIGH</field>
+        <description>Macie high alert: $(aws.event.name) - $(aws.event.summary.description)</description>
     </rule>
     <rule id="80355" level="10">
         <if_sid>80350</if_sid>
-        <field name="aws.macie.event.severity">CRITICAL</field>
-        <description>Macie critical alert: $(aws.macie.event.name) - $(aws.macie.event.summary.description)</description>
+        <field name="aws.event.severity">CRITICAL</field>
+        <description>Macie critical alert: $(aws.event.name) - $(aws.event.summary.description)</description>
     </rule>
 
     <!-- VPC Flow -->
     <!-- Documentation: https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html -->
     <rule id="80400" level="0">
         <decoded_as>json</decoded_as>
-        <field name="aws.vpc.event.source">vpc</field>
+        <field name="aws.event.source">vpc</field>
         <description>VPC Flow</description>
     </rule>
 
     <rule id="80401" level="3">
         <if_sid>80400</if_sid>
-        <field name="aws.vpc.event.action">ACCEPT</field>
-        <description>VPC Flow accepted connection: Interface: $(aws.vpc.event.interface-id) - Protocol: $(aws.vpc.event.protocol)</description>
+        <field name="aws.event.action">ACCEPT</field>
+        <description>VPC Flow accepted connection: Interface: $(aws.event.interface-id) - Protocol: $(aws.event.protocol)</description>
     </rule>
     <rule id="80402" level="4">
         <if_sid>80400</if_sid>
-        <field name="aws.vpc.event.action">REJECT</field>
-        <description>VPC Flow rejected connection: Interface: $(aws.vpc.event.interface-id) - Protocol: $(aws.vpc.event.protocol)</description>
+        <field name="aws.event.action">REJECT</field>
+        <description>VPC Flow rejected connection: Interface: $(aws.event.interface-id) - Protocol: $(aws.event.protocol)</description>
     </rule>
 
 </group>

@@ -169,9 +169,10 @@ class AWSBucket:
 
     This is an abstract class
     """
+
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
-                bucket, only_logs_after, skip_on_error, account_alias,
-                max_queue_buffer, prefix, delete_file):
+                 bucket, only_logs_after, skip_on_error, account_alias,
+                 max_queue_buffer, prefix, delete_file):
         """
         AWS Bucket constructor.
 
@@ -207,7 +208,6 @@ class AWSBucket:
         self.prefix = prefix
         self.delete_file = delete_file
 
-
     def get_s3_client(self, access_key, secret_key, profile, iam_role_arn):
         conn_args = {}
         if access_key is not None and secret_key is not None:
@@ -236,7 +236,6 @@ class AWSBucket:
             sys.exit(3)
         return s3_client
 
-
     def send_msg(self, msg):
         """
         Sends an AWS event to the Wazuh Queue
@@ -262,7 +261,6 @@ class AWSBucket:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
-
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(sql_already_processed.format(
             aws_account_id=aws_account_id,
@@ -271,15 +269,15 @@ class AWSBucket:
         ))
         return cursor.fetchone()[0] > 0
 
-
     def get_creation_date(self, log_key):
         raise NotImplementedError
-
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
         if self.reparse:
             if self.already_processed(log_file['Key'], aws_account_id, aws_region):
-                debug('+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']), 2)
+                debug(
+                    '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']),
+                    2)
         else:
             try:
                 self.db_connector.execute(sql_mark_complete.format(
@@ -289,13 +287,11 @@ class AWSBucket:
                     created_date=self.get_creation_date(log_file)
                 ))
             except Exception as e:
-                debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e),2)
+                debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
                 raise e
-
 
     def migrate_legacy_table(self):
         raise NotImplementedError
-
 
     def create_table(self):
         try:
@@ -304,7 +300,6 @@ class AWSBucket:
         except Exception as e:
             print("ERROR: Unable to create SQLite DB: {}".format(e))
             sys.exit(6)
-
 
     def init_db(self):
         try:
@@ -321,7 +316,6 @@ class AWSBucket:
         if self.legacy_db_table_name in tables:
             self.migrate_legacy_table()
 
-
     def db_maintenance(self, aws_account_id, aws_region):
         debug("+++ DB Maintenance", 1)
         try:
@@ -331,43 +325,37 @@ class AWSBucket:
                 retain_db_records=self.retain_db_records
             ))
         except Exception as e:
-            print("ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
-                aws_account_id=aws_account_id,
-                aws_region=aws_region,
-                error_msg=e))
+            print(
+                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    error_msg=e))
             sys.exit(10)
-
 
     def marker_only_logs_after(self, aws_region, aws_account_id):
         return '{init}{only_logs_after}'.format(
-            init = self.get_full_prefix(aws_account_id, aws_region),
-            only_logs_after = self.only_logs_after.strftime('%Y/%m/%d')
+            init=self.get_full_prefix(aws_account_id, aws_region),
+            only_logs_after=self.only_logs_after.strftime('%Y/%m/%d')
         )
 
-
-    def get_alert_msg(self, aws_account_id, log_key, event, error_msg = ""):
+    def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
         # error_msg will only have a value when event is None and vice versa
-        event_type = 'error' if error_msg else event['source']
         msg = {
             'integration': 'aws',
             'aws': {
-                event_type: {
-                    'aws_account_alias': self.account_alias,
-                    'log_file': log_key,
-                    's3bucket': self.bucket
-                }
+                'aws_account_alias': self.account_alias,
+                'log_file': log_key,
+                's3bucket': self.bucket
             }
         }
         if event:
-            msg['aws'][event_type]['event'] = {key:value for key,value in filter(lambda x: x[1] is not None, event.items())}
+            msg['aws']['event'] = {key: value for key, value in filter(lambda x: x[1] is not None, event.items())}
         elif error_msg:
             msg['error_msg'] = error_msg
         return msg
 
-
     def get_full_prefix(self, account_id, account_region):
         raise NotImplementedError
-
 
     def build_s3_filter_args(self, aws_account_id, aws_region):
         filter_marker = ''
@@ -377,7 +365,7 @@ class AWSBucket:
         else:
             # Where did we end last run thru on this account/region?
             query_results = self.db_connector.execute(sql_find_last_log_processed.format(aws_account_id=aws_account_id,
-                                                                                    aws_region=aws_region))
+                                                                                         aws_region=aws_region))
             try:
                 created_date = query_results.fetchone()[0]
                 # Existing logs processed, but older than only_logs_after
@@ -394,13 +382,11 @@ class AWSBucket:
         }
         if filter_marker:
             filter_args['StartAfter'] = filter_marker
-            debug('+++ Marker: {0}'.format(filter_marker),2)
+            debug('+++ Marker: {0}'.format(filter_marker), 2)
         return filter_args
-
 
     def reformat_msg(self, event):
         raise NotImplementedError
-
 
     def decompress_file(self, log_key):
         def decompress_gzip(raw_object):
@@ -417,12 +403,11 @@ class AWSBucket:
             return decompress_gzip(raw_object)
         elif log_key[-4:] == '.zip':
             zipfile_object = zipfile.ZipFile(raw_object)
-            return zipfile_object.open(zipfile_object.namelist()[0])
+            return zipfile_object.open(zipfile_object.namelist()[0], mode='r')
         elif log_key[-7:] == '.snappy':
             raise TypeError("Snappy compression is not supported yet.")
         else:
             return io.TextIOWrapper(raw_object)
-
 
     def load_information_from_file(self, log_key):
         """
@@ -433,6 +418,7 @@ class AWSBucket:
         :param log_key: name of the log file
         :return: list of events in json format.
         """
+
         def json_event_generator(data):
             while data:
                 json_data, json_index = decoder.raw_decode(data)
@@ -442,15 +428,18 @@ class AWSBucket:
         with self.decompress_file(log_key=log_key) as f:
             if '.json' in log_key:
                 json_file = json.load(f)
-                return None if 'Records' not in json_file else [dict(x, source='cloudtrail') for x in json_file['Records']]
+                return None if 'Records' not in json_file else [dict(x, source='cloudtrail') for x in
+                                                                json_file['Records']]
             elif f.read(1) == '{':
                 decoder = json.JSONDecoder()
-                return [dict(event['detail'], source=event['source'].replace('aws.','')) for event in json_event_generator('{' + f.read()) if 'detail' in event]
+                return [dict(event['detail'], source=event['source'].replace('aws.', '')) for event in
+                        json_event_generator('{' + f.read()) if 'detail' in event]
             else:
-                fieldnames = ("version","account_id","interface_id","srcaddr","dstaddr","srcport","dstport","protocol","packets","bytes","start","end","action","log_status")
+                fieldnames = (
+                "version", "account_id", "interface_id", "srcaddr", "dstaddr", "srcport", "dstport", "protocol",
+                "packets", "bytes", "start", "end", "action", "log_status")
                 tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
                 return [dict(x, source='vpc') for x in tsv_file]
-
 
     def get_log_file(self, aws_account_id, log_key):
         def exception_handler(error_txt, error_code):
@@ -458,9 +447,9 @@ class AWSBucket:
                 debug("++ {}; skipping...".format(error_txt), 1)
                 try:
                     error_msg = self.get_alert_msg(aws_account_id,
-                                              log_key,
-                                              None,
-                                              error_txt)
+                                                   log_key,
+                                                   None,
+                                                   error_txt)
                     self.send_msg(error_msg)
                 except:
                     debug("++ Failed to send message to Wazuh", 1)
@@ -473,10 +462,9 @@ class AWSBucket:
         except (TypeError, IOError, zipfile.BadZipfile, zipfile.LargeZipFile) as e:
             exception_handler("Failed to decompress file {}: {}".format(log_key, e), 8)
         except (ValueError, csv.Error) as e:
-            exception_handler("Failed to parse file {}: {}".format(log_key,e), 9)
+            exception_handler("Failed to parse file {}: {}".format(log_key, e), 9)
         except Exception as e:
-            exception_handler("Unkown error reading/parsing file {}: {}".format(log_key,e),1)
-
+            exception_handler("Unkown error reading/parsing file {}: {}".format(log_key, e), 1)
 
     def iter_bucket(self, account_id, regions):
         self.init_db()
@@ -485,34 +473,32 @@ class AWSBucket:
         self.db_connector.execute(sql_db_optimize)
         self.db_connector.close()
 
-
     def iter_regions_and_accounts(self, account_id, regions):
         raise NotImplementedError
-
 
     def iter_events(self, event_list, log_key, aws_account_id):
         if event_list is not None:
             for event in event_list:
                 # Parse out all the values of 'None'
-                event_msg = self.get_alert_msg(aws_account_id,log_key,event)
+                event_msg = self.get_alert_msg(aws_account_id, log_key, event)
                 # Change dynamic fields to strings; truncate values as needed
                 event_msg = self.reformat_msg(event_msg)
                 # Send the message
                 self.send_msg(event_msg)
 
-
     def iter_files_in_bucket(self, aws_account_id, aws_region):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
             if 'Contents' not in bucket_files:
-                debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region),1)
+                debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                 return
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
-                        debug("++ File previously processed, but reparse flag set: {file}".format(file=bucket_file['Key']), 1)
+                        debug("++ File previously processed, but reparse flag set: {file}".format(
+                            file=bucket_file['Key']), 1)
                     else:
                         debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                         continue
@@ -547,13 +533,11 @@ class AWSCloudtrailBucket(AWSBucket):
             aws_account_id=account_id,
             aws_region=account_region)
 
-
-    def get_creation_date(self,log_file):
+    def get_creation_date(self, log_file):
         # An example of cloudtrail filename would be
         # AWSLogs/11111111/CloudTrail/ap-northeast-1/2018/08/10/111111_CloudTrail_ap-northeast-1_20180810T0115Z_DgrtLuV9YQvGGdN6.json.gz
         # the following line extracts this part -> 20180810
         return int(path.basename(log_file['Key']).split('_')[-2].split('T')[0])
-
 
     def get_extra_data_from_filename(self, filename):
         debug('++ Parse arguments from log file name', 2)
@@ -562,93 +546,88 @@ class AWSCloudtrailBucket(AWSBucket):
         aws_region = filename_parts[2]
         log_timestamp = datetime.strptime(filename_parts[3].split('.')[0], '%Y%m%dT%H%M%SZ')
         log_key = '{init}/{date_path}/{log_filename}'.format(
-            init=self.get_full_prefix(aws_account_id,aws_region),
+            init=self.get_full_prefix(aws_account_id, aws_region),
             date_path=datetime.strftime(log_timestamp, '%Y/%m/%d'),
             log_filename=filename
         )
         return aws_region, aws_account_id, log_key
 
-
     def migrate_legacy_table(self):
         for row in filter(lambda x: x[0] != '', self.db_connector(sql_select_migrate_legacy)):
             try:
                 aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
-                self.mark_complete(aws_account_id, aws_region, {'Key':new_filename})
+                self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
             except Exception as e:
-                debug("++ Error parsing log file name: {}".format(row[0]),1)
+                debug("++ Error parsing log file name: {}".format(row[0]), 1)
 
-
-    def get_alert_msg(self, aws_account_id, log_key, event, error_msg = ""):
+    def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
         alert_msg = AWSBucket.get_alert_msg(self, aws_account_id, log_key, event, error_msg)
-        alert_msg['aws']['cloudtrail']['aws_account_id'] = aws_account_id
+        alert_msg['aws']['aws_account_id'] = aws_account_id
         return alert_msg
-
 
     def reformat_msg(self, event):
         debug('++ Reformat message', 3)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
         for field_to_str in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_str in event['aws']['cloudtrail']['event']:
+            if field_to_str in event['aws']['event']:
                 try:
                     debug('++ Reformat field: {}'.format(field_to_str), 3)
                     # Nested json
-                    if 'policyDocument' in event['aws']['cloudtrail']['event'][field_to_str]:
-                        event['aws']['cloudtrail']['event']['{}_policyDocument'.format(field_to_str)] = json.dumps(
-                            event['aws']['cloudtrail']['event'][field_to_str]['policyDocument'],
+                    if 'policyDocument' in event['aws']['event'][field_to_str]:
+                        event['aws']['event']['{}_policyDocument'.format(field_to_str)] = json.dumps(
+                            event['aws']['event'][field_to_str]['policyDocument'],
                             ensure_ascii=True,
                             indent=2,
                             sort_keys=True)
-                        event['aws']['cloudtrail']['event'][field_to_str]['policyDocument'] = 'See field {}_policyDocument'.format(field_to_str)
-                    event['aws']['cloudtrail']['event'][field_to_str] = json.dumps(
-                        event['aws']['cloudtrail']['event'][field_to_str],
+                        event['aws']['event'][field_to_str]['policyDocument'] = 'See field {}_policyDocument'.format(
+                            field_to_str)
+                    event['aws']['event'][field_to_str] = json.dumps(
+                        event['aws']['event'][field_to_str],
                         ensure_ascii=True,
                         indent=2,
                         sort_keys=True)
                 except:
                     debug('++ Failed to convert field to string: {}'.format(field_to_str), 1)
-                    event['aws']['cloudtrail']['event'][
+                    event['aws']['event'][
                         field_to_str] = 'Unable to convert field to string: {field}'.format(field=field_to_str)
 
         debug('++ Shrink message', 3)
         # If msg too large, start truncating
         for field_to_shrink in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_shrink not in event['aws']['cloudtrail']['event']:
+            if field_to_shrink not in event['aws']['event']:
                 continue
-            if event['aws']['cloudtrail']['event'][
+            if event['aws']['event'][
                 field_to_shrink] == 'Unable to convert field to string: {field}'.format(field=field_to_shrink):
                 continue
 
             if len(json.dumps(event).encode()) > self.max_queue_buffer:
                 debug('++ Message too large; truncating {field}'.format(field=field_to_shrink), 2)
-                event['aws']['cloudtrail']['event'][
+                event['aws']['event'][
                     field_to_shrink] = 'Value truncated because event msg too large for socket buffer'
             else:
                 debug('++ Message not too large; skip out', 3)
                 break
         return event
 
-
     def find_account_ids(self):
         return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
-                    self.client.list_objects_v2(Bucket=self.bucket,
-                                                Prefix='{}AWSLogs/'.format(self.prefix),
-                                                Delimiter='/')['CommonPrefixes']
+                self.client.list_objects_v2(Bucket=self.bucket,
+                                            Prefix='{}AWSLogs/'.format(self.prefix),
+                                            Delimiter='/')['CommonPrefixes']
                 ]
 
-
-    def find_regions(self,account_id):
-        regions_prefix='{trail_prefix}AWSLogs/{aws_account_id}/CloudTrail/'.format(
-                            trail_prefix=self.prefix,
-                            aws_account_id=account_id)
+    def find_regions(self, account_id):
+        regions_prefix = '{trail_prefix}AWSLogs/{aws_account_id}/CloudTrail/'.format(
+            trail_prefix=self.prefix,
+            aws_account_id=account_id)
         regions = self.client.list_objects_v2(Bucket=self.bucket,
-                                           Prefix=regions_prefix,
-                                           Delimiter='/')
+                                              Prefix=regions_prefix,
+                                              Delimiter='/')
         if 'CommonPrefixes' in regions:
             return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
         else:
-            debug("+++ No regions found for AWS Account {}".format(account_id),1)
+            debug("+++ No regions found for AWS Account {}".format(account_id), 1)
             return []
-
 
     def iter_regions_and_accounts(self, account_id, regions):
         if not account_id:
@@ -661,15 +640,15 @@ class AWSCloudtrailBucket(AWSBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
-                debug("+++ Working on {} - {}".format(aws_account_id, aws_region),1)
+                debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 self.iter_files_in_bucket(aws_account_id, aws_region)
-                self.db_maintenance(aws_account_id,aws_region)
+                self.db_maintenance(aws_account_id, aws_region)
 
 
 class AWSFirehouseBucket(AWSBucket):
     def __init__(self, *args):
         AWSBucket.__init__(self, *args)
-        self.retain_db_records = 1000 # in firehouse logs there are no regions/users, this number must be increased.
+        self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
 
     def get_creation_date(self, log_file):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
@@ -677,30 +656,42 @@ class AWSFirehouseBucket(AWSBucket):
         if name_regex is None:
             return log_file['LastModified'].strftime('%Y%m%d')
         else:
-            return int(name_regex.group(1).replace('-',''))
-
+            return int(name_regex.group(1).replace('-', ''))
 
     def migrate_legacy_table(self):
         # Firehouse events aren't legacy. No migration is needed.
-        debug("+++ Migrating firehouse events. Skipping...",1)
-
+        debug("+++ Migrating firehouse events. Skipping...", 1)
 
     def get_full_prefix(self, account_id, account_region):
         return self.prefix
 
-
     def reformat_msg(self, event):
-        # remove aws.macie.event.trigger field, since it has repeated data and increases log size.
-        if 'macie' in event['aws']:
-            del event['aws']['macie']['event']['trigger']
-        return event
+        def single_element_list_to_dictionary(my_event):
+            for name, value in my_event.items():
+                if isinstance(value, list) and len(value) == 1:
+                    my_event[name] = value[0]
+                elif isinstance(value, dict):
+                    single_element_list_to_dictionary(my_event[name])
 
+        try:
+            # remove aws.event.trigger field, since it has repeated data and increases log size.
+            if event['aws']['event']['source'] == 'macie' and 'trigger' in event['aws']['event']:
+                del event['aws']['event']['trigger']
+
+            # turn some list fields into dictionaries
+            single_element_list_to_dictionary(event)
+
+        except Exception as e:
+            debug("Error reformatting event {}.".format(json.dumps(event)), 2)
+            raise e
+
+        return event
 
     def iter_regions_and_accounts(self, account_id, regions):
         # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
         # would prevent to loose lots of logs from different buckets.
-        self.iter_files_in_bucket('',self.bucket)
-        self.db_maintenance('',self.bucket)
+        self.iter_files_in_bucket('', self.bucket)
+        self.db_maintenance('', self.bucket)
 
 
 ################################################################################
@@ -789,7 +780,7 @@ def get_script_arguments():
                         help='If fail to parse a file, error out instead of skipping the file', default=True)
     parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
                         help='Parse the log file, even if its been parsed before', default=False)
-    parser.add_argument('-t','--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
+    parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
     return parser.parse_args()
 
 
@@ -812,10 +803,10 @@ def main(argv):
 
     bucket_type = AWSCloudtrailBucket if options.type.lower() == 'cloudtrail' else AWSFirehouseBucket
     bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
-                                options.aws_profile, options.iam_role_arn, options.logBucket,
-                                options.only_logs_after, options.skip_on_error,
-                                options.aws_account_alias, max_queue_buffer,
-                                options.trail_prefix, options.deleteFile)
+                         options.aws_profile, options.iam_role_arn, options.logBucket,
+                         options.only_logs_after, options.skip_on_error,
+                         options.aws_account_alias, max_queue_buffer,
+                         options.trail_prefix, options.deleteFile)
     bucket.iter_bucket(options.aws_account_id, options.regions)
 
 
