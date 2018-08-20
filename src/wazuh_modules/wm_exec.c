@@ -268,11 +268,11 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         return -1;
 
     case 0:
-        
+
         // Child
 
         argv = wm_strtok(command);
-        
+
         int fd = open("/dev/null", O_RDWR, 0);
 
         if (fd < 0) {
@@ -296,7 +296,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         if (execve(argv[0], argv, environ) < 0)
             exit(EXECVE_ERROR);
-        
+
         break;
 
     default:
@@ -323,21 +323,21 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             timeout.tv_sec += secs;
 
             // Wait for reading termination
-            
+
             switch (secs ? pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout) : pthread_cond_wait(&tinfo.finished, &tinfo.mutex)) {
-                case 0:
-                    retval = 0;
-                    break;
+            case 0:
+                retval = 0;
+                break;
 
-                case ETIMEDOUT:
-                    retval = WM_ERROR_TIMEOUT;
-                    kill(-pid, SIGTERM);
-                    pthread_cancel(thread);
-                    break;
+            case ETIMEDOUT:
+                retval = WM_ERROR_TIMEOUT;
+                kill(-pid, SIGTERM);
+                pthread_cancel(thread);
+                break;
 
-                default:
-                    kill(-pid, SIGTERM);
-                    pthread_cancel(thread);
+            default:
+                kill(-pid, SIGTERM);
+                pthread_cancel(thread);
             }
             // Wait for thread
 
@@ -369,7 +369,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             // Kill and timeout
             do {
                 if (waitpid(pid,&status,WNOHANG) == 0){ // Command yet not finished
-                    
+
                     switch (kill(pid, 0)){
                         case -1:
                             switch(errno){
@@ -377,7 +377,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                                     merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
                                     retval = -2;
                                     break;
-                                
+
                                 default:
                                     merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
                                     retval = -3;
@@ -397,7 +397,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                     retval = 0;
                     break;
                 }
-                
+
             } while(secs);
 
             if(retval != 0){
@@ -421,7 +421,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                 }
             }
         }
-            
+
         wm_remove_sid(pid);
 
         if (output) {
