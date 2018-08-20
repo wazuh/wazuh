@@ -135,7 +135,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             merror("At wpopenv(): file '%s' has write permissions.", path);
             _exit(127);
         }
-        
+
         int fd = open("/dev/null", O_RDWR, 0);
 
         if (fd < 0) {
@@ -164,6 +164,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             dup2(fd, STDERR_FILENO);
         }
 
+        close(fd);
         setsid();
         execvp(path, argv);
         _exit(127);

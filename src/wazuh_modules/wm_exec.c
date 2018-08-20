@@ -280,6 +280,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         }
 
         dup2(fd, STDIN_FILENO);
+        close(fd);
 
         if (output) {
             close(pipe_fd[0]);
