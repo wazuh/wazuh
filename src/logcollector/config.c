@@ -12,6 +12,10 @@
 
 int accept_remote;
 int lc_debug_level;
+int N_INPUT_THREADS;
+int OUTPUT_QUEUE_SIZE;
+
+void _getLocalfilesListJSON(logreader *list, cJSON *array);
 
 /* Read the config file (the localfiles) */
 int LogCollectorConfig(const char *cfgfile)
@@ -61,59 +65,74 @@ int LogCollectorConfig(const char *cfgfile)
     return (1);
 }
 
-cJSON *getLocalfileConfig(void) {
 
-    if (!max_file) {
-        return NULL;
-    }
+void _getLocalfilesListJSON(logreader *list, cJSON *array) {
 
-    cJSON *root = cJSON_CreateObject();
-    cJSON *localfiles = cJSON_CreateArray();
-    int i, j;
+    unsigned int i = 0;
+    unsigned int j;
 
-    for (i=0;i<max_file ;i++) {
+    while (list[i].target) {
         cJSON *file = cJSON_CreateObject();
 
-        if (logff[i].file) cJSON_AddStringToObject(file,"file",logff[i].file);
-        if (logff[i].logformat) cJSON_AddStringToObject(file,"logformat",logff[i].logformat);
-        if (logff[i].command) cJSON_AddStringToObject(file,"command",logff[i].command);
-        if (logff[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",logff[i].djb_program_name);
-        if (logff[i].alias) cJSON_AddStringToObject(file,"alias",logff[i].alias);
-        if (logff[i].query) cJSON_AddStringToObject(file,"query",logff[i].query);
-        if (*logff[i].target) {
+        if (list[i].file) cJSON_AddStringToObject(file,"file",list[i].file);
+        if (list[i].logformat) cJSON_AddStringToObject(file,"logformat",list[i].logformat);
+        if (list[i].command) cJSON_AddStringToObject(file,"command",list[i].command);
+        if (list[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",list[i].djb_program_name);
+        if (list[i].alias) cJSON_AddStringToObject(file,"alias",list[i].alias);
+        if (list[i].query) cJSON_AddStringToObject(file,"query",list[i].query);
+        if (list[i].target && *list[i].target) {
             cJSON *target = cJSON_CreateArray();
-            for (j=0;logff[i].target[j];j++) {
-                cJSON_AddItemToArray(target, cJSON_CreateString(logff[i].target[j]));
+            for (j=0;list[i].target[j];j++) {
+                cJSON_AddItemToArray(target, cJSON_CreateString(list[i].target[j]));
             }
             cJSON_AddItemToObject(file,"target",target);
         }
-        if (logff[i].out_format && *logff[i].out_format) {
+        if (list[i].out_format && *list[i].out_format) {
             cJSON *outformat = cJSON_CreateArray();
-            for (j=0;logff[i].out_format[j] && logff[i].out_format[j]->format;j++) {
+            for (j=0;list[i].out_format[j] && list[i].out_format[j]->format;j++) {
                 cJSON *item = cJSON_CreateObject();
-                if (logff[i].out_format[j]->target)
-                    cJSON_AddStringToObject(item,"target",logff[i].out_format[j]->target);
+                if (list[i].out_format[j]->target)
+                    cJSON_AddStringToObject(item,"target",list[i].out_format[j]->target);
                 else
                     cJSON_AddStringToObject(item,"target","all");
-                cJSON_AddStringToObject(item,"format",logff[i].out_format[j]->format);
+                cJSON_AddStringToObject(item,"format",list[i].out_format[j]->format);
                 cJSON_AddItemToArray(outformat, item);
             }
             cJSON_AddItemToObject(file,"out_format",outformat);
         }
-        if (logff[i].duplicated) cJSON_AddNumberToObject(file,"duplicate",logff[i].duplicated);
-        if (logff[i].labels[0].key) {
+        if (list[i].duplicated) cJSON_AddNumberToObject(file,"duplicate",list[i].duplicated);
+        if (list[i].labels && list[i].labels[0].key) {
             cJSON *label = cJSON_CreateObject();
-            for (j=0;logff[i].labels[j].key;j++) {
-                cJSON_AddStringToObject(label,logff[i].labels[j].key,logff[i].labels[j].value);
+            for (j=0;list[i].labels[j].key;j++) {
+                cJSON_AddStringToObject(label,list[i].labels[j].key,list[i].labels[j].value);
             }
             cJSON_AddItemToObject(file,"labels",label);
         }
-        if (logff[i].ign) cJSON_AddNumberToObject(file,"frequency",logff[i].ign);
-        if (logff[i].future) cJSON_AddStringToObject(file,"only-future-events","yes");
+        if (list[i].ign) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
+        if (list[i].future) cJSON_AddStringToObject(file,"only-future-events","yes");
 
-        cJSON_AddItemToArray(localfiles, file);
+        cJSON_AddItemToArray(array, file);
+        i++;
+    }
+}
+
+
+cJSON *getLocalfileConfig(void) {
+
+    if (!logff) {
+        return NULL;
     }
 
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON *localfiles = cJSON_CreateArray();
+    _getLocalfilesListJSON(logff, localfiles);
+
+    unsigned int i = 0;
+    while (globs[i].gfiles) {
+        _getLocalfilesListJSON(globs[i].gfiles, localfiles);
+        i++;
+    }
     if (cJSON_GetArraySize(localfiles) > 0) {
         cJSON_AddItemToObject(root,"localfile",localfiles);
     }
@@ -164,9 +183,12 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"open_attempts",open_file_attempts);
     cJSON_AddNumberToObject(logcollector,"vcheck_files",vcheck_files);
     cJSON_AddNumberToObject(logcollector,"max_lines",maximum_lines);
+    cJSON_AddNumberToObject(logcollector,"max_files",maximum_files);
     cJSON_AddNumberToObject(logcollector,"sock_fail_time",sock_fail_time);
     cJSON_AddNumberToObject(logcollector,"debug",lc_debug_level);
     cJSON_AddNumberToObject(logcollector,"sample_log_length",sample_log_length);
+    cJSON_AddNumberToObject(logcollector,"queue_size",OUTPUT_QUEUE_SIZE);
+    cJSON_AddNumberToObject(logcollector,"input_threads",N_INPUT_THREADS);
 
     cJSON_AddItemToObject(internals,"logcollector",logcollector);
     cJSON_AddItemToObject(root,"internal",internals);

@@ -225,7 +225,7 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON_AddNumberToObject(syscheckd,"sleep",syscheck.tsleep);
     cJSON_AddNumberToObject(syscheckd,"sleep_after",syscheck.sleep_after);
     cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
-    cJSON_AddNumberToObject(syscheckd,"max_depth",syscheck.max_depth);
+    cJSON_AddNumberToObject(syscheckd,"default_max_depth",syscheck.max_depth);
     cJSON_AddNumberToObject(syscheckd,"debug",sys_debug_level);
 #ifdef WIN32
     cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);
