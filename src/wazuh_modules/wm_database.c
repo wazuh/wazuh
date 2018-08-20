@@ -86,6 +86,7 @@ static int wm_sync_agentinfo(int id_agent, const char *path);
 static int wm_sync_agent_group(int id_agent, const char *fname);
 static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
+static void wm_sync_multi_groups(const char *dirname);
 // Fill syscheck database from an offset. Returns offset at last successful read event, or -1 on error.
 static long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry);
 // Fill complete rootcheck database.
@@ -143,6 +144,10 @@ void* wm_database_main(wm_database *data) {
                 }
             }
 
+            if(strstr(SHAREDCFG_DIR,path)){
+                wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
+            }
+
             free(path);
         }
     } else {
@@ -166,6 +171,7 @@ void* wm_database_main(wm_database *data) {
                 wm_check_agents();
                 wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
                 wm_scan_directory(DEFAULTDIR GROUPS_DIR);
+                wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
             }
 #endif
             if (data->sync_syscheck) {
@@ -708,6 +714,11 @@ void wm_scan_directory(const char *dirname) {
             wm_sync_file(dirname, dirent->d_name);
 
     closedir(dir);
+}
+
+void wm_sync_multi_groups(const char *dirname) {
+
+    wdb_update_groups(dirname);
 }
 
 int wm_sync_file(const char *dirname, const char *fname) {
