@@ -176,8 +176,9 @@ void w_create_input_threads();
 /* Set mutexes for each file */
 void w_set_file_mutexes();
 extern int sample_log_length;
-extern int max_file;
 extern int lc_debug_level;
 extern int accept_remote;
+extern int N_INPUT_THREADS;
+extern int OUTPUT_QUEUE_SIZE;
 
 #endif /* __LOGREADER_H */
