@@ -25,7 +25,6 @@
 
 static void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector);
 static void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerability_detector);
-static int wm_vulnerability_detector_socketconnect(char *host, in_port_t port);
 static int wm_vulnerability_detector_updatedb(update_node **updates);
 static char * wm_vulnerability_detector_preparser(char *path, distribution dist);
 static int wm_vulnerability_update_oval(update_node *update);
@@ -43,11 +42,11 @@ static int wm_vulnerability_detector_step(sqlite3_stmt *stmt);
 static int wm_vulnerability_create_file(const char *path, const char *source);
 static int wm_vulnerability_check_update_period(update_node *upd);
 static int wm_vulnerability_check_update(update_node *upd, const char *dist);
-static int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed);
 static int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *tag);
 static int wm_vulnerability_detector_compare(char *version_it, char *cversion_it);
 static const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vulnerability_set_oval);
 static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
+int check_timestamp(const char *OS, char *timst, char *ret_timst);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
@@ -141,36 +140,6 @@ const char *wm_vulnerability_set_oval(const char *os_name, const char *os_versio
     }
 
     return retval;
-}
-
-int wm_vulnerability_ssl_request_size(char octet_stream, long int *octet_rem, SSL *ssl, long int oval_size, long int readed) {
-    char buffer[VU_SSL_BUFFER];
-
-    if (octet_stream) {
-        long int request;
-        int size;
-        if (!*octet_rem) {
-            if (size = SSL_read(ssl, buffer, VU_SSL_BUFFER), size < 0) {
-                return OS_INVALID;
-            } else {
-                buffer[size] = '\0';
-                if (size == 2 && !strcmp(buffer, "\r\n")) {
-                    if (size = SSL_read(ssl, buffer, VU_SSL_BUFFER), size < 0) {
-                        return OS_INVALID;
-                    }
-                    buffer[size] = '\0';
-                }
-                request = strtol(buffer, NULL, 16);
-                *octet_rem = request;
-            }
-        } else {
-            // Not all the bytes of the last stream have been readed
-            request = *octet_rem;
-        }
-        return (int) (request > VU_SSL_BUFFER)? VU_SSL_BUFFER : request;
-    } else {
-        return ((oval_size - readed) > VU_SSL_BUFFER)? VU_SSL_BUFFER : (oval_size - readed);
-    }
 }
 
 int wm_vulnerability_check_update_period(update_node *upd) {
@@ -1859,75 +1828,63 @@ free_mem:
     }
 }
 
-int wm_vulnerability_detector_socketconnect(char *url, in_port_t port) {
-	struct sockaddr_in addr, *addr_it;
-	int on = 1, sock;
-    struct addrinfo hints, *host_info, *hinfo_it;
-    char ip_addr[30];
+int check_timestamp(const char *OS, char *timst, char *ret_timst) {
+    int retval = VU_TIMESTAMP_FAIL;
+    char stored_timestamp[KEY_SIZE];
+    int i;
+    sqlite3_stmt *stmt = NULL;
+    sqlite3 *db = NULL;
 
-    if(!port) {
-        port = DEFAULT_OVAL_PORT;
+    if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
+        goto end;
+    } else {
+        if (sqlite3_prepare_v2(db, vu_queries[TIMESTAMP_QUERY], -1, &stmt, NULL) != SQLITE_OK) {
+            goto end;
+        }
+        sqlite3_bind_text(stmt, 1, OS, -1, NULL);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            snprintf(stored_timestamp, KEY_SIZE, "%s", sqlite3_column_text(stmt, 0));
+            for (i = 0; stored_timestamp[i] != '\0'; i++) {
+                 if (stored_timestamp[i] == '-' ||
+                 stored_timestamp[i] == ' ' ||
+                     stored_timestamp[i] == ':' ||
+                     stored_timestamp[i] == 'T') {
+                    continue;
+                 }
+                 if (stored_timestamp[i] < timst[i]) {
+                     retval = VU_TIMESTAMP_OUTDATED;
+                     goto end;
+                 }
+            }
+            retval = VU_TIMESTAMP_UPDATED;
+            snprintf(ret_timst, OS_SIZE_256, "%s", stored_timestamp);
+        } else {
+            retval = VU_TIMESTAMP_OUTDATED;
+        }
     }
-
-	*ip_addr = '\0';
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	if (getaddrinfo(url, "http" , &hints , &host_info)) {
-        return OS_INVALID;
-	}
-
-	for(hinfo_it = host_info; hinfo_it != NULL; hinfo_it = hinfo_it->ai_next) {
-		addr_it = (struct sockaddr_in *) hinfo_it->ai_addr;
-		if (addr_it->sin_addr.s_addr) {
-			strncpy(ip_addr , inet_ntoa(addr_it->sin_addr), sizeof(ip_addr));
-            ip_addr[sizeof(ip_addr) - 1] = '\0';
-		}
-	}
-
-    // https://bugzilla.redhat.com/show_bug.cgi?id=116526
-	freeaddrinfo(host_info);
-
-    if (*ip_addr == '\0') {
-        return OS_INVALID;
-	}
-
-	inet_pton(AF_INET, ip_addr, &addr.sin_addr);
-	addr.sin_port = htons(port);
-	addr.sin_family = AF_INET;
-	sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-	if(sock < 0 || connect(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
-        mterror(WM_VULNDETECTOR_LOGTAG, "Cannot connect to %s:%i.", url, (int)port);
-        close(sock);
-        return OS_INVALID;
-	}
-
-    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof(int));
-	return sock;
+end:
+    if (db) {
+        sqlite3_close_v2(db);
+    }
+    if (stmt) {
+        sqlite3_finalize(stmt);
+    }
+    return retval;
 }
 
 int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_update) {
-    int sock = 0;
-    SSL_CTX *ctx = NULL;
-    SSL *ssl = NULL;
-    char *found;
-    char *timst;
-    long int size;
-    long int readed;
-    long int oval_size;
-    long int octet_rem = 0;
-    char buffer[VU_SSL_BUFFER];
-    char repo_file[OS_SIZE_2048];
-    char repo[OS_SIZE_2048];
-    char *low_repo;
+    char repo[OS_SIZE_2048 + 1];
+    static const char *timestamp_tag = "timestamp>";
+    char timestamp[OS_SIZE_256 + 1];
+    size_t max_size = OS_SIZE_256;
+    char *buffer;
     int i;
+    char *low_repo;
+    int size;
     FILE *fp = NULL;
-    char timestamp_found = 0;
-    char octet_stream;
+    unsigned char success = 0;
+    char *found;
     *need_update = 1;
-    unsigned char success = 1;
-    in_port_t port = update->port;
 
     if (update->path) {
         mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_LOCAL_FETCH, update->path);
@@ -1940,202 +1897,66 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
             for(i = 0; low_repo[i] != '\0'; i++) {
                 low_repo[i] = tolower(low_repo[i]);
             }
-            snprintf(repo_file, OS_SIZE_2048, UBUNTU_OVAL, low_repo);
-            snprintf(repo, OS_SIZE_2048, "%s", CANONICAL_REPO);
+            snprintf(repo, OS_SIZE_2048, CANONICAL_REPO, low_repo);
             free(low_repo);
         } else if (!strcmp(update->dist, vu_dist_tag[DIS_DEBIAN])) {
             os_strdup(update->version, low_repo);
             for(i = 0; low_repo[i] != '\0'; i++) {
                 low_repo[i] = tolower(low_repo[i]);
             }
-            snprintf(repo_file, OS_SIZE_2048, DEBIAN_OVAL, low_repo);
-            snprintf(repo, OS_SIZE_2048, "%s", DEBIAN_REPO);
+            snprintf(repo, OS_SIZE_2048, DEBIAN_REPO, low_repo);
             free(low_repo);
         } else if (!strcmp(update->dist, vu_dist_tag[DIS_REDHAT])) {
-            snprintf(repo_file, OS_SIZE_2048, REDHAT_OVAL, update->version);
-            snprintf(repo, OS_SIZE_2048, "%s", REDHAT_REPO);
+            snprintf(repo, OS_SIZE_2048, REDHAT_REPO, update->version);
         } else {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
             return OS_INVALID;
         }
     } else {
-        int offset = 0;
-        char *limit;
-        if (!strncasecmp(update->url, HTTPS_HEADER, strlen(HTTPS_HEADER))) {
-            offset = strlen(HTTPS_HEADER);
-        } else if (!strncasecmp(update->url, HTTP_HEADER, strlen(HTTP_HEADER))) {
-            offset = strlen(HTTP_HEADER);
-        }
-
-        snprintf(repo, OS_SIZE_2048, "%s", update->url + offset);
-        if (limit = strchr(repo, '/'), limit) {
-            snprintf(repo_file, OS_SIZE_2048, "%s", limit);
-            *limit = '\0';
-        } else {
-            snprintf(repo_file, OS_SIZE_2048, "/");
-        }
+        snprintf(repo, OS_SIZE_2048, "%s", update->url);
     }
 
-    snprintf(buffer, VU_SSL_BUFFER, OVAL_REQUEST, repo_file, repo);
-    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_DOWNLOAD, OS);
-
-    if (sock = wm_vulnerability_detector_socketconnect(repo, port), sock < 0) {
-        sock = 0;
-        success = 0;
-        goto free_mem;
+    if (wurl_request(repo, CVE_TEMP_FILE)) {
+        goto end;
     }
 
-    if (ctx = SSL_CTX_new(SSLv23_client_method()), !ctx) {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_CONTEXT_ERROR);
-        success = 0;
-        goto free_mem;
+    if (fp = fopen(CVE_TEMP_FILE, "r"), !fp) {
+        goto end;
     }
 
-    SSL_CTX_set_options(ctx, SSL_MODE_AUTO_RETRY);
+    while (size = getline(&buffer, &max_size, fp), (int) size > 0) {
+        if (found = strstr(buffer, timestamp_tag), found) {
+            char *close_tag;
+            found+=strlen(timestamp_tag);
 
-    if (ssl = SSL_new(ctx), !ssl) {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_CREATE_ERROR);
-        success = 0;
-        goto free_mem;
-    }
+            if (close_tag = strstr(found, "<"), !close_tag) {
+                goto end;
+            }
+            *close_tag = '\0';
 
-    if (!SSL_set_fd(ssl, sock)) {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_LINK_ERROR);
-        success = 0;
-        goto free_mem;
-    }
-
-    if (SSL_connect(ssl) < 1) {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_SSL_CONNECT_ERROR, OS);
-        success = 0;
-        goto free_mem;
-    }
-
-    SSL_write(ssl, buffer, strlen(buffer));
-    readed = 0;
-    if (fp = fopen(CVE_TEMP_FILE, "w"), !fp) {
-        success = 0;
-        goto free_mem;
-    }
-
-    memset(buffer,0,sizeof(buffer));
-
-    if (size = SSL_read(ssl, buffer, WM_HEADER_SIZE), size < 1) {
-        success = 0;
-        goto free_mem;
-    }
-
-    if (oval_size = wm_read_http_size(buffer), oval_size) {
-        octet_stream = 0;
-    } else if (found = strstr(buffer, "Content-Type: application/octet-stream"), found){
-        octet_stream = 1;
-    } else {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_HTTP_HEADER_ERROR);
-        success = 0;
-        goto free_mem;
-    }
-
-    if((found = strstr(buffer, "<?xml version=")) || (found = strstr(buffer, "<oval_definitions"))) {
-        // If the first request includes content in addition to headers
-        readed = strlen(found);
-        fwrite(found, 1, readed, fp);
-        timestamp_found = 1;
-        goto check_timestamp;
-    }
-
-    while ((oval_size != readed || octet_stream) &&
-           (size = wm_vulnerability_ssl_request_size(octet_stream, &octet_rem, ssl, oval_size, readed)) > 0 &&
-           (size = SSL_read(ssl, buffer, size)) > 0) {
-        buffer[size] = '\0';
-        readed += size;
-        octet_rem -= size;
-
-        if (!timestamp_found) {
-check_timestamp:
-            if (timst = strstr(buffer, "timestamp>"), timst) {
-                int update = 1;
-                char stored_timestamp[KEY_SIZE];
-                int i;
-                sqlite3_stmt *stmt = NULL;
-                sqlite3 *db;
-
-                if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
-                    update = 0;
-                } else {
-                    if (sqlite3_prepare_v2(db, vu_queries[TIMESTAMP_QUERY], -1, &stmt, NULL) != SQLITE_OK) {
-                        success = 0;
-                        sqlite3_finalize(stmt);
-                        sqlite3_close_v2(db);
-                        goto free_mem;
-                    }
-                    sqlite3_bind_text(stmt, 1, OS, -1, NULL);
-
-                    if (sqlite3_step(stmt) == SQLITE_ROW) {
-                        char *close_tag;
-                        timst = strstr(timst, ">");
-                        timst++;
-                        if (close_tag = strstr(timst, "<"), close_tag) {
-                            *close_tag = '\0';
-                            snprintf(stored_timestamp, KEY_SIZE, "%s", sqlite3_column_text(stmt, 0));
-
-                            for (i = 0; stored_timestamp[i] != '\0'; i++) {
-                                 if (stored_timestamp[i] == '-' ||
-                                     stored_timestamp[i] == ' ' ||
-                                     stored_timestamp[i] == ':' ||
-                                     stored_timestamp[i] == 'T') {
-                                    continue;
-                                 }
-                                 if (stored_timestamp[i] < timst[i]) {
-                                     update = 0;
-                                     break;
-                                 }
-                            }
-
-                            *close_tag = '<';
-                        } else {
-                            update = 0;
-                            mterror(WM_VULNDETECTOR_LOGTAG, VU_DB_TIMESTAMP_OVAL_ERROR, OS);
-                        }
-                    } else {
-                        update = 0;
-                        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_DB_TIMESTAMP_OVAL, OS);
-                    }
-                    sqlite3_finalize(stmt);
-                }
-
-                sqlite3_close_v2(db);
-
-                if (update) {
-                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_DATE, OS, stored_timestamp);
+            switch (check_timestamp(OS, found, timestamp)) {
+                case VU_TIMESTAMP_FAIL:
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_DB_TIMESTAMP_OVAL_ERROR, OS);
+                    goto end;
+                break;
+                case VU_TIMESTAMP_UPDATED:
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_DATE, OS, timestamp);
                     *need_update = 0;
-                    goto free_mem;
-                }
+                break;
+                case VU_TIMESTAMP_OUTDATED:
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_DB_TIMESTAMP_OVAL, OS);
+                break;
             }
-
-            if (!timestamp_found) {
-                timestamp_found = 1;
-            } else {
-                continue;
-            }
+            break;
         }
-        fwrite(buffer, 1, size, fp);
-        memset(buffer,0,sizeof(buffer));
     }
 
-free_mem:
-    CRYPTO_cleanup_all_ex_data();
+    success = 1;
+end:
     if (fp) {
         fclose(fp);
     }
-    if (sock >= 0) {
-        close(sock);
-    }
-    if (ssl) {
-        SSL_free(ssl);
-    }
-    if (ctx) {
-        SSL_CTX_free(ctx);
-    }
+
     if (success) {
         return 0;
     } else {
