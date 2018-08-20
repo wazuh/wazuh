@@ -173,7 +173,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     syscheck_node *s_node;
     struct stat statbuf;
     char wd_sum[OS_SIZE_6144 + 1];
-    int recursion_limit;
 #ifdef WIN32
     const char *user;
     char *sid = NULL;
