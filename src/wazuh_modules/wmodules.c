@@ -111,21 +111,29 @@ int wm_check() {
         for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
 
-            if (i->context->name == j->context->name) {
-                mdebug1("Deleting repeated module '%s'.", j->context->name);
-
-                if (j->context->destroy)
-                    j->context->destroy(j->data);
-
-                if (j == wmodules) {
-                    wmodules = prev = next;
-                } else {
-                    prev->next = next;
+            if(i->tag && j->tag){
+                if(!strcmp(i->tag,"command") || !strcmp(j->tag,"command")){
+                    merror("Please provide a tag for each command module.");
+                    return OS_INVALID;
                 }
 
-                free(j);
-            } else {
-                prev = j;
+                if (!strcmp(i->tag,j->tag)) {
+
+                    mdebug1("Deleting repeated module '%s'.", j->tag);
+
+                    if (j->context->destroy)
+                        j->context->destroy(j->data);
+
+                    if (j == wmodules) {
+                        wmodules = prev = next;
+                    } else {
+                        prev->next = next;
+                    }
+
+                    free(j);
+                } else {
+                    prev = j;
+                }
             }
         }
     }
