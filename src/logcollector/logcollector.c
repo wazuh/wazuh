@@ -36,8 +36,8 @@ int sample_log_length;
 int current_files = 0;
 int total_files = 0;
 static int _cday = 0;
-static int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
-static int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
+int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
+int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
 logsocket default_agent = { .name = "agent" };
 
 /* Output thread variables */
@@ -808,6 +808,7 @@ int check_pattern_expand() {
                     globs[j].gfiles[i].mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
                     globs[j].gfiles[i].fp = NULL;
                     globs[j].gfiles[i + 1].file = NULL;
+                    globs[j].gfiles[i + 1].target = NULL;
                     current_files++;
                     mdebug2(CURRENT_FILES, current_files, maximum_files);
                     if  (!i && !globs[j].gfiles[i].read) {
