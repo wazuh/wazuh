@@ -136,27 +136,35 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             _exit(127);
         }
 
+        int fd = open("/dev/null", O_RDWR, 0);
+
+        if (fd < 0) {
+            merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
+        }
+
+        dup2(fd, STDIN_FILENO);
+
         if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
             if (flags & W_BIND_STDOUT) {
                 dup2(pipe_fd[1], STDOUT_FILENO);
             } else {
-                close(STDOUT_FILENO);
+                dup2(fd, STDOUT_FILENO);
             }
 
             if (flags & W_BIND_STDERR) {
                 dup2(pipe_fd[1], STDERR_FILENO);
             } else {
-                close(STDERR_FILENO);
+                dup2(fd, STDERR_FILENO);
             }
 
             close(pipe_fd[0]);
             close(pipe_fd[1]);
         } else {
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
         }
 
-        close(STDIN_FILENO);
+        close(fd);
         setsid();
         execvp(path, argv);
         _exit(127);

@@ -124,6 +124,7 @@ int wm_check() {
                 }
 
                 free(j);
+            
             } else {
                 prev = j;
             }
