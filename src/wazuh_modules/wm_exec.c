@@ -305,9 +305,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         // Parent
 
         wm_append_sid(pid);
-        close(pipe_fd[1]);
 
         if (output) {
+            close(pipe_fd[1]);
             tinfo.pipe = pipe_fd[0];
 
             // Launch thread
