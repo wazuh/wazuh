@@ -1334,19 +1334,6 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
 
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-
-        # Query
-        query = "UPDATE agent SET `group` = :agent_group WHERE id = :agent_id"
-        request = {'agent_group': agent_group,'agent_id': agent_id}
-        conn.execute(query,request)
-        conn.commit()
-
         # If the new multi group doesnt exists, create it
         if not Agent().multi_group_exists(agent_group):
             Agent.create_multi_group(agent_group)
@@ -1641,8 +1628,11 @@ class Agent:
         search_fields = {"id", "name", "os_name", "ip", "status", "version", "os_platform", "manager_host"}
 
         # Init query
-        query = "SELECT {0}, CASE WHEN COUNT(*) > 1 THEN '*' ELSE '' END as num_groups FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent WHERE `group` LIKE :group_id" if group_id is not None else "SELECT {0} FROM agent WHERE `group` IS NULL AND id != 0"
-        request = {'group_id': '%'+group_id+'%'}
+        query = "SELECT {0}, CASE WHEN COUNT(*) > 1 THEN '*' ELSE '' END as num_groups FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent WHERE `group` LIKE :group_id" if group_id is not None else "SELECT {0} FROM agent a WHERE `group` IS NULL AND id != 0"
+        if group_id is not None:
+            request = {'group_id': '%'+group_id+'%'}
+        else:
+            request = {'group_id': group_id}
 
         # Select
         if select:
@@ -1822,17 +1812,6 @@ class Agent:
         except Exception as e:
             raise WazuhException(1005, str(e))
 
-        # Create group in global.db
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-
-        query = "INSERT into GROUPS(name) VALUES(?)"
-        conn.execute(query, (group_id,))
-        conn.commit()
-
         return msg
 
     @staticmethod
@@ -1911,12 +1890,6 @@ class Agent:
             else: # Has only one group
                 agent_group = "default"
 
-            # Update agent `group`
-            query = "UPDATE agent SET `group` = :agent_group WHERE id = :agent_id"
-            request = {'agent_group': agent_group,'agent_id': agent_id}
-            conn.execute(query,request)
-            conn.commit()
-
             # Delete from multi groups folder
             root, multi_group_dirs, files = walk(common.multi_groups_path).next()
 
@@ -1943,31 +1916,7 @@ class Agent:
         if not db_global:
             raise WazuhException(1600)
 
-        conn = Connection(db_global[0])
-
         Agent().remove_multi_group(group_id)
-
-        # Query
-        query = "SELECT id FROM groups WHERE name = :group_id"
-        request = {'group_id': group_id}
-
-        # Fetch the group id
-        conn.execute(query,request)
-        id_group = conn.fetch()[0]
-
-        # Query
-        query = "DELETE FROM groups WHERE name = :group_id"
-        request = {'group_id': group_id}
-
-        # Delete the group from the groups table
-        conn.execute(query,request)
-        conn.commit()
-
-        # Delete from belongs table
-        query = "DELETE FROM belongs WHERE id_group = :id"
-        request = {'id': id_group}
-        conn.execute(query,request)
-        conn.commit()
 
         failed_ids = []
         ids = []
@@ -2049,11 +1998,6 @@ class Agent:
                     agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, agent_info["group"])
                     rmtree(agent_multi_group_path)
             
-        # Delete from table belongs
-        query = "DELETE FROM belongs WHERE id_agent = ?"
-        conn.execute(query,(agent_id,))
-        conn.commit()
-
         # Assign group in /queue/agent-groups
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
         try:
@@ -2072,19 +2016,6 @@ class Agent:
         # Create group in /etc/shared
         if not Agent.group_exists(group_id):
             Agent.create_group(group_id)
-
-        # Add group to belongs table
-        query = "SELECT id FROM groups WHERE name = :name"
-        conn.execute(query, {'name': group_id})
-
-        try:
-            id_group = conn.fetch()[0]
-        except TypeError as e:
-            raise WazuhException(1701, group_id)
-
-        query = "INSERT INTO belongs(id_agent,id_group) VALUES(?,?)"
-        conn.execute(query,(agent_id,id_group,))
-        conn.commit()
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
@@ -2125,27 +2056,6 @@ class Agent:
         except Exception as e:
             raise WazuhException(1005, str(e))
 
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-
-        # Delete from belongs table 
-        query = "DELETE FROM belongs WHERE id_agent = :id"
-        request = {'id': agent_id}
-        conn.execute(query,request)
-        conn.commit()
-
-        # Update belongs table
-        groups = [x for x in group_id.split('-')]
-        for x in groups:
-            id_group = Agent().get_group_by_name(x)
-            query = "INSERT INTO belongs(id_agent,id_group) VALUES(?,?)"
-            conn.execute(query,(agent_id,id_group,))
-            conn.commit()
-
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
     @staticmethod
@@ -2182,33 +2092,11 @@ class Agent:
                     agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, agent_info["group"])
                     rmtree(agent_multi_group_path)
             
-        # Delete from table belongs
-        query = "DELETE FROM belongs WHERE id_agent = ?"
-        conn.execute(query,(agent_id,))
-        conn.commit()
-
-        # Query
-        query = "SELECT id FROM groups WHERE name = :group_id"
-        request = {'group_id': "default"}
-
-        # Fetch the group id
-        conn.execute(query,request)
-        id_group = conn.fetch()[0]
-
-        # Update table belongs
-        query = "INSERT INTO belongs(id_agent,id_group) VALUES(?,?)"
-        conn.execute(query,(agent_id,id_group,))
-        conn.commit()
-
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
+    
         if path.exists(agent_group_path):
             with open(agent_group_path, "w+") as fo:
                 fo.write("default")
-        
-        # Update agent `group`
-        query = "UPDATE agent SET `group` = ? WHERE id = ?"
-        conn.execute(query,("default",agent_id,))
-        conn.commit()
 
         return "Group unset for agent '{0}'.".format(agent_id)
 

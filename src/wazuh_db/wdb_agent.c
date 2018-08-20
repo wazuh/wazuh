@@ -23,6 +23,9 @@ static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
+static const char *SQL_INSERT_AGENT_GROUP= "INSERT INTO groups (name) VALUES(?)";
+static const char *SQL_INSERT_AGENT_BELONG = "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)";
+static const char *SQL_DELETE_AGENT_BELONG = "DELETE FROM belongs WHERE id_agent = ?";
 static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
@@ -31,6 +34,9 @@ static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
 static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND ip = ?;";
+static const char *SQL_FIND_GROUP = "SELECT id FROM groups WHERE name = ?;";
+static const char *SQL_SELECT_GROUPS = "SELECT name FROM groups;";
+static const char *SQL_DELETE_GROUP = "DELETE FROM groups WHERE name = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group) {
@@ -498,7 +504,7 @@ int wdb_set_agent_status(int id_agent, int status) {
 }
 
 /* Update agent group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_group(int id, const char *group) {
+int wdb_update_agent_group(int id, char *group) {
     int result = 0;
     sqlite3_stmt *stmt;
 
@@ -513,6 +519,250 @@ int wdb_update_agent_group(int id, const char *group) {
     sqlite3_bind_text(stmt, 1, group, -1, NULL);
     sqlite3_bind_int(stmt, 2, id);
 
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    sqlite3_finalize(stmt);
+
+    if(wdb_update_agent_multi_group(id,group) < 0){
+        return -1;
+    }
+
+    return result;
+}
+
+/* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_multi_group(int id, char *group) {
+    int result = 0;
+
+    /* Wipe out the agent multi groups relation for this agent */
+    if (wdb_delete_agent_belongs(id) < 0) {
+        return -1;
+    }
+
+    /* Update the belongs table if multi group */
+    const char delim[2] = "-";
+    if (group) {
+        char *multi_group;
+
+        multi_group = strchr(group, '-');
+
+        if (multi_group) {
+
+            /* Get the first group */
+            multi_group = strtok(group, delim);
+            
+            while( multi_group != NULL ) {
+
+                /* Update de groups table */
+                int id_group = wdb_find_group(multi_group);
+
+                if(id_group <= 0){
+                    id_group = wdb_insert_group(multi_group);
+                }
+                
+                if (wdb_update_agent_belongs(id_group,id) < 0){
+                    return -1;
+                }
+
+                multi_group = strtok(NULL, delim);
+            }
+        } else {
+
+            /* Update de groups table */
+            int id_group = wdb_find_group(group);
+
+            if(id_group <= 0){
+                id_group = wdb_insert_group(group);
+            }
+
+            if ( wdb_update_agent_belongs(id_group,id) < 0){
+                return -1;
+            }
+        }
+    }
+   
+    return result;
+}
+
+/* Find group by name. Returns id if success or -1 on failure. */
+int wdb_find_group(const char *name) {
+    sqlite3_stmt *stmt = NULL;
+    int result;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_FIND_GROUP, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        wdb_close_global();
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+
+    result = wdb_step(stmt) == SQLITE_ROW ? sqlite3_column_int(stmt, 0) : -1;
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+/* Insert a new group. Returns id if success or -1 on failure. */
+int wdb_insert_group(const char *name) {
+    sqlite3_stmt *stmt = NULL;
+    int result;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_INSERT_AGENT_GROUP, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        wdb_close_global();
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+
+    if (wdb_step(stmt) == SQLITE_DONE)
+        result = (int)sqlite3_last_insert_rowid(wdb_global);
+    else {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        result = -1;
+    }
+
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+/* Update agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_belongs(int id_group, int id_agent) {
+    int result = 0;
+    sqlite3_stmt *stmt;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_INSERT_AGENT_BELONG, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, id_group);
+    sqlite3_bind_int(stmt, 2, id_agent);
+
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    sqlite3_finalize(stmt);
+
+    return result;
+}
+
+/* Delete agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_delete_agent_belongs(int id_agent) {
+    int result = 0;
+    sqlite3_stmt *stmt;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_DELETE_AGENT_BELONG, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_int(stmt, 1, id_agent);
+
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    sqlite3_finalize(stmt);
+
+    return result;
+}
+
+int wdb_update_groups(const char *dirname) {
+    int result =  0;
+    int i;
+    int n = 1;
+    char **array;
+    sqlite3_stmt *stmt = NULL;
+
+    if (!(array = (char**) calloc(1, sizeof(char*)))) {
+        merror("wdb_update_groups(): memory error");
+        return NULL;
+    }
+
+    if (wdb_open_global() < 0) {
+        free(array);
+        return NULL;
+    }
+
+    if (wdb_prepare(wdb_global, SQL_SELECT_GROUPS, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        wdb_close_global();
+        free(array);
+        return NULL;
+    }
+
+    for (i = 0; wdb_step(stmt) == SQLITE_ROW; i++) {
+        if (i + 1 == n) {
+            char **newarray;
+
+            if (!(newarray = (char **)realloc(array, sizeof(char *) * (n *= 2)))) {
+                merror("wdb_update_groups(): memory error");
+                sqlite3_finalize(stmt);
+                wdb_close_global();
+                return NULL;
+            }
+
+            array = newarray;
+        }
+        //os_calloc(1, sizeof(char), array[i]);
+        os_strdup((char*)sqlite3_column_text(stmt, 0),array[i]);
+    }
+
+    array[i] = NULL;
+
+    sqlite3_finalize(stmt);
+
+    for(i=0;array[i];i++){
+        /* Check if the group exists in dir */
+        char group_path[PATH_MAX + 1] = {0};
+        DIR *dp;
+
+        if (snprintf(group_path, PATH_MAX + 1, "%s/%s", dirname,array[i]) > PATH_MAX) {
+            merror("At wdb_update_groups(): path too long.");
+            continue;
+        }
+
+        dp = opendir(group_path);
+
+        /* Group doesnt exists anymore, delete it */
+        if (!dp) {
+            if (wdb_remove_group_db((char *)array[i]) < 0){
+                return -1;
+            }
+        }
+    }
+
+    for(i=0;array[i];i++){
+        free(array[i]);
+    }
+
+    free(array);
+
+    return result;
+}
+
+/* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_remove_group_db(const char *name) {
+    int result;
+    sqlite3_stmt *stmt;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    if (wdb_prepare(wdb_global, SQL_DELETE_GROUP, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+   
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
 
