@@ -374,11 +374,13 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                         case -1:
                             switch(errno){
                                 case ESRCH:
-                                    exit(EXIT_SUCCESS);
+                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                    retval = -2;
+                                    break;
                                 
                                 default:
                                     merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
-                                    retval = -2;
+                                    retval = -3;
                                     break;
                             }
 
@@ -387,7 +389,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                             secs--;
                     }
 
-                    if (retval == -2) {
+                    if (retval == -2 || retval == -3) {
                         break;
                     }
 
@@ -399,12 +401,14 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             } while(secs);
 
             if(retval != 0){
-                kill(-pid,SIGTERM);
+                kill(pid,SIGTERM);
                 retval = ETIMEDOUT;
+
+                // Wait for child process
 
                 switch (waitpid(pid, &status, 0)) {
                     case -1:
-                        merror("waitpid()");
+                        merror("waitpid(): %s (%d)", strerror(errno), errno);
                         retval = -1;
                         break;
 
@@ -416,9 +420,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                             *exitcode = WEXITSTATUS(status);
                 }
             }
-
         }
-
+            
         wm_remove_sid(pid);
 
         if (output) {

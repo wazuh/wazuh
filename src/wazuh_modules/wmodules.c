@@ -112,20 +112,19 @@ int wm_check() {
             next = j->next;
 
             if (i->context->name == j->context->name) {
-                if(strcmp(j->context->name,"command")){
-                    mdebug1("Deleting repeated module '%s'.", j->context->name);
+                mdebug1("Deleting repeated module '%s'.", j->context->name);
 
-                    if (j->context->destroy)
-                        j->context->destroy(j->data);
+                if (j->context->destroy)
+                    j->context->destroy(j->data);
 
-                    if (j == wmodules) {
-                        wmodules = prev = next;
-                    } else {
-                        prev->next = next;
-                    }
-
-                    free(j);
+                if (j == wmodules) {
+                    wmodules = prev = next;
+                } else {
+                    prev->next = next;
                 }
+
+                free(j);
+            
             } else {
                 prev = j;
             }

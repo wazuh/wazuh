@@ -164,7 +164,6 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             dup2(fd, STDERR_FILENO);
         }
 
-        close(STDIN_FILENO);
         setsid();
         execvp(path, argv);
         _exit(127);
