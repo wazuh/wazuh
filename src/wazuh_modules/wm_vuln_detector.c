@@ -1877,7 +1877,7 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
     static const char *timestamp_tag = "timestamp>";
     char timestamp[OS_SIZE_256 + 1];
     size_t max_size = OS_SIZE_256;
-    char *buffer;
+    char *buffer = NULL;
     int i;
     char *low_repo;
     int size;
@@ -1989,6 +1989,10 @@ int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *
 
 
 int wm_vulnerability_detector_updatedb(update_node **updates) {
+    if (wm_vulnerability_detector_check_db()) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_CHECK_DB_ERROR);
+        return OS_INVALID;
+    }
         // Ubuntu
     if (wm_vulnerability_run_update(updates[CVE_BIONIC],   vu_dist_tag[DIS_BIONIC],   vu_dist_ext[DIS_BIONIC])   ||
         wm_vulnerability_run_update(updates[CVE_XENIAL],   vu_dist_tag[DIS_XENIAL],   vu_dist_ext[DIS_XENIAL])   ||
