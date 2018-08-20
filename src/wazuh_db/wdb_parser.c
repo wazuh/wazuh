@@ -1077,8 +1077,8 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
     char * cpu_name;
     int cpu_cores;
     char * cpu_mhz;
-    long ram_total;
-    long ram_free;
+    u_int64_t ram_total;
+    u_int64_t ram_free;
     int ram_usage;
     int result;
 
