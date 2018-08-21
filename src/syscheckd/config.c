@@ -229,6 +229,8 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON_AddNumberToObject(syscheckd,"debug",sys_debug_level);
 #ifdef WIN32
     cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);
+#else
+    cJSON_AddNumberToObject(syscheckd,"max_audit_entries",syscheck.max_audit_entries);
 #endif
 
     cJSON_AddItemToObject(internals,"syscheck",syscheckd);
