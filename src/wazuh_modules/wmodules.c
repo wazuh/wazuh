@@ -59,6 +59,12 @@ int wm_config() {
     return 0;
 }
 
+// Destroy tag
+
+void wm_destroy_tag(char *tag) {
+    free(tag);
+}
+
 // Add module to the global list
 
 void wm_add(wmodule *module) {
@@ -112,10 +118,6 @@ int wm_check() {
             next = j->next;
 
             if(i->tag && j->tag){
-                if(!strcmp(i->tag,"command") || !strcmp(j->tag,"command")){
-                    merror("Please provide a tag for each command module.");
-                    return OS_INVALID;
-                }
 
                 if (!strcmp(i->tag,j->tag)) {
 
@@ -123,6 +125,9 @@ int wm_check() {
 
                     if (j->context->destroy)
                         j->context->destroy(j->data);
+
+                    if(j->tag)
+                        wm_destroy_tag(j->tag);
 
                     if (j == wmodules) {
                         wmodules = prev = next;
@@ -270,6 +275,10 @@ void wm_free(wmodule * config) {
         next_module = cur_module->next;
         if (cur_module->context && cur_module->context->destroy)
             cur_module->context->destroy(cur_module->data);
+
+        if(cur_module->tag)
+            free(cur_module->tag);
+
         free(cur_module);
     }
 }

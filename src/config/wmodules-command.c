@@ -65,7 +65,6 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
                 command_tag_length = strlen(WM_COMMAND_CONTEXT.name) + 2;
                 command_tag = malloc(sizeof(char) * command_tag_length);
                 snprintf(command_tag, command_tag_length, "%s", WM_COMMAND_CONTEXT.name);
-                os_strdup(command_tag, nodes[i]->content);
                 empty = 1;
             }
 
@@ -78,7 +77,9 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
                 snprintf(command_tag, command_tag_length, "%s:%s", WM_COMMAND_CONTEXT.name, command->tag);
             }
 
+            free(module->tag);
             os_strdup(command_tag, module->tag);
+            free(command_tag);
             empty = 0;
         } else if (!strcmp(nodes[i]->element, XML_COMMAND)) {
             if (strlen(nodes[i]->content) == 0) {

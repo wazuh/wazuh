@@ -86,6 +86,9 @@ int wm_check();
 // Destroy configuration data
 void wm_destroy();
 
+// Destroy tag
+void wm_destroy_tag(char *tag);
+
 /* Execute command with timeout of secs. exitcode can be NULL.
  *
  * command is a mutable string.
