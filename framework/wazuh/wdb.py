@@ -66,7 +66,7 @@ class WazuhDBConnection:
         if data[0] == "err":
             raise WazuhException(2003, data[1])
         else:
-            return json.loads(unicode(data[1], errors='ignore'))
+            return json.loads(data[1])
 
 
     def __query_lower(self, query):
@@ -127,7 +127,7 @@ class WazuhDBConnection:
             regex  = re.compile(r"\w+ \d+? sql select ([a-z0-9,*_ ]+) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)", 1)
-            total  = self.__send(countq)[0].values()[0]
+            total  = list(self.__send(countq)[0].values())[0]
 
             limit = lim if lim != 0 else total
 
