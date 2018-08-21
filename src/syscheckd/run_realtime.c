@@ -22,8 +22,6 @@ volatile int audit_thread_active;
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
-#define OS_SIZE_6144    6144
-#define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc */
 #endif
 
 #include "fs_op.h"
