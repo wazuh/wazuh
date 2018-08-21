@@ -467,11 +467,15 @@ int wm_get_path(const char *binary, char **validated_comm){
     char *validated = NULL;
     char *env_path = NULL;
 
+#ifdef WIN32
+    if (IsFile(binary) == 0) {
+#else
     if (binary[0] == '/') {
         // Check binary full path
         if (IsFile(binary) == -1) {
             return 0;
         }
+#endif
         validated = strdup(binary);
 
     } else {
@@ -533,7 +537,7 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
             // Get binary MD5
             OS_MD5_File(command, md5_binary, 1);
             // Compare MD5 sums
-            if (strcmp(md5_binary, digest) == 0) {
+            if (strcasecmp(md5_binary, digest) == 0) {
                 match = 1;
             }
             break;
@@ -542,7 +546,7 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
             // Get binary SHA1
             OS_SHA1_File(command, sha1_binary, 1);
             // Compare SHA1 sums
-            if (strcmp(sha1_binary, digest) == 0) {
+            if (strcasecmp(sha1_binary, digest) == 0) {
                 match = 1;
             }
             break;
@@ -551,7 +555,7 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
             // Get binary SHA256
             OS_SHA256_File(command, sha256_binary, 1);
             // Compare SHA256 sums
-            if (strcmp(sha256_binary, digest) == 0) {
+            if (strcasecmp(sha256_binary, digest) == 0) {
                 match = 1;
             }
     }
