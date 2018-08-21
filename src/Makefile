@@ -2,8 +2,8 @@
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
-HAS_CHECKMODULE = $(shell which checkmodule > /dev/null && echo YES)
-HAS_SEMODULE_PACKAGE = $(shell which semodule_package > /dev/null && echo YES)
+HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
+HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -65,15 +65,15 @@ ifneq (,$(filter ${REUSE_ID},yes y Y 1))
 	DEFINES+=-DREUSE_ID
 endif
 
-OSSEC_CFLAGS = -pthread ${CFLAGS}
-OSSEC_LDFLAGS = -pthread ${LDFLAGS}
+OSSEC_CFLAGS = ${CFLAGS}
+OSSEC_LDFLAGS = ${LDFLAGS}
 OSSEC_LIBS = $(LIBS)
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_CFLAGS+=-I${EXTERNAL_LIBDB}
+		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		OSSEC_LIBS+=-lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
@@ -88,6 +88,8 @@ else
 ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/vac/bin
 		CC=gcc
 else
@@ -95,11 +97,12 @@ ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-std=gnu99
+		DEFINES+=-D_REENTRANT
 ifneq (${uname_P},sparc)
 		OSSEC_LDFLAGS+=-z relax=secadj
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt
+		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
 #		This is necessary in order to compile libcurl
@@ -109,23 +112,29 @@ else
 ifeq (${uname_S},Darwin)
 		DEFINES+=-DDarwin
 		DEFINES+=-DHIGHFIRST
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
 		SHARED=dylib
 		OSSEC_LIBS+=-framework Security
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
-		OSSEC_CFLAGS+=-I/usr/local/include
+		OSSEC_CFLAGS+=-pthread -I/usr/local/include
+		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 else
 ifeq (${uname_S},NetBSD)
 		DEFINES+=-DNetBSD
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 else
 ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
-		DEFINES+=-pthread
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 else
@@ -133,10 +142,14 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
 		DEFINES+=-DHIGHFIRST
-		DEFINES+=-D_REENTRANT
 		DEFINES+=-DOS_BIG_ENDIAN
+		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-lrt
+ifndef DISABLE_SHARED
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+endif
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
@@ -153,6 +166,8 @@ endif # Linux
 else
 		SHARED=dll
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread
 endif # winagent
 
 ifndef DISABLE_SYSC
@@ -439,6 +454,7 @@ settings:
 	@echo "    DATABASE:         ${DATABASE}"
 	@echo "    ONEWAY:           ${ONEWAY}"
 	@echo "    CLEANFULL:        ${CLEANFULL}"
+	@echo "    RESOURCES_URL:    ${RESOURCES_URL}"
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:      ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:       ${OSSEC_USER}"
@@ -1066,7 +1082,7 @@ manage_agents: ${addagent_o}
 
 #### Util ##########
 
-util_programs = syscheck_update clear_stats list_agents agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex
+util_programs = syscheck_update clear_stats agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex
 
 $(util_programs): $(BUILD_LIBS)
 
@@ -1083,9 +1099,6 @@ syscheck_update: util/syscheck_update.o addagent/validate.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 clear_stats: util/clear_stats.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-list_agents: util/list_agents.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 verify-agent-conf: util/verify-agent-conf.o

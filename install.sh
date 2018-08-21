@@ -95,10 +95,11 @@ Install()
 
     # On CentOS <= 5 we need to disable syscollector compilation
     OS_VERSION_FOR_SYSC="${DIST_NAME}"
-    SYSC_FLAG=""
     if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ] || [ "X${OS_VERSION_FOR_SYSC}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-        SYSC_FLAG="DISABLE_SYSC=true"
         AUDIT_FLAG="USE_AUDIT=no"
+        if [ ${DIST_VER} -lt 5 ]; then
+            SYSC_FLAG="DISABLE_SYSC=true"
+        fi
     fi
 
 

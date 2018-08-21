@@ -247,6 +247,7 @@ int _setlevels(RuleNode *node, int nnode);
 #define SYSCHECK_NEW        "syscheck_new_entry"
 #define SYSCHECK_DEL        "syscheck_deleted"
 #define SYSCOLLECTOR_MOD    "syscollector"
+#define CISCAT_MOD          "ciscat"
 
 /* Global variables */
 extern int _max_freq;

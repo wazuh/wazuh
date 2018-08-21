@@ -21,12 +21,11 @@ static char djb_host[512 + 1];
 
 
 /* Initialize multilog */
-int init_djbmultilog(int pos)
-{
+int init_djbmultilog(logreader *lf) {
     char *djbp_name = NULL;
     char *tmp_str = NULL;
 
-    logff[pos].djb_program_name = NULL;
+    lf->djb_program_name = NULL;
 
     /* Initialize hostname */
     memset(djb_host, '\0', 512 + 1);
@@ -48,36 +47,35 @@ int init_djbmultilog(int pos)
 #endif
 
     /* Multilog must be in the following format: /path/program_name/current */
-    tmp_str = strrchr(logff[pos].file, '/');
+    tmp_str = strrchr(lf->file, '/');
     if (!tmp_str) {
         return (0);
     }
 
     /* Must end with /current and must not be in the beginning of the string */
-    if ((strcmp(tmp_str, "/current") != 0) || (tmp_str == logff[pos].file)) {
+    if ((strcmp(tmp_str, "/current") != 0) || (tmp_str == lf->file)) {
         return (0);
     }
 
     tmp_str[0] = '\0';
 
     /* Get final name */
-    djbp_name = strrchr(logff[pos].file, '/');
-    if (djbp_name == logff[pos].file) {
+    djbp_name = strrchr(lf->file, '/');
+    if (djbp_name == lf->file) {
         tmp_str[0] = '/';
         return (0);
     }
 
-    os_strdup(djbp_name + 1, logff[pos].djb_program_name);
+    os_strdup(djbp_name + 1, lf->djb_program_name);
     tmp_str[0] = '/';
 
     minfo("Using program name '%s' for DJB multilog file: '%s'.",
-            logff[pos].djb_program_name, logff[pos].file);
+            lf->djb_program_name, lf->file);
 
     return (1);
 }
 
-void *read_djbmultilog(int pos, int *rc, int drop_it)
-{
+void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
     int need_clear = 0;
     char *p;
@@ -88,12 +86,12 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
     *rc = 0;
 
     /* Must have a valid program name */
-    if (!logff[pos].djb_program_name) {
+    if (!lf->djb_program_name) {
         return (NULL);
     }
 
     /* Get new entry */
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Get buffer size */
@@ -153,7 +151,7 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
                          pt->tm_min,
                          pt->tm_sec,
                          djb_host,
-                         logff[pos].djb_program_name,
+                         lf->djb_program_name,
                          p);
             }
         }
@@ -167,17 +165,12 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
 
         /* Send message to queue */
         if (drop_it == 0) {
-            if (SendMSGtoSCK(logr_queue, buffer, logff[pos].file, MYSQL_MQ, logff[pos].log_target) < 0) {
-                merror(QUEUE_SEND);
-                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                }
-            }
+            w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, MYSQL_MQ);
         }
 
         continue;
     }
 
-    mdebug2("Read %d lines from %s", lines, logff[pos].file);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }

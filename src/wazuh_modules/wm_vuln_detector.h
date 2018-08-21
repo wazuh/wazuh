@@ -46,7 +46,7 @@
 #define VU_MAX_WAZUH_DB_ATTEMPS 5
 #define VU_MAX_TIMESTAMP_ATTEMPS 4
 #define VU_AGENT_REQUEST_LIMIT   0
-#define VU_ALERT_HEADER "[%s] (%s) %s"
+#define VU_ALERT_HEADER "[%03d] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
 #define VU_MODERATE   "Moderate"
 #define VU_MEDIUM     "Medium"
@@ -132,7 +132,8 @@ typedef struct agent_software {
     char *agent_id;
     char *agent_name;
     char *agent_ip;
-    const char *OS;
+    char *agent_OS;
+    char *arch;
     distribution dist;
     char info;
     struct agent_software *next;
@@ -215,6 +216,8 @@ typedef struct info_state {
     char *id;
     char *operation;
     char *operation_value;
+    char *arch_operation;
+    char *arch_value;
     struct info_state *prev;
 } info_state;
 

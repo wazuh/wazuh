@@ -25,6 +25,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_perm;
     char *c_mtime;
     char *c_inode;
+    char *tag;
     int retval = 0;
 
     memset(sum, 0, sizeof(sk_sum_t));
@@ -85,12 +86,18 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             if ((sum->sha256 = strchr(c_inode, ':')))
                 *(sum->sha256++) = '\0';
 
+            /* Look for a defined tag */
+            if (tag = strchr(sum->sha256, ':'), tag) {
+                *(tag++) = '\0';
+                sum->tag = tag;
+            }
+
             sum->mtime = atol(c_mtime);
             sum->inode = atol(c_inode);
         }
     }
 
-    // Get whodata
+    // Get extra data wdata+tags(optional)
     if (w_sum) {
         sum->wdata.user_id = w_sum;
 
@@ -152,6 +159,13 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             *(sum->wdata.process_id++) = '\0';
         } else {
             return -1;
+        }
+
+        /* Look for a defined tag */
+        if (sum->tag = wstr_chr(sum->wdata.process_id, ':'), sum->tag) {
+            *(sum->tag++) = '\0';
+        } else {
+            sum->tag = NULL;
         }
 
         sum->wdata.user_name = unescape_whodata_sum(sum->wdata.user_name);
@@ -294,6 +308,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     if(sum->wdata.process_id) {
         os_strdup(sum->wdata.process_id, lf->process_id);
         os_strdup(sum->wdata.process_id, lf->fields[SK_PROC_ID].value);
+    }
+
+    if(sum->tag) {
+        os_strdup(sum->tag, lf->sk_tag);
+        os_strdup(sum->tag, lf->fields[SK_TAG].value);
     }
 
     /* Fields */
@@ -472,18 +491,26 @@ const char *get_user(const char *path, __attribute__((unused)) int uid, char **s
 
     // Check GetLastError for CreateFile error code.
     if (hFile == INVALID_HANDLE_VALUE) {
-        DWORD dwErrorCode = 0;
+        DWORD dwErrorCode = GetLastError();
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
 
-        dwErrorCode = GetLastError();
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
 
-        switch (dwErrorCode) {
-        case ERROR_SHARING_VIOLATION: // 32
-            mdebug1("CreateFile (%s) error = %lu", path, dwErrorCode);
-            break;
-        default:
-            merror("CreateFile (%s) error = %lu", path, dwErrorCode);
+        if (end = strchr(messageBuffer, '\r'), end) {
+            *end = '\0';
         }
 
+        switch (dwErrorCode) {
+        case ERROR_ACCESS_DENIED:     // 5
+        case ERROR_SHARING_VIOLATION: // 32
+            mdebug1("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+            break;
+        default:
+            mwarn("At get_user(%s): CreateFile(): %s (%lu)", path, messageBuffer, dwErrorCode);
+        }
+
+        LocalFree(messageBuffer);
         *AcctName = '\0';
         goto end;
     }

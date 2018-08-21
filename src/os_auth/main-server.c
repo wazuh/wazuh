@@ -73,16 +73,12 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[Vhdtfi] [-F <time>] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdtfi] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
-    print_out("    -i          Use client's source IP address instead of any.");
-    print_out("    -F <time>   Force insertion: remove old agent with same name or IP if its keepalive has more than <time> seconds.");
-    print_out("    -F no       Disable force insertion.");
-    print_out("    -r          Do not keep removed agents (purge).");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
@@ -179,13 +175,9 @@ int main(int argc, char **argv)
 
     {
         int c;
-        char *end;
         int use_pass = 0;
         int auto_method = 0;
         int validate_host = 0;
-        int use_ip_address = 0;
-        int clear_removed = 0;
-        int force_insert = -2;
         int no_limit = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
@@ -209,7 +201,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'i':
-                    use_ip_address = 1;
+                    mwarn(DEPRECATED_OPTION_WARN,"-i");
                     break;
 
                 case 'g':
@@ -281,24 +273,11 @@ int main(int argc, char **argv)
                     break;
 
                 case 'F':
-                    if (!optarg) {
-                        merror_exit("-%c needs an argument", c);
-                    }
-
-                    if (!strcmp(optarg, "no")) {
-                        force_insert = -1;
-                    } else {
-                        force_insert = strtol(optarg, &end, 10);
-
-                        if (*end != '\0' || force_insert < 0) {
-                            merror_exit("Invalid value for -%c", c);
-                        }
-                    }
-
+                    mwarn(DEPRECATED_OPTION_WARN,"-F");
                     break;
 
                 case 'r':
-                    clear_removed = 1;
+                    mwarn(DEPRECATED_OPTION_WARN,"-r");
                     break;
 
                 case 'a':
@@ -334,30 +313,8 @@ int main(int argc, char **argv)
             config.flags.verify_host = 1;
         }
 
-        if (use_ip_address){
-            config.flags.use_source_ip = 1;
-        }
-
-        if (clear_removed) {
-            config.flags.clear_removed = 1;
-        }
-
         if (run_foreground) {
             config.flags.disabled = 0;
-        }
-
-        switch (force_insert) {
-        case -2:
-            break;
-
-        case -1:
-            config.flags.force_insert = 0;
-            config.force_time = -1;
-            break;
-
-        default:
-            config.flags.force_insert = 1;
-            config.force_time = force_insert;
         }
 
         if (ciphers) {
@@ -808,6 +765,17 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 /* If IP: != 'src' overwrite the srcip */
                 if(strncmp(client_source_ip,"src",3) != 0)
                 {
+                    if (!OS_IsValidIP(client_source_ip, NULL)) {
+                        merror("Invalid IP: '%s'", client_source_ip);
+                        snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        continue;
+                    }
+
                     memcpy(srcip,client_source_ip,IPSIZE);
                 }
 

@@ -147,11 +147,11 @@ void remove_local_diff(){
         }
     }
 #endif
-    /* Delete local files that aren't monitorized */
+    /* Delete local files that aren't monitored */
     for (i = 0; i <= syscheck.local_hash->rows; i++) {
         curr_node_local = syscheck.local_hash->table[i];
         if (curr_node_local && curr_node_local->key) {
-            mdebug1("Deleting '%s'. Not monitorized anymore.", curr_node_local->key);
+            mdebug1("Deleting '%s'. Not monitored anymore.", curr_node_local->key);
             if (rmdir_ex(curr_node_local->key) != 0) {
                 mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
             }
@@ -175,7 +175,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char wd_sum[OS_SIZE_6144 + 1];
 #ifdef WIN32
     const char *user;
-    char *sid;
+    char *sid = NULL;
 #endif
 
     opts = syscheck.opts[dir_position];
@@ -193,12 +193,17 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
+        char alert_msg[OS_SIZE_6144];
 
-        if (errno == ENOTDIR) {
+        switch (errno) {
+        case ENOENT:
+            mwarn("Cannot access '%s': it was removed during scan.", file_name);
+            return (-1);
+
+        case ENOTDIR:
             /*Deletion message sending*/
-            char alert_msg[PATH_MAX + 4];
-            alert_msg[PATH_MAX + 3] = '\0';
-            snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
+            alert_msg[OS_SIZE_6144 - 1] = '\0';
+            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
             send_syscheck_msg(alert_msg);
 
             // Delete from hash table
@@ -208,8 +213,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             return (0);
-        } else {
-            merror("Error accessing '%s'.", file_name);
+
+        default:
+            merror("Error accessing '%s': %s (%d)", file_name, strerror(errno), errno);
             return (-1);
         }
     }
@@ -350,12 +356,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             /* Extract the whodata sum here to not include it in the hash table */
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
                 merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
-                *wd_sum = '\0';
             }
 
 #ifdef WIN32
             user = get_user(file_name, statbuf.st_uid, &sid);
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s!%s %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 (opts & CHECK_OWNER) && sid ? sid : "",
@@ -367,6 +372,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
                 wd_sum,
+                syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -374,7 +380,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 LocalFree(sid);
             }
 #else
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
@@ -387,6 +393,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
                 wd_sum,
+                syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -418,7 +425,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 // Extract the whodata sum here to not include it in the hash table
                 if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
                     merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
-                    *wd_sum = '\0';
                 }
                 // Update database
                 snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
@@ -430,14 +436,17 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 if (buf[9] == '+') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s",
+                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name, fullalert);
                         free(fullalert);
                         fullalert = NULL;
                     } else {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s",
+                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
                     }
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s",
+                            c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
                 }
                 free(buf);
                 send_syscheck_msg(alert_msg);
@@ -524,12 +533,12 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #else
         if (defaultfilesn[di] == NULL) {
 #endif
-            mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
+            mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
         } else {
             return 0;
         }
 #else
-        mwarn("Error opening directory: '%s': %s ", dir_name, strerror(errno));
+        mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
 #endif /* WIN32 */
         return (-1);
     }
@@ -583,10 +592,11 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 int run_dbcheck()
 {
     unsigned int i = 0;
-    char alert_msg[PATH_MAX + 4];
+    char alert_msg[OS_SIZE_6144];
     OSHash *last_backup;
     OSHashNode *curr_node;
     syscheck_node *data;
+    int pos;
 
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
@@ -601,7 +611,7 @@ int run_dbcheck()
             }
         }
 #endif
-        read_dir(syscheck.dir[i], i, NULL, syscheck.max_depth);
+        read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i]);
         i++;
     }
 
@@ -611,16 +621,19 @@ int run_dbcheck()
         last_backup = syscheck.last_check;
 
         // Prepare last_check for next scan
-        syscheck.last_check = OSHash_Duplicate(syscheck.fp);
+        syscheck.last_check = OSHash_Duplicate_ex(syscheck.fp);
         w_mutex_unlock(&lastcheck_mutex);
 
         // Send messages for deleted files
         for (i = 0; i <= last_backup->rows; i++) {
             curr_node = last_backup->table[i];
             if(curr_node && curr_node->key) {
+
+                pos = find_dir_pos(curr_node->key, 1, 0, 0);
                 mdebug2("Sending delete msg for file: %s", curr_node->key);
-                snprintf(alert_msg, PATH_MAX + 4, "-1 %s", curr_node->key);
+                snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
                 send_syscheck_msg(alert_msg);
+                OSHash_Delete_ex(syscheck.last_check, curr_node->key);
                 if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
                     free(data->checksum);
                     free(data);
@@ -672,7 +685,7 @@ int create_db()
     /* Read all available directories */
     __counter = 0;
     do {
-        if (read_dir(syscheck.dir[i], i, NULL, syscheck.max_depth) == 0) {
+        if (read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i]) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
 #ifdef WIN32
@@ -757,6 +770,7 @@ int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
                 (long long unsigned int) evt->process_id
             ) >= size) {
             retval = 1;
+            snprintf(wd_sum, size, "::::::::::");
         }
 
 #ifdef WIN32

@@ -1407,7 +1407,7 @@ class Agent:
             new_file = False if path.exists(agent_group_path) else True
 
             f_group = open(agent_group_path, 'w')
-            f_group.write(group_id)
+            f_group.write("{0}\n".format(group_id))
             f_group.close()
 
             if new_file:
@@ -1474,7 +1474,7 @@ class Agent:
 
         return protocol
 
-    def _get_versions(self, wpk_repo=common.wpk_repo_url, desired_version=None, use_http=False):
+    def _get_versions(self, wpk_repo=common.wpk_repo_url, version=None, use_http=False):
         """
         Generates a list of available versions for its distribution and version.
         """
@@ -1486,7 +1486,7 @@ class Agent:
             raise WazuhException(1713, error)
 
         protocol = self._get_protocol(wpk_repo, use_http)
-        if (desired_version is None or desired_version[:4] >= "v3.4") and self.os['platform'] != "windows":
+        if (version is None or version[:4] >= "v3.4") and self.os['platform'] != "windows":
             versions_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/versions"
         else:
             if self.os['platform']=="windows":
@@ -1525,7 +1525,7 @@ class Agent:
         Searchs latest Wazuh WPK file for its distribution and version. Downloads the WPK if it is not in the upgrade folder.
         """
         agent_new_ver = None
-        versions = self._get_versions(wpk_repo, use_http)
+        versions = self._get_versions(wpk_repo=wpk_repo, version=version, use_http=use_http)
         if not version:
             agent_new_ver = versions[0][0]
             agent_new_shasum = versions[0][1]

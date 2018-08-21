@@ -418,6 +418,7 @@ OSHash *OSHash_Duplicate(const OSHash *hash) {
     self->initial_seed = hash->initial_seed;
     self->constant = hash->constant;
     os_calloc(self->rows + 1, sizeof(OSHashNode*), self->table);
+    self->mutex = (pthread_rwlock_t)PTHREAD_RWLOCK_INITIALIZER;
 
     for (i = 0; i <= self->rows; i++) {
         next_addr = &self->table[i];

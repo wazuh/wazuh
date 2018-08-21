@@ -27,27 +27,29 @@
 #ifndef WIN32
 #define LOGFILE   "/logs/ossec.log"
 #define LOGJSONFILE "/logs/ossec.json"
+#define _PRINTF_FORMAT printf
 #else
 #define LOGFILE "ossec.log"
 #define LOGJSONFILE "ossec.json"
+#define _PRINTF_FORMAT __MINGW_PRINTF_FORMAT
 #endif
 #endif
 
-void mdebug1(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void mtdebug1(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
-void mdebug2(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void mtdebug2(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
-void merror(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void mterror(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
-void mwarn(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void mtwarn(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
-void minfo(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void mtinfo(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
-void print_out(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void mferror(const char *msg, ... ) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
-void mtferror(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull));
-void merror_exit(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull)) __attribute__ ((noreturn));
-void mterror_exit(const char *tag, const char *msg, ...) __attribute__((format(printf, 2, 3))) __attribute__((nonnull)) __attribute__ ((noreturn));
+void mdebug1(const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 1, 2))) __attribute__((nonnull));
+void mtdebug1(const char *tag, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 2, 3))) __attribute__((nonnull));
+void mdebug2(const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 1, 2))) __attribute__((nonnull));
+void mtdebug2(const char *tag, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 2, 3))) __attribute__((nonnull));
+void merror(const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 1, 2))) __attribute__((nonnull));
+void mterror(const char *tag, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 2, 3))) __attribute__((nonnull));
+void mwarn(const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 1, 2))) __attribute__((nonnull));
+void mtwarn(const char *tag, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 2, 3))) __attribute__((nonnull));
+void minfo(const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 1, 2))) __attribute__((nonnull));
+void mtinfo(const char *tag, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 2, 3))) __attribute__((nonnull));
+void print_out(const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 1, 2))) __attribute__((nonnull));
+void mferror(const char *msg, ... ) __attribute__((format(_PRINTF_FORMAT, 1, 2))) __attribute__((nonnull));
+void mtferror(const char *tag, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 2, 3))) __attribute__((nonnull));
+void merror_exit(const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 1, 2))) __attribute__((nonnull)) __attribute__ ((noreturn));
+void mterror_exit(const char *tag, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 2, 3))) __attribute__((nonnull)) __attribute__ ((noreturn));
 
 /* Function to read the logging format configuration */
 void os_logging_config(void);

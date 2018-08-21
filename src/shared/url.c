@@ -40,10 +40,11 @@ int wurl_get(const char * url, const char * dest){
         }
 
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
+        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
         res = curl_easy_perform(curl);
 
         if(res){
-            merror("CURL ERROR %s",errbuf);
+            mwarn("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             fclose(fp);
             unlink(dest);
@@ -60,10 +61,10 @@ int w_download_status(int status,const char *url,const char *dest){
 
     switch(status){
         case OS_FILERR:
-            merror(WURL_WRITE_FILE_ERROR,dest);
+            mwarn(WURL_WRITE_FILE_ERROR,dest);
             break;
         case OS_CONNERR:
-            merror(WURL_DOWNLOAD_FILE_ERROR,url);
+            mwarn(WURL_DOWNLOAD_FILE_ERROR, dest, url);
             break;
     }
 
@@ -128,7 +129,7 @@ int wurl_request(const char * url, const char * dest) {
         if (!strcmp(response, "ok")) {
             retval = 0;
         } else if (!strcmp(response, "err connecting to url")) {
-            mdebug1(WURL_DOWNLOAD_FILE_ERROR, _url);
+            mdebug1(WURL_DOWNLOAD_FILE_ERROR, dest, _url);
             retval = OS_CONNERR;
         } else if (!strcmp(response, "err writing file")) {
             mdebug1(WURL_WRITE_FILE_ERROR, dest);

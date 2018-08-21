@@ -532,6 +532,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->diff = NULL;
     lf->previous = NULL;
     lf->labels = NULL;
+    lf->sk_tag = NULL;
 
     lf->user_id = NULL;
     lf->user_name = NULL;
@@ -569,6 +570,10 @@ void Free_Eventinfo(Eventinfo *lf)
 
     if (lf->location) {
         free(lf->location);
+    }
+
+    if (lf->hostname) {
+        free(lf->hostname);
     }
 
     if (lf->srcip) {
@@ -639,6 +644,9 @@ void Free_Eventinfo(Eventinfo *lf)
 
     if (lf->filename) {
         free(lf->filename);
+    }
+    if (lf->sk_tag) {
+        free(lf->sk_tag);
     }
     if (lf->md5_before) {
         free(lf->md5_before);

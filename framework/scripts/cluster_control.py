@@ -247,16 +247,22 @@ def sync_master(filter_node):
 
 ### Get agents
 def print_agents(filter_status=None, filter_node=None):
-    gen_agents = get_agents(filter_status, filter_node)
     total_agents = 0
 
-    for agents in gen_agents:
-        table_str = ""
-        total_agents += len(agents['items'])
-        for agent in agents['items']:
-            table_str += "  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}\n".format(agent['id'], agent['name'], agent['ip'], agent['status'], agent['node_name'])
-        stdout.write(table_str)
-        stdout.flush()
+    try:
+        gen_agents = get_agents(filter_status, filter_node)
+
+        for agents in gen_agents:
+            table_str = ""
+            total_agents += len(agents['items'])
+            for agent in agents['items']:
+                table_str += "  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}\n".format(agent['id'], agent['name'], agent['ip'], agent['status'], agent['node_name'])
+            stdout.write(table_str)
+            stdout.flush()
+
+    except Exception as e:
+        print ("{}".format(e))
+        exit(1)
 
     if filter_status:
         print ("\nFound {} agent(s) with status '{}'.".format(total_agents, filter_status))

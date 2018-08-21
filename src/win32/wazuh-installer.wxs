@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Id="*" Name="Wazuh Agent 3.5.0" Language="1033" Version="3.5.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+    <Product Id="*" Name="Wazuh Agent 3.6.0" Language="1033" Version="3.6.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
         <!-- Default configuration values -->
@@ -68,19 +68,14 @@
                     <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
                         <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="..\wazuh_modules\syscollector\syscollector_win_ext.dll" />
                     </Component>
-                    <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A"/>
+                    <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
-                    <Component Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
-                        <File Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" Name="default-local_internal_options.conf" Source="default-local_internal_options.conf" />
+                    <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
+                        <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" />
                     </Component>
-                    <Component Id="DEFAULT_OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="no">
-                        <File Id="DEFAULT_OSSEC.CONF" Name="default-ossec.conf" Source="default-ossec.conf">
-                            <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
-                        </File>
-                    </Component>
-                    <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-497A0C44C071" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="ossec.conf">
+                    <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes">
+                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
                     </Component>
@@ -149,9 +144,6 @@
                     <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
                         <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
                     </Component>
-                    <Component Id="USER_DEFINED_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="43F9A30D-7C3A-4D7B-884A-D4387F86166E" NeverOverwrite="yes" Permanent="yes" >
-                        <File Id="USER_DEFINED_LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" />
-                    </Component>
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
                             <Component Id="RESTART_OSSEC.CMD" DiskId="1" Guid="5A405DD9-F4FF-4313-B242-A28DE03611CA">
@@ -209,10 +201,8 @@
             </Directory>
         </Directory>
         <DirectoryRef Id="ACTIVE_RESPONSE">
-            <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes">
+            <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
-                <RemoveFile Id="purgue_active_response" Name="*.*" On="uninstall" />
-                <RemoveFolder Id="purgue_active_response_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="TMP">
@@ -223,49 +213,49 @@
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="QUEUE">
-            <Component Id="CMP_QUEUE" Guid="1CA9BF16-F0B2-4E91-BA09-023518E50624" KeyPath="yes">
+            <Component Id="CMP_QUEUE" Guid="1CA9BF16-F0B2-4E91-BA09-023518E50624" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_queue" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_queue_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="DIFF">
-            <Component Id="CMP_DIFF" Guid="AF666E2C-5C12-4355-9BB7-8FA9463ACDF2" KeyPath="yes">
+            <Component Id="CMP_DIFF" Guid="AF666E2C-5C12-4355-9BB7-8FA9463ACDF2" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_diff" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_diff_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="BOOKMARKS">
-            <Component Id="CMP_BOOKMARKS" Guid="1A441B10-7735-4507-9DB7-6158CA5D7687" KeyPath="yes">
+            <Component Id="CMP_BOOKMARKS" Guid="1A441B10-7735-4507-9DB7-6158CA5D7687" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_bookmarks" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_bookmarks_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="LOGS">
-            <Component Id="CMP_LOGS" Guid="17C9F68D-D1E6-4452-8C3E-992F6D7F0CF1" KeyPath="yes">
+            <Component Id="CMP_LOGS" Guid="17C9F68D-D1E6-4452-8C3E-992F6D7F0CF1" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_logs" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_logs_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="WODLES">
-            <Component Id="CMP_WODLES" Guid="A6811CB8-C2E2-4A1A-A2E5-DCE8221828C6" KeyPath="yes">
+            <Component Id="CMP_WODLES" Guid="A6811CB8-C2E2-4A1A-A2E5-DCE8221828C6" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_wodles" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_wodles_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="RIDS">
-            <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes">
+            <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_rids" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_rids_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="SYSCHECK">
-            <Component Id="CMP_SYSCHECK" Guid="F6841291-B9C5-4B74-82ED-CB9031C85C31" KeyPath="yes">
+            <Component Id="CMP_SYSCHECK" Guid="F6841291-B9C5-4B74-82ED-CB9031C85C31" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_syscheck" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_syscheck_dir" On="uninstall" />
@@ -279,14 +269,14 @@
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="UPGRADE">
-            <Component Id="CMP_UPGRADE" Guid="9FB42D24-217F-4E13-9598-01B62040F768" KeyPath="yes">
+            <Component Id="CMP_UPGRADE" Guid="9FB42D24-217F-4E13-9598-01B62040F768" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_upgrade" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_upgrade_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="SHARED">
-            <Component Id="CMP_SHARED" Guid="9FB42D24-222F-4E13-9598-01B62040F768" KeyPath="yes">
+            <Component Id="CMP_SHARED" Guid="9FB42D24-222F-4E13-9598-01B62040F768" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_shared" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_shared_dir" On="uninstall" />
@@ -296,8 +286,7 @@
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
-            <ComponentRef Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" />
-            <ComponentRef Id="DEFAULT_OSSEC.CONF" />
+            <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
@@ -333,7 +322,6 @@
             <ComponentRef Id="VERSION" />
             <ComponentRef Id="REVISION" />
             <ComponentRef Id="WPK_ROOT.PEM" />
-            <ComponentRef Id="USER_DEFINED_LOCAL_INTERNAL_OPTIONS.CONF" />
         </Feature>
         <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
     </Product>

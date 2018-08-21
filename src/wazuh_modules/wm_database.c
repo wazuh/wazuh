@@ -461,7 +461,7 @@ void wm_clean_dangling_db() {
 
 char * wm_get_os_arch(char * os_header) {
     const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "ia64", "AIX", "armv6", "armv7", NULL };
-    char * os_arch;
+    char * os_arch = NULL;
     int i;
 
     for (i = 0; ARCHS[i]; i++) {
@@ -660,6 +660,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 
     free(os_major);
+    free(os_arch);
     free(os_minor);
     free(os_build);
     fclose(fp);

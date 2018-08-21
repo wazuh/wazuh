@@ -46,12 +46,12 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name);
 
     if (s_node != NULL) {
-        char c_sum[512];
+        char c_sum[OS_MAXSTR + 1];
         size_t c_sum_size;
 
         buf = s_node->checksum;
         c_sum[0] = '\0';
-        c_sum[511] = '\0';
+        c_sum[OS_MAXSTR] = '\0';
 
         /* If it returns < 0, we have already alerted */
         if (c_read_file(file_name, buf, c_sum, evt) < 0) {
@@ -66,8 +66,10 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             // Extract the whodata sum here to not include it in the hash table
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
                 merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
-                *wd_sum = '\0';
             }
+
+            /* Find tag position for the evaluated file name */
+            int pos = find_dir_pos(file_name, 1, 0, 0);
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
@@ -79,15 +81,16 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if (buf[9] == '+') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name, fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
                 }
             } else {
-                snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
+                snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
             }
+
             send_syscheck_msg(alert_msg);
             struct timeval timeout = {0, syscheck.rt_delay * 1000};
             select(0, NULL, NULL, NULL, &timeout);
@@ -115,7 +118,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         if (pos >= 0) {
             mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
             int diff = fim_find_child_depth(syscheck.dir[pos], file_name);
-            read_dir(file_name, pos, evt, syscheck.max_depth - diff);
+            read_dir(file_name, pos, evt, syscheck.recursion_level[pos] - diff);
         }
 
     }
@@ -320,7 +323,7 @@ typedef struct _win32rtfim {
     OVERLAPPED overlap;
 
     char *dir;
-    TCHAR buffer[12288];
+    TCHAR buffer[65536];
 } win32rtfim;
 
 int realtime_win32read(win32rtfim *rtlocald);
@@ -336,12 +339,22 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     TCHAR finalfile[MAX_PATH];
 
     if (dwBytes == 0) {
-        merror("real time call back called, but 0 bytes.");
-        return;
+        mwarn("Real time process: no data. Probably buffer overflow.");
     }
 
     if (dwerror != ERROR_SUCCESS) {
-        merror("real time call back called, but error is set.");
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
+
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwerror, 0, (LPTSTR) &messageBuffer, 0, NULL);
+
+        if (end = strchr(messageBuffer, '\r'), end) {
+            *end = '\0';
+        }
+
+        merror("Real time process: %s (%lx).", messageBuffer, dwerror);
+        LocalFree(messageBuffer);
+
         return;
     }
 
@@ -354,24 +367,25 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
         return;
     }
 
-    do {
-        pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
-        offset += pinfo->NextEntryOffset;
+    if (dwBytes) {
+        do {
+            pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
+            offset += pinfo->NextEntryOffset;
 
-        lcount = WideCharToMultiByte(CP_ACP, 0, pinfo->FileName,
-                                     pinfo->FileNameLength / sizeof(WCHAR),
-                                     finalfile, MAX_PATH - 1, NULL, NULL);
-        finalfile[lcount] = TEXT('\0');
+            lcount = WideCharToMultiByte(CP_ACP, 0, pinfo->FileName,
+                                         pinfo->FileNameLength / sizeof(WCHAR),
+                                         finalfile, MAX_PATH - 1, NULL, NULL);
+            finalfile[lcount] = TEXT('\0');
 
-        final_path[MAX_LINE] = '\0';
-        snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
+            final_path[MAX_LINE] = '\0';
+            snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
 
-        /* Check the change */
-        realtime_checksumfile(final_path, NULL);
-    } while (pinfo->NextEntryOffset != 0);
+            /* Check the change */
+            realtime_checksumfile(final_path, NULL);
+        } while (pinfo->NextEntryOffset != 0);
+    }
 
     realtime_win32read(rtlocald);
-
     return;
 }
 

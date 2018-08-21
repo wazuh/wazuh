@@ -188,7 +188,7 @@ def get_values(o, fields=None):
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
     else:
-        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else obj)
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else str(obj))
 
     return strings
 
@@ -209,8 +209,6 @@ def search_array(array, text, negation=False, fields=None):
     for item in array:
 
         values = get_values(o=item, fields=fields)
-
-        # print("'{0}' in '{1}'?".format(text, values))
 
         if not negation:
             for v in values:

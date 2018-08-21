@@ -50,6 +50,9 @@
 #define WD_IGNORE_REST      0x0000008
 #endif
 
+//Max allowed value for recursion
+#define MAX_DEPTH_ALLOWED 320
+
 #include <stdio.h>
 #include "os_regex/os_regex.h"
 
@@ -138,6 +141,7 @@ typedef struct whodata {
 typedef struct registry {
     char *entry;
     int arch;
+    char *tag;
 } registry;
 
 typedef struct registry_regex {
@@ -161,7 +165,7 @@ typedef struct _config {
     int realtime_count;
     int max_depth;                  /* max level of recursivity allowed */
 
-    int remove_old_diff;            /* delete not monitorized files history */
+    int remove_old_diff;            /* delete not monitored files history */
 
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */
@@ -187,6 +191,9 @@ typedef struct _config {
 
     char **dir;                     /* array of directories to be scanned */
     OSMatch **filerestrict;
+    int *recursion_level;
+
+    char **tag;                     /* array of tags for each directory */
 
     /* Windows only registry checking */
 #ifdef WIN32
@@ -212,11 +219,13 @@ typedef struct _config {
 } syscheck_config;
 
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile) __attribute__((nonnull(1, 2)));
+int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag) __attribute__((nonnull(1, 2)));
 
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 
 /* Frees the Syscheck struct  */
 void Free_Syscheck(syscheck_config * config);
+
+void log_realtime_status(int);
 
 #endif /* __SYSCHECKC_H */

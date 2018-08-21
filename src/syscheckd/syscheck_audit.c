@@ -300,16 +300,16 @@ int audit_manage_rules(int action, const char *path, const char *key) {
 
     // Add/Delete rule
     if (action == ADD_RULE) {
-        retval = abs(audit_add_rule_data(audit_handler, myrule, flags, AUDIT_ALWAYS));
+        retval = audit_add_rule_data(audit_handler, myrule, flags, AUDIT_ALWAYS);
     } else if (action == DELETE_RULE){
-        retval = abs(audit_delete_rule_data(audit_handler, myrule, flags, AUDIT_ALWAYS));
+        retval = audit_delete_rule_data(audit_handler, myrule, flags, AUDIT_ALWAYS);
     } else {
         retval = -1;
         goto end;
     }
 
-    if (retval != 1) {
-        mdebug2("audit_manage_rules(): Error adding/deleting rule (%d) = %s", retval, audit_errno_to_name(retval));
+    if (retval <= 0) {
+        mdebug2("audit_manage_rules(): Error adding/deleting rule (%d) = %s", retval, audit_errno_to_name(abs(retval)));
     }
 
 end:
@@ -345,7 +345,7 @@ int add_audit_rules_syscheck(void) {
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
                 } else {
-                    merror("Error adding Audit rule for directory: %s", syscheck.dir[i]);
+                    merror("Error adding Audit rule for directory (%i): %s .",retval, syscheck.dir[i]);
                 }
             } else {
                 merror("Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d).", syscheck.dir[i], syscheck.max_audit_entries);

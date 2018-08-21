@@ -145,7 +145,7 @@
 
 /* Active Response */
 #define AR_CMD_MISS     "(1280): Missing command options. " \
-                        "You must specify a 'name', 'executable' and 'expect'."
+                        "You must specify a 'name' and 'executable'."
 #define AR_MISS         "(1281): Missing options in the active response " \
                         "configuration. "
 #define ARQ_ERROR       "(1301): Unable to connect to active response queue."
@@ -183,6 +183,12 @@
 #define INV_MULTILOG    "(1953): Invalid DJB multilog file: '%s'."
 #define MISS_SOCK_NAME  "(1954): Missing field 'name' for socket."
 #define MISS_SOCK_LOC   "(1955): Missing field 'location' for socket."
+#define REM_ERROR       "(1956): Error removing '%s' file."
+#define NEW_GLOB_FILE   "(1957): New file that matches the '%s' pattern: '%s'."
+#define DUP_FILE        "(1958): Log file '%s' is duplicated."
+#define FORGET_FILE     "(1959): File '%s' does not exist. Forgetting."
+#define FILE_LIMIT      "(1960): File limit has been reached (%d). Please reduce the number of files or increase \"logcollector.max_files\"."
+#define CURRENT_FILES   "(1961): Files being monitored: %i/%i."
 
 
 /* Encryption/auth errors */

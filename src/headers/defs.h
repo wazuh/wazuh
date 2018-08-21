@@ -55,7 +55,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.5.0"
+#define __ossec_version "v3.6.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -174,9 +174,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
-
-/* Syscollector directory */
-#define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
 /* Backup directory for agents */
 #define AGNBACKUP_DIR    "/backup/agents"
