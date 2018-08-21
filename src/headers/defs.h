@@ -44,6 +44,7 @@
 #define OS_FLSIZE       OS_SIZE_256     /* Maximum file size            */
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
+#define OS_SK_HEADER    OS_SIZE_6144    /* Maximum syscheck header size */
 #define IPSIZE          16              /* IP Address size              */
 #define AUTH_POOL       1000            /* Max number of connections    */
 #define BACKLOG         128             /* Socket input queue length    */
