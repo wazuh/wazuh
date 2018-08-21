@@ -585,7 +585,7 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
     memcpy(ret, buffer + sizeof(uint32_t), recvval - sizeof(uint32_t));
 
     free(buffer);
-    return recvval;
+    return recvval - sizeof(uint32_t);
 }
 // Byte ordering
 
