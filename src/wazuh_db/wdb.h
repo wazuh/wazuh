@@ -36,6 +36,7 @@
 #define WDB_ROOTCHECK 2
 #define WDB_AGENTINFO 3
 #define WDB_GROUPS 4
+#define WDB_SHARED_GROUPS 5
 #define WDB_NETADDR_IPV4 0
 
 #define WDB_MULTI_GROUP_DELIM '-'
