@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Restored firewall-drop AR script for Linux. ([#1114](https://github.com/wazuh/wazuh/pull/1114))
 - Fixed variables length when storing RAM information by Syscollector. ([#1124](https://github.com/wazuh/wazuh/pull/1124))
 - Fix the Red Hat vulnerability database update. ([#1127](https://github.com/wazuh/wazuh/pull/1127))
+- Fixed `after_regex` offset for the decoding algorithm. ([#1129](https://github.com/wazuh/wazuh/pull/1129))
 
 ### Removed
 
