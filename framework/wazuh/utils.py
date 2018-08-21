@@ -646,20 +646,27 @@ class WazuhDBQuery(object):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
             self.query += " (" + " OR ".join(x + ' LIKE:search' for x in self.fields.values()) + ')'
+            self.query = self.query.replace('WHERE  AND', 'WHERE')
             self.request['search'] = '%{0}%'.format(self.search['value'])
 
 
-    def add_select_to_query(self):
-        if self.select:
-            self.select['fields'] = set(map(lambda x: self.fields[x] if x in self.fields else x, self.select['fields']))
+    def parse_select_filter(self, select_fields):
+        if select_fields:
+            set_select_fields = set(select_fields['fields'])
+            if not set_select_fields.issubset(self.fields.keys()):
+                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
+                                     format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set(self.fields.keys()))))
 
-            if not self.select['fields'].issubset(self.fields.values()):
-                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
-                                    format(', '.join(self.fields.keys()), ', '.join(self.select['fields'] - set(self.fields.values()))))
-
-            self.select['fields'] |= self.min_select_fields
+            select_fields = {'fields': set(map(lambda x: self.fields[x] if x in self.fields else x, set_select_fields))}
+            select_fields['fields'] |= self.min_select_fields
         else:
-            self.select = {'fields': self.fields.values()}
+            select_fields = {'fields': set(self.fields.values())}
+
+        return select_fields
+
+
+    def add_select_to_query(self):
+        self.select = self.parse_select_filter(self.select)
 
 
     def parse_query(self):
@@ -690,6 +697,7 @@ class WazuhDBQuery(object):
     def add_filters_to_query(self):
         if self.q:
             self.parse_query()
+        if self.q or self.search:
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
 
         for filter in self.filters:
@@ -779,6 +787,9 @@ class WazuhDBQuery(object):
 
 
 class WazuhDBQueryDistinct(WazuhDBQuery):
+    """
+    Retrieves unique values for a given field.
+    """
 
     def default_query(self):
         return "SELECT DISTINCT {0} FROM " + self.table
@@ -799,3 +810,29 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
             raise WazuhException(1410)
 
         WazuhDBQuery.add_select_to_query(self)
+
+
+class WazuhDBQueryGroupBy(WazuhDBQuery):
+    """
+    Retrieves unique values for multiple fields using group by
+    """
+
+    def __init__(self, filter_fields, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
+                 get_data, default_sort_order='ASC', min_select_fields=set(), date_fields=set()):
+        WazuhDBQuery.__init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field,
+                              db_path, count, get_data, default_sort_order, min_select_fields, date_fields)
+        self.filter_fields = filter_fields
+
+
+    def get_total_items(self):
+        # take total items without grouping, and add the group by clause just after getting total items
+        WazuhDBQuery.get_total_items(self)
+        self.query += ' GROUP BY ' + ','.join(self.filter_fields['fields'])
+
+
+    def add_select_to_query(self):
+        WazuhDBQuery.add_select_to_query(self)
+        self.filter_fields = self.parse_select_filter(self.filter_fields)
+        self.select['fields'] = self.select['fields'] & self.filter_fields['fields']
+        self.select['fields'].add('COUNT(*)')
+        self.inverse_fields['COUNT(*)'] = 'count'

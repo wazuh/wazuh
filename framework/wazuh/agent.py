@@ -4,7 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-                        get_fields_to_nest, WazuhDBQuery, WazuhDBQueryDistinct
+                        get_fields_to_nest, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -84,6 +84,13 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
+
+class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
+    def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
+        WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
+                              fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
+                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
+                              date_fields={'lastKeepAlive','dateAdd'})
 
 
 class Agent:
@@ -759,6 +766,27 @@ class Agent:
                 'totalItems': db_query.total_items}
 
         return data
+
+
+    @staticmethod
+    def get_distinct_agents(offset=0, limit=common.database_limit, sort=None, search=None, select=None, fields=None, q=""):
+        """
+        Gets a list of available agents with basic attributes.
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        :param q: Defines query to filter in DB.
+        :param fields: Fields to group by
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort, search=search, select=select, query=q,
+                                             count=True, get_data=True, min_select_fields=set())
+        db_query.run()
+        user_select_fields = list(Agent.fields.keys() if not select else select['fields']) + ['count']
+        return {'items': Agent.get_agents_dict(db_query, db_query.select['fields'], user_select_fields),
+                'totalItems': db_query.total_items}
 
 
     @staticmethod
