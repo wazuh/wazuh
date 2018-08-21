@@ -43,4 +43,17 @@ CREATE TABLE IF NOT EXISTS info (
     value TEXT
 );
 
+CREATE TABLE IF NOT EXISTS groups 
+    (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT
+    );
+
+CREATE TABLE IF NOT EXISTS belongs
+    ( 
+    id_agent INTEGER, 
+    id_group INTEGER, 
+    PRIMARY KEY (id_agent, id_group)
+    );
+
 PRAGMA journal_mode=WAL;

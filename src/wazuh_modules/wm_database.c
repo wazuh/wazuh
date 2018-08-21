@@ -35,6 +35,7 @@ int inotify_fd;
 int wd_agents = -2;
 int wd_agentinfo = -2;
 int wd_groups = -2;
+int wd_shared_groups = -2;
 #endif // !LOCAL
 int wd_syscheck = -2;
 int wd_rootcheck = -2;
@@ -86,6 +87,7 @@ static void wm_clean_dangling_db();
 
 static int wm_sync_agentinfo(int id_agent, const char *path);
 static int wm_sync_agent_group(int id_agent, const char *fname);
+static int wm_sync_shared_group(const char *fname);
 static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
 static void wm_sync_multi_groups(const char *dirname);
@@ -146,10 +148,6 @@ void* wm_database_main(wm_database *data) {
                 } else {
                     mterror(WM_DATABASE_LOGTAG, "Couldn't extract file name from '%s'", path);
                 }
-            }
-
-            if(strstr(SHAREDCFG_DIR,path)){
-                wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
             }
 
             free(path);
@@ -700,6 +698,16 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
     return result;
 }
 
+int wm_sync_shared_group(const char *fname) {
+    int result = 0;
+    clock_t clock0 = clock();
+
+    wdb_remove_group_db(fname);
+
+    mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_shared_group(): %.3f ms.", (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+    return result;
+}
+
 void wm_scan_directory(const char *dirname) {
     char path[PATH_MAX];
     struct dirent *dirent;
@@ -762,6 +770,8 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
     } else if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
         type = WDB_GROUPS;
+    } else if (!strcmp(dirname, DEFAULTDIR SHAREDCFG_DIR)) {
+        type = WDB_SHARED_GROUPS;
     } else {
         mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
         return -1;
@@ -906,6 +916,10 @@ int wm_sync_file(const char *dirname, const char *fname) {
 
     case WDB_GROUPS:
         result = wm_sync_agent_group(id_agent, fname);
+        break;
+
+    case WDB_SHARED_GROUPS:
+        result = wm_sync_shared_group(fname);
         break;
     }
 
@@ -1293,6 +1307,11 @@ void wm_inotify_setup(wm_database * data) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
+        
+        if ((wd_shared_groups = inotify_add_watch(inotify_fd, DEFAULTDIR SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
+
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
 
         wm_sync_agents();
         wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
@@ -1375,6 +1394,8 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                         dirname = DEFAULTDIR AGENTINFO_DIR;
                     } else if (event->wd == wd_groups) {
                         dirname = DEFAULTDIR GROUPS_DIR;
+                    } else if (event->wd == wd_shared_groups) {
+                        dirname = DEFAULTDIR SHAREDCFG_DIR;
                     } else
 #endif
                     if (event->wd == wd_syscheck) {
