@@ -11,6 +11,7 @@
 #include "rootcheck.h"
 #include "config/syscheck-config.h"
 
+static void log_realtime_status_rk(int next);
 
 /* Report a problem */
 int notify_rk(int rk_type, const char *msg)
@@ -318,7 +319,7 @@ void * w_rootcheck_thread(__attribute__((unused)) void * args) {
         /* If time elapsed is higher than the rootcheck_time, run it */
         if (syscheck->rootcheck) {
             if (((curr_time - prev_time_rk) > rootcheck.time) || run_now) {
-                log_realtime_status(2);
+                log_realtime_status_rk(2);
                 run_rk_check();
                 prev_time_rk = time(0);
             }
@@ -327,5 +328,35 @@ void * w_rootcheck_thread(__attribute__((unused)) void * args) {
     }
 
     return NULL;
+}
+
+void log_realtime_status_rk(int next) {
+    /*
+     * 0: stop (initial)
+     * 1: run
+     * 2: pause
+     */
+
+    static int status = 0;
+
+    switch (status) {
+    case 0:
+        if (next == 1) {
+            minfo("Starting rootcheck real-time monitoring.");
+            status = next;
+        }
+        break;
+    case 1:
+        if (next == 2) {
+            minfo("Pausing rootcheck real-time monitoring.");
+            status = next;
+        }
+        break;
+    case 2:
+        if (next == 1) {
+            minfo("Resuming rootcheck real-time monitoring.");
+            status = next;
+        }
+    }
 }
 
