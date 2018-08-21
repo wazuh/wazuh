@@ -711,7 +711,6 @@ int wdb_update_groups(const char *dirname) {
 
             array = newarray;
         }
-        //os_calloc(1, sizeof(char), array[i]);
         os_strdup((char*)sqlite3_column_text(stmt, 0),array[i]);
     }
 
@@ -739,11 +738,7 @@ int wdb_update_groups(const char *dirname) {
         }
     }
 
-    for(i=0;array[i];i++){
-        free(array[i]);
-    }
-
-    free(array);
+    free_strarray(array);
 
     return result;
 }
