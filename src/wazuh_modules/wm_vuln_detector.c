@@ -869,8 +869,8 @@ int wm_vulnerability_detector_insert(wm_vulnerability_detector_db *parsed_oval) 
                 free(cve_aux->title);
                 if (cve_aux->severity && ((cve_aux->flags & VU_SHARED_SEVERITY) != VU_SHARED_SEVERITY)) {
                     free(*cve_aux->severity);
+                    free(cve_aux->severity);
                 }
-                free(cve_aux->severity);
                 free(cve_aux->published);
                 free(cve_aux->reference);
                 free(cve_aux->description);
