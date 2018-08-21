@@ -63,11 +63,11 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         for (cur_bucket = aws_config->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
             if (cur_bucket->aws_account_id && cur_bucket->aws_account_alias) {
-                mtdebug1(WM_AWS_LOGTAG, "Executing Bucket Analisys: %s (%s)", cur_bucket->aws_account_alias, cur_bucket->aws_account_id);
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analisys: %s (%s)", cur_bucket->aws_account_alias, cur_bucket->aws_account_id);
             } else if (cur_bucket->aws_account_id) {
-                mtdebug1(WM_AWS_LOGTAG, "Executing Bucket Analisys: %s", cur_bucket->aws_account_id);
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analisys: %s", cur_bucket->aws_account_id);
             } else {
-                mtdebug1(WM_AWS_LOGTAG, "Executing Bucket Analisys: LEGACY - %s", cur_bucket->bucket);
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analisys: %s", cur_bucket->bucket);
             }
             wm_aws_run_s3(cur_bucket);
         }
