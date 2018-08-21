@@ -9,6 +9,7 @@ from os import strerror
 import socket
 import re
 import json
+import struct
 
 class WazuhDBConnection:
     """
@@ -53,10 +54,14 @@ class WazuhDBConnection:
         """
         Sends a message to the wdb socket
         """
-
+        msg = struct.pack('<I', len(msg)) + msg.encode()
         self.__conn.send(msg)
-        # Wazuh db can't send more than 6KB of data
-        data = self.__conn.recv(self.max_size).split(" ", 1)
+
+        # Get the data size (4 bytes)
+        data = self.__conn.recv(4)
+        data_size = struct.unpack('<I',data[0:4])[0]
+
+        data = self.__conn.recv(data_size).decode().split(" ", 1)
 
         if data[0] == "err":
             raise WazuhException(2003, data[1])
