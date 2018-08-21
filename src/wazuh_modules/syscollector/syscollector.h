@@ -97,8 +97,8 @@ typedef struct hw_info {
     char *cpu_name;
     int cpu_cores;
     double cpu_MHz;
-    int ram_total;  // kB
-    int ram_free;   // kB
+    u_int64_t ram_total;  // kB
+    u_int64_t ram_free;   // kB
     int ram_usage;  // Percentage
 } hw_info;
 

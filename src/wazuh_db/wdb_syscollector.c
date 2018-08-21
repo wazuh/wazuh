@@ -502,7 +502,7 @@ int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free, int ram_usage) {
+int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, u_int64_t ram_total, u_int64_t ram_free, int ram_usage) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -542,7 +542,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
 }
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
-int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free, int ram_usage) {
+int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, u_int64_t ram_total, u_int64_t ram_free, int ram_usage) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) < 0) {
@@ -566,13 +566,13 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
     sqlite3_bind_text(stmt, 6, cpu_mhz, -1, NULL);
 
     if (ram_total > 0) {
-        sqlite3_bind_int(stmt, 7, ram_total);
+        sqlite3_bind_int64(stmt, 7, ram_total);
     } else {
         sqlite3_bind_null(stmt, 7);
     }
 
     if (ram_free > 0) {
-        sqlite3_bind_int(stmt, 8, ram_free);
+        sqlite3_bind_int64(stmt, 8, ram_free);
     } else {
         sqlite3_bind_null(stmt, 8);
     }

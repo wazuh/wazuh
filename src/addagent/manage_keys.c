@@ -211,7 +211,7 @@ int k_extract(const char *cmdextract, int json_output)
             exit(1);
         }
     } else {
-        if (!print_agents(0, 0, 0, 0)) {
+        if (!print_agents(0, 0, 0, 0, 0)) {
             printf(NO_AGENT);
             printf(PRESS_ENTER);
             read_from_user();

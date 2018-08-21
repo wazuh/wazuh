@@ -105,7 +105,7 @@ void * wm_command_main(wm_command_t * command) {
             break;
 
         default:
-            mterror(WM_COMMAND_LOGTAG, "%s: Internal calling. Exiting...", command->tag);
+            mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at ossec.conf. Exiting...", command->tag);
             pthread_exit(NULL);
         }
 

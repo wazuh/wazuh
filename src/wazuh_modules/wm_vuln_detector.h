@@ -19,25 +19,14 @@
 #define WM_VULNDETECTOR_DEFAULT_INTERVAL 60 // 1M
 #define WM_VULNDETECTOR_RETRY_UPDATE  300 // 5 minutes
 #define VU_DEF_IGNORE_TIME 21600 // 6H
-#define CVE_TEMP_FILE TMP_PATH "/cve"
+#define CVE_TEMP_FILE "tmp/cve"
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
-#define HTTP_HEADER "http://"
-#define HTTPS_HEADER "https://"
-#define CANONICAL_REPO "people.canonical.com"
-#define DEBIAN_REPO "www.debian.org"
-#define REDHAT_REPO "www.redhat.com"
+#define CANONICAL_REPO "https://people.canonical.com/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
+#define DEBIAN_REPO "https://www.debian.org/security/oval/oval-definitions-%s.xml"
+#define REDHAT_REPO "https://www.redhat.com/security/data/oval/Red_Hat_Enterprise_Linux_%s.xml"
 #define CISECURITY_REPO "oval.cisecurity.org"
-#define UBUNTU_OVAL "/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
-#define DEBIAN_OVAL "/security/oval/oval-definitions-%s.xml"
-#define REDHAT_OVAL "/security/data/oval/Red_Hat_Enterprise_Linux_%s.xml"
 #define WINDOWS_OVAL "/repository/download/5.11.2/vulnerability/microsoft_windows_%s.xml"
 #define MACOSX_OVAL "/repository/download/5.11.2/vulnerability/apple_mac_os_%s.xml"
-#define OVAL_REQUEST "GET %s HTTP/1.1\r\n" \
-                     "User-Agent: Wazuh\r\n" \
-                     "Accept: */*\r\n" \
-                     "Accept-Encoding: identity\r\n" \
-                     "Host: %s\r\n" \
-                     "Connection: Keep-Alive\r\n\r\n"
 #define JSON_FILE_TEST "/tmp/package_test.json"
 #define DEFAULT_OVAL_PORT 443
 #define KEY_SIZE OS_SIZE_6144
@@ -45,6 +34,9 @@
 #define VU_MAX_VERSION_ATTEMPS 15
 #define VU_MAX_WAZUH_DB_ATTEMPS 5
 #define VU_MAX_TIMESTAMP_ATTEMPS 4
+#define VU_TIMESTAMP_FAIL 0
+#define VU_TIMESTAMP_UPDATED 1
+#define VU_TIMESTAMP_OUTDATED 2
 #define VU_AGENT_REQUEST_LIMIT   0
 #define VU_ALERT_HEADER "[%03d] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
