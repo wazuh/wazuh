@@ -490,6 +490,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     char *arch_val;
     int i;
     char send_queue;
+    int sql_result;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -499,9 +500,12 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     }
 
     for (agents_it = agents, i = 0; agents_it && i < max; agents_it = agents_it->prev, i++) {
+
         if (!agents_it->info) {
             continue;
         }
+
+        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_START_AG_AN, agents_it->agent_id);
 
         if (agents_it->dist != DIS_REDHAT) {
             query = vu_queries[VU_JOIN_QUERY];
@@ -516,7 +520,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
         sqlite3_bind_int(stmt, 1,  strtol(agents_it->agent_id, NULL, 10));
         sqlite3_bind_text(stmt, 2, agents_it->agent_OS, -1, NULL);
 
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
+        while (sql_result = sqlite3_step(stmt), sql_result == SQLITE_ROW) {
             char *package;
             char *version;
             char *operation, *second_operation;
@@ -655,6 +659,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
         }
 
         sqlite3_finalize(stmt);
+        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_FINISH, agents_it->agent_id);
     }
 
     cJSON_Delete(alert);
@@ -689,11 +694,12 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     sqlite3_finalize(stmt);
 
     for (i = 1, agents_it = agents;; i++) {
+        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_START, agents_it->agent_id);
         if (result = wm_vulnerability_detector_get_software_info(agents_it, db, agents_triag, ignore_time), result == OS_INVALID) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_GET_SOFTWARE_ERROR, agents_it->agent_id);
         }
 
-        if (result != 2) {
+        if (result != 2) {  // There exists packages for the agent
             if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
                 if (wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i) == OS_INVALID) {
                     mterror(WM_VULNDETECTOR_LOGTAG, VU_REPORT_ERROR, agents_it->agent_id);
@@ -2038,7 +2044,8 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     cJSON *package_list = NULL;
     last_scan *scan;
     int result;
-    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
+
+    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
     for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 0; i++) {
         mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK_PATH, i);
@@ -2349,6 +2356,7 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
             }
         }
 
+        mtdebug2(WM_VULNDETECTOR_LOGTAG, "Sleeping for %lu seconds...", time_sleep);
         sleep(time_sleep);
     }
 
