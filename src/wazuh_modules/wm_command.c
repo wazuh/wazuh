@@ -84,7 +84,7 @@ void * wm_command_main(wm_command_t * command) {
     }
 
     while (1) {
-        int status;
+        int status = 0;
         char * output = NULL;
 
         mtdebug1(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);

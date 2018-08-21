@@ -115,15 +115,12 @@ int wm_check() {
 
                 mdebug1("Deleting repeated module '%s'.", j->tag);
 
-                wm_module_free(j);
-
                 if (j == wmodules) {
                     wmodules = prev = next;
                 } else {
                     prev->next = next;
                 }
-
-                free(j);
+                wm_module_free(j);
             
             } else {
                 prev = j;
@@ -263,7 +260,6 @@ void wm_free(wmodule * config) {
         next_module = cur_module->next;
 
         wm_module_free(cur_module);
-        free(cur_module);
     }
 }
 
@@ -272,6 +268,7 @@ void wm_module_free(wmodule * config){
             config->context->destroy(config->data);
 
     free(config->tag);
+    free(config);
 }
 
 // Send message to a queue waiting for a specific delay
