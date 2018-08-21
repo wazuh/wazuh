@@ -59,12 +59,6 @@ int wm_config() {
     return 0;
 }
 
-// Destroy tag
-
-void wm_destroy_tag(char *tag) {
-    free(tag);
-}
-
 // Add module to the global list
 
 void wm_add(wmodule *module) {
@@ -117,28 +111,21 @@ int wm_check() {
         for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
 
-            if(i->tag && j->tag){
+            if (!strcmp(i->tag, j->tag)) {
 
-                if (!strcmp(i->tag,j->tag)) {
+                mdebug1("Deleting repeated module '%s'.", j->tag);
 
-                    mdebug1("Deleting repeated module '%s'.", j->tag);
+                wm_module_free(j);
 
-                    if (j->context->destroy)
-                        j->context->destroy(j->data);
-
-                    if(j->tag)
-                        wm_destroy_tag(j->tag);
-
-                    if (j == wmodules) {
-                        wmodules = prev = next;
-                    } else {
-                        prev->next = next;
-                    }
-
-                    free(j);
+                if (j == wmodules) {
+                    wmodules = prev = next;
                 } else {
-                    prev = j;
+                    prev->next = next;
                 }
+
+                free(j);
+            } else {
+                prev = j;
             }
         }
     }
@@ -273,14 +260,17 @@ void wm_free(wmodule * config) {
 
     for (cur_module = config; cur_module; cur_module = next_module) {
         next_module = cur_module->next;
-        if (cur_module->context && cur_module->context->destroy)
-            cur_module->context->destroy(cur_module->data);
 
-        if(cur_module->tag)
-            free(cur_module->tag);
-
+        wm_module_free(cur_module);
         free(cur_module);
     }
+}
+
+void wm_module_free(wmodule * config){
+    if (config->context && config->context->destroy)
+            config->context->destroy(config->data);
+
+    free(config->tag);
 }
 
 // Send message to a queue waiting for a specific delay

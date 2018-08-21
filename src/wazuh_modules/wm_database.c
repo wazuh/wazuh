@@ -1144,6 +1144,7 @@ wmodule* wm_database_read() {
         os_calloc(1, sizeof(wm_database), module->data);
         module->context = &WM_DATABASE_CONTEXT;
         memcpy(module->data, &data, sizeof(wm_database));
+        module->tag = strdup(module->context->name);
     }
 
     return module;
