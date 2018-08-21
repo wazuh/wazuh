@@ -535,8 +535,9 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 
         case MD5SUM:
             // Get binary MD5
-            OS_MD5_File(command, md5_binary, 1);
+            OS_MD5_File(command, md5_binary, OS_BINARY);
             // Compare MD5 sums
+            mdebug2("Comparing MD5 hash: '%s' | '%s'", md5_binary, digest);
             if (strcasecmp(md5_binary, digest) == 0) {
                 match = 1;
             }
@@ -544,8 +545,9 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 
         case SHA1SUM:
             // Get binary SHA1
-            OS_SHA1_File(command, sha1_binary, 1);
+            OS_SHA1_File(command, sha1_binary, OS_BINARY);
             // Compare SHA1 sums
+            mdebug2("Comparing SHA1 hash: '%s' | '%s'", sha1_binary, digest);
             if (strcasecmp(sha1_binary, digest) == 0) {
                 match = 1;
             }
@@ -553,8 +555,9 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 
         case SHA256SUM:
             // Get binary SHA256
-            OS_SHA256_File(command, sha256_binary, 1);
+            OS_SHA256_File(command, sha256_binary, OS_BINARY);
             // Compare SHA256 sums
+            mdebug2("Comparing SHA256 hash: '%s' | '%s'", sha256_binary, digest);
             if (strcasecmp(sha256_binary, digest) == 0) {
                 match = 1;
             }
