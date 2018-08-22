@@ -16,15 +16,28 @@ fields = {'status': 'status', 'event': 'log', 'oldDay': 'date_first', 'readDay':
 
 class WazuhDBQueryRootcheck(WazuhDBQuery):
 
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, default_sort_field='date_last'):
+    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, default_sort_field='date_last', filters={}):
         db_path = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_path:
             raise WazuhException(1600)
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_event', sort=sort, search=search, select=select,
-                              fields=fields, default_sort_field=default_sort_field, default_sort_order='DESC', query=query,
-                              db_path=db_path[0], min_select_fields=set(), count=count, get_data=get_data,
+                              fields=fields, default_sort_field=default_sort_field, default_sort_order='DESC', filters=filters,
+                              query=query, db_path=db_path[0], min_select_fields=set(), count=count, get_data=get_data,
                               date_fields={'oldDay','readDate'})
+
+    def parse_filters(self):
+        WazuhDBQuery.parse_filters(self)
+        # status filter can only appear once in the filter list
+        statuses = list(filter(lambda x: x['field'].startswith('status'), self.filters))
+        if statuses:
+            for status in statuses:
+                self.filters.remove(status)
+            first_status = statuses[0]
+            first_status['separator'] = 'AND' if first_status['separator'] == '' else first_status['separator']
+            self.filters.insert(0, statuses[0])
+            self.filters[-1]['separator'] = ''
+
 
     def filter_status(self, filter_status):
         partial = """SELECT {0} AS status, date_first, date_last, log, pci_dss, cis FROM pm_event AS t
@@ -139,33 +152,32 @@ def clear(agent_id=None, all_agents=False):
     return "Rootcheck database deleted"
 
 
-def print_db(agent_id=None, q="", offset=0, limit=common.database_limit, sort=None, search=None, select=None):
+def print_db(agent_id=None, q="", offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
     """
     Returns a list of events from the database.
 
     :param agent_id: Agent ID.
-    :param status: Filters by status: outstanding, solved, all.
-    :param pci: Filters by PCI DSS requirement.
-    :param cis: Filters by CIS.
+    :param filters: Fields to filter by.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param select: Selects which fields to return.
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    select = {'fields':["status", "oldDay", "readDay", "log", "pci", "cis"]} if select is None else select
-    if 'status' not in q:
+    select = {'fields':["status", "oldDay", "readDay", "event", "pci", "cis"]} if select is None else select
+    if 'status' not in q and 'status' not in filters:
         q = 'status=all' + ('' if not q else ';'+q)
 
     db_query = WazuhDBQueryRootcheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                     select=select, count=True, get_data=True, query=q)
+                                     select=select, count=True, get_data=True, query=q, filters=filters)
     db_query.run()
 
     return {'totalItems': db_query.total_items, 'data':[{db_query.inverse_fields[key]:val for key,val in zip(db_query.select['fields'], tuple)
                                                          if val is not None} for tuple in db_query.conn]}
 
 
-def _get_requirement(requirement, agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None, q=""):
+def _get_requirement(requirement, agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None, q="", filters={}):
     """
     Get all requirements used in the rootcheck of the agent
 
@@ -174,10 +186,11 @@ def _get_requirement(requirement, agent_id=None, offset=0, limit=common.database
     :param offset: First item to return
     :param limit: Maximum number of items to return
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param filters: Fields to filter by.
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    db_query = WazuhDBQueryRootcheckDistinct(offset=offset, limit=limit, sort=sort, search=search,
+    db_query = WazuhDBQueryRootcheckDistinct(offset=offset, limit=limit, sort=sort, search=search, filters=filters,
                                             select={'fields':[requirement]}, agent_id=agent_id,
                                              default_sort_field=fields[requirement], count=True, get_data=True, query=q)
     db_query.run()

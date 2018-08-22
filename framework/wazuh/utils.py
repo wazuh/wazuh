@@ -567,7 +567,7 @@ class WazuhDBQuery(object):
     This class describes a database query for wazuh
     """
     def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
-                 get_data, default_sort_order='ASC', min_select_fields=set(), date_fields=set()):
+                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set()):
         """
         Wazuh DB Query constructor
 
@@ -575,6 +575,7 @@ class WazuhDBQuery(object):
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
         :param query: query to filter in database. Format: field operator value.
         :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
         :param table: table to do the query
@@ -603,12 +604,13 @@ class WazuhDBQuery(object):
         self.data = get_data
         self.total_items = 0
         self.min_select_fields = min_select_fields
-        self.query_regex = re.compile(r"([\w\.]+)([=!<>]{1,2})([\w _\-.:]+)([,;])?")
+        self.query_regex = re.compile(r"([\w\.]+)([=!<>]{1,2})([\w _\-.:/]+)([,;])?")
         self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.query_operators = {"=","!=","<",">"}
         self.query_separators = {',':'OR',';':'AND','':''}
         self.date_fields = date_fields
         self.q = query
+        self.query_filters = filters
         self.inverse_fields = {v:k for k,v in self.fields.items()}
         if not glob.glob(db_path):
             raise WazuhException(1600)
@@ -692,11 +694,27 @@ class WazuhDBQuery(object):
                                  'separator': self.query_separators[separator]})
 
 
-    def add_filters_to_query(self):
+    def parse_traditional_filters(self):
+        """
+        Parses traditional filters.
+        """
+        self.filters += [{'value': value, 'field': name, 'operator': '=', 'separator': 'AND'} for name, value in self.query_filters.items()]
+        if not self.q:
+            # if only traditional filters have been defined, remove last AND from the query.
+            self.filters[-1]['separator'] = ''
+
+
+    def parse_filters(self):
+        if self.query_filters:
+            self.parse_traditional_filters()
         if self.q:
             self.parse_query()
-        if self.q or self.search:
+        if self.q or self.search or self.query_filters:
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
+
+
+    def add_filters_to_query(self):
+        self.parse_filters()
 
         for filter in self.filters:
             field_name = filter['field'].split('$',1)[0]
@@ -794,7 +812,7 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
 
     def default_count_query(self):
-        return "COUNT (DISTINCT {0})".format(self.select['fields'][0])
+        return "COUNT (DISTINCT {0})".format(','.join(self.select['fields']))
 
 
     def add_filters_to_query(self):
@@ -816,9 +834,9 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     """
 
     def __init__(self, filter_fields, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
-                 get_data, default_sort_order='ASC', min_select_fields=set(), date_fields=set()):
+                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set()):
         WazuhDBQuery.__init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field,
-                              db_path, count, get_data, default_sort_order, min_select_fields, date_fields)
+                              db_path, count, get_data, default_sort_order, filters, min_select_fields, date_fields)
         self.filter_fields = filter_fields
 
 
