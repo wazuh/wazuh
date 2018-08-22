@@ -186,6 +186,9 @@ int wdb_remove_group_db(const char *name);
 /* Get name from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_name(int id);
 
+/* Get group from agent. The string must be freed after using. Returns NULL on error. */
+char* wdb_agent_group(int id);
+
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db(int id, const char *name);
 
@@ -221,6 +224,9 @@ int wdb_create_file(const char *path, const char *source);
 
 /* Get an array containing the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents();
+
+/* Fill belongs table on start */
+int wdb_agent_belongs_first_time();
 
 /* Find agent by name and address. Returns ID if success or -1 on failure. */
 int wdb_find_agent(const char *name, const char *ip);
