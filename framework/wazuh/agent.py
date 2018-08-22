@@ -1203,7 +1203,7 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
-        conn.execute("SELECT id FROM groups WHERE name = :name", {'name': group_name})
+        conn.execute("SELECT id FROM `group` WHERE name = :name", {'name': group_name})
         try:
             group_id = conn.fetch()[0]
         except TypeError as e:
@@ -1501,7 +1501,7 @@ class Agent:
                 continue
 
             # Get the id of the group
-            query = "SELECT id FROM groups WHERE name = :group_id"
+            query = "SELECT id FROM `group` WHERE name = :group_id"
             request = {'group_id': entry}
             conn.execute(query, request)
             id_group = conn.fetch()
@@ -1889,6 +1889,7 @@ class Agent:
                 
             else: # Has only one group
                 agent_group = "default"
+                Agent().set_group(str(agent_id),agent_group)
 
             # Delete from multi groups folder
             root, multi_group_dirs, files = walk(common.multi_groups_path).next()

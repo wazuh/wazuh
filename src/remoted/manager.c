@@ -422,9 +422,9 @@ void c_multi_group(char *multi_group) {
 
         if (files = wreaddir(dir), !files) {
             if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", path);
+                merror("Could not open directory '%s'", dir);
             }
-            //continue;
+            continue;
         }
 
         unsigned int i;
@@ -482,7 +482,6 @@ void c_multi_group(char *multi_group) {
             if (errno != ENOTDIR) {
                 merror("Could not open directory '%s'", path);
             }
-
             continue;
         }
 
@@ -623,10 +622,6 @@ static void c_files()
         p_size++;
     }
 
-    int j = 0;
-    /*for (j=0;j < p_size;j++ ){
-        merror("******GROUP: %s", groups[j]->group);
-    }*/
     
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
