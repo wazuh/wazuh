@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - Fix allowing more than one wodle command. ([#1128](https://github.com/wazuh/wazuh/pull/1128))
 - Fixed `after_regex` offset for the decoding algorithm. ([#1129](https://github.com/wazuh/wazuh/pull/1129))
 - Fix unknown severity in Red Hat systems. ([#1118](https://github.com/wazuh/wazuh/pull/1118))
+- Added a building flag to compile the SQLite library externally for the API. ([#1119](https://github.com/wazuh/wazuh/issues/1119))
 
 ### Removed
 
