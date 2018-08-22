@@ -40,6 +40,7 @@ int wm_aws_read(xml_node **nodes, wmodule *module, int agent_cfg)
     config->interval = WM_AWS_DEFAULT_INTERVAL;
     config->agent_cfg = agent_cfg;
     module->context = &WM_AWS_CONTEXT;
+    module->tag = strdup(module->context->name);
     module->data = config;
 
     // Iterate over module subelements

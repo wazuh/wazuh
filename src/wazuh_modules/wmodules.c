@@ -111,19 +111,16 @@ int wm_check() {
         for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
 
-            if (i->context->name == j->context->name) {
-                mdebug1("Deleting repeated module '%s'.", j->context->name);
+            if (!strcmp(i->tag, j->tag)) {
 
-                if (j->context->destroy)
-                    j->context->destroy(j->data);
+                mdebug1("Deleting repeated module '%s'.", j->tag);
 
                 if (j == wmodules) {
                     wmodules = prev = next;
                 } else {
                     prev->next = next;
                 }
-
-                free(j);
+                wm_module_free(j);
             
             } else {
                 prev = j;
@@ -261,10 +258,17 @@ void wm_free(wmodule * config) {
 
     for (cur_module = config; cur_module; cur_module = next_module) {
         next_module = cur_module->next;
-        if (cur_module->context && cur_module->context->destroy)
-            cur_module->context->destroy(cur_module->data);
-        free(cur_module);
+
+        wm_module_free(cur_module);
     }
+}
+
+void wm_module_free(wmodule * config){
+    if (config->context && config->context->destroy)
+            config->context->destroy(config->data);
+
+    free(config->tag);
+    free(config);
 }
 
 // Send message to a queue waiting for a specific delay
