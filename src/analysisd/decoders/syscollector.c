@@ -826,7 +826,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
 
         if (ram_total) {
             char total[OS_MAXSTR];
-            snprintf(total, OS_MAXSTR - 1, "%d", ram_total->valueint);
+            snprintf(total, OS_MAXSTR - 1, "%f", ram_total->valuedouble);
             wm_strcat(&msg, total, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -834,7 +834,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
 
         if (ram_free) {
             char rfree[OS_MAXSTR];
-            snprintf(rfree, OS_MAXSTR - 1, "%d", ram_free->valueint);
+            snprintf(rfree, OS_MAXSTR - 1, "%f", ram_free->valuedouble);
             wm_strcat(&msg, rfree, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');

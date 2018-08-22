@@ -160,7 +160,7 @@ void * wm_command_main(wm_command_t * command) {
     }
 
     while (1) {
-        int status;
+        int status = 0;
         char * output = NULL;
 
         mtdebug1(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
@@ -181,7 +181,7 @@ void * wm_command_main(wm_command_t * command) {
             break;
 
         default:
-            mterror(WM_COMMAND_LOGTAG, "%s: Internal calling. Exiting...", command->tag);
+            mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at ossec.conf. Exiting...", command->tag);
             pthread_exit(NULL);
         }
 

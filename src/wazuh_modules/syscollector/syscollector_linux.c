@@ -1351,7 +1351,7 @@ hw_info *get_system_linux(){
             }
         }
 
-        if (info->ram_total > 0 && info->ram_free >= 0) {
+        if (info->ram_total > 0) {
             info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
         }
         free(aux_string);

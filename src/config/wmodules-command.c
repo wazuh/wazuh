@@ -28,7 +28,10 @@ static const char *XML_SKIP_VERIFICATION = "skip_verification";
 int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 {
     int i;
+    int empty = 0;
     wm_command_t * command;
+    size_t command_tag_length;
+    char * command_tag;
 
     if (!nodes) {
         mwarn("Tag <%s> not found at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
@@ -66,12 +69,26 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
             }
         } else if (!strcmp(nodes[i]->element, XML_TAG)) {
             if (strlen(nodes[i]->content) == 0) {
-                merror("Empty content for tag '%s' at module '%s'.", XML_TAG, WM_COMMAND_CONTEXT.name);
-                return OS_INVALID;
+                mwarn("Empty content for tag '%s' at module '%s'.", XML_TAG, WM_COMMAND_CONTEXT.name);
+                command_tag_length = strlen(WM_COMMAND_CONTEXT.name) + 2;
+                command_tag = malloc(sizeof(char) * command_tag_length);
+                snprintf(command_tag, command_tag_length, "%s", WM_COMMAND_CONTEXT.name);
+                empty = 1;
             }
 
             free(command->tag);
             os_strdup(nodes[i]->content, command->tag);
+
+            if (!empty) {
+                command_tag_length = strlen(WM_COMMAND_CONTEXT.name) + strlen(command->tag) + 2;
+                command_tag = malloc(sizeof(char) * command_tag_length);
+                snprintf(command_tag, command_tag_length, "%s:%s", WM_COMMAND_CONTEXT.name, command->tag);
+            }
+
+            free(module->tag);
+            os_strdup(command_tag, module->tag);
+            free(command_tag);
+            empty = 0;
         } else if (!strcmp(nodes[i]->element, XML_COMMAND)) {
             if (strlen(nodes[i]->content) == 0) {
                 merror("Empty content for tag '%s' at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);

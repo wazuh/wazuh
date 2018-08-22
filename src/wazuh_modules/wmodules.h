@@ -52,6 +52,7 @@ typedef struct wm_context {
 typedef struct wmodule {
     pthread_t thread;                   // Thread ID
     const wm_context *context;          // Context (common structure)
+    char *tag;                          // Module tag
     void *data;                         // Data (module-dependent structure)
     struct wmodule *next;               // Pointer to next module
 } wmodule;
@@ -91,6 +92,9 @@ int wm_check();
 
 // Destroy configuration data
 void wm_destroy();
+
+// Destroy module
+void wm_module_free(wmodule * config);
 
 /* Execute command with timeout of secs. exitcode can be NULL.
  *

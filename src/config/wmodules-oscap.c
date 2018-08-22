@@ -44,6 +44,7 @@ int wm_oscap_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     oscap->flags.scan_on_start = 1;
     oscap->interval = WM_OSCAP_DEF_INTERVAL;
     module->context = &WM_OSCAP_CONTEXT;
+    module->tag = strdup(module->context->name);
     module->data = oscap;
 
     if (!nodes)

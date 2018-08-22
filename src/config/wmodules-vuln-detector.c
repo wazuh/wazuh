@@ -222,6 +222,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
     vulnerability_detector->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vulnerability_detector->agents_software = NULL;
     module->context = &WM_VULNDETECTOR_CONTEXT;
+    module->tag = strdup(module->context->name);
     module->data = vulnerability_detector;
 
     for (i = 0; i < OS_SUPP_SIZE; i++) {

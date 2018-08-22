@@ -273,17 +273,24 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         argv = wm_strtok(command);
 
+        int fd = open("/dev/null", O_RDWR, 0);
+
+        if (fd < 0) {
+            merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
+        }
+
+        dup2(fd, STDIN_FILENO);
+        close(fd);
+
         if (output) {
             close(pipe_fd[0]);
             dup2(pipe_fd[1], STDOUT_FILENO);
             dup2(pipe_fd[1], STDERR_FILENO);
             close(pipe_fd[1]);
         } else {
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
         }
-
-        close(STDIN_FILENO);
 
         setsid();
         if (nice(wm_task_nice)) {}
@@ -333,7 +340,6 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                 kill(-pid, SIGTERM);
                 pthread_cancel(thread);
             }
-
             // Wait for thread
 
             pthread_mutex_unlock(&tinfo.mutex);
@@ -343,24 +349,78 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
             pthread_mutex_destroy(&tinfo.mutex);
             pthread_cond_destroy(&tinfo.finished);
-        } else {
-            retval = 0;
-        }
 
-        // Wait for child process
+            // Wait for child process
 
-        switch (waitpid(pid, &status, 0)) {
-        case -1:
-            merror("waitpid()");
-            retval = -1;
-            break;
-
-        default:
-            if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+            switch (waitpid(pid, &status, 0)) {
+            case -1:
+                merror("waitpid()");
                 retval = -1;
-            } else if (exitcode)
-                *exitcode = WEXITSTATUS(status);
+                break;
+
+            default:
+                if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                    merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    retval = -1;
+                } else if (exitcode)
+                    *exitcode = WEXITSTATUS(status);
+            }
+
+        } else {
+            // Kill and timeout
+            do {
+                if (waitpid(pid,&status,WNOHANG) == 0){ // Command yet not finished
+
+                    switch (kill(pid, 0)){
+                        case -1:
+                            switch(errno){
+                                case ESRCH:
+                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                    retval = -2;
+                                    break;
+
+                                default:
+                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                    retval = -3;
+                                    break;
+                            }
+
+                        default:
+                            sleep(1);
+                            secs--;
+                    }
+
+                    if (retval == -2 || retval == -3) {
+                        break;
+                    }
+
+                } else { // Command finished
+                    retval = 0;
+                    break;
+                }
+
+            } while(secs);
+
+            if(retval != 0){
+                kill(pid,SIGTERM);
+                retval = ETIMEDOUT;
+
+                // Wait for child process
+
+                switch (waitpid(pid, &status, 0)) {
+                    case -1:
+                        merror("waitpid(): %s (%d)", strerror(errno), errno);
+                        retval = -1;
+                        break;
+
+                    default:
+                        if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                            merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                            retval = -1;
+                        } else if (exitcode)
+                            *exitcode = WEXITSTATUS(status);
+                }
+            }
         }
 
         wm_remove_sid(pid);
