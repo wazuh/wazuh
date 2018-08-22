@@ -24,6 +24,7 @@ static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id 
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
 static const char *SQL_INSERT_AGENT_GROUP = "INSERT INTO `group` (name) VALUES(?)";
+static const char *SQL_SELECT_AGENT_GROUP = "SELECT `group` FROM agent WHERE id = ?;";
 static const char *SQL_INSERT_AGENT_BELONG = "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)";
 static const char *SQL_DELETE_AGENT_BELONG = "DELETE FROM belongs WHERE id_agent = ?";
 static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
@@ -194,6 +195,41 @@ char* wdb_agent_name(int id) {
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         result = strdup((char*)sqlite3_column_text(stmt, 0));
+        break;
+    case SQLITE_DONE:
+        result = NULL;
+        break;
+    default:
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        result = NULL;
+    }
+
+    sqlite3_finalize(stmt);
+
+    return result;
+}
+
+/* Get group from agent. The string must be freed after using. Returns NULL on error. */
+char* wdb_agent_group(int id) {
+    sqlite3_stmt *stmt = NULL;
+    char *result = NULL;
+
+    if (wdb_open_global() < 0)
+        return NULL;
+
+    if (wdb_prepare(wdb_global, SQL_SELECT_AGENT_GROUP, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        return NULL;
+    }
+
+    sqlite3_bind_int(stmt, 1, id);
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+        result = (char*)sqlite3_column_text(stmt, 0);
+        if(result){
+            result = strdup((char*)sqlite3_column_text(stmt, 0));
+        }
         break;
     case SQLITE_DONE:
         result = NULL;
@@ -788,4 +824,25 @@ int wdb_remove_group_db(const char *name) {
     sqlite3_finalize(stmt);
 
     return result;
+}
+
+int wdb_agent_belongs_first_time(){
+    int i;
+    char *group;
+    int *agents;
+
+    if ((agents = wdb_get_all_agents())) {
+
+        for (i = 0; agents[i] != -1; i++) {
+            group = wdb_agent_group(agents[i]);
+
+            if(group){
+                wdb_update_agent_multi_group(agents[i],group);
+                free(group);
+            }
+        }
+        free(agents);
+    }
+
+    return 0;
 }
