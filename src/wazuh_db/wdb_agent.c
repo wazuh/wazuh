@@ -736,10 +736,36 @@ int wdb_update_groups(const char *dirname) {
                 return -1;
             }
         }
+        closedir(dp);
     }
 
     free_strarray(array);
 
+    /* Add new groups from the folder /etc/shared if they dont exists on database */
+    DIR *dir;
+    struct dirent *dirent;
+
+    if (!(dir = opendir(dirname))) {
+        mterror(WDB_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
+        return;
+    }
+
+    while ((dirent = readdir(dir))){
+        if (dirent->d_name[0] != '.'){
+            char path[PATH_MAX];
+            snprintf(path,PATH_MAX,"%s/%s",dirname,dirent->d_name);
+
+            DIR *is_dir = opendir(path);
+            if (is_dir){
+                if(wdb_find_group(dirent->d_name) <= 0){
+                    wdb_insert_group(dirent->d_name);
+                }
+            }
+            closedir(is_dir);
+        }
+    }
+    closedir(dir);
+        
     return result;
 }
 
