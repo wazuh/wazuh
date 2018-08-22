@@ -928,7 +928,7 @@ char* get_broadcast_addr(char* ip, char* netmask){
         }
     }
 
-    os_strdup("unknown", broadcast_addr);
+    strncpy(broadcast_addr, "unknown", NI_MAXHOST);
     return broadcast_addr;
 }
 
@@ -1084,10 +1084,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                             broadaddr = get_broadcast_addr(host, netmask);
                             if (strncmp(broadaddr, "unknown", 7)) {
                                 cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
-                                free(broadaddr);
                             } else {
                                 mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
                             }
+                            free(broadaddr);
                         } else if (ifa->ifa_ifu.ifu_broadaddr != NULL){
                             char broadaddr[NI_MAXHOST];
                             result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
