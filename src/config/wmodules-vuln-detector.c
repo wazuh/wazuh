@@ -24,6 +24,7 @@ static const char *XML_NAME = "name";
 static const char *XML_UPDATE_INTERVAL = "update_interval";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_IGNORE_TIME = "ignore_time";
+static const char *XML_IGNORE_AGENTS = "ignore_agents";
 static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
@@ -219,6 +220,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
     vulnerability_detector->flags.u_flags.update_windows = 0;
     vulnerability_detector->flags.u_flags.update_macos = 0;
     vulnerability_detector->ignore_time = VU_DEF_IGNORE_TIME;
+    vulnerability_detector->ignored_agents = NULL;
     vulnerability_detector->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vulnerability_detector->agents_software = NULL;
     module->context = &WM_VULNDETECTOR_CONTEXT;
@@ -381,6 +383,43 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             if (get_interval(nodes[i]->content, &vulnerability_detector->ignore_time)) {
                 merror("Invalid ignore_time at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_IGNORE_AGENTS)) {
+            int *ignored;
+            int size;
+            char *found;
+            char *base;
+            char *multi;
+
+            base = found = nodes[i]->content;
+            for (size = 0, ignored = NULL; (found && (found = strchr(found, ','))) || (base && *base != '\0'); size++) {
+                if (found) {
+                    *(found++) = '\0';
+                }
+                if (multi = strchr(base, '-'), multi) {
+                    *(multi++) = '\0';
+                }
+                if (ignored) {
+                    os_realloc(ignored, (size + 1)*sizeof(int), ignored);
+                } else {
+                    os_calloc(2, sizeof(int), ignored);
+                }
+                ignored[size] = strtol(base, NULL, 10);
+                ignored[size + 1] = -1;
+
+                // If a '-' has been found, we read a range
+                if (multi && *multi != '\0') {
+                    size += 2;
+                }
+
+                base = found;
+            }
+            if (vulnerability_detector->ignored_agents) {
+                free(ignored);
+                mwarn("'%s' tag has been defined twice in the %s. Only the first appearance will be taken into account.",
+                    XML_IGNORE_AGENTS, WM_VULNDETECTOR_CONTEXT.name);
+            } else {
+                vulnerability_detector->ignored_agents = ignored;
             }
         } else if (!strcmp(nodes[i]->element, XML_UPDATE_UBUNTU_OVAL)) {
             int enabled = 0;

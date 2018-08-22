@@ -178,6 +178,7 @@ typedef struct wm_vulnerability_detector_t {
     update_node *updates[OS_SUPP_SIZE];
     unsigned long detection_interval;
     unsigned long ignore_time;
+    int *ignored_agents;
     time_t last_detection;
     agent_software *agents_software;
     OSHash *agents_triag;
