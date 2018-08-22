@@ -2335,8 +2335,8 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
 
         time_t t_now = time(NULL);
         time_sleep = (vulnerability_detector->last_detection + vulnerability_detector->detection_interval) - t_now;
-        if (time_sleep < 0) {
-            time_sleep = 0;
+        if (time_sleep <= 0) {
+            time_sleep = 1;
             i = OS_SUPP_SIZE;
         } else {
             i = 0;
@@ -2347,8 +2347,8 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
             if (updates[i]) {
                 time_t t_diff = (updates[i]->last_update + updates[i]->interval) - t_now;
                 // Stop checking if we have any pending updates
-                if (t_diff < 0) {
-                    time_sleep = 0;
+                if (t_diff <= 0) {
+                    time_sleep = 1;
                     break;
                 } else if (t_diff < time_sleep) {
                     time_sleep = t_diff;
