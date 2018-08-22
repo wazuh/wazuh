@@ -23,7 +23,7 @@ static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
-static const char *SQL_INSERT_AGENT_GROUP= "INSERT INTO groups (name) VALUES(?)";
+static const char *SQL_INSERT_AGENT_GROUP = "INSERT INTO `group` (name) VALUES(?)";
 static const char *SQL_INSERT_AGENT_BELONG = "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)";
 static const char *SQL_DELETE_AGENT_BELONG = "DELETE FROM belongs WHERE id_agent = ?";
 static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
@@ -34,9 +34,9 @@ static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
 static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND ip = ?;";
-static const char *SQL_FIND_GROUP = "SELECT id FROM groups WHERE name = ?;";
-static const char *SQL_SELECT_GROUPS = "SELECT name FROM groups;";
-static const char *SQL_DELETE_GROUP = "DELETE FROM groups WHERE name = ?;";
+static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
+static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
+static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group) {

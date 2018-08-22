@@ -696,10 +696,24 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
 
 int wm_sync_shared_group(const char *fname) {
     int result = 0;
+    char path[PATH_MAX];
+    DIR *dp;
     clock_t clock0 = clock();
 
-    wdb_remove_group_db(fname);
+    snprintf(path,PATH_MAX, "%s/%s",DEFAULTDIR SHAREDCFG_DIR,fname);
 
+    dp = opendir(path);
+
+    /* The group was deleted */
+    if (!dp) { 
+        wdb_remove_group_db(fname);
+    }
+    else {
+        if( wdb_find_group(fname) <= 0){
+            wdb_insert_group(fname);
+        }
+    }
+    closedir(dp);
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_shared_group(): %.3f ms.", (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
     return result;
 }
@@ -774,6 +788,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     }
 
     switch (type) {
+        
     case WDB_GROUPS:
         id_agent = atoi(fname);
 
@@ -782,6 +797,10 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
+        break;
+
+     case WDB_SHARED_GROUPS:
+        id_agent = 0;
         break;
 
     default:
@@ -1281,7 +1300,7 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
         
-        if ((wd_shared_groups = inotify_add_watch(inotify_fd, DEFAULTDIR SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
+        if ((wd_shared_groups = inotify_add_watch(inotify_fd, DEFAULTDIR SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
