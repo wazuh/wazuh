@@ -117,7 +117,6 @@ void* wm_database_main(wm_database *data) {
     mtinfo(WM_DATABASE_LOGTAG, "Module started.");
 
     // Manager name synchronization
-
     if (data->sync_agents) {
         wm_sync_manager();
     }
@@ -1333,6 +1332,8 @@ void wm_inotify_setup(wm_database * data) {
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
 
         wm_sync_agents();
+        wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
+        wdb_agent_belongs_first_time();
         wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
     }
 
