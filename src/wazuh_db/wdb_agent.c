@@ -683,19 +683,19 @@ int wdb_update_groups(const char *dirname) {
 
     if (!(array = (char**) calloc(1, sizeof(char*)))) {
         merror("wdb_update_groups(): memory error");
-        return NULL;
+        return -1;
     }
 
     if (wdb_open_global() < 0) {
         free(array);
-        return NULL;
+        return -1;
     }
 
     if (wdb_prepare(wdb_global, SQL_SELECT_GROUPS, -1, &stmt, NULL)) {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
         wdb_close_global();
         free(array);
-        return NULL;
+        return -1;
     }
 
     for (i = 0; wdb_step(stmt) == SQLITE_ROW; i++) {
@@ -706,7 +706,7 @@ int wdb_update_groups(const char *dirname) {
                 merror("wdb_update_groups(): memory error");
                 sqlite3_finalize(stmt);
                 wdb_close_global();
-                return NULL;
+                return -1;
             }
 
             array = newarray;
@@ -747,7 +747,7 @@ int wdb_update_groups(const char *dirname) {
 
     if (!(dir = opendir(dirname))) {
         mterror(WDB_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
-        return;
+        return -1;
     }
 
     while ((dirent = readdir(dir))){
