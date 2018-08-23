@@ -551,6 +551,9 @@ def get_timeframe_in_seconds(timeframe):
     :return: Time in seconds.
     """
     if not timeframe.isdigit():
+        if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
+            raise WazuhException(1411, timeframe)
+
         regex, seconds = re.compile('(\d+)(\w)'), 0
         time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's':1}
         for time, unit in regex.findall(timeframe):
