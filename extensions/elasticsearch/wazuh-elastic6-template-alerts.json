@@ -28,7 +28,7 @@
         "agent": {
           "properties": {
             "ip": {
-              "type": "ip",
+              "type": "keyword",
               "doc_values": "true"
             },
             "id": {
@@ -96,7 +96,7 @@
               "type": "long"
             },
             "ip": {
-              "type": "ip",
+              "type": "keyword",
               "doc_values": "true"
             },
             "latitude": {
@@ -323,11 +323,11 @@
               "doc_values": "true"
             },
             "srcip": {
-              "type": "ip",
+              "type": "keyword",
               "doc_values": "true"
             },
             "dstip": {
-              "type": "ip",
+              "type": "keyword",
               "doc_values": "true"
             },
             "srcport": {
@@ -585,7 +585,7 @@
                   "doc_values": "true"
                 },
                 "srcip": {
-                  "type": "ip",
+                  "type": "keyword",
                   "doc_values": "true"
                 },
                 "subj": {
@@ -600,59 +600,55 @@
             },
             "aws": {
               "properties": {
-                "event": {
+                "bytes": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "dstaddr": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "srcaddr": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "end": {
+                  "type": "date",
+                  "doc_values": "true"
+                },
+                "start": {
+                  "type": "date",
+                  "doc_values": "true"
+                },
+                "sourceIPAddress": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "resource.instanceDetails.networkInterfaces.privateIpAddress": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "service": {
                   "properties": {
-                    "bytes": {
+                    "count": {
                       "type": "long",
                       "doc_values": "true"
                     },
-                    "dstaddr": {
-                      "type": "ip",
-                      "doc_values": "true"
-                    },
-                    "srcaddr": {
-                      "type": "ip",
-                      "doc_values": "true"
-                    },
-                    "end": {
-                      "type": "date",
-                      "doc_values": "true"
-                    },
-                    "start": {
-                      "type": "date",
-                      "doc_values": "true"
-                    },
-                    "sourceIPAddress": {
-                      "type": "ip",
-                      "doc_values": "true"
-                    },
-                    "resource.instanceDetails.networkInterfaces.privateIpAddress": {
-                      "type": "ip",
-                      "doc_values": "true"
-                    },
-                    "service": {
+                    "action.networkConnectionAction.remoteIpDetails": {
                       "properties": {
-                        "count": {
-                          "type": "long",
+                        "ipAddressV4": {
+                          "type": "ip",
                           "doc_values": "true"
                         },
-                        "action.networkConnectionAction.remoteIpDetails": {
+                        "geoLocation": {
                           "properties": {
-                            "ipAddressV4": {
-                              "type": "ip",
+                            "lat": {
+                              "type": "geo_point",
                               "doc_values": "true"
                             },
-                            "geoLocation": {
-                              "properties": {
-                                "lat": {
-                                  "type": "geo_point",
-                                  "doc_values": "true"
-                                },
-                                "lon": {
-                                  "type": "geo_point",
-                                  "doc_values": "true"
-                                }
-                              }
+                            "lon": {
+                              "type": "geo_point",
+                              "doc_values": "true"
                             }
                           }
                         }

@@ -349,7 +349,7 @@ class AWSBucket:
             }
         }
         if event:
-            msg['aws']['event'] = {key: value for key, value in filter(lambda x: x[1] is not None, event.items())}
+            msg['aws'].update({key: value for key, value in filter(lambda x: x[1] is not None, event.items())})
         elif error_msg:
             msg['error_msg'] = error_msg
         return msg
@@ -569,41 +569,38 @@ class AWSCloudtrailBucket(AWSBucket):
         debug('++ Reformat message', 3)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
         for field_to_str in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_str in event['aws']['event']:
+            if field_to_str in event['aws']:
                 try:
                     debug('++ Reformat field: {}'.format(field_to_str), 3)
                     # Nested json
-                    if 'policyDocument' in event['aws']['event'][field_to_str]:
-                        event['aws']['event']['{}_policyDocument'.format(field_to_str)] = json.dumps(
-                            event['aws']['event'][field_to_str]['policyDocument'],
+                    if 'policyDocument' in event['aws'][field_to_str]:
+                        event['aws']['{}_policyDocument'.format(field_to_str)] = json.dumps(
+                            event['aws'][field_to_str]['policyDocument'],
                             ensure_ascii=True,
                             indent=2,
                             sort_keys=True)
-                        event['aws']['event'][field_to_str]['policyDocument'] = 'See field {}_policyDocument'.format(
+                        event['aws'][field_to_str]['policyDocument'] = 'See field {}_policyDocument'.format(
                             field_to_str)
-                    event['aws']['event'][field_to_str] = json.dumps(
-                        event['aws']['event'][field_to_str],
+                    event['aws'][field_to_str] = json.dumps(
+                        event['aws'][field_to_str],
                         ensure_ascii=True,
                         indent=2,
                         sort_keys=True)
                 except:
                     debug('++ Failed to convert field to string: {}'.format(field_to_str), 1)
-                    event['aws']['event'][
-                        field_to_str] = 'Unable to convert field to string: {field}'.format(field=field_to_str)
+                    event['aws'][field_to_str] = 'Unable to convert field to string: {field}'.format(field=field_to_str)
 
         debug('++ Shrink message', 3)
         # If msg too large, start truncating
         for field_to_shrink in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_shrink not in event['aws']['event']:
+            if field_to_shrink not in event['aws']:
                 continue
-            if event['aws']['event'][
-                field_to_shrink] == 'Unable to convert field to string: {field}'.format(field=field_to_shrink):
+            if event['aws'][field_to_shrink] == 'Unable to convert field to string: {field}'.format(field=field_to_shrink):
                 continue
 
             if len(json.dumps(event).encode()) > self.max_queue_buffer:
                 debug('++ Message too large; truncating {field}'.format(field=field_to_shrink), 2)
-                event['aws']['event'][
-                    field_to_shrink] = 'Value truncated because event msg too large for socket buffer'
+                event['aws'][field_to_shrink] = 'Value truncated because event msg too large for socket buffer'
             else:
                 debug('++ Message not too large; skip out', 3)
                 break
@@ -675,8 +672,8 @@ class AWSFirehouseBucket(AWSBucket):
 
         try:
             # remove aws.event.trigger field, since it has repeated data and increases log size.
-            if event['aws']['event']['source'] == 'macie' and 'trigger' in event['aws']['event']:
-                del event['aws']['event']['trigger']
+            if event['aws']['source'] == 'macie' and 'trigger' in event['aws']:
+                del event['aws']['trigger']
 
             # turn some list fields into dictionaries
             single_element_list_to_dictionary(event)
