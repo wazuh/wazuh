@@ -323,7 +323,8 @@ void * run_worker(__attribute__((unused)) void * args) {
             count = OS_RecvSecureTCP(*peer,buffer,OS_MAXSTR);
 
             if(count == OS_SOCKTERR){
-                merror_exit("at run_worker(): received string size is bigger than %d bytes", OS_MAXSTR);
+                mwarn("at run_worker(): received string size is bigger than %d bytes", OS_MAXSTR);
+                break;
             }
             length+=count;
 
