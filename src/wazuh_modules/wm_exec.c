@@ -280,7 +280,6 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
         }
 
         dup2(fd, STDIN_FILENO);
-        close(fd);
 
         if (output) {
             close(pipe_fd[0]);
@@ -291,6 +290,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             dup2(fd, STDOUT_FILENO);
             dup2(fd, STDERR_FILENO);
         }
+
+        close(fd);
 
         setsid();
         if (nice(wm_task_nice)) {}
@@ -382,8 +383,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                                 default:
                                     merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
                                     retval = -3;
-                                    break;
                             }
+                            break;
 
                         default:
                             sleep(1);

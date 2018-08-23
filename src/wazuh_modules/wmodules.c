@@ -124,7 +124,7 @@ int wm_check() {
                     prev->next = next;
                 }
                 wm_module_free(j);
-            
+
             } else {
                 prev = j;
             }
@@ -489,7 +489,7 @@ int wm_get_path(const char *binary, char **validated_comm){
         path = strtok(env_path, sep);
 
         while (path != NULL) {
-            full_path = calloc(strlen(path) + strlen(binary) + 2, sizeof(char));
+            os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
 #ifdef WIN32
             snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s\\%s", path, binary);
 #else
