@@ -313,7 +313,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
             // Launch thread
 
-            pthread_mutex_lock(&tinfo.mutex);
+            w_mutex_lock(&tinfo.mutex);
 
             if (pthread_create(&thread, NULL, reader, &tinfo)) {
                 merror("Couldn't create reading thread.");
@@ -477,7 +477,7 @@ void* reader(void *args) {
 void wm_append_sid(pid_t sid) {
     int i;
 
-    pthread_mutex_lock(&wm_children_mutex);
+    w_mutex_lock(&wm_children_mutex);
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         if (!wm_children[i]) {
@@ -497,7 +497,7 @@ void wm_append_sid(pid_t sid) {
 void wm_remove_sid(pid_t sid) {
     int i;
 
-    pthread_mutex_lock(&wm_children_mutex);
+    w_mutex_lock(&wm_children_mutex);
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         if (wm_children[i] == sid) {
