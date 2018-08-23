@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for AWS CloudTrail integration
+ * Wazuh Module for AWS S3 integration
  * Copyright (C) 2017 Wazuh Inc.
  * January 08, 2018.
  *
@@ -20,13 +20,13 @@ static void* wm_aws_main(wm_aws *aws_config);           // Module main function.
 static void wm_aws_setup(wm_aws *_aws_config);          // Setup module
 static void wm_aws_cleanup();                           // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_aws_check();                             // Check configuration, disable flag
-static void wm_aws_run_cloudtrail(wm_aws_cloudtrail *exec_cloudtrail);   // Run a CloudTrail
+static void wm_aws_run_s3(wm_aws_bucket *bucket);       // Run a s3
 static void wm_aws_destroy(wm_aws *aws_config);         // Destroy data
 
 // Command module context definition
 
 const wm_context WM_AWS_CONTEXT = {
-    "aws-cloudtrail",
+    "aws-s3",
     (wm_routine)wm_aws_main,
     (wm_routine)wm_aws_destroy
 };
@@ -34,7 +34,7 @@ const wm_context WM_AWS_CONTEXT = {
 // Module module main function. It won't return.
 
 void* wm_aws_main(wm_aws *aws_config) {
-    wm_aws_cloudtrail *cur_cloudtrail;
+    wm_aws_bucket *cur_bucket;
     time_t time_start;
     time_t time_sleep = 0;
 
@@ -61,15 +61,15 @@ void* wm_aws_main(wm_aws *aws_config) {
         // Get time and execute
         time_start = time(NULL);
 
-        for (cur_cloudtrail = aws_config->cloudtrails; cur_cloudtrail; cur_cloudtrail = cur_cloudtrail->next) {
-            if (cur_cloudtrail->aws_account_id && cur_cloudtrail->aws_account_alias) {
-                mtdebug1(WM_AWS_LOGTAG, "Executing CloudTrail: %s (%s)", cur_cloudtrail->aws_account_alias, cur_cloudtrail->aws_account_id);
-            } else if (cur_cloudtrail->aws_account_id) {
-                mtdebug1(WM_AWS_LOGTAG, "Executing CloudTrail: %s", cur_cloudtrail->aws_account_id);
+        for (cur_bucket = aws_config->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
+            if (cur_bucket->aws_account_id && cur_bucket->aws_account_alias) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analisys: %s (%s)", cur_bucket->aws_account_alias, cur_bucket->aws_account_id);
+            } else if (cur_bucket->aws_account_id) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analisys: %s", cur_bucket->aws_account_id);
             } else {
-                mtdebug1(WM_AWS_LOGTAG, "Executing CloudTrail: LEGACY - %s", cur_cloudtrail->bucket);
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analisys: %s", cur_bucket->bucket);
             }
-            wm_aws_run_cloudtrail(cur_cloudtrail);
+            wm_aws_run_s3(cur_bucket);
         }
 
         mtinfo(WM_AWS_LOGTAG, "Fetching logs finished.");
@@ -141,10 +141,10 @@ void wm_aws_check() {
         pthread_exit(NULL);
     }
 
-    // Check if cloudtrails defines
+    // Check if buckets defines
 
-    if (!aws_config->cloudtrails) {
-        mtwarn(WM_AWS_LOGTAG, "No AWS CloudTrails defined. Exiting...");
+    if (!aws_config->buckets) {
+        mtwarn(WM_AWS_LOGTAG, "No AWS buckets defined. Exiting...");
         pthread_exit(NULL);
     }
 
@@ -162,9 +162,9 @@ void wm_aws_cleanup() {
     mtinfo(WM_AWS_LOGTAG, "Module AWS finished.");
 }
 
-// Run a CloudTrail parsing
+// Run a bucket parsing
 
-void wm_aws_run_cloudtrail(wm_aws_cloudtrail *exec_cloudtrail) {
+void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     int status;
     char *output = NULL;
     char *command = NULL;
@@ -177,46 +177,50 @@ void wm_aws_run_cloudtrail(wm_aws_cloudtrail *exec_cloudtrail) {
 
     wm_strcat(&command, WM_AWS_SCRIPT_PATH, '\0');
     wm_strcat(&command, "--bucket", ' ');
-    wm_strcat(&command, exec_cloudtrail->bucket, ' ');
+    wm_strcat(&command, exec_bucket->bucket, ' ');
 
-    if (exec_cloudtrail->remove_from_bucket) {
+    if (exec_bucket->remove_from_bucket) {
         wm_strcat(&command, "--remove", ' ');
     }
-    if (exec_cloudtrail->access_key) {
+    if (exec_bucket->access_key) {
         wm_strcat(&command, "--access_key", ' ');
-        wm_strcat(&command, exec_cloudtrail->access_key, ' ');
+        wm_strcat(&command, exec_bucket->access_key, ' ');
     }
-    if (exec_cloudtrail->secret_key) {
+    if (exec_bucket->secret_key) {
         wm_strcat(&command, "--secret_key", ' ');
-        wm_strcat(&command, exec_cloudtrail->secret_key, ' ');
+        wm_strcat(&command, exec_bucket->secret_key, ' ');
     }
-    if (exec_cloudtrail->aws_profile) {
+    if (exec_bucket->aws_profile) {
         wm_strcat(&command, "--aws_profile", ' ');
-        wm_strcat(&command, exec_cloudtrail->aws_profile, ' ');
+        wm_strcat(&command, exec_bucket->aws_profile, ' ');
     }
-    if (exec_cloudtrail->iam_role_arn) {
+    if (exec_bucket->iam_role_arn) {
         wm_strcat(&command, "--iam_role_arn", ' ');
-        wm_strcat(&command, exec_cloudtrail->iam_role_arn, ' ');
+        wm_strcat(&command, exec_bucket->iam_role_arn, ' ');
     }
-    if (exec_cloudtrail->aws_account_id) {
+    if (exec_bucket->aws_account_id) {
         wm_strcat(&command, "--aws_account_id", ' ');
-        wm_strcat(&command, exec_cloudtrail->aws_account_id, ' ');
+        wm_strcat(&command, exec_bucket->aws_account_id, ' ');
     }
-    if (exec_cloudtrail->aws_account_alias) {
+    if (exec_bucket->aws_account_alias) {
         wm_strcat(&command, "--aws_account_alias", ' ');
-        wm_strcat(&command, exec_cloudtrail->aws_account_alias, ' ');
+        wm_strcat(&command, exec_bucket->aws_account_alias, ' ');
     }
-    if (exec_cloudtrail->trail_prefix) {
+    if (exec_bucket->trail_prefix) {
         wm_strcat(&command, "--trail_prefix", ' ');
-        wm_strcat(&command, exec_cloudtrail->trail_prefix, ' ');
+        wm_strcat(&command, exec_bucket->trail_prefix, ' ');
     }
-    if (exec_cloudtrail->only_logs_after) {
+    if (exec_bucket->only_logs_after) {
         wm_strcat(&command, "--only_logs_after", ' ');
-        wm_strcat(&command, exec_cloudtrail->only_logs_after, ' ');
+        wm_strcat(&command, exec_bucket->only_logs_after, ' ');
     }
-    if (exec_cloudtrail->regions) {
+    if (exec_bucket->regions) {
         wm_strcat(&command, "--regions", ' ');
-        wm_strcat(&command, exec_cloudtrail->regions, ' ');
+        wm_strcat(&command, exec_bucket->regions, ' ');
+    }
+    if (exec_bucket->type) {
+        wm_strcat(&command, "--type", ' ');
+        wm_strcat(&command, exec_bucket->type, ' ');
     }
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');
@@ -238,16 +242,16 @@ void wm_aws_run_cloudtrail(wm_aws_cloudtrail *exec_cloudtrail) {
     // Execute
 
     char *trail_title = NULL;
-    wm_strcat(&trail_title, "CloudTrail:", ' ');
-    wm_strcat(&trail_title, exec_cloudtrail->aws_account_id, ' ');
-    if(exec_cloudtrail->aws_account_alias){
+    wm_strcat(&trail_title, "Bucket:", ' ');
+    wm_strcat(&trail_title, exec_bucket->aws_account_id, ' ');
+    if(exec_bucket->aws_account_alias){
         wm_strcat(&trail_title, "(", '\0');
-        wm_strcat(&trail_title, exec_cloudtrail->aws_account_alias, '\0');
+        wm_strcat(&trail_title, exec_bucket->aws_account_alias, '\0');
         wm_strcat(&trail_title, ")", '\0');
     }
     wm_strcat(&trail_title, " - ", ' ');
 
-    mtdebug1(WM_AWS_LOGTAG, "Launching CloudTrail Command: %s", command);
+    mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
     switch (wm_exec(command, &output, &status, 0)) {
     case 0:
         if (status > 0) {

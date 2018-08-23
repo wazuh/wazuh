@@ -134,6 +134,8 @@ UpdateStopOSSEC()
     fi
     rm -f $DIRECTORY/queue/syscheck/.* > /dev/null 2>&1
     rm -rf $DIRECTORY/framework/* > /dev/null 2>&1
+    rm $DIRECTORY/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
+    rm $DIRECTORY/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
 }
 
 UpdateOldVersions()

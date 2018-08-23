@@ -703,7 +703,7 @@ InstallCommon(){
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws-cloudtrail.py ${PREFIX}/wodles/aws/aws-cloudtrail
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws-s3.py ${PREFIX}/wodles/aws/aws-s3
 
   InstallOpenSCAPFiles
 
