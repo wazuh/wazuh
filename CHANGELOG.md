@@ -16,6 +16,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.6.0]
 
+### Added
+
+- Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
+
 
 ## [v3.6.0] - 2018-08-29
 
