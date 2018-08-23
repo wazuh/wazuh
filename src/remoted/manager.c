@@ -34,7 +34,7 @@ typedef struct group_t {
 static void read_controlmsg(const char *agent_id, char *msg);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
 static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
-static void c_multi_group(char *multi_group);
+static void c_multi_group(char *multi_group,file_sum ***_f_sum);
 static void c_files(void);
 static file_sum** find_sum(const char *group);
 static file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE]);
@@ -386,10 +386,9 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
 }
 
 /* Generate merged file for multi-groups */
-void c_multi_group(char *multi_group) {
+void c_multi_group(char *multi_group,file_sum ***_f_sum) {
     DIR *dp;
     char *group;
-    unsigned int p_size = 0;
     const char delim[2] = "-";
     char path[PATH_MAX + 1];
     char ** files;
@@ -484,14 +483,10 @@ void c_multi_group(char *multi_group) {
             continue;
         }
 
-        os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
-        os_calloc(1, sizeof(group_t), groups[p_size]);
-        groups[p_size]->group = strdup(entry->d_name);
-        groups[p_size + 1] = NULL;
-        c_group(entry->d_name, subdir, &groups[p_size]->f_sum,MULTIGROUPS_DIR);
+        c_group(entry->d_name, subdir, _f_sum,MULTIGROUPS_DIR);
         free_strarray(subdir);
-        p_size++;
     }
+    
     closedir(dp);
 }
 
@@ -519,7 +514,7 @@ static void c_files()
         if (groups) {
             for (i = 0; groups[i]; i++) {
                 f_sum = groups[i]->f_sum;
-
+                
                 for (j = 0; f_sum[j]; j++) {
                     free(f_sum[j]->name);
                     free(f_sum[j]);
@@ -616,11 +611,10 @@ static void c_files()
         os_calloc(1, sizeof(group_t), groups[p_size]);
         groups[p_size]->group = strdup(entry_multi_groups->d_name);
         groups[p_size + 1] = NULL;
-        c_multi_group(entry_multi_groups->d_name);
+        c_multi_group(entry_multi_groups->d_name,&groups[p_size]->f_sum);
         free_strarray(subdir);
         p_size++;
     }
-
     
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
