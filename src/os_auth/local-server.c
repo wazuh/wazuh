@@ -250,7 +250,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     double antiquity;
 
     mdebug2("add(%s)", name);
-    pthread_mutex_lock(&mutex_keys);
+    w_mutex_lock(&mutex_keys);
 
     // Check for duplicated ID
 
@@ -311,7 +311,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     /* Add pending key to write */
     add_insert(keys.keyentries[index],NULL);
     write_pending = 1;
-    pthread_cond_signal(&cond_pending);
+    w_cond_signal(&cond_pending);
 
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", 0);
@@ -320,13 +320,13 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     cJSON_AddStringToObject(data, "name", name);
     cJSON_AddStringToObject(data, "ip", ip);
     cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
     return response;
 
 fail:
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_unlock(&mutex_keys);
     merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
@@ -341,7 +341,7 @@ cJSON* local_remove(const char *id, int purge) {
 
     mdebug2("local_remove(id='%s', purge=%d)", id, purge);
 
-    pthread_mutex_lock(&mutex_keys);
+    w_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
@@ -353,13 +353,13 @@ cJSON* local_remove(const char *id, int purge) {
         add_remove(keys.keyentries[index]);
         OS_DeleteKey(&keys, id, purge);
         write_pending = 1;
-        pthread_cond_signal(&cond_pending);
+        w_cond_signal(&cond_pending);
 
         cJSON_AddNumberToObject(response, "error", 0);
         cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
     }
 
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_unlock(&mutex_keys);
     return response;
 }
 
@@ -370,7 +370,7 @@ cJSON* local_get(const char *id) {
     cJSON *response = cJSON_CreateObject();
 
     mdebug2("local_get(%s)", id);
-    pthread_mutex_lock(&mutex_keys);
+    w_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
@@ -385,6 +385,6 @@ cJSON* local_get(const char *id) {
         cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
     }
 
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_unlock(&mutex_keys);
     return response;
 }
