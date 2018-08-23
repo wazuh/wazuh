@@ -343,9 +343,11 @@ class AWSBucket:
         msg = {
             'integration': 'aws',
             'aws': {
-                'aws_account_alias': self.account_alias,
-                'log_file': log_key,
-                's3bucket': self.bucket
+                'log_info': {
+                    'aws_account_alias': self.account_alias,
+                    'log_file': log_key,
+                    's3bucket': self.bucket
+                }
             }
         }
         if event:
