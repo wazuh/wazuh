@@ -566,7 +566,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 snprintf(state, 30, "Pending confirmation");
             } else {
                 if (v_type = wm_checks_package_vulnerability(version, operation, operation_value), v_type == OS_INVALID) {
-                    return OS_INVALID;
+                    goto error;
                 }
                 if (v_type == VU_NOT_FIXED) {
                     snprintf(state, 15, "Unfixed");
@@ -581,7 +581,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                     } else {
                         // The first condition is vulnerable, but the second also has to be
                         if (v_type = wm_checks_package_vulnerability(version, second_operation, second_operation_value), v_type == OS_INVALID) {
-                            return OS_INVALID;
+                            goto error;
                         } else if (v_type == VU_VULNERABLE) {
                             mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DOUBLE_VULN, package, agents_it->agent_id, cve, version, operation, operation_value, second_operation, second_operation_value);
                         } else {
@@ -630,7 +630,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 }
             } else {
                 cJSON_Delete(alert);
-                return OS_INVALID;
+                goto error;
             }
 
             str_json = cJSON_PrintUnformatted(alert);
@@ -665,6 +665,11 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     cJSON_Delete(alert);
 
     return 0;
+error:
+    if (stmt) {
+        sqlite3_finalize(stmt);
+    }
+    return OS_INVALID;
 }
 
 
@@ -1025,7 +1030,10 @@ set_op:
         info_it = info_it->prev;
         free(info_aux->cveid);
         free(info_aux->title);
-        free(info_aux->severity);
+        if (info_aux->severity && ((info_aux->flags & VU_SHARED_SEVERITY) != VU_SHARED_SEVERITY)) {
+            free(*info_aux->severity);
+            free(info_aux->severity);
+        }
         free(info_aux->published);
         if (date_diff) {
             free(info_aux->updated);
@@ -1966,14 +1974,16 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
             }
             break;
         }
+        free(buffer);
+        buffer = NULL;
     }
 
     success = 1;
 end:
+    free(buffer);
     if (fp) {
         fclose(fp);
     }
-
     if (success) {
         return 0;
     } else {
