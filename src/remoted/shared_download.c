@@ -162,10 +162,6 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
             case YAML_SCALAR_EVENT:
                 if (!strcmp(w_read_scalar_value(&event), "files")) {
 
-                    if(group == NULL) {
-                        goto error;
-                    }
-
                     // Read group files
                     if (group->files = w_read_group_files(parser), !group->files) {
                         goto error;
