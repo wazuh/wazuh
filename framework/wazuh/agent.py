@@ -1986,20 +1986,22 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
+        
+        if agent_info.has_key("group") == True:
+            
+            # Check if multi group still exists in other agents
+            query = "SELECT COUNT(*) FROM agent WHERE `group` = ?"
+            conn.execute(query,(agent_info["group"],))
+        
+            # Check if it is a multi group
+            if agent_info["group"].find("-") > -1:
+                multi_group = conn.fetch()[0]
 
-        # Check if multi group still exists in other agents
-        query = "SELECT COUNT(*) FROM agent WHERE `group` = ?"
-        conn.execute(query,(agent_info["group"],))
-    
-        # Check if it is a multi group
-        if agent_info["group"].find("-") > -1:
-            multi_group = conn.fetch()[0]
-
-            # The multi group is not being used in other agents, delete it from multi groups
-            if multi_group <= 1:
-                if Agent().multi_group_exists(agent_info["group"]):
-                    agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, agent_info["group"])
-                    rmtree(agent_multi_group_path)
+                # The multi group is not being used in other agents, delete it from multi groups
+                if multi_group <= 1:
+                    if Agent().multi_group_exists(agent_info["group"]):
+                        agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, agent_info["group"])
+                        rmtree(agent_multi_group_path)
             
         # Assign group in /queue/agent-groups
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
