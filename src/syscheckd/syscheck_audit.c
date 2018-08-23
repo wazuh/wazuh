@@ -481,7 +481,7 @@ int audit_init(void) {
         auid_err_reported = 0;
 
         // Start audit thread
-        pthread_cond_init(&audit_thread_started, NULL);
+        w_cond_init(&audit_thread_started, NULL);
         w_create_thread(audit_main, &audit_socket);
         w_mutex_lock(&audit_mutex);
         while (!audit_thread_active)
@@ -840,7 +840,7 @@ void * audit_main(int * audit_sock) {
 
     w_mutex_lock(&audit_mutex);
     audit_thread_active = 1;
-    pthread_cond_signal(&audit_thread_started);
+    w_cond_signal(&audit_thread_started);
     w_mutex_unlock(&audit_mutex);
 
     mdebug1("Reading events from Audit socket...");

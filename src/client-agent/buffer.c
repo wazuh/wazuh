@@ -112,7 +112,7 @@ int buffer_append(const char *msg){
 
         buffer[i] = strdup(msg);
         forward(i, agt->buflength + 1);
-        pthread_cond_signal(&cond_no_empty);
+        w_cond_signal(&cond_no_empty);
         w_mutex_unlock(&mutex_lock);
 
         return(0);
