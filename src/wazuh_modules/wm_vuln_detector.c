@@ -46,7 +46,7 @@ static int wm_vulnerability_run_update(update_node *upd, const char *dist, const
 static int wm_vulnerability_detector_compare(char *version_it, char *cversion_it);
 static const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vulnerability_set_oval);
 static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
-int check_timestamp(const char *OS, char *timst, char *ret_timst);
+static int check_timestamp(const char *OS, char *timst, char *ret_timst);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
@@ -515,7 +515,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
 
         if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
             cJSON_free(alert);
-            return wm_vulnerability_detector_sql_error(db, stmt);
+            return OS_INVALID;
         }
         sqlite3_bind_int(stmt, 1,  strtol(agents_it->agent_id, NULL, 10));
         sqlite3_bind_text(stmt, 2, agents_it->agent_OS, -1, NULL);
@@ -708,6 +708,7 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
             if (VU_AGENT_REQUEST_LIMIT && i == VU_AGENT_REQUEST_LIMIT) {
                 if (wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i) == OS_INVALID) {
                     mterror(WM_VULNDETECTOR_LOGTAG, VU_REPORT_ERROR, agents_it->agent_id);
+                    mtinfo(WM_VULNDETECTOR_LOGTAG, VU_SQL_ERROR, sqlite3_errmsg(db));
                 }
                 i = 0;
                 if (sqlite3_prepare_v2(db, vu_queries[VU_REMOVE_AGENTS_TABLE], -1, &stmt, NULL) != SQLITE_OK) {
@@ -729,6 +730,7 @@ int wm_vulnerability_detector_check_agent_vulnerabilities(agent_software *agents
     if (!VU_AGENT_REQUEST_LIMIT) {
         if (wm_vulnerability_detector_report_agent_vulnerabilities(agents_it, db, i) == OS_INVALID) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_REPORT_ERROR, agents_it->agent_id);
+            mtinfo(WM_VULNDETECTOR_LOGTAG, VU_SQL_ERROR, sqlite3_errmsg(db));
         }
     }
 
