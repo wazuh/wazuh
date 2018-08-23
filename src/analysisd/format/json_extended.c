@@ -364,8 +364,8 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
     char *end;
     cJSON* agent;
 
-    if (lf->hostname[0] == '(') {
-        string = strdup(lf->hostname);
+    if (lf->location[0] == '(') {
+        string = strdup(lf->location);
 
         if ((ip = strchr(string, ')'))) {
             if ((end = strchr(ip += 2, '-')))
