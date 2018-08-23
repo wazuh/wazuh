@@ -1189,7 +1189,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid HW info query syntax.");
-            mdebug2("HW info query: %lu", ram_total);
+            mdebug2("HW info query: %" PRIu64, ram_total);
             snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
             return -1;
         }
