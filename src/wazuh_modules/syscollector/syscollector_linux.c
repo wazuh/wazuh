@@ -916,19 +916,17 @@ char* get_broadcast_addr(char* ip, char* netmask){
 
     struct in_addr host, mask, broadcast;
     char * broadcast_addr;
+
     os_calloc(NI_MAXHOST, sizeof(char), broadcast_addr);
+    strncpy(broadcast_addr, "unknown", NI_MAXHOST);
 
     if (inet_pton(AF_INET, ip, &host) == 1 && inet_pton(AF_INET, netmask, &mask) == 1){
-        broadcast.s_addr = host.s_addr | ~mask.s_addr;
 
-        if (inet_ntop(AF_INET, &broadcast, broadcast_addr, NI_MAXHOST) != NULL) {
-            return broadcast_addr;
-        } else {
-            free(broadcast_addr);
-        }
+        broadcast.s_addr = host.s_addr | ~mask.s_addr;
+        inet_ntop(AF_INET, &broadcast, broadcast_addr, NI_MAXHOST);
+
     }
 
-    strncpy(broadcast_addr, "unknown", NI_MAXHOST);
     return broadcast_addr;
 }
 
