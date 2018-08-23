@@ -1238,12 +1238,10 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     #endif
 
                         /* Close the file */
-                        if (current->fp) {
-                            fclose(current->fp);
+                        fclose(current->fp);
     #ifdef WIN32
-                            CloseHandle(current->h);
+                        CloseHandle(current->h);
     #endif
-                        }
                         current->fp = NULL;
 
                         /* Try to open it again */
