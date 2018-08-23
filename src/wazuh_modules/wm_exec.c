@@ -171,7 +171,7 @@ DWORD WINAPI Reader(LPVOID args) {
 void wm_append_handle(HANDLE hProcess) {
     int i;
 
-    pthread_mutex_lock(&wm_children_mutex);
+    w_mutex_lock(&wm_children_mutex);
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         if (!wm_children[i]) {
@@ -180,7 +180,7 @@ void wm_append_handle(HANDLE hProcess) {
         }
     }
 
-    pthread_mutex_unlock(&wm_children_mutex);
+    w_mutex_unlock(&wm_children_mutex);
 
     if (i == WM_POOL_SIZE)
         merror("Child process pool is full. Couldn't register handle %p.", hProcess);
@@ -191,7 +191,7 @@ void wm_append_handle(HANDLE hProcess) {
 void wm_remove_handle(HANDLE hProcess) {
     int i;
 
-    pthread_mutex_lock(&wm_children_mutex);
+    w_mutex_lock(&wm_children_mutex);
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         if (wm_children[i] == hProcess) {
@@ -203,7 +203,7 @@ void wm_remove_handle(HANDLE hProcess) {
     if (i == WM_POOL_SIZE)
         merror("Child process %p not found.", hProcess);
 
-    pthread_mutex_unlock(&wm_children_mutex);
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 // Terminate every child process group. Doesn't wait for them!
@@ -317,7 +317,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
             if (pthread_create(&thread, NULL, reader, &tinfo)) {
                 merror("Couldn't create reading thread.");
-                pthread_mutex_unlock(&tinfo.mutex);
+                w_mutex_unlock(&tinfo.mutex);
                 return -1;
             }
 
@@ -343,7 +343,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             }
             // Wait for thread
 
-            pthread_mutex_unlock(&tinfo.mutex);
+            w_mutex_unlock(&tinfo.mutex);
             pthread_join(thread, NULL);
 
             // Cleanup
@@ -464,9 +464,9 @@ void* reader(void *args) {
     if (tinfo->output)
         tinfo->output[length] = '\0';
 
-    pthread_mutex_lock(&tinfo->mutex);
+    w_mutex_lock(&tinfo->mutex);
     pthread_cond_signal(&tinfo->finished);
-    pthread_mutex_unlock(&tinfo->mutex);
+    w_mutex_unlock(&tinfo->mutex);
 
     close(tinfo->pipe);
     return NULL;
@@ -486,7 +486,7 @@ void wm_append_sid(pid_t sid) {
         }
     }
 
-    pthread_mutex_unlock(&wm_children_mutex);
+    w_mutex_unlock(&wm_children_mutex);
 
     if (i == WM_POOL_SIZE)
         merror("Child process pool is full. Couldn't register sid %d.", (int)sid);
@@ -509,7 +509,7 @@ void wm_remove_sid(pid_t sid) {
     if (i == WM_POOL_SIZE)
         merror("Child process %d not found.", (int)sid);
 
-    pthread_mutex_unlock(&wm_children_mutex);
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 // Terminate every child process group. Doesn't wait for them!

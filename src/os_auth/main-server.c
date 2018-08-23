@@ -536,7 +536,7 @@ int main(int argc, char **argv)
         }
 
         if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
-            pthread_mutex_lock(&mutex_pool);
+            w_mutex_lock(&mutex_pool);
 
             if (full(pool_i, pool_j)) {
                 merror("Too many connections. Rejecting.");
@@ -545,10 +545,10 @@ int main(int argc, char **argv)
                 pool[pool_i].socket = client_sock;
                 pool[pool_i].addr = _nc.sin_addr;
                 forward(pool_i);
-                pthread_cond_signal(&cond_new_client);
+                w_cond_signal(&cond_new_client);
             }
 
-            pthread_mutex_unlock(&mutex_pool);
+            w_mutex_unlock(&mutex_pool);
         } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
             merror("at run_local_server(): accept(): %s", strerror(errno));
     }
@@ -557,9 +557,9 @@ int main(int argc, char **argv)
 
     /* Join threads */
 
-    pthread_mutex_lock(&mutex_pool);
-    pthread_cond_signal(&cond_new_client);
-    pthread_mutex_unlock(&mutex_pool);
+    w_mutex_lock(&mutex_pool);
+    w_cond_signal(&cond_new_client);
+    w_mutex_unlock(&mutex_pool);
     w_mutex_lock(&mutex_keys);
     w_cond_signal(&cond_pending);
     w_mutex_unlock(&mutex_keys);
@@ -782,7 +782,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 use_client_ip = 1;
             }
 
-            pthread_mutex_lock(&mutex_keys);
+            w_mutex_lock(&mutex_keys);
 
             /* Check for duplicated IP */
 
@@ -794,7 +794,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist, 0);
                     } else {
-                        pthread_mutex_unlock(&mutex_keys);
+                        w_mutex_unlock(&mutex_keys);
                         merror("Duplicated IP %s", srcip);
                         snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
                         SSL_write(ssl, response, strlen(response));
@@ -810,7 +810,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Check whether the agent name is the same as the manager */
 
             if (!strcmp(agentname, shost)) {
-                pthread_mutex_unlock(&mutex_keys);
+                w_mutex_unlock(&mutex_keys);
                 merror("Invalid agent name %s (same as manager)", agentname);
                 snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
                 SSL_write(ssl, response, strlen(response));
@@ -840,7 +840,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     }
 
                     if (acount > MAX_TAG_COUNTER) {
-                        pthread_mutex_unlock(&mutex_keys);
+                        w_mutex_unlock(&mutex_keys);
                         merror("Invalid agent name %s (duplicated)", agentname);
                         snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
                         SSL_write(ssl, response, strlen(response));
@@ -858,7 +858,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Check for agents limit */
 
             if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
-                pthread_mutex_unlock(&mutex_keys);
+                w_mutex_unlock(&mutex_keys);
                 merror(AG_MAX_ERROR, MAX_AGENTS - 2);
                 snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
                 SSL_write(ssl, response, strlen(response));
@@ -872,7 +872,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Add the new agent */
 
             if (index = OS_AddNewAgent(&keys, NULL, agentname, (config.flags.use_source_ip || use_client_ip)? srcip : NULL, NULL), index < 0) {
-                pthread_mutex_unlock(&mutex_keys);
+                w_mutex_unlock(&mutex_keys);
                 merror("Unable to add agent: %s (internal error)", agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
                 SSL_write(ssl, response, strlen(response));
@@ -914,10 +914,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 /* Add pending key to write */
                 add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
                 write_pending = 1;
-                pthread_cond_signal(&cond_pending);
+                w_cond_signal(&cond_pending);
             }
 
-            pthread_mutex_unlock(&mutex_keys);
+            w_mutex_unlock(&mutex_keys);
         }
 
         SSL_free(ssl);
