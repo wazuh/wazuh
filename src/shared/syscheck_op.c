@@ -87,9 +87,11 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
                 *(sum->sha256++) = '\0';
 
             /* Look for a defined tag */
-            if (tag = strchr(sum->sha256, ':'), tag) {
-                *(tag++) = '\0';
-                sum->tag = tag;
+            if (sum->sha256) {
+                if (tag = strchr(sum->sha256, ':'), tag) {
+                    *(tag++) = '\0';
+                    sum->tag = tag;
+                }
             }
 
             sum->mtime = atol(c_mtime);
