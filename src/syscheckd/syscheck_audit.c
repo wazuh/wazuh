@@ -485,7 +485,7 @@ int audit_init(void) {
         w_create_thread(audit_main, &audit_socket);
         w_mutex_lock(&audit_mutex);
         while (!audit_thread_active)
-            pthread_cond_wait(&audit_thread_started, &audit_mutex);
+            w_cond_wait(&audit_thread_started, &audit_mutex);
         w_mutex_unlock(&audit_mutex);
         return 1;
 
