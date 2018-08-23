@@ -560,9 +560,9 @@ int main(int argc, char **argv)
     pthread_mutex_lock(&mutex_pool);
     pthread_cond_signal(&cond_new_client);
     pthread_mutex_unlock(&mutex_pool);
-    pthread_mutex_lock(&mutex_keys);
-    pthread_cond_signal(&cond_pending);
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_lock(&mutex_keys);
+    w_cond_signal(&cond_pending);
+    w_mutex_unlock(&mutex_keys);
 
     pthread_join(thread_dispatcher, NULL);
     pthread_join(thread_writer, NULL);
@@ -599,14 +599,14 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     mdebug1("Dispatch thread ready");
 
     while (running) {
-        pthread_mutex_lock(&mutex_pool);
+        w_mutex_lock(&mutex_pool);
 
         while (empty(pool_i, pool_j) && running)
-            pthread_cond_wait(&cond_new_client, &mutex_pool);
+            w_cond_wait(&cond_new_client, &mutex_pool);
 
         client = pool[pool_j];
         forward(pool_j);
-        pthread_mutex_unlock(&mutex_pool);
+        w_mutex_unlock(&mutex_pool);
 
         if (!running)
             break;
@@ -942,10 +942,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
     authd_sigblock();
 
     while (running) {
-        pthread_mutex_lock(&mutex_keys);
+        w_mutex_lock(&mutex_keys);
 
         while (!write_pending && running)
-            pthread_cond_wait(&cond_pending, &mutex_keys);
+            w_cond_wait(&cond_pending, &mutex_keys);
 
         copy_keys = OS_DupKeys(&keys);
         copy_insert = queue_insert;
@@ -958,7 +958,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
         backup_tail = &queue_backup;
         remove_tail = &queue_remove;
         write_pending = 0;
-        pthread_mutex_unlock(&mutex_keys);
+        w_mutex_unlock(&mutex_keys);
 
         if (OS_WriteKeys(copy_keys) < 0)
             merror("Couldn't write file client.keys");
