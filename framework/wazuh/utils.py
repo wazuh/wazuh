@@ -733,6 +733,9 @@ class WazuhDBQuery(object):
                 if filter['value'] is not None:
                     self.request[field_filter] = filter['value'] if filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', filter['value'])
                     self.query += '{} {} :{}'.format(self.fields[field_name], filter['operator'], field_filter)
+                    if not field_filter.isdigit():
+                        # filtering without being uppercase/lowercase sensitive
+                        self.query += ' COLLATE NOCASE'
                 else:
                     self.query += '{} IS null'.format(self.fields[field_name])
 
