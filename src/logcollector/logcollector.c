@@ -1128,7 +1128,6 @@ void w_create_output_threads(){
 void * w_input_thread(__attribute__((unused)) void * t_id){
     logreader *current;
     int i = 0, r = 0, j = -1;
-    int f_check = 0;
     IT_control f_control = 0;
     time_t curr_time = 0;
 #ifndef WIN32
@@ -1164,8 +1163,6 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
             pthread_mutex_unlock(&win_el_mutex);
         }
 #endif
-
-        f_check++;
 
         /* Check which file is available */
         for (i = 0, j = -1;; i++) {
