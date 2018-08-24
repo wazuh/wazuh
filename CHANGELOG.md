@@ -19,7 +19,6 @@ All notable changes to this project will be documented in this file.
 - Added custom tags to FIM directories and registries. ([#1096](https://github.com/wazuh/wazuh/pull/1096))
 - Improved AWS CloudTrail wodle by @UranusBytes ([#913](https://github.com/wazuh/wazuh/pull/913) & [#1105](https://github.com/wazuh/wazuh/pull/1105)).
 - Added support to process logs from more AWS services: Guard Duty, IAM, Inspector, Macie and VPC. ([#1131](https://github.com/wazuh/wazuh/pull/1131)).
-- Avoid Windows agent from not loading the configuration if an AWS module block is found. ([#1143](https://github.com/wazuh/wazuh/pull/1143))
 
 ### Changed
 
@@ -29,6 +28,7 @@ All notable changes to this project will be documented in this file.
 - The internal option `syscheck.max_depth` has been renamed to `syscheck.default_max_depth`. ([#1081](https://github.com/wazuh/wazuh/pull/1081))
 - Show error message when configuring vulnerability-detector for an agent. ([#1130](https://github.com/wazuh/wazuh/pull/1130))
 - Increase the minimum waiting time from 0 to 1 seconds in Vulnerability-Detector. ([#1132](https://github.com/wazuh/wazuh/pull/1132))
+- Prevent Windows agent from not loading the configuration if an AWS module block is found. ([#1143](https://github.com/wazuh/wazuh/pull/1143))
 
 ### Fixed
 

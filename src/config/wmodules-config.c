@@ -100,7 +100,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             return OS_INVALID;
         }
 #else
-        merror("The '%s' module is not available on Windows systems.", node->values[0]);
+        mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->values[0]);
 #endif
     }
 #ifndef WIN32
