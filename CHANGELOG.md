@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.6.0]
 
-### Added
+## Added
 
 - Add rescanning of expanded files with wildcards in logcollector ([#332](https://github.com/wazuh/wazuh/pull/332))
 - Parallelization of logcollector ([#627](https://github.com/wazuh/wazuh/pull/672))
@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file.
 - Added a recursion level option to Syscheck to set the directory scanning depth. ([#1081](https://github.com/wazuh/wazuh/pull/1081))
 - Added inactive agent filtering option to agent_control, syscheck_control and rootcheck control_tools. ([#1088](https://github.com/wazuh/wazuh/pull/1088))
 - Added custom tags to FIM directories and registries. ([#1096](https://github.com/wazuh/wazuh/pull/1096))
+- Improved AWS CloudTrail wodle by @UranusBytes ([#913](https://github.com/wazuh/wazuh/pull/913) & [#1105](https://github.com/wazuh/wazuh/pull/1105)).
+- Added support to process logs from more AWS services: Guard Duty, IAM, Inspector, Macie and VPC. ([#1131](https://github.com/wazuh/wazuh/pull/1131)).
 
 
 ### Changed
