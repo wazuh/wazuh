@@ -403,7 +403,7 @@ int remove_agent(int json_output)
 
     u_id[FILE_SIZE] = '\0';
 
-    if (!(json_output || print_agents(0, 0, 0, 0))) {
+    if (!(json_output || print_agents(0, 0, 0, 0, 0))) {
         printf(NO_AGENT);
         return (0);
     }
@@ -534,7 +534,7 @@ cleanup:
 
 int list_agents(int cmdlist)
 {
-    if (!print_agents(0, 0, 0, 0)) {
+    if (!print_agents(0, 0, 0, 0, 0)) {
         printf(NO_AGENT);
     }
 

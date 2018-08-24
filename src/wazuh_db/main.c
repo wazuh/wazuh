@@ -318,7 +318,17 @@ void * run_worker(__attribute__((unused)) void * args) {
                 continue;
             }
 
-            switch (length = recv(*peer, buffer, OS_MAXSTR, 0), length) {
+            ssize_t count;
+            length = 0;
+            count = OS_RecvSecureTCP(*peer,buffer,OS_MAXSTR);
+
+            if(count == OS_SOCKTERR){
+                mwarn("at run_worker(): received string size is bigger than %d bytes", OS_MAXSTR);
+                break;
+            }
+            length+=count;
+
+            switch (length) {
             case -1:
                 merror("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
                 status = 1;
@@ -345,8 +355,8 @@ void * run_worker(__attribute__((unused)) void * args) {
                     if (terminal && length < OS_MAXSTR - 1) {
                         response[length++] = '\n';
                     }
-                    if (send(*peer, response, length, 0) < 0) {
-                        merror("at run_worker(): send(%d): %s (%d)", *peer, strerror(errno), errno);
+                    if (OS_SendSecureTCP(*peer,length,response) < 0) {
+                        merror("at run_worker(): OS_SendSecureTCP(%d): %s (%d)", *peer, strerror(errno), errno);
                     }
                 }
             }

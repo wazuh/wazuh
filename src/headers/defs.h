@@ -22,6 +22,7 @@
 #define OS_TEXT    1
 
 /* Size limit control */
+#define OS_SIZE_65536   65536
 #define OS_SIZE_61440   61440
 #define OS_SIZE_8192    8192
 #define OS_SIZE_6144    6144
@@ -38,11 +39,12 @@
 #define LOGLEVEL_INFO 1
 #define LOGLEVEL_DEBUG 0
 
-#define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc  */
+#define OS_MAXSTR       OS_SIZE_65536    /* Size for logs, sockets, etc  */
 #define OS_BUFFER_SIZE  OS_SIZE_2048    /* Size of general buffers      */
 #define OS_FLSIZE       OS_SIZE_256     /* Maximum file size            */
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
+#define OS_SK_HEADER    OS_SIZE_6144    /* Maximum syscheck header size */
 #define IPSIZE          16              /* IP Address size              */
 #define AUTH_POOL       1000            /* Max number of connections    */
 #define BACKLOG         128             /* Socket input queue length    */
@@ -55,7 +57,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.5.0"
+#define __ossec_version "v3.6.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"

@@ -183,6 +183,12 @@
 #define INV_MULTILOG    "(1953): Invalid DJB multilog file: '%s'."
 #define MISS_SOCK_NAME  "(1954): Missing field 'name' for socket."
 #define MISS_SOCK_LOC   "(1955): Missing field 'location' for socket."
+#define REM_ERROR       "(1956): Error removing '%s' file."
+#define NEW_GLOB_FILE   "(1957): New file that matches the '%s' pattern: '%s'."
+#define DUP_FILE        "(1958): Log file '%s' is duplicated."
+#define FORGET_FILE     "(1959): File '%s' does not exist. Forgetting."
+#define FILE_LIMIT      "(1960): File limit has been reached (%d). Please reduce the number of files or increase \"logcollector.max_files\"."
+#define CURRENT_FILES   "(1961): Files being monitored: %i/%i."
 
 
 /* Encryption/auth errors */
@@ -290,8 +296,7 @@
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
 #define VU_TABLE_ERROR              "(5412): Table %s is not available."
 #define VU_PACKAGE_TABLE_ERROR      "(5414): The packages table for agent %s could not be created."
-#define VU_TIMESTAMP_LABEL_ERROR    "(5416): Timestamp label has not been found in the first %i fetches"
-#define VU_DB_TIMESTAMP_OVAL_ERROR  "(5417): Stored timestamp could not be compared. %s OVAL will continue to be downloaded."
+#define VU_DB_TIMESTAMP_OVAL_ERROR  "(5417): Stored timestamp could not be compared. %s OVAL will continue updating."
 #define VU_SSL_LIBRARY_ERROR        "(5418): Could not initialize the OpenSSL library."
 #define VU_SSL_CREATE_ERROR         "(5419): The SSL structure could not be created."
 #define VU_SSL_CONTEXT_ERROR        "(5420): Unable to create a new SSL context."
@@ -308,7 +313,7 @@
 #define VU_SYSC_SCAN_REQUEST_ERROR  "(5431): Last Syscollector scan from the agent %s could not be requested."
 #define VU_HTTP_HEADER_ERROR        "(5432): Invalid HTTP header."
 #define VU_PACKAGE_RECOG_ERROR      "(5433): The package could not be recognized in '%s'."
-#define VU_NO_SYSC_SCANS            "(5434): No Syscollector scans found for agent %s, so their vulnerabilities will not be checked."
+#define VU_NO_SYSC_SCANS            "(5434): No package inventory found for agent %s, so their vulnerabilities will not be checked."
 #define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
 #define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
 #define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds..."

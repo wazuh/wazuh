@@ -51,7 +51,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     // Get children
 
     if (children = OS_GetElementsbyNode(xml, node), !children) {
-        return 0;
+        mdebug1("Empty configuration for module '%s'.", node->values[0]);
     }
 
     // Select module by name
@@ -109,8 +109,13 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #endif
 #endif
+
     else {
-        merror("Unknown module '%s'", node->values[0]);
+        if(!strcmp(node->values[0], "vulnerability-detector")){
+            merror("The '%s' module only works for the manager", node->values[0]);
+        } else {
+            merror("Unknown module '%s'", node->values[0]);
+        }
     }
 
     OS_ClearNode(children);

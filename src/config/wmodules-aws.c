@@ -58,6 +58,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     aws_config->remove_from_bucket = 0;
     aws_config->interval = WM_AWS_DEFAULT_INTERVAL;
     module->context = &WM_AWS_CONTEXT;
+    module->tag = strdup(module->context->name);
     module->data = aws_config;
 
     // Iterate over module subelements

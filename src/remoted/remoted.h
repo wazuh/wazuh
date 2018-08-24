@@ -39,6 +39,16 @@ typedef struct message_t {
     int sock;
 } message_t;
 
+/* Status structure */
+
+typedef struct remoted_state_t {
+    unsigned int discarded_count;
+    unsigned int tcp_sessions;
+    unsigned int evt_count;
+    unsigned int ctrl_msg_count;
+    unsigned int msg_sent;
+} remoted_state_t;
+
 /** Function prototypes **/
 
 /* Read remoted config */
@@ -98,8 +108,23 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * ad
 // Pop message from queue
 message_t * rem_msgpop();
 
+// Get queue size
+size_t rem_get_qsize();
+
+// Get total queue size
+size_t rem_get_tsize();
+
 // Free message
 void rem_msgfree(message_t * message);
+
+// Status functions
+void * rem_state_main();
+void rem_inc_tcp();
+void rem_dec_tcp();
+void rem_inc_evt();
+void rem_inc_ctrl_msg();
+void rem_inc_msg_sent();
+void rem_inc_discarded();
 
 /** Global variables **/
 

@@ -91,6 +91,7 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_EFFECTIVE_NAME] = "effective_name";
     sdb.syscheck_dec->fields[SK_PPID] = "ppid";
     sdb.syscheck_dec->fields[SK_PROC_ID] = "process_id";
+    sdb.syscheck_dec->fields[SK_TAG] = "tag";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
@@ -495,7 +496,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 }
 
                 /* SHA-256 message */
-                if(newsum.sha256 && *newsum.sha256)
+                if(newsum.sha256 && newsum.sha256[0] != '\0')
                 {
                     if(oldsum.sha256) {
                         if (strcmp(newsum.sha256, oldsum.sha256) == 0) {
@@ -512,6 +513,8 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                         wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
                         snprintf(sdb.sha256, OS_FLSIZE, "New sha256sum is : '%s'\n", newsum.sha256);
                     }
+                } else {
+                    sdb.sha256[0] = '\0';
                 }
 
                 /* Modification time message */

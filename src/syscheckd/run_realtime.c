@@ -22,8 +22,6 @@ volatile int audit_thread_active;
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
-#define OS_SIZE_6144    6144
-#define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc */
 #endif
 
 #include "fs_op.h"
@@ -66,8 +64,10 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             // Extract the whodata sum here to not include it in the hash table
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
                 merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
-                *wd_sum = '\0';
             }
+
+            /* Find tag position for the evaluated file name */
+            int pos = find_dir_pos(file_name, 1, 0, 0);
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
@@ -79,15 +79,16 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if (buf[9] == '+') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s\n%s", c_sum, wd_sum, file_name, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name, fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
                 }
             } else {
-                snprintf(alert_msg, OS_MAXSTR, "%s!%s %s", c_sum, wd_sum, file_name);
+                snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
             }
+
             send_syscheck_msg(alert_msg);
             struct timeval timeout = {0, syscheck.rt_delay * 1000};
             select(0, NULL, NULL, NULL, &timeout);
@@ -115,7 +116,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         if (pos >= 0) {
             mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
             int diff = fim_find_child_depth(syscheck.dir[pos], file_name);
-            read_dir(file_name, pos, evt, syscheck.max_depth - diff);
+            read_dir(file_name, pos, evt, syscheck.recursion_level[pos] - diff);
         }
 
     }

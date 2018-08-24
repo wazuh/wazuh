@@ -25,6 +25,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_perm;
     char *c_mtime;
     char *c_inode;
+    char *tag;
     int retval = 0;
 
     memset(sum, 0, sizeof(sk_sum_t));
@@ -85,12 +86,20 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             if ((sum->sha256 = strchr(c_inode, ':')))
                 *(sum->sha256++) = '\0';
 
+            /* Look for a defined tag */
+            if (sum->sha256) {
+                if (tag = strchr(sum->sha256, ':'), tag) {
+                    *(tag++) = '\0';
+                    sum->tag = tag;
+                }
+            }
+
             sum->mtime = atol(c_mtime);
             sum->inode = atol(c_inode);
         }
     }
 
-    // Get whodata
+    // Get extra data wdata+tags(optional)
     if (w_sum) {
         sum->wdata.user_id = w_sum;
 
@@ -152,6 +161,13 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             *(sum->wdata.process_id++) = '\0';
         } else {
             return -1;
+        }
+
+        /* Look for a defined tag */
+        if (sum->tag = wstr_chr(sum->wdata.process_id, ':'), sum->tag) {
+            *(sum->tag++) = '\0';
+        } else {
+            sum->tag = NULL;
         }
 
         sum->wdata.user_name = unescape_whodata_sum(sum->wdata.user_name);
@@ -294,6 +310,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     if(sum->wdata.process_id) {
         os_strdup(sum->wdata.process_id, lf->process_id);
         os_strdup(sum->wdata.process_id, lf->fields[SK_PROC_ID].value);
+    }
+
+    if(sum->tag) {
+        os_strdup(sum->tag, lf->sk_tag);
+        os_strdup(sum->tag, lf->fields[SK_TAG].value);
     }
 
     /* Fields */

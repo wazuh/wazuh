@@ -30,6 +30,82 @@ void * wm_command_main(wm_command_t * command) {
     size_t extag_len;
     char * extag;
     int usec = 1000000 / wm_max_eps;
+    int validation;
+    char *command_cpy;
+    char *binary;
+    char *full_path;
+    char **argv;
+
+    // Verify command
+    command_cpy = strdup(command->command);
+    argv = wm_strtok(command_cpy);
+    binary = argv[0];
+
+    if (!wm_get_path(binary, &full_path)) {
+        mterror(WM_COMMAND_LOGTAG, "Cannot check binary: '%s'. Cannot stat binary file.", binary);
+        pthread_exit(NULL);
+    }
+
+    // Modify command with full path.
+    os_malloc(strlen(full_path) + strlen(command->command) - strlen(binary) + 1, command->full_command);
+    snprintf(command->full_command, strlen(full_path) + strlen(command->command) - strlen(binary) + 1, "%s %s", full_path, command->command + strlen(binary) + 1);
+
+    if (command->md5_hash && command->md5_hash[0]) {
+        validation = wm_validate_command(full_path, command->md5_hash, MD5SUM);
+
+        switch (validation) {
+            case 1:
+                mtdebug1(WM_COMMAND_LOGTAG, "MD5 checksum verification succeded for command '%s'.", command->full_command);
+                break;
+
+            case 0:
+                if (!command->skip_verification) {
+                    mterror(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command '%s'.", command->full_command);
+                    pthread_exit(NULL);
+                } else {
+                    mtwarn(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command '%s'. Skipping...", command->full_command);
+                }
+        }
+    }
+
+    if (command->sha1_hash && command->sha1_hash[0]) {
+        validation = wm_validate_command(full_path, command->sha1_hash, SHA1SUM);
+
+        switch (validation) {
+            case 1:
+                mtdebug1(WM_COMMAND_LOGTAG, "SHA1 checksum verification succeded for command '%s'.", command->full_command);
+                break;
+
+            case 0:
+                if (!command->skip_verification) {
+                    mterror(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command '%s'.", command->full_command);
+                    pthread_exit(NULL);
+                } else {
+                    mtwarn(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command '%s'. Skipping...", command->full_command);
+                }
+        }
+    }
+
+    if (command->sha256_hash && command->sha256_hash[0]) {
+        validation = wm_validate_command(full_path, command->sha256_hash, SHA256SUM);
+
+        switch (validation) {
+            case 1:
+                mtdebug1(WM_COMMAND_LOGTAG, "SHA256 checksum verification succeded for command '%s'.", command->full_command);
+                break;
+
+            case 0:
+                if (!command->skip_verification) {
+                    mterror(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command '%s'.", command->full_command);
+                    pthread_exit(NULL);
+                } else {
+                    mtwarn(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command '%s'. Skipping...", command->full_command);
+                }
+        }
+    }
+
+    free(command_cpy);
+    free(full_path);
 
     if (!command->enabled) {
         mtwarn(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
@@ -84,7 +160,7 @@ void * wm_command_main(wm_command_t * command) {
     }
 
     while (1) {
-        int status;
+        int status = 0;
         char * output = NULL;
 
         mtdebug1(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
@@ -92,7 +168,7 @@ void * wm_command_main(wm_command_t * command) {
         // Get time and execute
         time_start = time(NULL);
 
-        switch (wm_exec(command->command, command->ignore_output ? NULL : &output, &status, command->timeout)) {
+        switch (wm_exec(command->full_command, command->ignore_output ? NULL : &output, &status, command->timeout)) {
         case 0:
             if (status > 0) {
                 mtwarn(WM_COMMAND_LOGTAG, "Command '%s' returned exit code %d.", command->tag, status);
@@ -105,7 +181,7 @@ void * wm_command_main(wm_command_t * command) {
             break;
 
         default:
-            mterror(WM_COMMAND_LOGTAG, "%s: Internal calling. Exiting...", command->tag);
+            mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at ossec.conf. Exiting...", command->tag);
             pthread_exit(NULL);
         }
 
@@ -153,5 +229,6 @@ void * wm_command_main(wm_command_t * command) {
 void wm_command_destroy(wm_command_t * command) {
     free(command->tag);
     free(command->command);
+    free(command->full_command);
     free(command);
 }

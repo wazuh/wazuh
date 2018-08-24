@@ -826,7 +826,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
 
         if (ram_total) {
             char total[OS_MAXSTR];
-            snprintf(total, OS_MAXSTR - 1, "%d", ram_total->valueint);
+            snprintf(total, OS_MAXSTR - 1, "%f", ram_total->valuedouble);
             wm_strcat(&msg, total, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -834,7 +834,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON) {
 
         if (ram_free) {
             char rfree[OS_MAXSTR];
-            snprintf(rfree, OS_MAXSTR - 1, "%d", ram_free->valueint);
+            snprintf(rfree, OS_MAXSTR - 1, "%f", ram_free->valuedouble);
             wm_strcat(&msg, rfree, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -1350,6 +1350,7 @@ int sc_send_db(char * msg) {
     int retval = -1;
     static time_t last_attempt = 0;
     time_t mtime;
+    char *msg_cpy = NULL;
 
     // Connect to socket if disconnected
 
@@ -1367,8 +1368,12 @@ int sc_send_db(char * msg) {
     }
 
     // Send msg to Wazuh DB
+    size_t bufsz = size + sizeof(uint32_t);
+    os_calloc(bufsz + 1,sizeof(char),msg_cpy);
+    *(uint32_t *)msg_cpy = wnet_order(size);
+    memcpy(msg_cpy + sizeof(uint32_t), msg, size);
 
-    if (send(sock, msg, size + 1, MSG_DONTWAIT) < size) {
+    if (send(sock, msg_cpy, bufsz+1, MSG_DONTWAIT) < size) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             merror("Syscollector decoder: database socket is full");
         } else if (errno == EPIPE) {
@@ -1383,7 +1388,7 @@ int sc_send_db(char * msg) {
                     goto end;
                 }
 
-                if (send(sock, msg, size + 1, MSG_DONTWAIT) < size) {
+                if (send(sock, msg_cpy, bufsz + 1, MSG_DONTWAIT) < size) {
                     last_attempt = mtime;
                     merror("at sc_send_db(): at send() (retry): %s (%d)", strerror(errno), errno);
                     goto end;
@@ -1410,9 +1415,7 @@ int sc_send_db(char * msg) {
     }
 
     // Receive response from socket
-
-    length = recv(sock, response, OS_MAXSTR, 0);
-
+    length = OS_RecvSecureTCP(sock,response,OS_MAXSTR);
     switch (length) {
         case -1:
             merror("at sc_send_db(): at recv(): %s (%d)", strerror(errno), errno);
@@ -1431,5 +1434,6 @@ int sc_send_db(char * msg) {
 
 end:
     free(msg);
+    free(msg_cpy);
     return retval;
 }

@@ -82,7 +82,7 @@ int receive_msg()
                 break;
             }
         } else {
-            recv_b = recv(agt->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT);
+            recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
 
             if (recv_b <= 0) {
                 break;
