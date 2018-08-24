@@ -43,6 +43,7 @@ logsocket default_agent = { .name = "agent" };
 /* Output thread variables */
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t available = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t win_el_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock = PTHREAD_RWLOCK_INITIALIZER;
@@ -1157,7 +1158,11 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
         sleep(loop_timeout + 2);
 
         /* Check for messages in the event viewer */
-        win_readel();
+
+        if (pthread_mutex_trylock(&win_el_mutex) == 0) {
+            win_readel();
+            pthread_mutex_unlock(&win_el_mutex);
+        }
 #endif
 
         f_check++;
