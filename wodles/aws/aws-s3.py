@@ -570,42 +570,12 @@ class AWSCloudtrailBucket(AWSBucket):
     def reformat_msg(self, event):
         debug('++ Reformat message', 3)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
-        for field_to_str in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_str in event['aws']:
-                try:
-                    debug('++ Reformat field: {}'.format(field_to_str), 3)
-                    # Nested json
-                    if 'policyDocument' in event['aws'][field_to_str]:
-                        event['aws']['{}_policyDocument'.format(field_to_str)] = json.dumps(
-                            event['aws'][field_to_str]['policyDocument'],
-                            ensure_ascii=True,
-                            indent=2,
-                            sort_keys=True)
-                        event['aws'][field_to_str]['policyDocument'] = 'See field {}_policyDocument'.format(
-                            field_to_str)
-                    event['aws'][field_to_str] = json.dumps(
-                        event['aws'][field_to_str],
-                        ensure_ascii=True,
-                        indent=2,
-                        sort_keys=True)
-                except:
-                    debug('++ Failed to convert field to string: {}'.format(field_to_str), 1)
-                    event['aws'][field_to_str] = 'Unable to convert field to string: {field}'.format(field=field_to_str)
+        # ES mapping expects for a dictionary, if the field is any other type (list or string)
+        # turn it into a dictionary
+        for field_to_cast in ['additionalEventData', 'responseElements', 'requestParameters']:
+            if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
+                event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
 
-        debug('++ Shrink message', 3)
-        # If msg too large, start truncating
-        for field_to_shrink in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_shrink not in event['aws']:
-                continue
-            if event['aws'][field_to_shrink] == 'Unable to convert field to string: {field}'.format(field=field_to_shrink):
-                continue
-
-            if len(json.dumps(event).encode()) > self.max_queue_buffer:
-                debug('++ Message too large; truncating {field}'.format(field=field_to_shrink), 2)
-                event['aws'][field_to_shrink] = 'Value truncated because event msg too large for socket buffer'
-            else:
-                debug('++ Message not too large; skip out', 3)
-                break
         return event
 
     def find_account_ids(self):
