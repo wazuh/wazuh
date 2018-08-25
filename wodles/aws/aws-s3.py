@@ -388,7 +388,16 @@ class AWSBucket:
         return filter_args
 
     def reformat_msg(self, event):
-        raise NotImplementedError
+        def single_element_list_to_dictionary(my_event):
+            for name, value in my_event.items():
+                if isinstance(value, list) and len(value) == 1:
+                    my_event[name] = value[0]
+                elif isinstance(value, dict):
+                    single_element_list_to_dictionary(my_event[name])
+        
+        # turn some list fields into dictionaries
+        single_element_list_to_dictionary(event)
+
 
     def decompress_file(self, log_key):
         def decompress_gzip(raw_object):
@@ -569,6 +578,7 @@ class AWSCloudtrailBucket(AWSBucket):
 
     def reformat_msg(self, event):
         debug('++ Reformat message', 3)
+        AWSBucket.reformat_msg(self, event)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
         # ES mapping expects for a dictionary, if the field is any other type (list or string)
         # turn it into a dictionary
@@ -635,24 +645,9 @@ class AWSFirehouseBucket(AWSBucket):
         return self.prefix
 
     def reformat_msg(self, event):
-        def single_element_list_to_dictionary(my_event):
-            for name, value in my_event.items():
-                if isinstance(value, list) and len(value) == 1:
-                    my_event[name] = value[0]
-                elif isinstance(value, dict):
-                    single_element_list_to_dictionary(my_event[name])
-
-        try:
-            # remove aws.event.trigger field, since it has repeated data and increases log size.
-            if event['aws']['source'] == 'macie' and 'trigger' in event['aws']:
-                del event['aws']['trigger']
-
-            # turn some list fields into dictionaries
-            single_element_list_to_dictionary(event)
-
-        except Exception as e:
-            debug("Error reformatting event {}.".format(json.dumps(event)), 2)
-            raise e
+        AWSBucket.reformat_msg(self, event)
+        if event['aws']['source'] == 'macie' and 'trigger' in event['aws']:
+            del event['aws']['trigger']
 
         return event
 
