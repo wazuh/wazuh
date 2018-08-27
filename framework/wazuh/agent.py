@@ -127,13 +127,12 @@ class Agent:
         if not last_keep_alive:
             return "Never connected"
         else:
-            limit_seconds = 1830 # 600*3 + 30
             # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
             last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
                                 hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
             difference = (today - last_date).total_seconds()
 
-            return "Disconnected" if difference > limit_seconds else ("Pending" if pending else "Active")
+            return "Disconnected" if difference > common.limit_seconds else ("Pending" if pending else "Active")
 
 
     def _load_info_from_DB(self, select=None):
@@ -809,8 +808,7 @@ class Agent:
 
     @staticmethod
     def filter_agents_by_status(status, request, query):
-        limit_seconds = 1830  # 600*3 + 30
-        result = datetime.now() - timedelta(seconds=limit_seconds)
+        result = datetime.now() - timedelta(seconds=common.limit_seconds)
         request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
         list_status = status.split(',')
         query += ' AND ('
@@ -1016,8 +1014,7 @@ class Agent:
         query_disconnected = query.format('last_keepalive < :time_active')
         query_never = query.format('last_keepalive IS NULL AND id != 0')
 
-        limit_seconds = 600*3 + 30
-        result = datetime.now() - timedelta(seconds=limit_seconds)
+        result = datetime.now() - timedelta(seconds=common.limit_seconds)
         request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
 
         conn.execute(query_all)
