@@ -748,7 +748,7 @@ void set_read(logreader *current, int i, int j) {
             current->file = NULL;
         }
         current->read = read_djbmultilog;
-    } else if (strncmp(current->logformat, "multi-line:", 10) == 0) {
+    } else if (strncmp(current->logformat, "multi-line:", 11) == 0) {
         current->read = read_multiline;
     } else if (strcmp("audit", current->logformat) == 0) {
         current->read = read_audit;
