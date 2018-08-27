@@ -594,7 +594,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
     if (mode == RECV_SOCK) {
 
         /* Get current maximum size */
-        if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &len, &optlen) == -1) {
+        if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, (void *)&len, &optlen) == -1) {
             OS_CloseSocket(sock);
             return -1;
         }
@@ -602,7 +602,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
         /* Set maximum message size */
         if (len < max_msg_size) {
             len = max_msg_size;
-            if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &len, optlen) < 0) {
+            if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (const void *)&len, optlen) < 0) {
                 OS_CloseSocket(sock);
                 return -1;
             }
@@ -611,7 +611,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
     } else if (mode == SEND_SOCK) {
 
         /* Get current maximum size */
-        if (getsockopt(sock, SOL_SOCKET, SO_SNDBUF, &len, &optlen) == -1) {
+        if (getsockopt(sock, SOL_SOCKET, SO_SNDBUF, (void *)&len, &optlen) == -1) {
             OS_CloseSocket(sock);
             return -1;
         }
@@ -619,7 +619,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
         /* Set maximum message size */
         if (len < max_msg_size) {
             len = max_msg_size;
-            if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &len, optlen) < 0) {
+            if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (const void *)&len, optlen) < 0) {
                 OS_CloseSocket(sock);
                 return -1;
             }
