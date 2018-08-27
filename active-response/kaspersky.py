@@ -26,35 +26,65 @@ from socket import socket, AF_UNIX, SOCK_DGRAM
 
 wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
 wazuh_queue = '{0}/queue/ossec/queue'.format(wazuh_path)
+kesl_flags = "false"
+verbose_flag = "false"
 
+##################################################################################################################
+# Get arguments. 
+##################################################################################################################	
+
+def parser_custom_flags(arguments_list):
+
+	first_delimiter = 0
+	second_delimiter = 0
+	argument_counter = 0
+	custom_str = ""
+	for argument in arguments_list:
+		if argument == "%" and first_delimiter != 0:
+			second_delimiter = argument_counter
+		if first_delimiter !=0 and second_delimiter == 0:
+			custom_str = custom_str + argument + " "
+		if argument == "%" and first_delimiter == 0:
+			first_delimiter = argument_counter
+		argument_counter += 1
+	return custom_str
+	
 ##################################################################################################################
 # Read and parser arguments.
-##################################################################################################################			
+##################################################################################################################	
 
-parser = argparse.ArgumentParser()
+arguments_list = sys.argv
 
-parser.add_argument("-v", "--verbose", action='store_true', required = False, help="Debug mode. Example of use: Kaspersky.py -v --boot_scan")
-exclusive = parser.add_mutually_exclusive_group()
-exclusive.add_argument("--full_scan", action='store_true', required = False, help="Full computer scan. Example of use: Kaspersky.py --full_scan")
-exclusive.add_argument("--boot_scan", action='store_true', required = False, help="Boot scan. Example of use: Kaspersky.py --boot_scan")
-exclusive.add_argument("--memory_scan", action='store_true', required = False, help="Memory scan. Example of use: Kaspersky.py --memory_scan")
-exclusive.add_argument("--custom_scan_folder", metavar = 'folderpath', type = str, required = False, help="Custom scan folder. Example of use: Kaspersky.py --custom_scan_folder '/etc'")
-exclusive.add_argument("--custom_scan_file", metavar = 'filepath', type = str, required = False, help="Custom scan file. Example of use: Kaspersky.py --custom_scan_file '/home/centos/sample.txt'")
-parser.add_argument("--action", metavar = 'fileaction', type = str, required = False, help="Action to apply to the file after scanning. Only used with --custom_scan_file. Example of use: Kaspersky.py --custom_scan_file '/home/centos/sample.txt' --action Cure ")
-exclusive.add_argument("--update_application", action='store_true', required = False, help="Update application. Example of use: Kaspersky.py --update_application")
-exclusive.add_argument("--get_task_list", action='store_true', required = False, help="List all the tasks. Example of use: Kaspersky.py --get_task_list")
-exclusive.add_argument("--get_task_state", metavar = 'ID', type = str, required = False, help="Get the status of the number of the task entered. Example of use: Kaspersky.py --get_task_state 2, Kaspersky.py --get_task_state Scan_My_Computer")
-exclusive.add_argument("--custom_flags", metavar = 'flags', type = str, required = False, help="Run custom flags. Example of use: Kaspersky.py --custom_flags '--get-task-state Scan_My_Computer' ")
-exclusive.add_argument("--enable_realtime", action='store_true', required = False, help="Enable Realtime protection. Example of use: Kaspersky.py --enable_realtime")
-exclusive.add_argument("--disable_realtime", action='store_true', required = False, help="Disable Realtime protection. Example of use: Kaspersky.py --disable_realtime")
+if "--custom_flags" in arguments_list:
+	kesl_flags = "true"
+	if "-v" in arguments_list:
+		verbose_flag = "true"
+	if "--verbose" in arguments_list:
+		verbose_flag = "true"		
+else:
+	parser = argparse.ArgumentParser()
 
+	parser.add_argument("-v", "--verbose", action='store_true', required = False, help="Debug mode. Example of use: kaspersky.py -v --boot_scan")
+	exclusive = parser.add_mutually_exclusive_group()
+	exclusive.add_argument("--full_scan", action='store_true', required = False, help="Full computer scan. Example of use: kaspersky.py --full_scan")
+	exclusive.add_argument("--boot_scan", action='store_true', required = False, help="Boot scan. Example of use: kaspersky.py --boot_scan")
+	exclusive.add_argument("--memory_scan", action='store_true', required = False, help="Memory scan. Example of use: kaspersky.py --memory_scan")
+	exclusive.add_argument("--custom_scan_folder", metavar = 'folderpath', type = str, required = False, help="Custom scan folder. Example of use: kaspersky.py --custom_scan_folder /etc")
+	exclusive.add_argument("--custom_scan_file", metavar = 'filepath', type = str, required = False, help="Custom scan file. Example of use: kaspersky.py --custom_scan_file /home/centos/sample.txt")
+	parser.add_argument("--action", metavar = 'fileaction', type = str, required = False, help="Action to apply to the file after scanning. Only used with --custom_scan_file. Example of use: kaspersky.py --custom_scan_file /home/centos/sample.txt --action Cure ")
+	exclusive.add_argument("--update_application", action='store_true', required = False, help="Update application. Example of use: kaspersky.py --update_application")
+	exclusive.add_argument("--get_task_list", action='store_true', required = False, help="List all the tasks. Example of use: kaspersky.py --get_task_list")
+	exclusive.add_argument("--get_task_state", metavar = 'ID', type = str, required = False, help="Get the status of the number of the task entered. Example of use: kaspersky.py --get_task_state 2, kaspersky.py --get_task_state Scan_My_Computer")
+	exclusive.add_argument("--custom_flags", metavar = 'flags', type = str, required = False, help="Run custom flags. Example of use: kaspersky.py --custom_flags %% --get-task-state Scan_My_Computer %% --verbose")
+	exclusive.add_argument("--enable_realtime", action='store_true', required = False, help="Enable Realtime protection. Example of use: kaspersky.py --enable_realtime")
+	exclusive.add_argument("--disable_realtime", action='store_true', required = False, help="Disable Realtime protection. Example of use: kaspersky.py --disable_realtime")
 
-
-args, unknown = parser.parse_known_args()
-
+	args, unknown = parser.parse_known_args()
+	if args.verbose:
+		verbose_flag = "true"
 
 ##################################################################################################################
-# Kaspersky endpoint CLI settings
+# Kaspersky endpoint CLI settings.
 ##################################################################################################################
 
 bin_path = '/opt/kaspersky/kesl/bin'
@@ -62,12 +92,12 @@ binary = '/kesl-control'
 
 
 ##################################################################################################################
-# Configure the log settings
+# Configure the log settings.
 ##################################################################################################################
 
-def set_logger(name, foreground=None):
+def set_logger(name, foreground):
 
-	if foreground:
+	if foreground == "true":
 		format = '%(asctime)s {}: %(message)s'.format(name)
 		logging.basicConfig(level=logging.INFO, format=format, datefmt="%Y-%m-%d %H:%M:%S")
 
@@ -76,11 +106,11 @@ def set_logger(name, foreground=None):
 # Kaspersky logs management. 
 ##################################################################################################################
 
-def logger(msg, mode, foreground=None):
+def logger(msg, mode, foreground):
 
 	send_msg(wazuh_queue, msg)
 
-	if foreground:
+	if foreground == "true":
 		if mode == "INFO":
 			logging.info(msg)
 
@@ -92,73 +122,76 @@ def logger(msg, mode, foreground=None):
 def run_kaspersky():
 
 	log_message = "Starting."
-	logger(log_message, "INFO", foreground = args.verbose)
+	logger(log_message, "INFO",  verbose_flag)
 	task = ''
+	if kesl_flags == "false":
+		if args.full_scan:
+			log_message = "Scan my computer."
+			logger(log_message, "INFO",  verbose_flag)
+			task = '--start-task 2'
+		if args.boot_scan:
+			log_message = "Boot scan."
+			logger(log_message, "INFO",  verbose_flag)
+			task = '--start-task 4'
+		if args.memory_scan:
+			log_message = "Memory scan."
+			logger(log_message, "INFO",  verbose_flag)
+			task = '--start-task 5'
+		if args.custom_scan_folder:	
+			if os.path.exists(args.custom_scan_folder):
+				log_message = "Custom scan folder."
+				logger(log_message, "INFO",  verbose_flag)
+				scan_folder(args.custom_scan_folder)
+		if args.custom_scan_file:	
+			if os.path.exists(args.custom_scan_file):	
+				if args.action:
+					log_message = "Custom scan file with action."
+					logger(log_message, "INFO",  verbose_flag)
+					task = '--scan-file {} --action {}'.format(args.custom_scan_file, args.action)
+				else:
+					log_message = "Custom scan file."
+					logger(log_message, "INFO",  verbose_flag)
+					task = '--scan-file {}'.format(args.custom_scan_file)
+		if args.update_application:
+			log_message = "Update application."
+			logger(log_message, "INFO",  verbose_flag)
+			task = '--update-application'
+		if args.get_task_list:
+			log_message = "Get task list."
+			logger(log_message, "INFO",  verbose_flag)
+			task = '--get-task-list'
+		if args.get_task_state:
+			log_message = "Get task state."
+			logger(log_message, "INFO",  verbose_flag)
+			if args.get_task_state > 0:
+				task = '--get-task-state {}'.format(args.get_task_state)
 
-	if args.full_scan:
-		log_message = "Scan my computer."
-		logger(log_message, "INFO", foreground = args.verbose)
-		task = '--start-task 2'
-	if args.boot_scan:
-		log_message = "Boot scan."
-		logger(log_message, "INFO", foreground = args.verbose)
-		task = '--start-task 4'
-	if args.memory_scan:
-		log_message = "Memory scan."
-		logger(log_message, "INFO", foreground = args.verbose)
-		task = '--start-task 5'
-	if args.custom_scan_folder:	
-		if os.path.exists(args.custom_scan_folder):
-			log_message = "Custom scan folder."
-			logger(log_message, "INFO", foreground = args.verbose)
-			scan_folder(args.custom_scan_folder)
-	if args.custom_scan_file:	
-		if os.path.exists(args.custom_scan_file):	
-			if args.action:
-				log_message = "Custom scan file with action."
-				logger(log_message, "INFO", foreground = args.verbose)
-				task = '--scan-file {} --action {}'.format(args.custom_scan_file, args.action)
-			else:
-				log_message = "Custom scan file."
-				logger(log_message, "INFO", foreground = args.verbose)
-				task = '--scan-file {}'.format(args.custom_scan_file)
-	if args.update_application:
-		log_message = "Update application."
-		logger(log_message, "INFO", foreground = args.verbose)
-		task = '--update-application'
-	if args.get_task_list:
-		log_message = "Get task list."
-		logger(log_message, "INFO", foreground = args.verbose)
-		task = '--get-task-list'
-	if args.get_task_state:
-		log_message = "Get task state."
-		logger(log_message, "INFO", foreground = args.verbose)
-		if args.get_task_state > 0:
-			task = '--get-task-state {}'.format(args.get_task_state)
-	if args.custom_flags:
-		log_message = "Run custom flags: {}.".format(args.custom_flags)
-		logger(log_message, "INFO", foreground = args.verbose)
-		task = '{}'.format(args.custom_flags)
+		if args.enable_realtime:
+			log_message = "Enable realtime."
+			logger(log_message, "INFO", verbose_flag)
+			task = '--start-task 1'
+
+		if args.disable_realtime:
+			log_message = "Disable realtime."
+			logger(log_message, "INFO", verbose_flag)
+			task = '--stop-task 1'
+	else:
+		custom_str = parser_custom_flags(arguments_list)
+		log_message = "Run custom flags: {}.".format(custom_str)
+		logger(log_message, "INFO",  verbose_flag)
+		task = '{}'.format(custom_str)
 	
-	if args.enable_realtime:
-		log_message = "Enable realtime."
-		logger(log_message, "INFO", foreground=args.verbose)
-		task = '--start-task 1'
-
-	if args.disable_realtime:
-		log_message = "Disable realtime."
-		logger(log_message, "INFO", foreground=args.verbose)
-		task = '--stop-task 1'	
 
 	if task != '':
 		kesl_control = '{}{} {}'.format(bin_path, binary, task)
 		log_message = "{}.".format(kesl_control)
-		logger(log_message, "INFO", foreground = args.verbose)
+		logger(log_message, "INFO",  verbose_flag)
 		send_kaspersky(kesl_control)
 
 
+
 	log_message = "End."
-	logger(log_message, "INFO", foreground = args.verbose)
+	logger(log_message, "INFO",  verbose_flag)
 
 
 ##################################################################################################################
@@ -187,29 +220,29 @@ def scan_folder(folder_path):
 	create_query = bin_path + binary + task_create
 
 	log_message = "Custom scan folder: Checking if the custom task exists."
-	logger(log_message, "INFO", foreground = args.verbose)
+	logger(log_message, "INFO",  verbose_flag)
 	check_task = os.system(get_query)
 
 	if check_task == 0:
 		add_path = '--add-path ' + folder_path
 		log_message = "Custom scan folder: Adding the new folder path: {}.".format(folder_path)
-		logger(log_message, "INFO", foreground = args.verbose)
+		logger(log_message, "INFO",  verbose_flag)
 		send_kaspersky(set_query + add_path)
 		previous_path = get_previous_path(folder_path, get_query)
 		if previous_path != '' and previous_path != folder_path:
 			delete_path = '--del-path ' + previous_path
 			log_message = "Custom scan folder: Deleting the previous path: {}.".format(previous_path)
-			logger(log_message, "INFO", foreground = args.verbose)
+			logger(log_message, "INFO",  verbose_flag)
 			send_kaspersky(set_query + delete_path)
 	else:
 		file_path = create_custom_settings_file(folder_path)
 		log_message = "Custom scan folder: Creating the new task from the custom file: {}.".format(file_path)
-		logger(log_message, "INFO", foreground = args.verbose)
+		logger(log_message, "INFO",  verbose_flag)
 		send_kaspersky(create_query + file_path)
 		remove_custom_settings_file(file_path)
 
 	log_message = "{}.".format(start_query)
-	logger(log_message, "INFO", foreground = args.verbose)
+	logger(log_message, "INFO",  verbose_flag)
 	send_kaspersky(start_query)
 
 
@@ -221,7 +254,7 @@ def get_previous_path(path, get_query):
 
 	task = get_query
 	log_message = "Custom scan folder: Creating the new task from the custom file: {}.".format(path)
-	logger(log_message, "INFO", foreground = args.verbose)
+	logger(log_message, "INFO",  verbose_flag)
 	settings = os.popen(task).read()
 	settings = settings.split(os.linesep)
 	delete_path = ''
@@ -243,7 +276,7 @@ def create_custom_settings_file(folder_path):
 	current_path = dirname(abspath(__file__))
 	file_name = "/temporal_configuration_file"
 	log_message = "Custom scan folder: Creating the custom file: {}.".format(file_name)
-	logger(log_message, "INFO", foreground = args.verbose)
+	logger(log_message, "INFO",  verbose_flag)
 	path = current_path + file_name
 	content = '[ScanScope.item_0000]\nAreaDesc=All objects\nUseScanArea=Yes\nPath={}\nAreaMask.item_0000=*'.format(folder_path)
 	custom_file = open(path, 'w')
@@ -260,7 +293,7 @@ def create_custom_settings_file(folder_path):
 def remove_custom_settings_file(path):
 
 	log_message = "Custom scan folder: Removing the custom file: {}.".format(path)
-	logger(log_message, "INFO", foreground = args.verbose)
+	logger(log_message, "INFO",  verbose_flag)
 	os.remove(path)
 
 
@@ -275,7 +308,7 @@ def parse_tasks_states(tasks):
 	ids = []
 	states = []
 	log_message = "Kaspersky: Getting the status of tasks. "
-	logger(log_message, "INFO", foreground = args.verbose)
+	logger(log_message, "INFO", verbose_flag)
 	tasks = tasks.split(os.linesep)
 	for line in tasks:
 		if " ID " in line:
@@ -317,7 +350,8 @@ def send_msg(wazuh_queue, msg):
 ##################################################################################################################
 
 def main():
-	set_logger('wazuh-kaspersky', foreground=args.verbose)
+
+	set_logger('wazuh-kaspersky', verbose_flag)
 	run_kaspersky()
 
 
