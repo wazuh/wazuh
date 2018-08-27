@@ -159,6 +159,7 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
 
     // Set socket maximum size
     if (OS_SetSocketSize(ossock, RECV_SOCK, max_msg_size) < 0) {
+        OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
 
@@ -191,6 +192,7 @@ int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
 
     // Set socket maximum size
     if (OS_SetSocketSize(ossock, SEND_SOCK, max_msg_size) < 0) {
+        OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
 
@@ -267,9 +269,11 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 
     // Set socket maximum size
     if (OS_SetSocketSize(ossock, RECV_SOCK, max_msg_size) < 0) {
+        OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
     if (OS_SetSocketSize(ossock, SEND_SOCK, max_msg_size) < 0) {
+        OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
 
@@ -595,7 +599,6 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
 
         /* Get current maximum size */
         if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, (void *)&len, &optlen) == -1) {
-            OS_CloseSocket(sock);
             return -1;
         }
 
@@ -603,7 +606,6 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
         if (len < max_msg_size) {
             len = max_msg_size;
             if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (const void *)&len, optlen) < 0) {
-                OS_CloseSocket(sock);
                 return -1;
             }
         }
@@ -612,7 +614,6 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
 
         /* Get current maximum size */
         if (getsockopt(sock, SOL_SOCKET, SO_SNDBUF, (void *)&len, &optlen) == -1) {
-            OS_CloseSocket(sock);
             return -1;
         }
 
@@ -620,7 +621,6 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
         if (len < max_msg_size) {
             len = max_msg_size;
             if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (const void *)&len, optlen) < 0) {
-                OS_CloseSocket(sock);
                 return -1;
             }
         }
