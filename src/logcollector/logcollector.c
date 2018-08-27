@@ -43,7 +43,9 @@ logsocket default_agent = { .name = "agent" };
 /* Output thread variables */
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t available = PTHREAD_COND_INITIALIZER;
+#ifdef WIN32
 static pthread_mutex_t win_el_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock = PTHREAD_RWLOCK_INITIALIZER;
