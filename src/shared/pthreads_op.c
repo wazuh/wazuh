@@ -29,8 +29,7 @@ int CreateThread(void * (*function_pointer)(void *), void *data)
     int ret = 0;
 
     if (getrlimit(RLIMIT_STACK, &lim)) {
-        merror(THREAD_ERROR);
-        return (-1);
+        merror_exit("At getrlimit(RLIMIT_STACK): %s (%d)", strerror(errno), errno);
     }
 
     if (lim.rlim_cur != RLIM_INFINITY && lim.rlim_cur >= PTHREAD_STACK_MIN) {
