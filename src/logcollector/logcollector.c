@@ -19,7 +19,7 @@ static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
 #ifndef WIN32
-static int check_pattern_expand(logreader *current);
+static int check_pattern_expand();
 #endif
 
 /* Global variables */
@@ -85,7 +85,7 @@ void LogCollectorStart()
     /* To check for inode changes */
     struct stat tmp_stat;
 
-    check_pattern_expand(current);
+    check_pattern_expand();
 
     /* Set the files mutexes */
     w_set_file_mutexes();
@@ -457,7 +457,7 @@ void LogCollectorStart()
 
 #ifndef WIN32
             // Check for new files to be expanded
-            if (check_pattern_expand(current)) {
+            if (check_pattern_expand()) {
                 /* Remove duplicate entries */
                 for (i = 0, j = -1;; i++) {
                     if (f_control = update_current(&current, &i, &j), f_control) {
@@ -758,7 +758,7 @@ void set_read(logreader *current, int i, int j) {
 }
 
 #ifndef WIN32
-int check_pattern_expand(logreader *current) {
+int check_pattern_expand() {
     glob_t g;
     int err;
     int glob_offset;
@@ -808,7 +808,7 @@ int check_pattern_expand(logreader *current) {
                     if  (!i && !globs[j].gfiles[i].read) {
                         set_read(&globs[j].gfiles[i], i, j);
                     } else if (handle_file(i, j, 1, 1) ) {
-                        current->ign++;
+                        globs[j].gfiles[i].ign++;
                     }
                 }
                 glob_offset++;
