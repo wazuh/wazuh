@@ -31,7 +31,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
     int empty = 0;
     wm_command_t * command;
     size_t command_tag_length;
-    char * command_tag;
+    char * command_tag = NULL;
 
     if (!nodes) {
         mwarn("Tag <%s> not found at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
