@@ -1086,6 +1086,11 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
     parser_state state = V_OVALDEFINITIONS;
     char *found;
     char *tmp_file;
+    static const char *exclude_tags[] = {
+        // Debian
+        "oval:org.debian.oval:tst:1\"",
+        "oval:org.debian.oval:tst:2\""
+    };
 
     os_strdup(CVE_FIT_TEMP_FILE, tmp_file);
 
@@ -1146,8 +1151,8 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                     goto free_buffer;
                 break;
                 case V_DEFINITIONS:
-                    if (strstr(buffer, "oval:org.debian.oval:tst:1") ||
-                        strstr(buffer, "oval:org.debian.oval:tst:2")) {
+                    if (strstr(buffer, exclude_tags[0]) ||
+                        strstr(buffer, exclude_tags[1])) {
                         goto free_buffer;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_STATES;
@@ -1539,7 +1544,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
         } else if (!strcmp(node[i]->element, XML_CRITERION)) {
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_TEST_REF)) {
-                    static const char pending_state[] = "tst:10\0";
+                    static const char pending_state[] = "tst:10\"";
 
                     if (parsed_oval->vulnerabilities->state_id) {
                         if (double_condition != 2) {
