@@ -1,0 +1,427 @@
+# OSSEC Linux Audit - (C) 2018
+#
+# Released under the same license as OSSEC.
+# More details at the LICENSE file included with OSSEC or online
+# at: https://github.com/ossec/ossec-hids/blob/master/LICENSE
+#
+# [Application name] [any or all] [reference]
+# type:<entry name>;
+#
+# Type can be:
+#             - f (for file or directory)
+#             - r (registry entry)
+#             - p (process running)
+#
+# Additional values:
+# For the registry and for directories, use "->" to look for a specific entry and another
+# "->" to look for the value.
+# Also, use " -> r:^\. -> ..." to search all files in a directory
+# For files, use "->" to look for a specific value in the file.
+#
+# Values can be preceeded by: =: (for equal) - default
+#                             r: (for ossec regexes)
+#                             >: (for strcmp greater)
+#                             <: (for strcmp  lower)
+# Multiple patterns can be specified by using " && " between them.
+# (All of them must match for it to return true).
+
+# Hardening Checks for Microsoft Office 2016 
+# Based on Australian Cyper Security Centre Hardening Microsoft Office Guide - May 2018 (https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf)
+#
+#
+#7 Ensure Attack Surface Reduction is set to 'Enabled'
+[ACSC - Microsoft Office 2016 - 7 Ensure Attack Surface Reduction is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> !1;
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> !ExploitGuard_ASR_Rules;
+#
+#
+#7a Ensure 'Block executable content from email client and webmail' is set to 'Enabled'
+[ACSC - Microsoft Office 2016 - 7a Ensure 'Block executable content from email client and webmail' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550 -> !1;
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550;
+#
+#
+#7b Ensure 'block Office applications from creating child processes' is set to 'Enabled'
+[ACSC - Microsoft Office 2016 - 7b Ensure 'block Office applications from creating child processes' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D4F940AB-401B-4EFC-AADC-AD5F3C50688A -> !1;
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !D4F940AB-401B-4EFC-AADC-AD5F3C50688A;
+#
+#
+#7c Ensure 'block Office applications from creating executable content' is set to 'Enabled'
+[ACSC - Microsoft Office 2016 - 7c Ensure 'block Office applications from creating executable content' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 3B576869-A4EC-4529-8536-B80A7769E899 -> !1;
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !3B576869-A4EC-4529-8536-B80A7769E899;
+#
+#
+#7d Ensure 'block Office applications from injecting code into other processes' is set to 'Enabled'
+[ACSC - Microsoft Office 2016 - 7d Ensure 'block Office applications from injecting code into other processes' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84 -> !1;
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84;
+#
+#
+#7e Ensure 'block JavaScript and VBScript from launching downloaded executable content' is set to 'Enabled'
+[ACSC - Microsoft Office 2016 - 7e Ensure 'block JavaScript and VBScript from launching downloaded executable content' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D3E037E1-3EB8-44C8-A917-57927947596D -> !1;
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !D3E037E1-3EB8-44C8-A917-57927947596D;
+#
+#
+#7f Ensure 'block execution of potentially obfuscated scripts' is set to 'Enabled'
+[ACSC - Microsoft Office 2016 - 7f Ensure 'block execution of potentially obfuscated scripts' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 5BEB7EFE-FD9A-4556-801D-275E5FFC04CC -> !1;
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !5BEB7EFE-FD9A-4556-801D-275E5FFC04CC;
+#
+#
+#7g Ensure 'block Win32 API calls from Office macro' is set to 'Enabled'
+[ACSC - Microsoft Office 2016 - 7g Ensure 'block Win32 API calls from Office macro' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B -> !1;
+r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B;
+#
+#
+#17 Ensure 'Disable All Active X' is set to 'Enabled'
+[ACSC - Microsoft Office 2016 - 17 Ensure 'Disable All Active X' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\common\security -> disableallactivex -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\common\security -> !disableallactivex;
+#
+#
+#19a Ensure'Block all unmanaged add-ins' is set to 'Enabled' for Excel
+[ACSC - Microsoft Office 2016 - 19a Ensure'Block all unmanaged add-ins' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\resiliency -> restricttolist -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\resiliency -> !restricttolist;
+#
+#
+#19b Ensure 'List of managed add-ins' is set to 'Enabled' for Excel
+[ACSC - Microsoft Office 2016 - 19b Ensure 'List of managed add-ins' is set to 'Enabled'] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\resiliency\addinlist -> policyon -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\resiliency\addinlist -> !policyon;
+#
+#
+#19c Ensure'Block all unmanaged add-ins' is set to 'Enabled' for Excel
+[ACSC - Microsoft Office 2016 - 19c Ensure'Block all unmanaged add-ins' is set to 'Enabled' for Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\resiliency -> restricttolist -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\resiliency -> !restricttolist;
+#
+#
+#19d Ensure 'List of managed add-ins' is set to 'Enabled' for PowerPoint
+[ACSC - Microsoft Office 2016 - 19d Ensure 'List of managed add-ins' is set to 'Enabled' for PowerPoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\resiliency\addinlist -> policyon -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\resiliency\addinlist -> !policyon;
+#
+#
+#19e Ensure'Block all unmanaged add-ins' is set to 'Enabled' for Word
+[ACSC - Microsoft Office 2016 - 19e Ensure'Block all unmanaged add-ins' is set to 'Enabled' for Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\resiliency -> restricttolist -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\resiliency -> !restricttolist;
+#
+#
+#19f Ensure 'List of managed add-ins' is set to 'Enabled' for Word
+[ACSC - Microsoft Office 2016 - 19f Ensure 'List of managed add-ins' is set to 'Enabled' for Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\resiliency\addinlist -> policyon -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\resiliency\addinlist -> !policyon;
+#
+#
+#21 Ensure if Extension Hardening functionality in Microsoft Excel is enabled
+[ACSC - Microsoft Office 2016 - 21 Ensure if Extension Hardening functionality in Microsoft Excel is enabled] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security -> extensionhardening -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security -> !extensionhardening;
+#
+#
+#23a Ensure dBase III / IV files are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23a Ensure dBase III / IV files are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> dbasefiles -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !dbasefiles;
+#
+#
+#23b Ensure Dif and Sylk files are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23b Ensure Dif and Sylk files are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock ->	difandsylkfiles -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !difandsylkfiles;
+#
+#
+#23c Ensure Excel 2 macrosheets and add-in files are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23c Ensure Excel 2 macrosheets and add-in files are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl2macros -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl2macros;
+#
+#
+#23d Ensure Excel 2 worksheets are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23d Ensure Excel 2 worksheets are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock ->	xl2worksheets -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl2worksheets;
+#
+#
+#23e Ensure Excel 3 macrosheets and add-in files are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23e Ensure Excel 3 macrosheets and add-in files are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl3macros -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl3macros;
+#
+#
+#23f Ensure Excel 3 worksheets and add-in files are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23f Ensure Excel 3 worksheets and add-in files are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl3worksheets -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl3worksheets;
+#
+#
+#23g Ensure Excel 4 macrosheets and add-in files are blocked in Microsoft Escel
+[ACSC - Microsoft Office 2016 - 23g Ensure Excel 4 macrosheets and add-in files are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl4macros -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl4macros;
+#
+#
+#23h Ensure Excel 4 workbooks are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23h Ensure Excel 4 workbooks are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl4workbooks -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl4workbooks;
+#
+#
+#23i Ensure Excel 4 worksheets are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23i Ensure Excel 4 worksheets are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl4worksheets -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl4worksheets;
+#
+#
+#23j Ensure Excel 95 workbooks are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23j Ensure Excel 95 workbooks are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl95workbooks -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl95workbooks;
+#
+#
+#23k Ensure Excel 95-97 workbooks and templates are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23k Ensure Excel 95-97 workbooks and templates are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl9597workbooksandtemplates -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl9597workbooksandtemplates;
+#
+#
+#23l Ensure Set default file block behavior is set to 'Enabled' (Blocked files are not opened) in Microsoft Excel
+[ACSC - Microsoft Office 2016 - l Ensure Set default file block behavior is set to 'Enabled' (Blocked files are not opened) in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> openinprotectedview -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !openinprotectedview;
+#
+#
+#23m Ensure Web pages and Excel 2003 XML spreadsheets are blocked in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 23m Ensure Web pages and Excel 2003 XML spreadsheets are blocked in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock ->	htmlandxmlssfiles -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !htmlandxmlssfiles;
+#
+#
+#23n Ensure PowerPoint beta converters are blocked in Microsoft PowerPoint
+[ACSC - Microsoft Office 2016 - 23n Ensure PowerPoint beta converters are blocked in Microsoft PowerPoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\fileblock -> powerpoint12betafilesfromconverters -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\fileblock -> !powerpoint12betafilesfromconverters;
+#
+#
+#23o Ensure Set default file block behavior is set to 'Enabled' (Blocked files are not opened) in Microsoft Powerpoint
+[ACSC - Microsoft Office 2016 - 23o Ensure Set default file block behavior is set to 'Enabled' (Blocked files are not opened) in Microsoft Powerpoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\fileblock -> openinprotectedview -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\fileblock -> !openinprotectedview;
+#
+#
+#23p Ensure Set default file block behavior is set to 'Enabled' (Blocked files are not opened) in Microsoft Word 
+[ACSC - Microsoft Office 2016 - 23p Ensure Set default file block behavior is set to 'Enabled' (Blocked files are not opened) in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> openinprotectedview -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> !openinprotectedview;
+#
+#
+#23q Ensure Word 2 and earlier binary documents and templates are blocked in Microsoft Word
+[ACSC - Microsoft Office 2016 - 23q Ensure Word 2 and earlier binary documents and templates are blocked in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> word2files -> !2;
+#
+#
+#23r Ensure Word 6.0 binary documents and templates are blocked in Microsoft Word
+[ACSC - Microsoft Office 2016 - 23r Ensure Word 6.0 binary documents and templates are blocked in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> word60files -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> !word60files;
+#
+#
+#23s Ensure Word 95 binary documents and templates are blocked in Microsoft Word
+[ACSC - Microsoft Office 2016 - 23s Ensure Word 95 binary documents and templates  are blocked in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> word95files -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> !word95files;
+#
+#
+#23t Ensure Word 97 binary documents and templates are blocked in Microsoft Word
+[ACSC - Microsoft Office 2016 - 23t Ensure Word 97 binary documents and templates are blocked in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> word97files -> !2;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> !word97files;
+#
+#
+#25a Ensure Make hidden markup visible is set to 'Enabled' in Microsoft PowerPoint
+[ACSC - Microsoft Office 2016 - 25a Ensure Make hidden markup visible is set to 'Enabled' in Microsoft PowerPoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\options -> markupopensave -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\options -> !markupopensave;
+#
+#
+#25b Ensure Make hidden markup visible is set to 'Enabled' in Microsoft Word
+[ACSC - Microsoft Office 2016 - 25b Ensure Make hidden markup visible is set to 'Enabled' in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\options -> showmarkupopensave -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\options -> !showmarkupopensave;
+#
+#
+#27a Ensure Turn off error reporting for files that fail file validation is set to 'Enabled' in Microsoft Office
+[ACSC - Microsoft Office 2016 - 27a Ensure Turn off error reporting for files that fail file validation is set to 'Enabled' in Microsoft Office] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\security\filevalidation -> disablereporting -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\security\filevalidation -> !disablereporting;
+#
+#
+#27b Ensure Turn off file validation ins set to 'Disabled' in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 27b Ensure Turn off file validation ins set to 'Disabled' in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\filevalidation -> enableonload -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\filevalidation -> !enableonload;
+#
+#
+#27c Ensure Turn off file validation ins set to 'Disabled' in Microsoft PowerPoint
+[ACSC - Microsoft Office 2016 - 27c Ensure Turn off file validation ins set to 'Disabled' in Microsoft PowerPoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\filevalidation -> enableonload -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\filevalidation -> !enableonload;
+#
+#
+#27d Ensure Turn off file validation ins set to 'Disabled' in Microsoft Word
+[ACSC - Microsoft Office 2016 - 27d Ensure Turn off file validation ins set to 'Disabled' in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\filevalidation -> enableonload -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\filevalidation -> !enableonload;
+#
+#
+#29a Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 29a Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> disableinternetfilesinpv -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> !disableinternetfilesinpv;
+#
+#
+#29b Ensure Do not open files in unsafe locations in Protected View is set to 'Disabled' in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 29b Ensure Do not open files in unsafe locations in Protected View is set to 'Disabled' in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> disableunsafelocationsinpv -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> !disableunsafelocationsinpv;
+#
+#
+#29c Ensure Set document behaviour if file validation fails is set to 'Enabled' (Block files) in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 29c Ensure Set document behaviour if file validation fails is set to 'Enabled' (Block files) in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\filevalidation -> openinprotectedview -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\filevalidation -> !openinprotectedview;
+#
+#
+#29d Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 29d Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> disableattachmentsinpv -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> !disableattachmentsinpv;
+#
+#
+#29e Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft PowerPoint
+[ACSC - Microsoft Office 2016 - 29e Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft PowerPoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> disableinternetfilesinpv -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> !disableinternetfilesinpv;
+#
+#
+#29f Ensure Do not open files in unsafe locations in Protected View is set to 'Disabled' in Microsoft PowerPoint
+[ACSC - Microsoft Office 2016 - 29f Ensure Do not open files in unsafe locations in Protected View is set to 'Disabled' in Microsoft PowerPoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> disableunsafelocationsinpv -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> !disableunsafelocationsinpv;
+#
+#
+#29g Ensure Set document behaviour if file validation fails is set to 'Enabled' (Block files) in Microsoft PowerPoint
+[ACSC - Microsoft Office 2016 - 29g Ensure Set document behaviour if file validation fails is set to 'Enabled' (Block files) in Microsoft PowerPoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\filevalidation -> openinprotectedview -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\filevalidation -> !openinprotectedview;
+#
+#
+#29h Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft PowerPoint
+[ACSC - Microsoft Office 2016 - 29h Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft PowerPoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> disableattachmentsinpv -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> !disableattachmentsinpv;
+#
+#
+#29i Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft Word
+[ACSC - Microsoft Office 2016 - 29i Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> disableinternetfilesinpv -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> disableinternetfilesinpv;
+#
+#
+#29j Ensure Do not open files in unsafe locations in Protected View  is set to 'Disabled' in Microsoft Word
+[ACSC - Microsoft Office 2016 - 29j Ensure Do not open files in unsafe locations in Protected View  is set to 'Disabled' in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> disableunsafelocationsinpv -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> !disableunsafelocationsinpv;
+#
+#
+#29k Ensure Set document behaviour if file validation fails is set to 'Enable' (Block files) in Microsoft Word
+[ACSC - Microsoft Office 2016 - 29k Ensure Set document behaviour if file validation fails is set to 'Enable' (Block files) in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\filevalidation -> openinprotectedview -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\filevalidation -> !openinprotectedview;
+#
+#
+#29l Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft Word
+[ACSC - Microsoft Office 2016 - 29l Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> disableattachmentsinpv -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> !disableattachmentsinpv;
+#
+#
+#31a Ensure Turn off trusted documents is set to 'Enabled' in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 31a Ensure Turn off trusted documents is set to 'Enabled' in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\trusted documents -> disabletrusteddocuments -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\trusted documents -> !disabletrusteddocuments;
+#
+#
+#31b Ensure Turn off Trusted Documents on the network is set to 'Enabled' in Microsoft Excel
+[ACSC - Microsoft Office 2016 - 31b Ensure Turn off Trusted Documents on the network is set to 'Enabled' in Microsoft Excel] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\trusted documents -> disablenetworktrusteddocuments -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\trusted documents -> !disablenetworktrusteddocuments;
+#
+#
+#31c Ensure Turn off trusted documents is set to 'Enabled' in Microsoft Powerpoint
+[ACSC - Microsoft Office 2016 - 31c Ensure Turn off trusted documents is set to 'Enabled' in Microsoft Powerpoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\trusted documents -> disabletrusteddocuments -> disabletrusteddocuments -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\trusted documents -> disabletrusteddocuments -> !disabletrusteddocuments;
+#
+#
+#31d Ensure Turn off Trusted Documents on the network is set to 'Enabled' in Microsoft Powerpoint
+[ACSC - Microsoft Office 2016 - 31d Ensure Turn off Trusted Documents on the network is set to 'Enabled' in Microsoft Powerpoint] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\trusted documents -> disabletrusteddocuments -> disablenetworktrusteddocuments -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\trusted documents -> disabletrusteddocuments -> !disablenetworktrusteddocuments;
+#
+#
+#31e Ensure Turn off trusted documents is set to 'Enabled' in Microsoft Word
+[ACSC - Microsoft Office 2016 - 31e Ensure Turn off trusted documents is set to 'Enabled' in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\trusted documents -> disabletrusteddocuments -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\trusted documents -> !disabletrusteddocuments;
+#
+#
+#31f Ensure Turn off Trusted Documents on the network is set to 'Enabled' in Microsoft Word
+[ACSC - Microsoft Office 2016 - 31f Ensure Turn off Trusted Documents on the network is set to 'Enabled' in Microsoft Word] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\trusted documents -> disablenetworktrusteddocuments -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\trusted documents -> !disablenetworktrusteddocuments;
+#
+#
+#34a Ensure Allow including screenshot with Office Feedback is set to 'Disabled' in Microsoft Office
+[ACSC - Microsoft Office 2016 - 34a Ensure Allow including screenshot with Office Feedback is set to 'Disabled' in Microsoft Office] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\feedback -> 	includescreenshot -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\feedback ->  !includescreenshot;
+#
+#
+#34b Ensure Automatically receive small updates to improve reliability is set to 'Disabled' in Microsoft Office
+[ACSC - Microsoft Office 2016 - 34b Ensure Automatically receive small updates to improve reliability is set to 'Disabled' in Microsoft Office] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> updatereliabilitydata -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> !updatereliabilitydata;
+#
+#
+#34c Ensure Disable Opt-in Wizard on first run is set to 'Enabled' in Microsoft Office
+[ACSC - Microsoft Office 2016 - 34c Ensure Disable Opt-in Wizard on first run is set to 'Enabled' in Microsoft Office] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\general -> shownfirstrunoptin -> !1;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\general -> !shownfirstrunoptin;
+#
+#
+#34d Ensure Enable Customer Experience Improvement Program is set to 'Disabled' in Microsoft Office
+[ACSC - Microsoft Office 2016 - 34d Ensure Enable Customer Experience Improvement Program is set to 'Disabled' in Microsoft Office] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> qmenable -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> !qmenable;
+#
+#
+#34e Ensure Page Send Office Feedback is set to 'Disabled' in Microsoft Office
+[ACSC - Microsoft Office 2016 - 34e Ensure Page Send Office Feedback is set to 'Disabled' in Microsoft Office] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\feedback -> enabled -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\feedback -> !enabled;
+#
+#
+#34f Ensure Send personal information is set to 'Disabled' in Microsoft Office
+[ACSC - Microsoft Office 2016 - 34f Ensure Send personal information is set to 'Disabled' in Microsoft Office] [any] [https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf]
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> sendcustomerdata -> !0;
+r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> !sendcustomerdata;
+#
+#
+#
