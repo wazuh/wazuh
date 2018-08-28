@@ -295,8 +295,11 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         setsid();
         if (nice(wm_task_nice)) {}
-
+#ifdef __linux__
         if (execvpe(argv[0], argv, environ) < 0)
+#else
+        if (execvp(argv[0], argv) < 0)
+#endif
             exit(EXECVE_ERROR);
 
         break;
