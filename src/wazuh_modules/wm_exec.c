@@ -298,7 +298,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 #ifdef USE_EXEC_ENVIRON
         if (execvpe(argv[0], argv, environ) < 0)
 #else
-        if (execve(argv[0], argv) < 0)
+        if (execvp(argv[0], argv) < 0)
 #endif
             exit(EXECVE_ERROR);
 
