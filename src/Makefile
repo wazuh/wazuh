@@ -585,6 +585,7 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
 	cd win32/ && ./unix2dos.pl ../../active-response/win/route-null.cmd > route-null.cmd
+	cd win32/ && ./unix2dos.pl ../../active-response/win/netsh-win-2016.cmd > netsh-win-2016.cmd
 	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
@@ -1556,6 +1557,7 @@ clean-windows:
 	rm -f win32/default-ossec.conf
 	rm -f win32/restart-ossec.cmd
 	rm -f win32/route-null.cmd
+	rm -f win32/netsh-win-2016.cmd
 	rm -f ${win32_o} ${win32_ui_o} win32/win_service_rk.o
 	rm -f win32/icon.o win32/resource.o
 	rm -f ${WINDOWS_BINS}

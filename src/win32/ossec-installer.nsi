@@ -202,10 +202,11 @@ Section "Wazuh Agent (required)" MainSec
     File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
     File /oname=active-response\bin\route-null-2012.cmd route-null-2012.cmd
+    File /oname=active-response\bin\netsh-win-2016.cmd netsh-win-2016.cmd
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
     File /oname=active-response\bin\netsh.cmd netsh.cmd
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
-	File agent-auth.exe
+	  File agent-auth.exe
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll

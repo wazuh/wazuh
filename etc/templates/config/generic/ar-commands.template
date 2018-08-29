@@ -38,3 +38,10 @@
     <expect>srcip</expect>
     <timeout_allowed>yes</timeout_allowed>
   </command>
+
+  <command>
+    <name>netsh-win-2016</name>
+    <executable>netsh-win-2016.cmd</executable>
+    <expect>srcip</expect>
+    <timeout_allowed>yes</timeout_allowed>
+  </command>

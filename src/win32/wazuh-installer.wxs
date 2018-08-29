@@ -157,6 +157,8 @@
                             </Component>
                             <Component Id="NETSH.CMD" DiskId="1" Guid="C59AD066-EB30-4C67-B476-4CFA8D74947D">
                                 <File Id="NETSH.CMD" Name="netsh.cmd" Source="netsh.cmd" />
+                            <Component Id="NETSH_WIN_2016.CMD" DiskId="1" Guid="B2011FD2-3F82-4FFD-B6C3-32665037C4EA">
+                                <File Id="NETSH_WIN_2016.CMD" Name="netsh-win-2016.cmd" Source="netsh-win-2016.cmd" />
                             </Component>
                         </Directory>
                         <Component Id="ACTIVE_RESPONSES.LOG" DiskId="1" Guid="249F3287-B69D-46F0-8888-3FED24998E07">
@@ -305,6 +307,7 @@
             <ComponentRef Id="ROUTE_NULL.CMD" />
             <ComponentRef Id="ROUTE_NULL_2012.CMD" />
             <ComponentRef Id="NETSH.CMD" />
+            <ComponentRef Id="NETSH_WIN_2016.CMD" />
             <ComponentRef Id="ACTIVE_RESPONSES.LOG" />
             <ComponentRef Id="ROOTKIT_FILES.TXT" />
             <ComponentRef Id="ROOTKIT_TROJANS.TXT" />
