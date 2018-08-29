@@ -620,13 +620,21 @@
                   "type": "date",
                   "doc_values": "true"
                 },
-                "sourceIPAddress": {
+                "source_ip_address": {
                   "type": "ip",
                   "doc_values": "true"
                 },
-                "resource.instanceDetails.networkInterfaces.privateIpAddress": {
-                  "type": "ip",
-                  "doc_values": "true"
+                "resource.instanceDetails.networkInterfaces": {
+                  "properties": {
+                    "privateIpAddress": {
+                      "type": "ip",
+                      "doc_values": "true"
+                    },
+                    "publicIp": {
+                      "type": "ip",
+                      "doc_values": "true"
+                    }
+                  }
                 },
                 "service": {
                   "properties": {

@@ -399,6 +399,10 @@ class AWSBucket:
         # turn some list fields into dictionaries
         single_element_list_to_dictionary(event)
 
+        # in order to support both old and new index pattern, change data.aws.sourceIPAddress fieldname and parse that one with type ip
+        if 'sourceIPAddress' in event['aws']:
+            event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
+
 
     def decompress_file(self, log_key):
         def decompress_gzip(raw_object):
