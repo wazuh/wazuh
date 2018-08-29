@@ -157,6 +157,7 @@
                             </Component>
                             <Component Id="NETSH.CMD" DiskId="1" Guid="C59AD066-EB30-4C67-B476-4CFA8D74947D">
                                 <File Id="NETSH.CMD" Name="netsh.cmd" Source="netsh.cmd" />
+                            </Component>
                             <Component Id="NETSH_WIN_2016.CMD" DiskId="1" Guid="B2011FD2-3F82-4FFD-B6C3-32665037C4EA">
                                 <File Id="NETSH_WIN_2016.CMD" Name="netsh-win-2016.cmd" Source="netsh-win-2016.cmd" />
                             </Component>
