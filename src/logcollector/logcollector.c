@@ -48,7 +48,7 @@ static pthread_mutex_t win_el_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 /* Multiple readers / one write mutex */
-static pthread_rwlock_t files_update_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_rwlock_t files_update_rwlock;
 
 
 static char *rand_keepalive_str(char *dst, int size)
@@ -81,6 +81,8 @@ void LogCollectorStart()
     logreader *current;
 
     set_sockets();
+    pthread_rwlock_init(&files_update_rwlock, NULL);
+
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
