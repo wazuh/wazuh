@@ -136,7 +136,7 @@ sql_find_last_log_processed = """
                                     aws_account_id='{aws_account_id}' AND
                                     aws_region = '{aws_region}'
                                   ORDER BY
-                                    ROWID DESC
+                                    created_date DESC
                                   LIMIT 1;"""
 
 sql_db_maintenance = """DELETE
@@ -197,7 +197,7 @@ class AWSBucket:
         self.db_table_name = 'trail_progress'
         self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
         self.db_connector = sqlite3.connect(self.db_path)
-        self.retain_db_records = 100
+        self.retain_db_records = 500
         self.reparse = reparse
         self.bucket = bucket
         self.client = self.get_s3_client(access_key, secret_key, profile, iam_role_arn)
@@ -371,9 +371,10 @@ class AWSBucket:
             try:
                 created_date = query_results.fetchone()[0]
                 # Existing logs processed, but older than only_logs_after
-                if int(created_date) < int(self.only_logs_after.strftime('%Y%m%d')):
-                    filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
-            except TypeError:
+                if created_date > int(self.only_logs_after.strftime('%Y%m%d')):
+                    self.only_logs_after = datetime.strptime(str(created_date), '%Y%m%d')
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
+            except TypeError as e:
                 # No logs processed for this account/region, but if only_logs_after has been set
                 if self.only_logs_after:
                     filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
@@ -388,7 +389,20 @@ class AWSBucket:
         return filter_args
 
     def reformat_msg(self, event):
-        raise NotImplementedError
+        def single_element_list_to_dictionary(my_event):
+            for name, value in my_event.items():
+                if isinstance(value, list) and len(value) == 1:
+                    my_event[name] = value[0]
+                elif isinstance(value, dict):
+                    single_element_list_to_dictionary(my_event[name])
+        
+        # turn some list fields into dictionaries
+        single_element_list_to_dictionary(event)
+
+        # in order to support both old and new index pattern, change data.aws.sourceIPAddress fieldname and parse that one with type ip
+        if 'sourceIPAddress' in event['aws']:
+            event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
+
 
     def decompress_file(self, log_key):
         def decompress_gzip(raw_object):
@@ -569,43 +583,14 @@ class AWSCloudtrailBucket(AWSBucket):
 
     def reformat_msg(self, event):
         debug('++ Reformat message', 3)
+        AWSBucket.reformat_msg(self, event)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
-        for field_to_str in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_str in event['aws']:
-                try:
-                    debug('++ Reformat field: {}'.format(field_to_str), 3)
-                    # Nested json
-                    if 'policyDocument' in event['aws'][field_to_str]:
-                        event['aws']['{}_policyDocument'.format(field_to_str)] = json.dumps(
-                            event['aws'][field_to_str]['policyDocument'],
-                            ensure_ascii=True,
-                            indent=2,
-                            sort_keys=True)
-                        event['aws'][field_to_str]['policyDocument'] = 'See field {}_policyDocument'.format(
-                            field_to_str)
-                    event['aws'][field_to_str] = json.dumps(
-                        event['aws'][field_to_str],
-                        ensure_ascii=True,
-                        indent=2,
-                        sort_keys=True)
-                except:
-                    debug('++ Failed to convert field to string: {}'.format(field_to_str), 1)
-                    event['aws'][field_to_str] = 'Unable to convert field to string: {field}'.format(field=field_to_str)
+        # ES mapping expects for a dictionary, if the field is any other type (list or string)
+        # turn it into a dictionary
+        for field_to_cast in ['additionalEventData', 'responseElements', 'requestParameters']:
+            if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
+                event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
 
-        debug('++ Shrink message', 3)
-        # If msg too large, start truncating
-        for field_to_shrink in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_shrink not in event['aws']:
-                continue
-            if event['aws'][field_to_shrink] == 'Unable to convert field to string: {field}'.format(field=field_to_shrink):
-                continue
-
-            if len(json.dumps(event).encode()) > self.max_queue_buffer:
-                debug('++ Message too large; truncating {field}'.format(field=field_to_shrink), 2)
-                event['aws'][field_to_shrink] = 'Value truncated because event msg too large for socket buffer'
-            else:
-                debug('++ Message not too large; skip out', 3)
-                break
         return event
 
     def find_account_ids(self):
@@ -665,24 +650,9 @@ class AWSFirehouseBucket(AWSBucket):
         return self.prefix
 
     def reformat_msg(self, event):
-        def single_element_list_to_dictionary(my_event):
-            for name, value in my_event.items():
-                if isinstance(value, list) and len(value) == 1:
-                    my_event[name] = value[0]
-                elif isinstance(value, dict):
-                    single_element_list_to_dictionary(my_event[name])
-
-        try:
-            # remove aws.event.trigger field, since it has repeated data and increases log size.
-            if event['aws']['source'] == 'macie' and 'trigger' in event['aws']:
-                del event['aws']['trigger']
-
-            # turn some list fields into dictionaries
-            single_element_list_to_dictionary(event)
-
-        except Exception as e:
-            debug("Error reformatting event {}.".format(json.dumps(event)), 2)
-            raise e
+        AWSBucket.reformat_msg(self, event)
+        if event['aws']['source'] == 'macie' and 'trigger' in event['aws']:
+            del event['aws']['trigger']
 
         return event
 
