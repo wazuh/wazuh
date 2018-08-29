@@ -371,7 +371,7 @@ class AWSBucket:
             try:
                 created_date = query_results.fetchone()[0]
                 # Existing logs processed, but older than only_logs_after
-                if int(created_date) > int(self.only_logs_after.strftime('%Y%m%d')):
+                if created_date > int(self.only_logs_after.strftime('%Y%m%d')):
                     self.only_logs_after = datetime.strptime(str(created_date), '%Y%m%d')
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
             except TypeError as e:
