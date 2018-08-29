@@ -152,6 +152,9 @@
                             <Component Id="ROUTE_NULL.CMD" DiskId="1" Guid="249F3287-B69D-46F0-9EB8-3FED24998E07">
                                 <File Id="ROUTE_NULL.CMD" Name="route-null.cmd" Source="route-null.cmd" />
                             </Component>
+                            <Component Id="NETSH_WIN_2016.CMD" DiskId="1" Guid="B2011FD2-3F82-4FFD-B6C3-32665037C4EA">
+                                <File Id="NETSH_WIN_2016.CMD" Name="netsh-win-2016.cmd" Source="netsh-win-2016.cmd" />
+                            </Component>
                         </Directory>
                         <Component Id="ACTIVE_RESPONSES.LOG" DiskId="1" Guid="249F3287-B69D-46F0-8888-3FED24998E07">
                             <File Id="ACTIVE_RESPONSES.LOG" Name="active-responses.log" Source="active-responses.log" />
@@ -297,6 +300,7 @@
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_OSSEC.CMD" />
             <ComponentRef Id="ROUTE_NULL.CMD" />
+            <ComponentRef Id="NETSH_WIN_2016.CMD" />
             <ComponentRef Id="ACTIVE_RESPONSES.LOG" />
             <ComponentRef Id="ROOTKIT_FILES.TXT" />
             <ComponentRef Id="ROOTKIT_TROJANS.TXT" />
