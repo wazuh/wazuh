@@ -136,7 +136,7 @@ sql_find_last_log_processed = """
                                     aws_account_id='{aws_account_id}' AND
                                     aws_region = '{aws_region}'
                                   ORDER BY
-                                    ROWID DESC
+                                    created_date DESC
                                   LIMIT 1;"""
 
 sql_db_maintenance = """DELETE
@@ -197,7 +197,7 @@ class AWSBucket:
         self.db_table_name = 'trail_progress'
         self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
         self.db_connector = sqlite3.connect(self.db_path)
-        self.retain_db_records = 100
+        self.retain_db_records = 500
         self.reparse = reparse
         self.bucket = bucket
         self.client = self.get_s3_client(access_key, secret_key, profile, iam_role_arn)
@@ -371,9 +371,10 @@ class AWSBucket:
             try:
                 created_date = query_results.fetchone()[0]
                 # Existing logs processed, but older than only_logs_after
-                if int(created_date) < int(self.only_logs_after.strftime('%Y%m%d')):
-                    filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
-            except TypeError:
+                if int(created_date) > int(self.only_logs_after.strftime('%Y%m%d')):
+                    self.only_logs_after = datetime.strptime(str(created_date), '%Y%m%d')
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
+            except TypeError as e:
                 # No logs processed for this account/region, but if only_logs_after has been set
                 if self.only_logs_after:
                     filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
