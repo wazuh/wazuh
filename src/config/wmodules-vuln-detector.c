@@ -410,6 +410,8 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                                     } else {
                                         merror("Invalid Ubuntu version '%s'.", version);
                                     }
+                                    if(precise || trusty || xenial)
+                                        vulnerability_detector->flags.u_flags.update_ubuntu = 1;
                                     version = &version[k] + 1;
                                     k = 0;
                                 }
@@ -494,6 +496,9 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                                     } else {
                                         merror("Invalid RedHat version '%s'.", version);
                                     }
+                                    if(rhel5 || rhel6 || rhel7)
+                                        vulnerability_detector->flags.u_flags.update_redhat = 1;
+
                                     version = &version[k] + 1;
                                     k = 0;
                                 }
