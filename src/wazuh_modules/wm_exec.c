@@ -295,7 +295,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         setsid();
         if (nice(wm_task_nice)) {}
-#ifdef __linux__
+#ifdef USE_EXEC_ENVIRON
         if (execvpe(argv[0], argv, environ) < 0)
 #else
         if (execvp(argv[0], argv) < 0)
