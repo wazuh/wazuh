@@ -1248,7 +1248,7 @@ int wm_vulnerability_detector_parser(OS_XML *xml, XML_NODE node, wm_vulnerabilit
     char double_condition = 0;
     vulnerability *vuln;
     char *found;
-    XML_NODE chld_node;
+    XML_NODE chld_node = NULL;
     distribution dist = update->dist_ref;
     static const char *install_check = "is installed";
     static const char *XML_OVAL_DEFINITIONS = "oval_definitions";

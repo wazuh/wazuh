@@ -13,7 +13,7 @@
 #include "remoted.h"
 #include <pthread.h>
 
-remoted_state_t remoted_state = {0};
+remoted_state_t remoted_state = {0, 0, 0, 0, 0};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int rem_write_state();
 static char *refresh_time;

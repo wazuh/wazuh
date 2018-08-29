@@ -505,7 +505,6 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 {
-    int i;
     pthread_t tlauncher, treader;
 
     if (osquery->disable) {
@@ -516,9 +515,12 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     minfo("Module started.");
     osquery->msg_delay = 1000000 / wm_max_eps;
 
+#ifndef WIN32
+    int i;
+
     // Connect to queue
 
-    for (i = 0; osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE), osquery->queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++) {
+    for (i = 0; i < WM_MAX_ATTEMPTS && (osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE), osquery->queue_fd < 0); i++) {
         // Trying to connect to queue
         sleep(WM_MAX_WAIT);
     }
@@ -527,6 +529,8 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
         mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
         return NULL;
     }
+
+#endif
 
     if (osquery->run_daemon) {
         // Handle configuration
