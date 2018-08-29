@@ -206,7 +206,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
     File /oname=active-response\bin\netsh.cmd netsh.cmd
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
-	  File agent-auth.exe
+    File agent-auth.exe
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll

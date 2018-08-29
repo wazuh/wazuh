@@ -155,7 +155,7 @@
                             <Component Id="ROUTE_NULL_2012.CMD" DiskId="1" Guid="C59AD066-EB30-4C67-B476-4CFA8D74947D">
                                 <File Id="ROUTE_NULL_2012.CMD" Name="route-null-2012.cmd" Source="route-null-2012.cmd" />
                             </Component>
-                            <Component Id="NETSH.CMD" DiskId="1" Guid="C59AD066-EB30-4C67-B476-4CFA8D74947D">
+                            <Component Id="NETSH.CMD" DiskId="1" Guid="292E9082-56BE-4258-9224-7F36A59CA433">
                                 <File Id="NETSH.CMD" Name="netsh.cmd" Source="netsh.cmd" />
                             </Component>
                             <Component Id="NETSH_WIN_2016.CMD" DiskId="1" Guid="B2011FD2-3F82-4FFD-B6C3-32665037C4EA">
