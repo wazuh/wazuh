@@ -265,10 +265,10 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
             }
             else if(status == 2)
                 mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, strstr(output, "aws.py: error:")+14);
-            else if(status > 2)
-                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, strstr(output, "ERROR: ")+7);
             else
-                mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
+                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, strstr(output, "ERROR: ")+7);
+
+            mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
         } else {
             mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
         }

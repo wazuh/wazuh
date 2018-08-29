@@ -42,7 +42,6 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     int j = 0;
     xml_node **children = NULL;
     wm_aws *aws_config;
-    os_calloc(1, sizeof(wm_aws), aws_config);
     wm_aws_bucket *cur_bucket = NULL;
 
     if (!nodes) {
@@ -174,10 +173,12 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
                         mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CUSTOM_BUCKET_TYPE);
+                        OS_ClearNode(children);
                         return OS_INVALID;
                     }
                 } else {
                     mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_BUCKET_TYPE);
+                    OS_ClearNode(children);
                     return OS_INVALID;
                 }
 
@@ -196,6 +197,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     if (!strcmp(children[j]->element, XML_BUCKET_NAME)) {
                         if (strlen(children[j]->content) == 0) {
                             merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET_NAME, WM_AWS_CONTEXT.name);
+                            OS_ClearNode(children);
                             return OS_INVALID;
                         }
                         free(cur_bucket->bucket);
@@ -203,6 +205,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     } else if (!strcmp(children[j]->element, XML_AWS_ACCOUNT_ID)) {
                         if (strlen(children[j]->content) == 0) {
                             merror("Empty content for tag '%s' at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+                            OS_ClearNode(children);
                             return OS_INVALID;
                         }
                         free(cur_bucket->aws_account_id);
@@ -214,6 +217,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             cur_bucket->remove_from_bucket = 0;
                         } else {
                             merror("Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);
+                            OS_ClearNode(children);
                             return OS_INVALID;
                         }
                     } else if (!strcmp(children[j]->element, XML_ACCESS_KEY)) {
