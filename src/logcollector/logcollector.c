@@ -1178,7 +1178,6 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     break;
                 }
             }
-            w_rwlock_unlock(&files_update_rwlock);
 
             if (pthread_mutex_trylock(&current->mutex) == 0){
 
@@ -1192,6 +1191,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         }
                     }
                     pthread_mutex_unlock (&current->mutex);
+                    w_rwlock_unlock(&files_update_rwlock);
                     continue;
                 }
                 /* Windows with IIS logs is very strange.
@@ -1206,6 +1206,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 if ((r = fgetc(current->fp)) == EOF) {
                     clearerr(current->fp);
                     pthread_mutex_unlock (&current->mutex);
+                    w_rwlock_unlock(&files_update_rwlock);
                     continue;
                 }
 
@@ -1251,6 +1252,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         if (handle_file(i, j, 1, 1)) {
                             current->ign++;
                             pthread_mutex_unlock (&current->mutex);
+                            w_rwlock_unlock(&files_update_rwlock);
                             continue;
                         }
     #ifdef WIN32
@@ -1263,9 +1265,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     pthread_mutex_unlock (&current->mutex);
                 }
             }
-            else{
-                continue;
-            }
+
+            w_rwlock_unlock(&files_update_rwlock);
         }
     }
 
