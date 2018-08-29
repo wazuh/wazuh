@@ -42,7 +42,6 @@ logsocket default_agent = { .name = "agent" };
 
 /* Output thread variables */
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t available = PTHREAD_COND_INITIALIZER;
 #ifdef WIN32
 static pthread_mutex_t win_el_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
@@ -995,9 +994,7 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     {
         w_mutex_lock(&mutex);
 
-        while (msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table, targets[i].log_socket->name), !msg) {
-            w_cond_wait(&available, &mutex);
-        }
+        msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table, targets[i].log_socket->name);
 
         w_mutex_unlock(&mutex);
         w_msg_queue_push(msg, str, file, size, &targets[i], queue_mq);
