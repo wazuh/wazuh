@@ -1,9 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.6.0]
+## [v3.7.0]
 
-## Added
+
+## [v3.6.0] - 2018-08-29
+
+### Added
 
 - Add rescanning of expanded files with wildcards in logcollector ([#332](https://github.com/wazuh/wazuh/pull/332))
 - Parallelization of logcollector ([#627](https://github.com/wazuh/wazuh/pull/672))
