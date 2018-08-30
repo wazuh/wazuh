@@ -629,6 +629,10 @@ class WazuhDBQuery(object):
             self.request['limit'] = self.limit
 
 
+    def _sort_query(self, field):
+        return '{} {}'.format(self.fields[field], self.sort['order'])
+
+
     def _add_sort_to_query(self):
         if self.sort:
             if self.sort['fields']:
@@ -638,7 +642,7 @@ class WazuhDBQuery(object):
                     raise WazuhException(1403, "Allowerd sort fields: {}. Fields: {}".format(
                         allowed_sort_fields, ', '.join(sort_fields - allowed_sort_fields)
                     ))
-                self.query += ' ORDER BY ' + ','.join(['{0} {1}'.format(self.fields[i], self.sort['order']) for i in sort_fields])
+                self.query += ' ORDER BY ' + ','.join([self._sort_query(i) for i in sort_fields])
             else:
                 self.query += ' ORDER BY {0} {1}'.format(self.default_sort_field, self.sort['order'])
         else:

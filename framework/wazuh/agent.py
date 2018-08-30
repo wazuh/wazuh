@@ -83,6 +83,16 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         self.query += ' AND id != 0 '
 
 
+    def _sort_query(self, field):
+        if field == 'status':
+            # Order by status ASC is the same that order by last_keepalive DESC.
+            return '{} {}'.format('last_keepAlive', 'asc' if self.sort['order'] == 'desc' else 'desc')
+        elif field == 'os.version':
+            return "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(self.sort['order'])
+        else:
+            return WazuhDBQuery._sort_query(self, field)
+
+
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
