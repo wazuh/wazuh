@@ -108,13 +108,30 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
 
     if (aws_config->enabled) cJSON_AddStringToObject(wm_aws,"disabled","no"); else cJSON_AddStringToObject(wm_aws,"disabled","yes");
     if (aws_config->run_on_start) cJSON_AddStringToObject(wm_aws,"run_on_start","yes"); else cJSON_AddStringToObject(wm_aws,"run_on_start","no");
-    if (aws_config->remove_from_bucket) cJSON_AddStringToObject(wm_aws,"remove_from_bucket","yes"); else cJSON_AddStringToObject(wm_aws,"remove_from_bucket","no");
+    if (aws_config->skip_on_error) cJSON_AddStringToObject(wm_aws,"skip_on_error","yes"); else cJSON_AddStringToObject(wm_aws,"skip_on_error","no");
     cJSON_AddNumberToObject(wm_aws,"interval",aws_config->interval);
-    if (aws_config->bucket) cJSON_AddStringToObject(wm_aws,"bucket",aws_config->bucket);
-    if (aws_config->access_key) cJSON_AddStringToObject(wm_aws,"access_key",aws_config->access_key);
-    if (aws_config->secret_key) cJSON_AddStringToObject(wm_aws,"secret_key",aws_config->secret_key);
-
-    cJSON_AddItemToObject(root,"aws-cloudtrail",wm_aws);
+    if (aws_config->buckets) {
+        wm_aws_bucket *iter;
+        cJSON *arr_buckets = cJSON_CreateArray();
+        for (iter = aws_config->buckets; iter; iter = iter->next) {
+            cJSON *buck = cJSON_CreateObject();
+            if (iter->bucket) cJSON_AddStringToObject(buck,"name",iter->bucket);
+            if (iter->access_key) cJSON_AddStringToObject(buck,"access_key",iter->access_key);
+            if (iter->secret_key) cJSON_AddStringToObject(buck,"secret_key",iter->secret_key);
+            if (iter->aws_profile) cJSON_AddStringToObject(buck,"aws_profile",iter->aws_profile);
+            if (iter->iam_role_arn) cJSON_AddStringToObject(buck,"iam_role_arn",iter->iam_role_arn);
+            if (iter->aws_account_id) cJSON_AddStringToObject(buck,"aws_account_id",iter->aws_account_id);
+            if (iter->aws_account_alias) cJSON_AddStringToObject(buck,"aws_account_alias",iter->aws_account_alias);
+            if (iter->trail_prefix) cJSON_AddStringToObject(buck,"path",iter->trail_prefix);
+            if (iter->only_logs_after) cJSON_AddStringToObject(buck,"only_logs_after",iter->only_logs_after);
+            if (iter->regions) cJSON_AddStringToObject(buck,"regions",iter->regions);
+            if (iter->type) cJSON_AddStringToObject(buck,"type",iter->type);
+            if (iter->remove_from_bucket) cJSON_AddStringToObject(buck,"remove_from_bucket","yes"); else cJSON_AddStringToObject(buck,"remove_from_bucket","no");
+            cJSON_AddItemToArray(arr_buckets,buck);
+        }
+        if (cJSON_GetArraySize(arr_buckets) > 0) cJSON_AddItemToObject(wm_aws,"buckets",arr_buckets);
+    }
+    cJSON_AddItemToObject(root,"aws-s3",wm_aws);
 
     return root;
 }
