@@ -1,6 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.6.1]
+
+## Added
+
+### Changed
+
+### Fixed
+
+- Fix segmentation fault when the agent version is empty in Vulnerability Detector. ([#1191](https://github.com/wazuh/wazuh/pull/1191))
+
+
 ## [v3.6.0]
 
 ## Added

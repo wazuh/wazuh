@@ -49,6 +49,7 @@
 #define VU_INS_TEST_SEC       "(5484): Inserting test section..."
 #define VU_SYS_CHECKED        "(5485): The last package inventory for the agent %s (ID: %s) has already been checked. The vulnerability search is omitted."
 #define VU_AGENT_START        "(5486): Starting vulnerability assessment for agent %s."
-#define VU_AGENT_FINISH       "(5486): Finished vulnerability assessment for agent %s."
+#define VU_AGENT_FINISH       "(5487): Finished vulnerability assessment for agent %s."
+#define VU_AG_NEVER_CON       "(5488): Agent '%s' hasn has never connected."
 
 #endif
