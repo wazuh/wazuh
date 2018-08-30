@@ -205,8 +205,9 @@ start()
     SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
     echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
-    echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
-    if [ ! $? = 0 ]; then
+    TEST=$(${DIR}/bin/ossec-logtest -t  2>&1)
+    echo $TEST
+    if [ ! -z "$TEST" ]; then
         echo "ossec-analysisd: Configuration error. Exiting."
         exit 1;
     fi
