@@ -70,7 +70,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
 #endif
 
         if (obj = cJSON_Parse(str), obj && cJSON_IsObject(obj)) {
-          for (i = 0; lf->labels[i].key; i++) {
+          for (i = 0; lf->labels && lf->labels[i].key; i++) {
               W_JSON_AddField(obj, lf->labels[i].key, lf->labels[i].value);
           }
 

@@ -124,6 +124,7 @@ void rem_dec_tcp();
 void rem_inc_evt();
 void rem_inc_ctrl_msg();
 void rem_inc_msg_sent();
+void rem_inc_discarded();
 
 /** Global variables **/
 

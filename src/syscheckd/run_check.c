@@ -92,8 +92,19 @@ void start_daemon()
     char curr_hour[12];
     struct tm *p;
 
+#ifndef WIN32
     /* Launch rootcheck thread */
     w_create_thread(w_rootcheck_thread,&syscheck);
+#else
+    if (CreateThread(NULL,
+                    0,
+                    (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
+                    &syscheck,
+                    0,
+                    NULL) == NULL) {
+                    merror(THREAD_ERROR);
+                }
+#endif
 
 #ifdef INOTIFY_ENABLED
     /* To be used by select */

@@ -62,7 +62,7 @@ void buffer_init(){
 /* Send messages to buffer. */
 int buffer_append(const char *msg){
 
-    pthread_mutex_lock(&mutex_lock);
+    w_mutex_lock(&mutex_lock);
 
     /* Check if buffer usage reaches any higher level */
     switch (state) {
@@ -104,7 +104,7 @@ int buffer_append(const char *msg){
 
     if (full(i, j, agt->buflength + 1)){
 
-        pthread_mutex_unlock(&mutex_lock);
+        w_mutex_unlock(&mutex_lock);
         mdebug2("Unable to store new packet: Buffer is full.");
         return(-1);
 
@@ -112,8 +112,8 @@ int buffer_append(const char *msg){
 
         buffer[i] = strdup(msg);
         forward(i, agt->buflength + 1);
-        pthread_cond_signal(&cond_no_empty);
-        pthread_mutex_unlock(&mutex_lock);
+        w_cond_signal(&cond_no_empty);
+        w_mutex_unlock(&mutex_lock);
 
         return(0);
     }
@@ -131,10 +131,10 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     int wait_ms = 1000 / agt->events_persec;
 
     while(1){
-        pthread_mutex_lock(&mutex_lock);
+        w_mutex_lock(&mutex_lock);
 
         while(empty(i, j)){
-            pthread_cond_wait(&cond_no_empty, &mutex_lock);
+            w_cond_wait(&cond_no_empty, &mutex_lock);
         }
         /* Check if buffer usage reaches any lower level */
         switch (state) {
@@ -172,7 +172,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
         char * msg_output = buffer[j];
         forward(j, agt->buflength + 1);
-        pthread_mutex_unlock(&mutex_lock);
+        w_mutex_unlock(&mutex_lock);
 
         if (buff.warn){
 

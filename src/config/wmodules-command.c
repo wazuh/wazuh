@@ -18,13 +18,20 @@ static const char *XML_INTERVAL = "interval";
 static const char *XML_IGNORE_OUTPUT = "ignore_output";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_TIMEOUT = "timeout";
+static const char *XML_VERIFY_MD5 = "verify_md5";
+static const char *XML_VERIFY_SHA1 = "verify_sha1";
+static const char *XML_VERIFY_SHA256 = "verify_sha256";
+static const char *XML_SKIP_VERIFICATION = "skip_verification";
 
 // Parse XML
 
 int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 {
     int i;
+    int empty = 0;
     wm_command_t * command;
+    size_t command_tag_length;
+    char * command_tag = NULL;
 
     if (!nodes) {
         mwarn("Tag <%s> not found at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
@@ -36,8 +43,12 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
     os_calloc(1, sizeof(wm_command_t), command);
     command->enabled = 1;
     command->run_on_start = 1;
+    command->skip_verification = 0;
     command->interval = WM_COMMAND_DEFAULT_INTERVAL;
     command->agent_cfg = agent_cfg;
+    command->md5_hash = NULL;
+    command->sha1_hash = NULL;
+    command->sha256_hash = NULL;
     module->context = &WM_COMMAND_CONTEXT;
     module->data = command;
 
@@ -58,12 +69,26 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
             }
         } else if (!strcmp(nodes[i]->element, XML_TAG)) {
             if (strlen(nodes[i]->content) == 0) {
-                merror("Empty content for tag '%s' at module '%s'.", XML_TAG, WM_COMMAND_CONTEXT.name);
-                return OS_INVALID;
+                mwarn("Empty content for tag '%s' at module '%s'.", XML_TAG, WM_COMMAND_CONTEXT.name);
+                command_tag_length = strlen(WM_COMMAND_CONTEXT.name) + 2;
+                command_tag = malloc(sizeof(char) * command_tag_length);
+                snprintf(command_tag, command_tag_length, "%s", WM_COMMAND_CONTEXT.name);
+                empty = 1;
             }
 
             free(command->tag);
             os_strdup(nodes[i]->content, command->tag);
+
+            if (!empty) {
+                command_tag_length = strlen(WM_COMMAND_CONTEXT.name) + strlen(command->tag) + 2;
+                command_tag = malloc(sizeof(char) * command_tag_length);
+                snprintf(command_tag, command_tag_length, "%s:%s", WM_COMMAND_CONTEXT.name, command->tag);
+            }
+
+            free(module->tag);
+            os_strdup(command_tag, module->tag);
+            free(command_tag);
+            empty = 0;
         } else if (!strcmp(nodes[i]->element, XML_COMMAND)) {
             if (strlen(nodes[i]->content) == 0) {
                 merror("Empty content for tag '%s' at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
@@ -122,6 +147,39 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 
             if (*endptr || command->timeout < 0) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_TIMEOUT, WM_COMMAND_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_VERIFY_MD5)) {
+            if (strlen(nodes[i]->content) != 32) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_VERIFY_MD5, WM_COMMAND_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            free(command->md5_hash);
+            os_strdup(nodes[i]->content, command->md5_hash);
+        } else if (!strcmp(nodes[i]->element, XML_VERIFY_SHA1)) {
+            if (strlen(nodes[i]->content) != 40) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_VERIFY_SHA1, WM_COMMAND_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            free(command->sha1_hash);
+            os_strdup(nodes[i]->content, command->sha1_hash);
+        } else if (!strcmp(nodes[i]->element, XML_VERIFY_SHA256)) {
+            if (strlen(nodes[i]->content) != 64) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_VERIFY_SHA256, WM_COMMAND_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            free(command->sha256_hash);
+            os_strdup(nodes[i]->content, command->sha256_hash);
+        } else if (!strcmp(nodes[i]->element, XML_SKIP_VERIFICATION)) {
+            if (!strcmp(nodes[i]->content, "yes"))
+                command->skip_verification = 1;
+            else if (!strcmp(nodes[i]->content, "no"))
+                command->skip_verification = 0;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_VERIFICATION, WM_COMMAND_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {

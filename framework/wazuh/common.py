@@ -91,6 +91,7 @@ agent_info_sleep = 2 # Seconds between retries
 # Common variables
 database_limit = 500
 maximum_database_limit = 1000
+limit_seconds = 1800 # 600*3
 
 ossec_uid = getpwnam("ossec").pw_uid
 ossec_gid = getgrnam("ossec").gr_gid

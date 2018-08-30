@@ -51,7 +51,7 @@ OSHash *OSHash_Create()
     srandom((unsigned int)time(0));
     self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
     self->constant = os_getprime((unsigned)os_random() % self->rows);
-    self->mutex = (pthread_rwlock_t)PTHREAD_RWLOCK_INITIALIZER;
+    pthread_rwlock_init(&self->mutex, NULL);
     return (self);
 }
 
@@ -77,7 +77,7 @@ void *OSHash_Free(OSHash *self)
 
     /* Free the hash table */
     free(self->table);
-
+    pthread_rwlock_destroy(&self->mutex);
     free(self);
     return (NULL);
 }
@@ -418,7 +418,7 @@ OSHash *OSHash_Duplicate(const OSHash *hash) {
     self->initial_seed = hash->initial_seed;
     self->constant = hash->constant;
     os_calloc(self->rows + 1, sizeof(OSHashNode*), self->table);
-    self->mutex = (pthread_rwlock_t)PTHREAD_RWLOCK_INITIALIZER;
+    pthread_rwlock_init(&self->mutex, NULL);
 
     for (i = 0; i <= self->rows; i++) {
         next_addr = &self->table[i];

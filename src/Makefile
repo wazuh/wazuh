@@ -39,6 +39,8 @@ USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
+USE_EXEC_ENVIRON=no
+USE_FRAMEWORK_LIB=no
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -81,6 +83,7 @@ ifeq (${uname_S},Linux)
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
+		USE_EXEC_ENVIRON=yes
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
 		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif
@@ -191,6 +194,10 @@ ifdef DEBUG
 else
 	OFLAGS+=-O2
 endif #DEBUG
+
+ifneq (,$(filter ${USE_EXEC_ENVIRON},yes y Y 1))
+	DEFINES+=-DUSE_EXEC_ENVIRON
+endif
 
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
@@ -420,22 +427,39 @@ failtarget:
 help: failtarget
 	@echo
 	@echo "General options: "
-	@echo "   make V=1              Display full compiler messages"
-	@echo "   make DEBUG=1          Build with symbols and without optimization"
-	@echo "   make PREFIX=/path     Install OSSEC to '/path'. Defaults to /var/ossec"
-	@echo "   make MAXAGENTS=NUMBER Set the number of maximum agents to NUMBER. Defaults to 2048"
-	@echo "   make REUSE_ID=yes     Enables agent ID re-use"
-	@echo "   make OFLAGS=-Ox       Overrides optimization level"
+	@echo "   make V=1                     Display full compiler messages"
+	@echo "   make DEBUG=1                 Build with symbols and without optimization"
+	@echo "   make DEBUGAD                 Enables extra debugging logging in ossec-analysisd"
+	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
+	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
+	@echo "   make REUSE_ID=yes            Enables agent ID re-use"
+	@echo "   make ONEWAY=no               Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager"
+	@echo "   make CLEANFULL=no            Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'"
+	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
+	@echo "   make USE_ZEROMQ=0            Build with zeromq support"
+	@echo "   make USE_PRELUDE=0           Build with prelude support"
+	@echo "   make USE_INOTIFY=0           Build with inotify support"
+	@echo "   make BIG_ENDIAN=0            Build with big endian support"
+	@echo "   make USE_SELINUX=0           Build with SELinux policies"
+	@echo "   make USE_AUDIT=1             Build with audit service support"
+	@echo "   make USE_FRAMEWORK_LIB=0     Use external SQLite library for the framework"
+	@echo "   make USE_EXEC_ENVIRON=no     Use modern non-standard execvpe in Modulesd"
+	@echo "   make OFLAGS=-Ox              Overrides optimization level"
 	@echo
 	@echo "Database options: "
-	@echo "   make DATABASE=mysql  Build with MYSQL Support"
-	@echo "                        Use MYSQL_CFLAGS adn MYSQL_LIBS to override defaults"
-	@echo "   make DATABASE=pgsql  Build with PostgreSQL Support "
-	@echo "                        Use PGSQL_CFLAGS adn PGSQL_LIBS to override defaults"
+	@echo "   make DATABASE=mysql          Build with MYSQL Support"
+	@echo "                                Use MYSQL_CFLAGS adn MYSQL_LIBS to override defaults"
+	@echo "   make DATABASE=pgsql          Build with PostgreSQL Support "
+	@echo "                                Use PGSQL_CFLAGS adn PGSQL_LIBS to override defaults"
 	@echo
 	@echo "Geoip support: "
-	@echo "   make USE_GEOIP=1     Build with GeoIP support"
+	@echo "   make USE_GEOIP=1             Build with GeoIP support"
 	@echo
+	@echo "User options: "
+	@echo "   make OSSEC_GROUP=ossec       Set ossec group"
+	@echo "   make OSSEC_USER=ossec        Set ossec user"
+	@echo "   make OSSEC_USER_MAIL=ossecm  Set ossec user mail"
+	@echo "   make OSSEC_USER_REM=ossecr   Set ossec user rem"
 	@echo
 	@echo "Examples: Client with debugging enabled"
 	@echo "   make TARGET=agent DEBUG=1"
@@ -444,43 +468,45 @@ help: failtarget
 settings:
 	@echo
 	@echo "General settings:"
-	@echo "    TARGET:           ${TARGET}"
-	@echo "    V:                ${V}"
-	@echo "    DEBUG:            ${DEBUG}"
-	@echo "    DEBUGAD           ${DEBUGAD}"
-	@echo "    PREFIX:           ${PREFIX}"
-	@echo "    MAXAGENTS:        ${MAXAGENTS}"
-	@echo "    REUSE_ID:         ${REUSE_ID}"
-	@echo "    DATABASE:         ${DATABASE}"
-	@echo "    ONEWAY:           ${ONEWAY}"
-	@echo "    CLEANFULL:        ${CLEANFULL}"
-	@echo "    RESOURCES_URL:    ${RESOURCES_URL}"
+	@echo "    TARGET:             ${TARGET}"
+	@echo "    V:                  ${V}"
+	@echo "    DEBUG:              ${DEBUG}"
+	@echo "    DEBUGAD             ${DEBUGAD}"
+	@echo "    PREFIX:             ${PREFIX}"
+	@echo "    MAXAGENTS:          ${MAXAGENTS}"
+	@echo "    REUSE_ID:           ${REUSE_ID}"
+	@echo "    DATABASE:           ${DATABASE}"
+	@echo "    ONEWAY:             ${ONEWAY}"
+	@echo "    CLEANFULL:          ${CLEANFULL}"
+	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
 	@echo "User settings:"
-	@echo "    OSSEC_GROUP:      ${OSSEC_GROUP}"
-	@echo "    OSSEC_USER:       ${OSSEC_USER}"
-	@echo "    OSSEC_USER_MAIL:  ${OSSEC_USER_MAIL}"
-	@echo "    OSSEC_USER_REM:   ${OSSEC_USER_REM}"
+	@echo "    OSSEC_GROUP:        ${OSSEC_GROUP}"
+	@echo "    OSSEC_USER:         ${OSSEC_USER}"
+	@echo "    OSSEC_USER_MAIL:    ${OSSEC_USER_MAIL}"
+	@echo "    OSSEC_USER_REM:     ${OSSEC_USER_REM}"
 	@echo "USE settings:"
-	@echo "    USE_ZEROMQ:       ${USE_ZEROMQ}"
-	@echo "    USE_GEOIP:        ${USE_GEOIP}"
-	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
-	@echo "    USE_INOTIFY:      ${USE_INOTIFY}"
-	@echo "    USE_BIG_ENDIAN:   ${USE_BIG_ENDIAN}"
-	@echo "    USE_SELINUX:      ${USE_SELINUX}"
-	@echo "    USE_AUDIT:        ${USE_AUDIT}"
+	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
+	@echo "    USE_GEOIP:          ${USE_GEOIP}"
+	@echo "    USE_PRELUDE:        ${USE_PRELUDE}"
+	@echo "    USE_INOTIFY:        ${USE_INOTIFY}"
+	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
+	@echo "    USE_SELINUX:        ${USE_SELINUX}"
+	@echo "    USE_AUDIT:          ${USE_AUDIT}"
+	@echo "    USE_EXEC_ENVIRON:   ${USE_EXEC_ENVIRON}"
+	@echo "    USE_FRAMEWORK_LIB:  ${USE_FRAMEWORK_LIB}"
 	@echo "Mysql settings:"
-	@echo "    includes:         ${MI}"
-	@echo "    libs:             ${ML}"
+	@echo "    includes:           ${MI}"
+	@echo "    libs:               ${ML}"
 	@echo "Pgsql settings:"
-	@echo "    includes:         ${PI}"
-	@echo "    libs:             ${PL}"
+	@echo "    includes:           ${PI}"
+	@echo "    libs:               ${PL}"
 	@echo "Defines:"
 	@echo "    ${DEFINES}"
 	@echo "Compiler:"
-	@echo "    CFLAGS          ${OSSEC_CFLAGS}"
-	@echo "    LDFLAGS         ${OSSEC_LDFLAGS}"
-	@echo "    CC              ${CC}"
-	@echo "    MAKE            ${MAKE}"
+	@echo "    CFLAGS            ${OSSEC_CFLAGS}"
+	@echo "    LDFLAGS           ${OSSEC_LDFLAGS}"
+	@echo "    CC                ${CC}"
+	@echo "    MAKE              ${MAKE}"
 
 BUILD_SERVER+=ossec-maild -
 BUILD_SERVER+=ossec-csyslogd -
@@ -502,6 +528,9 @@ BUILD_SERVER+=ossec-dbd -
 BUILD_SERVER+=ossec-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
+ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
+BUILD_SERVER+=wazuh-framework
+endif
 
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
@@ -564,6 +593,9 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
 	cd win32/ && ./unix2dos.pl ../../active-response/win/route-null.cmd > route-null.cmd
+	cd win32/ && ./unix2dos.pl ../../active-response/win/route-null-2012.cmd > route-null-2012.cmd
+	cd win32/ && ./unix2dos.pl ../../active-response/win/netsh.cmd > netsh.cmd
+	cd win32/ && ./unix2dos.pl ../../active-response/win/netsh-win-2016.cmd > netsh-win-2016.cmd
 	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
@@ -1320,6 +1352,12 @@ wmodulesd_o := $(wmodulesd_c:.c=.o)
 wazuh-modulesd: ${wmodulesd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
+### wazuh-framework ##
+ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
+wazuh-framework: ${shared_o} ${wdblib_o}
+	${MAKE} -C ../framework build PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${USE_FRAMEWORK_LIB}
+endif
+
 
 ####################
 #### test ##########
@@ -1455,7 +1493,7 @@ win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.o addagent/validat
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-config
+clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1517,6 +1555,9 @@ clean-internals:
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
 
+clean-framework:
+	${MAKE} -C ../framework clean
+
 clean-windows:
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll
 	rm -f win32/LICENSE.txt
@@ -1526,6 +1567,9 @@ clean-windows:
 	rm -f win32/default-ossec.conf
 	rm -f win32/restart-ossec.cmd
 	rm -f win32/route-null.cmd
+	rm -f win32/route-null-2012.cmd
+	rm -f win32/netsh.cmd
+	rm -f win32/netsh-win-2016.cmd
 	rm -f ${win32_o} ${win32_ui_o} win32/win_service_rk.o
 	rm -f win32/icon.o win32/resource.o
 	rm -f ${WINDOWS_BINS}

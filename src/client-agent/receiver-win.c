@@ -118,7 +118,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     break;
                 }
             } else {
-                recv_b = recv(agt->sock, buffer, OS_SIZE_1024, 0);
+                recv_b = recv(agt->sock, buffer, OS_MAXSTR, 0);
 
                 if (recv_b <= 0) {
                     break;

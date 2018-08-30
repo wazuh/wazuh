@@ -86,8 +86,17 @@ int OS_SetRecvTimeout(int socket, int seconds);
  */
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 
+/* Receive secure TCP message
+ * This function reads a header containing message size as 4-byte little-endian unsigned integer.
+ * Return recvval on success or OS_SOCKTERR on error.
+ */
+int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
+
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value);
+
+/* Set the maximum buffer size for the socket */
+int OS_SetSocketSize(int sock, int mode, int max_msg_size);
 
 #endif /* __OS_NET_H */

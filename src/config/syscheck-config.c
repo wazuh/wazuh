@@ -75,7 +75,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             syscheck->filerestrict[pl] = NULL;
             syscheck->filerestrict[pl + 1] = NULL;
 
-            os_calloc(2, sizeof(int *), syscheck->recursion_level);
+            os_calloc(2, sizeof(int), syscheck->recursion_level);
             syscheck->recursion_level[pl] = recursion_limit;
             syscheck->recursion_level[pl + 1] = 0;
 
@@ -588,6 +588,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 free(tag);
                 tag = NULL;
                 os_strdup(clean_tag, tag);
+                free(clean_tag);
             }
             if (clean_tag = os_strip_char(tag, '!'), !clean_tag) {
                 merror("Processing tag '%s'.", tag);
@@ -596,6 +597,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 free(tag);
                 tag = NULL;
                 os_strdup(clean_tag, tag);
+                free(clean_tag);
             }
             if (clean_tag = os_strip_char(tag, ':'), !clean_tag) {
                 merror("Processing tag '%s'.", tag);

@@ -21,10 +21,13 @@ Wed 12/07/2016 19:39:40.15 "active-response/bin/route-null.cmd" add "-" "10.99.9
 Wed 12/07/2016 19:40:06.89 "active-response/bin/restart-ossec.cmd" add "-" "10.99.99.12" "(from_the_server) (no_rule_id)"
 Wed 12/07/2016 16:48:15.37 "active-response/bin/route-null.cmd" add "-" "192.168.2.66" "1481129296.262924 100001 /home/test.txt (null)"
 Wed 12/07/2016 16:48:15.37 "active-response/bin/route-null.cmd" delete "-" "192.168.2.66" "1481129296.262924 100001 /home/test.txt (null)"
+08/28/2018  09:25 "active-response/bin/netsh.cmd" delete "-" "1.2.3.4" "1535465731.23945822 18258 (some-hostname) any->WinEvtLog (null)"
+08/28/2018  09:27 "active-response/bin/netsh.cmd" add "-" "1.2.3.4" "1535466424.24354011 18258 (some-hostname) any->WinEvtLog (null)"
 -->
 
+
 <decoder name="ar_log">
-  <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \w+ \d+ /\S+/active-response/bin/|^\w\w\w \d\d/\d\d/\d\d\d\d \.+"active-response/bin/</prematch>
+  <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \w+ \d+ /\S+/active-response/bin/|^\w\w\w \d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\d\d/\d\d/\d\d\d\d \.+"active-response/bin/</prematch>
 </decoder>
 
 <decoder name="ar_log_fields">

@@ -617,7 +617,7 @@ hw_info *get_system_bsd(){
     if (!sysctlbyname("vm.stats.vm.v_page_size", &page_size, &len, NULL, 0)){
         mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting free memory due to (%s)", strerror(errno));
     }else{
-        long cpu_free_kb = (vmt.t_free * (u_int64_t)page_size) / 1024;
+        long cpu_free_kb = (vmt.t_free * (uint64_t)page_size) / 1024;
         info->ram_free = cpu_free_kb;
 
         if (info->ram_total > 0 && info->ram_free >= 0) {

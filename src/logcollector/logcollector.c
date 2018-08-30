@@ -19,7 +19,7 @@ static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
 #ifndef WIN32
-static int check_pattern_expand(logreader *current);
+static int check_pattern_expand();
 #endif
 
 /* Global variables */
@@ -42,10 +42,12 @@ logsocket default_agent = { .name = "agent" };
 
 /* Output thread variables */
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t available = PTHREAD_COND_INITIALIZER;
+#ifdef WIN32
+static pthread_mutex_t win_el_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 /* Multiple readers / one write mutex */
-static pthread_rwlock_t files_update_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_rwlock_t files_update_rwlock;
 
 
 static char *rand_keepalive_str(char *dst, int size)
@@ -78,11 +80,13 @@ void LogCollectorStart()
     logreader *current;
 
     set_sockets();
+    pthread_rwlock_init(&files_update_rwlock, NULL);
+
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
 
-    check_pattern_expand(current);
+    check_pattern_expand();
 
     /* Set the files mutexes */
     w_set_file_mutexes();
@@ -454,7 +458,7 @@ void LogCollectorStart()
 
 #ifndef WIN32
             // Check for new files to be expanded
-            if (check_pattern_expand(current)) {
+            if (check_pattern_expand()) {
                 /* Remove duplicate entries */
                 for (i = 0, j = -1;; i++) {
                     if (f_control = update_current(&current, &i, &j), f_control) {
@@ -745,7 +749,7 @@ void set_read(logreader *current, int i, int j) {
             current->file = NULL;
         }
         current->read = read_djbmultilog;
-    } else if (current->logformat[0] >= '0' && current->logformat[0] <= '9') {
+    } else if (strncmp(current->logformat, "multi-line:", 11) == 0) {
         current->read = read_multiline;
     } else if (strcmp("audit", current->logformat) == 0) {
         current->read = read_audit;
@@ -755,7 +759,7 @@ void set_read(logreader *current, int i, int j) {
 }
 
 #ifndef WIN32
-int check_pattern_expand(logreader *current) {
+int check_pattern_expand() {
     glob_t g;
     int err;
     int glob_offset;
@@ -805,7 +809,7 @@ int check_pattern_expand(logreader *current) {
                     if  (!i && !globs[j].gfiles[i].read) {
                         set_read(&globs[j].gfiles[i], i, j);
                     } else if (handle_file(i, j, 1, 1) ) {
-                        current->ign++;
+                        globs[j].gfiles[i].ign++;
                     }
                 }
                 glob_offset++;
@@ -990,9 +994,7 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     {
         w_mutex_lock(&mutex);
 
-        while (msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table, targets[i].log_socket->name), !msg) {
-            w_cond_wait(&available, &mutex);
-        }
+        msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table, targets[i].log_socket->name);
 
         w_mutex_unlock(&mutex);
         w_msg_queue_push(msg, str, file, size, &targets[i], queue_mq);
@@ -1127,7 +1129,6 @@ void w_create_output_threads(){
 void * w_input_thread(__attribute__((unused)) void * t_id){
     logreader *current;
     int i = 0, r = 0, j = -1;
-    int f_check = 0;
     IT_control f_control = 0;
     time_t curr_time = 0;
 #ifndef WIN32
@@ -1157,10 +1158,12 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
         sleep(loop_timeout + 2);
 
         /* Check for messages in the event viewer */
-        win_readel();
-#endif
 
-        f_check++;
+        if (pthread_mutex_trylock(&win_el_mutex) == 0) {
+            win_readel();
+            pthread_mutex_unlock(&win_el_mutex);
+        }
+#endif
 
         /* Check which file is available */
         for (i = 0, j = -1;; i++) {
@@ -1175,7 +1178,6 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     break;
                 }
             }
-            w_rwlock_unlock(&files_update_rwlock);
 
             if (pthread_mutex_trylock(&current->mutex) == 0){
 
@@ -1189,6 +1191,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         }
                     }
                     pthread_mutex_unlock (&current->mutex);
+                    w_rwlock_unlock(&files_update_rwlock);
                     continue;
                 }
                 /* Windows with IIS logs is very strange.
@@ -1203,6 +1206,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 if ((r = fgetc(current->fp)) == EOF) {
                     clearerr(current->fp);
                     pthread_mutex_unlock (&current->mutex);
+                    w_rwlock_unlock(&files_update_rwlock);
                     continue;
                 }
 
@@ -1238,18 +1242,17 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     #endif
 
                         /* Close the file */
-                        if (current->fp) {
-                            fclose(current->fp);
+                        fclose(current->fp);
     #ifdef WIN32
-                            CloseHandle(current->h);
+                        CloseHandle(current->h);
     #endif
-                        }
                         current->fp = NULL;
 
                         /* Try to open it again */
                         if (handle_file(i, j, 1, 1)) {
                             current->ign++;
                             pthread_mutex_unlock (&current->mutex);
+                            w_rwlock_unlock(&files_update_rwlock);
                             continue;
                         }
     #ifdef WIN32
@@ -1262,9 +1265,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     pthread_mutex_unlock (&current->mutex);
                 }
             }
-            else{
-                continue;
-            }
+
+            w_rwlock_unlock(&files_update_rwlock);
         }
     }
 
