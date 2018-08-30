@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.7.0]
 
+### Fixed
+
+- Fixed email_alerts configuration for multiple recipients ([#1193 ](https://github.com/wazuh/wazuh/pull/1193))
 
 ## [v3.6.0] - 2018-08-29
 
