@@ -2414,7 +2414,12 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         name = (char *) sqlite3_column_text(stmt, 2);
 
         if (!os_name) {
-            // The agent has never connected
+            if (name) {
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AG_NEVER_CON, name);
+            }
+            continue;
+        } else if (!os_version) {
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, name);
             continue;
         }
 
