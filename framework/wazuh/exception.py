@@ -66,6 +66,7 @@ class WazuhException(Exception):
         1409: 'Invalid query operator.',
         1410: 'Selecting more than one field in distinct mode',
         1411: 'Timeframe is not valid',
+        1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
 
         # Decoders: 1500 - 1599
         1500: 'Error reading decoders from ossec.conf',

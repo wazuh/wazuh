@@ -554,7 +554,7 @@ def get_timeframe_in_seconds(timeframe):
         if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
             raise WazuhException(1411, timeframe)
 
-        regex, seconds = re.compile('(\d+)(\w)'), 0
+        regex, seconds = re.compile(r'(\d+)(\w)'), 0
         time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's':1}
         for time, unit in regex.findall(timeframe):
             # it's not necessarry to check whether the unit is in the dictionary, because it's been validated before.
@@ -763,13 +763,19 @@ class WazuhDBQuery(object):
 
 
     def _filter_date(self, date_filter, filter_db_name):
-        self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
-        query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
-
-        self.query += "({0} IS NOT NULL AND CAST(strftime('%s', {0}) AS INTEGER) {1}" \
-                      " CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{2}) ".format(self.fields[filter_db_name],
-                                                                                            query_operator,
-                                                                                            date_filter['field'])
+        # date_filter['value'] can be either a timeframe or a date in format %Y-%m-%d %H:%M:%S
+        if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
+            query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
+            self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
+            self.query += "({0} IS NOT NULL AND CAST(strftime('%s', {0}) AS INTEGER) {1}" \
+                          " CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{2}) ".format(self.fields[filter_db_name],
+                                                                                                 query_operator,
+                                                                                                 date_filter['field'])
+        elif re.match(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', date_filter['value']):
+            self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
+            self.request[date_filter['field']] = date_filter['value']
+        else:
+            raise WazuhException(1412, date_filter['value'])
 
 
     def run(self):
