@@ -185,14 +185,14 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
                               filters=filters)
 
 
-    def default_query(self):
+    def _default_query(self):
         return "SELECT {0} FROM " + self.table + " WHERE fim_event.id_file = fim_file.id"
 
 
-    def get_total_items(self):
+    def _get_total_items(self):
         if self.summary:
             self.query += ' group by path'
             self.conn.execute("SELECT COUNT(*) FROM ({0}) AS TEMP".format(self.query.format("max(date)")), self.request)
             self.total_items = self.conn.fetch()[0]
         else:
-            WazuhDBQuery.get_total_items(self)
+            WazuhDBQuery._get_total_items(self)

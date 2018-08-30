@@ -598,11 +598,11 @@ class WazuhDBQuery(object):
         self.search = search
         self.select = None if not select else select.copy()
         self.fields = fields
-        self.query = self.default_query()
+        self.query = self._default_query()
         self.request = {}
         self.default_sort_field = default_sort_field
         self.default_sort_order = default_sort_order
-        self.filters = []
+        self.query_filters = []
         self.count = count
         self.data = get_data
         self.total_items = 0
@@ -613,14 +613,14 @@ class WazuhDBQuery(object):
         self.query_separators = {',':'OR',';':'AND','':''}
         self.date_fields = date_fields
         self.q = query
-        self.query_filters = filters
+        self.legacy_filters = filters
         self.inverse_fields = {v:k for k,v in self.fields.items()}
         if not glob.glob(db_path):
             raise WazuhException(1600)
         self.conn = Connection(db_path)
 
 
-    def add_limit_to_query(self):
+    def _add_limit_to_query(self):
         if self.limit:
             if self.limit > common.maximum_database_limit:
                 raise WazuhException(1405, str(self.limit))
@@ -629,7 +629,7 @@ class WazuhDBQuery(object):
             self.request['limit'] = self.limit
 
 
-    def add_sort_to_query(self):
+    def _add_sort_to_query(self):
         if self.sort:
             if self.sort['fields']:
                 sort_fields, allowed_sort_fields = set(self.sort['fields']), set(self.fields.keys())
@@ -645,7 +645,7 @@ class WazuhDBQuery(object):
             self.query += ' ORDER BY {0} {1}'.format(self.default_sort_field, self.default_sort_order)
 
 
-    def add_search_to_query(self):
+    def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
             self.query += " (" + " OR ".join(x + ' LIKE:search' for x in self.fields.values()) + ')'
@@ -653,7 +653,7 @@ class WazuhDBQuery(object):
             self.request['search'] = '%{0}%'.format(self.search['value'])
 
 
-    def parse_select_filter(self, select_fields):
+    def _parse_select_filter(self, select_fields):
         if select_fields:
             set_select_fields = set(select_fields['fields'])
             if not set_select_fields.issubset(self.fields.keys()):
@@ -668,11 +668,11 @@ class WazuhDBQuery(object):
         return select_fields
 
 
-    def add_select_to_query(self):
-        self.select = self.parse_select_filter(self.select)
+    def _add_select_to_query(self):
+        self.select = self._parse_select_filter(self.select)
 
 
-    def parse_query(self):
+    def _parse_query(self):
         """
         A query has the following pattern: field operator value separator field operator value...
         An example of query: status=never connected;name!=pepe
@@ -692,46 +692,46 @@ class WazuhDBQuery(object):
             if operator not in self.query_operators:
                 raise WazuhException(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
 
-            self.filters.append({'value': None if value == "null" else value, 'operator': operator,
-                                 'field': '{}${}'.format(field,len(list(filter(lambda x: field in x['field'], self.filters)))),
+            self.query_filters.append({'value': None if value == "null" else value, 'operator': operator,
+                                 'field': '{}${}'.format(field, len(list(filter(lambda x: field in x['field'], self.query_filters)))),
                                  'separator': self.query_separators[separator]})
 
 
-    def parse_traditional_filters(self):
+    def _parse_legacy_filters(self):
         """
-        Parses traditional filters.
+        Parses legacy filters.
         """
-        self.filters += [{'value': value, 'field': name, 'operator': '=', 'separator': 'AND'} for name, value in self.query_filters.items()]
+        self.query_filters += [{'value': value, 'field': name, 'operator': '=', 'separator': 'AND'} for name, value in self.legacy_filters.items()]
         if not self.q:
             # if only traditional filters have been defined, remove last AND from the query.
-            self.filters[-1]['separator'] = ''
+            self.query_filters[-1]['separator'] = ''
 
 
-    def parse_filters(self):
-        if self.query_filters:
-            self.parse_traditional_filters()
+    def _parse_filters(self):
+        if self.legacy_filters:
+            self._parse_legacy_filters()
         if self.q:
-            self.parse_query()
-        if self.q or self.search or self.query_filters:
+            self._parse_query()
+        if self.q or self.search or self.legacy_filters:
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
 
 
-    def add_filters_to_query(self):
-        self.parse_filters()
+    def _add_filters_to_query(self):
+        self._parse_filters()
 
-        for filter in self.filters:
+        for filter in self.query_filters:
             field_name = filter['field'].split('$',1)[0]
             field_filter = filter['field'].replace('.','_')
 
-            if self.pass_filter(filter['value']):
+            if self._pass_filter(filter['value']):
                 continue
 
             if field_name == "status":
-                self.filter_status(filter)
+                self._filter_status(filter)
             elif field_name in self.date_fields and not self.date_regex.match(filter['value']):
                 # filter a date, but only if it is in timeframe format.
                 # If it matches the same format as DB (YYYY-MM-DD hh:mm:ss), filter directly by value (next if cond).
-                self.filter_date(filter, field_name)
+                self._filter_date(filter, field_name)
             else:
                 if filter['value'] is not None:
                     self.request[field_filter] = filter['value'] if filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', filter['value'])
@@ -745,20 +745,20 @@ class WazuhDBQuery(object):
             self.query += ' {} '.format(filter['separator'])
 
 
-    def get_total_items(self):
-        self.conn.execute(self.query.format(self.default_count_query()), self.request)
+    def _get_total_items(self):
+        self.conn.execute(self.query.format(self._default_count_query()), self.request)
         self.total_items = self.conn.fetch()[0]
 
 
-    def get_data(self):
+    def _get_data(self):
         self.conn.execute(self.query.format(','.join(self.select['fields'])), self.request)
 
 
-    def filter_status(self, status_filter):
+    def _filter_status(self, status_filter):
         raise NotImplementedError
 
 
-    def filter_date(self, date_filter, filter_db_name):
+    def _filter_date(self, date_filter, filter_db_name):
         self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
         query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
 
@@ -773,38 +773,38 @@ class WazuhDBQuery(object):
         Builds the query and runs it on the database
         """
 
-        self.add_select_to_query()
-        self.add_filters_to_query()
-        self.add_search_to_query()
+        self._add_select_to_query()
+        self._add_filters_to_query()
+        self._add_search_to_query()
         if self.count:
-            self.get_total_items()
-        self.add_sort_to_query()
-        self.add_limit_to_query()
+            self._get_total_items()
+        self._add_sort_to_query()
+        self._add_limit_to_query()
         if self.data:
-            self.get_data()
+            self._get_data()
 
 
     def reset(self):
         """
         Resets query to its initial value. Useful when doing several requests to the same DB.
         """
-        self.query = self.default_query()
-        self.filters = []
+        self.query = self._default_query()
+        self.query_filters = []
 
 
-    def default_query(self):
+    def _default_query(self):
         """
         :return: The default query
         """
         return "SELECT {0} FROM " + self.table
 
 
-    def default_count_query(self):
+    def _default_count_query(self):
         return "COUNT(*)"
 
 
     @staticmethod
-    def pass_filter(db_filter):
+    def _pass_filter(db_filter):
         return db_filter == "all"
 
 
@@ -813,25 +813,25 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
     Retrieves unique values for a given field.
     """
 
-    def default_query(self):
+    def _default_query(self):
         return "SELECT DISTINCT {0} FROM " + self.table
 
 
-    def default_count_query(self):
+    def _default_count_query(self):
         return "COUNT (DISTINCT {0})".format(','.join(self.select['fields']))
 
 
-    def add_filters_to_query(self):
-        WazuhDBQuery.add_filters_to_query(self)
+    def _add_filters_to_query(self):
+        WazuhDBQuery._add_filters_to_query(self)
         self.query += ' WHERE ' if not self.q else ' AND '
         self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(field) for field in self.select['fields']])
 
 
-    def add_select_to_query(self):
+    def _add_select_to_query(self):
         if len(self.select['fields']) > 1:
             raise WazuhException(1410)
 
-        WazuhDBQuery.add_select_to_query(self)
+        WazuhDBQuery._add_select_to_query(self)
 
 
 class WazuhDBQueryGroupBy(WazuhDBQuery):
@@ -846,15 +846,15 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.filter_fields = filter_fields
 
 
-    def get_total_items(self):
+    def _get_total_items(self):
         # take total items without grouping, and add the group by clause just after getting total items
-        WazuhDBQuery.get_total_items(self)
+        WazuhDBQuery._get_total_items(self)
         self.query += ' GROUP BY ' + ','.join(self.filter_fields['fields'])
 
 
-    def add_select_to_query(self):
-        WazuhDBQuery.add_select_to_query(self)
-        self.filter_fields = self.parse_select_filter(self.filter_fields)
+    def _add_select_to_query(self):
+        WazuhDBQuery._add_select_to_query(self)
+        self.filter_fields = self._parse_select_filter(self.filter_fields)
         self.select['fields'] = self.select['fields'] & self.filter_fields['fields']
         self.select['fields'].add('COUNT(*)')
         self.inverse_fields['COUNT(*)'] = 'count'

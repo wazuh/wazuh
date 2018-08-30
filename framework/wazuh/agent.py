@@ -57,7 +57,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                               date_fields={'lastKeepAlive','dateAdd'})
 
 
-    def filter_status(self, status_filter):
+    def _filter_status(self, status_filter):
         status_filter['value'] = status_filter['value'].lower()
         limit_seconds = 1830  # 600*3 + 30
         result = datetime.now() - timedelta(seconds=limit_seconds)
@@ -78,8 +78,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             raise WazuhException(1729, status_filter['value'])
 
 
-    def filter_date(self, date_filter, filter_db_name):
-        WazuhDBQuery.filter_date(self, date_filter, filter_db_name)
+    def _filter_date(self, date_filter, filter_db_name):
+        WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
         self.query += ' AND id != 0 '
 
 

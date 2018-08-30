@@ -26,20 +26,20 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
                               query=query, db_path=db_path[0], min_select_fields=set(), count=count, get_data=get_data,
                               date_fields={'oldDay','readDate'})
 
-    def parse_filters(self):
-        WazuhDBQuery.parse_filters(self)
+    def _parse_filters(self):
+        WazuhDBQuery._parse_filters(self)
         # status filter can only appear once in the filter list
-        statuses = list(filter(lambda x: x['field'].startswith('status'), self.filters))
+        statuses = list(filter(lambda x: x['field'].startswith('status'), self.query_filters))
         if statuses:
             for status in statuses:
-                self.filters.remove(status)
+                self.query_filters.remove(status)
             first_status = statuses[0]
             first_status['separator'] = 'AND' if first_status['separator'] == '' else first_status['separator']
-            self.filters.insert(0, statuses[0])
-            self.filters[-1]['separator'] = ''
+            self.query_filters.insert(0, statuses[0])
+            self.query_filters[-1]['separator'] = ''
 
 
-    def filter_status(self, filter_status):
+    def _filter_status(self, filter_status):
         partial = """SELECT {0} AS status, date_first, date_last, log, pci_dss, cis FROM pm_event AS t
                 WHERE date_last {1} (SELECT datetime(date_last, '-86400 seconds') FROM pm_event WHERE log = 'Ending rootcheck scan.')"""
 
@@ -57,7 +57,7 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
 
 
     @staticmethod
-    def pass_filter(db_filter):
+    def _pass_filter(db_filter):
         return False
 
 
