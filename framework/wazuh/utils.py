@@ -614,7 +614,6 @@ class WazuhDBQuery(object):
         self.date_fields = date_fields
         self.q = query
         self.legacy_filters = filters
-        self.inverse_fields = {v:k for k,v in self.fields.items()}
         if not glob.glob(db_path):
             raise WazuhException(1600)
         self.conn = Connection(db_path)
@@ -664,10 +663,9 @@ class WazuhDBQuery(object):
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
                                      format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set(self.fields.keys()))))
 
-            select_fields = {'fields': set(map(lambda x: self.fields[x] if x in self.fields else x, set_select_fields))}
             select_fields['fields'] |= self.min_select_fields
         else:
-            select_fields = {'fields': set(self.fields.values())}
+            select_fields = {'fields': set(self.fields.keys())}
 
         return select_fields
 
@@ -755,7 +753,7 @@ class WazuhDBQuery(object):
 
 
     def _get_data(self):
-        self.conn.execute(self.query.format(','.join(self.select['fields'])), self.request)
+        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields']))), self.request)
 
 
     def _filter_status(self, status_filter):

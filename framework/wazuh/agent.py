@@ -50,7 +50,7 @@ def create_exception_dic(id, e):
 
 class WazuhDBQueryAgents(WazuhDBQuery):
 
-    def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
+    def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'}):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
@@ -736,9 +736,9 @@ class Agent:
 
     @staticmethod
     def get_agents_dict(db_query, select_fields, user_select_fields):
-        fields_to_nest, non_nested = get_fields_to_nest(db_query.inverse_fields.values(), ['os'], '.')
+        fields_to_nest, non_nested = get_fields_to_nest(db_query.fields.keys(), ['os'], '.')
 
-        agent_items = [{db_query.inverse_fields[field]:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in db_query.conn]
+        agent_items = [{field:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in db_query.conn]
 
         today = datetime.today()
 
