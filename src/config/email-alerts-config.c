@@ -16,6 +16,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
 {
     int i = 0;
     unsigned int granto_size = 0;
+    unsigned int granto_email_counter = 0;
 
     /* XML definitions */
     const char *xml_email_to = "email_to";
@@ -41,12 +42,13 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
         while (*ww != NULL) {
             ww++;
             granto_size++;
+            granto_email_counter++;
         }
     }
 
     if (Mail) {
-        os_realloc(Mail->gran_to,
-                   sizeof(char *) * (granto_size + 2), Mail->gran_to);
+        /*os_realloc(Mail->gran_to,
+                   sizeof(char *) * (granto_size + 2), Mail->gran_to);*/
         os_realloc(Mail->gran_id,
                    sizeof(unsigned int *) * (granto_size + 2), Mail->gran_id);
         os_realloc(Mail->gran_level,
@@ -60,8 +62,8 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
         os_realloc(Mail->gran_group,
                    sizeof(OSMatch *) * (granto_size + 2), Mail->gran_group);
 
-        Mail->gran_to[granto_size] = NULL;
-        Mail->gran_to[granto_size + 1] = NULL;
+        /*Mail->gran_to[granto_size] = NULL;
+        Mail->gran_to[granto_size + 1] = NULL;*/
 
         Mail->gran_id[granto_size] = NULL;
         Mail->gran_id[granto_size + 1] = NULL;
@@ -99,7 +101,14 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
 
             Mail->gran_level[granto_size] = atoi(node[i]->content);
         } else if (strcmp(node[i]->element, xml_email_to) == 0) {
-            os_strdup(node[i]->content, Mail->gran_to[granto_size]);
+            os_realloc(Mail->gran_to,
+                   sizeof(char *) * (granto_email_counter + 2), Mail->gran_to);
+
+            Mail->gran_to[granto_email_counter] = NULL;
+            Mail->gran_to[granto_email_counter + 1] = NULL;
+
+            os_strdup(node[i]->content, Mail->gran_to[granto_email_counter]);
+            granto_email_counter++;
         } else if (strcmp(node[i]->element, xml_email_id) == 0) {
             int r_id = 0;
             char *str_pt = node[i]->content;
