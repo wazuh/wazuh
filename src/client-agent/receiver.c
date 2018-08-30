@@ -271,7 +271,7 @@ int receive_msg()
         }
 
         else if (!undefined_msg_logged) {
-            mwarn("Unknown message received. No action defined. Maybe restarted while receiving merged file?");
+            mwarn("Unknown message received. No action defined.");
             undefined_msg_logged = 1;
         }
     }
