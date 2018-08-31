@@ -16,7 +16,7 @@ fields = {'status': 'status', 'event': 'log', 'oldDay': 'date_first', 'readDay':
 
 class WazuhDBQueryRootcheck(WazuhDBQuery):
 
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, default_sort_field='date_last', filters={}):
+    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, default_sort_field='date_last', filters={}, fields=fields):
         db_path = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_path:
             raise WazuhException(1600)
@@ -45,13 +45,13 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
 
         if filter_status['value'] == 'all':
             self.query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + ' UNION ' + partial.format("'solved'",'<=') + \
-                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.')"
+                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.'"
         elif filter_status['value'] == 'outstanding':
             self.query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + \
-                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.')"
+                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.'"
         elif filter_status['value'] == 'solved':
             self.query = "SELECT {0} FROM (" + partial.format("'solved'", '<=') + \
-                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.')"
+                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.'"
         else:
             raise WazuhException(1603, filter_status['value'])
 
@@ -173,7 +173,7 @@ def print_db(agent_id=None, q="", offset=0, limit=common.database_limit, sort=No
                                      select=select, count=True, get_data=True, query=q, filters=filters)
     db_query.run()
 
-    return {'totalItems': db_query.total_items, 'data':[{db_query.inverse_fields[key]:val for key,val in zip(db_query.select['fields'], tuple)
+    return {'totalItems': db_query.total_items, 'items':[{key:val for key,val in zip(db_query.select['fields'], tuple)
                                                          if val is not None} for tuple in db_query.conn]}
 
 
@@ -191,7 +191,7 @@ def _get_requirement(requirement, agent_id=None, offset=0, limit=common.database
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     db_query = WazuhDBQueryRootcheckDistinct(offset=offset, limit=limit, sort=sort, search=search, filters=filters,
-                                            select={'fields':[requirement]}, agent_id=agent_id,
+                                            select={'fields':[requirement]}, agent_id=agent_id, fields={requirement:fields[requirement]},
                                              default_sort_field=fields[requirement], count=True, get_data=True, query=q)
     db_query.run()
 
