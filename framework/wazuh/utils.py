@@ -614,6 +614,7 @@ class WazuhDBQuery(object):
         self.date_fields = date_fields
         self.q = query
         self.legacy_filters = filters
+        self.inverse_fields = {v: k for k, v in self.fields.items()}
         if not glob.glob(db_path):
             raise WazuhException(1600)
         self.conn = Connection(db_path)
@@ -836,13 +837,13 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
 
     def _default_count_query(self):
-        return "COUNT (DISTINCT {0})".format(','.join(self.select['fields']))
+        return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select['fields'])))
 
 
     def _add_filters_to_query(self):
         WazuhDBQuery._add_filters_to_query(self)
         self.query += ' WHERE ' if not self.q else ' AND '
-        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(field) for field in self.select['fields']])
+        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
 
 
     def _add_select_to_query(self):
@@ -867,12 +868,13 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     def _get_total_items(self):
         # take total items without grouping, and add the group by clause just after getting total items
         WazuhDBQuery._get_total_items(self)
-        self.query += ' GROUP BY ' + ','.join(self.filter_fields['fields'])
+        self.select['fields'].add('count')
+        self.inverse_fields['COUNT(*)'] = 'count'
+        self.fields['count'] = 'COUNT(*)'
+        self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
 
 
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)
         self.filter_fields = self._parse_select_filter(self.filter_fields)
         self.select['fields'] = self.select['fields'] & self.filter_fields['fields']
-        self.select['fields'].add('COUNT(*)')
-        self.inverse_fields['COUNT(*)'] = 'count'

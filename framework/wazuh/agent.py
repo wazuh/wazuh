@@ -756,7 +756,7 @@ class Agent:
         db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort, search=search, select=select, query=q,
                                              count=True, get_data=True, min_select_fields=set())
         db_query.run()
-        user_select_fields = list(Agent.fields.keys() if not select else select['fields']) + ['count']
+        user_select_fields = list(Agent.fields.keys() if not select else select['fields'])
         return {'items': Agent.get_agents_dict(db_query, db_query.select['fields'], user_select_fields),
                 'totalItems': db_query.total_items}
 
