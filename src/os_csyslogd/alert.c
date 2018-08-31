@@ -34,23 +34,21 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
     /* Look if location is set */  
 
     //Check if location is headless
-    char * location_headless = strchr(al_data->location,'>');
+    char * location_headless = strstr(al_data->location,'->');
     
     if (location_headless){        //If location has head, cut it off
-        ++location_headless;
-        strcpy(al_data->location,location_headless);
+        location_headless = location_headless + 2;
     }
 
     if (syslog_config->location) {
 
-        if (!OSMatch_Execute(al_data->location,
+        if (!OSMatch_Execute(location_headless ? location_headless : al_data->location,
                              strlen(al_data->location),
                              syslog_config->location)) {
             return (0);
         }
         
     }
-        free(location_headless);
 
 
     /* Look for the level */
