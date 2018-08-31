@@ -1214,7 +1214,7 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q=""):
+    def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="", filters={}):
         """
         Gets the agents without a group
 
@@ -1223,10 +1223,11 @@ class Agent:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+        :param filters: Values to filter by on database (legacy format).
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         return Agent.get_agent_group(group_id="null", offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                     q=q)
+                                     q=q, filters=filters)
 
 
     @staticmethod
