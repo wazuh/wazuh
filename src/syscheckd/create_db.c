@@ -173,6 +173,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     syscheck_node *s_node;
     struct stat statbuf;
     char wd_sum[OS_SIZE_6144 + 1];
+    char str_size[50], str_perm[50], str_owner[50], str_group[50], str_mtime[50], str_inode[50];
 #ifdef WIN32
     const char *user;
     char *sid = NULL;
@@ -290,7 +291,31 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 #ifdef WIN32
             user = get_user(file_name, statbuf.st_uid, &sid);
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
+            if (opts & CHECK_SIZE) {
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+            } else {
+                *str_size = '\0';
+            }
+
+            if (opts & CHECK_PERM) {
+                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+            } else {
+                *str_perm = '\0';
+            }
+
+            if (opts & CHECK_MTIME) {
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+            } else {
+                *str_mtime = '\0';
+            }
+
+            if (opts & CHECK_INODE) {
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+            } else {
+                *str_inode = '\0';
+            }
+
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%s:%s:%s::%s:%s:%s:%s:%s:%s:%s",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
                     opts & CHECK_OWNER ? '+' : '-',
@@ -301,22 +326,58 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_INODE ? '+' : '-',
                     opts & CHECK_SHA256SUM ? '+' : '-',
                     opts & CHECK_SEECHANGES ? '+' : '-',
-                    opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                    opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                    str_size,
+                    str_perm,
                     (opts & CHECK_OWNER) && sid ? sid : "",
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
                     opts & CHECK_OWNER ? user : "",
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                    opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                    opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                    str_mtime,
+                    str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "");
 
                 if (sid) {
                      LocalFree(sid);
                  }
 #else
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+            if (opts & CHECK_SIZE) {
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+            } else {
+                *str_size = '\0';
+            }
+
+            if (opts & CHECK_PERM) {
+                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+            } else {
+                *str_perm = '\0';
+            }
+
+            if (opts & CHECK_OWNER) {
+                sprintf(str_owner,"%d",(int)statbuf.st_uid);
+            } else {
+                *str_owner = '\0';
+            }
+
+            if (opts & CHECK_GROUP) {
+                sprintf(str_group,"%d",(int)statbuf.st_gid);
+            } else {
+                *str_group = '\0';
+            }
+
+            if (opts & CHECK_MTIME) {
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+            } else {
+                *str_mtime = '\0';
+            }
+
+            if (opts & CHECK_INODE) {
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+            } else {
+                *str_inode = '\0';
+            }
+
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
                     opts & CHECK_OWNER ? '+' : '-',
@@ -327,16 +388,16 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_INODE ? '+' : '-',
                     opts & CHECK_SHA256SUM ? '+' : '-',
                     opts & CHECK_SEECHANGES ? '+' : '-',
-                    opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                    opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                    opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
-                    opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
+                    str_size,
+                    str_perm,
+                    str_owner,
+                    str_group,
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                    opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                    opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                    str_mtime,
+                    str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "");
 #endif
 
@@ -360,16 +421,40 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
 #ifdef WIN32
             user = get_user(file_name, statbuf.st_uid, &sid);
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
-                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+            if (opts & CHECK_SIZE) {
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+            } else {
+                *str_size = '\0';
+            }
+
+            if (opts & CHECK_PERM) {
+                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+            } else {
+                *str_perm = '\0';
+            }
+
+            if (opts & CHECK_MTIME) {
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+            } else {
+                *str_mtime = '\0';
+            }
+
+            if (opts & CHECK_INODE) {
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+            } else {
+                *str_inode = '\0';
+            }
+
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s!%s:%s %s%s%s",
+                str_size,
+                str_perm,
                 (opts & CHECK_OWNER) && sid ? sid : "",
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
                 opts & CHECK_OWNER ? user : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                str_mtime,
+                str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
@@ -380,17 +465,53 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 LocalFree(sid);
             }
 #else
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
-                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
-                opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
+            if (opts & CHECK_SIZE) {
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+            } else {
+                *str_size = '\0';
+            }
+
+            if (opts & CHECK_PERM) {
+                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+            } else {
+                *str_perm = '\0';
+            }
+
+            if (opts & CHECK_OWNER) {
+                sprintf(str_owner,"%d",(int)statbuf.st_uid);
+            } else {
+                *str_owner = '\0';
+            }
+
+            if (opts & CHECK_GROUP) {
+                sprintf(str_group,"%d",(int)statbuf.st_gid);
+            } else {
+                *str_group = '\0';
+            }
+
+            if (opts & CHECK_MTIME) {
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+            } else {
+                *str_mtime = '\0';
+            }
+
+            if (opts & CHECK_INODE) {
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+            } else {
+                *str_inode = '\0';
+            }
+
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%s:%s %s%s%s",
+                str_size,
+                str_perm,
+                str_owner,
+                str_group,
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
                 opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                str_mtime,
+                str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",

@@ -409,35 +409,39 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 sk_fill_event(lf, f_name, &newsum);
 
                 /* Generate size message */
-                if (strcmp(oldsum.size, newsum.size) == 0) {
-                    sdb.size[0] = '\0';
-                } else {
-                    changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "size", ',');
-                    snprintf(sdb.size, OS_FLSIZE,
-                             "Size changed from '%s' to '%s'\n",
-                             oldsum.size, newsum.size);
+                if (oldsum.size && newsum.size) {
+                    if (strcmp(oldsum.size, newsum.size) == 0) {
+                        sdb.size[0] = '\0';
+                    } else {
+                        changes = 1;
+                        wm_strcat(&lf->fields[SK_CHFIELDS].value, "size", ',');
+                        snprintf(sdb.size, OS_FLSIZE,
+                                "Size changed from '%s' to '%s'\n",
+                                oldsum.size, newsum.size);
 
-                    os_strdup(oldsum.size, lf->size_before);
+                        os_strdup(oldsum.size, lf->size_before);
+                    }
                 }
 
                 /* Permission message */
-                if (oldsum.perm == newsum.perm) {
-                    sdb.perm[0] = '\0';
-                } else if (oldsum.perm > 0 && newsum.perm > 0) {
-                    changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
-                    char opstr[10];
-                    char npstr[10];
+                if (oldsum.perm && newsum.perm){
+                    if (oldsum.perm == newsum.perm) {
+                        sdb.perm[0] = '\0';
+                    } else if (oldsum.perm > 0 && newsum.perm > 0) {
+                        changes = 1;
+                        wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
+                        char opstr[10];
+                        char npstr[10];
 
-                    strncpy(opstr, agent_file_perm(oldsum.perm), sizeof(opstr) - 1);
-                    strncpy(npstr, agent_file_perm(newsum.perm), sizeof(npstr) - 1);
-                    opstr[9] = npstr[9] = '\0';
+                        strncpy(opstr, agent_file_perm(oldsum.perm), sizeof(opstr) - 1);
+                        strncpy(npstr, agent_file_perm(newsum.perm), sizeof(npstr) - 1);
+                        opstr[9] = npstr[9] = '\0';
 
-                    snprintf(sdb.perm, OS_FLSIZE, "Permissions changed from "
-                             "'%9.9s' to '%9.9s'\n", opstr, npstr);
+                        snprintf(sdb.perm, OS_FLSIZE, "Permissions changed from "
+                                "'%9.9s' to '%9.9s'\n", opstr, npstr);
 
-                    lf->perm_before = oldsum.perm;
+                        lf->perm_before = oldsum.perm;
+                    }
                 }
 
                 /* Ownership message */
