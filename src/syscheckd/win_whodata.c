@@ -57,7 +57,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 char *guid_to_string(GUID *guid);
 int set_policies();
 void set_subscription_query(wchar_t *query);
-extern int wm_exec(char *command, char **output, int *exitcode, int secs);
+extern int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 int restore_audit_policies();
 void audit_restore();
 int check_object_sacl(char *obj, int is_file);
@@ -421,7 +421,7 @@ int restore_audit_policies() {
         return 1;
     }
     // Get the current policies
-    if (wm_exec(command, &output, &result_code, 5), result_code) {
+    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
         merror("Auditpol backup error: '%s'.", output);
         return 1;
     }
@@ -971,7 +971,7 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
     // Get the current policies
-    if (wm_exec(command, &output, &result_code, 5), result_code) {
+    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
         retval = 2;
         goto end;
     }
@@ -1002,7 +1002,7 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
 
     // Set the new policies
-    if (wm_exec(command, &output, &result_code, 5), result_code) {
+    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
         retval = 2;
         goto end;
     }

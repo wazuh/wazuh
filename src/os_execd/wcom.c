@@ -477,7 +477,7 @@ size_t wcom_upgrade(const char * package, const char * installer, char ** output
     }
 #endif
 
-    if (wm_exec(installer_j, &out, &status, req_timeout) < 0) {
+    if (wm_exec(installer_j, &out, &status, req_timeout, NULL) < 0) {
         merror("At WCOM upgrade: Error executing command [%s]", installer_j);
         *output = strdup("err Cannot execute installer");
         return strlen(*output);
