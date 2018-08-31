@@ -31,6 +31,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
     /* Clear the memory before insert */
     memset(syslog_msg, '\0', OS_MAXSTR);
 
+<<<<<<< HEAD
     /* Look if location is set */
 
     if (syslog_config->location) {
@@ -42,12 +43,33 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         }
 
         if (!OSMatch_Execute(location_headless ? location_headless : al_data->location,
+=======
+    /* Look if location is set */  
+
+    //Check if location is headless
+    char * location_headless = strchr(al_data->location,'>');
+    
+    if (location_headless){        //If location has head, cut it off
+        ++location_headless;
+        strcpy(al_data->location,location_headless);
+    }
+
+    if (syslog_config->location) {
+
+        if (!OSMatch_Execute(al_data->location,
+>>>>>>> Unified location filter in JSON and plain-text
                              strlen(al_data->location),
                              syslog_config->location)) {
             return (0);
         }
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> Unified location filter in JSON and plain-text
     }
+        free(location_headless);
+
 
 
     /* Look for the level */
