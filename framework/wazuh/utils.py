@@ -607,7 +607,7 @@ class WazuhDBQuery(object):
         self.data = get_data
         self.total_items = 0
         self.min_select_fields = min_select_fields
-        self.query_regex = re.compile(r"([\w\.]+)([=!<>]{1,2})([\w _\-.:/]+)([,;])?")
+        self.query_regex = re.compile(r"(\()?([\w\.]+)([=!<>]{1,2})([\w _\-.:/]+)(\))?([,;])?")
         self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.query_operators = {"=","!=","<",">"}
         self.query_separators = {',':'OR',';':'AND','':''}
@@ -688,22 +688,28 @@ class WazuhDBQuery(object):
         if not self.query_regex.match(self.q):
             raise WazuhException(1407, self.q)
 
-        for field, operator, value, separator in self.query_regex.findall(self.q):
+        level = 0
+        for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
             if field not in self.fields.keys():
                 raise WazuhException(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
             if operator not in self.query_operators:
                 raise WazuhException(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
 
+            if open_level:
+                level += 1
+            if close_level:
+                level -= 1
             self.query_filters.append({'value': None if value == "null" else value, 'operator': operator,
                                  'field': '{}${}'.format(field, len(list(filter(lambda x: field in x['field'], self.query_filters)))),
-                                 'separator': self.query_separators[separator]})
+                                 'separator': self.query_separators[separator], 'level': level})
 
 
     def _parse_legacy_filters(self):
         """
         Parses legacy filters.
         """
-        self.query_filters += [{'value': value, 'field': name, 'operator': '=', 'separator': 'AND'} for name, value in self.legacy_filters.items()]
+        self.query_filters += [{'value': subvalue, 'field': name, 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
+                               for name, value in self.legacy_filters.items() for subvalue in value.split(',') ]
         if not self.q:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = ''
@@ -720,31 +726,33 @@ class WazuhDBQuery(object):
 
     def _add_filters_to_query(self):
         self._parse_filters()
+        curr_level = 0
+        for q_filter in self.query_filters:
+            field_name = q_filter['field'].split('$',1)[0]
+            field_filter = q_filter['field'].replace('.','_')
 
-        for filter in self.query_filters:
-            field_name = filter['field'].split('$',1)[0]
-            field_filter = filter['field'].replace('.','_')
-
-            if self._pass_filter(filter['value']):
+            if self._pass_filter(q_filter['value']):
                 continue
 
+            self.query += '((' if curr_level < q_filter['level'] else '('
             if field_name == "status":
-                self._filter_status(filter)
-            elif field_name in self.date_fields and not self.date_regex.match(filter['value']):
+                self._filter_status(q_filter)
+            elif field_name in self.date_fields and not self.date_regex.match(q_filter['value']):
                 # filter a date, but only if it is in timeframe format.
                 # If it matches the same format as DB (YYYY-MM-DD hh:mm:ss), filter directly by value (next if cond).
-                self._filter_date(filter, field_name)
+                self._filter_date(q_filter, field_name)
             else:
-                if filter['value'] is not None:
-                    self.request[field_filter] = filter['value'] if filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', filter['value'])
-                    self.query += '{} {} :{}'.format(self.fields[field_name], filter['operator'], field_filter)
+                if q_filter['value'] is not None:
+                    self.request[field_filter] = q_filter['value'] if q_filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
+                    self.query += '{} {} :{}'.format(self.fields[field_name], q_filter['operator'], field_filter)
                     if not field_filter.isdigit():
                         # filtering without being uppercase/lowercase sensitive
                         self.query += ' COLLATE NOCASE'
                 else:
                     self.query += '{} IS null'.format(self.fields[field_name])
 
-            self.query += ' {} '.format(filter['separator'])
+            self.query += ('))' if curr_level > q_filter['level'] else ')') + ' {} '.format(q_filter['separator'])
+            curr_level = q_filter['level']
 
 
     def _get_total_items(self):
