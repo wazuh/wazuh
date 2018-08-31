@@ -110,6 +110,8 @@ typedef struct _Eventinfo {
     char *diff;
     char *previous;
     wlabel_t *labels;
+    char *attrs_before;
+    char *attrs_after;
     // Whodata fields
     char *user_id;
     char *user_name;

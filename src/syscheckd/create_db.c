@@ -187,6 +187,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifdef WIN32
     const char *user = NULL;
     char *sid = NULL;
+    char permissions[OS_SIZE_20480 + 1];
 #else
     char str_owner[50], str_group[50];
 #endif
@@ -305,6 +306,15 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         if (opts & CHECK_OWNER) {
             user = get_user(file_name, statbuf.st_uid, &sid);
         }
+
+        // Get the file permissions
+        *permissions = '\0';
+        if (opts & CHECK_PERM) {
+          int error;
+          if (error = w_get_permissions(file_name, permissions), error) {
+            merror("No se pudieron extraer permisos de la '%s'. Error: %d.", file_name, error);
+          }
+        }
 #endif
 
         if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
@@ -340,7 +350,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 *str_inode = '\0';
             }
 
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%s:%s:%s::%s:%s:%s:%s:%s:%s:%s",
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
                     opts & CHECK_OWNER ? '+' : '-',
@@ -350,9 +360,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_MTIME ? '+' : '-',
                     opts & CHECK_INODE ? '+' : '-',
                     opts & CHECK_SHA256SUM ? '+' : '-',
+                    opts & CHECK_ATTRS ? '+' : '-',
                     opts & CHECK_SEECHANGES ? '+' : '-',
                     str_size,
-                    str_perm,
+                    permissions,
                     (opts & CHECK_OWNER) && sid ? sid : "",
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
@@ -360,7 +371,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                     str_mtime,
                     str_inode,
-                    opts & CHECK_SHA256SUM ? sf256_sum : "");
+                    opts & CHECK_SHA256SUM ? sf256_sum : "",
+                    opts & CHECK_ATTRS ? w_get_attrs(file_name) : 0);
 #else
             if (opts & CHECK_SIZE) {
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
@@ -398,7 +410,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 *str_inode = '\0';
             }
 
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
                     opts & CHECK_OWNER ? '+' : '-',
@@ -408,6 +420,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_MTIME ? '+' : '-',
                     opts & CHECK_INODE ? '+' : '-',
                     opts & CHECK_SHA256SUM ? '+' : '-',
+                    opts & CHECK_ATTRS ? '+' : '-',
                     opts & CHECK_SEECHANGES ? '+' : '-',
                     str_size,
                     str_perm,
@@ -419,7 +432,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                     str_mtime,
                     str_inode,
-                    opts & CHECK_SHA256SUM ? sf256_sum : "");
+                    opts & CHECK_SHA256SUM ? sf256_sum : "",
+                    0);
 #endif
 
             os_calloc(1, sizeof(syscheck_node), s_node);
@@ -465,9 +479,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 *str_inode = '\0';
             }
 
-            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s!%s:%s %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s %s%s%s",
                 str_size,
-                str_perm,
+                permissions,
                 (opts & CHECK_OWNER) && sid ? sid : "",
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
@@ -476,6 +490,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 str_mtime,
                 str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
+                opts & CHECK_ATTRS ? w_get_attrs(file_name) : 0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
                 file_name,
@@ -518,9 +533,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 *str_inode = '\0';
             }
 
-            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%s:%s %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s %s%s%s",
                 str_size,
-                str_perm,
+                permissions,
                 str_owner,
                 str_group,
                 opts & CHECK_MD5SUM ? mf_sum : "",
@@ -530,6 +545,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 str_mtime,
                 str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
+                0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
                 file_name,

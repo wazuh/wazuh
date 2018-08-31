@@ -63,6 +63,7 @@ void fim_init(void) {
     fim_decoder->fields[SK_MD5] = "md5";
     fim_decoder->fields[SK_SHA1] = "sha1";
     fim_decoder->fields[SK_SHA256] = "sha256";
+    fim_decoder->fields[SK_ATTRS] = "attributes";
     fim_decoder->fields[SK_UNAME] = "uname";
     fim_decoder->fields[SK_GNAME] = "gname";
     fim_decoder->fields[SK_INODE] = "inode";
@@ -644,6 +645,19 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             } else {
                 localsdb->inode[0] = '\0';
             }
+
+            /* Attributes message */
+            if (oldsum->attrs && newsum->attrs && oldsum->attrs != newsum->attrs) {
+                changes = 1;
+                os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->attrs_before);
+                os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->attrs_after);
+                get_attributes_str(lf->attrs_before, oldsum->attrs);
+                get_attributes_str(lf->attrs_after, newsum->attrs);
+                wm_strcat(&lf->fields[SK_ATTRS].value, "attributes", ',');
+                snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", lf->attrs_before, lf->attrs_after);
+            } else {
+                localsdb->attrs[0] = '\0';
+            }
             break;
         default:
             return (-1);
@@ -668,6 +682,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             "%s"
             "%s"
             "%s"
+            "%s"
             "%s",
             f_name,
             msg_type,
@@ -678,6 +693,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             localsdb->md5,
             localsdb->sha1,
             localsdb->sha256,
+            localsdb->attrs,
             localsdb->mtime,
             localsdb->inode,
             localsdb->user_name,

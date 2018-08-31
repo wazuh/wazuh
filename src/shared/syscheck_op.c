@@ -22,6 +22,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_perm;
     char *c_mtime;
     char *c_inode;
+    char *attrs;
     char *tag;
     int retval = 0;
 
@@ -86,6 +87,10 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
                     if (tag = strchr(sum->sha256, ':'), tag) {
                         *(tag++) = '\0';
                         sum->tag = tag;
+                        if ((attrs = strchr(sum->sha256, ':'))) {
+                            *(attrs++) = '\0';
+                            sum->attrs = strtoul(attrs, NULL, 10);
+                        }
                     }
                 }
 
@@ -505,6 +510,35 @@ const char* get_group(int gid) {
     return group ? group->gr_name : "";
 }
 
+void get_attributes_str(char *str, unsigned int attrs) {
+    size_t size;
+
+    size = snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                    attrs & FILE_ATTRIBUTE_ARCHIVE ? "ARCHIVE ," : "",
+                    attrs & FILE_ATTRIBUTE_COMPRESSED ? "COMPRESSED ," : "",
+                    attrs & FILE_ATTRIBUTE_DEVICE ? "DEVICE ," : "",
+                    attrs & FILE_ATTRIBUTE_DIRECTORY ? "DIRECTORY ," : "",
+                    attrs & FILE_ATTRIBUTE_ENCRYPTED ? "ENCRYPTED ," : "",
+                    attrs & FILE_ATTRIBUTE_HIDDEN ? "HIDDEN ," : "",
+                    attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "INTEGRITY_STREAM ," : "",
+                    attrs & FILE_ATTRIBUTE_NORMAL ? "NORMAL ," : "",
+                    attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "NOT_CONTENT_INDEXED ," : "",
+                    attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "NO_SCRUB_DATA ," : "",
+                    attrs & FILE_ATTRIBUTE_OFFLINE ? "OFFLINE ," : "",
+                    attrs & FILE_ATTRIBUTE_READONLY ? "READONLY ," : "",
+                    attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "RECALL_ON_DATA_ACCESS ," : "",
+                    attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "RECALL_ON_OPEN ," : "",
+                    attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "REPARSE_POINT ," : "",
+                    attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "SPARSE_FILE ," : "",
+                    attrs & FILE_ATTRIBUTE_SYSTEM ? "SYSTEM ," : "",
+                    attrs & FILE_ATTRIBUTE_TEMPORARY ? "TEMPORARY ," : "",
+                    attrs & FILE_ATTRIBUTE_VIRTUAL ? "VIRTUAL ," : ""
+    );
+    if (size > 1) {
+        str[size - 2] = '\0';
+    }
+}
+
 #else
 
 const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
@@ -614,6 +648,25 @@ end:
         LocalFree(pSD);
     }
     return AcctName;
+}
+
+int w_get_permissions(const char *file_path, char *permissions) {
+  int retval = 0;
+  *permissions = '\0';
+  SECURITY_DESCRIPTOR *s_desc;
+
+  return retval;
+}
+
+unsigned int w_get_attrs(const char *file_path) {
+    unsigned int attrs;
+
+    if (attrs = GetFileAttributesA(file_path), attrs == INVALID_FILE_ATTRIBUTES) {
+        attrs = 0;
+        merror("The attributes for '%s' could not be obtained. Error '%ld'.", file_path, GetLastError());
+    }
+
+    return attrs;
 }
 
 const char *get_group(__attribute__((unused)) int gid) {

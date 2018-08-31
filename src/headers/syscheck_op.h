@@ -20,6 +20,26 @@
 #include <grp.h>
 #define PATH_SEP '/'
 
+#define FILE_ATTRIBUTE_READONLY                0x00000001
+#define FILE_ATTRIBUTE_HIDDEN                  0x00000002
+#define FILE_ATTRIBUTE_SYSTEM                  0x00000004
+#define FILE_ATTRIBUTE_DIRECTORY               0x00000010
+#define FILE_ATTRIBUTE_ARCHIVE                 0x00000020
+#define FILE_ATTRIBUTE_DEVICE                  0x00000040
+#define FILE_ATTRIBUTE_NORMAL                  0x00000080
+#define FILE_ATTRIBUTE_TEMPORARY               0x00000100
+#define FILE_ATTRIBUTE_SPARSE_FILE             0x00000200
+#define FILE_ATTRIBUTE_REPARSE_POINT           0x00000400
+#define FILE_ATTRIBUTE_COMPRESSED              0x00000800
+#define FILE_ATTRIBUTE_OFFLINE                 0x00001000
+#define FILE_ATTRIBUTE_NOT_CONTENT_INDEXED     0x00002000
+#define FILE_ATTRIBUTE_ENCRYPTED               0x00004000
+#define FILE_ATTRIBUTE_INTEGRITY_STREAM        0x00008000
+#define FILE_ATTRIBUTE_VIRTUAL                 0x00010000
+#define FILE_ATTRIBUTE_NO_SCRUB_DATA           0x00020000
+#define FILE_ATTRIBUTE_RECALL_ON_OPEN          0x00040000
+#define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS   0x00400000
+
 #else
 
 #include "shared.h"
@@ -43,6 +63,7 @@ typedef enum sk_syscheck {
     SK_GNAME,
     SK_INODE,
     SK_SHA256,
+    SK_ATTRS,
     SK_MTIME,
     SK_CHFIELDS,
     SK_USER_ID,
@@ -71,6 +92,7 @@ typedef struct __sdb {
     char sha256[OS_FLSIZE + 1];
     char mtime[OS_FLSIZE + 1];
     char inode[OS_FLSIZE + 1];
+    char attrs[OS_SIZE_1024 + 1];
 
     // Whodata fields
     char user_id[OS_FLSIZE + 1];
@@ -112,6 +134,7 @@ typedef struct sk_sum_t {
     char *md5;
     char *sha1;
     char *sha256;
+    unsigned int attrs;
     char *uname;
     char *gname;
     long mtime;
@@ -150,10 +173,13 @@ void normalize_path(char *path);
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
 const char* get_group(int gid);
+void get_attributes_str(char *str, unsigned int attrs);
 
 #else
 
 const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
+unsigned int w_get_attrs(const char *file_path);
+int w_get_permissions(const char *file_path, char *permissions);
 const char *get_group(__attribute__((unused)) int gid);
 
 #endif
