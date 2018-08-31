@@ -13,7 +13,11 @@ All notable changes to this project will be documented in this file.
 - Refactor Python framework code to standardize database requests and support API queries. ([#921](https://github.com/wazuh/wazuh/pull/921)).
 - Add support for multigroups ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135)).
 - Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
-- Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315)) 
+- Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315))
+
+### Fixed
+
+- Fixed mandatory configuration labels check ([#1208](https://github.com/wazuh/wazuh/pull/1208))
 
 ## [v3.6.2]
 
@@ -34,6 +38,7 @@ All notable changes to this project will be documented in this file.
 - Fix bug in folder recursion limit count in FIM real-time mode. ([#1226](https://github.com/wazuh/wazuh/issues/1226))
 - Fixed errors when parsing AWS events in Elasticsearch. ([#1229](https://github.com/wazuh/wazuh/issues/1229))
 - Fix bug when launching osquery from Wazuh. ([#1230](https://github.com/wazuh/wazuh/issues/1230))
+
 
 ## [v3.6.0] - 2018-08-29
 
