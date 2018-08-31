@@ -16,6 +16,7 @@
 /* Send an alert via syslog
  * Returns 1 on success or 0 on error
  */
+
 int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 {
     char *tstamp;
@@ -30,14 +31,27 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
     /* Clear the memory before insert */
     memset(syslog_msg, '\0', OS_MAXSTR);
 
-    /* Look if location is set */
+    /* Look if location is set */  
+
+    //Check if location is headless
+    char * location_headless = strchr(al_data->location,'>');
+    
+    if (location_headless){        //If location has head, cut it off
+        ++location_headless;
+        strcpy(al_data->location,location_headless);
+    }
+
     if (syslog_config->location) {
+
         if (!OSMatch_Execute(al_data->location,
                              strlen(al_data->location),
                              syslog_config->location)) {
             return (0);
         }
+        
     }
+        free(location_headless);
+
 
     /* Look for the level */
     if (syslog_config->level) {
