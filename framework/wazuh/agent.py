@@ -109,7 +109,7 @@ class Agent:
 
     fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
-              'version': 'version', 'manager_host': 'manager_host', 'dateAdd': 'date_add',
+              'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build':'os_build',
@@ -138,7 +138,7 @@ class Agent:
         self.configSum     = None
         self.mergedSum     = None
         self.group         = None
-        self.manager_host  = None
+        self.manager       = None
         self.node_name     = None
 
         # if the method has only been called with an ID parameter, no new agent should be added.
