@@ -181,19 +181,21 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     struct stat statbuf;
     char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
     char *wd_sum = NULL;
+    char *alert_msg = NULL;
+    char *c_sum = NULL;
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
-#ifndef WIN32
-    char str_owner[50], str_group[50];
-#else
-    const char *user;
+#ifdef WIN32
+    const char *user = NULL;
     char *sid = NULL;
+#else
+    char str_owner[50], str_group[50];
 #endif
 
     opts = syscheck.opts[dir_position];
     restriction = syscheck.filerestrict[dir_position];
 
     if (fim_check_ignore (file_name) == 1) {
-        free(wd_sum);
+        os_free(wd_sum);
         return (0);
     }
 
@@ -204,14 +206,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
-        char *alert_msg = NULL;
         os_calloc(OS_SIZE_6144, sizeof(char), alert_msg);
 
         switch (errno) {
         case ENOENT:
             mwarn("Cannot access '%s': it was removed during scan.", file_name);
-            free(alert_msg);
-            free(wd_sum);
+            os_free(alert_msg);
+            os_free(wd_sum);
             return (-1);
 
         case ENOTDIR:
@@ -221,17 +222,17 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
             // Delete from hash table
             if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
-                free(s_node->checksum);
-                free(s_node);
+                os_free(s_node->checksum);
+                os_free(s_node);
             }
-            free(alert_msg);
-            free(wd_sum);
+            os_free(alert_msg);
+            os_free(wd_sum);
             return (0);
 
         default:
             merror("Error accessing '%s': %s (%d)", file_name, strerror(errno), errno);
-            free(alert_msg);
-            free(wd_sum);
+            os_free(alert_msg);
+            os_free(wd_sum);
             return (-1);
         }
     }
@@ -241,18 +242,18 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         /* Directory links are not supported */
         if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
             mwarn("Links are not supported: '%s'", file_name);
-            free(wd_sum);
+            os_free(wd_sum);
             return (-1);
         }
 #endif
-        free(wd_sum);
+        os_free(wd_sum);
         return (read_dir(file_name, dir_position, NULL, max_depth-1));
 
     }
 
     if (fim_check_restrict (file_name, restriction) == 1) {
         mdebug1("Ingnoring file '%s' for a restriction...", file_name);
-        free(wd_sum);
+        os_free(wd_sum);
         return (0);
     }
 
@@ -299,8 +300,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
         }
 
+#ifdef WIN32
+        // Get the user name and its id
+        if (opts & CHECK_OWNER) {
+            user = get_user(file_name, statbuf.st_uid, &sid);
+        }
+#endif
+
         if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
-            char *alert_msg = NULL;
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
 
             char * alertdump = NULL;
@@ -309,7 +316,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 alertdump = seechanges_addfile(file_name);
             }
 #ifdef WIN32
-            user = get_user(file_name, statbuf.st_uid, &sid);
             if (opts & CHECK_SIZE) {
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
             } else {
@@ -350,15 +356,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     (opts & CHECK_OWNER) && sid ? sid : "",
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
-                    opts & CHECK_OWNER ? user : "",
+                    user ? user : "",
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                     str_mtime,
                     str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "");
-
-                if (sid) {
-                     LocalFree(sid);
-                 }
 #else
             if (opts & CHECK_SIZE) {
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
@@ -425,8 +427,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             s_node->dir_position = dir_position;
 
             if (OSHash_Add_ex(syscheck.fp, file_name, s_node) <= 0) {
-                free(s_node->checksum);
-                free(s_node);
+                os_free(s_node->checksum);
+                os_free(s_node);
                 merror("Unable to add file to db: %s", file_name);
             }
 
@@ -439,7 +441,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
 #ifdef WIN32
-            user = get_user(file_name, statbuf.st_uid, &sid);
             if (opts & CHECK_SIZE) {
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
             } else {
@@ -470,7 +471,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 (opts & CHECK_OWNER) && sid ? sid : "",
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
-                opts & CHECK_OWNER ? user : "",
+                user ? user : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                 str_mtime,
                 str_inode,
@@ -480,9 +481,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
-            if (sid) {
-                LocalFree(sid);
-            }
 #else
             if (opts & CHECK_SIZE) {
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
@@ -542,23 +540,17 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 send_syscheck_msg(alert_msg);
             }
 
-            free(alert_msg);
-            free(alertdump);
+            os_free(alert_msg);
+            os_free(alertdump);
         } else {
-            char *alert_msg = NULL;
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
-            char *c_sum;
             os_calloc(OS_MAXSTR + 1, sizeof(char), c_sum);
-
 
             buf = s_node->checksum;
 
             /* If it returns < 0, we have already alerted */
             if (c_read_file(file_name, buf, c_sum, NULL) < 0) {
-                free(alert_msg);
-                free(c_sum);
-                free(wd_sum);
-                return (0);
+              goto end;
             }
 
             w_mutex_lock(&lastcheck_mutex);
@@ -582,7 +574,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     if (fullalert) {
                         snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s",
                                 c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name, fullalert);
-                        free(fullalert);
+                        os_free(fullalert);
                         fullalert = NULL;
                     } else {
                         snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s",
@@ -592,11 +584,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s",
                             c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
                 }
-                free(buf);
+                os_free(buf);
                 send_syscheck_msg(alert_msg);
             }
-            free(alert_msg);
-            free(c_sum);
+            os_free(alert_msg);
+            os_free(c_sum);
         }
 
         /* Sleep here too */
@@ -609,9 +601,17 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         mdebug2("IRREG File: '%s'", file_name);
     }
 
-    free(wd_sum);
 
-    return (0);
+end:
+    os_free(wd_sum);
+    os_free(alert_msg);
+    os_free(c_sum);
+#ifdef WIN32
+    if (sid) {
+        LocalFree(sid);
+    }
+#endif
+    return 0;
 }
 
 int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth)
