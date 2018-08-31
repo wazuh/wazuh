@@ -49,15 +49,6 @@ void SyscheckInit()
     memset(sdb.sha256, '\0', OS_FLSIZE + 1);
     memset(sdb.mtime, '\0', OS_FLSIZE + 1);
     memset(sdb.inode, '\0', OS_FLSIZE + 1);
-    // Whodata fields
-
-    memset(sdb.user_name, '\0', OS_FLSIZE + 1);
-    memset(sdb.group_name, '\0', OS_FLSIZE + 1);
-    memset(sdb.process_name, '\0', OS_FLSIZE + 1);
-    memset(sdb.audit_name, '\0', OS_FLSIZE + 1);
-    memset(sdb.effective_name, '\0', OS_FLSIZE + 1);
-    memset(sdb.ppid, '\0', OS_FLSIZE + 1);
-    memset(sdb.process_id, '\0', OS_FLSIZE + 1);
 
     /* Create decoder */
     os_calloc(1, sizeof(OSDecoderInfo), sdb.syscheck_dec);
@@ -95,8 +86,6 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_TAG] = "tag";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
-    sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
-    sdb.id3 = getDecoderfromlist(SYSCHECK_MOD3);
     sdb.idn = getDecoderfromlist(SYSCHECK_NEW);
     sdb.idd = getDecoderfromlist(SYSCHECK_DEL);
 
