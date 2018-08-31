@@ -962,8 +962,7 @@ class Agent:
         """
 
 
-        agents = Agent.get_agents_overview(q="status={};lastKeepAlive={}".format(status,older_than), limit = None)
-
+        agents = Agent.get_agents_overview(filters={'older_than':older_than,'status':status}, limit = None)
         id_purgeable_agents = [agent['id'] for agent in agents['items']]
 
         failed_ids = []
