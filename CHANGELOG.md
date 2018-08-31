@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Fixed service startup on error. ([#1324](https://github.com/wazuh/wazuh/pull/1324))
 - Fix stack overflow when monitoring deep files. ([#1239](https://github.com/wazuh/wazuh/pull/1239))
 - Fix bug when running quick commands with timeout of 1 second. ([#1259](https://github.com/wazuh/wazuh/pull/1259))
+- Fixed getting RAM memory information from mac OS X and FreeBSD agents. ([#1203](https://github.com/wazuh/wazuh/pull/1203))
 
 
 ## [v3.6.1] 2018-09-07
