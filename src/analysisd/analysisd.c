@@ -57,7 +57,7 @@ void DecodeEvent(Eventinfo *lf);
 int DecodeSyscheck(Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
-int DecodeSyscollector(Eventinfo *lf);
+int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
 
 /* For stats */

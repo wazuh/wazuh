@@ -28,12 +28,12 @@ static int prev_port_id = 0;
 static int error_process = 0;
 static int prev_process_id = 0;
 
-static int decode_netinfo(char *agent_id, cJSON * logJSON);
-static int decode_osinfo(char *agent_id, cJSON * logJSON);
-static int decode_hardware(char *agent_id, cJSON * logJSON);
-static int decode_package(char *agent_id, cJSON * logJSON);
-static int decode_port(char *agent_id, cJSON * logJSON);
-static int decode_process(char *agent_id, cJSON * logJSON);
+static int decode_netinfo(char *agent_id, cJSON * logJSON,int *socket);
+static int decode_osinfo(char *agent_id, cJSON * logJSON,int *socket);
+static int decode_hardware(char *agent_id, cJSON * logJSON,int *socket);
+static int decode_package(char *agent_id, cJSON * logJSON,int *socket);
+static int decode_port(char *agent_id, cJSON * logJSON,int *socket);
+static int decode_process(char *agent_id, cJSON * logJSON,int *socket);
 
 static OSDecoderInfo *sysc_decoder = NULL;
 
@@ -469,9 +469,6 @@ int decode_netinfo(char *agent_id, cJSON * logJSON,int *socket) {
             free(msg);
             return -1;
         }
-        else {
-            free(msg);
-        }
     }
 
     return 0;
@@ -723,7 +720,7 @@ int decode_port(char *agent_id, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (sc_send_db(msg) < 0) {
+        if (sc_send_db(msg,socket) < 0) {
             error_port = 1;
             prev_port_id = scan_id->valueint;
             return -1;
@@ -751,7 +748,7 @@ int decode_port(char *agent_id, cJSON * logJSON,int *socket) {
 
             snprintf(msg, OS_MAXSTR - 1, "agent %s port del %d", agent_id, scan_id->valueint);
 
-            if (sc_send_db(msg) < 0) {
+            if (sc_send_db(msg,socket) < 0) {
                 error_port = 1;
                 prev_port_id = scan_id->valueint;
                 return -1;
@@ -851,7 +848,7 @@ int decode_hardware(char *agent_id, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (sc_send_db(msg) < 0) {
+        if (sc_send_db(msg,socket) < 0) {
             return -1;
         }
     }
@@ -987,7 +984,7 @@ int decode_package(char *agent_id, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (sc_send_db(msg) < 0) {
+        if (sc_send_db(msg,socket) < 0) {
             error_package = 1;
             prev_package_id = scan_id->valueint;
             return -1;
@@ -1016,7 +1013,7 @@ int decode_package(char *agent_id, cJSON * logJSON,int *socket) {
 
             snprintf(msg, OS_MAXSTR - 1, "agent %s package del %d", agent_id, scan_id->valueint);
 
-            if (sc_send_db(msg) < 0) {
+            if (sc_send_db(msg,socket) < 0) {
                 error_package = 1;
                 prev_package_id = scan_id->valueint;
                 return -1;
@@ -1301,7 +1298,7 @@ int decode_process(char *agent_id, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (sc_send_db(msg) < 0) {
+        if (sc_send_db(msg,socket) < 0) {
             error_process = 1;
             prev_process_id = scan_id->valueint;
             return -1;
@@ -1330,7 +1327,7 @@ int decode_process(char *agent_id, cJSON * logJSON,int *socket) {
 
             snprintf(msg, OS_MAXSTR - 1, "agent %s process del %d", agent_id, scan_id->valueint);
 
-            if (sc_send_db(msg) < 0) {
+            if (sc_send_db(msg,socket) < 0) {
                 error_process = 1;
                 prev_process_id = scan_id->valueint;
                 return -1;
@@ -1374,7 +1371,7 @@ int sc_send_db(char * msg,int *sock) {
     *(uint32_t *)msg_cpy = wnet_order(size);
     memcpy(msg_cpy + sizeof(uint32_t), msg, size);
 
-    if (send(sock, msg_cpy, bufsz+1, MSG_DONTWAIT) < size) {
+    if (send(*sock, msg_cpy, bufsz+1, MSG_DONTWAIT) < size) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             merror("Syscollector decoder: database socket is full");
         } else if (errno == EPIPE) {
@@ -1389,7 +1386,7 @@ int sc_send_db(char * msg,int *sock) {
                     goto end;
                 }
 
-                if (send(sock, msg_cpy, bufsz + 1, MSG_DONTWAIT) < size) {
+                if (send(*sock, msg_cpy, bufsz + 1, MSG_DONTWAIT) < size) {
                     last_attempt = mtime;
                     merror("at sc_send_db(): at send() (retry): %s (%d)", strerror(errno), errno);
                     goto end;
@@ -1416,7 +1413,7 @@ int sc_send_db(char * msg,int *sock) {
     }
 
     // Receive response from socket
-    length = OS_RecvSecureTCP(sock,response,OS_MAXSTR);
+    length = OS_RecvSecureTCP(*sock,response,OS_MAXSTR);
     switch (length) {
         case -1:
             merror("at sc_send_db(): at recv(): %s (%d)", strerror(errno), errno);
