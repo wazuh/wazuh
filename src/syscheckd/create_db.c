@@ -174,7 +174,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     struct stat statbuf;
     char wd_sum[OS_SIZE_6144 + 1];
 #ifdef WIN32
-    const char *user;
+    const char *user = NULL;
     char *sid = NULL;
 #endif
 
@@ -280,6 +280,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
         }
 
+#ifdef WIN32
+        // Get the user name and its id
+        if (opts & CHECK_OWNER) {
+            user = get_user(file_name, statbuf.st_uid, &sid);
+        }
+#endif
+
         if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
             char alert_msg[OS_MAXSTR + 1];    /* to accommodate a long */
             alert_msg[OS_MAXSTR] = '\0';
@@ -289,7 +296,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 alertdump = seechanges_addfile(file_name);
             }
 #ifdef WIN32
-            user = get_user(file_name, statbuf.st_uid, &sid);
             snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
@@ -311,10 +317,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                     opts & CHECK_SHA256SUM ? sf256_sum : "");
-
-                if (sid) {
-                     LocalFree(sid);
-                 }
 #else
             snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
                     opts & CHECK_SIZE ? '+' : '-',
@@ -359,7 +361,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
 #ifdef WIN32
-            user = get_user(file_name, statbuf.st_uid, &sid);
             snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
@@ -376,9 +377,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
-            if (sid) {
-                LocalFree(sid);
-            }
 #else
             snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
@@ -414,7 +412,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
             /* If it returns < 0, we have already alerted */
             if (c_read_file(file_name, buf, c_sum, NULL) < 0) {
-                return (0);
+                goto end;
             }
 
             w_mutex_lock(&lastcheck_mutex);
@@ -463,7 +461,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         mdebug2("IRREG File: '%s'", file_name);
     }
 
-    return (0);
+end:
+#ifdef WIN32
+    if (sid) {
+        LocalFree(sid);
+    }
+#endif
+    return 0;
 }
 
 int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth)
