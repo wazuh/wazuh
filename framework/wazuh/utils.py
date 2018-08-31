@@ -626,6 +626,8 @@ class WazuhDBQuery(object):
             self.query += ' LIMIT :offset,:limit'
             self.request['offset'] = self.offset
             self.request['limit'] = self.limit
+        elif self.limit == 0: # 0 is not a valid limit
+            raise WazuhException(1406)
 
 
     def _sort_query(self, field):
