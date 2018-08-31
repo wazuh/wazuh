@@ -238,45 +238,8 @@ class Agent:
         Gets public attributes of existing agent.
         """
         self._load_info_from_DB(select)
-
-        select_fields = {'id', 'last_keepalive', 'status', 'version'} if select is None else select['fields']
-
-        info = {}
-
-        if self.id and 'id' in select_fields:
-            info['id'] = self.id
-        if self.name:
-            info['name'] = self.name
-        if self.ip:
-            info['ip'] = self.ip
-        #if self.internal_key:
-        #    info['internal_key'] = self.internal_key
-        if self.os:
-            os_no_empty = dict((k, v) for k, v in self.os.items() if v)
-            if os_no_empty:
-                info['os'] = os_no_empty
-        if self.version and 'version' in select_fields:
-            info['version'] = self.version
-        if self.dateAdd:
-            info['dateAdd'] = self.dateAdd
-        if self.lastKeepAlive and 'last_keepalive' in select_fields:
-            info['lastKeepAlive'] = self.lastKeepAlive
-        if self.status and 'status' in select_fields:
-            info['status'] = self.status
-        if self.configSum:
-            info['configSum'] = self.configSum
-        if self.mergedSum:
-            info['mergedSum'] = self.mergedSum
-        #if self.key:
-        #    info['key'] = self.key
-        if self.group:
-            info['group'] = self.group
-        if self.manager_host:
-            info['manager_host'] = self.manager_host
-        if self.node_name:
-            info['node_name'] = self.node_name
-
-        return info
+        fields = set(self.fields.keys()) & set(select['fields']) if select is not None else self.fields.keys()
+        return {field:getattr(self,field) for field in map(lambda x: x.split('.')[0], fields)}
 
 
     def compute_key(self):
