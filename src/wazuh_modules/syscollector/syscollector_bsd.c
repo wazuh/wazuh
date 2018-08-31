@@ -616,20 +616,22 @@ hw_info *get_system_bsd(){
 
     len = sizeof(vmt);
 
-    if (!sysctlbyname("vm.vmtotal", &vmt, &len, NULL, 0))
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting vm.vmtotal due to (%s)", strerror(errno));
+    if (!sysctlbyname("vm.vmtotal", &vmt, &len, NULL, 0)) {
 
-    len = sizeof(page_size);
+        len = sizeof(page_size);
+        if (!sysctlbyname("vm.stats.vm.v_page_size", &page_size, &len, NULL, 0)){
+            uint64_t cpu_free_kb = (vmt.t_free * (uint64_t)page_size) / 1024;
+            info->ram_free = cpu_free_kb;
 
-    if (!sysctlbyname("vm.stats.vm.v_page_size", &page_size, &len, NULL, 0)){
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting free memory due to (%s)", strerror(errno));
-    }else{
-        uint64_t cpu_free_kb = (vmt.t_free * (uint64_t)page_size) / 1024;
-        info->ram_free = cpu_free_kb;
-
-        if (info->ram_total > 0) {
-            info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
+            if (info->ram_total > 0) {
+                info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
+            }
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting pages size due to (%s)", strerror(errno));
         }
+
+    } else {
+        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting RAM free due to (%s)", strerror(errno));
     }
 
 #elif defined(__MACH__)
@@ -640,6 +642,8 @@ hw_info *get_system_bsd(){
     len = sizeof(page_size);
 
     if (!sysctlbyname("vm.pagesize", &page_size, &len, NULL, 0)) {
+
+        len = sizeof(free_pages);
         if (!sysctlbyname("vm.page_free_count", &free_pages, &len, NULL, 0)) {
 
             uint64_t cpu_free_kb = (free_pages * (uint64_t)page_size) / 1024;
