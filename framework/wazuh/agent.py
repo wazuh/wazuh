@@ -92,6 +92,16 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             return WazuhDBQuery._sort_query(self, field)
 
 
+    def _add_search_to_query(self):
+        # since id are stored in database as integers, id searches must be turned into integers to work as expected.
+        if self.search:
+            del self.fields['id']
+            WazuhDBQuery._add_search_to_query(self)
+            self.fields['id'] = 'id'
+            self.query = self.query[:-1] + ' OR id LIKE :search_id)'
+            self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() else self.search['value']
+
+
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
             self.q += "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
