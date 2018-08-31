@@ -293,7 +293,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     wm_strcat(&trail_title, " - ", ' ');
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
-    switch (wm_exec(command, &output, &status, 0)) {
+    switch (wm_exec(command, &output, &status, 0, NULL)) {
     case 0:
         if (status > 0) {
             mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
