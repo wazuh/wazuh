@@ -507,6 +507,7 @@ int OS_SetRecvTimeout(int socket, int seconds)
     return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
 }
 
+
 /* Send secure TCP message
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
  * Return 0 on success or OS_SOCKTERR on error.
@@ -514,17 +515,11 @@ int OS_SetRecvTimeout(int socket, int seconds)
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     int retval;
     void * buffer;
-    char int_char[32];
-    int int_char_size;
-
-    int_char_size = snprintf(int_char, 32, "%i", size);
-    size_t bufsz = size + int_char_size + 2;
+    size_t bufsz = size + sizeof(uint32_t);
 
     os_malloc(bufsz, buffer);
-
-    snprintf(buffer, bufsz, "!%d ", size);
-    memcpy(buffer + int_char_size + 2, msg, size);
-
+    *(uint32_t *)buffer = wnet_order(size);
+    memcpy(buffer + sizeof(uint32_t), msg, size);
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
 
     free(buffer);
