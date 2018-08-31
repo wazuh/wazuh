@@ -788,9 +788,9 @@ class Agent:
         db_query = WazuhDBQueryAgents(offset=0,limit=None,sort=None,search=None,select=None,count=True,get_data=False,query="")
 
         db_query.run()
-        data = {'total':db_query.total_items}
+        data = {'Total':db_query.total_items}
 
-        for status in ['Active','Disconnected','Never Connected','Pending']:
+        for status in ['Active','Disconnected','Never connected','Pending']:
             db_query.reset()
 
             db_query.q = "status="+status
