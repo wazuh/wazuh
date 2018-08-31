@@ -291,6 +291,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_check_perm = "check_perm";
     const char *xml_check_mtime = "check_mtime";
     const char *xml_check_inode = "check_inode";
+    const char *xml_check_attrs = "check_attrs";
     const char *xml_real_time = "realtime";
     const char *xml_report_changes = "report_changes";
     const char *xml_restrict = "restrict";
@@ -367,9 +368,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_GROUP;
                     opts |= CHECK_MTIME;
                     opts |= CHECK_INODE;
+                    opts |= CHECK_ATTRS;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM
-                            | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
+                            | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_ATTRS);
                 } else {
                     merror(SK_INV_OPT, *values, *attrs);
                     ret = 0;
@@ -504,6 +506,18 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_INODE;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_INODE;
+                } else {
+                    merror(SK_INV_OPT, *values, *attrs);
+                    ret = 0;
+                    goto out_free;
+                }
+            }
+            /* Check attributes */
+            else if (strcmp(*attrs, xml_check_attrs) == 0) {
+                if (strcmp(*values, "yes") == 0) {
+                    opts |= CHECK_ATTRS;
+                } else if (strcmp(*values, "no") == 0) {
+                    opts &= ~ CHECK_ATTRS;
                 } else {
                     merror(SK_INV_OPT, *values, *attrs);
                     ret = 0;
@@ -1175,6 +1189,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         CHECK_MTIME,
         CHECK_INODE,
         CHECK_WHODATA,
+        CHECK_ATTRS,
 	0
 	};
     char *check_strings[] = {
@@ -1190,6 +1205,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "mtime",
         "inode",
         "whodata",
+        "attributes",
 	NULL
 	};
 

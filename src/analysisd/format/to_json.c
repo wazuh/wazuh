@@ -220,6 +220,16 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddStringToObject(file_diff, "sha256_after", lf->sha256_after);
             }
         }
+        if(lf->attrs_before) {
+            if (strcmp(lf->attrs_before, "") != 0) {
+                cJSON_AddStringToObject(file_diff, "attrs_before", lf->attrs_before);
+            }
+        }
+        if(lf->attrs_after) {
+            if (strcmp(lf->attrs_after, "") != 0) {
+                cJSON_AddStringToObject(file_diff, "attrs_after", lf->attrs_after);
+            }
+        }
         if(lf->uname_before) {
             if (strcmp(lf->uname_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);

@@ -296,7 +296,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 alertdump = seechanges_addfile(file_name);
             }
 #ifdef WIN32
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s:%u",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
                     opts & CHECK_OWNER ? '+' : '-',
@@ -306,6 +306,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_MTIME ? '+' : '-',
                     opts & CHECK_INODE ? '+' : '-',
                     opts & CHECK_SHA256SUM ? '+' : '-',
+                    opts & CHECK_ATTRS ? '+' : '-',
                     opts & CHECK_SEECHANGES ? '+' : '-',
                     opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
@@ -316,9 +317,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                    opts & CHECK_SHA256SUM ? sf256_sum : "");
+                    opts & CHECK_SHA256SUM ? sf256_sum : "",
+                    opts & CHECK_ATTRS ? get_attrs(file_name) : 0);
 #else
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s:%u",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
                     opts & CHECK_OWNER ? '+' : '-',
@@ -328,6 +330,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_MTIME ? '+' : '-',
                     opts & CHECK_INODE ? '+' : '-',
                     opts & CHECK_SHA256SUM ? '+' : '-',
+                    opts & CHECK_ATTRS ? '+' : '-',
                     opts & CHECK_SEECHANGES ? '+' : '-',
                     opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                     opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
@@ -339,7 +342,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                     opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                     opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
-                    opts & CHECK_SHA256SUM ? sf256_sum : "");
+                    opts & CHECK_SHA256SUM ? sf256_sum : "",
+                    0);
 #endif
 
             os_calloc(1, sizeof(syscheck_node), s_node);
@@ -361,7 +365,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
 #ifdef WIN32
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s:%u!%s:%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 (opts & CHECK_OWNER) && sid ? sid : "",
@@ -372,13 +376,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
+                opts & CHECK_ATTRS ? get_attrs(file_name) : 0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
 #else
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s:%u!%s:%s %s%s%s",
                 opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
                 opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
                 opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
@@ -390,6 +395,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
                 opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
+                0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
                 file_name,

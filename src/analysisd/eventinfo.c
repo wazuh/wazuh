@@ -666,6 +666,12 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->sha256_after) {
         free(lf->sha256_after);
     }
+    if (lf->attrs_before) {
+        free(lf->attrs_before);
+    }
+    if (lf->attrs_after) {
+        free(lf->attrs_after);
+    }
     if (lf->size_before) {
         free(lf->size_before);
     }

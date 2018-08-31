@@ -74,6 +74,7 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_MD5] = "md5";
     sdb.syscheck_dec->fields[SK_SHA1] = "sha1";
     sdb.syscheck_dec->fields[SK_SHA256] = "sha256";
+    sdb.syscheck_dec->fields[SK_ATTRS] = "attributes";
     sdb.syscheck_dec->fields[SK_UNAME] = "uname";
     sdb.syscheck_dec->fields[SK_GNAME] = "gname";
     sdb.syscheck_dec->fields[SK_INODE] = "inode";
@@ -240,6 +241,8 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
     int sf = 0;
     int comment_buf = 0;
 
+    char old_attrs[OS_SIZE_256 + 1];
+    char new_attrs[OS_SIZE_256 + 1];
     char *saved_sum = NULL;
     char *saved_name = NULL;
     char *saved_time = NULL;
@@ -544,9 +547,23 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                     sdb.inode[0] = '\0';
                 }
 
+                /* Attributes message */
+                if (oldsum.attrs && newsum.attrs && oldsum.attrs != newsum.attrs) {
+                    changes = 1;
+                    get_attributes_str(old_attrs, oldsum.attrs);
+                    get_attributes_str(new_attrs, newsum.attrs);
+                    wm_strcat(&lf->fields[SK_ATTRS].value, "attributes", ',');
+                    snprintf(sdb.attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", old_attrs, new_attrs);
+                    lf->attrs_before = strdup(old_attrs);
+                    lf->attrs_after = strdup(new_attrs);
+                } else {
+                    sdb.attrs[0] = '\0';
+                }
+
                 /* Provide information about the file */
                 comment_buf = snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
                         "'%.756s'\n"
+                        "%s"
                         "%s"
                         "%s"
                         "%s"
@@ -568,6 +585,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                         sdb.md5,
                         sdb.sha1,
                         sdb.sha256,
+                        sdb.attrs,
                         sdb.user_name,
                         sdb.audit_name,
                         sdb.effective_name,

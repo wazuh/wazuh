@@ -224,6 +224,11 @@ void OS_LogOutput(Eventinfo *lf)
             }
         }
 
+        if (lf->attrs_after) {
+            if (strcmp(lf->attrs_after, "xxx") != 0 && strcmp(lf->attrs_after, "") != 0) {
+                printf(" - File attributes: %s\n", lf->attrs_after);
+            }
+        }
     }
 
     if (lf->filename && lf->sk_tag) {
@@ -387,6 +392,11 @@ void OS_Log(Eventinfo *lf)
             }
         }
 
+        if (lf->attrs_after) {
+            if (strcmp(lf->attrs_after, "xxx") != 0 && strcmp(lf->attrs_after, "") != 0) {
+                fprintf(_aflog, " - File attributes: %s\n", lf->attrs_after);
+            }
+        }
     }
 
     if (lf->filename && lf->sk_tag) {

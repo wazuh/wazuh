@@ -334,6 +334,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
     syscheck_node *s_node;
+    unsigned int attributes = 0;
 #ifdef WIN32
     char *sid = NULL;
     const char *user;
@@ -426,8 +427,15 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         sha256sum = 1;
     }
 
+    /* Attributes*/
+#ifdef WIN32
+    if (oldsum[9] == '+') {
+        attributes = get_attrs(file_name);
+    }
+#endif
+
     /* Report changes */
-    if (oldsum[9] == '-') {
+    if (oldsum[10] == '-') {
         delete_target_file(file_name);
     }
 
@@ -459,11 +467,11 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
                         strncpy(mf_sum, "n/a", 4);
                         strncpy(sf256_sum, "n/a", 4);
                     }
-                }
+                } 
             }
         }
     }
-    snprintf(newsum, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+    snprintf(newsum, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s:%u",
         size == 0 ? 0 : (long)statbuf.st_size,
         perm == 0 ? 0 : (int)statbuf.st_mode,
         owner == 0 ? 0 : (int)statbuf.st_uid,
@@ -474,11 +482,12 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         group == 0 ? "" : get_group(statbuf.st_gid),
         mtime ? (long)statbuf.st_mtime : 0,
         inode ? (long)statbuf.st_ino : 0,
-        sha256sum  == 0 ? "" : sf256_sum);
+        sha256sum  == 0 ? "" : sf256_sum,
+        attributes);
 #else
     user = get_user(file_name, statbuf.st_uid, &sid);
 
-    snprintf(newsum, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
+    snprintf(newsum, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s:%u",
         size == 0 ? 0 : (long)statbuf.st_size,
         perm == 0 ? 0 : (int)statbuf.st_mode,
         (owner == 0) && sid ? "" : sid,
@@ -488,7 +497,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         group == 0 ? "" : get_group(statbuf.st_gid),
         mtime ? (long)statbuf.st_mtime : 0,
         inode ? (long)statbuf.st_ino : 0,
-        sha256sum  == 0 ? "" : sf256_sum);
+        sha256sum  == 0 ? "" : sf256_sum,
+        attributes);
 
         if (sid) {
             LocalFree(sid);
