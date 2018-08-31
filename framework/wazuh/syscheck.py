@@ -154,8 +154,9 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     db_query = WazuhDBQuerySyscheck(offset=offset, limit=limit, sort=sort, search=search, count=True, get_data=True,
                                     query=q, agent_id=agent_id, summary=summary, select=select, filters=filters)
     db_query.run()
-    data = {'items': [{db_query.inverse_fields[key]:value for key,value in zip(db_query.select['fields'], tuple)} for tuple in db_query.conn], 'totalItems': db_query.total_items}
-
+    data = {'items': [{key:value for key,value in zip(db_query.select['fields'], tuple)} for tuple in db_query.conn], 'totalItems': db_query.total_items}
+    if not summary:
+        data['items'] = [dict(x, permissions=filemode(int(x['octalMode']))) for x in data['items']]
     return data
 
 
@@ -171,16 +172,16 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
 
         self.summary = False if summary == 'no' or not summary else True
         if self.summary:
-            select = {'fields':["max(scanDate)", "modificationDate", "event", "file"]} if not select else select
+            select = {'fields':["modificationDate", "event", "file", "scanDate"]} if not select else select
         else:
             select = {'fields':["scanDate", "modificationDate", "event", "file", "size", "octalMode", "user", "group", "md5", "sha1",
-                                "group", "inode"]} if not select else select
+                                "group", "inode", "gid", "uid"]} if not select else select
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
                               query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
                               min_select_fields=min_select_fields, table='fim_event, fim_file', date_fields={'scanDate','modificationDate'},
                               fields={'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'path', 'size': 'size', 'user': 'uname',
-                                      'group': 'gname', 'event':'fim_event.type', 'md5':'md5', 'sha1':'sha1', 'max(scanDate)': 'max(date)',
+                                      'group': 'gname', 'event':'fim_event.type', 'md5':'md5', 'sha1':'sha1',
                                       'inode':'inode','uid':'uid','gid':'gid', 'octalMode':'perm', 'filetype':'fim_file.type'},
                               filters=filters)
 
@@ -196,3 +197,16 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
             self.total_items = self.conn.fetch()[0]
         else:
             WazuhDBQuery._get_total_items(self)
+
+
+    def _get_data(self):
+        if self.summary:
+            self.fields['scanDate'] = 'max(date)'
+        WazuhDBQuery._get_data(self)
+
+
+    def _parse_legacy_filters(self):
+        if 'hash' in self.legacy_filters:
+            self.q += (';' if self.q else '') + '(md5={0},sha1={0})'.format(self.legacy_filters['hash'])
+            del self.legacy_filters['hash']
+        WazuhDBQuery._parse_legacy_filters(self)

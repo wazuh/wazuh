@@ -843,7 +843,7 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
     def _add_filters_to_query(self):
         WazuhDBQuery._add_filters_to_query(self)
-        self.query += ' WHERE ' if not self.q else ' AND '
+        self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
         self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
 
 
