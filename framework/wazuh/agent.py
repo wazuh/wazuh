@@ -92,6 +92,13 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             return WazuhDBQuery._sort_query(self, field)
 
 
+    def _parse_legacy_filters(self):
+        if 'older_than' in self.legacy_filters:
+            self.q += "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
+            del self.legacy_filters['older_than']
+        WazuhDBQuery._parse_legacy_filters(self)
+
+
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
