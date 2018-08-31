@@ -654,7 +654,7 @@ class WazuhDBQuery(object):
     def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
-            self.query += " (" + " OR ".join(x + ' LIKE:search' for x in self.fields.values()) + ')'
+            self.query += " (" + " OR ".join(x + ' LIKE :search' for x in self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
             self.request['search'] = '%{0}%'.format(self.search['value'])
 
@@ -666,7 +666,8 @@ class WazuhDBQuery(object):
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
                                      format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set(self.fields.keys()))))
 
-            select_fields['fields'] |= self.min_select_fields
+            set_select_fields |= self.min_select_fields
+            select_fields['fields'] = set_select_fields
         else:
             select_fields = {'fields': set(self.fields.keys())}
 

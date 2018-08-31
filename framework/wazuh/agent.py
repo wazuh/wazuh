@@ -66,7 +66,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.query += 'NOT '
 
         if status_filter['value'] == 'active':
-            self.query += '((last_keepalive >= :time_active AND version IS NOT NULL) or id = 0)'
+            self.query += '(last_keepalive >= :time_active AND version IS NOT NULL) or id = 0'
         elif status_filter['value'] == 'disconnected':
             self.query += 'last_keepalive < :time_active'
         elif status_filter['value'] == "never connected" or status_filter['value'] == "neverconnected":
@@ -79,7 +79,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _filter_date(self, date_filter, filter_db_name):
         WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
-        self.query += ' AND id != 0 '
+        self.query = self.query[:-1] + ' AND id != 0'
 
 
     def _sort_query(self, field):
