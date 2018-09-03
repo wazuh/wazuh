@@ -381,8 +381,12 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverWorker):
 
 
     def forward_msg(self, command, data):
-        return self.manager_handler.isocket_handler.send_request(self.worker_id, command,
-                                                                 self.worker_thread_id if not data else self.worker_thread_id + ' ' + data)
+        cmd, message =  self.manager_handler.isocket_handler.send_request(self.worker_id, command,
+                                self.worker_thread_id if not data else self.worker_thread_id + ' ' + data).split(' ',1)
+        if cmd == 'err':
+            raise Exception("Error forwarding message: {}".format(message))
+
+        return cmd + ' ' + message
 
 
     def update(self, chunk):

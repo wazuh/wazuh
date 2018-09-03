@@ -189,7 +189,9 @@ class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverWorker
 
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason=='error':
-            self.manager_handler.final_response.write(send_err_request)
+            self.manager_handler.final_response.write(json.dumps({"message": send_err_request, "error": 1000}))
+            # make sure the response is read before killing the thread
+            self.manager_handler.final_response.read()
         communication.FragmentedStringReceiverWorker.unlock_and_stop(self,reason,None)
 
 
@@ -233,6 +235,7 @@ def execute(request):
         command, payload = request.split(' ',1)
         is_error = isocket_worker_thread.manager.process_response(isocket_worker_thread.manager.send_request(command = command, data = payload).split(' ',1))
         response = isocket_worker_thread.manager.final_response.read()
+        isocket_worker_thread.manager.final_response.write("ok")
         isocket_worker_thread.manager.handle_close()
         isocket_worker_thread.stop()
         response = json.loads(response) if not is_error else response
