@@ -104,15 +104,16 @@ int DecodeSyscheck(Eventinfo *lf)
 
     // Clean sdb memory
     fim_clean_sdb_mem();
+    minfo("~~~~ DecodeSyscheck");
 
-    /* Every syscheck message must be in the following format:
+        /* Every syscheck message must be in the following format:
      * checksum filename
      * or
      * checksum!whodatasum filename
      * or
      * checksum!whodatasum filename\nextradata
      */
-    f_name = wstr_chr(lf->log, ' ');
+        f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
         /* If we don't have a valid syscheck message, it may be
          * a old database completed message
@@ -278,6 +279,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
             );
             free(response);
             response = NULL;
+            minfo("~~~~ sending to wdb '%s'", wazuhdb_query);
             db_result = send_query_wazuhdb(wazuhdb_query, &response);
 
             if (db_result != 0) {
@@ -733,9 +735,6 @@ int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf) {
             else {
                 freq = saved_frequency + 1;
             }
-        }
-        else {
-            freq = 1;
         }
     }
 

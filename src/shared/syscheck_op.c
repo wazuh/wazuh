@@ -320,7 +320,7 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     int r;
 
-    r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld:%s:%d",
+    r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld:%s:%d:%ld",
             sum->size,
             sum->perm,
             sum->uid,
@@ -332,7 +332,8 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
             sum->mtime? sum->mtime : 0,
             sum->inode? sum->inode : 0,
             sum->sha256? sum->sha256 : "",
-            sum->changes
+            sum->changes,
+            sum->date_alert
     );
 
     return r < (int)size ? 0 : -1;

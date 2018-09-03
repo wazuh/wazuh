@@ -281,6 +281,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         sum.mtime = (long)sqlite3_column_int64(stmt, 9);
         sum.inode = (long)sqlite3_column_int64(stmt, 10);
         sum.sha256 = (char *)sqlite3_column_text(stmt, 11);
+        sum.date_alert = (long)sqlite3_column_int64(stmt, 12);
 
         output[size - 1] = '\0';
 
