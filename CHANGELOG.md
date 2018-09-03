@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.6.1]
 
-## Added
+### Added
 
 ### Changed
 
@@ -13,9 +13,9 @@ All notable changes to this project will be documented in this file.
 - Fix bug that removes file extensions in rootcheck. ([#1197](https://github.com/wazuh/wazuh/pull/1197))
 
 
-## [v3.6.0]
+## [v3.6.0] 2018-08-29
 
-## Added
+### Added
 
 - Add rescanning of expanded files with wildcards in logcollector ([#332](https://github.com/wazuh/wazuh/pull/332))
 - Parallelization of logcollector ([#627](https://github.com/wazuh/wazuh/pull/672))
