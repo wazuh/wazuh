@@ -93,6 +93,9 @@ void rootcheck_connect();
  */
 void run_rk_check(void);
 
+/* Rootcheck thread */
+void * w_rootcheck_thread(__attribute__((unused)) void * args);
+
 /*** Plugins prototypes ***/
 void check_rc_files(const char *basedir, FILE *fp);
 void check_rc_trojans(const char *basedir, FILE *fp);

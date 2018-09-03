@@ -17,7 +17,6 @@
 
 // Global variables
 syscheck_config syscheck;
-volatile int added_rules_error;
 pthread_cond_t audit_thread_started;
 
 #ifdef USE_MAGIC
@@ -51,8 +50,10 @@ static void read_internal(int debug_level)
     syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
     syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
+    syscheck.max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
+
 #ifndef WIN32
-    syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 256, 4096);
+    syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
 #endif
 
     /* Check current debug_level
@@ -68,6 +69,19 @@ static void read_internal(int debug_level)
 
     return;
 }
+
+// Initialize syscheck variables
+int fim_initialize() {
+    /* Create store data */
+    syscheck.fp = OSHash_Create();
+    syscheck.local_hash = OSHash_Create();
+
+    // Duplicate hash table to check for deleted files
+    syscheck.last_check = OSHash_Create();
+
+    return 0;
+}
+
 
 #ifdef WIN32
 /* syscheck main for Windows */
@@ -93,7 +107,7 @@ int Start_win32_Syscheck()
         /* Disabled */
         if (!syscheck.dir) {
             minfo(SK_NO_DIR);
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
         } else if (!syscheck.dir[0]) {
             minfo(SK_NO_DIR);
         }
@@ -107,7 +121,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_entry(&syscheck, "", 0, 1, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL);
         }
         syscheck.registry[0].entry = NULL;
 
@@ -122,6 +136,23 @@ int Start_win32_Syscheck()
     }
 
     if (!syscheck.disabled) {
+#ifdef WIN32
+#ifndef WIN_WHODATA
+        int whodata_notification = 0;
+        /* Remove whodata attributes */
+        for (r = 0; syscheck.dir[r]; r++) {
+            if (syscheck.opts[r] & CHECK_WHODATA) {
+                if (!whodata_notification) {
+                    whodata_notification = 1;
+                    minfo("Whodata mode is not compatible with this version of Windows.");
+                }
+                syscheck.opts[r] &= ~CHECK_WHODATA;
+                syscheck.opts[r] |= CHECK_REALTIME;
+            }
+        }
+#endif
+#endif
+
 
         /* Print options */
         r = 0;
@@ -135,6 +166,8 @@ int Start_win32_Syscheck()
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            if (syscheck.tag[r] != NULL)
+                mdebug1("Adding tag '%s' to directory '%s'.", syscheck.tag[r], syscheck.dir[r]);
             r++;
         }
 
@@ -158,6 +191,7 @@ int Start_win32_Syscheck()
 
     /* Some sync time */
     sleep(syscheck.tsleep * 5);
+    fim_initialize();
 
     /* Wait if agent started properly */
     os_wait();
@@ -194,7 +228,9 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = DEFAULTCPATH;
+#ifdef ENABLE_AUDIT
     audit_thread_active = 0;
+#endif
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -247,7 +283,7 @@ int main(int argc, char **argv)
             if (!test_config) {
                 minfo(SK_NO_DIR);
             }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
                 minfo(SK_NO_DIR);
@@ -329,6 +365,8 @@ int main(int argc, char **argv)
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            if (syscheck.tag[r] != NULL)
+                mdebug1("Adding tag '%s' to directory '%s'.", syscheck.tag[r], syscheck.dir[r]);
             r++;
         }
 
@@ -368,12 +406,17 @@ int main(int argc, char **argv)
 
     /* Some sync time */
     sleep(syscheck.tsleep * 5);
+    fim_initialize();
 
     // Audit events thread
     if (syscheck.enable_whodata) {
+#ifdef ENABLE_AUDIT
         int out = audit_init();
         if (out < 0)
-            merror("Cannot start Audit events reader thread.");
+            mwarn("Audit events reader thread not started.");
+#else
+        merror("Audit support not built. Whodata is not available.");
+#endif
     }
 
     /* Start the daemon */

@@ -34,6 +34,9 @@
 #define WM_POOL_SIZE    8                           // Child process pool size.
 #define WM_HEADER_SIZE  OS_SIZE_2048
 
+#define DAY_SEC    86400
+#define WEEK_SEC   604800
+
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
 // Module context: this should be defined for every module
@@ -49,9 +52,17 @@ typedef struct wm_context {
 typedef struct wmodule {
     pthread_t thread;                   // Thread ID
     const wm_context *context;          // Context (common structure)
+    char *tag;                          // Module tag
     void *data;                         // Data (module-dependent structure)
     struct wmodule *next;               // Pointer to next module
 } wmodule;
+
+// Verification type
+typedef enum crypto_type {
+    MD5SUM,
+    SHA1SUM,
+    SHA256SUM
+} crypto_type;
 
 // Inclusion of modules
 
@@ -81,6 +92,9 @@ int wm_check();
 
 // Destroy configuration data
 void wm_destroy();
+
+// Destroy module
+void wm_module_free(wmodule * config);
 
 /* Execute command with timeout of secs. exitcode can be NULL.
  *
@@ -137,5 +151,26 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 // Check if a path is relative or absolute.
 // Returns 0 if absolute, 1 if relative or -1 on error.
 int wm_relative_path(const char * path);
+
+// Get time in seconds to the specified hour in hh:mm
+int get_time_to_hour(const char * hour);
+
+// Get time to reach a particular day of the week and hour
+int get_time_to_day(int wday, const char * hour);
+
+// Function to look for the correct day of the month to run a wodle
+int check_day_to_scan(int day, const char *hour);
+
+// Get binary full path
+int wm_get_path(const char *binary, char **validated_comm);
+
+/**
+ Check the binary wich executes a commad has the specified hash.
+ Returns:
+     1 if the binary matchs with the specified digest, 0 if not.
+    -1 if the binary doesn't exist.
+    -2 invalid parameters.
+*/
+int wm_validate_command(const char *command, const char *digest, crypto_type ctype);
 
 #endif // W_MODULES

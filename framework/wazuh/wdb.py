@@ -5,23 +5,22 @@
 
 from wazuh import common
 from wazuh.exception import WazuhException
-from os.path import isfile
 from os import strerror
 import socket
-from operator import or_, itemgetter
 import re
 import json
+import struct
 
-class WazuhDBConnection():
+class WazuhDBConnection:
     """
     Represents a connection to the wdb socket
     """
 
-    def __init__(self, socket_path=common.wdb_socket_path, request_slice=20, max_size=6144):
+    def __init__(self, request_slice=20, max_size=6144):
         """
         Constructor
         """
-        self.socket_path = socket_path
+        self.socket_path = common.wdb_socket_path
         self.request_slice = request_slice
         self.max_size = max_size
         self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -55,15 +54,19 @@ class WazuhDBConnection():
         """
         Sends a message to the wdb socket
         """
-
+        msg = struct.pack('<I', len(msg)) + msg.encode()
         self.__conn.send(msg)
-        # Wazuh db can't send more than 6KB of data
-        data = self.__conn.recv(self.max_size).split(" ", 1)
+
+        # Get the data size (4 bytes)
+        data = self.__conn.recv(4)
+        data_size = struct.unpack('<I',data[0:4])[0]
+
+        data = self.__conn.recv(data_size).decode().split(" ", 1)
 
         if data[0] == "err":
             raise WazuhException(2003, data[1])
         else:
-            return json.loads(unicode(data[1], errors='ignore'))
+            return json.loads(data[1])
 
 
     def __query_lower(self, query):
@@ -94,6 +97,17 @@ class WazuhDBConnection():
         """
         Sends a sql query to wdb socket
         """
+        def send_request_to_wdb(query_lower, step, off, response):
+            try:
+                request = "{} limit {} offset {}".format(query_lower, step, off)
+                response.extend(self.__send(request))
+            except ValueError:
+                # if the step is already 1, it can't be divided
+                if step == 1:
+                    raise WazuhException(2007)
+                send_request_to_wdb(query_lower, step // 2, off, response)
+                send_request_to_wdb(query_lower, step // 2, step // 2 + off, response)
+
         query_lower = self.__query_lower(query)
 
         self.__query_input_validation(query_lower)
@@ -113,15 +127,19 @@ class WazuhDBConnection():
             regex  = re.compile(r"\w+ \d+? sql select ([a-z0-9,*_ ]+) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)", 1)
-            total  = self.__send(countq)[0].values()[0]
+            total  = list(self.__send(countq)[0].values())[0]
 
             limit = lim if lim != 0 else total
 
             response = []
             step = limit if limit < self.request_slice and limit > 0  else self.request_slice
-            for off in range(offset, limit+offset, step):
-                request = "{} limit {} offset {}".format(query_lower, step, off)
-                response.extend(self.__send(request))
+            try:
+                for off in range(offset, limit+offset, step):
+                    send_request_to_wdb(query_lower, step, off, response)
+            except ValueError as e:
+                raise WazuhException(2006, str(e))
+            except Exception as e:
+                raise WazuhException(2007, str(e))
 
             if count:
                 return response, total

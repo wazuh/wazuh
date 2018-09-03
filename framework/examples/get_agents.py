@@ -17,7 +17,7 @@
 #    - export PATH=$PATH:/opt/rh/python27/root/usr/bin
 #    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/lib64
 #  - Use the wazuh sqlite lib
-#    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/var/ossec/lib
+#    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/var/ossec/framework/lib
 
 from sys import path, exit
 import json

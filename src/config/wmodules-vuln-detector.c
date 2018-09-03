@@ -222,6 +222,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
     vulnerability_detector->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vulnerability_detector->agents_software = NULL;
     module->context = &WM_VULNDETECTOR_CONTEXT;
+    module->tag = strdup(module->context->name);
     module->data = vulnerability_detector;
 
     for (i = 0; i < OS_SUPP_SIZE; i++) {
@@ -341,6 +342,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         os_realloc(upd->allowed_ver_list, (size + 2)*sizeof(char *), upd->allowed_ver_list);
                         if (format_os_version(OS, &upd->allowed_OS_list[size], &upd->allowed_ver_list[size])) {
                             merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
+                            OS_ClearNode(chld_node);
                             return OS_INVALID;
                         }
                         upd->allowed_OS_list[size + 1] = NULL;
@@ -349,6 +351,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                     os_realloc(upd->allowed_OS_list, (size + 2)*sizeof(char *), upd->allowed_OS_list);
                     if (format_os_version(OS, &upd->allowed_OS_list[size], &upd->allowed_ver_list[size])) {
                         merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
+                        OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }
                     upd->allowed_OS_list[size + 1] = NULL;
@@ -407,6 +410,8 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                                     } else {
                                         merror("Invalid Ubuntu version '%s'.", version);
                                     }
+                                    if(precise || trusty || xenial)
+                                        vulnerability_detector->flags.u_flags.update_ubuntu = 1;
                                     version = &version[k] + 1;
                                     k = 0;
                                 }
@@ -491,6 +496,8 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                                     } else {
                                         merror("Invalid RedHat version '%s'.", version);
                                     }
+                                    if(rhel5 || rhel6 || rhel7)
+                                        vulnerability_detector->flags.u_flags.update_redhat = 1;
                                     version = &version[k] + 1;
                                     k = 0;
                                 }

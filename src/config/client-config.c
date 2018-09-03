@@ -181,10 +181,22 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         if (rip) {
             os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
             os_strdup(rip, logr->server[logr->rip_id].rip);
-            logr->server[logr->rip_id].port = port;
-            logr->server[logr->rip_id].protocol = protocol;
+            logr->server[logr->rip_id].port = 0;
+            logr->server[logr->rip_id].protocol = 0;
             memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
             logr->rip_id++;
+        }
+    }
+
+    // Assign global port and protocol to legacy configurations
+
+    for (i = 0; i < logr->rip_id; ++i) {
+        if (!logr->server[i].port) {
+            logr->server[i].port = port;
+        }
+
+        if (!logr->server[i].protocol) {
+            logr->server[i].protocol = protocol;
         }
     }
 

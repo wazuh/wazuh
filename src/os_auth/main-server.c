@@ -73,16 +73,12 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 static void help_authd()
 {
     print_header();
-    print_out("  %s: -[Vhdtfi] [-F <time>] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[Vhdtfi] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
-    print_out("    -i          Use client's source IP address instead of any.");
-    print_out("    -F <time>   Force insertion: remove old agent with same name or IP if its keepalive has more than <time> seconds.");
-    print_out("    -F no       Disable force insertion.");
-    print_out("    -r          Do not keep removed agents (purge).");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
@@ -152,6 +148,7 @@ int main(int argc, char **argv)
 {
     FILE *fp;
     /* Count of pids we are wait()ing on */
+    int debug_level = 0;
     int test_config = 0;
     int status;
     int run_foreground = 0;
@@ -178,13 +175,9 @@ int main(int argc, char **argv)
 
     {
         int c;
-        char *end;
         int use_pass = 0;
         int auto_method = 0;
         int validate_host = 0;
-        int use_ip_address = 0;
-        int clear_removed = 0;
-        int force_insert = -2;
         int no_limit = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
@@ -203,11 +196,12 @@ int main(int argc, char **argv)
                     break;
 
                 case 'd':
+                    debug_level = 1;
                     nowDebug();
                     break;
 
                 case 'i':
-                    use_ip_address = 1;
+                    mwarn(DEPRECATED_OPTION_WARN,"-i");
                     break;
 
                 case 'g':
@@ -279,24 +273,11 @@ int main(int argc, char **argv)
                     break;
 
                 case 'F':
-                    if (!optarg) {
-                        merror_exit("-%c needs an argument", c);
-                    }
-
-                    if (!strcmp(optarg, "no")) {
-                        force_insert = -1;
-                    } else {
-                        force_insert = strtol(optarg, &end, 10);
-
-                        if (*end != '\0' || force_insert < 0) {
-                            merror_exit("Invalid value for -%c", c);
-                        }
-                    }
-
+                    mwarn(DEPRECATED_OPTION_WARN,"-F");
                     break;
 
                 case 'r':
-                    clear_removed = 1;
+                    mwarn(DEPRECATED_OPTION_WARN,"-r");
                     break;
 
                 case 'a':
@@ -332,30 +313,8 @@ int main(int argc, char **argv)
             config.flags.verify_host = 1;
         }
 
-        if (use_ip_address){
-            config.flags.use_source_ip = 1;
-        }
-
-        if (clear_removed) {
-            config.flags.clear_removed = 1;
-        }
-
         if (run_foreground) {
             config.flags.disabled = 0;
-        }
-
-        switch (force_insert) {
-        case -2:
-            break;
-
-        case -1:
-            config.flags.force_insert = 0;
-            config.force_time = -1;
-            break;
-
-        default:
-            config.flags.force_insert = 1;
-            config.force_time = force_insert;
         }
 
         if (ciphers) {
@@ -396,6 +355,15 @@ int main(int argc, char **argv)
     if (config.flags.disabled) {
         minfo("Daemon is disabled. Closing.");
         exit(0);
+    }
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = getDefine_Int("authd", "debug", 0, 2);
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
     }
 
     /* Start daemon -- NB: need to double fork and setsid */
@@ -568,7 +536,7 @@ int main(int argc, char **argv)
         }
 
         if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
-            pthread_mutex_lock(&mutex_pool);
+            w_mutex_lock(&mutex_pool);
 
             if (full(pool_i, pool_j)) {
                 merror("Too many connections. Rejecting.");
@@ -577,10 +545,10 @@ int main(int argc, char **argv)
                 pool[pool_i].socket = client_sock;
                 pool[pool_i].addr = _nc.sin_addr;
                 forward(pool_i);
-                pthread_cond_signal(&cond_new_client);
+                w_cond_signal(&cond_new_client);
             }
 
-            pthread_mutex_unlock(&mutex_pool);
+            w_mutex_unlock(&mutex_pool);
         } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
             merror("at run_local_server(): accept(): %s", strerror(errno));
     }
@@ -589,12 +557,12 @@ int main(int argc, char **argv)
 
     /* Join threads */
 
-    pthread_mutex_lock(&mutex_pool);
-    pthread_cond_signal(&cond_new_client);
-    pthread_mutex_unlock(&mutex_pool);
-    pthread_mutex_lock(&mutex_keys);
-    pthread_cond_signal(&cond_pending);
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_lock(&mutex_pool);
+    w_cond_signal(&cond_new_client);
+    w_mutex_unlock(&mutex_pool);
+    w_mutex_lock(&mutex_keys);
+    w_cond_signal(&cond_pending);
+    w_mutex_unlock(&mutex_keys);
 
     pthread_join(thread_dispatcher, NULL);
     pthread_join(thread_writer, NULL);
@@ -631,14 +599,14 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     mdebug1("Dispatch thread ready");
 
     while (running) {
-        pthread_mutex_lock(&mutex_pool);
+        w_mutex_lock(&mutex_pool);
 
         while (empty(pool_i, pool_j) && running)
-            pthread_cond_wait(&cond_new_client, &mutex_pool);
+            w_cond_wait(&cond_new_client, &mutex_pool);
 
         client = pool[pool_j];
         forward(pool_j);
-        pthread_mutex_unlock(&mutex_pool);
+        w_mutex_unlock(&mutex_pool);
 
         if (!running)
             break;
@@ -797,13 +765,24 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 /* If IP: != 'src' overwrite the srcip */
                 if(strncmp(client_source_ip,"src",3) != 0)
                 {
+                    if (!OS_IsValidIP(client_source_ip, NULL)) {
+                        merror("Invalid IP: '%s'", client_source_ip);
+                        snprintf(response, 2048, "ERROR: Invalid IP: %s\n\n", client_source_ip);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        continue;
+                    }
+
                     memcpy(srcip,client_source_ip,IPSIZE);
                 }
 
                 use_client_ip = 1;
             }
 
-            pthread_mutex_lock(&mutex_keys);
+            w_mutex_lock(&mutex_keys);
 
             /* Check for duplicated IP */
 
@@ -815,7 +794,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist, 0);
                     } else {
-                        pthread_mutex_unlock(&mutex_keys);
+                        w_mutex_unlock(&mutex_keys);
                         merror("Duplicated IP %s", srcip);
                         snprintf(response, 2048, "ERROR: Duplicated IP: %s\n\n", srcip);
                         SSL_write(ssl, response, strlen(response));
@@ -831,7 +810,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Check whether the agent name is the same as the manager */
 
             if (!strcmp(agentname, shost)) {
-                pthread_mutex_unlock(&mutex_keys);
+                w_mutex_unlock(&mutex_keys);
                 merror("Invalid agent name %s (same as manager)", agentname);
                 snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
                 SSL_write(ssl, response, strlen(response));
@@ -861,7 +840,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     }
 
                     if (acount > MAX_TAG_COUNTER) {
-                        pthread_mutex_unlock(&mutex_keys);
+                        w_mutex_unlock(&mutex_keys);
                         merror("Invalid agent name %s (duplicated)", agentname);
                         snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
                         SSL_write(ssl, response, strlen(response));
@@ -879,7 +858,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Check for agents limit */
 
             if (config.flags.register_limit && keys.keysize >= (MAX_AGENTS - 2) ) {
-                pthread_mutex_unlock(&mutex_keys);
+                w_mutex_unlock(&mutex_keys);
                 merror(AG_MAX_ERROR, MAX_AGENTS - 2);
                 snprintf(response, 2048, "ERROR: The maximum number of agents has been reached\n\n");
                 SSL_write(ssl, response, strlen(response));
@@ -893,7 +872,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             /* Add the new agent */
 
             if (index = OS_AddNewAgent(&keys, NULL, agentname, (config.flags.use_source_ip || use_client_ip)? srcip : NULL, NULL), index < 0) {
-                pthread_mutex_unlock(&mutex_keys);
+                w_mutex_unlock(&mutex_keys);
                 merror("Unable to add agent: %s (internal error)", agentname);
                 snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
                 SSL_write(ssl, response, strlen(response));
@@ -935,10 +914,10 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 /* Add pending key to write */
                 add_insert(keys.keyentries[keys.keysize - 1], *centralized_group ? centralized_group : NULL);
                 write_pending = 1;
-                pthread_cond_signal(&cond_pending);
+                w_cond_signal(&cond_pending);
             }
 
-            pthread_mutex_unlock(&mutex_keys);
+            w_mutex_unlock(&mutex_keys);
         }
 
         SSL_free(ssl);
@@ -963,10 +942,10 @@ void* run_writer(__attribute__((unused)) void *arg) {
     authd_sigblock();
 
     while (running) {
-        pthread_mutex_lock(&mutex_keys);
+        w_mutex_lock(&mutex_keys);
 
         while (!write_pending && running)
-            pthread_cond_wait(&cond_pending, &mutex_keys);
+            w_cond_wait(&cond_pending, &mutex_keys);
 
         copy_keys = OS_DupKeys(&keys);
         copy_insert = queue_insert;
@@ -979,7 +958,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
         backup_tail = &queue_backup;
         remove_tail = &queue_remove;
         write_pending = 0;
-        pthread_mutex_unlock(&mutex_keys);
+        w_mutex_unlock(&mutex_keys);
 
         if (OS_WriteKeys(copy_keys) < 0)
             merror("Couldn't write file client.keys");

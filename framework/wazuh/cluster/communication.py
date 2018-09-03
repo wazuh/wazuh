@@ -692,7 +692,13 @@ class Server(AbstractServer):
 
     def add_worker(self, data, ip, handler):
         name, node_type, version = data.split(' ')
+        name, cluster_name = name.split('*')
         node_id = name
+
+        if cluster_name != handler.server.config['name']:
+            raise Exception("Incoming connection from '{0}' rejected: cluster name is different ({1}/{2}).".format(
+                                ip, cluster_name, handler.server.config['name']))
+
         with self._workers_lock:
             if node_id in self._workers or node_id == handler.server.config['node_name']:
                 raise Exception("Incoming connection from '{0}' rejected: There is already a node with the same ID ('{1}') connected.".format(ip, node_id))
@@ -780,11 +786,12 @@ class AbstractWorker(Handler):
 
 class WorkerHandler(AbstractWorker):
 
-    def __init__(self, key, host, port, name, asyncore_map = {}):
-        connect_query = '{} {} {}'.format(name, 'worker', __version__)
+    def __init__(self, key, host, port, name, cluster_name, asyncore_map = {}):
+        connect_query = '{}*{} {} {}'.format(name, cluster_name, 'worker', __version__)
         AbstractWorker.__init__(self, key, (host, port), name, socket.AF_INET, socket.SOCK_STREAM, connect_query,
                                 "[Transport-WorkerHandler]", asyncore_map)
         self.host = host
+        self.cluster_name = cluster_name
         self.port = port
         self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']
 

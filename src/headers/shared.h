@@ -40,6 +40,7 @@
 #include <sys/time.h>
 #include <sys/param.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #ifndef WIN32
 #include <sys/wait.h>

@@ -11,6 +11,7 @@
 
 #include "shared.h"
 #include "shared_download.h"
+#include <pthread.h>
 
 OSHash *ptable;
 static remote_files_group *agent_remote_group;
@@ -18,18 +19,42 @@ static agent_group *agents_group;
 static char yaml_file[OS_SIZE_1024 + 1];
 static time_t yaml_file_date;
 static ino_t yaml_file_inode;
+static pthread_mutex_t rem_yaml_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+remote_files_group * w_parser_get_group(const char * name) {
+    remote_files_group * group = NULL;
 
-void *w_parser_get_group(const char *name){
-     if(ptable)
-        return OSHash_Get(ptable,name);
-    return NULL;
+    w_mutex_lock(&rem_yaml_mutex);
+
+    if (ptable) {
+        group = OSHash_Get(ptable,name);
+    }
+
+    w_mutex_unlock(&rem_yaml_mutex);
+    return group;
 }
 
-void *w_parser_get_agent(const char *name){
-    if(ptable)
-        return OSHash_Get(ptable,name);
-    return NULL;
+agent_group * w_parser_get_agent(const char * name) {
+    agent_group * group = NULL;
+
+    w_mutex_lock(&rem_yaml_mutex);
+
+    if (ptable) {
+        group = OSHash_Get(ptable,name);
+    }
+
+    w_mutex_unlock(&rem_yaml_mutex);
+    return group;
+}
+
+void w_yaml_create_groups() {
+    int i;
+
+    if (agent_remote_group) {
+        for (i = 0; agent_remote_group[i].name; i++) {
+            w_create_group(agent_remote_group[i].name);
+        }
+    }
 }
 
 const char *w_read_scalar_value(yaml_event_t * event){
@@ -136,19 +161,17 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
             switch (event.type) {
             case YAML_SCALAR_EVENT:
                 if (!strcmp(w_read_scalar_value(&event), "files")) {
+
                     // Read group files
-                    if (group->files = w_read_group_files(parser), !group) {
+                    if (group->files = w_read_group_files(parser), !group->files) {
                         goto error;
                     }
 
                     // Check if the file name is merged.mg
-                    if(group->files)
-                    {
-                        for (i = 0; group->files[i].name; i++) {
-                            if (!strcmp(group->files[i].name, SHAREDCFG_FILENAME)) {
-                                group->merge_file_index = i;
-                                break;
-                            }
+                    for (i = 0; group->files[i].name; i++) {
+                        if (!strcmp(group->files[i].name, SHAREDCFG_FILENAME)) {
+                            group->merge_file_index = i;
+                            break;
                         }
                     }
 
@@ -495,16 +518,57 @@ int w_yaml_file_has_changed()
 int w_yaml_file_update_structs(){
 
     minfo(W_PARSER_FILE_CHANGED,yaml_file);
+    w_mutex_lock(&rem_yaml_mutex);
     w_free_groups();
 
     if (ptable = OSHash_Create(), !ptable){
+        w_mutex_unlock(&rem_yaml_mutex);
         merror(W_PARSER_HASH_TABLE_ERROR);
         return OS_INVALID;
     }
 
     w_prepare_parsing();
-
+    w_mutex_unlock(&rem_yaml_mutex);
     return 0;
+}
+
+void w_create_group(char *group){
+
+    char group_path[PATH_MAX] = {0};
+
+    if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",group) >= PATH_MAX){
+        mwarn(W_PARSER_GROUP_TOO_LARGE,PATH_MAX);
+    }
+    else{
+        /* Check if group exists */
+        DIR *group_dir = opendir(group_path);
+
+        if (!group_dir) {
+            /* Create the group */
+            if(mkdir(group_path,0770) < 0){
+                switch (errno) {
+                    case EEXIST:
+                        if (IsDir(group_path) < 0) {
+                            merror("Couldn't make dir '%s': not a directory.", group_path);
+                        }
+                        break;
+
+                    case EISDIR:
+                        break;
+
+                    default:
+                        merror("Couldn't make dir '%s': %s", group_path, strerror(errno));
+                        break;
+                }
+            } else {
+                if(chmod(group_path,0770) < 0){
+                    merror("Error in chmod setting permissions for path: %s",group_path);
+                }
+            }
+        } else {
+            closedir(group_dir);
+        }
+    }
 }
 
 int w_prepare_parsing()

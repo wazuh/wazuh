@@ -12,8 +12,7 @@
 
 
 /* Read Output of commands */
-void *read_command(int pos, int *rc, int drop_it)
-{
+void *read_command(logreader *lf, int *rc, int drop_it) {
     size_t cmd_size = 0;
     char *p;
     char str[OS_MAXSTR + 1];
@@ -23,21 +22,21 @@ void *read_command(int pos, int *rc, int drop_it)
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    mdebug2("Running command '%s'", logff[pos].command);
+    mdebug2("Running command '%s'", lf->command);
 
-    cmd_output = popen(logff[pos].command, "r");
+    cmd_output = popen(lf->command, "r");
     if (!cmd_output) {
         merror("Unable to execute command: '%s'.",
-               logff[pos].command);
+               lf->command);
 
-        logff[pos].command = NULL;
+        lf->command = NULL;
         return (NULL);
     }
 
     snprintf(str, 256, "ossec: output: '%s': ",
-             (NULL != logff[pos].alias)
-             ? logff[pos].alias
-             : logff[pos].command);
+             (NULL != lf->alias)
+             ? lf->alias
+             : lf->command);
     cmd_size = strlen(str);
 
     while (fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output) != NULL && (!maximum_lines || lines < maximum_lines)) {
@@ -62,14 +61,7 @@ void *read_command(int pos, int *rc, int drop_it)
 
         /* Send message to queue */
         if (drop_it == 0) {
-            if (SendMSGtoSCK(logr_queue, str,
-                        (NULL != logff[pos].alias) ? logff[pos].alias : logff[pos].command,
-                        LOCALFILE_MQ, logff[pos].log_target) < 0) {
-                merror(QUEUE_SEND);
-                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                }
-            }
+            w_msg_hash_queues_push(str, lf->alias ? lf->alias : lf->command, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
         }
 
         continue;
@@ -77,6 +69,6 @@ void *read_command(int pos, int *rc, int drop_it)
 
     pclose(cmd_output);
 
-    mdebug2("Read %d lines from command '%s'", lines, logff[pos].command);
+    mdebug2("Read %d lines from command '%s'", lines, lf->command);
     return (NULL);
 }

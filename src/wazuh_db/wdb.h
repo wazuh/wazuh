@@ -36,7 +36,6 @@
 #define WDB_ROOTCHECK 2
 #define WDB_AGENTINFO 3
 #define WDB_GROUPS 4
-#define WDB_SYSCOLLECTOR 5
 #define WDB_NETADDR_IPV4 0
 
 typedef enum wdb_stmt {
@@ -61,6 +60,8 @@ typedef enum wdb_stmt {
     WDB_STMT_NETINFO_DEL,
     WDB_STMT_PROTO_DEL,
     WDB_STMT_ADDR_DEL,
+    WDB_STMT_CISCAT_INSERT,
+    WDB_STMT_CISCAT_DEL,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -256,10 +257,10 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
-int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free);
+int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage);
 
 // Save HW info into DB.
-int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, long ram_total, long ram_free);
+int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage);
 
 // Insert package info tuple. Return 0 on success or -1 on error.
 int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged);
@@ -290,6 +291,15 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 
 // Delete port info about previous scan from DB.
 int wdb_port_delete(wdb_t * wdb, const char * scan_id);
+
+// Save CIS-CAT scan results.
+int wdb_ciscat_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, const char * profile, int pass, int fail, int error, int notchecked, int unknown, int score);
+
+// Insert CIS-CAT results tuple. Return 0 on success or -1 on error.
+int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, const char * profile, int pass, int fail, int error, int notchecked, int unknown, int score);
+
+// Delete old information from the 'ciscat_results' table
+int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
 wdb_t * wdb_init(sqlite3 * db, const char * agent_id);
 
@@ -334,5 +344,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 #endif

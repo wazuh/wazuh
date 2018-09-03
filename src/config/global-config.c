@@ -606,10 +606,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
                 case 2:
                     switch (c) {
-                    case 'T':
-                    case 't':
-                        Config->max_output_size *= 1099511627776;
-                        break;
                     case 'G':
                     case 'g':
                         Config->max_output_size *= 1073741824;

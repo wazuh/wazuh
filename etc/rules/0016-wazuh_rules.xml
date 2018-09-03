@@ -92,14 +92,14 @@
     <group>upgrade,upgrade_success,</group>
   </rule>
 
-  <rule id="215" level="7">
+  <rule id="215" level="6">
     <if_sid>210</if_sid>
     <status>failed</status>
     <description>Remote upgrade failed. Agent restored to previous version.</description>
     <group>upgrade,upgrade_failure,</group>
   </rule>
 
-  <rule id="216" level="15">
+  <rule id="216" level="7">
     <if_sid>210</if_sid>
     <status>lost</status>
     <description>Remote upgrade failed. Agent disconnected.</description>
@@ -129,6 +129,7 @@
 
   <!-- Ignore syscollector events -->
   <rule id="221" level="0">
+    <category>ossec</category>
     <decoded_as>syscollector</decoded_as>
     <description>Syscollector event.</description>
   </rule>

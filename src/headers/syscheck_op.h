@@ -56,6 +56,7 @@ typedef enum sk_syscheck {
     SK_EFFECTIVE_NAME,
     SK_PPID,
     SK_PROC_ID,
+    SK_TAG,
     SK_NFIELDS
 } sk_syscheck;
 
@@ -134,6 +135,7 @@ typedef struct sk_sum_t {
     char *gname;
     long mtime;
     long inode;
+    char *tag;
     sk_sum_wdata wdata;
 } sk_sum_t;
 
@@ -147,13 +149,18 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size);
 
-void InsertWhodata(Eventinfo * lf, const sk_sum_t * sum);
-
 /* Delete from path to parent all empty folders */
 int remove_empty_folders(const char *path);
 
 /* Delete path file and all empty folders above */
 int delete_target_file(const char *path);
+
+void sk_sum_clean(sk_sum_t * sum);
+
+int fim_find_child_depth(const char *parent, const char *child);
+
+//Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
+void normalize_path(char *path);
 
 #ifndef WIN32
 

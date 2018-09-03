@@ -61,6 +61,12 @@ class WazuhException(Exception):
         1404: 'A field must be specified to order the data',
         1405: 'Specified limit exceeds maximum allowed (1000)',
         1406: '0 is not a valid limit',
+        1407: 'query does not match expected format',
+        1408: 'Field does not exist.',
+        1409: 'Invalid query operator.',
+        1410: 'Selecting more than one field in distinct mode',
+        1411: 'Timeframe is not valid',
+        1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
 
         # Decoders: 1500 - 1599
         1500: 'Error reading decoders from ossec.conf',
@@ -70,6 +76,7 @@ class WazuhException(Exception):
         1600: 'There is no database for selected agent',  # Also, agent
         1601: 'Unable to restart syscheck/rootcheck',
         1602: 'Impossible to run syscheck/run due to agent is not active',
+        1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
 
         # Agents:
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -105,7 +112,7 @@ class WazuhException(Exception):
         1730: 'Node does not exist',
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
-
+        1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
         # Manager:
 
         # Database:
@@ -115,6 +122,8 @@ class WazuhException(Exception):
         2003: 'Error in database request',
         2004: 'Database query not valid',
         2005: 'Could not connect to wdb socket',
+        2006: 'Received JSON from Wazuh DB is not correctly formatted',
+        2007: 'Error retrieving data from Wazuh DB',
 
         # Cluster
         3000: 'Cluster',

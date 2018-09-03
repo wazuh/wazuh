@@ -505,7 +505,6 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 {
-    int i;
     pthread_t tlauncher, treader;
 
     if (osquery->disable) {
@@ -516,9 +515,12 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     minfo("Module started.");
     osquery->msg_delay = 1000000 / wm_max_eps;
 
+#ifndef WIN32
+    int i;
+
     // Connect to queue
 
-    for (i = 0; osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE), osquery->queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++) {
+    for (i = 0; i < WM_MAX_ATTEMPTS && (osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE), osquery->queue_fd < 0); i++) {
         // Trying to connect to queue
         sleep(WM_MAX_WAIT);
     }
@@ -528,6 +530,8 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
         return NULL;
     }
 
+#endif
+
     if (osquery->run_daemon) {
         // Handle configuration
 
@@ -535,12 +539,18 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
             return NULL;
         }
 
-        pthread_create(&tlauncher, NULL, (void *)&Execute_Osquery, osquery);
+        if( pthread_create(&tlauncher, NULL, (void *)&Execute_Osquery, osquery) != 0){
+            merror("creating thread Execute_Osquery");
+            return NULL;
+        }
     } else {
         minfo("run_daemon disabled, finding detached osquery process results.");
     }
 
-    pthread_create(&treader, NULL, (void *)&Read_Log, osquery);
+    if( pthread_create(&treader, NULL, (void *)&Read_Log, osquery) != 0){
+        merror("creating thread Read_Log");
+        return NULL;
+    }
 
     if (osquery->run_daemon) {
         pthread_join(tlauncher, NULL);

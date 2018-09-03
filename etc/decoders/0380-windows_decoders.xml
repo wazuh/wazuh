@@ -271,8 +271,8 @@ Event ID 3: Network connection
 <decoder name="Sysmon-EventID#3">
     <parent>windows</parent>
     <type>windows</type>
-    <regex offset="after_regex">ProcessGuid: (\.*) \s*ProcessId: (\.*) \s*Image: (\.*)\s+User: (\.*)\s+Protocol: (\S*)\s+Initiated: (\.*) \s*SourceIsIpv6: (\.*) \s*SourceIp: (\S*)\s+SourceHostname: (\.*) \s*SourcePort: (\S*)\s+SourcePortName:\.+DestinationIsIpv6: (\.*) \s*DestinationIp: (\S*)\s+DestinationHostname: (\.*) \s*DestinationPort: (\S*)</regex>
-    <order>sysmon.processGuid, sysmon.processId, sysmon.image, srcuser, protocol, sysmon.initiated, sysmon.sourceIsIpv6, srcip, sysmon.sourceHostname, srcport, sysmon.destinationIsIpv6, dstip, sysmon.destinationHostname, dstport</order>
+    <regex offset="after_regex">ProcessGuid: (\.*) \s*ProcessId: (\.*) \s*Image: (\.*)\s+User: (\.*)\s+Protocol: (\S*)\s+Initiated: (\.*) \s*SourceIsIpv6: (\.*) \s*SourceIp: (\S*)\s+SourceHostname: (\.*) \s*SourcePort: (\S*)\s+SourcePortName: (\.*)\s*DestinationIsIpv6: (\.*) \s*DestinationIp: (\S*)\s+DestinationHostname: (\.*) \s*DestinationPort: (\S*)\s*DestinationPortName: (\S*)\s*$</regex>
+    <order>sysmon.processGuid, sysmon.processId, sysmon.image, srcuser, protocol, sysmon.initiated, sysmon.sourceIsIpv6, srcip, sysmon.sourceHostname, srcport, sysmon.srcPortName, sysmon.destinationIsIpv6, dstip, sysmon.destinationHostname, dstport, sysmon.dstPortName</order>
 </decoder>
 
 <!--
@@ -519,6 +519,84 @@ Event ID 1117:
 
 <!-- Windows Defender END -->
 
+
+<!-- Terminal Services 
+
+  - 2018 Aug 20 10:09:53 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(200): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", met connection authorization policy requirements and was therefore authorized to access the RD Gateway server. The authentication method used was: "NTLM" and connection protocol used: "HTTP".
+
+  - 2018 Aug 20 07:41:27 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: ERROR(201): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", did not meet connection authorization policy requirements and was therefore not authorized to access the RD Gateway server. The authentication method used was: "NTLM" and connection protocol used: "HTTP". The following error occurred: "23003".
+
+  - 2018 Aug 20 07:32:33 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(202): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The administrator disconnected the user "someuser\somedomain", on client computer "1.2.3.4", from the following network resource: "resourceName". Before the user was disconnected, the client transferred 149218 bytes and received 196031 bytes using HTTP connection protocol. The client session duration was 85 seconds.
+
+  - 2018 Aug 20 10:09:53 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(300): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", met resource authorization policy requirements and was therefore authorized to connect to resource "resourceName".
+  
+  - 2018 Aug 20 07:55:34 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: ERROR(301): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", did not meet resource authorization policy requirements and was therefore not authorized to resource "resourceName". The following error occurred: "23002".
+
+  - 2018 Aug 20 10:09:53 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(302): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", connected to resource "resourceName". Connection protocol used: "HTTP".
+
+  - 2018 Aug 20 10:10:36 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(303): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", disconnected from the following network resource: "resourceName". Before the user disconnected, the client transferred 1285 bytes and received 3122 bytes. The client session duration was 43 seconds. Connection protocol used: "HTTP".
+
+  - 2018 Aug 21 09:49:54 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: WARNING(304): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "195.160.232.242", met connection authorization policy and resource authorization policy requirements, but could not connect to resource "resourceName". Connection protocol used: "HTTP". The following error occurred: "23005".
+  
+-->
+
+
+<decoder name="TerminalServices-Gateway">
+  <type>windows</type>
+  <parent>windows</parent>
+  <prematch>Microsoft-Windows-TerminalServices-Gateway/Operational</prematch>
+  <regex>^(Microsoft-Windows-TerminalServices-Gateway/Operational): (\w+)\((\d+)\): \.+: </regex>
+  <regex>(\.+): \.+: (\S+): </regex>
+  <order>type, status, id, account, system_name</order>
+  <fts>name, location, system_name</fts>
+</decoder>
+
+<decoder name="TerminalServices-Gateway">
+    <parent>windows</parent>
+    <type>windows</type>
+  <regex offset="after_regex">\whe user "(\.+)", on client computer "(\.*)", </regex>
+	<order>user, dstip</order>
+</decoder>
+
+<decoder name="TerminalServices-Gateway">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">resource\p* "(\.*)"</regex>
+	<order>resource</order>
+</decoder>
+
+<decoder name="TerminalServices-Gateway">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">method used was: "(\.*)"</regex>
+	<order>auth_method</order>
+</decoder>
+
+<decoder name="TerminalServices-Gateway">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">protocol used: "(\.*)"</regex>
+	<order>protocol</order>
+</decoder>
+
+<decoder name="TerminalServices-Gateway">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">using (\.*) connection protocol.</regex>
+	<order>protocol</order>
+</decoder>
+
+<decoder name="TerminalServices-Gateway">
+    <parent>windows</parent>
+    <type>windows</type>
+    <regex offset="after_regex">error occurred: "(\.*)"</regex>
+	<order>error_code</order>
+</decoder>
+
+
+<!-- Terminal Services END -->
+
+
 <!-- Windows generic -->
 
 <!--
@@ -556,7 +634,7 @@ Subject:
 <decoder name="windows_fields">
   <type>windows</type>
   <parent>windows</parent>
-  <regex>Subject:\t*\s*Security ID:\t*\s*(\S\S+)\t*\s*Account Name:\t*\s*(\S\S+)\t*\s*Account Domain:\t*\s*(\S\S+)\t*\s*Logon ID:\t*\s*(\S\S+)</regex>
+  <regex>Subject\s*:\t*\s*Security ID:\t*\s*(\S\S+)\t*\s*Account Name:\t*\s*(\S\S+)\t*\s*Account Domain:\t*\s*(\S\S+)\t*\s*Logon ID:\t*\s*(\S\S+)</regex>
   <order>subject.security_id, subject.account_name, subject.account_domain, subject.logon_id</order>
 </decoder>
 

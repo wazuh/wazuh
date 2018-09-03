@@ -120,7 +120,7 @@ int is_nodiff(const char *filename){
         int i;
         for (i = 0; syscheck.nodiff[i] != NULL; i++){
             if (strncasecmp(syscheck.nodiff[i], filename,
-                            strlen(filename)) == 0) {
+                            strlen(syscheck.nodiff[i])) == 0) {
                 return (TRUE);
             }
         }
@@ -157,7 +157,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
         return (NULL);
     }
 
-    n = fread(buf, 1, 4096 - 1, fp);
+    n = fread(buf, 1, OS_MAXSTR - OS_SK_HEADER - 1, fp);
     fclose(fp);
     unlink(path);
 
@@ -165,7 +165,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     case 0:
         merror("Unable to generate diff alert (fread).");
         return (NULL);
-    case 4095:
+    case OS_MAXSTR - OS_SK_HEADER - 1:
         buf[n] = '\0';
         n -= strlen(STR_MORE_CHANGES);
 

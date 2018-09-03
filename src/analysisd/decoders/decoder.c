@@ -26,6 +26,7 @@ void DecodeEvent(Eventinfo *lf)
     const char *pmatch = NULL;
     const char *cmatch = NULL;
     const char *regex_prev = NULL;
+    const char *result = NULL;
 
     node = OS_GetFirstOSDecoder(lf->program_name);
 
@@ -173,7 +174,7 @@ void DecodeEvent(Eventinfo *lf)
                 }
 
                 /* If Regex does not match, return */
-                if (!(regex_prev = OSRegex_Execute(llog, nnode->regex))) {
+                if (!(result = OSRegex_Execute(llog, nnode->regex))) {
                     if (nnode->get_next) {
                         child_node = child_node->next;
                         nnode = child_node->osdecoder;
@@ -183,6 +184,7 @@ void DecodeEvent(Eventinfo *lf)
                 }
 
                 /* Fix next pointer */
+                regex_prev = result;
                 if (*regex_prev != '\0') {
                     regex_prev++;
                 }

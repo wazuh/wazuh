@@ -528,13 +528,24 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         *lf->location = '\0';
         os_strdup(lf->agent_id, lf->agent_id);
         os_strdup(lf->location + 2, lf->location);
-        lf->hostname = lf->location;
-        free(orig);
-    } else {
-        if (lf->hostname == NULL) {
-            lf->hostname = __shost;
+
+        if (lf->location[0] == '(') {
+            char * end;
+
+            os_strdup(lf->location + 1, lf->hostname);
+
+            if (end = strchr(lf->hostname, ')'), end) {
+                *end = '\0';
+            } else {
+                lf->hostname[0] = '\0';
+            }
+        } else {
+            os_strdup("", lf->hostname);
         }
 
+        free(orig);
+    } else {
+        os_strdup(lf->hostname ? lf->hostname : __shost, lf->hostname);
         lf->agent_id = strdup("000");
     }
 

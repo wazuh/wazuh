@@ -89,7 +89,7 @@ int os_substr(char *dest, const char *src, size_t position, ssize_t length)
 char *os_shell_escape(const char *src)
 {
     /* Maximum Length of the String is 2 times the current length */
-    char shell_escapes[] = { '\\', '"', '\'', ' ', '\t', ';', '`', '>', '<', '|', '#',
+    char shell_escapes[] = { '\\', '"', '\'', '\t', ';', '`', '>', '<', '|', '#',
                              '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')'
                            };
 

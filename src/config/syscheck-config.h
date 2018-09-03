@@ -10,6 +10,10 @@
 #ifndef __SYSCHECKC_H
 #define __SYSCHECKC_H
 
+#if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
+#define WIN_WHODATA 1
+#endif
+
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
@@ -32,12 +36,29 @@
 #define ARCH_64BIT          1
 #define ARCH_BOTH           2
 
-#include <stdio.h>
+#ifdef WIN32
+/* Whodata  states */
+#define WD_STATUS_FILE_TYPE 1
+#define WD_STATUS_DIR_TYPE  2
+#define WD_STATUS_UNK_TYPE  3
+#define WD_SETUP_AUTO       0
+#define WD_SETUP_SUCC       1
+#define WD_SETUP_SUCC_FAIL  2
+#define WD_STATUS_EXISTS    0x0000001
+#define WD_CHECK_WHODATA    0x0000002
+#define WD_CHECK_REALTIME   0x0000004
+#define WD_IGNORE_REST      0x0000008
+#endif
 
+//Max allowed value for recursion
+#define MAX_DEPTH_ALLOWED 320
+
+#include <stdio.h>
 #include "os_regex/os_regex.h"
 
 #ifdef WIN32
 typedef struct whodata_event_node whodata_event_node;
+typedef struct whodata_dir_status whodata_dir_status;
 #endif
 
 typedef struct _rtfim {
@@ -68,12 +89,19 @@ typedef struct whodata_evt {
     unsigned int mask;
     int dir_position;
     char deleted;
+    char ignore_not_exist;
     char scan_directory;
     whodata_event_node *wnode;
 #endif
 } whodata_evt;
 
 #ifdef WIN32
+
+typedef struct whodata_dir_status {
+    int status;
+    char object_type;
+    SYSTEMTIME last_check;
+} whodata_dir_status;
 
 typedef struct whodata_event_node {
     struct whodata_event_node *next;
@@ -93,20 +121,27 @@ typedef struct whodata_event_list {
 } whodata_event_list;
 
 typedef struct whodata_directory {
-    time_t timestamp;
+    SYSTEMTIME timestamp;
     int position;
 } whodata_directory;
 
 typedef struct whodata {
-    OSHash *fd;                 // Open file descriptors
-    OSHash *ignored_paths;      // Open file descriptors
-    OSHash *directories;      // Open file descriptors
-    int *ignore_rest;           // List of directories whose SACL will not be restored
+    OSHash *fd;                         // Open file descriptors
+    OSHash *ignored_paths;              // Files or directories marked as ignored
+    OSHash *directories;                // Directories checked by whodata mode
+    int interval_scan;                  // Time interval between scans of the checking thread
+    int whodata_setup;
+    whodata_dir_status *dirs_status;    // Status list
 } whodata;
+
+#endif /* End WIN32*/
+
+#ifdef WIN32
 
 typedef struct registry {
     char *entry;
     int arch;
+    char *tag;
 } registry;
 
 typedef struct registry_regex {
@@ -116,6 +151,11 @@ typedef struct registry_regex {
 
 #endif
 
+typedef struct syscheck_node {
+    char *checksum;
+    int dir_position;
+} syscheck_node;
+
 typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */
     int sleep_after;
@@ -123,8 +163,9 @@ typedef struct _config {
     int disabled;                   /* is syscheck disabled? */
     int scan_on_start;
     int realtime_count;
+    int max_depth;                  /* max level of recursivity allowed */
 
-    int remove_old_diff;            /* delete not monitorized files history */
+    int remove_old_diff;            /* delete not monitored files history */
 
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */
@@ -150,6 +191,9 @@ typedef struct _config {
 
     char **dir;                     /* array of directories to be scanned */
     OSMatch **filerestrict;
+    int *recursion_level;
+
+    char **tag;                     /* array of tags for each directory */
 
     /* Windows only registry checking */
 #ifdef WIN32
@@ -175,11 +219,13 @@ typedef struct _config {
 } syscheck_config;
 
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile) __attribute__((nonnull(1, 2)));
+int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag) __attribute__((nonnull(1, 2)));
 
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 
 /* Frees the Syscheck struct  */
 void Free_Syscheck(syscheck_config * config);
+
+void log_realtime_status(int);
 
 #endif /* __SYSCHECKC_H */

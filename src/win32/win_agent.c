@@ -169,6 +169,10 @@ int local_start()
 
     /* Read logcollector config file */
     mdebug1("Reading logcollector configuration.");
+
+    /* Init message queue */
+    w_msg_hash_queues_init();
+
     if (LogCollectorConfig(cfg) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
@@ -191,6 +195,19 @@ int local_start()
         logff[1].logformat = NULL;
 
         minfo(NO_FILE);
+    }
+
+    /* No sockets defined */
+    if (logsk == NULL) {
+        os_calloc(2, sizeof(logsocket), logsk);
+        logsk[0].name = NULL;
+        logsk[0].location = NULL;
+        logsk[0].mode = 0;
+        logsk[0].prefix = NULL;
+        logsk[1].name = NULL;
+        logsk[1].location = NULL;
+        logsk[1].mode = 0;
+        logsk[1].prefix = NULL;
     }
 
     /* Read execd config */
@@ -447,7 +464,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     }
                 }
 
-                minfo(AG_CONNECTED, agt->server[agt->rip_id].rip, agt->server[agt->rip_id].port);
+                minfo(AG_CONNECTED, agt->server[agt->rip_id].rip, agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == UDP_PROTO ? "udp" : "tcp");
                 minfo(SERVER_UP);
                 update_status(GA_STATUS_ACTIVE);
             }

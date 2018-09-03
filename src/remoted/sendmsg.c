@@ -75,7 +75,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
 
-    if (msg_size == 0) {
+    if (msg_size <= 0) {
         key_unlock();
         merror(SEC_ERROR);
         return (-1);
@@ -105,6 +105,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         default:
             merror(SEND_ERROR, agent_id, strerror(errno));
         }
+    } else {
+        rem_inc_msg_sent();
     }
 
     return retval;

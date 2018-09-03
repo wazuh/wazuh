@@ -14,6 +14,8 @@ src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
 src/Config.OS
+src/selinux/*.mod
+src/selinux/*.pp
 
 # Compiled programs
 src/agent-auth
@@ -56,6 +58,9 @@ src/win32/help_win.txt
 src/win32/internal_options.conf
 src/win32/restart-ossec.cmd
 src/win32/route-null.cmd
+src/win32/netsh-win-2016.cmd
+src/win32/route-null-2012.cmd
+src/win32/netsh.cmd
 src/win32/VERSION
 src/win32/REVISION
 

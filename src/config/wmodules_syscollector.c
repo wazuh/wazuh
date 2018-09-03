@@ -38,6 +38,7 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     syscollector->flags.allports = 0;
     syscollector->flags.procinfo = 1;
     module->context = &WM_SYS_CONTEXT;
+    module->tag = strdup(module->context->name);
     module->data = syscollector;
 
     if (!node)

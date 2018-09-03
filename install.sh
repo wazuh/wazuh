@@ -95,12 +95,22 @@ Install()
 
     # On CentOS <= 5 we need to disable syscollector compilation
     OS_VERSION_FOR_SYSC="${DIST_NAME}"
-    SYSC_FLAG=""
-
-    if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ] || [ "X${OS_VERSION_FOR_SYSC}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-        SYSC_FLAG="DISABLE_SYSC=true"
+    if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ]) && [ ${DIST_VER} -le 5 ]; then
+        AUDIT_FLAG="USE_AUDIT=no"
+        if [ ${DIST_VER} -lt 5 ]; then
+            SYSC_FLAG="DISABLE_SYSC=true"
+        fi
     fi
 
+    # Build SQLite library for CentOS 6
+    if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
+        LIB_FLAG="USE_FRAMEWORK_LIB=yes"
+    fi
+
+    # Do not use execvpe() in CentOS 5
+    if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 5 ]; then
+        EXEC_FLAG="USE_EXEC_ENVIRON=no"
+    fi
 
     # Makefile
     echo " - ${runningmake}"
@@ -115,7 +125,8 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} -j${THREADS} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${EXEC_FLAG} -j${THREADS} build
+
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"

@@ -44,7 +44,7 @@ def status():
     return data
 
 def __get_ossec_log_fields(log):
-    regex_category = re.compile("^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.+)$")
+    regex_category = re.compile("^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
 
     match = re.search(regex_category, log)
 
@@ -62,7 +62,7 @@ def __get_ossec_log_fields(log):
     else:
         return None
 
-    return date, category, type_log, description
+    return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
 def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -86,12 +86,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     for line in tail(common.ossec_log, 2000):
         log_fields = __get_ossec_log_fields(line)
         if log_fields:
-            date, log_category, level, description = log_fields
-
-            try:
-                log_date = datetime.strptime(date, '%Y/%m/%d %H:%M:%S')
-            except ValueError as e:
-                continue
+            log_date, log_category, level, description = log_fields
 
             if log_date < first_date:
                 continue
@@ -103,7 +98,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
                 else:
                     continue
 
-            log_line = {'timestamp': date, 'tag': log_category, 'level': level, 'description': description}
+            log_line = {'timestamp': str(log_date), 'tag': log_category, 'level': level, 'description': description}
             if type_log == 'all':
                 logs.append(log_line)
             elif type_log.lower() == level.lower():
@@ -151,25 +146,24 @@ def ossec_log_summary(months=3):
             if lines_count > 50000:
                 break
             lines_count = lines_count + 1
-            try:
-                log_date = datetime.strptime(line[:19], '%Y/%m/%d %H:%M:%S')
-            except ValueError:
+
+            line = __get_ossec_log_fields(line)
+
+            # multine logs
+            if line is None:
                 continue
+
+            log_date, category, log_type, _, = line
 
             if log_date < first_date:
                 break
 
-            _, category, _, _, = __get_ossec_log_fields(line)
             if category:
                 if category in categories:
                     categories[category]['all'] += 1
                 else:
-                    categories[category] = {'all': 1, 'info': 0, 'error': 0}
-
-                if "error" in line.lower():
-                    categories[category]['error'] += 1
-                else:
-                    categories[category]['info'] += 1
+                    categories[category] = {'all': 1, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0}
+                categories[category][log_type] += 1
             else:
                 continue
     return categories

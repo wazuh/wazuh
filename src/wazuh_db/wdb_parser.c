@@ -191,6 +191,19 @@ int wdb_parse(char * input, char * output) {
                     merror("Unable to update 'sys_processes' table for agent '%s'", sagent_id);
                 }
             }
+        } else if (strcmp(query, "ciscat") == 0) {
+            if (!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if (wdb_parse_ciscat(wdb, next, output) == 0){
+                    mdebug2("Updated 'ciscat_results' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'ciscat_results' table for agent '%s'", sagent_id);
+                }
+            }
         } else if (strcmp(query, "sql") == 0) {
             if (!next) {
                 mdebug1("Invalid DB query syntax.");
@@ -591,7 +604,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
             rx_dropped = strtol(next,NULL,10);
 
         if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped), result < 0) {
-            mdebug1("Cannot save Network information.");
+            mdebug1("at wdb_parse_netinfo(): Cannot save Network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Network information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -609,7 +622,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_netinfo_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old network information.");
+            mdebug1("at wdb_parse_netinfo(): Cannot delete old network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old network information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -707,7 +720,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
             dhcp = next;
 
         if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp), result < 0) {
-            mdebug1("Cannot save netproto information.");
+            mdebug1("at wdb_parse_netproto(): Cannot save netproto information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netproto information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -805,7 +818,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
             broadcast = next;
 
         if (result = wdb_netaddr_save(wdb, scan_id, proto, address, netmask, broadcast), result < 0) {
-            mdebug1("Cannot save netaddr information.");
+            mdebug1("at wdb_parse_netaddr(): Cannot save netaddr information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netaddr information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1040,7 +1053,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
             version = next;
 
         if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version), result < 0) {
-            mdebug1("Cannot save OS information.");
+            mdebug1("at wdb_parse_osinfo(): Cannot save OS information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save OS information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1064,8 +1077,9 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
     char * cpu_name;
     int cpu_cores;
     char * cpu_mhz;
-    long ram_total;
-    long ram_free;
+    uint64_t ram_total;
+    uint64_t ram_free;
+    int ram_usage;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -1171,10 +1185,21 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
 
         ram_total = strtol(curr,NULL,10);
         *next++ = '\0';
-        ram_free = strtol(next,NULL,10);
+        curr = next;
 
-        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free), result < 0) {
-            mdebug1("Cannot save HW information.");
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %" PRIu64, ram_total);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        ram_free = strtol(curr,NULL,10);
+        *next++ = '\0';
+        ram_usage = strtol(next,NULL,10);
+
+        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage), result < 0) {
+            mdebug1("at wdb_parse_hardware(): Cannot save HW information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save HW information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1398,7 +1423,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
             process = next;
 
         if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process), result < 0) {
-            mdebug1("Cannot save Port information.");
+            mdebug1("at wdb_parse_ports(): Cannot save Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Port information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1415,7 +1440,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_port_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Port information.");
+            mdebug1("at wdb_parse_ports(): Cannot delete old Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Port information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1667,7 +1692,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             location = next;
 
         if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location), result < 0) {
-            mdebug1("Cannot save Package information.");
+            mdebug1("at wdb_parse_packages(): Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1685,12 +1710,12 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_package_update(wdb, scan_id), result < 0) {
-            mdebug1("Cannot save scanned packages before delete old Package information.");
+            mdebug1("at wdb_parse_packages(): Cannot update scanned packages.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old Package information.");
         }
 
         if (result = wdb_package_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Package information.");
+            mdebug1("at wdb_parse_packages(): Cannot delete old Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Package information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -2164,7 +2189,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
             processor = strtol(next,NULL,10);
 
         if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor), result < 0) {
-            mdebug1("Cannot save Process information.");
+            mdebug1("at wdb_parse_processes(): Cannot save Process information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Process information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -2181,7 +2206,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_process_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Process information.");
+            mdebug1("at wdb_parse_processes(): Cannot delete old Process information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Process information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -2193,6 +2218,179 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         mdebug1("Invalid Process query syntax.");
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * scan_id;
+    char * scan_time;
+    char * benchmark;
+    char * profile;
+    int pass, fail, error, notchecked, unknown, score;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid CISCAT query syntax.");
+        mdebug2("CISCAT query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "save") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_id = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_id, "NULL"))
+            scan_id = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_time = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_time, "NULL"))
+            scan_time = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", scan_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", scan_time);
+            return -1;
+        }
+
+        benchmark = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(benchmark, "NULL"))
+            benchmark = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", benchmark);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", benchmark);
+            return -1;
+        }
+
+        profile = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(profile, "NULL"))
+            profile = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", profile);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", profile);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pass = -1;
+        else
+            pass = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", pass);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            fail = -1;
+        else
+            fail = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", fail);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            error = -1;
+        else
+            error = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", error);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            notchecked = -1;
+        else
+            notchecked = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", notchecked);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            unknown = -1;
+        else
+            unknown = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        if (!strncmp(next, "NULL", 4))
+            score = -1;
+        else
+            score = strtol(next,NULL,10);
+
+        if (result = wdb_ciscat_save(wdb, scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score), result < 0) {
+            mdebug1("Cannot save CISCAT information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save CISCAT information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else {
+        mdebug1("Invalid CISCAT query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
         return -1;
     }
 }

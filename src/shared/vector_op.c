@@ -23,17 +23,19 @@ W_Vector *W_Vector_init(int initialSize) {
 
 void W_Vector_insert(W_Vector *v, const char *element) {
 
-    if (v->used == v->size) {
-        v->size *= 2;
-        v->vector = (char **)realloc(v->vector, v->size * sizeof(char *));
+    if (v) {
+        if (v->used == v->size) {
+            v->size *= 2;
+            v->vector = (char **)realloc(v->vector, v->size * sizeof(char *));
+        }
+        v->vector[v->used++] = strdup(element);
     }
-    v->vector[v->used++] = strdup(element);
 }
 
 
 const char *W_Vector_get(W_Vector *v, int position) {
 
-    if (position < v->used) {
+    if (v && position < v->used) {
         return v->vector[position];
     } else {
         return NULL;
@@ -42,16 +44,22 @@ const char *W_Vector_get(W_Vector *v, int position) {
 
 
 int W_Vector_length(W_Vector *v) {
-    return v->used;
+    if (v) {
+        return v->used;
+    } else {
+        return 0;
+    }
 }
 
 
 void W_Vector_free(W_Vector *v) {
     int i;
 
-    for (i=0; i < v->used; i++) {
-        free(v->vector[i]);
+    if (v) {
+        for (i=0; i < v->used; i++) {
+            free(v->vector[i]);
+        }
+        free (v->vector);
+        free (v);
     }
-    free (v->vector);
-    free (v);
 }

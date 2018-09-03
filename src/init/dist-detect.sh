@@ -39,7 +39,11 @@ else
 
     # RedHat
     elif [ -r "/etc/redhat-release" ]; then
-        DIST_NAME="rhel"
+        if grep -q "CentOS" /etc/redhat-release; then
+            DIST_NAME="centos"
+        else
+            DIST_NAME="rhel"
+        fi
         DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.[0-9]{1,2}.*/\1/p' /etc/redhat-release`
         DIST_SUBVER=`sed -rn 's/.* [0-9]{1,2}\.([0-9]{1,2}).*/\1/p' /etc/redhat-release`
 

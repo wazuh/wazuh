@@ -9,6 +9,7 @@ from signal import signal, SIGINT
 from time import sleep
 import argparse
 import os
+import re
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -62,6 +63,10 @@ def main():
     if args.silent:
         args.debug = False
 
+    use_http = False
+    if args.http:
+        use_http = True
+
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
 
@@ -69,9 +74,20 @@ def main():
     if not os.path.isfile(agent_info):
         raise WazuhException(1720)
 
+    # Evaluate if the version is correct
+    if args.version is not None:
+        pattern = re.compile("v[0-9]+\.[0-9]+\.[0-9]+")
+        if not pattern.match(args.version):
+            raise WazuhException(1733, "Version received: {0}".format(args.version))
+
     # Custom WPK file
     if args.file:
-        upgrade_command_result = agent.upgrade_custom(file_path=args.file, installer=args.execute if args.execute else "upgrade.sh", debug=args.debug, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
+        upgrade_command_result = agent.upgrade_custom(file_path=args.file,
+                                                      installer=args.execute if args.execute else "upgrade.sh",
+                                                      debug=args.debug,
+                                                      show_progress=print_progress if not args.silent else None,
+                                                      chunk_size=args.chunk_size,
+                                                      rl_timeout=-1 if args.timeout == None else args.timeout)
         if not args.silent:
             if not args.debug:
                 print("\n{0}... Please wait.".format(upgrade_command_result))
@@ -96,7 +112,11 @@ def main():
     # WPK upgrade file
     else:
         prev_ver = agent.version
-        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version, force=args.force, show_progress=print_progress if not args.silent else None, chunk_size=args.chunk_size, rl_timeout=-1 if args.timeout == None else args.timeout)
+        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version,
+                                               force=args.force,
+                                               show_progress=print_progress if not args.silent else None,
+                                               chunk_size=args.chunk_size,
+                                               rl_timeout=-1 if args.timeout == None else args.timeout, use_http=use_http)
         if not args.silent:
             if not args.debug:
                 print("\n{0}... Please wait.".format(upgrade_command_result))
@@ -128,16 +148,17 @@ if __name__ == "__main__":
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("-a", "--agent", type=str, help="Agent ID to upgrade.")
-    arg_parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL.")
+    arg_parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL. [Default: {0}]".format(common.wpk_repo_url))
     arg_parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: latest Wazuh version]")
     arg_parser.add_argument("-F", "--force", action="store_true", help="Allows reinstall same version and downgrade version.")
     arg_parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
     arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
-    arg_parser.add_argument("-c", "--chunk_size", type=int, help="Chunk size sending WPK file.")
+    arg_parser.add_argument("-c", "--chunk_size", type=int, help="Chunk size sending WPK file. [Default: {0}]".format(common.wpk_chunk_size))
     arg_parser.add_argument("-t", "--timeout", type=int, help="Timeout until agent restart is unlocked.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
     arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
+    arg_parser.add_argument("--http", action="store_true", help="Uses http protocol instead of https.")
     args = arg_parser.parse_args()
 
     try:

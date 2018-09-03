@@ -10,11 +10,11 @@ ID: 80200 - 80499
 
 <group name="amazon,">
 
-    <!-- Filter 1: Only AWS events -->
+    <!-- Filter 1: Only AWS (CloudTrail, IAM and Inspector) events -->
     <rule id="80200" level="0">
         <decoded_as>json</decoded_as>
         <field name="aws.eventSource">\.+</field>
-        <description>Amazon alerts.</description>
+        <description>Amazon $(aws.source) alerts.</description>
     </rule>
 
     <!-- Filter 2: Only eventSource in etc/lists/amazon/aws-sources -->
@@ -79,11 +79,92 @@ ID: 80200 - 80499
         <description>Amazon: $(aws.eventSource) - $(aws.eventName) - User Login failed.</description>
         <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
-
+    
     <rule id="80255" level="10" frequency="6" timeframe="360">
         <if_matched_sid>80254</if_matched_sid>
         <description>Amazon: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
         <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    </rule>
+
+
+    <!-- Guard Duty findings -->
+    <!-- Documentation: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types.html -->
+    <rule id="80300" level="0">
+        <decoded_as>json</decoded_as>
+        <field name="aws.source">guardduty</field>
+        <field name="aws.severity">\d+</field>
+        <description>Guard Duty Findings.</description>
+    </rule>
+
+    <!-- Guard Duty severity levels: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_findings.html#guardduty_findings-severity -->
+    <rule id="80301" level="3">
+        <if_sid>80300</if_sid>
+        <field name="aws.severity">0|1|2|3</field>
+        <description>Guard Duty Finding with a low level: $(aws.description)</description>
+    </rule>
+    <rule id="80302" level="6">
+        <if_sid>80300</if_sid>
+        <field name="aws.severity">4|5|6</field>
+        <description>Guard Duty Finding with a medium level: $(aws.description)</description>
+    </rule>
+    <rule id="80303" level="10">
+        <if_sid>80300</if_sid>
+        <field name="aws.severity">7|8|9</field>
+        <description>Guard Duty Finding with a high level: $(aws.description)</description>
+    </rule>
+
+    <!-- Macie Alerts -->
+    <!-- Documentation: https://docs.aws.amazon.com/macie/latest/userguide/macie-alerts.html#macie-alert-severity -->
+    <rule id="80350" level="0">
+        <decoded_as>json</decoded_as>
+        <field name="aws.source">macie</field>
+        <field name="aws.severity">\.+</field>
+        <description>Macie Alerts.</description>
+    </rule>
+
+    <rule id="80351" level="3">
+        <if_sid>80350</if_sid>
+        <field name="aws.severity">INFORMATIONAL</field>
+        <description>Macie informational alert: $(aws.name) - $(aws.summary.description)</description>
+    </rule>
+    <rule id="80352" level="4">
+        <if_sid>80350</if_sid>
+        <field name="aws.severity">LOW</field>
+        <description>Macie low alert: $(aws.name) - $(aws.summary.description)</description>
+    </rule>
+    <rule id="80353" level="6">
+        <if_sid>80350</if_sid>
+        <field name="aws.severity">MEDIUM</field>
+        <description>Macie medium alert: $(aws.name) - $(aws.summary.description)</description>
+    </rule>
+    <rule id="80354" level="8">
+        <if_sid>80350</if_sid>
+        <field name="aws.severity">HIGH</field>
+        <description>Macie high alert: $(aws.name) - $(aws.summary.description)</description>
+    </rule>
+    <rule id="80355" level="10">
+        <if_sid>80350</if_sid>
+        <field name="aws.severity">CRITICAL</field>
+        <description>Macie critical alert: $(aws.name) - $(aws.summary.description)</description>
+    </rule>
+
+    <!-- VPC Flow -->
+    <!-- Documentation: https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html -->
+    <rule id="80400" level="0">
+        <decoded_as>json</decoded_as>
+        <field name="aws.source">vpc</field>
+        <description>VPC Flow</description>
+    </rule>
+
+    <rule id="80401" level="3">
+        <if_sid>80400</if_sid>
+        <field name="aws.action">ACCEPT</field>
+        <description>VPC Flow accepted connection: Interface: $(aws.interface-id) - Protocol: $(aws.protocol)</description>
+    </rule>
+    <rule id="80402" level="4">
+        <if_sid>80400</if_sid>
+        <field name="aws.action">REJECT</field>
+        <description>VPC Flow rejected connection: Interface: $(aws.interface-id) - Protocol: $(aws.protocol)</description>
     </rule>
 
 </group>

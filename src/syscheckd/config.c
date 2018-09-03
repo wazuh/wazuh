@@ -13,7 +13,7 @@
 
 #ifdef WIN32
 static char *SYSCHECK_EMPTY[] = { NULL };
-static registry REGISTRY_EMPTY[] = { { NULL, 0 } };
+static registry REGISTRY_EMPTY[] = { { NULL, 0, NULL } };
 #endif
 
 
@@ -39,8 +39,11 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
     syscheck.remove_old_diff= 1;
-#ifdef WIN32
+#ifdef WIN_WHODATA
+    syscheck.wdata.interval_scan = 0;
     syscheck.wdata.fd      = NULL;
+#endif
+#ifdef WIN32
     syscheck.registry       = NULL;
     syscheck.reg_fp         = NULL;
     syscheck.max_fd_win_rt  = 0;
@@ -82,7 +85,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     if ((syscheck.dir[0] == NULL) && (syscheck.registry[0].entry == NULL)) {
         return (1);
     }
-    syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 256, 1024);
+    syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
 #endif
 
     return (0);

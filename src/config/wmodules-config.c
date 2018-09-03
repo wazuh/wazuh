@@ -50,11 +50,13 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 
     // Get children
 
-    children = OS_GetElementsbyNode(xml, node);
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'.", node->values[0]);
+    }
 
     // Select module by name
 
-   //osQuery monitor module
+    //osQuery monitor module
     if (!strcmp(node->values[0], WM_OSQUERYMONITOR_CONTEXT.name)) {
         if (wm_osquery_monitor_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
@@ -90,13 +92,18 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         }
     }
 #endif
+    else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) {
 #ifndef WIN32
-    else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name)) {
-        if (wm_aws_read(children, cur_wmodule, agent_cfg) < 0) {
+        if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'.", WM_AWS_CONTEXT.name);
+        if (wm_aws_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
+#else
+        mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->values[0]);
+#endif
     }
+#ifndef WIN32
 #ifndef CLIENT
     else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)) {
         if (wm_vulnerability_detector_read(xml, children, cur_wmodule) < 0) {
@@ -106,8 +113,13 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #endif
 #endif
+
     else {
-        merror("Unknown module '%s'", node->values[0]);
+        if(!strcmp(node->values[0], "vulnerability-detector")){
+            mwarn("The '%s' module only works for the manager", node->values[0]);
+        } else {
+            merror("Unknown module '%s'", node->values[0]);
+        }
     }
 
     OS_ClearNode(children);

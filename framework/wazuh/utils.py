@@ -4,6 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
+from wazuh.database import Connection
 from wazuh import common
 from tempfile import mkstemp
 from subprocess import call, CalledProcessError
@@ -17,6 +18,11 @@ import errno
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
 from operator import itemgetter
+import glob
+import sys
+# Python 2/3 compatibility
+if sys.version_info[0] == 3:
+    unicode = str
 
 try:
     from subprocess import check_output
@@ -93,12 +99,13 @@ def cut_array(array, offset, limit):
     :return: cut array.
     """
 
-    if limit > common.maximum_database_limit:
-        raise WazuhException(1405, str(limit))
-    elif limit == 0:
-        raise WazuhException(1406)
+    if limit is not None:
+        if limit > common.maximum_database_limit:
+            raise WazuhException(1405, str(limit))
+        elif limit == 0:
+            raise WazuhException(1406)
 
-    if not array or limit == None:
+    elif not array or limit is None:
         return array
 
     offset = int(offset)
@@ -125,8 +132,8 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     def check_sort_fields(allowed_sort_fields, sort_by):
         # Check if every element in sort['fields'] is in allowed_sort_fields
         if not sort_by.issubset(allowed_sort_fields):
-            uncorrect_fields = map(lambda x: str(x), sort_by - allowed_sort_fields)
-            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(list(allowed_sort_fields), uncorrect_fields))
+            incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
+            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
 
     if not array:
         return array
@@ -145,9 +152,13 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         if type(array[0]) is dict:
             check_sort_fields(set(array[0].keys()), set(sort_by))
 
-            return sorted(array, key=lambda o: tuple(o.get(a) for a in sort_by), reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str,unicode) else o.get(a) for a in sort_by),
+                          reverse=order_desc)
         else:
-            return sorted(array, key=lambda o: tuple(getattr(o, a) for a in sort_by), reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
+                          reverse=order_desc)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
@@ -177,7 +188,7 @@ def get_values(o, fields=None):
             if not fields or key in fields:
                 strings.extend(get_values(obj[key]))
     else:
-        strings.append(str(obj).lower())
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else str(obj))
 
     return strings
 
@@ -199,8 +210,6 @@ def search_array(array, text, negation=False, fields=None):
 
         values = get_values(o=item, fields=fields)
 
-        # print("'{0}' in '{1}'?".format(text, values))
-
         if not negation:
             for v in values:
                 if text.lower() in v:
@@ -216,6 +225,7 @@ def search_array(array, text, negation=False, fields=None):
                 found.append(item)
 
     return found
+
 
 _filemode_table = (
     ((stat.S_IFLNK, "l"),
@@ -283,12 +293,12 @@ def tail(filename, n=20):
         if (block_end_byte - BLOCK_SIZE > 0):
             # read the last block we haven't yet read
             f.seek(block_number*BLOCK_SIZE, 2)
-            blocks.append(f.read(BLOCK_SIZE).decode())
+            blocks.append(f.read(BLOCK_SIZE).decode('utf-8'))
         else:
             # file too small, start from beginning
             f.seek(0,0)
             # only read what was not read
-            blocks.append(f.read(block_end_byte).decode())
+            blocks.append(f.read(block_end_byte).decode('utf-8'))
         lines_found = blocks[-1].count('\n')
         lines_to_go -= lines_found
         block_end_byte -= BLOCK_SIZE
@@ -366,6 +376,7 @@ def md5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
 
 def get_fields_to_nest(fields, force_fields=[], split_character="_"):
     nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
@@ -530,3 +541,341 @@ class WazuhVersion:
 
     def __le__(self, new_version):
         return (not (self < new_version) or self == new_version)
+
+
+def get_timeframe_in_seconds(timeframe):
+    """
+    Gets number of seconds from a timeframe.
+    :param timeframe: Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s".
+
+    :return: Time in seconds.
+    """
+    if not timeframe.isdigit():
+        if 'h' not in timeframe and 'd' not in timeframe and 'm' not in timeframe and 's' not in timeframe:
+            raise WazuhException(1411, timeframe)
+
+        regex, seconds = re.compile(r'(\d+)(\w)'), 0
+        time_equivalence_seconds = {'d': 86400, 'h': 3600, 'm': 60, 's':1}
+        for time, unit in regex.findall(timeframe):
+            # it's not necessarry to check whether the unit is in the dictionary, because it's been validated before.
+            seconds += int(time) * time_equivalence_seconds[unit]
+    else:
+        seconds = int(timeframe)
+
+    return seconds
+
+
+class WazuhDBQuery(object):
+    """
+    This class describes a database query for wazuh
+    """
+    def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
+                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set()):
+        """
+        Wazuh DB Query constructor
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        :param query: query to filter in database. Format: field operator value.
+        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        :param table: table to do the query
+        :param fields: all available fields
+        :param default_sort_field: by default, return elements sorted by this field
+        :param db_path: database path
+        :param default_sort_order: by default, return elements sorted in this order
+        :param min_select_fields: fields that must be always be selected because they're necessary to compute other fields
+        :param count: whether to compute totalItems or not
+        :param date_fields: database fields that represent a date
+        :param get_data: whether to return data or not
+        """
+        self.offset = offset
+        self.limit = limit
+        self.table = table
+        self.sort = sort
+        self.search = search
+        self.select = None if not select else select.copy()
+        self.fields = fields
+        self.query = self._default_query()
+        self.request = {}
+        self.default_sort_field = default_sort_field
+        self.default_sort_order = default_sort_order
+        self.query_filters = []
+        self.count = count
+        self.data = get_data
+        self.total_items = 0
+        self.min_select_fields = min_select_fields
+        self.query_regex = re.compile(r"(\()?([\w\.]+)([=!<>]{1,2})([\w _\-.:/]+)(\))?([,;])?")
+        self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
+        self.query_operators = {"=","!=","<",">"}
+        self.query_separators = {',':'OR',';':'AND','':''}
+        self.date_fields = date_fields
+        self.q = query
+        self.legacy_filters = filters
+        self.inverse_fields = {v: k for k, v in self.fields.items()}
+        if not glob.glob(db_path):
+            raise WazuhException(1600)
+        self.conn = Connection(db_path)
+
+
+    def _add_limit_to_query(self):
+        if self.limit:
+            if self.limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(self.limit))
+            self.query += ' LIMIT :offset,:limit'
+            self.request['offset'] = self.offset
+            self.request['limit'] = self.limit
+        elif self.limit == 0: # 0 is not a valid limit
+            raise WazuhException(1406)
+
+
+    def _sort_query(self, field):
+        return '{} {}'.format(self.fields[field], self.sort['order'])
+
+
+    def _add_sort_to_query(self):
+        if self.sort:
+            if self.sort['fields']:
+                sort_fields, allowed_sort_fields = set(self.sort['fields']), set(self.fields.keys())
+                # check every element in sort['fields'] is in allowed_sort_fields
+                if not sort_fields.issubset(allowed_sort_fields):
+                    raise WazuhException(1403, "Allowerd sort fields: {}. Fields: {}".format(
+                        allowed_sort_fields, ', '.join(sort_fields - allowed_sort_fields)
+                    ))
+                self.query += ' ORDER BY ' + ','.join([self._sort_query(i) for i in sort_fields])
+            else:
+                self.query += ' ORDER BY {0} {1}'.format(self.default_sort_field, self.sort['order'])
+        else:
+            self.query += ' ORDER BY {0} {1}'.format(self.default_sort_field, self.default_sort_order)
+
+
+    def _add_search_to_query(self):
+        if self.search:
+            self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
+            self.query += " (" + " OR ".join(x + ' LIKE :search' for x in self.fields.values()) + ')'
+            self.query = self.query.replace('WHERE  AND', 'WHERE')
+            self.request['search'] = '%{0}%'.format(self.search['value'])
+
+
+    def _parse_select_filter(self, select_fields):
+        if select_fields:
+            set_select_fields = set(select_fields['fields'])
+            if not set_select_fields.issubset(self.fields.keys()):
+                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
+                                     format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set(self.fields.keys()))))
+
+            set_select_fields |= self.min_select_fields
+            select_fields['fields'] = set_select_fields
+        else:
+            select_fields = {'fields': set(self.fields.keys())}
+
+        return select_fields
+
+
+    def _add_select_to_query(self):
+        self.select = self._parse_select_filter(self.select)
+
+
+    def _parse_query(self):
+        """
+        A query has the following pattern: field operator value separator field operator value...
+        An example of query: status=never connected;name!=pepe
+            * Field must be a database field (it must be contained in self.fields variable)
+            * operator must be one of = != < >
+            * value can be anything
+            * Separator can be either ; for 'and' or , for 'or'.
+
+        :return: A list with processed query (self.fields)
+        """
+        if not self.query_regex.match(self.q):
+            raise WazuhException(1407, self.q)
+
+        level = 0
+        for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
+            if field not in self.fields.keys():
+                raise WazuhException(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
+            if operator not in self.query_operators:
+                raise WazuhException(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
+
+            if open_level:
+                level += 1
+            if close_level:
+                level -= 1
+            self.query_filters.append({'value': None if value == "null" else value, 'operator': operator,
+                                 'field': '{}${}'.format(field, len(list(filter(lambda x: field in x['field'], self.query_filters)))),
+                                 'separator': self.query_separators[separator], 'level': level})
+
+
+    def _parse_legacy_filters(self):
+        """
+        Parses legacy filters.
+        """
+        self.query_filters += [{'value': subvalue, 'field': name, 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
+                               for name, value in self.legacy_filters.items() for subvalue in value.split(',') ]
+        if not self.q:
+            # if only traditional filters have been defined, remove last AND from the query.
+            self.query_filters[-1]['separator'] = ''
+
+
+    def _parse_filters(self):
+        if self.legacy_filters:
+            self._parse_legacy_filters()
+        if self.q:
+            self._parse_query()
+        if self.q or self.search or self.legacy_filters:
+            self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
+
+
+    def _add_filters_to_query(self):
+        self._parse_filters()
+        curr_level = 0
+        for q_filter in self.query_filters:
+            field_name = q_filter['field'].split('$',1)[0]
+            field_filter = q_filter['field'].replace('.','_')
+
+            if self._pass_filter(q_filter['value']):
+                continue
+
+            self.query += '((' if curr_level < q_filter['level'] else '('
+            if field_name == "status":
+                self._filter_status(q_filter)
+            elif field_name in self.date_fields and not self.date_regex.match(q_filter['value']):
+                # filter a date, but only if it is in timeframe format.
+                # If it matches the same format as DB (YYYY-MM-DD hh:mm:ss), filter directly by value (next if cond).
+                self._filter_date(q_filter, field_name)
+            else:
+                if q_filter['value'] is not None:
+                    self.request[field_filter] = q_filter['value'] if q_filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
+                    self.query += '{} {} :{}'.format(self.fields[field_name], q_filter['operator'], field_filter)
+                    if not field_filter.isdigit():
+                        # filtering without being uppercase/lowercase sensitive
+                        self.query += ' COLLATE NOCASE'
+                else:
+                    self.query += '{} IS null'.format(self.fields[field_name])
+
+            self.query += ('))' if curr_level > q_filter['level'] else ')') + ' {} '.format(q_filter['separator'])
+            curr_level = q_filter['level']
+
+
+    def _get_total_items(self):
+        self.conn.execute(self.query.format(self._default_count_query()), self.request)
+        self.total_items = self.conn.fetch()[0]
+
+
+    def _get_data(self):
+        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields']))), self.request)
+
+
+    def _filter_status(self, status_filter):
+        raise NotImplementedError
+
+
+    def _filter_date(self, date_filter, filter_db_name):
+        # date_filter['value'] can be either a timeframe or a date in format %Y-%m-%d %H:%M:%S
+        if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
+            query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
+            self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
+            self.query += "({0} IS NOT NULL AND CAST(strftime('%s', {0}) AS INTEGER) {1}" \
+                          " CAST(strftime('%s', 'now', 'localtime') AS INTEGER) - :{2}) ".format(self.fields[filter_db_name],
+                                                                                                 query_operator,
+                                                                                                 date_filter['field'])
+        elif re.match(r'\d{4}-\d{2}-\d{2}', date_filter['value']):
+            self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
+            self.request[date_filter['field']] = date_filter['value']
+        else:
+            raise WazuhException(1412, date_filter['value'])
+
+
+    def run(self):
+        """
+        Builds the query and runs it on the database
+        """
+
+        self._add_select_to_query()
+        self._add_filters_to_query()
+        self._add_search_to_query()
+        if self.count:
+            self._get_total_items()
+        self._add_sort_to_query()
+        self._add_limit_to_query()
+        if self.data:
+            self._get_data()
+
+
+    def reset(self):
+        """
+        Resets query to its initial value. Useful when doing several requests to the same DB.
+        """
+        self.query = self._default_query()
+        self.query_filters = []
+
+
+    def _default_query(self):
+        """
+        :return: The default query
+        """
+        return "SELECT {0} FROM " + self.table
+
+
+    def _default_count_query(self):
+        return "COUNT(*)"
+
+
+    @staticmethod
+    def _pass_filter(db_filter):
+        return db_filter == "all"
+
+
+class WazuhDBQueryDistinct(WazuhDBQuery):
+    """
+    Retrieves unique values for a given field.
+    """
+
+    def _default_query(self):
+        return "SELECT DISTINCT {0} FROM " + self.table
+
+
+    def _default_count_query(self):
+        return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select['fields'])))
+
+
+    def _add_filters_to_query(self):
+        WazuhDBQuery._add_filters_to_query(self)
+        self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
+        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
+
+
+    def _add_select_to_query(self):
+        if len(self.select['fields']) > 1:
+            raise WazuhException(1410)
+
+        WazuhDBQuery._add_select_to_query(self)
+
+
+class WazuhDBQueryGroupBy(WazuhDBQuery):
+    """
+    Retrieves unique values for multiple fields using group by
+    """
+
+    def __init__(self, filter_fields, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
+                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set()):
+        WazuhDBQuery.__init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field,
+                              db_path, count, get_data, default_sort_order, filters, min_select_fields, date_fields)
+        self.filter_fields = filter_fields
+
+
+    def _get_total_items(self):
+        # take total items without grouping, and add the group by clause just after getting total items
+        WazuhDBQuery._get_total_items(self)
+        self.select['fields'].add('count')
+        self.inverse_fields['COUNT(*)'] = 'count'
+        self.fields['count'] = 'COUNT(*)'
+        self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
+
+
+    def _add_select_to_query(self):
+        WazuhDBQuery._add_select_to_query(self)
+        self.filter_fields = self._parse_select_filter(self.filter_fields)
+        self.select['fields'] = self.select['fields'] & self.filter_fields['fields']

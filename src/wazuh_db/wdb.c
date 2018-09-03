@@ -34,7 +34,7 @@ static const char * SQL_STMT[] = {
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_programs WHERE scan_id != ?;",
     "UPDATE SYS_PROGRAMS SET TRIAGED = 1 WHERE SCAN_ID = ? AND EXISTS(SELECT OLD.SCAN_ID FROM SYS_PROGRAMS OLD WHERE OLD.SCAN_ID != SYS_PROGRAMS.SCAN_ID AND OLD.TRIAGED = 1 AND OLD.FORMAT = SYS_PROGRAMS.FORMAT AND OLD.NAME = SYS_PROGRAMS.NAME AND OLD.VENDOR = SYS_PROGRAMS.VENDOR AND OLD.VERSION = SYS_PROGRAMS.VERSION AND OLD.ARCHITECTURE = SYS_PROGRAMS.ARCHITECTURE);",
-    "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_hwinfo;",
     "INSERT INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_ports WHERE scan_id != ?;",
@@ -45,7 +45,9 @@ static const char * SQL_STMT[] = {
     "INSERT INTO sys_netaddr (id, scan_id, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
     "DELETE FROM sys_netproto WHERE scan_id != ?;",
-    "DELETE FROM sys_netaddr WHERE scan_id != ?;"
+    "DELETE FROM sys_netaddr WHERE scan_id != ?;",
+    "INSERT INTO ciscat_results (scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM ciscat_results WHERE scan_id != ?;"
 };
 
 sqlite3 *wdb_global = NULL;
@@ -770,7 +772,7 @@ int wdb_stmt_cache(wdb_t * wdb, int index) {
             return -1;
         }
     } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK) {
-        merror("at wdb_stmt_cache(): at sqlite3_reset(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("at wdb_stmt_cache(): at sqlite3_reset(): %s", sqlite3_errmsg(wdb->db));
 
         // Retry to prepare
 

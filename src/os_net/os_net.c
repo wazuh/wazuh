@@ -38,6 +38,9 @@ static socklen_t us_l = sizeof(n_us);
 
 #endif /* WIN32*/
 
+#define RECV_SOCK 0
+#define SEND_SOCK 1
+
 
 /* Bind a specific port */
 static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6)
@@ -125,9 +128,7 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
 /* Bind to a Unix domain, using DGRAM sockets */
 int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
 {
-    int len;
     int ossock = 0;
-    socklen_t optlen = sizeof(len);
 
     /* Make sure the path isn't there */
     unlink(path);
@@ -156,19 +157,10 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
         return (OS_SOCKTERR);
     }
 
-    /* Get current maximum size */
-    if (getsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, &optlen) == -1) {
+    // Set socket maximum size
+    if (OS_SetSocketSize(ossock, RECV_SOCK, max_msg_size) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
-    }
-
-    /* Set socket opt */
-    if (len < max_msg_size) {
-        len = max_msg_size;
-        if (setsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, optlen) < 0) {
-            OS_CloseSocket(ossock);
-            return (OS_SOCKTERR);
-        }
     }
 
     return (ossock);
@@ -179,9 +171,7 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
  */
 int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
 {
-    int len;
     int ossock = 0;
-    socklen_t optlen = sizeof(len);
 
     memset(&n_us, 0, sizeof(n_us));
 
@@ -200,19 +190,10 @@ int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
         return (OS_SOCKTERR);
     }
 
-    /* Get current maximum size */
-    if (getsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, &optlen) == -1) {
+    // Set socket maximum size
+    if (OS_SetSocketSize(ossock, SEND_SOCK, max_msg_size) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
-    }
-
-    /* Set maximum message size */
-    if (len < max_msg_size) {
-        len = max_msg_size;
-        if (setsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, optlen) < 0) {
-            OS_CloseSocket(ossock);
-            return (OS_SOCKTERR);
-        }
     }
 
     return (ossock);
@@ -237,6 +218,7 @@ int OS_getsocketsize(int ossock)
 static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6)
 {
     int ossock;
+    int max_msg_size = OS_MAXSTR + 512;
     struct sockaddr_in server;
 #ifndef WIN32
     struct sockaddr_in6 server6;
@@ -283,6 +265,16 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
             OS_CloseSocket(ossock);
             return (OS_SOCKTERR);
         }
+    }
+
+    // Set socket maximum size
+    if (OS_SetSocketSize(ossock, RECV_SOCK, max_msg_size) < 0) {
+        OS_CloseSocket(ossock);
+        return (OS_SOCKTERR);
+    }
+    if (OS_SetSocketSize(ossock, SEND_SOCK, max_msg_size) < 0) {
+        OS_CloseSocket(ossock);
+        return (OS_SOCKTERR);
     }
 
     return (ossock);
@@ -532,6 +524,61 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     return retval;
 }
 
+/* Receive secure TCP message
+ * This function reads a header containing message size as 4-byte little-endian unsigned integer.
+ * Return recvval on success or OS_SOCKTERR on error.
+ */
+int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
+    int recvval;
+    char * buffer;
+    size_t bufsz = size + sizeof(uint32_t);
+    uint32_t msgsize;
+
+    os_malloc(bufsz, buffer);
+    recvval = recv(sock, buffer, bufsz, 0);
+
+    switch(recvval){
+
+        case -1:
+            free(buffer);
+            return recvval;
+            break;
+
+        case 0:
+            free(buffer);
+            return recvval;
+            break;
+    }
+
+    msgsize = wnet_order(*(uint32_t*)buffer);
+
+    if(msgsize > size){
+        free(buffer);
+        return OS_SOCKTERR;
+    }
+
+    if((uint32_t)recvval < msgsize){
+        int recvb = recv(sock, buffer + recvval, msgsize-recvval, MSG_WAITALL);
+
+        switch(recvb){
+            case -1:
+                free(buffer);
+                return recvb;
+                break;
+
+            case 0:
+                free(buffer);
+                return recvb;
+                break;
+        }
+        recvval+=recvb;
+    }
+
+    memcpy(ret, buffer + sizeof(uint32_t), recvval - sizeof(uint32_t));
+
+    free(buffer);
+    return recvval - sizeof(uint32_t);
+}
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value) {
@@ -540,4 +587,44 @@ uint32_t wnet_order(uint32_t value) {
 #else
     return value;
 #endif
+}
+
+/* Set the maximum buffer size for the socket */
+int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
+
+    int len;
+    socklen_t optlen = sizeof(len);
+
+    if (mode == RECV_SOCK) {
+
+        /* Get current maximum size */
+        if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, (void *)&len, &optlen) == -1) {
+            return -1;
+        }
+
+        /* Set maximum message size */
+        if (len < max_msg_size) {
+            len = max_msg_size;
+            if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (const void *)&len, optlen) < 0) {
+                return -1;
+            }
+        }
+
+    } else if (mode == SEND_SOCK) {
+
+        /* Get current maximum size */
+        if (getsockopt(sock, SOL_SOCKET, SO_SNDBUF, (void *)&len, &optlen) == -1) {
+            return -1;
+        }
+
+        /* Set maximum message size */
+        if (len < max_msg_size) {
+            len = max_msg_size;
+            if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, (const void *)&len, optlen) < 0) {
+                return -1;
+            }
+        }
+    }
+
+    return 0;
 }
