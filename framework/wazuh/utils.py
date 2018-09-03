@@ -703,9 +703,11 @@ class WazuhDBQuery(object):
                 level += 1
             if close_level:
                 level -= 1
-            self.query_filters.append({'value': None if value == "null" else value, 'operator': operator,
-                                 'field': '{}${}'.format(field, len(list(filter(lambda x: field in x['field'], self.query_filters)))),
-                                 'separator': self.query_separators[separator], 'level': level})
+
+            if not self._pass_filter('value'):
+                self.query_filters.append({'value': None if value == "null" else value, 'operator': operator,
+                                     'field': '{}${}'.format(field, len(list(filter(lambda x: field in x['field'], self.query_filters)))),
+                                     'separator': self.query_separators[separator], 'level': level})
 
 
     def _parse_legacy_filters(self):
@@ -713,8 +715,8 @@ class WazuhDBQuery(object):
         Parses legacy filters.
         """
         self.query_filters += [{'value': subvalue, 'field': name, 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
-                               for name, value in self.legacy_filters.items() for subvalue in value.split(',') ]
-        if not self.q:
+                               for name, value in self.legacy_filters.items() for subvalue in value.split(',') if not self._pass_filter(subvalue)]
+        if not self.q and self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = ''
 
@@ -724,7 +726,7 @@ class WazuhDBQuery(object):
             self._parse_legacy_filters()
         if self.q:
             self._parse_query()
-        if self.q or self.search or self.legacy_filters:
+        if self.search or self.query_filters:
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
 
 
@@ -734,9 +736,6 @@ class WazuhDBQuery(object):
         for q_filter in self.query_filters:
             field_name = q_filter['field'].split('$',1)[0]
             field_filter = q_filter['field'].replace('.','_')
-
-            if self._pass_filter(q_filter['value']):
-                continue
 
             self.query += '((' if curr_level < q_filter['level'] else '('
             if field_name == "status":
