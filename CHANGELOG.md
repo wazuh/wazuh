@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file.
 
 - Fix segmentation fault when the agent version is empty in Vulnerability Detector. ([#1191](https://github.com/wazuh/wazuh/pull/1191))
 - Fix bug that removes file extensions in rootcheck. ([#1197](https://github.com/wazuh/wazuh/pull/1197))
+- Fixed missing agent name and invalid predecoded hostname in JSON alerts. ([#1213](https://github.com/wazuh/wazuh/pull/1213))
+- Fixed invalid location string in plain-text alerts. ([#1213](https://github.com/wazuh/wazuh/pull/1213))
 
 
 ## [v3.6.0] 2018-08-29
