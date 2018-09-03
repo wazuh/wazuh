@@ -25,6 +25,7 @@ from operator import setitem
 import re
 import fcntl
 from json import loads, dumps
+import struct
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -2512,33 +2513,22 @@ class Agent:
         # Send message
         s.send(msg.encode())
 
+        # Receive data length
+        data_size = s.recv(4)
+        data_size = struct.unpack('<I',data_size[0:4])[0]
+
         # Receive response
-        data = s.recv(512).decode()
-        if data.startswith("!"):
-            data = data[1:]
-            size = int(data.split(" ", 1)[0])
-            rec_msg = data.split(" ", 1)[1]
-            rec_len = len(rec_msg)
+        data = s.recv(data_size,socket.MSG_WAITALL).decode().split(" ", 1)
+        rec_msg_ok = data[0]
+        rec_msg = data[1]
 
-            if rec_len < size:
-                data = s.recv(size - rec_len, socket.MSG_WAITALL).decode()
-                rec_msg = rec_msg + data
-                rec_len = len(rec_msg)
+        s.close()
 
-            s.close()
+        if rec_msg_ok.startswith( 'ok' ):
+            msg = loads(rec_msg)
+            return msg
         else:
-            s.close()
-            raise WazuhException(1014, "("+data.replace("err ", "")+")")
-
-        # Check message
-        if not rec_len == size:
-            raise WazuhException(1101,rec_msg)
-        else:
-            if rec_msg.startswith( 'ok' ):
-                msg = loads(rec_msg[3:])
-                return msg
-            else:
-                raise WazuhException(1101, rec_msg.replace("err ", ""))
+            raise WazuhException(1101, rec_msg.replace("err ", ""))
 
 
     @staticmethod
