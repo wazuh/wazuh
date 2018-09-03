@@ -279,7 +279,7 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
     agent = cJSON_GetObjectItem(root, "agent");
     manager = cJSON_GetObjectItem(root, "manager");
 
-    if(lf->hostname[0] == '(') {
+    if(lf->location[0] == '(') {
         char* search;
         char* agent_hostname = NULL;
         char string[MAX_STRING] = "";
@@ -288,7 +288,7 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
         regmatch_t match[2];
         int match_size;
 
-        strncpy(string, lf->hostname, MAX_STRING - 1);
+        strncpy(string, lf->location, MAX_STRING - 1);
         search = strchr(string, ')');
 
         if(search) {
