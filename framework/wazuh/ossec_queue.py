@@ -97,7 +97,7 @@ class OssecQueue:
             except:
                 raise WazuhException(1652)
 
-            return "Command sent: '{}'.".format(socket_msg)
+            return "Command sent."
 
         # Legacy: Restart syscheck, restart agents
         else:

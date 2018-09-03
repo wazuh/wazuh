@@ -21,6 +21,17 @@ def get_commands():
     return commands
 
 
+def shell_escape(command):
+    """
+    Escapes some characters in the command before sending it
+    """
+    shell_escapes = ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']
+    for shell_esc_char in shell_escapes:
+        command = command.replace(shell_esc_char, "\\"+shell_esc_char)
+    
+    return command
+
+
 def run_command(agent_id=None, command=None, arguments=[], custom=False):
     """
     Run AR command.
@@ -44,7 +55,7 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
         msg_queue = "!{}".format(command)
 
     if arguments:
-        msg_queue += " " + " ".join(str(x) for x in arguments)
+        msg_queue += " " + " ".join(shell_escape(str(x)) for x in arguments)
     else:
         msg_queue += " - -"
 
