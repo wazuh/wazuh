@@ -569,7 +569,7 @@ class AWSCloudtrailBucket(AWSBucket):
         return aws_region, aws_account_id, log_key
 
     def migrate_legacy_table(self):
-        for row in filter(lambda x: x[0] != '', self.db_connector(sql_select_migrate_legacy)):
+        for row in filter(lambda x: x[0] != '', self.db_connector.execute(sql_select_migrate_legacy)):
             try:
                 aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
                 self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
