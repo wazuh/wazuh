@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Fix socket error during agent restart due to daemon start/stop order. ([#1221](https://github.com/wazuh/wazuh/issues/1221))
 - Fix bug when checking agent configuration in logcollector. ([#1225](https://github.com/wazuh/wazuh/issues/1225))
 - Fix bug in folder recursion limit count in FIM real-time mode. ([#1226](https://github.com/wazuh/wazuh/issues/1226))
+- Fix bug when launching osquery from Wazuh. ([#1230](https://github.com/wazuh/wazuh/issues/1230))
 
 
 ## [v3.6.0] 2018-08-29
