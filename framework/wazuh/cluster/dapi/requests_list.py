@@ -21,6 +21,7 @@ import wazuh.stats as stats
 import wazuh.rootcheck as rootcheck
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
+import wazuh.ciscat as ciscat
 
 
 functions = {
@@ -51,6 +52,10 @@ functions = {
     },
     '/agents/outdated': {
         'function': Agent.get_outdated_agents,
+        'type': 'local_master'
+    },
+    '/agents/stats/distinct': {
+        'function': Agent.get_distinct_agents,
         'type': 'local_master'
     },
     '/agents/:agent_id/upgrade_result': {
@@ -325,18 +330,69 @@ functions = {
         'function': syscollector.get_packages_agent,
         'type': 'distributed_master'
     },
-    '/syscollector/os': {
-        'function': syscollector.get_os,
+    '/syscollector/:agent_id/processes': {
+        'function': syscollector.get_processes_agent,
         'type': 'distributed_master'
     },
-    '/syscollector/hardware': {
-        'function': syscollector.get_hardware,
+    '/syscollector/:agent_id/ports': {
+        'function': syscollector.get_ports_agent,
         'type': 'distributed_master'
     },
-    '/syscollector/packages': {
-        'function': syscollector.get_packages,
+    '/syscollector/:agent_id/netaddr': {
+        'function': syscollector.get_netaddr_agent,
+        'type': 'distributed_master'
+    },
+    '/syscollector/:agent_id/netproto': {
+        'function': syscollector.get_netproto_agent,
+        'type': 'distributed_master'
+    },
+    '/syscollector/:agent_id/netiface': {
+        'function': syscollector.get_netiface_agent,
         'type': 'distributed_master'
     },
 
+    # CIS-CAT
+    '/ciscat/:agent_id/results': {
+        'function': ciscat.get_results_agent,
+        'type': 'distributed_master'
+    },
+
+    # Experimental
+    '/experimental/syscollector/os': {
+        'function': syscollector.get_os,
+        'type': 'distributed_master'
+    },
+    '/experimental/syscollector/hardware': {
+        'function': syscollector.get_hardware,
+        'type': 'distributed_master'
+    },
+    '/experimental/syscollector/packages': {
+        'function': syscollector.get_packages,
+        'type': 'distributed_master'
+    },
+    '/experimental/syscollector/processes': {
+        'function': syscollector.get_processes,
+        'type': 'distributed_master'
+    },
+    '/experimental/syscollector/ports': {
+        'function': syscollector.get_ports,
+        'type': 'distributed_master'
+    },
+    '/experimental/syscollector/netaddr': {
+        'function': syscollector.get_netaddr,
+        'type': 'distributed_master'
+    },
+    '/experimental/syscollector/netproto': {
+        'function': syscollector.get_netproto,
+        'type': 'distributed_master'
+    },
+    '/experimental/syscollector/netiface': {
+        'function': syscollector.get_netiface,
+        'type': 'distributed_master'
+    },
+    '/experimental/ciscat/results': {
+        'function': ciscat.get_ciscat_results,
+        'type': 'distributed_master'
+    },
 }
 
