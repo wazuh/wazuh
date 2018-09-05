@@ -782,7 +782,7 @@ int check_pattern_expand() {
                 continue;
             }
             while (g.gl_pathv[glob_offset] != NULL) {
-                if (maximum_files && current_files >= maximum_files) {
+                if (current_files >= maximum_files) {
                     mwarn(FILE_LIMIT, maximum_files);
                     break;
                 }
