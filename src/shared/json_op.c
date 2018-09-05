@@ -20,7 +20,7 @@ cJSON * json_fread(const char * path) {
 
     // Load file
 
-    if (fp = fopen(path, "rb"), !fp) {
+    if (fp = fopen(path, "r"), !fp) {
         mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
         return NULL;
     }
