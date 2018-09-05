@@ -400,8 +400,11 @@ class AWSBucket:
         single_element_list_to_dictionary(event)
 
         # in order to support both old and new index pattern, change data.aws.sourceIPAddress fieldname and parse that one with type ip
-        if 'sourceIPAddress' in event['aws']:
+        # Only add this field if the sourceIPAddress is an IP and not a DNS.
+        if 'sourceIPAddress' in event['aws'] and re.match(r'\d+\.\d+.\d+.\d+', event['aws']['sourceIPAddress']):
             event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
+        
+        return event
 
 
     def decompress_file(self, log_key):
