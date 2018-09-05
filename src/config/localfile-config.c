@@ -39,7 +39,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     log_config = (logreader_config *)d1;
 
-    if (current_files >= maximum_files) {
+    if (maximum_files && current_files >= maximum_files) {
         mwarn(FILE_LIMIT, maximum_files);
         return 0;
     }
