@@ -116,9 +116,10 @@ void * req_main(__attribute__((unused)) void * arg) {
 
         // Get request string
 
-        switch (length = OS_RecvSecureTCP_Dynamic(peer, &buffer), length) {
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case -1:
-            merror("OS_RecvSecureTCP_Dynamic(): %s", strerror(errno));
+            merror("OS_RecvSecureTCP(): %s", strerror(errno));
             break;
 
         case 0:

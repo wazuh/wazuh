@@ -73,6 +73,7 @@ void * lessdcom_main(__attribute__((unused)) void * arg) {
     ssize_t length;
     fd_set fdset;
 
+    
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(DEFAULTDIR LESSD_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
@@ -106,9 +107,10 @@ void * lessdcom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
-        switch (length = OS_RecvSecureTCP_Dynamic(peer, &buffer), length) {
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case -1:
-            merror("At lessdcom_main(): OS_RecvSecureTCP_Dynamic(): %s", strerror(errno));
+            merror("At lessdcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
             break;
 
         case 0:

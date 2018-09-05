@@ -2508,10 +2508,12 @@ class Agent:
             raise WazuhException(1013)
 
         # Generate message
-        msg = "!{0} {1}".format(len(command),command)
+        msg = "{0}".format(command)
+
+        msg = struct.pack('<I', len(msg)) + msg.encode()
 
         # Send message
-        s.send(msg.encode())
+        s.send(msg)
 
         # Receive data length
         data_size = s.recv(4)

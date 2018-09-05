@@ -578,7 +578,7 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
     }
 
     memcpy(ret, buffer + sizeof(uint32_t), recvval - sizeof(uint32_t));
-
+    ret[recvval - sizeof(uint32_t)] = '\0';
     free(buffer);
     return recvval - sizeof(uint32_t);
 }
@@ -613,7 +613,7 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
             data = c + 1;
 
             if (msgsize = strtoul(static_buf + 1, &c, 10), *c) {
-                merror("At OS_RecvSecureTCP_Dynamic(): invalid message size");
+                merror("At OS_RecvSecureTCP(): invalid message size");
                 return -1;
             }
 
@@ -621,7 +621,7 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
                 return OS_MAXLEN;
             }
         } else {
-            merror("At OS_RecvSecureTCP_Dynamic(): invalid message received");
+            merror("At OS_RecvSecureTCP(): invalid message received");
             return -1;
         }
 
