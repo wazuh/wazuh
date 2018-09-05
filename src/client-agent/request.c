@@ -36,6 +36,8 @@ int rto_sec;
 int rto_msec;
 int max_attempts;
 
+static OSHash * allowed_sockets;
+
 // Initialize request module
 void req_init() {
     // Get values from internal options
@@ -52,6 +54,18 @@ void req_init() {
     }
 
     os_calloc(request_pool, sizeof(req_node_t *), req_pool);
+
+    // Create hash table allowed sockets
+
+    if (allowed_sockets = OSHash_Create(), !allowed_sockets) {
+        merror_exit("At req_main(): OSHash_Create()");
+    }
+
+    OSHash_Add(allowed_sockets,SOCKET_LOGCOLLECTOR,strdup(SOCKET_LOGCOLLECTOR));
+    OSHash_Add(allowed_sockets,SOCKET_SYSCHECK,strdup(SOCKET_SYSCHECK));
+    OSHash_Add(allowed_sockets,SOCKET_WMODULES,strdup(SOCKET_WMODULES));
+    OSHash_Add(allowed_sockets,SOCKET_AGENT,strdup(SOCKET_AGENT));
+
 }
 
 // Push a request message into dispatching queue. Return 0 on success or -1 on error.
@@ -95,6 +109,11 @@ int req_push(char * buffer, size_t length) {
         length -= (payload - buffer);
 
 #ifndef WIN32
+
+        if(!OSHash_Get(allowed_sockets,target)){
+            merror("At req_push(): Target '%s' not allowed", target);
+            return -1;
+        }
 
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];

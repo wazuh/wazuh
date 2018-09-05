@@ -12,6 +12,10 @@
 #define REQUEST_OP_H
 
 #define REQ_RESPONSE_LENGTH 64
+#define SOCKET_LOGCOLLECTOR "logcollector"
+#define SOCKET_SYSCHECK "syscheck"
+#define SOCKET_WMODULES "wmodules"
+#define SOCKET_AGENT "agent"
 
 typedef struct req_node_t {
     int sock;
