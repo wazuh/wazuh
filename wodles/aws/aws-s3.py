@@ -665,6 +665,12 @@ class AWSFirehouseBucket(AWSBucket):
         if event['aws']['source'] == 'macie' and 'trigger' in event['aws']:
             del event['aws']['trigger']
 
+        if 'service' in event['aws'] and 'additionalInfo' in event['aws']['service'] and \
+                'unusual' in event['aws']['service']['additionalInfo'] and \
+                not isinstance(event['aws']['service']['additionalInfo']['unusual'], dict):
+            event['aws']['service']['additionalInfo']['unusual'] = {
+                'value': event['aws']['service']['additionalInfo']['unusual']}
+
         return event
 
     def iter_regions_and_accounts(self, account_id, regions):
