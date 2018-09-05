@@ -339,6 +339,13 @@ class AWSBucket:
         )
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
+        def remove_none_fields(event):
+            for key,value in event.items():
+                if isinstance(value, dict):
+                    remove_none_fields(event[key])
+                elif value is None:
+                    del event[key]
+
         # error_msg will only have a value when event is None and vice versa
         msg = {
             'integration': 'aws',
@@ -351,7 +358,8 @@ class AWSBucket:
             }
         }
         if event:
-            msg['aws'].update({key: value for key, value in filter(lambda x: x[1] is not None, event.items())})
+            remove_none_fields(event)
+            msg['aws'].update(event)
         elif error_msg:
             msg['error_msg'] = error_msg
         return msg
