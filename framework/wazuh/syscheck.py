@@ -153,8 +153,7 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
 
     db_query = WazuhDBQuerySyscheck(offset=offset, limit=limit, sort=sort, search=search, count=True, get_data=True,
                                     query=q, agent_id=agent_id, summary=summary, select=select, filters=filters)
-    db_query.run()
-    data = {'items': [{key:value for key,value in zip(db_query.select['fields'], tuple)} for tuple in db_query.conn], 'totalItems': db_query.total_items}
+    data = db_query.run()
     if not summary:
         data['items'] = [dict(x, permissions=filemode(int(x['octalMode']))) for x in data['items']]
     return data

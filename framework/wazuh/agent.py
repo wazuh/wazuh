@@ -50,12 +50,12 @@ def create_exception_dic(id, e):
 
 class WazuhDBQueryAgents(WazuhDBQuery):
 
-    def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'}):
+    def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'}, remove_extra_fields=True):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'})
-
+                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields = {'internal_key'})
+        self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
         status_filter['value'] = status_filter['value'].lower()
@@ -102,6 +102,33 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() else self.search['value']
 
 
+    def _format_data_into_dictionary(self):
+        def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
+            if field_name == 'id':
+                return str(value).zfill(3)
+            elif field_name == 'status':
+                return Agent.calculate_status(lastKeepAlive, version is None, today)
+            else:
+                return value
+
+        fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
+
+        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple) if value is not None} for
+                       db_tuple in self.conn]
+
+        today = datetime.today()
+
+        # compute 'status' field, format id with zero padding and remove non-user-requested fields. Also remove, internal key
+        selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
+        selected_fields |= {'id'}
+        agent_items = [{key:format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
+                        for key, value in item.items() if key in selected_fields} for item in agent_items]
+
+        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
+
+        return {'items': agent_items, 'totalItems': self.total_items}
+
+
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
             self.q += (';' if self.q else '') + "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
@@ -116,7 +143,8 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'})
+                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
+        self.remove_extra_fields=True
 
 
 class Agent:
@@ -130,7 +158,7 @@ class Agent:
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build':'os_build',
-              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'key':'key'}
+              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key':'internal_key'}
 
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
@@ -196,11 +224,9 @@ class Agent:
         Gets attributes of existing agent.
         """
         db_query = WazuhDBQueryAgents(offset=0,limit=None,sort=None,search=None,select=select,
-                                      query="id={}".format(self.id),count=False,get_data=True)
-        db_query.run()
-
+                                      query="id={}".format(self.id),count=False,get_data=True, remove_extra_fields=False)
         try:
-            data = Agent.get_agents_dict(db_query, db_query.select['fields'], self.fields.keys() if not select else select['fields'])[0]
+            data = db_query.run()['items'][0]
         except IndexError:
             raise WazuhException(1701, self.id)
 
@@ -262,7 +288,6 @@ class Agent:
     def compute_key(self):
         str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
         return b64encode(str_key.encode()).decode()
-
 
     def get_key(self):
         """
@@ -715,24 +740,6 @@ class Agent:
 
 
     @staticmethod
-    def get_agents_dict(db_query, select_fields, user_select_fields):
-        fields_to_nest, non_nested = get_fields_to_nest(db_query.fields.keys(), ['os'], '.')
-
-        agent_items = [{field:value for field,value in zip(select_fields, db_tuple) if value is not None} for db_tuple in db_query.conn]
-
-        today = datetime.today()
-
-        # compute 'status' field, format id with zero padding and remove non-user-requested fields.
-        agent_items = [{key:str(value).zfill(3) if key == 'id'
-                                       else (Agent.calculate_status(item.get('lastKeepAlive'), item.get('version') is None, today)
-                                             if key == 'status' else value) for key,value in item.items() if key in user_select_fields or key=='id'} for item in agent_items]
-
-        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
-
-        return agent_items
-
-
-    @staticmethod
     def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}, q=""):
         """
         Gets a list of available agents with basic attributes.
@@ -748,10 +755,8 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, query=q, count=True, get_data=True)
-        db_query.run()
 
-        data = {'items': Agent.get_agents_dict(db_query, db_query.select['fields'], Agent.fields.keys() if not select else select['fields']),
-                'totalItems': db_query.total_items}
+        data = db_query.run()
 
         return data
 
@@ -771,10 +776,7 @@ class Agent:
         """
         db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort, search=search, select=select, query=q,
                                              count=True, get_data=True, min_select_fields=set())
-        db_query.run()
-        user_select_fields = list(Agent.fields.keys() if not select else select['fields'])
-        return {'items': Agent.get_agents_dict(db_query, db_query.select['fields'], user_select_fields),
-                'totalItems': db_query.total_items}
+        return db_query.run()
 
 
     @staticmethod
@@ -814,10 +816,7 @@ class Agent:
         db_query = WazuhDBQueryDistinctAgents(offset=offset, limit=limit, sort=sort, search=search,
                                               select={'fields':['os.platform']}, count=True, get_data=True,
                                               default_sort_field='os_platform', query=q, min_select_fields=set())
-
-        db_query.run()
-
-        return {'totalItems': db_query.total_items, 'items': [tuple[0] for tuple in db_query.conn]}
+        return db_query.run()
 
 
     @staticmethod
@@ -1206,10 +1205,7 @@ class Agent:
         """
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters,
                                       query="group="+group_id + ('' if not q else ';'+q), count=True, get_data=True)
-        db_query.run()
-
-        return {'totalItems':db_query.total_items, 'items':Agent.get_agents_dict(db_query, db_query.select['fields'],
-                                                            Agent.fields.keys() if not select else select['fields'])}
+        return db_query.run()
 
 
     @staticmethod
@@ -1450,9 +1446,7 @@ class Agent:
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                       query="version!={};id!=0".format(manager.version) + ('' if not q else ';'+q),
                                       get_data=True, count=True)
-        db_query.run()
-
-        return {'totalItems': db_query.total_items, 'items': Agent.get_agents_dict(db_query, db_query.select['fields'], select['fields'])}
+        return db_query.run()
 
 
     def _get_protocol(self, wpk_repo, use_http=False):

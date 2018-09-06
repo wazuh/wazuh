@@ -171,10 +171,7 @@ def print_db(agent_id=None, q="", offset=0, limit=common.database_limit, sort=No
 
     db_query = WazuhDBQueryRootcheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                                      select=select, count=True, get_data=True, query=q, filters=filters)
-    db_query.run()
-
-    return {'totalItems': db_query.total_items, 'items':[{key:val for key,val in zip(db_query.select['fields'], tuple)
-                                                         if val is not None} for tuple in db_query.conn]}
+    return db_query.run()
 
 
 def _get_requirement(requirement, agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None, q="", filters={}):
@@ -193,9 +190,7 @@ def _get_requirement(requirement, agent_id=None, offset=0, limit=common.database
     db_query = WazuhDBQueryRootcheckDistinct(offset=offset, limit=limit, sort=sort, search=search, filters=filters,
                                             select={'fields':[requirement]}, agent_id=agent_id, fields={requirement:fields[requirement]},
                                              default_sort_field=fields[requirement], count=True, get_data=True, query=q)
-    db_query.run()
-
-    return {'totalItems':db_query.total_items, 'items':[tuple[0] for tuple in db_query.conn]}
+    return db_query.run()
 
 
 def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
