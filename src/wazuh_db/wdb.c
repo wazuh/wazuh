@@ -29,6 +29,9 @@ static const char *SQL_STMT[] = {
     "SELECT 1 FROM fim_entry WHERE file = ?",
     "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ? WHERE file = ?;",
+    "DELETE FROM fim_entry WHERE file = ?;",
+    "UPDATE fim_entry SET date = ? WHERE file = ?;",
+    "DELETE FROM fim_entry WHERE date < (SELECT value FROM metadata WHERE key = 'fim-db-start-first-scan')",
     "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -48,7 +51,6 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sys_netaddr WHERE scan_id != ?;",
     "INSERT INTO ciscat_results (scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM ciscat_results WHERE scan_id != ?;",
-    "DELETE FROM fim_entry WHERE file = ?;",
     "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);",
     "INSERT INTO metadata (key, value) VALUES (?, ?);",
     "UPDATE metadata SET value = ? WHERE key = ?;",
@@ -249,30 +251,30 @@ int wdb_create_agent_db2(const char * agent_id) {
     return 0;
 }
 
-int wdb_fill_metadata(wdb_t *wdb, char *data) {
+int wdb_fim_fill_metadata(wdb_t *wdb, char *data) {
     char *key, *value;
 
     key = data;
     if (value = strchr(data, ' '), !value) {
-        mdebug1("at wdb_fill_metadata(): Invalid metadata value.");
+        mdebug1("at wdb_fim_fill_metadata(): Invalid metadata value.");
         return -1;
     }
     *value++ = '\0';
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        merror("at wdb_fill_metadata(): cannot begin transaction");
+        merror("at wdb_fim_fill_metadata(): cannot begin transaction");
         return -1;
     }
 
     switch (wdb_find_metadata_entry(wdb, key)) {
     case -1:
-        mdebug1("at wdb_fill_metadata(): Cannot find metadata entry");
+        mdebug1("at wdb_fim_fill_metadata(): Cannot find metadata entry");
         return -1;
 
     case 0:
         // Adding metadata
         if (wdb_metadata_insert_entry(wdb, key, value) < 0) {
-            mdebug1("at wdb_fill_metadata(): cannot insert metadata entry");
+            mdebug1("at wdb_fim_fill_metadata(): cannot insert metadata entry");
             return -1;
         }
         break;
@@ -280,7 +282,7 @@ int wdb_fill_metadata(wdb_t *wdb, char *data) {
     default:
         // Update metadata entry
         if (wdb_metadata_update_entry(wdb, key, value) < 1) {
-            mdebug1("at wdb_fill_metadata(): cannot update metadata entry");
+            mdebug1("at wdb_fim_fill_metadata(): cannot update metadata entry");
             return -1;
         }
     }

@@ -19,21 +19,25 @@
 #include "os_net/os_net.h"
 
 // Add events into sqlite DB for FIM
-static int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf);
+static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf);
 // Send msg to wazuh-db
-static int send_query_wazuhdb(char *wazuhdb_query, char **output);
+static int send_query_wazuhdb (char *wazuhdb_query, char **output);
 // Build FIM alert
 static int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf);
 // Build fileds whodata alert
-static void InsertWhodata(const sk_sum_t * sum);
+static void InsertWhodata (const sk_sum_t * sum);
 // Compare the first common fields between sum strings
-static int SumCompare(const char *s1, const char *s2);
+static int SumCompare (const char *s1, const char *s2);
 // Clean sdb memory
-static void fim_clean_sdb_mem();
+static void fim_clean_sdb_mem ();
 // Check for exceed num of changes
 static int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf);
 // Send control message to wazuhdb
 static int fim_control_msg (char *key, time_t value, Eventinfo *lf);
+//Update field date at last event generated
+int fim_update_date (char *file, Eventinfo *lf);
+// Clean for old entries
+int fim_database_clean(Eventinfo *lf);
 
 
 // Initialize the necessary information to process the syscheck information
@@ -209,6 +213,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
         mdebug1("Alert discarded '%s' same check_sum", f_name);
         lf->data = NULL;
+        fim_update_date (f_name, lf);
         free(wazuhdb_query);
         free(new_check_sum);
         free(old_check_sum);
@@ -739,17 +744,16 @@ int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf) {
 }
 
 int fim_control_msg(char *key, time_t value, Eventinfo *lf) {
-    char *wazuhdb_query;
+    char *wazuhdb_query = NULL;
     char *response = NULL;
     int db_result;
-
-    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
     // If we don't have a valid syscheck message, it may be a scan control message
 
     if (strcmp(key, HC_SK_DB_COMPLETED) == 0 || strcmp(key, HC_FIM_DB_SFS) == 0 ||
             strcmp(key, HC_FIM_DB_EFS) == 0 || strcmp(key, HC_FIM_DB_SS) == 0 ||
             strcmp(key, HC_FIM_DB_ES) == 0) {
+        os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
         snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck control %s %ld",
                 lf->agent_id,
@@ -766,11 +770,75 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf) {
             return (-1);
         }
 
+        if (strcmp(key, HC_FIM_DB_EFS) == 0) {
+            fim_database_clean(lf);
+        }
+
         free(wazuhdb_query);
         free(response);
         return (1);
-    } else {
-        free(wazuhdb_query);
-        return (0);
     }
+
+    return (0);
+}
+
+int fim_update_date (char *file, Eventinfo *lf) {
+    // If any entry has a date less than last_check it should be deleted.
+    char *wazuhdb_query = NULL;
+    char *response = NULL;
+    int db_result;
+
+    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck updatedate %s %ld",
+            lf->agent_id,
+            file,
+            (long int)lf->time.tv_sec
+    );
+
+    db_result = send_query_wazuhdb(wazuhdb_query, &response);
+
+    if (db_result != 0) {
+        merror("at fim_update_date(): Bad save query");
+        free(wazuhdb_query);
+        free(response);
+        return (-1);
+    }
+
+    mdebug1("FIM file %s update timestamp for last event", file);
+
+    free(wazuhdb_query);
+    free(response);
+    return (1);
+
+}
+
+int fim_database_clean(Eventinfo *lf) {
+    // If any entry has a date less than last_check it should be deleted.
+    char *wazuhdb_query = NULL;
+    char *response = NULL;
+    int db_result;
+
+    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck cleandb %ld",
+            lf->agent_id,
+            (unsigned long)lf->time.tv_sec
+    );
+
+    db_result = send_query_wazuhdb(wazuhdb_query, &response);
+
+    if (db_result != 0) {
+        merror("at fim_database_clean(): Bad save query");
+        free(wazuhdb_query);
+        free(response);
+        return (-1);
+    }
+
+    mdebug1("FIM database has been cleaned");
+
+    free(wazuhdb_query);
+    free(response);
+    return (1);
+
 }

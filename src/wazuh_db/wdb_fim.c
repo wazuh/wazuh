@@ -461,15 +461,59 @@ int wdb_fim_delete(wdb_t * wdb, const char * path) {
 
     switch (sqlite3_step(stmt)) {
     case SQLITE_ROW:
-        minfo("~~~ delete file '%s' ROW ", path);
         return 0;
         break;
     case SQLITE_DONE:
-        minfo("~~~ delete file '%s' DONE", path);
         return 0;
         break;
     default:
         mdebug1("at wdb_fim_delete_entry(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+int wdb_fim_update_date_entry(wdb_t * wdb, const char *path, const char *date) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_UPDATE_DATE) < 0) {
+        merror("at wdb_fim_update_date_entry(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_FIM_UPDATE_DATE];
+
+    sqlite3_bind_text(stmt, 1, date, -1, NULL);
+    sqlite3_bind_text(stmt, 2, path, -1, NULL);
+
+    switch (sqlite3_step(stmt)) {
+    case SQLITE_DONE:
+        return 0;
+        break;
+    default:
+        mdebug1("at wdb_fim_update_date_entry(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+int wdb_fim_clean_old_entries(wdb_t * wdb) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_CLEAN_ENTRIES) < 0) {
+        merror("at wdb_fim_clean_old_entries(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_FIM_CLEAN_ENTRIES];
+
+    switch (sqlite3_step(stmt)) {
+    case SQLITE_ROW:
+        return 0;
+        break;
+    case SQLITE_DONE:
+        return 0;
+        break;
+    default:
+        mdebug1("at wdb_fim_clean_old_entries(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
