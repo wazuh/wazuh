@@ -932,43 +932,22 @@ char* get_broadcast_addr(char* ip, char* netmask){
 
 // Get network inventory
 
-void sys_network_linux(int queue_fd, const char* LOCATION){
-
+cJSON * getNetworkIfaces_linux( ){
     char ** ifaces_list;
+    cJSON *ifaces_list_json = cJSON_CreateArray();
     int i = 0, j = 0, k = 0, found;
     int family = 0;
     struct ifaddrs *ifaddr, *ifa;
-    int random_id = os_random();
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
-
-    if (random_id < 0)
-        random_id = -random_id;
-
-    mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddr) == -1) {
         mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
-        free(timestamp);
-        return;
+        return ifaces_list_json;
     }
 
     for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
         i++;
     }
+
     os_calloc(i, sizeof(char *), ifaces_list);
 
     /* Create interfaces list */
@@ -997,20 +976,16 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     if(!ifaces_list[0]){
         mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
         free(ifaces_list);
-        free(timestamp);
-        return;
+        return ifaces_list_json;
     }
 
     /* Collect all information for each interface */
-    for (i=0; i<j; i++){
 
-        char *string;
+    for (i=0; i<j; i++){
 
         cJSON *object = cJSON_CreateObject();
         cJSON *interface = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "network");
-        cJSON_AddNumberToObject(object, "ID", random_id);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "iface", interface);
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
@@ -1035,7 +1010,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         cJSON *ipv6_addr = cJSON_CreateArray();
         cJSON *ipv6_netmask = cJSON_CreateArray();
         cJSON *ipv6_broadcast = cJSON_CreateArray();
-
         for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
 
             if (strcmp(ifaces_list[i], ifa->ifa_name)){
@@ -1180,7 +1154,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                 }
             }
         }
-
         /* Add address information to the structure */
 
         if (cJSON_GetArraySize(ipv4_addr) > 0) {
@@ -1244,33 +1217,87 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             cJSON_Delete(ipv6);
         }
 
-        /* Send interface data in JSON format */
-        string = cJSON_PrintUnformatted(object);
-        mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
-        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(object);
+        /* Get Default Gateway */
+        char *gateway;
+        gateway = get_default_gateway(ifaces_list[i]);
+        cJSON_AddStringToObject(ipv4, "gateway", gateway);
+        free(gateway);
 
-        free(string);
+        /* Get DHCP status for IPv4 */
+        char *dhcp_status;
+        dhcp_status = check_dhcp(ifaces_list[i], AF_INET);
+        cJSON_AddStringToObject(ipv4, "DHCP", dhcp_status);
+
+        /* Get DHCP status for IPv6 */
+        dhcp_status = check_dhcp(ifaces_list[i], AF_INET6);
+        cJSON_AddStringToObject(ipv6, "DHCP", dhcp_status);
+        free(dhcp_status);
+
+        cJSON_AddItemToArray(ifaces_list_json,interface);
+        
     }
-
     freeifaddrs(ifaddr);
     for (i=0; ifaces_list[i]; i++){
         free(ifaces_list[i]);
     }
     free(ifaces_list);
+    return ifaces_list_json;
+}
+
+void sys_network_linux(int queue_fd, const char* LOCATION){
+
+
+    cJSON * ifaces_list_json = cJSON_CreateObject();
+    int random_id = os_random();
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+    char * string;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
+
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
+    if (random_id < 0)
+        random_id = -random_id;
+
+    mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
+/////////////////////////////////////////////////////////////////
+    ifaces_list_json = getNetworkIfaces_linux();
+
+     /* Send interface data in JSON format */
+    for (int i = 0; i < cJSON_GetArraySize(ifaces_list_json); ++i){
+        cJSON* object = cJSON_GetArrayItem(ifaces_list_json,i);
+        cJSON_AddNumberToObject(object, "ID", random_id);
+        cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+        string = cJSON_PrintUnformatted(object);
+        mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
+        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    }
+    cJSON_Delete(ifaces_list_json);    
+//////////////////////////////////////////////////////////////////////
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");
     cJSON_AddNumberToObject(object, "ID", random_id);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
-    char *string;
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
     free(string);
     free(timestamp);
+
 }
 
 /* Get System information */
