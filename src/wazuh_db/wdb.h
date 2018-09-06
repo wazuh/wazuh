@@ -63,6 +63,10 @@ typedef enum wdb_stmt {
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
     WDB_STMT_FIM_DELETE,
+    WDB_STMT_METADATA_VERSION,
+    WDB_STMT_METADATA_INSERT,
+    WDB_STMT_METADATA_UPDATE,
+    WDB_STMT_METADATA_FIND,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -180,7 +184,20 @@ int wdb_create_agent_db(int id, const char *name);
 
 int wdb_create_agent_db2(const char * agent_id);
 
-int wdb_fill_metadata(sqlite3 * db);
+/* Insert or update metadata entries. Returns 0 on success or -1 on error. */
+int wdb_fill_metadata(wdb_t * wdb, char *data);
+
+/* Find metadata entries. Returns 0 if doesn't found, 1 on success or -1 on error. */
+int wdb_find_metadata_entry(wdb_t * wdb, const char * key);
+
+/* Insert entry. Returns 0 on success or -1 on error. */
+int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value);
+
+/* Update entries. Returns 0 on success or -1 on error. */
+int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value);
+
+/* Insert metadata for minor and major version. Returns 0 on success or -1 on error. */
+int wdb_fill_metadata_version(sqlite3 *db);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_remove_agent_db(int id, const char * name);

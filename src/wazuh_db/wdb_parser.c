@@ -289,7 +289,16 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     curr = input;
     *next++ = '\0';
 
-    if (strcmp(curr, "load") == 0) {
+    if (strcmp(curr, "control") == 0) {
+        if (result = wdb_fill_metadata(wdb, next), result < 0) {
+            mdebug1("Cannot save fim control message.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "load") == 0) {
         if (result = wdb_syscheck_load(wdb, next, buffer, sizeof(buffer)), result < 0) {
             mdebug1("Cannot load Syscheck.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot load Syscheck");

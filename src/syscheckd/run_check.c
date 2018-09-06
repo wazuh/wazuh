@@ -138,16 +138,19 @@ void start_daemon()
 
     /* Will create the db to store syscheck data */
     if (syscheck.scan_on_start) {
-        sleep(syscheck.tsleep * 15);
+        /* Send first start scan control message */
+        send_syscheck_msg(HC_FIM_DB_SFS);
+        sleep(syscheck.tsleep * 10);
         send_sk_db();
+        sleep(syscheck.tsleep * 10);
+        /* Send first end scan control message */
+        send_syscheck_msg(HC_FIM_DB_EFS);
 
 #ifdef WIN32
         /* Check for registry changes on Windows */
         os_winreg_check();
 #endif
 
-        /* Send database completed message */
-        send_syscheck_msg(HC_SK_DB_COMPLETED);
         mdebug2("Sending database completed message.");
     } else {
         prev_time_rk = time(0);
@@ -248,9 +251,13 @@ void start_daemon()
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
             if (syscheck.scan_on_start == 0) {
                 /* Need to create the db if scan on start is not set */
+                /* Send start scan control message */
+                send_syscheck_msg(HC_FIM_DB_SS);
                 sleep(syscheck.tsleep * 10);
                 send_sk_db();
                 sleep(syscheck.tsleep * 10);
+                /* Send end scan control message */
+                send_syscheck_msg(HC_FIM_DB_ES);
 
                 syscheck.scan_on_start = 1;
             } else {
@@ -276,7 +283,7 @@ void start_daemon()
             }
 
             /* Send database completed message */
-            send_syscheck_msg(HC_SK_DB_COMPLETED);
+            send_syscheck_msg(HC_FIM_DB_SS);
             mdebug2("Sending database completed message.");
 
             prev_time_sk = time(0);

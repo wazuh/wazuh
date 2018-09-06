@@ -32,6 +32,8 @@ static int SumCompare(const char *s1, const char *s2);
 static void fim_clean_sdb_mem();
 // Check for exceed num of changes
 static int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf);
+// Send control message to wazuhdb
+static int fim_control_msg (char *key, time_t value, Eventinfo *lf);
 
 
 // Initialize the necessary information to process the syscheck information
@@ -106,25 +108,22 @@ int DecodeSyscheck(Eventinfo *lf)
     fim_clean_sdb_mem();
     minfo("~~~~ DecodeSyscheck");
 
-        /* Every syscheck message must be in the following format:
+    /* Every syscheck message must be in the following format:
      * checksum filename
      * or
      * checksum!whodatasum filename
      * or
      * checksum!whodatasum filename\nextradata
      */
-        f_name = wstr_chr(lf->log, ' ');
+    f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
-        /* If we don't have a valid syscheck message, it may be
-         * a old database completed message
-         */
-        if (strcmp(lf->log, HC_SK_DB_COMPLETED) == 0) {
-            //DB_SetCompleted(lf);
-            return (0);
+        mdebug2("Saved control value for syscheck: '%s'", lf->log);
+        if (fim_control_msg(lf->log, lf->time.tv_sec, lf) > 0) {
+            return(0);
+        } else {
+            merror(SK_INV_MSG);
+            return (-1);
         }
-
-        merror(SK_INV_MSG);
-        return (0);
     }
 
     // Zero to get the check sum
@@ -203,12 +202,12 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
     check_sum = strchr(response, ' ');
     *(check_sum++) = '\0';
     os_strdup(check_sum, old_check_sum);
+    mdebug2("Old checksum '%s'", old_check_sum);
+    mdebug2("New checksum '%s'", new_check_sum);
 
     // Checksum match, we can just return and keep going
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
         mdebug1("Alert discarded '%s' same check_sum", f_name);
-        mdebug2("old_check_sum '%s'", old_check_sum);
-        mdebug2("new_check_sum '%s'", new_check_sum);
         lf->data = NULL;
         free(wazuhdb_query);
         free(new_check_sum);
@@ -257,8 +256,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
                 // Alert discarded, frequency exceeded
                 if (changes == -1) {
                     mdebug1("Alert discarded '%s' frequency exceeded", f_name);
-                    mdebug2("old_check_sum '%s'", old_check_sum);
-                    mdebug2("new_check_sum '%s'", new_check_sum);
                     lf->data = NULL;
                     free(wazuhdb_query);
                     free(new_check_sum);
@@ -739,4 +736,41 @@ int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf) {
     }
 
     return freq;
+}
+
+int fim_control_msg(char *key, time_t value, Eventinfo *lf) {
+    char *wazuhdb_query;
+    char *response = NULL;
+    int db_result;
+
+    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+
+    // If we don't have a valid syscheck message, it may be a scan control message
+
+    if (strcmp(key, HC_SK_DB_COMPLETED) == 0 || strcmp(key, HC_FIM_DB_SFS) == 0 ||
+            strcmp(key, HC_FIM_DB_EFS) == 0 || strcmp(key, HC_FIM_DB_SS) == 0 ||
+            strcmp(key, HC_FIM_DB_ES) == 0) {
+
+        snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck control %s %ld",
+                lf->agent_id,
+                key,
+                (long int)value
+        );
+
+        db_result = send_query_wazuhdb(wazuhdb_query, &response);
+
+        if (db_result != 0) {
+            merror("at fim_control_msg(): Bad save query");
+            free(wazuhdb_query);
+            free(response);
+            return (-1);
+        }
+
+        free(wazuhdb_query);
+        free(response);
+        return (1);
+    } else {
+        free(wazuhdb_query);
+        return (0);
+    }
 }
