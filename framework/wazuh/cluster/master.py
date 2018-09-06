@@ -777,5 +777,13 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             response = self.server.manager.send_request(worker_name=node_name, command='dapi', data=worker_id + ' ' + input_json)
             return response.split(' ',1)
 
+        elif command == 'transfertest':
+            first_worker_node = self.server.manager.get_connected_workers().keys()[0]
+            request_id, bytes_to_send = data.split(' ',1)
+            response = self.server.manager.send_string(worker_name=first_worker_node,
+                                                       string_to_send='a'*int(bytes_to_send), reason='transfertest',
+                                                       extra_data=request_id)
+            return response.split(' ',1)
+
         else:
             return InternalSocketHandler.process_request(self,command,data)

@@ -211,12 +211,12 @@ class Handler(asyncore.dispatcher_with_send):
                 del self.worker_threads[worker_thread_id]
 
 
-    def get_worker_thread(self, data):
+    def get_worker_thread(self, data, command):
         # the worker_thread worker_thread_id will be the first element spliting the data by spaces
         worker_thread_id = data.split(b' ', 1)[0].decode()
         with self.worker_threads_lock:
             if worker_thread_id in self.worker_threads:
-                return self.worker_threads[worker_thread_id], 'ack', 'Command received for {}'.format(worker_thread_id)
+                return self.worker_threads[worker_thread_id], 'ack', "Command '{}' received for {}".format(command, worker_thread_id)
             else:
                 return None, 'err', 'Worker {} not found. Please, send me the reason first'.format(worker_thread_id)
 
@@ -481,7 +481,7 @@ class Handler(asyncore.dispatcher_with_send):
             return 'ok ', data.decode()
         elif command in fragmented_requests_commands:
             # At this moment, the thread should exists
-            worker_thread, cmd, message = self.get_worker_thread(data)
+            worker_thread, cmd, message = self.get_worker_thread(data, command)
             if worker_thread:
                 worker_thread.set_command(command, data)
             return cmd, message
@@ -1132,4 +1132,26 @@ class FragmentedStringReceiverWorker(FragmentedStringReceiver):
             self.sleep(2)
             return False
 
+        return True
+
+
+class TransferTester(FragmentedStringReceiverWorker):
+
+    def __init__(self, manager_handler, stopper, request_id):
+        FragmentedStringReceiverWorker.__init__(self, manager_handler, stopper)
+        self.thread_tag = "[Worker] [{0}] [String-R     ]".format(self.manager_handler.name)
+        self.n_updates = 0
+        self.request_id = request_id
+
+
+    def update(self, chunk):
+        self.n_updates += 1
+        FragmentedStringReceiverWorker.update(self, chunk)
+
+
+    def process_received_data(self):
+        self.manager_handler.send_string(reason='dapi_res', string_data=json.dumps({'n_updates':self.n_updates,
+                                                                                    'total_time':self.total_time,
+                                                                                    'total_data':self.size_received}),
+                                                extra_data=self.request_id, new_req='fwd_new', upd_req='fwd_upd', end_req='fwd_end')
         return True
