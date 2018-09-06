@@ -54,8 +54,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'})
-
+                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields = {'internal_key'})
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
@@ -104,7 +103,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 
     def _format_data_into_dictionary(self):
-        def format_fields(field_name, value, today, lastKeepAlive=None, version=None, id=None):
+        def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
             if field_name == 'id':
                 return str(value).zfill(3)
             elif field_name == 'status':
@@ -144,7 +143,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'})
+                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
         self.remove_extra_fields=True
 
 
@@ -159,7 +158,7 @@ class Agent:
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build':'os_build',
-              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'key':'key'}
+              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key':'internal_key'}
 
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
@@ -289,7 +288,6 @@ class Agent:
     def compute_key(self):
         str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
         return b64encode(str_key.encode()).decode()
-
 
     def get_key(self):
         """
