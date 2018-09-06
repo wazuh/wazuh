@@ -164,7 +164,7 @@ int w_analysisd_write_state(){
         "rootcheck_queue_size='%u'\n"
         "\n"
         "# Hostinfo queue\n"
-        "hostinfo_queu_usage='%.2f'\n"
+        "hostinfo_queue_usage='%.2f'\n"
         "\n"
         "# Hostinfo queue size\n"
         "hostinfo_queue_size='%u'\n"
