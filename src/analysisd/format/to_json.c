@@ -345,7 +345,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(proc, "id", lf->process_id);
             if (lf->process_name) cJSON_AddStringToObject(proc, "name", lf->process_name);
             if (lf->ppid && *lf->ppid != '\0') cJSON_AddStringToObject(proc, "ppid", lf->ppid);
-            cJSON_AddItemToObject(audit, "proccess", proc);
+            cJSON_AddItemToObject(audit, "process", proc);
         }
 
         if (lf->audit_uid && *lf->audit_uid != '\0') {
