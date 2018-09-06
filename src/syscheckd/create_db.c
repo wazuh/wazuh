@@ -757,11 +757,11 @@ int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
         name_esc = wstr_replace(evt->user_name, " ", "\\ ");
 #endif
         if (snprintf(wd_sum, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%i:%lli",
-                evt->user_id,
-                name_esc,
+                (evt->user_id)?evt->user_id:"",
+                (name_esc)?name_esc:"",
                 (evt->group_id)?evt->group_id:"",
                 (evt->group_name)?evt->group_name:"",
-                process_esc,
+                (process_esc)?process_esc:"",
                 (evt->audit_uid)?evt->audit_uid:"",
                 (evt->audit_name)?evt->audit_name:"",
                 (evt->effective_uid)?evt->effective_uid:"",

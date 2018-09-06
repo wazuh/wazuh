@@ -492,16 +492,18 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         }
 
         if (buffer[1].Type != EvtVarTypeString) {
-            merror(INV_WDATA_PAR, buffer[1].Type, "user_name");
-            goto clean;
+            mwarn(INV_WDATA_PAR, buffer[1].Type, "user_name");
+            user_name = NULL;
+        } else {
+            user_name = convert_windows_string(buffer[1].XmlVal);
         }
-        user_name = convert_windows_string(buffer[1].XmlVal);
 
         if (buffer[3].Type != EvtVarTypeString) {
-            merror(INV_WDATA_PAR, buffer[3].Type, "process_name");
-            goto clean;
+            mwarn(INV_WDATA_PAR, buffer[3].Type, "process_name");
+            process_name = NULL;
+        } else {
+            process_name = convert_windows_string(buffer[3].XmlVal);
         }
-        process_name = convert_windows_string(buffer[3].XmlVal);
 
         // In 32-bit Windows we find EvtVarTypeSizeT
         if (buffer[4].Type != EvtVarTypeHexInt64) {
@@ -544,7 +546,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
         if (buffer[7].Type != EvtVarTypeSid) {
             mwarn(INV_WDATA_PAR, buffer[7].Type, "user_id");
-            os_strdup("", user_id);
+            user_id = NULL;
         } else if (!ConvertSidToStringSid(buffer[7].SidVal, &user_id)) {
             mdebug1("Invalid identifier for user '%s'", user_name);
             goto clean;
