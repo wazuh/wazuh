@@ -570,7 +570,7 @@ class WazuhDBQuery(object):
     This class describes a database query for wazuh
     """
     def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
-                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set()):
+                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(), extra_fields=set()):
         """
         Wazuh DB Query constructor
 
@@ -612,6 +612,7 @@ class WazuhDBQuery(object):
         self.query_operators = {"=","!=","<",">"}
         self.query_separators = {',':'OR',';':'AND','':''}
         self.date_fields = date_fields
+        self.extra_fields = extra_fields
         self.q = query
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
@@ -662,11 +663,11 @@ class WazuhDBQuery(object):
     def _parse_select_filter(self, select_fields):
         if select_fields:
             set_select_fields = set(select_fields['fields'])
-            if not set_select_fields.issubset(self.fields.keys()):
+            set_fields_keys = set(self.fields.keys()) - self.extra_fields
+            if not set_select_fields.issubset(set_fields_keys):
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
-                                     format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set(self.fields.keys()))))
+                                     format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set_fields_keys)))
 
-            set_select_fields |= self.min_select_fields
             select_fields['fields'] = set_select_fields
         else:
             select_fields = {'fields': set(self.fields.keys())}
@@ -764,7 +765,12 @@ class WazuhDBQuery(object):
 
 
     def _get_data(self):
-        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields']))), self.request)
+        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields'] | self.min_select_fields))), self.request)
+
+
+    def _format_data_into_dictionary(self):
+        return {'items': [{key:value for key,value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
+                           if value is not None} for db_tuple in self.conn], 'totalItems': self.total_items}
 
 
     def _filter_status(self, status_filter):
@@ -801,6 +807,7 @@ class WazuhDBQuery(object):
         self._add_limit_to_query()
         if self.data:
             self._get_data()
+            return self._format_data_into_dictionary()
 
 
     def reset(self):
@@ -809,6 +816,7 @@ class WazuhDBQuery(object):
         """
         self.query = self._default_query()
         self.query_filters = []
+        self.select['fields'] -= self.extra_fields
 
 
     def _default_query(self):
@@ -853,15 +861,19 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
         WazuhDBQuery._add_select_to_query(self)
 
 
+    def _format_data_into_dictionary(self):
+        return {'totalItems': self.total_items, 'items': [db_tuple[0] for db_tuple in self.conn]}
+
+
 class WazuhDBQueryGroupBy(WazuhDBQuery):
     """
     Retrieves unique values for multiple fields using group by
     """
 
     def __init__(self, filter_fields, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
-                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set()):
+                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(), extra_fields=set()):
         WazuhDBQuery.__init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field,
-                              db_path, count, get_data, default_sort_order, filters, min_select_fields, date_fields)
+                              db_path, count, get_data, default_sort_order, filters, min_select_fields, date_fields, extra_fields)
         self.filter_fields = filter_fields
 
 
