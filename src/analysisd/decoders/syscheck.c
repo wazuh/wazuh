@@ -833,7 +833,7 @@ void InsertWhodata(const sk_sum_t * sum) {
     }
 
     /* Whodata process */
-    if(sum->wdata.process_id && *sum->wdata.process_id != '\0') {
+    if(sum->wdata.process_id && *sum->wdata.process_id != '\0' && strcmp(sum->wdata.process_id, "0")) {
         snprintf(sdb.process_id, OS_FLSIZE, "(Audit) Process id: '%s'\n", sum->wdata.process_id);
     } else {
         *sdb.process_id = '\0';

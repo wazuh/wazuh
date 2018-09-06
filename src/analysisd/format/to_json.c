@@ -329,8 +329,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON* audit = cJSON_CreateObject();
 
         cJSON* user = cJSON_CreateObject();
-        cJSON_AddStringToObject(user, "id", lf->user_id);
-        cJSON_AddStringToObject(user, "name", lf->user_name);
+        if (lf->user_id && *lf->user_id != '\0') {
+            cJSON_AddStringToObject(user, "id", lf->user_id);
+        }
+        cJSON_AddStringToObject(user, "name", lf->user_name); 
         cJSON_AddItemToObject(audit, "user", user);
 
         if (lf->group_id && *lf->group_id != '\0') {
@@ -342,9 +344,15 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
         if (lf->process_id) {
             cJSON* proc = cJSON_CreateObject();
-            cJSON_AddStringToObject(proc, "id", lf->process_id);
-            if (lf->process_name) cJSON_AddStringToObject(proc, "name", lf->process_name);
-            if (lf->ppid && *lf->ppid != '\0') cJSON_AddStringToObject(proc, "ppid", lf->ppid);
+            if (strcmp(lf->process_id, "0")) {
+                cJSON_AddStringToObject(proc, "id", lf->process_id);
+            }
+            if (lf->process_name && *lf->process_name != '\0') {
+                cJSON_AddStringToObject(proc, "name", lf->process_name);
+            }
+            if (lf->ppid && *lf->ppid != '\0') {
+                cJSON_AddStringToObject(proc, "ppid", lf->ppid);
+            }
             cJSON_AddItemToObject(audit, "proccess", proc);
         }
 
