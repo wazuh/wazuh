@@ -504,9 +504,15 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         process_name = convert_windows_string(buffer[3].XmlVal);
 
         // In 32-bit Windows we find EvtVarTypeSizeT
-        if (buffer[4].Type != EvtVarTypeHexInt64 && buffer[4].Type !=  EvtVarTypeSizeT) {
-            mwarn(INV_WDATA_PAR, buffer[4].Type, "process_id");
-            process_id = 0;
+        if (buffer[4].Type != EvtVarTypeHexInt64) {
+            if (buffer[4].Type == EvtVarTypeSizeT) {
+                process_id = (unsigned __int64) buffer[4].SizeTVal;
+            } else if (buffer[4].Type == EvtVarTypeHexInt32) {
+                process_id = (unsigned __int64) buffer[4].UInt32Val;
+            } else {
+                mwarn(INV_WDATA_PAR, buffer[4].Type, "process_id");
+                process_id = 0;
+            }
         } else {
             process_id = buffer[4].UInt64Val;
         }
