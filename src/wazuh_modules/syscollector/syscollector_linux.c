@@ -1270,7 +1270,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
-/////////////////////////////////////////////////////////////////
     ifaces_list_json = getNetworkIfaces_linux();
 
      /* Send interface data in JSON format */
@@ -1285,7 +1284,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     }
     cJSON_Delete(ifaces_list_json);
-//////////////////////////////////////////////////////////////////////
+
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");
