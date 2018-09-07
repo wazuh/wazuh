@@ -84,20 +84,21 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
             sum->sha256 = NULL;
 
-            if ((sum->sha256 = strchr(c_inode, ':')))
+            if ((sum->sha256 = strchr(c_inode, ':'))) {
                 *(sum->sha256++) = '\0';
 
-            sum->mtime = atol(c_mtime);
-            sum->inode = atol(c_inode);
+                sum->mtime = atol(c_mtime);
+                sum->inode = atol(c_inode);
 
-            // Only decoded by manager
-            if (changes = strchr(sum->sha256, ':'), changes) {
-                *(changes++) = '\0';
-                sum->changes = atoi(changes);
+                // Only decoded by manager
+                if (changes = strchr(sum->sha256, ':'), changes) {
+                    *(changes++) = '\0';
+                    sum->changes = atoi(changes);
 
-                if (date_alert = strchr(changes, ':'), date_alert) {
-                    *(date_alert++) = '\0';
-                    sum->date_alert = atol(date_alert);
+                    if (date_alert = strchr(changes, ':'), date_alert) {
+                        *(date_alert++) = '\0';
+                        sum->date_alert = atol(date_alert);
+                    }
                 }
             }
         }
