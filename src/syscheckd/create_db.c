@@ -31,6 +31,7 @@ static int read_dir_diff(char *dir_name) {
     char *f_name = NULL;
     char *file_name = NULL;
     char *local_dir = NULL;
+    int retval = -1;
 
     os_calloc(PATH_MAX + 2, sizeof(char), f_name);
     os_calloc(PATH_MAX, sizeof(char), file_name);
@@ -44,26 +45,18 @@ static int read_dir_diff(char *dir_name) {
     /* Directory should be valid */
     if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
         merror(NULL_ERROR);
-        free(f_name);
-        free(file_name);
-        free(local_dir);
-        return (-1);
+        goto end;
     }
 
     /* Open the directory given */
     dp = opendir(dir_name);
     if (!dp) {
         if (errno == ENOTDIR || (errno == ENOENT && !strcmp(dir_name, local_dir))) {
-            free(f_name);
-            free(file_name);
-            free(local_dir);
-            return 0;
+            retval = 0;
+            goto end;
         } else {
             mwarn("Accessing to '%s': [(%d) - (%s)]", dir_name, errno, strerror(errno));
-            free(f_name);
-            free(file_name);
-            free(local_dir);
-            return -1;
+            goto end;
         }
     }
 
@@ -100,12 +93,13 @@ static int read_dir_diff(char *dir_name) {
         }
     }
 
+    closedir(dp);
+    retval = 0;
+end:
     free(f_name);
     free(file_name);
     free(local_dir);
-
-    closedir(dp);
-    return (0);
+    return retval;
 }
 
 
