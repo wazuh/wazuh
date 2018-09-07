@@ -73,6 +73,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global ARQUEUE
     ARQUEUE = "{0}/queue/alerts/ar".format(ossec_path)
 
+    global EXECQ
+    EXECQ = "{0}/queue/alerts/execq".format(ossec_path)
+
     # Socket
     global AUTHD_SOCKET
     AUTHD_SOCKET = "{0}/queue/ossec/auth".format(ossec_path)

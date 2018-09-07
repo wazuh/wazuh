@@ -146,31 +146,46 @@ void WinExecdRun(char *exec_msg)
     /* Zero the name */
     tmp_msg = strchr(exec_msg, ' ');
     if (!tmp_msg) {
-        mwarn(EXECD_INV_MSG, exec_msg);
-        return;
+        if (name[0] != '!') {
+            mwarn(EXECD_INV_MSG, exec_msg);
+            return;
+        } else {
+            tmp_msg = exec_msg + strlen(exec_msg);
+        }
+    } else {
+        *tmp_msg = '\0';
+        tmp_msg++;
     }
-    *tmp_msg = '\0';
-    tmp_msg++;
 
     /* Get user */
     cmd_user = tmp_msg;
     tmp_msg = strchr(tmp_msg, ' ');
     if (!tmp_msg) {
-        mwarn(EXECD_INV_MSG, cmd_user);
-        return;
+        if (name[0] != '!') {
+            mwarn(EXECD_INV_MSG, cmd_user);
+            return;
+        } else {
+            tmp_msg = cmd_user + strlen(cmd_user);
+        }
+    } else {
+        *tmp_msg = '\0';
+        tmp_msg++;
     }
-    *tmp_msg = '\0';
-    tmp_msg++;
 
     /* Get IP */
     cmd_ip = tmp_msg;
     tmp_msg = strchr(tmp_msg, ' ');
     if (!tmp_msg) {
-        mwarn(EXECD_INV_MSG, cmd_ip);
-        return;
+        if (name[0] != '!') {
+            mwarn(EXECD_INV_MSG, cmd_ip);
+            return;
+        } else {
+            tmp_msg = cmd_ip + strlen(cmd_ip);
+        }
+    } else {
+        *tmp_msg = '\0';
+        tmp_msg++;
     }
-    *tmp_msg = '\0';
-    tmp_msg++;
 
     /* Get the command to execute (valid name) */
     command = GetCommandbyName(name, &timeout_value);
@@ -235,7 +250,7 @@ void WinExecdRun(char *exec_msg)
 
     /* If it wasn't added before, do it now */
     if (!added_before) {
-        snprintf(buffer, OS_MAXSTR, "\"%s\" %s \"%s\" \"%s\" \"%s\"", command,
+        snprintf(buffer, OS_MAXSTR, name[0] == '!' ? "\"%s\" %s %s %s %s" : "\"%s\" %s \"%s\" \"%s\" \"%s\"", command,
                  ADD_ENTRY, cmd_user, cmd_ip, tmp_msg);
         /* Execute command */
         ExecCmd_Win32(buffer);
