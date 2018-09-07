@@ -375,9 +375,10 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         } else {
             // Kill and timeout
+            retval = 0;
             do {
                 if (waitpid(pid,&status,WNOHANG) == 0){ // Command yet not finished
-
+                    retval = -1;
                     switch (kill(pid, 0)){
                         case -1:
                             switch(errno){
