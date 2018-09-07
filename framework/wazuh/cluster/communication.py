@@ -108,10 +108,20 @@ class Response:
 
 
     def read(self):
-        with self.cond:
-            while not self.data:
-                self.cond.wait()
+        def frange(start, stop, step):
+            r = start
+            while r < stop:
+                yield r
+                r += step
 
+        with self.cond:
+            # wait for a response for common.cluster_timeout_msg seconds
+            for _ in frange(1,common.cluster_timeout_msg,0.5):
+                self.cond.wait(timeout=0.5)
+                if self.data is not None:
+                    break
+            else:
+                raise Exception("Timeout expired while waiting for a response")
         return self.data
 
 
