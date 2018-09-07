@@ -126,7 +126,8 @@ def forward_request(input_json, master_name, pretty, from_master):
         old_offset = 0 if 'offset' not in input_json['arguments'] else input_json['arguments']['offset']
         old_limit = common.database_limit if 'limit' not in input_json['arguments'] else input_json['arguments']['limit']
         if old_offset > 0:
-            input_json['arguments']['offset'] = input_json['arguments']['limit'] = 0
+            input_json['arguments']['offset'] = 0
+            input_json['arguments']['limit'] = None
         pool = ThreadPool(len(node_name))
         responses = list(filter(lambda x: x is not None, pool.map(forward_list, node_name.items())))
         pool.close()
