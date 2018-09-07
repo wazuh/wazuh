@@ -92,7 +92,7 @@ agent_info_sleep = 2 # Seconds between retries
 database_limit = 500
 maximum_database_limit = 1000
 limit_seconds = 1800 # 600*3
-cluster_timeout_msg = 10
+cluster_timeout_msg = 20
 
 ossec_uid = getpwnam("ossec").pw_uid
 ossec_gid = getgrnam("ossec").gr_gid
