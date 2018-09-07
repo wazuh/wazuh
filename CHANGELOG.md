@@ -1,7 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.6.1]
+## [v3.6.2]
+
+
+## [v3.6.1] 2018-09-07
 
 ### Fixed
 
