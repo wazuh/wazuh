@@ -197,14 +197,15 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
 
         for item in items:
             if limit > 0 and limit + 1 <= len(result):
-                break;
+                break
             item['agent_id'] = agent['id']
             result.append(item)
 
-    if sort and sort['fields']:
-        result = sorted(result, key=itemgetter(sort['fields'][0]), reverse=True if sort['order'] == "desc" else False)
+    if result:
+        if sort and sort['fields']:
+            result = sorted(result, key=itemgetter(sort['fields'][0]), reverse=True if sort['order'] == "desc" else False)
 
-    fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '_')
+        fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '_')
     return {'items': list(map(lambda x: plain_dict_to_nested_dict(x, fields_to_nest, non_nested), result)), 'totalItems': total}
 
 
