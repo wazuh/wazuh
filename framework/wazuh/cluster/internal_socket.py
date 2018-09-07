@@ -137,7 +137,7 @@ class InternalSocketWorker(communication.AbstractWorker):
             return False
         elif command == 'err':
             try:
-                json.loads(data)
+                data = json.loads(data)
                 self.final_response.write(data['err'])
                 return True
             except ValueError:
