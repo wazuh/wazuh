@@ -39,7 +39,7 @@ except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
 
-logging.basicConfig(level=logging.CRITICAL, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.ERROR, format='%(levelname)s: %(message)s')
 
 def get_parser(type):
     if type == "master":
