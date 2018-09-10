@@ -35,7 +35,6 @@ static void wm_ciscat_info();                        // Show module info
 static void wm_ciscat_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 #endif
 static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
-static void delay(unsigned int ms);                 // Sleep during 'ms' milliseconds
 cJSON *wm_ciscat_dump(const wm_ciscat *ciscat);
 
 const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event sending
@@ -184,12 +183,12 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                 if (status == 0) {
                     time_sleep = get_time_to_hour(ciscat->scan_time);
                 } else {
-                    delay(1000); // Sleep one second to avoid an infinite loop
+                    wm_delay(1000); // Sleep one second to avoid an infinite loop
                     time_sleep = get_time_to_hour("00:00");
                 }
 
                 mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-                delay(1000 * time_sleep);
+                wm_delay(1000 * time_sleep);
 
             } while (status < 0);
 
@@ -198,20 +197,20 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             time_sleep = get_time_to_day(ciscat->scan_wday, ciscat->scan_time);
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            delay(1000 * time_sleep);
+            wm_delay(1000 * time_sleep);
 
         } else if (ciscat->scan_time) {
 
             time_sleep = get_time_to_hour(ciscat->scan_time);
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            delay(1000 * time_sleep);
+            wm_delay(1000 * time_sleep);
 
         } else if (ciscat->state.next_time > time_start) {
 
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", (long)(ciscat->state.next_time - time_start));
-            delay(1000 * ciscat->state.next_time - time_start);
+            wm_delay(1000 * ciscat->state.next_time - time_start);
 
         }
     }
@@ -287,12 +286,12 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     time_sleep = get_time_to_hour(ciscat->scan_time);
                     i++;
                 } else {
-                    delay(1000);
+                    wm_delay(1000);
                     time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
                 }
 
                 mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-                delay(1000 * time_sleep);
+                wm_delay(1000 * time_sleep);
 
             } while ((status < 0) && (i < interval));
 
@@ -318,7 +317,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                 mterror(WM_CISCAT_LOGTAG, "Couldn't save running state.");
 
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            delay(1000 * time_sleep);
+            wm_delay(1000 * time_sleep);
         }
     }
 
@@ -1582,15 +1581,5 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
     }
 
     free(ciscat);
-}
-
-void delay(unsigned int ms) {
-#ifdef WIN32
-    Sleep(ms);
-#else
-    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
-    select(0, NULL, NULL, NULL, &timeout);
-#endif
-
 }
 #endif

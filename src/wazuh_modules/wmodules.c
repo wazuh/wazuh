@@ -605,3 +605,12 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 
     return match;
 }
+
+void wm_delay(unsigned int ms) {
+#ifdef WIN32
+    Sleep(ms);
+#else
+    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
+}
