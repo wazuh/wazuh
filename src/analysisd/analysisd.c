@@ -1280,9 +1280,12 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             } else if (_line = FTS(lf),_line == NULL) {
                 return (NULL);
             }
-            os_strdup(_line,_line_cpy); 
-            free(_line);
-            queue_push_ex_block(writer_queue_log_fts,_line_cpy);
+            
+            if(_line){
+                os_strdup(_line,_line_cpy); 
+                free(_line);
+                queue_push_ex_block(writer_queue_log_fts,_line_cpy);
+            }
         } else {
             return (NULL);
         }
