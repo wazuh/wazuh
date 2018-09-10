@@ -5,6 +5,13 @@
 
 from wazuh.exception import WazuhException
 from wazuh import common
+from io import StringIO
+try:
+    import configparser
+    unicode = str
+except ImportError:
+    import ConfigParser as configparser
+
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -147,3 +154,43 @@ def weekly():
         response[DAYS[i]] = {'hours': hours, 'interactions': interactions}
 
     return response
+
+
+def get_stats(filename):
+    """
+    Returns the stats of an input file.
+
+    :param filename: Full path of the file to get information.
+
+    :return: A dictionary with the stats of the input file.
+    """
+    with open(filename, 'r') as f:
+        input_file = unicode("[root]\n" + f.read())
+
+    fp = StringIO(input_file)
+    config = configparser.RawConfigParser()
+    config.readfp(fp)
+    items = dict(config.items("root"))
+
+    for key, value in items.items():
+        items[key] = float(value[1:-1])  # delete extra quotation marks
+
+    return items
+
+
+def analysisd():
+    """
+    Returns the stats of analysisd.
+
+    :return: A dictionary with the stats of analysisd.
+    """
+    return get_stats(common.analysisd_stats)
+
+
+def remoted():
+    """
+    Returns the stats of remoted.
+
+    :return: A dictionary with the stats of remoted.
+        """
+    return get_stats(common.remoted_stats)
