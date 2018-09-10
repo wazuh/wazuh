@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.7.0]
 
+### Changed
+- Refactor Python framework code to standarize database requests and support API queries ([#921](https://github.com/wazuh/wazuh/pull/921)).
 
 ## [v3.6.1]
 
