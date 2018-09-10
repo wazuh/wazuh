@@ -114,7 +114,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple) if value is not None and value != ''} for
+        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple) if value is not None} for
                        db_tuple in self.conn]
 
         today = datetime.today()
@@ -167,9 +167,15 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
 
 
     def _get_data(self):
-        self.fields['multi_group'] = "CASE WHEN COUNT(*) > 1 THEN '*' ELSE '' END as num_groups"
-        self.select['fields'].update(['multi_group'])
+        if self.group_id != "null":
+            self.fields['multi_group'] = "CASE WHEN COUNT(*) > 1 THEN '*' ELSE '' END as num_groups"
+            self.select['fields'].update(['multi_group'])
         WazuhDBQueryAgents._get_data(self)
+
+
+    def _get_total_items(self):
+        WazuhDBQueryAgents._get_total_items(self)
+        self.query += ' GROUP BY a.id '
 
 
 class Agent:
