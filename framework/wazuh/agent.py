@@ -1661,7 +1661,7 @@ class Agent:
             conn.execute(query,(agent_info["group"],))
         
             # Check if it is a multi group
-            if agent_info["group"].find("-") > -1:
+            if agent_info["group"] is not None and agent_info["group"].find("-") > -1:
                 multi_group = conn.fetch()[0]
 
                 # The multi group is not being used in other agents, delete it from multi groups
