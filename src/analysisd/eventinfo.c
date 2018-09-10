@@ -20,6 +20,8 @@ int alert_only;
 
 #define OS_COMMENT_MAX 1024
 
+static pthread_mutex_t eventinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Search last times a signature fired
  * Will look for only that specific signature.
  */
@@ -151,10 +153,12 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 
         /* Check if the number of matches worked */
         if (rule->__frequency <= 10) {
+            w_mutex_lock(&rule->mutex);
             rule->last_events[rule->__frequency]
                 = lf->full_log;
             rule->last_events[rule->__frequency + 1]
                 = NULL;
+            w_mutex_unlock(&rule->mutex);
         }
 
         if (rule->__frequency < rule->frequency) {
@@ -193,16 +197,21 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
     }
 
     /* Get last node */
-    lf_node = OSList_GetLastNode(rule->group_search);
+    w_mutex_lock(&eventinfo_mutex);
+    lf_node = OSList_GetLastNode_group(rule->group_search);
+    
     if (!lf_node) {
+        w_mutex_unlock(&rule->group_search->mutex);
+        w_mutex_unlock(&eventinfo_mutex);
         return (NULL);
     }
-
     do {
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time.tv_sec) > rule->timeframe) {
+            w_mutex_unlock(&rule->group_search->mutex);
+            w_mutex_unlock(&eventinfo_mutex);
             return (NULL);
         }
 
@@ -297,6 +306,8 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
          * or rules with a lower level.
          */
         else if (lf->matched >= rule->level) {
+            w_mutex_unlock(&rule->group_search->mutex);
+            w_mutex_unlock(&eventinfo_mutex);
             return (NULL);
         }
 
@@ -304,10 +315,12 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
         /* Check if the number of matches worked */
         if (rule->__frequency < rule->frequency) {
             if (rule->__frequency <= 10) {
+                w_mutex_lock(&rule->mutex);
                 rule->last_events[rule->__frequency]
                     = lf->full_log;
                 rule->last_events[rule->__frequency + 1]
                     = NULL;
+                w_mutex_unlock(&rule->mutex);
             }
 
             rule->__frequency++;
@@ -318,10 +331,14 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
         my_lf->matched = rule->level;
         lf->matched = rule->level;
 
+        w_mutex_unlock(&rule->group_search->mutex);
+        w_mutex_unlock(&eventinfo_mutex);
         return (lf);
 
     } while ((lf_node = lf_node->prev) != NULL);
 
+    w_mutex_unlock(&rule->group_search->mutex);
+    w_mutex_unlock(&eventinfo_mutex);
     return (NULL);
 }
 
@@ -431,10 +448,12 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
         /* Check if the number of matches worked */
         if (rule->__frequency < rule->frequency) {
             if (rule->__frequency <= 10) {
+                w_mutex_lock(&rule->mutex);
                 rule->last_events[rule->__frequency]
                     = lf->full_log;
                 rule->last_events[rule->__frequency + 1]
                     = NULL;
+                w_mutex_unlock(&rule->mutex);
             }
 
             rule->__frequency++;
@@ -545,6 +564,10 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->effective_name = NULL;
     lf->ppid = NULL;
     lf->process_id = NULL;
+    lf->is_a_copy = 0;
+    lf->last_events = NULL;
+    lf->rootcheck_fts = 0;
+    lf->decoder_syscheck_id = 0;
 
     return;
 }
@@ -733,18 +756,40 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->diff);
     }
 
-    /* Free node to delete */
-    if (lf->sid_node_to_delete) {
-        OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
-                              lf->sid_node_to_delete);
-    } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
-        unsigned int i = 0;
+    if(lf->is_a_copy){
+        if(lf->generated_rule->group){
+            free(lf->generated_rule->group);
+        }
 
-        while (i < lf->generated_rule->group_prev_matched_sz) {
-            OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);
-            i++;
+        if (lf->last_events){
+            char **lasts = lf->last_events;
+            char **last_event = lf->last_events;
+
+            while (*lasts) {
+                free(*lasts);
+                lasts++;
+            }
+            free(last_event);
+        }
+        free(lf->generated_rule);
+    }
+
+
+    /* Free node to delete */
+    if(!lf->is_a_copy){
+        if (lf->sid_node_to_delete) {
+            OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
+                                    lf->sid_node_to_delete);
+        } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
+            unsigned int i = 0;
+
+            while (i < lf->generated_rule->group_prev_matched_sz) {
+                OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);
+                i++;
+            }
         }
     }
+    
 
     /* We dont need to free:
      * fts
@@ -844,4 +889,242 @@ char* ParseRuleComment(Eventinfo *lf) {
     strncpy(&final[n], str, z);
     final[n + z] = '\0';
     return strdup(final);
+}
+
+void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
+
+    lf_cpy->log = lf->log;
+    
+    if(lf->full_log){
+        os_strdup(lf->full_log,lf_cpy->full_log);
+    }    
+
+    lf_cpy->log_after_parent = lf->log_after_parent;
+    lf_cpy->log_after_prematch = lf->log_after_prematch;
+    
+    if(lf->agent_id){
+        os_strdup(lf->agent_id,lf_cpy->agent_id);
+    }
+
+    if(lf->location){
+        os_strdup(lf->location,lf_cpy->location);
+    }
+
+    lf_cpy->hostname = lf->hostname;
+    lf_cpy->program_name = lf->program_name;
+    
+    if(lf->comment){
+        os_strdup(lf->comment,lf_cpy->comment);
+    }
+
+    lf_cpy->dec_timestamp = lf->dec_timestamp;
+    
+    /* Extracted from the decoders */
+    if(lf->srcip){
+        os_strdup(lf->srcip,lf_cpy->srcip);
+    }
+
+    if(lf->srcgeoip){
+        os_strdup(lf->srcgeoip,lf_cpy->srcgeoip);
+    }
+
+    if(lf->dstip){
+        os_strdup(lf->dstip,lf_cpy->dstip);
+    }
+
+    if(lf->dstgeoip){
+        os_strdup(lf->dstgeoip,lf_cpy->dstgeoip);
+    }
+
+    if(lf->srcport){
+        os_strdup(lf->srcport,lf_cpy->srcport);
+    }
+
+    if(lf->dstport){
+        os_strdup(lf->dstport,lf_cpy->dstport);
+    }
+
+    if(lf->protocol){
+        os_strdup(lf->protocol,lf_cpy->protocol);
+    }
+
+    if(lf->action){
+        os_strdup(lf->action,lf_cpy->action);
+    }
+
+    if(lf->srcuser){
+        os_strdup(lf->srcuser,lf_cpy->srcuser);
+    }
+
+    if(lf->dstuser){
+        os_strdup(lf->dstuser,lf_cpy->dstuser);
+    }
+
+    if(lf->id){
+        os_strdup(lf->id,lf_cpy->id);
+    }
+
+    if(lf->status){
+        os_strdup(lf->status,lf_cpy->status);
+    }
+
+    if(lf->command){
+        os_strdup(lf->command,lf_cpy->command);
+    }
+
+    if(lf->url){
+        os_strdup(lf->url,lf_cpy->url);
+    }
+
+    if(lf->data){
+        os_strdup(lf->data,lf_cpy->data);
+    }
+
+    if(lf->systemname){
+        os_strdup(lf->systemname,lf_cpy->systemname);
+    }
+
+    lf_cpy->nfields = lf->nfields;
+
+    int i;
+    os_calloc(lf->nfields, sizeof(DynamicField), lf_cpy->fields);
+
+    for (i = 0; i < lf->nfields; i++) {
+        if (lf->fields[i].value) {
+           os_strdup(lf->fields[i].value,lf_cpy->fields[i].value);
+        }
+        if (lf->fields[i].key) {
+           os_strdup(lf->fields[i].key,lf_cpy->fields[i].key);
+        }
+    }
+
+    /* Pointer to the rule that generated it */
+  
+    os_calloc(1,sizeof(RuleInfo),lf_cpy->generated_rule);
+    lf_cpy->generated_rule->last_events = NULL;
+   
+    if(lf->generated_rule){
+        os_strdup(lf->generated_rule->group,lf_cpy->generated_rule->group);
+        lf_cpy->generated_rule->alert_opts = lf->generated_rule->alert_opts;
+        lf_cpy->generated_rule->sigid = lf->generated_rule->sigid; 
+        lf_cpy->generated_rule->level = lf->generated_rule->level;
+
+        if (lf->generated_rule->last_events){
+            w_mutex_lock(&lf->generated_rule->mutex);
+            os_calloc(1,sizeof(char *),lf_cpy->last_events);
+            char **lasts = lf->generated_rule->last_events;
+            int index = 0;
+
+            while (*lasts) {
+                os_realloc(lf_cpy->last_events, sizeof(char *) * (index + 2), lf_cpy->last_events);
+                lf_cpy->last_events[index] = NULL;
+
+                os_strdup(*lasts,lf_cpy->last_events[index]);
+                lasts++;
+                index++;
+            }
+            w_mutex_unlock(&lf->generated_rule->mutex);
+            lf_cpy->last_events[index] = NULL;
+        }
+    }
+
+    /* Sid node to delete */
+    lf_cpy->sid_node_to_delete = lf->sid_node_to_delete;
+
+    /* Extract when the event fires a rule */
+    lf_cpy->size = lf->size;
+    lf_cpy->p_name_size = lf->p_name_size;
+
+    /* Other internal variables */
+    lf_cpy->matched = lf->matched;
+    lf_cpy->time = lf->time;
+    lf_cpy->day = lf->day;
+    lf_cpy->year = lf->year;
+    memcpy(lf_cpy->hour,lf->hour,10);
+    memcpy(lf_cpy->mon,lf->mon,4);
+
+    /* SYSCHECK Results variables */
+    lf_cpy->event_type = lf->event_type;
+    
+    if(lf->filename){
+        os_strdup(lf->filename,lf_cpy->filename);
+    }
+
+    lf_cpy->perm_before = lf->perm_before;
+    lf_cpy->perm_after = lf->perm_after;
+
+    if(lf->md5_before){
+        os_strdup(lf->md5_before,lf_cpy->md5_before);
+    }
+
+    if(lf->md5_after){
+        os_strdup(lf->md5_after,lf_cpy->md5_after);
+    }
+
+    if(lf->sha1_before){
+        os_strdup(lf->sha1_before,lf_cpy->sha1_before);
+    }
+    
+    if(lf->sha256_before){
+        os_strdup(lf->sha256_before,lf_cpy->sha256_before);
+    }
+
+    if(lf->sha256_after){
+        os_strdup(lf->sha256_after,lf_cpy->sha256_after);
+    }
+
+    if(lf->size_before){
+        os_strdup(lf->size_before,lf_cpy->size_before);
+    }
+
+    if(lf->owner_before){
+        os_strdup(lf->owner_before,lf_cpy->owner_before);
+    }
+
+    if(lf->owner_after){
+        os_strdup(lf->owner_after,lf_cpy->owner_after);
+    }
+
+    if(lf->gowner_before){
+        os_strdup(lf->gowner_before,lf_cpy->gowner_before);
+    }
+
+    if(lf->gowner_after){
+        os_strdup(lf->gowner_after,lf_cpy->gowner_after);
+    }
+
+    if(lf->uname_before){
+        os_strdup(lf->uname_before,lf_cpy->uname_before);
+    }
+
+    if(lf->uname_after){
+        os_strdup(lf->uname_after,lf_cpy->uname_after);
+    }
+
+    if(lf->gname_before){
+        os_strdup(lf->gname_before,lf_cpy->gname_before);
+    }
+
+    if(lf->gname_after){
+        os_strdup(lf->gname_after,lf_cpy->gname_after);
+    }
+
+    lf_cpy->mtime_before = lf->mtime_before;
+    lf_cpy->mtime_after = lf->mtime_after;
+    lf_cpy->inode_before = lf->inode_before;
+    lf_cpy->inode_after = lf->inode_after;
+
+
+    if(lf->diff){
+        os_strdup(lf->diff,lf_cpy->diff);
+    }
+
+    if(lf->previous){
+        os_strdup(lf->previous,lf_cpy->previous);
+    }
+
+    lf_cpy->labels = lf->labels;
+    lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
+    lf_cpy->rootcheck_fts = lf->rootcheck_fts;
+    lf_cpy->is_a_copy = 1;
 }

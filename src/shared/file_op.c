@@ -2056,6 +2056,59 @@ int OS_MoveFile(const char *src, const char *dst) {
     return status ? status : unlink(src);
 }
 
+int w_copy_file(const char *src, const char *dst,char mode) {
+    FILE *fp_src;
+    FILE *fp_dst;
+    size_t count_r;
+    size_t count_w;
+    char buffer[4096];
+    int status = 0;
+
+    fp_src = fopen(src, "r");
+
+    if (!fp_src) {
+        merror("Couldn't open file '%s'", src);
+        return -1;
+    }
+
+    /* Append to file */
+    if(mode == 'a'){
+        fp_dst = fopen(dst, "a");
+    }
+    else {
+        fp_dst = fopen(dst, "w");
+    }
+    
+
+    if (!fp_dst) {
+        merror("Couldn't open file '%s'", dst);
+        fclose(fp_src);
+        return -1;
+    }
+
+    while (!feof(fp_src)) {
+        count_r = fread(buffer, 1, 4096, fp_src);
+
+        if (ferror(fp_src)) {
+            merror("Couldn't read file '%s'", src);
+            status = -1;
+            break;
+        }
+
+        count_w = fwrite(buffer, 1, count_r, fp_dst);
+
+        if (count_w != count_r || ferror(fp_dst)) {
+            merror("Couldn't write file '%s'", dst);
+            status = -1;
+            break;
+        }
+    }
+
+    fclose(fp_src);
+    fclose(fp_dst);
+    return status;
+}
+
 // Make directory recursively
 int mkdir_ex(const char * path) {
     char sep;

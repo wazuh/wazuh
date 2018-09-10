@@ -150,6 +150,7 @@ typedef struct _RuleInfo {
     int if_matched_sid;
 
     void **ar;
+    pthread_mutex_t mutex;
 
 } RuleInfo;
 

@@ -24,6 +24,6 @@ int AR_ReadConfig(const char *cfgfile);
 
 /* Active response information */
 extern OSList *active_responses;
+extern OSList *ar_commands;
 
 #endif /* _AR__H */
-

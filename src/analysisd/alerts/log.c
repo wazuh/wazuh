@@ -15,7 +15,6 @@
 #include "eventinfo.h"
 #include "config.h"
 
-
 /* Drop/allow patterns */
 static OSMatch FWDROPpm;
 static OSMatch FWALLOWpm;
@@ -89,13 +88,16 @@ void OS_Store(const Eventinfo *lf)
             lf->mon,
             lf->day,
             lf->hour,
-            lf->hostname != lf->location ? lf->hostname : "",
-            lf->hostname != lf->location ? "->" : "",
+            lf->location[0] != '(' ? lf->hostname : "",
+            lf->location[0] != '(' ? "->" : "",
             lf->location,
             lf->full_log);
-
-    fflush(_eflog);
+            
     return;
+}
+
+void OS_Store_Flush(){
+    fflush(_eflog);
 }
 
 void OS_LogOutput(Eventinfo *lf)
@@ -132,8 +134,8 @@ void OS_LogOutput(Eventinfo *lf)
         lf->mon,
         lf->day,
         lf->hour,
-        lf->hostname != lf->location ? lf->hostname : "",
-        lf->hostname != lf->location ? "->" : "",
+        lf->location[0] != '(' ? lf->hostname : "",
+        lf->location[0] != '(' ? "->" : "",
         lf->location,
         labels,
         lf->generated_rule->sigid,
@@ -248,8 +250,8 @@ void OS_LogOutput(Eventinfo *lf)
     }
 
     /* Print the last events if present */
-    if (lf->generated_rule->last_events) {
-        char **lasts = lf->generated_rule->last_events;
+    if (lf->last_events) {
+        char **lasts = lf->last_events;
         while (*lasts) {
             printf("%s\n", *lasts);
             lasts++;
@@ -257,6 +259,7 @@ void OS_LogOutput(Eventinfo *lf)
     }
 
     printf("\n");
+
 
     fflush(stdout);
     return;
@@ -297,8 +300,8 @@ void OS_Log(Eventinfo *lf)
             lf->mon,
             lf->day,
             lf->hour,
-            lf->hostname != lf->location ? lf->hostname : "",
-            lf->hostname != lf->location ? "->" : "",
+            lf->location[0] != '(' ? lf->hostname : "",
+            lf->location[0] != '(' ? "->" : "",
             lf->location,
             labels,
             lf->generated_rule->sigid,
@@ -414,8 +417,8 @@ void OS_Log(Eventinfo *lf)
     }
 
     /* Print the last events if present */
-    if (lf->generated_rule->last_events) {
-        char **lasts = lf->generated_rule->last_events;
+    if (lf->last_events) {
+        char **lasts = lf->last_events;
         while (*lasts) {
             fprintf(_aflog, "%s\n", *lasts);
             lasts++;
@@ -423,9 +426,12 @@ void OS_Log(Eventinfo *lf)
     }
 
     fprintf(_aflog, "\n");
-    fflush(_aflog);
 
     return;
+}
+
+void OS_Log_Flush(){
+    fflush(_aflog);
 }
 
 void OS_CustomLog(const Eventinfo *lf, const char *format)
@@ -491,11 +497,14 @@ void OS_CustomLog(const Eventinfo *lf, const char *format)
 
     fprintf(_aflog, "%s", log);
     fprintf(_aflog, "\n");
-    fflush(_aflog);
 
     free(log);
 
     return;
+}
+
+void OS_CustomLog_Flush(){
+    fflush(_aflog);
 }
 
 void OS_InitFwLog()
@@ -514,15 +523,6 @@ void OS_InitFwLog()
 
 int FW_Log(Eventinfo *lf)
 {
-    /* If we don't have the srcip or the
-     * action, there is no point in going
-     * forward over here
-     */
-    if (!lf->action || !lf->srcip || !lf->dstip || !lf->srcport ||
-            !lf->dstport || !lf->protocol) {
-        return (0);
-    }
-
     /* Set the actions */
     switch (*lf->action) {
         /* discard, drop, deny, */
@@ -580,8 +580,8 @@ int FW_Log(Eventinfo *lf)
             lf->mon,
             lf->day,
             lf->hour,
-            lf->hostname != lf->location ? lf->hostname : "",
-            lf->hostname != lf->location ? "->" : "",
+            lf->location[0] != '(' ? lf->hostname : "",
+            lf->location[0] != '(' ? "->" : "",
             lf->location,
             lf->action,
             lf->protocol,

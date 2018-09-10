@@ -16,7 +16,7 @@
 #endif
 
 /* Active response commands */
-static OSList *ar_commands;
+OSList *ar_commands;
 OSList *active_responses;
 
 /* Initialize active response */

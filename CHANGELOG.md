@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 ## [v3.7.0]
 
 
+## [v3.6.1]
+
+### Fixed
+
+- Fixed ID field length limit in JSON alerts, by @gandalfn. ([#1052](https://github.com/wazuh/wazuh/pull/1052))
+- Fix segmentation fault when the agent version is empty in Vulnerability Detector. ([#1191](https://github.com/wazuh/wazuh/pull/1191))
+- Fix bug that removes file extensions in rootcheck. ([#1197](https://github.com/wazuh/wazuh/pull/1197))
+- Fixed incoherence in Client Syslog between plain-text and JSON alert input in `<location>` filter option. ([#1204](https://github.com/wazuh/wazuh/pull/1204))
+- Fixed missing agent name and invalid predecoded hostname in JSON alerts. ([#1213](https://github.com/wazuh/wazuh/pull/1213))
+- Fixed invalid location string in plain-text alerts. ([#1213](https://github.com/wazuh/wazuh/pull/1213))
+- Fixed default stack size in threads on AIX and HP-UX. ([#1215](https://github.com/wazuh/wazuh/pull/1215))
+- Fix socket error during agent restart due to daemon start/stop order. ([#1221](https://github.com/wazuh/wazuh/issues/1221))
+- Fix bug when checking agent configuration in logcollector. ([#1225](https://github.com/wazuh/wazuh/issues/1225))
+- Fix bug in folder recursion limit count in FIM real-time mode. ([#1226](https://github.com/wazuh/wazuh/issues/1226))
+- Fixed errors when parsing AWS events in Elasticsearch. ([#1229](https://github.com/wazuh/wazuh/issues/1229))
+- Fix bug when launching osquery from Wazuh. ([#1230](https://github.com/wazuh/wazuh/issues/1230))
+
+
+## [v3.6.0] 2018-08-29
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix segmentation fault when the agent version is empty in Vulnerability Detector. ([#1191](https://github.com/wazuh/wazuh/pull/1191))
+- Fix bug that removes file extensions in rootcheck. ([#1197](https://github.com/wazuh/wazuh/pull/1197))
+
+
+## [v3.6.0]
+
+### Added
+
+- Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
+
+
 ## [v3.6.0] - 2018-08-29
 
 ### Added

@@ -13,13 +13,15 @@
 
 static void* wm_oscap_main(wm_oscap *oscap);        // Module main function. It won't return
 static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
+cJSON *wm_oscap_dump(const wm_oscap *oscap);
 
 // OpenSCAP module context definition
 
 const wm_context WM_OSCAP_CONTEXT = {
     "open-scap",
     (wm_routine)wm_oscap_main,
-    (wm_routine)wm_oscap_destroy
+    (wm_routine)wm_oscap_destroy,
+    (cJSON * (*)(const void *))wm_oscap_dump
 };
 
 #ifndef WIN32
@@ -295,6 +297,49 @@ void* wm_oscap_main(__attribute__((unused)) wm_oscap *oscap) {
     return NULL;
 }
 #endif
+
+
+// Get readed data
+
+cJSON *wm_oscap_dump(const wm_oscap *oscap) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_scp = cJSON_CreateObject();
+
+    if (oscap->flags.enabled) cJSON_AddStringToObject(wm_scp,"disabled","no"); else cJSON_AddStringToObject(wm_scp,"disabled","yes");
+    if (oscap->flags.scan_on_start) cJSON_AddStringToObject(wm_scp,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_scp,"scan-on-start","no");
+    cJSON_AddNumberToObject(wm_scp,"interval",oscap->interval);
+    cJSON_AddNumberToObject(wm_scp,"timeout",oscap->timeout);
+    if (oscap->evals) {
+        cJSON *evals = cJSON_CreateArray();
+        wm_oscap_eval *ptr;
+        for (ptr = oscap->evals; ptr; ptr = ptr->next) {
+            cJSON *eval = cJSON_CreateObject();
+            if (ptr->path) cJSON_AddStringToObject(eval,"path",ptr->path);
+            if (ptr->xccdf_id) cJSON_AddStringToObject(eval,"xccdf-id",ptr->xccdf_id);
+            if (ptr->ds_id) cJSON_AddStringToObject(eval,"datastream-id",ptr->ds_id);
+            if (ptr->oval_id) cJSON_AddStringToObject(eval,"oval-id",ptr->oval_id);
+            if (ptr->cpe) cJSON_AddStringToObject(eval,"cpe",ptr->cpe);
+            cJSON_AddNumberToObject(eval,"timeout",ptr->timeout);
+            cJSON_AddNumberToObject(eval,"type",ptr->type);
+            if (ptr->profiles) {
+                cJSON *prof = cJSON_CreateArray();
+                wm_oscap_profile *ptrp;
+                for (ptrp = ptr->profiles; ptrp; ptrp = ptrp->next) {
+                    cJSON_AddItemToArray(prof,cJSON_CreateString(ptrp->name));
+                }
+                cJSON_AddItemToObject(eval,"profile",prof);
+            }
+            cJSON_AddItemToArray(evals,eval);
+        }
+        cJSON_AddItemToObject(wm_scp,"content",evals);
+    }
+
+    cJSON_AddItemToObject(root,"open-scap",wm_scp);
+
+    return root;
+}
+
 
 // Destroy data
 

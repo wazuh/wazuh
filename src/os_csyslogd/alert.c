@@ -16,6 +16,7 @@
 /* Send an alert via syslog
  * Returns 1 on success or 0 on error
  */
+
 int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 {
     char *tstamp;
@@ -31,13 +32,23 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
     memset(syslog_msg, '\0', OS_MAXSTR);
 
     /* Look if location is set */
+
     if (syslog_config->location) {
-        if (!OSMatch_Execute(al_data->location,
+        //Check if location is headless
+        char * location_headless = strstr(al_data->location,"->");
+
+        if (location_headless){        //If location has head, cut it off
+            location_headless = location_headless + 2;
+        }
+
+        if (!OSMatch_Execute(location_headless ? location_headless : al_data->location,
                              strlen(al_data->location),
                              syslog_config->location)) {
             return (0);
         }
+
     }
+
 
     /* Look for the level */
     if (syslog_config->level) {
@@ -286,7 +297,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         }
         if(al_data->new_sha256){
             field_add_string(syslog_msg, OS_SIZE_2048, " sha256_new=\"%s\",", al_data->new_sha256 );
-        }   
+        }
         /* Message */
         field_add_truncated(syslog_msg, OS_SIZE_61440, " message=\"%s\"", al_data->log[0], 2 );
     }
