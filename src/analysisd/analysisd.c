@@ -1280,7 +1280,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             } else if (_line = FTS(lf),_line == NULL) {
                 return (NULL);
             }
-            
+
             if(_line){
                 os_strdup(_line,_line_cpy); 
                 free(_line);
@@ -1546,12 +1546,14 @@ void * ad_input_main(void * args) {
     char buffer[OS_MAXSTR + 1] = "";
     char * copy;
     char *msg;
-    int result;    
+    int result;
+    int recv = 0;    
     
     mdebug1("Input message handler thread started.");
 
     while (1) {
-        if (OS_RecvUnix(m_queue, OS_MAXSTR, buffer)) {
+        if (recv = OS_RecvUnix(m_queue, OS_MAXSTR, buffer),recv) {
+            buffer[recv] = '\0';
             msg = buffer;
 
             /* Check for a valid message */
