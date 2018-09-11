@@ -137,6 +137,17 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         WazuhDBQuery._parse_legacy_filters(self)
 
 
+    def _process_filter(self, field_name, field_filter, q_filter):
+        if field_name == 'group':
+            field_filter_1, field_filter_2 = field_filter+'_1', field_filter+'_2'
+            self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} = :{3}'.format(self.fields[field_name], field_filter_1, field_filter_2, field_filter)
+            self.request[field_filter_1] = '%-'+q_filter['value']
+            self.request[field_filter_2] = q_filter['value']+'-%'
+            self.request[field_filter] = q_filter['value']
+        else:
+            WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
+
+
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
@@ -151,7 +162,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
     def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'}, remove_extra_fields=True):
         self.group_id = group_id
-        query = 'group~{}'.format(group_id) + (';'+query if query else '')
+        query = 'group={}'.format(group_id) + (';'+query if query else '')
         WazuhDBQueryAgents.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select,
                                     filters=filters, default_sort_field=default_sort_field, query=query,
                                     min_select_fields=min_select_fields, count=count, get_data=get_data,
