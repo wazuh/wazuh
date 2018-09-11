@@ -139,10 +139,11 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == 'group' and q_filter['value'] is not None:
-            field_filter_1, field_filter_2 = field_filter+'_1', field_filter+'_2'
-            self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} = :{3}'.format(self.fields[field_name], field_filter_1, field_filter_2, field_filter)
+            field_filter_1, field_filter_2, field_filter_3 = field_filter+'_1', field_filter+'_2', field_filter+'_3'
+            self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} LIKE :{3} OR {0} = :{4}'.format(self.fields[field_name], field_filter_1, field_filter_2, field_filter_3, field_filter)
             self.request[field_filter_1] = '%-'+q_filter['value']
             self.request[field_filter_2] = q_filter['value']+'-%'
+            self.request[field_filter_3] = '%-{}-%'.format(q_filter['value'])
             self.request[field_filter] = q_filter['value']
         else:
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
@@ -1092,7 +1093,7 @@ class Agent:
             agent_info = Agent(agent_id).get_basic_information()
         
         # Check if the group already belongs to the agent
-        if agent_info["group"].find(group_id) > -1:
+        if group_id in agent_info["group"].split('-'):
             return "Group '{0}' already belongs to agent'{1}'.".format(group_id, agent_id)
 
         agent_group = agent_info["group"] + "-" + group_id
