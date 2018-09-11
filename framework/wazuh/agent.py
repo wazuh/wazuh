@@ -138,7 +138,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 
     def _process_filter(self, field_name, field_filter, q_filter):
-        if field_name == 'group':
+        if field_name == 'group' and q_filter['value'] is not None:
             field_filter_1, field_filter_2 = field_filter+'_1', field_filter+'_2'
             self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} = :{3}'.format(self.fields[field_name], field_filter_1, field_filter_2, field_filter)
             self.request[field_filter_1] = '%-'+q_filter['value']
@@ -1328,7 +1328,7 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         # check whether the group exists or not
-        if not glob("{}/{}".format(common.shared_path, group_id)) and not glob("{}/{}".format(common.multi_groups_path, group_id)):
+        if group_id != 'null' and not glob("{}/{}".format(common.shared_path, group_id)) and not glob("{}/{}".format(common.multi_groups_path, group_id)):
             raise WazuhException(1710, group_id)
 
         db_query = WazuhDBQueryMultigroups(group_id=group_id, offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters,
@@ -1582,13 +1582,31 @@ class Agent:
 
 
     @staticmethod
-    def set_group(agent_id, group_id, force=False):
+    def set_group(agent_id, group_id, force=False, replace=False):
         """
         Set a group to an agent.
 
         :param agent_id: Agent ID.
         :param group_id: Group ID.
         :param force: No check if agent exists
+        :param replace: Replace agent group instead of appending.
+        :return: Confirmation message.
+        """
+        if replace:
+            return Agent.replace_group(agent_id=agent_id, group_id=group_id, force=force)
+        else:
+            return Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, force=force)
+
+
+    @staticmethod
+    def replace_group(agent_id, group_id, force=False):
+        """
+        Replaces a group to an agent.
+
+        :param agent_id: Agent ID.
+        :param group_id: Group ID.
+        :param force: No check if agent exists
+        :param replace: Replace agent group instead of appending.
         :return: Confirmation message.
         """
         # Input Validation of group_id
@@ -1647,6 +1665,7 @@ class Agent:
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
+
     @staticmethod
     def set_multi_group(agent_id, group_id, force=False):
         """
@@ -1685,6 +1704,7 @@ class Agent:
             raise WazuhException(1005, str(e))
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
+
 
     @staticmethod
     def unset_group(agent_id, force=False):
