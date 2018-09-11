@@ -206,8 +206,10 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> !CEIPEnabl
 #
 #18.8.20.1.14 Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'
 [CIS - Microsoft Windows Server 2016 - 18.8.20.1.14 Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/515]
-r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled -> !0;
 r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> !Disabled;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PCHealth\ErrorReporting -> DoReport -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PCHealth\ErrorReporting -> !DoReport;
 #
 #
 #18.8.23.1 Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'
