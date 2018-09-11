@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.6.2]
 
+### Fixed
+
+- Fix bug when launching firewall-drop active response. ([#1284](https://github.com/wazuh/wazuh/issues/1284))
 
 ## [v3.6.1] 2018-09-07
 

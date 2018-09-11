@@ -13,7 +13,7 @@
 
   <command>
     <name>firewall-drop</name>
-    <executable>firewall-drop.sh</executable>
+    <executable>default-firewall-drop.sh</executable>
     <expect>srcip</expect>
     <timeout_allowed>yes</timeout_allowed>
   </command>
