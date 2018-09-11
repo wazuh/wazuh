@@ -2313,6 +2313,13 @@ class Agent:
         """
         sockets_path = common.ossec_path + "/queue/ossec/"
 
+        self._load_info_from_DB()
+        agent_version = WazuhVersion(self.version.split(" ")[1])
+        required_version = WazuhVersion("v3.8.0")
+
+        if agent_version < required_version:
+            raise WazuhException(1734, "Minimum required version is " + str(required_version))
+
         if int(self.id) == 0:
             dest_socket = sockets_path + component
             command = "getconfig " + configuration
