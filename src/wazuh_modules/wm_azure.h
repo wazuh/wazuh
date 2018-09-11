@@ -51,7 +51,7 @@ typedef struct wm_azure_api_t {
     struct wm_azure_api_t *next;
 } wm_azure_api_t;
 
-typedef struct wm_azure_container {
+typedef struct wm_azure_container_t {
     char * name;            // Container name
     char * blobs;           // Blobs
     char * content_type;    // Content type (plain | inline | file)

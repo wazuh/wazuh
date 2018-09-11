@@ -27,7 +27,7 @@ static void wm_azure_destroy(wm_azure_t *azure_config);        // Destroy data
 
 static void wm_azure_log_analytics(wm_azure_api_t *log_analytics);      // Run log analytics queries
 static void wm_azure_graphs(wm_azure_api_t *graph);                     // Run graph queries
-//static void wm_azure_storage(wm_azure_storage_t *storage);              // Run storage queries
+static void wm_azure_storage(wm_azure_storage_t *storage);              // Run storage queries
 
 //  Azure module context definition
 
@@ -44,6 +44,8 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     time_t time_start;
     time_t time_sleep = 0;
     wm_azure_api_t *curr_api;
+    wm_azure_storage_t *curr_storage;
+    char msg[OS_SIZE_6144];
     int status = 0;
 
     wm_azure_setup(azure_config);
@@ -98,6 +100,9 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
         mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");
 
+        snprintf(msg, OS_SIZE_6144, "Starting Azure-logs scan.");
+        SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
+
         // Get time and execute
         time_start = time(NULL);
 
@@ -110,6 +115,14 @@ void* wm_azure_main(wm_azure_t *azure_config) {
                 wm_azure_graphs(curr_api);
             }
         }
+
+        for (curr_storage = azure_config->storage; curr_storage; curr_storage = curr_storage->next) {
+            mtinfo(WM_AZURE_LOGTAG, "Starting Storage log collection for '%s'.", curr_storage->tag);
+            wm_azure_storage(curr_storage);
+        }
+
+        snprintf(msg, OS_SIZE_6144, "Ending Azure-logs scan.");
+        SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
 
         mtinfo(WM_AZURE_LOGTAG, "Fetching logs finished.");
 
@@ -167,6 +180,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
 
     wm_azure_request_t * curr_request;
+    char query[OS_SIZE_1024];
     int status;
     unsigned int timeout;
 
@@ -198,7 +212,8 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         wm_strcat(&command, curr_request->tag, ' ');
 
         wm_strcat(&command, "--la_query", ' ');
-        wm_strcat(&command, curr_request->query, ' ');
+        snprintf(query, OS_SIZE_1024 - 1, "\'%s\'", curr_request->query);
+        wm_strcat(&command, query, ' ');
 
         wm_strcat(&command, "--workspace", ' ');
         wm_strcat(&command, curr_request->workspace, ' ');
@@ -230,6 +245,8 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
                 pthread_exit(NULL);
         }
 
+        mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for the domain '%s'.", log_analytics->tenantdomain);
+
         free(command);
         free(output);
     }
@@ -238,6 +255,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
 void wm_azure_graphs(wm_azure_api_t *graph) {
 
     wm_azure_request_t * curr_request;
+    char query[OS_SIZE_1024];
     int status;
     unsigned int timeout;
 
@@ -269,7 +287,8 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
         wm_strcat(&command, curr_request->tag, ' ');
 
         wm_strcat(&command, "--graph_query", ' ');
-        wm_strcat(&command, curr_request->query, ' ');
+        snprintf(query, OS_SIZE_1024 - 1, "\'%s\'", curr_request->query);
+        wm_strcat(&command, query, ' ');
 
         wm_strcat(&command, "--graph_tag", ' ');
         wm_strcat(&command, curr_request->time_offset, ' ');
@@ -297,6 +316,82 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
                 mterror(WM_AZURE_LOGTAG, "Internal calling. Exiting...");
                 pthread_exit(NULL);
         }
+
+        mtinfo(WM_AZURE_LOGTAG, "Finished Graphs log collection for the domain '%s'.", graph->tenantdomain);
+
+        free(command);
+        free(output);
+    }
+}
+
+void wm_azure_storage(wm_azure_storage_t *storage) {
+
+    wm_azure_container_t * curr_container;
+    char name[OS_SIZE_256];
+    char blobs[OS_SIZE_256];
+    int status;
+    unsigned int timeout;
+
+    for (curr_container = storage->container; curr_container; curr_container = curr_container->next) {
+
+        char * command;
+        char * output;
+
+        // Create argument list
+        mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
+
+        wm_strcat(&command, WM_AZURE_SCRIPT_PATH, '\0');
+        wm_strcat(&command, "--storage", ' ');
+
+        if (storage->auth_path) {
+            wm_strcat(&command, "--storage_auth_path", ' ');
+            wm_strcat(&command, storage->auth_path, ' ');
+        } else {
+            wm_strcat(&command, "--account_name", ' ');
+            wm_strcat(&command, storage->account_name, ' ');
+            wm_strcat(&command, "--account_key", ' ');
+            wm_strcat(&command, storage->account_key, ' ');
+        }
+
+        wm_strcat(&command, "--container", ' ');
+        snprintf(name, OS_SIZE_256 - 1, "\'%s\'", curr_container->name);
+        wm_strcat(&command, name, ' ');
+
+        wm_strcat(&command, "--blobs", ' ');
+        snprintf(blobs, OS_SIZE_256 - 1, "\'%s\'", curr_container->blobs);
+        wm_strcat(&command, blobs, ' ');
+
+        wm_strcat(&command, "--storage_tag", ' ');
+        wm_strcat(&command, storage->tag, ' ');
+
+        wm_strcat(&command, "--storage_time_offset", ' ');
+        wm_strcat(&command, curr_container->time_offset, ' ');
+
+        // Check timeout defined
+        if (curr_container->timeout)
+            timeout = curr_container->timeout;
+        else
+            timeout = default_timeout;
+
+        // Run script
+        mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
+        switch (wm_exec(command, &output, &status, timeout)) {
+            case 0:
+                if (status > 0) {
+                    mtwarn(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_container->name, status);
+                    mtdebug2(WM_AZURE_LOGTAG, "OUTPUT: %s", output);
+                }
+                break;
+            case WM_ERROR_TIMEOUT:
+                mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_container->name);
+                break;
+
+            default:
+                mterror(WM_AZURE_LOGTAG, "Internal calling. Exiting...");
+                pthread_exit(NULL);
+        }
+
+        mtinfo(WM_AZURE_LOGTAG, "Finished Storage log collection for '%s'.", curr_container->name);
 
         free(command);
         free(output);
@@ -366,6 +461,8 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
 
     wm_azure_api_t *curr_api = NULL;
     wm_azure_api_t *next_api = NULL;
+    wm_azure_storage_t *curr_storage = NULL;
+    wm_azure_storage_t *next_storage = NULL;
 
     for (curr_api = azure_config->api_config; curr_api; curr_api = next_api) {
 
@@ -394,6 +491,34 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
         }
 
         free(curr_api);
+    }
+
+    for (curr_storage = azure_config->storage; curr_storage; curr_storage = next_storage) {
+
+        next_storage = curr_storage->next;
+        free(curr_storage->tag);
+        if (curr_storage->account_name)
+            free(curr_storage->account_name);
+        if (curr_storage->account_key)
+            free(curr_storage->account_key);
+        if (curr_storage->auth_path)
+            free(curr_storage->auth_path);
+
+        wm_azure_container_t *curr_container = NULL;
+        wm_azure_container_t *next_container = NULL;
+
+        for (curr_container = curr_storage->container; curr_container; curr_container = next_container) {
+
+            next_container = curr_container->next;
+            free(curr_container->name);
+            free(curr_container->blobs);
+            free(curr_container->content_type);
+            free(curr_container->time_offset);
+            free(curr_container);
+
+        }
+
+        free(curr_storage);
     }
 
     free(azure_config);

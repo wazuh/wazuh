@@ -23,12 +23,39 @@ static const char *XML_DISABLED = "disabled";
 
 static const char *XML_LOG_ANALYTICS = "log_analytics";
 static const char *XML_GRAPH = "graph";
-// static const char *XML_STORAGE = "storage";
+static const char *XML_STORAGE = "storage";
+
+static const char *XML_APP_ID = "application_id";
+static const char *XML_APP_KEY = "application_key";
+static const char *XML_AUTH_PATH = "auth_path";
+static const char *XML_TENANTDOMAIN = "tenantdomain";
+static const char *XML_REQUEST = "request";
+
+static const char *XML_ACCOUNT_NAME = "account_name";
+static const char *XML_ACCOUNT_KEY = "account_key";
+static const char *XML_TAG = "tag";
+static const char *XML_CONTAINER = "container";
+static const char *XML_CONTAINER_NAME = "name";
+static const char *XML_CONTAINER_BLOBS = "blobs";
+static const char *XML_CONTAINER_TYPE="content_type";
+
+static const char *XML_REQUEST_QUERY = "query";
+static const char *XML_TIME_OFFSET = "time_offset";
+static const char *XML_WORKSPACE = "workspace";
+
+
+
+
 
 static int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_config);
-static void wm_clean_api(wm_azure_api_t * api_config);
 static int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned int type);
+static int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t * storage);
+static int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container);
+
+static void wm_clean_api(wm_azure_api_t * api_config);
 static void wm_clean_request(wm_azure_request_t * request);
+static void wm_clean_storage(wm_azure_storage_t * storage);
+static void wm_clean_container(wm_azure_container_t * container);
 
 // Parse XML
 
@@ -38,6 +65,8 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     wm_azure_t *azure;
     wm_azure_api_t *api_config;
     wm_azure_api_t *api_config_prev;
+    wm_azure_storage_t *storage;
+    wm_azure_storage_t *storage_prev;
     int month_interval = 0;
 
     // Create module
@@ -182,6 +211,7 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             if (api_config) {
                 os_calloc(1, sizeof(wm_azure_api_t), api_config->next);
+                api_config_prev = api_config;
                 api_config = api_config->next;
             } else {
                 // First API configuration block
@@ -196,8 +226,36 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             api_config->type = GRAPHS;
             if (wm_azure_api_read(xml, children, api_config) < 0) {
-                OS_ClearNode(children);
+                wm_clean_api(api_config);
+                if (api_config_prev) {
+                    api_config = api_config_prev;
+                }
+            }
+
+            OS_ClearNode(children);
+
+        } else if (!strcmp(nodes[i]->element, XML_STORAGE)) {
+
+            if (storage) {
+                os_calloc(1, sizeof(wm_azure_storage_t), storage->next);
+                storage_prev = storage;
+                storage = storage->next;
+            } else {
+                // First API configuration block
+                os_calloc(1, sizeof(wm_azure_storage_t), storage);
+                azure->storage = storage;
+            }
+
+            if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
+                merror(XML_INVELEM, nodes[i]->element);
                 return OS_INVALID;
+            }
+
+            if (wm_azure_storage_read(xml, children, storage) < 0) {
+                wm_clean_storage(storage);
+                if (storage_prev) {
+                    storage = storage_prev;
+                }
             }
 
             OS_ClearNode(children);
@@ -242,13 +300,6 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 }
 
 int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_config) {
-
-    /* XML definitions */
-    const char *XML_APP_ID = "application_id";
-    const char *XML_APP_KEY = "application_key";
-    const char *XML_AUTH_PATH = "auth_path";
-    const char *XML_TENANTDOMAIN = "tenantdomain";
-    const char *XML_REQUEST = "request";
 
     int i = 0;
     wm_azure_request_t *request;
@@ -333,12 +384,6 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
 
 int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned int type) {
 
-    /* XML definitions */
-    const char *XML_REQUEST_TAG = "tag";
-    const char *XML_REQUEST_QUERY = "query";
-    const char *XML_TIME_OFFSET = "time_offset";
-    const char *XML_WORKSPACE = "workspace";
-
     int i = 0;
 
     request->tag = NULL;
@@ -356,7 +401,7 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
             merror(XML_VALUENULL, nodes[i]->element);
             return OS_INVALID;
 
-        } else if (!strcmp(nodes[i]->element, XML_REQUEST_TAG)) {
+        } else if (!strcmp(nodes[i]->element, XML_TAG)) {
             os_strdup(nodes[i]->content, request->tag);
         } else if (!strcmp(nodes[i]->element, XML_REQUEST_QUERY)) {
             os_strdup(nodes[i]->content, request->query);
@@ -397,7 +442,7 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
 
     /* Validation process */
     if (!request->tag) {
-        minfo("At module '%s': No tag request defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+        minfo("At module '%s': No request tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
         int random_id = os_random();
         char * rtag;
 
@@ -429,19 +474,194 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
     return 0;
 }
 
-void wm_clean_request(wm_azure_request_t * request) {
+int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t * storage) {
 
-    if (request->tag)
-        free(request->tag);
-    if (request->query)
-        free(request->query);
-    if (request->workspace)
-        free(request->workspace);
-    if (request->time_offset)
-        free(request->time_offset);
+    int i = 0;
+    wm_azure_container_t *container;
+    wm_azure_container_t *container_prev;
 
-    free(request);
+    storage->account_name = NULL;
+    storage->account_key = NULL;
+    storage->auth_path = NULL;
+    storage->tag = NULL;
+
+    for (i = 0; nodes[i]; i++) {
+        XML_NODE children = NULL;
+
+        if (!nodes[i]->element) {
+            merror(XML_ELEMNULL);
+            return OS_INVALID;
+
+        } else if (!nodes[i]->content) {
+            merror(XML_VALUENULL, nodes[i]->element);
+            return OS_INVALID;
+
+        } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
+            os_strdup(nodes[i]->content, storage->account_name);
+        } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_KEY)) {
+            os_strdup(nodes[i]->content, storage->account_key);
+        } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
+            os_strdup(nodes[i]->content, storage->auth_path);
+        } else if (!strcmp(nodes[i]->element, XML_TAG)) {
+            os_strdup(nodes[i]->content, storage->tag);
+        } else if (!strcmp(nodes[i]->element, XML_CONTAINER)) {
+
+            if (container) {
+                os_calloc(1, sizeof(wm_azure_container_t), container->next);
+                container_prev = container;
+                container = container->next;
+            } else {
+                // First request block
+                os_calloc(1, sizeof(wm_azure_container_t), container);
+                storage->container = container;
+            }
+
+            if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
+                merror(XML_INVELEM, nodes[i]->element);
+                return OS_INVALID;
+            }
+
+            // Read name attribute
+            if (nodes[i]->attributes) {
+                if (!strcmp(nodes[i]->attributes[0], XML_CONTAINER_NAME)) {
+                    os_strdup(nodes[i]->values[0], container->name);
+                } else {
+                    minfo("At module '%s': Invalid container name. Skipping container...", WM_AZURE_CONTEXT.name);
+                    wm_clean_container(container);
+                    if (container_prev) {
+                        container = container_prev;
+                    }
+                    continue;
+                }
+            } else {
+                minfo("At module '%s': Container name not found. Skipping container...", WM_AZURE_CONTEXT.name);
+                wm_clean_container(container);
+                if (container_prev) {
+                    container = container_prev;
+                }
+                continue;
+            }
+
+            if (wm_azure_container_read(children, container) < 0) {
+                wm_clean_container(container);
+                if (container_prev) {
+                    container = container_prev;
+                }
+            }
+
+            OS_ClearNode(children);
+
+        } else {
+            merror(XML_INVELEM, nodes[i]->element);
+            return OS_INVALID;
+        }
+    }
+
+    /* Validation process */
+    if (!storage->auth_path) {
+        if (!storage->account_name || !storage->account_key) {
+            merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
+            return OS_INVALID;
+        }
+    }
+
+    if (!storage->tag) {
+        minfo("At module '%s': No storage tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+        int random_id = os_random();
+        char * rtag;
+
+        os_calloc(OS_SIZE_128, sizeof(char), rtag);
+
+        if (random_id < 0)
+            random_id = -random_id;
+
+        snprintf(rtag, OS_SIZE_128, "storage_%d", random_id);
+        os_strdup(rtag, storage->tag);
+        free(rtag);
+    }
+
+    if (!storage->container) {
+        merror("At module '%s': No container defined. Skipping block...", WM_AZURE_CONTEXT.name);
+        return OS_INVALID;
+    }
+
+    return 0;
 }
+
+int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
+
+    int i = 0;
+
+    container->blobs = NULL;
+    container->time_offset = NULL;
+    container->content_type = NULL;
+
+    for (i = 0; nodes[i]; i++) {
+
+        if (!nodes[i]->element) {
+            merror(XML_ELEMNULL);
+            return OS_INVALID;
+
+        } else if (!nodes[i]->content) {
+            merror(XML_VALUENULL, nodes[i]->element);
+            return OS_INVALID;
+
+        } else if (!strcmp(nodes[i]->element, XML_CONTAINER_BLOBS)) {
+            os_strdup(nodes[i]->content, container->blobs);
+        } else if (!strcmp(nodes[i]->element, XML_CONTAINER_TYPE)) {
+            if (strncmp(nodes[i]->content, "file", 4) && strncmp(nodes[i]->content, "inline", 6) && strncmp(nodes[i]->content, "text", 4)) {
+                merror("At module '%s': Invalid content type. It should be 'file', 'inline' or 'text'.", WM_AZURE_CONTEXT.name);
+                return OS_INVALID;
+            }
+            os_strdup(nodes[i]->content, container->content_type);
+        } else if (!strcmp(nodes[i]->element, XML_TIME_OFFSET)) {
+            char *endptr;
+            unsigned int offset = strtoul(nodes[i]->content, &endptr, 0);
+
+            if (offset == 0 || offset == UINT_MAX) {
+                merror("At module '%s': Invalid time offset.", WM_AZURE_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            if (*endptr != 'm' && *endptr != 'h' && *endptr != 'd') {
+                merror("At module '%s': Invalid time offset: It should be specified minutes, hours or days.", WM_AZURE_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            os_strdup(nodes[i]->content, container->time_offset);
+
+        } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
+            container->timeout = strtoul(nodes[i]->content, NULL, 0);
+
+            if (container->timeout == 0 || container->timeout == UINT_MAX) {
+                merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else {
+            merror(XML_INVELEM, nodes[i]->element);
+            return OS_INVALID;
+        }
+    }
+
+    /* Validation process */
+    if (!container->blobs) {
+        merror("At module '%s': No blobs defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+        return OS_INVALID;
+    }
+
+    if (!container->time_offset) {
+        merror("At module '%s': No time offset defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+        return OS_INVALID;
+    }
+
+    if (!container->content_type) {
+        merror("At module '%s': No content type defined. Skipping container block...", WM_AZURE_CONTEXT.name);
+        return OS_INVALID;
+    }
+
+    return 0;
+}
+
 
 void wm_clean_api(wm_azure_api_t * api_config) {
 
@@ -464,6 +684,67 @@ void wm_clean_api(wm_azure_api_t * api_config) {
             next_request = api_config->request->next;
         } while(api_config->request);
     }
+
+    free(api_config);
+    api_config = NULL;
+}
+
+void wm_clean_request(wm_azure_request_t * request) {
+
+    if (request->tag)
+        free(request->tag);
+    if (request->query)
+        free(request->query);
+    if (request->workspace)
+        free(request->workspace);
+    if (request->time_offset)
+        free(request->time_offset);
+
+    free(request);
+    request = NULL;
+}
+
+
+void wm_clean_storage(wm_azure_storage_t * storage) {
+
+    wm_azure_container_t * next_container;
+
+    if (storage->account_name)
+        free(storage->account_name);
+    if (storage->account_key)
+        free(storage->account_key);
+    if (storage->auth_path)
+        free(storage->auth_path);
+    if (storage->tag)
+        free(storage->tag);
+
+    if (storage->container) {
+        next_container = storage->container->next;
+        do {
+            wm_clean_container(storage->container);
+            storage->container = next_container;
+            next_container = storage->container->next;
+        } while(storage->container);
+    }
+
+    free(storage);
+    storage = NULL;
+}
+
+void wm_clean_container(wm_azure_container_t * container) {
+
+    if (container->name)
+        free(container->name);
+    if (container->blobs)
+        free(container->blobs);
+    if (container->content_type)
+        free(container->content_type);
+    if (container->time_offset)
+        free(container->time_offset);
+
+    free(container);
+    container = NULL;
+
 }
 
 #endif
