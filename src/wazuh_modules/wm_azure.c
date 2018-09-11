@@ -290,7 +290,7 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
         snprintf(query, OS_SIZE_1024 - 1, "\'%s\'", curr_request->query);
         wm_strcat(&command, query, ' ');
 
-        wm_strcat(&command, "--graph_tag", ' ');
+        wm_strcat(&command, "--graph_time_offset", ' ');
         wm_strcat(&command, curr_request->time_offset, ' ');
 
         // Check timeout defined
@@ -363,6 +363,12 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
 
         wm_strcat(&command, "--storage_tag", ' ');
         wm_strcat(&command, storage->tag, ' ');
+
+        if (!strncmp(curr_container->content_type, "file", 4)) {
+            wm_strcat(&command, "--json_file", ' ');
+        } else if (!strncmp(curr_container->content_type, "inline", 6)) {
+            wm_strcat(&command, "--json_inline", ' ');
+        }
 
         wm_strcat(&command, "--storage_time_offset", ' ');
         wm_strcat(&command, curr_container->time_offset, ' ');
