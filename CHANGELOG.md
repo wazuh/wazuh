@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.6.2]
 
+### Fixed
+
+- Prevent offline agents from generating vulnerability-detector alerts. ([#1292](https://github.com/wazuh/wazuh/pull/1292))
+
 
 ## [v3.6.1] 2018-09-07
 

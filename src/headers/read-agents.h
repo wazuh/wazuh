@@ -90,4 +90,8 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
 #define GA_ALL              5
 #define GA_ALL_WSTATUS      7
 
+/* Check if the agent is disconnected
+ * Returns 0 if it is connected.
+ */
+int check_discon_keepalvie(char *last_keepalive);
 #endif
