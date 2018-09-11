@@ -63,10 +63,10 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 {
     int i = 0;
     wm_azure_t *azure;
-    wm_azure_api_t *api_config;
-    wm_azure_api_t *api_config_prev;
-    wm_azure_storage_t *storage;
-    wm_azure_storage_t *storage_prev;
+    wm_azure_api_t *api_config = NULL;
+    wm_azure_api_t *api_config_prev = NULL;
+    wm_azure_storage_t *storage = NULL;
+    wm_azure_storage_t *storage_prev = NULL;
     int month_interval = 0;
 
     // Create module
@@ -302,8 +302,8 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_config) {
 
     int i = 0;
-    wm_azure_request_t *request;
-    wm_azure_request_t *request_prev;
+    wm_azure_request_t *request = NULL;
+    wm_azure_request_t *request_prev = NULL;
 
     api_config->application_id = NULL;
     api_config->application_key = NULL;
@@ -477,8 +477,8 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
 int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t * storage) {
 
     int i = 0;
-    wm_azure_container_t *container;
-    wm_azure_container_t *container_prev;
+    wm_azure_container_t *container = NULL;
+    wm_azure_container_t *container_prev = NULL;
 
     storage->account_name = NULL;
     storage->account_key = NULL;
