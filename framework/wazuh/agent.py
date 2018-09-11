@@ -229,7 +229,7 @@ class Agent:
         dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os,
                       'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive,
                       'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum,
-                      'group': self.group, 'manager_host': self.manager_host, 'node_name': self.node_name }
+                      'group': self.group, 'manager': self.manager, 'node_name': self.node_name }
 
         return dictionary
 
