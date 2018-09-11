@@ -2313,10 +2313,10 @@ class Agent:
         """
         sockets_path = common.ossec_path + "/queue/ossec/"
 
+        # checks if agent version is compatible with this feature
         self._load_info_from_DB()
         agent_version = WazuhVersion(self.version.split(" ")[1])
-        required_version = WazuhVersion("v3.8.0")
-
+        required_version = WazuhVersion("v3.7.0")
         if agent_version < required_version:
             raise WazuhException(1734, "Minimum required version is " + str(required_version))
 
@@ -2347,9 +2347,12 @@ class Agent:
         data_size = struct.unpack('<I',data_size[0:4])[0]
 
         # Receive response
-        data = s.recv(data_size,socket.MSG_WAITALL).decode().split(" ", 1)
-        rec_msg_ok = data[0]
-        rec_msg = data[1]
+        try:
+            data = s.recv(data_size,socket.MSG_WAITALL).decode().split(" ", 1)
+            rec_msg_ok = data[0]
+            rec_msg = data[1]
+        except IndexError:  # it is necessary to catch the type of the exception
+            raise WazuhException(1014, "Data could not be received")
 
         s.close()
 
