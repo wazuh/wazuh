@@ -261,7 +261,7 @@ class Agent:
         except IndexError:
             raise WazuhException(1701, self.id)
 
-        map(lambda x: setattr(self, x[0], x[1]), data.items())
+        list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
 
     def _load_info_from_agent_db(self, table, select, filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
