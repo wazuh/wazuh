@@ -3,10 +3,18 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.7.0]
 
+### Added
+
+- Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
+
 ### Changed
+
 - Refactor Python framework code to standarize database requests and support API queries ([#921](https://github.com/wazuh/wazuh/pull/921)).
 
-## [v3.6.1]
+## [v3.6.2]
+
+
+## [v3.6.1] 2018-09-07
 
 ### Fixed
 
@@ -22,25 +30,6 @@ All notable changes to this project will be documented in this file.
 - Fix bug in folder recursion limit count in FIM real-time mode. ([#1226](https://github.com/wazuh/wazuh/issues/1226))
 - Fixed errors when parsing AWS events in Elasticsearch. ([#1229](https://github.com/wazuh/wazuh/issues/1229))
 - Fix bug when launching osquery from Wazuh. ([#1230](https://github.com/wazuh/wazuh/issues/1230))
-
-
-## [v3.6.0] 2018-08-29
-
-### Added
-
-### Changed
-
-### Fixed
-
-- Fix segmentation fault when the agent version is empty in Vulnerability Detector. ([#1191](https://github.com/wazuh/wazuh/pull/1191))
-- Fix bug that removes file extensions in rootcheck. ([#1197](https://github.com/wazuh/wazuh/pull/1197))
-
-
-## [v3.6.0]
-
-### Added
-
-- Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
 
 
 ## [v3.6.0] - 2018-08-29
