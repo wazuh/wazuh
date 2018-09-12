@@ -80,7 +80,7 @@ def show_group_files(group_id):
         print("  {0}{1}[{2}]".format(item['filename'], spaces*' ', item['hash']))
 
 
-def unset_group(agent_id, quiet=False):
+def unset_group(agent_id, group_id=None, quiet=False):
     ans = 'n'
     if not quiet:
          ans = get_stdin("Do you want to unset the current group of agent '{0}'? [y/N]: ".format(agent_id))
@@ -88,7 +88,7 @@ def unset_group(agent_id, quiet=False):
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.unset_group(agent_id)
+        msg = Agent.unset_group(agent_id, group_id)
     else:
         msg = "Cancelled."
 
@@ -269,7 +269,7 @@ def main():
     # -r (-g group_id | -i agent_id) [-q]
     elif arguments['remove-group']:
         if arguments['agent-id']:
-            unset_group(arguments['agent-id'], arguments['quiet'])
+            unset_group(arguments['agent-id'], arguments['group'], arguments['quiet'])
         elif arguments['group']:
             remove_group(arguments['group'], arguments['quiet'])
         else:
