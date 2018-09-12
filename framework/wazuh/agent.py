@@ -1616,8 +1616,8 @@ class Agent:
         if agent_info.has_key("group") == True:
             
             # Check if multi group still exists in other agents
-            query = "SELECT COUNT(*) FROM agent WHERE `group` = ?"
-            conn.execute(query,(agent_info["group"],))
+            query = "SELECT COUNT(*) FROM agent WHERE `group` = :group_1 OR `group` LIKE :group_2 OR `group` LIKE :group_3 OR `group` LIKE :group_4"
+            conn.execute(query,{'group_1': group_id, 'group_2': group_id+'-%', 'group_3': '%-{}-%'.format(group_id), 'group_4': '%-'+group_id})
         
             # Check if it is a multi group
             if agent_info["group"] is not None and agent_info["group"].find("-") > -1:
