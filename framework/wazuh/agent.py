@@ -2351,7 +2351,7 @@ class Agent:
             data = s.recv(data_size,socket.MSG_WAITALL).decode().split(" ", 1)
             rec_msg_ok = data[0]
             rec_msg = data[1]
-        except IndexError:  # it is necessary to catch the type of the exception
+        except IndexError:
             raise WazuhException(1014, "Data could not be received")
 
         s.close()
