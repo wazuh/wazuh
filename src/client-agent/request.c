@@ -200,7 +200,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
     char response[REQ_RESPONSE_LENGTH];
     int rlen;
 
-    
+
 
     while (1) {
 
@@ -250,7 +250,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             } else {
 
                 // Get response
-               
+
                 switch (length = OS_RecvSecureTCP(node->sock, buffer_response,OS_MAXSTR), length) {
                 case -1:
                     merror("recv(): %s", strerror(errno));
