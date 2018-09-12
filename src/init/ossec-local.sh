@@ -22,6 +22,9 @@ AUTHOR="Wazuh Inc."
 DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 INITCONF="/etc/ossec-init.conf"
 
+# Reverse order of daemons
+SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
 ## Locking for the start/stop
@@ -201,9 +204,6 @@ testconfig()
 
 start()
 {
-    # Reverse order of daemons
-    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-
     echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
