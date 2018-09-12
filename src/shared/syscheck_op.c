@@ -86,16 +86,17 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             if ((sum->sha256 = strchr(c_inode, ':'))) {
                 *(sum->sha256++) = '\0';
 
-            /* Look for a defined tag */
-            if (sum->sha256) {
-                if (tag = strchr(sum->sha256, ':'), tag) {
-                    *(tag++) = '\0';
-                    sum->tag = tag;
+                /* Look for a defined tag */
+                if (sum->sha256) {
+                    if (tag = strchr(sum->sha256, ':'), tag) {
+                        *(tag++) = '\0';
+                        sum->tag = tag;
+                    }
                 }
-            }
 
-            sum->mtime = atol(c_mtime);
-            sum->inode = atol(c_inode);
+                sum->mtime = atol(c_mtime);
+                sum->inode = atol(c_inode);
+            }
         }
     }
 

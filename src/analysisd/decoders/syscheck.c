@@ -266,7 +266,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
                 // File modified
                 lf->event_type = FIM_MODIFIED;
                 sk_decode_sum(&oldsum, old_check_sum, NULL);
-                changes = fim_check_changes(oldsum->changes, oldsum->date_alert, lf);
+                changes = fim_check_changes(oldsum.changes, oldsum.date_alert, lf);
 
                 // Alert discarded, frequency exceeded
                 if (changes == -1) {
