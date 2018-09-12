@@ -1501,12 +1501,12 @@ class Agent:
 
             Agent.set_group(str(agent_id).zfill(3), new_group, replace=True)
 
-            # Delete from multi groups folder
-            _, multi_group_dirs, _ = walk(common.multi_groups_path).next()
+        # Delete from multi groups folder
+        _, multi_group_dirs, _ = walk(common.multi_groups_path).next()
 
-            for multi_dir in multi_group_dirs:
-                if group_id in multi_dir.split('-'):
-                    rmtree("{}/{}".format(common.multi_groups_path,multi_dir))
+        for multi_dir in multi_group_dirs:
+            if group_id in multi_dir.split('-'):
+                rmtree("{}/{}".format(common.multi_groups_path,multi_dir))
 
 
     @staticmethod
@@ -1738,7 +1738,7 @@ class Agent:
                 if not Agent.multi_group_exists(multigroup_name):
                     Agent.create_multi_group(multigroup_name)
             else:
-                multigroup_name = 'default' if not group_list else group_name
+                multigroup_name = 'default' if not group_list else group_list[0]
             Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
             return "Group '{}' unset for agent '{}'.".format(group_id, agent_id)
         else:
