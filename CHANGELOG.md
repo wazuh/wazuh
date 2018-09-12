@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.7.0]
 
+### Fixed
+
+- Fixed service startup on error. ([#1299](https://github.com/wazuh/wazuh/pull/1299))
 
 ## [v3.6.1]
 
