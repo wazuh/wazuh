@@ -93,6 +93,23 @@ parser.add_argument("--storage_time_offset", metavar = "time", type = str, requi
 args = parser.parse_args()
 
 ################################################################################################
+# Gets the path to write logs.
+################################################################################################
+
+def get_log_path():
+
+	path_result = ""
+	ossec_init = open ('/etc/ossec-init.conf')
+	for line in ossec_init:
+		if "DIRECTORY=" in line:
+			ossec_path = line.replace('DIRECTORY=','')
+			half_path= ossec_path.replace('"','')
+			path_result = half_path.replace('\n','')
+	path_result = path_result + "/logs/azure_logs.log"
+	return path_result
+
+
+################################################################################################
 # Configure the log settings.
 ################################################################################################
 
@@ -101,7 +118,8 @@ def set_logger():
 	if args.verbose:
 		logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 	else: 
-		logging.basicConfig(filename='/var/ossec/logs/azure_integration.log', level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
+		log_path = get_log_path()
+		logging.basicConfig(filename=log_path, level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 
 
 ################################################################################################
