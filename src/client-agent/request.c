@@ -110,11 +110,6 @@ int req_push(char * buffer, size_t length) {
 
 #ifndef WIN32
 
-        if(!OSHash_Get(allowed_sockets,target)){
-            merror("At req_push(): Target '%s' not allowed", target);
-            return -1;
-        }
-
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];
             snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
@@ -248,8 +243,6 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             mdebug2("req_receiver(): sending '%s' to socket", node->buffer);
 
             // Send data
-
-            merror("SENDING MSG: %s ",node->buffer);
             if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != 0) {
                 merror("OS_SendSecureTCP(): %s", strerror(errno));
                 os_strdup("err Send data", buffer);
