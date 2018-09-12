@@ -140,16 +140,16 @@ void start_daemon()
     if (syscheck.scan_on_start) {
         /* Send first start scan control message */
         send_syscheck_msg(HC_FIM_DB_SFS);
-        sleep(syscheck.tsleep * 10);
+        sleep(syscheck.tsleep * 5);
         send_sk_db();
-        sleep(syscheck.tsleep * 10);
-        /* Send first end scan control message */
-        send_syscheck_msg(HC_FIM_DB_EFS);
-
+        sleep(syscheck.tsleep * 5);
 #ifdef WIN32
         /* Check for registry changes on Windows */
         os_winreg_check();
+        sleep(syscheck.tsleep * 5);
 #endif
+        /* Send first end scan control message */
+        send_syscheck_msg(HC_FIM_DB_EFS);
 
         mdebug2("Sending database completed message.");
     } else {
@@ -253,9 +253,14 @@ void start_daemon()
                 /* Need to create the db if scan on start is not set */
                 /* Send first start scan control message */
                 send_syscheck_msg(HC_FIM_DB_SFS);
-                sleep(syscheck.tsleep * 10);
+                sleep(syscheck.tsleep * 5);
                 send_sk_db();
-                sleep(syscheck.tsleep * 10);
+                sleep(syscheck.tsleep * 5);
+#ifdef WIN32
+                /* Check for registry changes on Windows */
+                os_winreg_check();
+                sleep(syscheck.tsleep * 5);
+#endif
                 /* Send first end scan control message */
                 send_syscheck_msg(HC_FIM_DB_EFS);
 
@@ -267,16 +272,17 @@ void start_daemon()
                     minfo("Starting syscheck scan.");
                     send_rootcheck_msg("Starting syscheck scan.");
                 }
+                /* Send start scan control message */
+                send_syscheck_msg(HC_FIM_DB_SS);
+                sleep(syscheck.tsleep * 5);
+                /* Check for changes */
+                run_dbcheck();
+                sleep(syscheck.tsleep * 5);
 #ifdef WIN32
                 /* Check for registry changes on Windows */
                 os_winreg_check();
+                sleep(syscheck.tsleep * 5);
 #endif
-                /* Send start scan control message */
-                send_syscheck_msg(HC_FIM_DB_SS);
-                sleep(syscheck.tsleep * 10);
-                /* Check for changes */
-                run_dbcheck();
-                sleep(syscheck.tsleep * 10);
                 /* Send end scan control message */
                 send_syscheck_msg(HC_FIM_DB_ES);
             }

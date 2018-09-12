@@ -45,7 +45,7 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_UPDATE_ENTRY,
     WDB_STMT_FIM_DELETE,
     WDB_STMT_FIM_UPDATE_DATE,
-    WDB_STMT_FIM_CLEAN_ENTRIES,
+    WDB_STMT_FIM_FIND_DATE_ENTRIES,
     WDB_STMT_OSINFO_INSERT,
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_PROGRAM_INSERT,
@@ -186,11 +186,14 @@ int wdb_create_agent_db(int id, const char *name);
 
 int wdb_create_agent_db2(const char * agent_id);
 
+/* Initialize table metadata Returns 0 on success or -1 on error. */
+int wdb_metadata_initialize (wdb_t *wdb, char *path);
+
 /* Insert or update metadata entries. Returns 0 on success or -1 on error. */
 int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
 
 /* Find metadata entries. Returns 0 if doesn't found, 1 on success or -1 on error. */
-int wdb_find_metadata_entry(wdb_t * wdb, const char * key);
+int wdb_metadata_find_entry(wdb_t * wdb, const char * key);
 
 /* Insert entry. Returns 0 on success or -1 on error. */
 int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value);
@@ -199,7 +202,13 @@ int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value);
 int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value);
 
 /* Insert metadata for minor and major version. Returns 0 on success or -1 on error. */
-int wdb_fill_metadata_version(sqlite3 *db);
+int wdb_metadata_fill_version(sqlite3 *db);
+
+/* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
+int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
+
+/* Change value for. Returns 0 if doesn't found, 1 on success or -1 on error. */
+int wdb_metadata_fim_check_control (wdb_t * wdb, const char *last_check);
 
 /* Update field date for specific fim_entry. */
 int wdb_fim_update_date_entry(wdb_t * wdb, const char *path, const char *date);

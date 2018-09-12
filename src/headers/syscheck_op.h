@@ -145,6 +145,9 @@ extern _sdb sdb;
    or -1 on failure. */
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
 
+// Parse fields changes and date_alert only provide for wazuh_db
+int sk_decode_extradata(sk_sum_t *sum, char *c_sum);
+
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size);

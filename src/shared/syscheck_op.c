@@ -25,8 +25,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_perm;
     char *c_mtime;
     char *c_inode;
-    char *changes;
-    char *date_alert;
     int retval = 0;
 
     memset(sum, 0, sizeof(sk_sum_t));
@@ -89,17 +87,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
                 sum->mtime = atol(c_mtime);
                 sum->inode = atol(c_inode);
-
-                // Only decoded by manager
-                if (changes = strchr(sum->sha256, ':'), changes) {
-                    *(changes++) = '\0';
-                    sum->changes = atoi(changes);
-
-                    if (date_alert = strchr(changes, ':'), date_alert) {
-                        *(date_alert++) = '\0';
-                        sum->date_alert = atol(date_alert);
-                    }
-                }
             }
         }
     }
@@ -176,6 +163,26 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     }
 
     return retval;
+}
+
+// Only decoded by manager
+int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
+    char *changes;
+    char *date_alert;
+
+    if (changes = strchr(c_sum, '!'), !changes) {
+        return -1;
+    }
+    *changes++ = '\0';
+
+    if (date_alert = strchr(changes, ':'), !date_alert) {
+        return -1;
+    }
+    *(date_alert++) = '\0';
+    sum->changes = atoi(changes);
+    sum->date_alert = atol(date_alert);
+
+    return 0;
 }
 
 char *unescape_whodata_sum(char *sum) {
@@ -321,7 +328,7 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     int r;
 
-    r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld:%s:%d:%ld",
+    r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld:%s!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
             sum->size,
             sum->perm,
             sum->uid,

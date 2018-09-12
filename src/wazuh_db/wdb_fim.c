@@ -285,6 +285,10 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
 
         output[size - 1] = '\0';
 
+        char msg[OS_MAXSTR];
+        sk_build_sum(&sum, msg, OS_MAXSTR);
+        minfo("~~~~ sk_build_sum: '%s'", msg);
+
         return sk_build_sum(&sum, output, size);
 
     case SQLITE_DONE:
@@ -299,6 +303,12 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
 
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file) {
     sk_sum_t sum;
+
+    if (sk_decode_extradata(&sum, checksum) < 0) {
+        mdebug1("At wdb_syscheck_save(): at sk_decode_extradata(): cannot decode checksum");
+        mdebug2("Checksum: %s", checksum);
+        return -1;
+    }
 
     if (sk_decode_sum(&sum, checksum, NULL) < 0) {
         mdebug1("At wdb_syscheck_save(): at sk_decode_sum(): cannot decode checksum");
@@ -497,23 +507,43 @@ int wdb_fim_update_date_entry(wdb_t * wdb, const char *path, const char *date) {
 
 int wdb_fim_clean_old_entries(wdb_t * wdb) {
     sqlite3_stmt *stmt = NULL;
+    char *file;
+    int result, del_result;
+    long int timestamp;
+    char tscheck3[OS_MAXSTR + 1];
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_CLEAN_ENTRIES) < 0) {
+    tscheck3[0] = '\0';
+    if(result = wdb_metadata_get_entry (wdb, "fim-db-3rdcheck-scan", tscheck3), result < 0) {
+        mdebug1("at wdb_metadata_fim_check_control(): Cannot get metadata entry");
+    } else {
+        timestamp = atol(tscheck3);
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_FIND_DATE_ENTRIES) < 0) {
         merror("at wdb_fim_clean_old_entries(): cannot cache statement");
         return -1;
     }
 
-    stmt = wdb->stmt[WDB_STMT_FIM_CLEAN_ENTRIES];
+    stmt = wdb->stmt[WDB_STMT_FIM_FIND_DATE_ENTRIES];
+    sqlite3_bind_int(stmt, 1, timestamp);
 
-    switch (sqlite3_step(stmt)) {
-    case SQLITE_ROW:
-        return 0;
-        break;
-    case SQLITE_DONE:
-        return 0;
-        break;
-    default:
-        mdebug1("at wdb_fim_clean_old_entries(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
+    while(result = sqlite3_step(stmt), result != SQLITE_DONE) {
+        switch (result) {
+            case SQLITE_ROW:
+                //call to delete
+                file = (char *)sqlite3_column_text(stmt, 0);
+
+                if (del_result = wdb_fim_delete(wdb, file), del_result < 0) {
+                    mdebug1("at wdb_fim_clean_old_entries(): Cannot delete Syscheck entry '%s'.", file);
+                }
+
+                mdebug1("Delete %s from DB", file);
+                break;
+            default:
+                mdebug1("at wdb_fim_clean_old_entries(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                return -1;
+        }
     }
+
+    return 0;
 }

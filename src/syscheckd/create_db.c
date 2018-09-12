@@ -182,7 +182,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     restriction = syscheck.filerestrict[dir_position];
 
     if (fim_check_ignore (file_name) == 1) {
-        mdebug1("Ingnoring file '%s', continuing...", file_name);
+        mdebug1("Ignoring file '%s', continuing...", file_name);
         return (0);
     }
 

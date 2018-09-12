@@ -23,7 +23,6 @@ static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
-static const char *SQL_INSERT_METADATA = "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);";
 static const char *SQL_STMT[] = {
     "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date FROM fim_entry WHERE file = ?;",
     "SELECT 1 FROM fim_entry WHERE file = ?",
@@ -31,7 +30,7 @@ static const char *SQL_STMT[] = {
     "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ? WHERE file = ?;",
     "DELETE FROM fim_entry WHERE file = ?;",
     "UPDATE fim_entry SET date = ? WHERE file = ?;",
-    "DELETE FROM fim_entry WHERE date < (SELECT value FROM metadata WHERE key = 'fim-db-start-first-scan')",
+    "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date FROM fim_entry WHERE date < ?;",
     "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -54,7 +53,7 @@ static const char *SQL_STMT[] = {
     "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);",
     "INSERT INTO metadata (key, value) VALUES (?, ?);",
     "UPDATE metadata SET value = ? WHERE key = ?;",
-    "SELECT 1 FROM metadata WHERE key = ?;"
+    "SELECT value FROM metadata WHERE key = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
@@ -175,13 +174,17 @@ wdb_t * wdb_open_agent2(int agent_id) {
             goto end;
         }
 
-        if (wdb_fill_metadata_version(db) < 0) {
-            merror("Couldn't fill metadata into database '%s'", path);
+        wdb = wdb_init(db, sagent_id);
+
+        if (wdb_metadata_initialize(wdb, path) < 0) {
+            merror("Couldn't initialize metadata table into database '%s'", path);
             goto end;
         }
     }
+    else {
+        wdb = wdb_init(db, sagent_id);
+    }
 
-    wdb = wdb_init(db, sagent_id);
     wdb_pool_append(wdb);
 
 success:
@@ -249,162 +252,6 @@ int wdb_create_agent_db2(const char * agent_id) {
     }
 
     return 0;
-}
-
-int wdb_fim_fill_metadata(wdb_t *wdb, char *data) {
-    char *key, *value;
-
-    key = data;
-    if (value = strchr(data, ' '), !value) {
-        mdebug1("at wdb_fim_fill_metadata(): Invalid metadata value.");
-        return -1;
-    }
-    *value++ = '\0';
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        merror("at wdb_fim_fill_metadata(): cannot begin transaction");
-        return -1;
-    }
-
-    switch (wdb_find_metadata_entry(wdb, key)) {
-    case -1:
-        mdebug1("at wdb_fim_fill_metadata(): Cannot find metadata entry");
-        return -1;
-
-    case 0:
-        // Adding metadata
-        if (wdb_metadata_insert_entry(wdb, key, value) < 0) {
-            mdebug1("at wdb_fim_fill_metadata(): cannot insert metadata entry");
-            return -1;
-        }
-        break;
-
-    default:
-        // Update metadata entry
-        if (wdb_metadata_update_entry(wdb, key, value) < 1) {
-            mdebug1("at wdb_fim_fill_metadata(): cannot update metadata entry");
-            return -1;
-        }
-    }
-
-    return 0;
-}
-
-// Find metadata entry: returns 1 if found, 0 if not, or -1 on error.
-int wdb_find_metadata_entry(wdb_t * wdb, const char * key) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_METADATA_FIND) < 0) {
-        merror("at wdb_fim_find_entry(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_METADATA_FIND];
-
-    sqlite3_bind_text(stmt, 1, key, -1, NULL);
-
-    switch (sqlite3_step(stmt)) {
-    case SQLITE_ROW:
-        return 1;
-        break;
-    case SQLITE_DONE:
-        return 0;
-        break;
-    default:
-        mdebug1("at wdb_find_metadata_entry(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-}
-
-int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_METADATA_INSERT) < 0) {
-        merror("at wdb_fim_insert_entry(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_METADATA_INSERT];
-
-    sqlite3_bind_text(stmt, 1, key, -1, NULL);
-    sqlite3_bind_text(stmt, 2, value, -1, NULL);
-
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
-        return 0;
-    } else {
-        mdebug1("at wdb_metadata_insert_entry(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-}
-
-int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_METADATA_UPDATE) < 0) {
-        merror("at wdb_fim_update_entry(): cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_METADATA_UPDATE];
-
-    sqlite3_bind_text(stmt, 1, value, -1, NULL);
-    sqlite3_bind_text(stmt, 2, key, -1, NULL);
-
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
-        return sqlite3_changes(wdb->db);
-    } else {
-        mdebug1("at wdb_metadata_update_entry(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-}
-
-int wdb_fill_metadata_version(sqlite3 * db) {
-    sqlite3_stmt *stmt = NULL;
-    char version[] = __ossec_version;
-    char * strmajor;
-    char * strminor;
-    char * end;
-    int vmajor;
-    int vminor;
-    int result = 0;
-
-    // Extract version
-
-    strmajor = version + (*version == 'v');
-
-    if (end = strchr(strmajor, '.'), !end) {
-        merror("at wdb_fill_metadata_version(): Couldn't parse internal version '%s'", strmajor);
-        return -1;
-    }
-
-    *end = '\0';
-    strminor = end + 1;
-
-    if (vmajor = (int)strtol(strmajor, &end, 10), end == strmajor) {
-        merror("at wdb_fill_metadata_version(): Couldn't parse internal major version '%s'", strmajor);
-        return -1;
-    }
-
-    if (vminor = (int)strtol(strminor, &end, 10), end == strminor) {
-        merror("at wdb_fill_metadata_version(): Couldn't parse internal minor version '%s'", strminor);
-        return -1;
-    }
-
-    if (sqlite3_prepare_v2(db, SQL_INSERT_METADATA, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("at wdb_fill_metadata(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, vmajor);
-    sqlite3_bind_int(stmt, 2, vminor);
-
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("at wdb_fill_metadata_version(): wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
 }
 
 /* Get agent name from location string */
