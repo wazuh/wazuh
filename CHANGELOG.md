@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - Fix typo in whodata alerts. ([#1242](https://github.com/wazuh/wazuh/issues/1242))
 - Fix bug in whodata field extraction for Windows. ([#1233](https://github.com/wazuh/wazuh/issues/1233))
 
+### Fixed
+
+- Fixed service startup on error. ([#1299](https://github.com/wazuh/wazuh/pull/1299))
 
 ## [v3.6.1] 2018-09-07
 
