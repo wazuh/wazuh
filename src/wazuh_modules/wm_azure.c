@@ -198,7 +198,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
 
         wm_strcat(&command, WM_AZURE_SCRIPT_PATH, '\0');
-        wm_strcat(&command, "--log-analytics", ' ');
+        wm_strcat(&command, "--log_analytics", ' ');
 
         if (log_analytics->auth_path) {
             wm_strcat(&command, "--la_auth_path", ' ');
