@@ -28,13 +28,15 @@ static void wm_azure_destroy(wm_azure_t *azure_config);        // Destroy data
 static void wm_azure_log_analytics(wm_azure_api_t *log_analytics);      // Run log analytics queries
 static void wm_azure_graphs(wm_azure_api_t *graph);                     // Run graph queries
 static void wm_azure_storage(wm_azure_storage_t *storage);              // Run storage queries
+cJSON *wm_azure_dump(const wm_azure_t *azure);                          // Dump configuration to a JSON structure
 
 //  Azure module context definition
 
 const wm_context WM_AZURE_CONTEXT = {
     "azure-logs",
     (wm_routine)wm_azure_main,
-    (wm_routine)wm_azure_destroy
+    (wm_routine)wm_azure_destroy,
+    (cJSON * (*)(const void *))wm_azure_dump
 };
 
 // Module main function. It won't return.
@@ -531,6 +533,101 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
     }
 
     free(azure_config);
+}
+
+
+// Get configuration data in JSON format
+
+cJSON *wm_azure_dump(const wm_azure_t * azure) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_azure = cJSON_CreateObject();
+
+    if (azure->flags.enabled) cJSON_AddStringToObject(wm_azure,"disabled","no"); else cJSON_AddStringToObject(wm_azure,"disabled","yes");
+    if (azure->flags.run_on_start) cJSON_AddStringToObject(wm_azure,"run_on_start","yes"); else cJSON_AddStringToObject(wm_azure,"run_on_start","no");
+    if (azure->interval) cJSON_AddNumberToObject(wm_azure, "interval", azure->interval);
+    if (azure->scan_day) cJSON_AddNumberToObject(wm_azure, "day", azure->scan_day);
+    switch (azure->scan_wday) {
+        case 0:
+            cJSON_AddStringToObject(wm_azure, "wday", "sunday");
+            break;
+        case 1:
+            cJSON_AddStringToObject(wm_azure, "wday", "monday");
+            break;
+        case 2:
+            cJSON_AddStringToObject(wm_azure, "wday", "tuesday");
+            break;
+        case 3:
+            cJSON_AddStringToObject(wm_azure, "wday", "wednesday");
+            break;
+        case 4:
+            cJSON_AddStringToObject(wm_azure, "wday", "thursday");
+            break;
+        case 5:
+            cJSON_AddStringToObject(wm_azure, "wday", "friday");
+            break;
+        case 6:
+            cJSON_AddStringToObject(wm_azure, "wday", "saturday");
+            break;
+        default:
+            break;
+    }
+    if (azure->scan_time) cJSON_AddStringToObject(wm_azure, "time", azure->scan_time);
+    cJSON_AddNumberToObject(wm_azure,"timeout",azure->timeout);
+
+    if (azure->api_config || azure->storage) {
+        cJSON *content = cJSON_CreateArray();
+        wm_azure_api_t * api_config;
+        wm_azure_storage_t * storage_conf;
+        for (api_config = azure->api_config; api_config; api_config = api_config->next) {
+            cJSON *api = cJSON_CreateObject();
+            if (api_config->type == LOG_ANALYTICS) cJSON_AddStringToObject(api, "type", "log_analytics"); else cJSON_AddStringToObject(api, "type", "graph");
+            cJSON_AddStringToObject(api, "tenantdomain", api_config->tenantdomain);
+            if (api_config->application_id) cJSON_AddStringToObject(api, "application_id", api_config->application_id);
+            if (api_config->application_key) cJSON_AddStringToObject(api, "application_key", api_config->application_key);
+            if (api_config->auth_path) cJSON_AddStringToObject(api, "auth_path", api_config->auth_path);
+            if (api_config->request) {
+                cJSON *requests = cJSON_CreateArray();
+                wm_azure_request_t * request_conf;
+                for (request_conf = api_config->request; request_conf; request_conf = request_conf->next) {
+                    cJSON * request = cJSON_CreateObject();
+                    cJSON_AddStringToObject(request, "tag", request_conf->tag);
+                    cJSON_AddStringToObject(request, "query", request_conf->query);
+                    cJSON_AddStringToObject(request, "time_offset", request_conf->time_offset);
+                    if (request_conf->workspace) cJSON_AddStringToObject(request, "workspace", request_conf->workspace);
+                    if (request_conf->timeout) cJSON_AddNumberToObject(request, "timeout", request_conf->timeout);
+                    cJSON_AddItemToArray(requests, request);
+                }
+            }
+            cJSON_AddItemToArray(content, api);
+        }
+        for (storage_conf = azure->storage; storage_conf; storage_conf = storage_conf->next) {
+            cJSON *storage = cJSON_CreateObject();
+            cJSON_AddStringToObject(storage, "tag", storage_conf->tag);
+            if (storage_conf->account_name) cJSON_AddStringToObject(storage, "account_name", storage_conf->account_name);
+            if (storage_conf->account_key) cJSON_AddStringToObject(storage, "account_key", storage_conf->account_key);
+            if (storage_conf->auth_path) cJSON_AddStringToObject(storage, "auth_path", storage_conf->auth_path);
+            if (storage_conf->container) {
+                cJSON *containers = cJSON_CreateArray();
+                wm_azure_container_t * container_conf;
+                for (container_conf = storage_conf->container; container_conf; container_conf = container_conf->next) {
+                    cJSON * container = cJSON_CreateObject();
+                    cJSON_AddStringToObject(container, "name", container_conf->name);
+                    cJSON_AddStringToObject(container, "blobs", container_conf->blobs);
+                    cJSON_AddStringToObject(container, "content_type", container_conf->content_type);
+                    cJSON_AddStringToObject(container, "time_offset", container_conf->time_offset);
+                    if (container_conf->timeout) cJSON_AddNumberToObject(container, "timeout", container_conf->timeout);
+                    cJSON_AddItemToArray(containers, container);
+                }
+            }
+            cJSON_AddItemToArray(content, storage);
+        }
+        cJSON_AddItemToObject(wm_azure, "content", content);
+    }
+
+    cJSON_AddItemToObject(root, "azure-logs", wm_azure);
+
+    return root;
 }
 
 #endif
