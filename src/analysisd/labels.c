@@ -33,11 +33,11 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         return Config.labels;
     }
 
-    if (lf->hostname[0] != '(') {
+    if (lf->location[0] != '(') {
         return NULL;
     }
 
-    strncpy(hostname, lf->hostname + 1, OS_MAXSTR - 1);
+    strncpy(hostname, lf->location + 1, OS_MAXSTR - 1);
     hostname[OS_MAXSTR - 1] = '\0';
 
     if (!(ip = strstr(hostname, ") "))) {

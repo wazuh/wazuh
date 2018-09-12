@@ -486,7 +486,7 @@ double OS_AgentAntiquity(const char *name, const char *ip)
 }
 
 /* Print available agents */
-int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output)
+int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
 {
     int total = 0;
     FILE *fp;
@@ -536,6 +536,10 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
                     if (print_status) {
                         agent_status_t agt_status = get_agent_status(name, ip);
                         if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
+                            continue;
+                        }
+
+                        if (inactive_only && agt_status != GA_STATUS_NACTIVE) {
                             continue;
                         }
 

@@ -12,9 +12,8 @@
 
 
 /* Read Output of commands */
-void *read_fullcommand(int pos, int *rc, int drop_it)
-{
-    size_t n = 0;
+void *read_fullcommand(logreader *lf, int *rc, int drop_it) {
+   size_t n = 0;
     size_t cmd_size = 0;
     char *p;
     char str[OS_MAXSTR + 1];
@@ -25,21 +24,21 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
     strfinal[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    mdebug2("Running full command '%s'", logff[pos].command);
+    mdebug2("Running full command '%s'", lf->command);
 
-    cmd_output = popen(logff[pos].command, "r");
+    cmd_output = popen(lf->command, "r");
     if (!cmd_output) {
         merror("Unable to execute command: '%s'.",
-               logff[pos].command);
+               lf->command);
 
-        logff[pos].command = NULL;
+        lf->command = NULL;
         return (NULL);
     }
 
     snprintf(str, 256, "ossec: output: '%s':\n",
-             (NULL != logff[pos].alias)
-             ? logff[pos].alias
-             : logff[pos].command);
+             (NULL != lf->alias)
+             ? lf->alias
+             : lf->command);
     cmd_size = strlen(str);
 
     n = fread(str + cmd_size, 1, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output);
@@ -73,14 +72,7 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
 
         /* Send message to queue */
         if (drop_it == 0) {
-            if (SendMSGtoSCK(logr_queue, strfinal,
-                        (NULL != logff[pos].alias) ? logff[pos].alias : logff[pos].command,
-                        LOCALFILE_MQ, logff[pos].log_target) < 0) {
-                merror(QUEUE_SEND);
-                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                }
-            }
+            w_msg_hash_queues_push(strfinal, lf->alias ? lf->alias : lf->command, strlen(strfinal) + 1, lf->log_target, LOCALFILE_MQ);
         }
     }
 

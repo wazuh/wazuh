@@ -28,6 +28,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     osquery_monitor->disable = 0;
     osquery_monitor->run_daemon = 1;
     module->context = &WM_OSQUERYMONITOR_CONTEXT;
+    module->tag = strdup(module->context->name);
     module->data = osquery_monitor;
 
 #ifdef WIN32
@@ -39,6 +40,9 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     os_strdup("/var/log/osquery/osqueryd.results.log", osquery_monitor->log_path);
     os_strdup("/etc/osquery/osquery.conf", osquery_monitor->config_path);
 #endif
+
+    if (!nodes)
+        return 0;
 
     for(i = 0; nodes[i]; i++)
     {

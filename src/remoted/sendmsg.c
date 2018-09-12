@@ -105,6 +105,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         default:
             merror(SEND_ERROR, agent_id, strerror(errno));
         }
+    } else {
+        rem_inc_msg_sent();
     }
 
     return retval;

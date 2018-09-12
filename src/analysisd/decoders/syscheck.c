@@ -91,6 +91,7 @@ void SyscheckInit()
     sdb.syscheck_dec->fields[SK_EFFECTIVE_NAME] = "effective_name";
     sdb.syscheck_dec->fields[SK_PPID] = "ppid";
     sdb.syscheck_dec->fields[SK_PROC_ID] = "process_id";
+    sdb.syscheck_dec->fields[SK_TAG] = "tag";
 
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.idn = getDecoderfromlist(SYSCHECK_NEW);
@@ -265,7 +266,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
                 // File modified
                 lf->event_type = FIM_MODIFIED;
                 sk_decode_sum(&oldsum, old_check_sum, NULL);
-                changes = fim_check_changes(oldsum.changes, oldsum.date_alert, lf);
+                changes = fim_check_changes(oldsum->changes, oldsum->date_alert, lf);
 
                 // Alert discarded, frequency exceeded
                 if (changes == -1) {
@@ -555,6 +556,23 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf) 
                                 oldsum->sha256, newsum->sha256);
                         os_strdup(oldsum->sha256, lf->sha256_before);
                     }
+                } else {
+                    sdb.sha256[0] = '\0';
+                }
+
+                /* Modification time message */
+                if (oldsum->mtime && newsum->mtime && oldsum->mtime != newsum->mtime) {
+                    changes = 1;
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "mtime", ',');
+                    char *old_ctime = strdup(ctime(&oldsum->mtime));
+                    char *new_ctime = strdup(ctime(&newsum->mtime));
+                    old_ctime[strlen(old_ctime) - 1] = '\0';
+                    new_ctime[strlen(new_ctime) - 1] = '\0';
+
+                    snprintf(sdb.mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
+                    lf->mtime_before = oldsum->mtime;
+                    free(old_ctime);
+                    free(new_ctime);
                 } else {
                     changes = 1;
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');

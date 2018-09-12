@@ -21,6 +21,7 @@ int LogCollectorConfig(const char *cfgfile)
     modules |= CSOCKET;
 
     log_config.config = NULL;
+    log_config.globs = NULL;
     log_config.socket_list = NULL;
     log_config.agent_cfg = 0;
     log_config.accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
@@ -30,6 +31,7 @@ int LogCollectorConfig(const char *cfgfile)
     open_file_attempts = getDefine_Int("logcollector", "open_attempts", 2, 998);
     vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
     maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
+    maximum_files = getDefine_Int("logcollector", "max_files", 1, 100000);
     sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
     sample_log_length = getDefine_Int("logcollector", "sample_log_length", 1, 4096);
 
@@ -50,92 +52,8 @@ int LogCollectorConfig(const char *cfgfile)
 #endif
 
     logff = log_config.config;
+    globs = log_config.globs;
     logsk = log_config.socket_list;
-
-    // List readed sockets
-    unsigned int sk;
-    for (sk=0; logsk && logsk[sk].name; sk++) {
-        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
-    }
-
-    // Check sockets
-    if (logff) {
-        int i, j, k, r, count_localfiles = 0;
-        for (i=0;logff[i].file;i++) {
-            os_malloc(sizeof(logsocket), logff[i].log_target);
-
-            for (j=0;logff[i].target[j];j++) {
-                os_realloc(logff[i].log_target, (j + 2) * sizeof(logsocket), logff[i].log_target);
-                memset(logff[i].log_target + j, 0, sizeof(logsocket));
-
-                if (strcmp(logff[i].target[j], "agent") == 0) {
-                    logff[i].log_target[j].log_socket = &default_agent;
-                    continue;
-                }
-                int found = -1;
-                for (k=0;logsk && logsk[k].name;k++) {
-                    found = strcmp(logsk[k].name, logff[i].target[j]);
-                    if (found == 0) {
-                        break;
-                    }
-                }
-                if (found != 0) {
-                    merror_exit("Socket '%s' for '%s' is not defined.", logff[i].target[j], logff[i].file);
-                } else {
-                    logff[i].log_target[j].log_socket = &logsk[k];
-                }
-            }
-
-            memset(logff[i].log_target + j, 0, sizeof(logsocket));
-
-            // Add output formats
-
-            if (logff[i].out_format) {
-                for (j = 0; logff[i].out_format[j]; ++j) {
-                    if (logff[i].out_format[j]->target) {
-                        // Fill the corresponding target
-
-                        for (k = 0; logff[i].target[k]; k++) {
-                            if (strcmp(logff[i].target[k], logff[i].out_format[j]->target) == 0) {
-                                logff[i].log_target[k].format = logff[i].out_format[j]->format;
-                                break;
-                            }
-                        }
-
-                        if (!logff[i].target[k]) {
-                            mwarn("Log target '%s' wat not found for the output format of localfile '%s'.", logff[i].out_format[j]->target, logff[i].file);
-                        }
-                    } else {
-                        // Fill the targets that don't have a format yet
-
-                        for (k = 0; logff[i].target[k]; k++) {
-                            if (!logff[i].log_target[k].format) {
-                                logff[i].log_target[k].format = logff[i].out_format[j]->format;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        /* Remove duplicate entries */
-
-        for (i = 0;; i++) {
-            if (logff[i].file == NULL) {
-                break;
-            }
-            for (r = 0; r < i; r++) {
-                if (logff[r].file && strcmp(logff[i].file, logff[r].file) == 0) {
-                    mwarn("Duplicated log file given: '%s'.", logff[i].file);
-                    logff[r].duplicated = 1;
-                    count_localfiles--;
-                    break;
-                }
-            }
-            count_localfiles++;
-        }
-        mdebug1("Added %i valid 'localfile' entries.", count_localfiles);
-    }
 
     return (1);
 }

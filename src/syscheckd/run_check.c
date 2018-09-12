@@ -24,7 +24,6 @@
 
 /* Prototypes */
 static void send_sk_db(void);
-static void log_realtime_status(int);
 
 
 
@@ -89,10 +88,23 @@ void start_daemon()
     int day_scanned = 0;
     int curr_day = 0;
     time_t curr_time = 0;
-    time_t prev_time_rk = 0;
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
+
+#ifndef WIN32
+    /* Launch rootcheck thread */
+    w_create_thread(w_rootcheck_thread,&syscheck);
+#else
+    if (CreateThread(NULL,
+                    0,
+                    (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
+                    &syscheck,
+                    0,
+                    NULL) == NULL) {
+                    merror(THREAD_ERROR);
+                }
+#endif
 
 #ifdef INOTIFY_ENABLED
     /* To be used by select */
@@ -152,8 +164,6 @@ void start_daemon()
         send_syscheck_msg(HC_FIM_DB_EFS);
 
         mdebug2("Sending database completed message.");
-    } else {
-        prev_time_rk = time(0);
     }
 
     /* Before entering in daemon mode itself */
@@ -238,14 +248,6 @@ void start_daemon()
             }
         }
 
-        /* If time elapsed is higher than the rootcheck_time, run it */
-        if (syscheck.rootcheck) {
-            if (((curr_time - prev_time_rk) > rootcheck.time) || run_now) {
-                log_realtime_status(2);
-                run_rk_check();
-                prev_time_rk = time(0);
-            }
-        }
 
         /* If time elapsed is higher than the syscheck time, run syscheck time */
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
@@ -374,11 +376,13 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         // Extract the whodata sum here to not include it in the hash table
         if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
             merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
-            *wd_sum = '\0';
         }
 
+        /* Find tag position for the evaluated file name */
+        int pos = find_dir_pos(file_name, 1, 0, 0);
+
         //Alert for deleted file
-        snprintf(alert_msg, sizeof(alert_msg), "-1!%s %s", wd_sum, file_name);
+        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
         send_syscheck_msg(alert_msg);
 
         // Delete from hash table
@@ -458,6 +462,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             }
         }
     }
+
 #ifndef WIN32
     /* If it is a link, check if the actual file is valid */
     else if (S_ISLNK(statbuf.st_mode)) {

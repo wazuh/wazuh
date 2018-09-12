@@ -194,6 +194,7 @@ wmodule * wm_download_read() {
     data->enabled = getDefine_Int("wazuh_download", "enabled", 0, 1);
     module->context = &WM_DOWNLOAD_CONTEXT;
     module->data = data;
+    module->tag = strdup(module->context->name);
 
     return module;
 #endif

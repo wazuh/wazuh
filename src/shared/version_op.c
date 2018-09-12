@@ -650,6 +650,9 @@ os_info *get_unix_version()
                 snprintf(info->os_version, len, "%s (%s)", info->os_version, info->os_codename);
             }
         }
+    } else {
+        // Empty version
+        info->os_version = strdup("0.0");
     }
 
     return info;

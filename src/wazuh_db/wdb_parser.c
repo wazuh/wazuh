@@ -1151,8 +1151,8 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
     char * cpu_name;
     int cpu_cores;
     char * cpu_mhz;
-    long ram_total;
-    long ram_free;
+    uint64_t ram_total;
+    uint64_t ram_free;
     int ram_usage;
     int result;
 
@@ -1263,7 +1263,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid HW info query syntax.");
-            mdebug2("HW info query: %ld", ram_total);
+            mdebug2("HW info query: %" PRIu64, ram_total);
             snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
             return -1;
         }

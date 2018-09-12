@@ -69,6 +69,9 @@ void HandleSecure()
     // Create Request listener thread
     w_create_thread(req_main, NULL);
 
+    // Create State writer thread
+    w_create_thread(rem_state_main, NULL);
+
     /* Create wait_for_msgs threads */
 
     {
@@ -179,6 +182,7 @@ void HandleSecure()
                         merror_exit(ACCEPT_ERROR);
                     }
 
+                    rem_inc_tcp();
                     mdebug1("New TCP connection at %s.", inet_ntoa(peer_info.sin_addr));
 #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
                     EV_SET(&request, sock_client, EVFILT_READ, EV_ADD, 0, 0, 0);
@@ -424,6 +428,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         }
 
         save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
+        rem_inc_ctrl_msg();
         return;
     }
 
@@ -444,6 +449,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
             merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
+    } else {
+        rem_inc_evt();
     }
 }
 
@@ -455,6 +462,7 @@ int _close_sock(keystore * keys, int sock) {
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
     close(sock);
+    rem_dec_tcp();
 
     return retval;
 }

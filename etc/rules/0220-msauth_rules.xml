@@ -816,10 +816,11 @@
 
   <!--
   2016 Nov 18 10:37:26 WinEvtLog: Application: INFORMATION(302): ESENT: (no user): no domain: BNC-O9020: Music.UI (25428) {87E550B7-AD4D-40F7-BE5E-263C3D44C124}: The database engine has successfully completed recovery steps.
+  2018 Aug 16 21:01:50 WinEvtLog: Application: INFORMATION(300): ESENT: (no user): no domain: Dan.domain.ca: lsass (500) The database engine is initiating recovery steps.  
   -->
   <rule id="18270" level="0">
     <if_sid>18257</if_sid>
-    <match>The database engine has successfully completed recovery steps</match>
+    <match>The database engine has successfully completed recovery steps|The database engine is initiating recovery steps</match>
     <description>Ignore rule 18257: TS Gateway login success</description>
   </rule>
 

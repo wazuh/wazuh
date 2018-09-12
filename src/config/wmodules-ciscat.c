@@ -47,6 +47,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     ciscat->scan_wday = -1;
     ciscat->scan_time = NULL;
     module->context = &WM_CISCAT_CONTEXT;
+    module->tag = strdup(module->context->name);
     module->data = ciscat;
 
     if (!nodes)

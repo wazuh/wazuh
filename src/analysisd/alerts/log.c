@@ -89,8 +89,8 @@ void OS_Store(const Eventinfo *lf)
             lf->mon,
             lf->day,
             lf->hour,
-            lf->hostname != lf->location ? lf->hostname : "",
-            lf->hostname != lf->location ? "->" : "",
+            lf->location[0] != '(' ? lf->hostname : "",
+            lf->location[0] != '(' ? "->" : "",
             lf->location,
             lf->full_log);
 
@@ -123,7 +123,7 @@ void OS_LogOutput(Eventinfo *lf)
     printf(
         "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
-        "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
+        "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
         (long int)lf->time.tv_sec,
         __crt_ftell,
         lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
@@ -132,8 +132,8 @@ void OS_LogOutput(Eventinfo *lf)
         lf->mon,
         lf->day,
         lf->hour,
-        lf->hostname != lf->location ? lf->hostname : "",
-        lf->hostname != lf->location ? "->" : "",
+        lf->location[0] != '(' ? lf->hostname : "",
+        lf->location[0] != '(' ? "->" : "",
         lf->location,
         labels,
         lf->generated_rule->sigid,
@@ -180,7 +180,7 @@ void OS_LogOutput(Eventinfo *lf)
 
     /* FIM events */
 
-    if (lf->filename) {
+    if (lf->filename && lf->event_type != FIM_DELETED) {
         printf("Attributes:\n");
 
         if (lf->size_after){
@@ -211,7 +211,7 @@ void OS_LogOutput(Eventinfo *lf)
                 printf(" - MD5: %s\n", lf->md5_after);
             }
         }
-        
+
         if (lf->sha1_after) {
             if (strcmp(lf->sha1_after, "xxx") != 0 && strcmp(lf->sha1_after, "") != 0) {
                 printf(" - SHA1: %s\n", lf->sha1_after);
@@ -221,6 +221,19 @@ void OS_LogOutput(Eventinfo *lf)
         if (lf->sha256_after) {
             if (strcmp(lf->sha256_after, "xxx") != 0 && strcmp(lf->sha256_after, "") != 0) {
                 printf(" - SHA256: %s\n", lf->sha256_after);
+            }
+        }
+
+    }
+
+    if (lf->filename && lf->sk_tag) {
+        if (strcmp(lf->sk_tag, "") != 0) {
+            printf("\nTags:\n");
+            char * tag;
+            tag = strtok(lf->sk_tag, ",");
+            while (tag != NULL) {
+                printf(" - %s\n", tag);
+                tag = strtok(NULL, ",");
             }
         }
     }
@@ -238,7 +251,7 @@ void OS_LogOutput(Eventinfo *lf)
     if (lf->generated_rule->last_events) {
         char **lasts = lf->generated_rule->last_events;
         while (*lasts) {
-            printf("%.1256s\n", *lasts);
+            printf("%s\n", *lasts);
             lasts++;
         }
     }
@@ -275,7 +288,7 @@ void OS_Log(Eventinfo *lf)
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
-            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%.1256s\n",
+            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
             (long int)lf->time.tv_sec,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
@@ -284,8 +297,8 @@ void OS_Log(Eventinfo *lf)
             lf->mon,
             lf->day,
             lf->hour,
-            lf->hostname != lf->location ? lf->hostname : "",
-            lf->hostname != lf->location ? "->" : "",
+            lf->location[0] != '(' ? lf->hostname : "",
+            lf->location[0] != '(' ? "->" : "",
             lf->location,
             labels,
             lf->generated_rule->sigid,
@@ -361,7 +374,7 @@ void OS_Log(Eventinfo *lf)
                 fprintf(_aflog, " - MD5: %s\n", lf->md5_after);
             }
         }
-        
+
         if (lf->sha1_after) {
             if (strcmp(lf->sha1_after, "xxx") != 0 && strcmp(lf->sha1_after, "") != 0) {
                 fprintf(_aflog, " - SHA1: %s\n", lf->sha1_after);
@@ -372,6 +385,22 @@ void OS_Log(Eventinfo *lf)
             if (strcmp(lf->sha256_after, "xxx") != 0 && strcmp(lf->sha256_after, "") != 0) {
                 fprintf(_aflog, " - SHA256: %s\n", lf->sha256_after);
             }
+        }
+
+    }
+
+    if (lf->filename && lf->sk_tag) {
+        if (strcmp(lf->sk_tag, "") != 0) {
+            char * tags;
+            os_strdup(lf->sk_tag, tags);
+            fprintf(_aflog, "\nTags:\n");
+            char * tag;
+            tag = strtok(tags, ",");
+            while (tag != NULL) {
+                fprintf(_aflog, " - %s\n", tag);
+                tag = strtok(NULL, ",");
+            }
+            free(tags);
         }
     }
 
@@ -388,7 +417,7 @@ void OS_Log(Eventinfo *lf)
     if (lf->generated_rule->last_events) {
         char **lasts = lf->generated_rule->last_events;
         while (*lasts) {
-            fprintf(_aflog, "%.1256s\n", *lasts);
+            fprintf(_aflog, "%s\n", *lasts);
             lasts++;
         }
     }
@@ -551,8 +580,8 @@ int FW_Log(Eventinfo *lf)
             lf->mon,
             lf->day,
             lf->hour,
-            lf->hostname != lf->location ? lf->hostname : "",
-            lf->hostname != lf->location ? "->" : "",
+            lf->location[0] != '(' ? lf->hostname : "",
+            lf->location[0] != '(' ? "->" : "",
             lf->location,
             lf->action,
             lf->protocol,

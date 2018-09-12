@@ -10,6 +10,9 @@
  */
 
 #include "wmodules.h"
+#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha1/sha1_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
@@ -25,12 +28,8 @@ int wm_config() {
     // Get defined values from internal_options
 
     wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
-    wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 100, 1000);
+    wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 1, 1000);
     wm_kill_timeout = getDefine_Int("wazuh_modules", "kill_timeout", 0, 3600);
-
-#ifdef CLIENT
-    agent_cfg = 1;
-#endif
 
     // Read configuration: ossec.conf
 
@@ -40,6 +39,7 @@ int wm_config() {
 
 #ifdef CLIENT
     // Read configuration: agent.conf
+    agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
     wmodule *module;
@@ -111,19 +111,17 @@ int wm_check() {
         for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
 
-            if (i->context->name == j->context->name) {
-                mdebug1("Deleting repeated module '%s'.", j->context->name);
+            if (!strcmp(i->tag, j->tag)) {
 
-                if (j->context->destroy)
-                    j->context->destroy(j->data);
+                mdebug1("Deleting repeated module '%s'.", j->tag);
 
                 if (j == wmodules) {
                     wmodules = prev = next;
                 } else {
                     prev->next = next;
                 }
+                wm_module_free(j);
 
-                free(j);
             } else {
                 prev = j;
             }
@@ -260,10 +258,17 @@ void wm_free(wmodule * config) {
 
     for (cur_module = config; cur_module; cur_module = next_module) {
         next_module = cur_module->next;
-        if (cur_module->context && cur_module->context->destroy)
-            cur_module->context->destroy(cur_module->data);
-        free(cur_module);
+
+        wm_module_free(cur_module);
     }
+}
+
+void wm_module_free(wmodule * config){
+    if (config->context && config->context->destroy)
+            config->context->destroy(config->data);
+
+    free(config->tag);
+    free(config);
 }
 
 // Send message to a queue waiting for a specific delay
@@ -315,6 +320,7 @@ int wm_relative_path(const char * path) {
     return 0;
 }
 
+
 // Get time in seconds to the specified hour in hh:mm
 int get_time_to_hour(const char * hour) {
 
@@ -352,6 +358,7 @@ int get_time_to_hour(const char * hour) {
 
     return (int)diff;
 }
+
 
 // Get time to reach a particular day of the week and hour
 int get_time_to_day(int wday, const char * hour) {
@@ -446,4 +453,117 @@ int check_day_to_scan(int day, const char *hour) {
     }
 
     return -1;
+}
+
+
+// Get binary full path
+int wm_get_path(const char *binary, char **validated_comm){
+
+#ifdef WIN32
+    const char sep[2] = ";";
+#else
+    const char sep[2] = ":";
+#endif
+    char *path;
+    char *full_path;
+    char *validated = NULL;
+    char *env_path = NULL;
+
+#ifdef WIN32
+    if (IsFile(binary) == 0) {
+#else
+    if (binary[0] == '/') {
+        // Check binary full path
+        if (IsFile(binary) == -1) {
+            return 0;
+        }
+#endif
+        validated = strdup(binary);
+
+    } else {
+
+        env_path = getenv("PATH");
+        path = strtok(env_path, sep);
+
+        while (path != NULL) {
+            os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
+#ifdef WIN32
+            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s\\%s", path, binary);
+#else
+            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s/%s", path, binary);
+#endif
+            if (IsFile(full_path) == 0) {
+                validated = strdup(full_path);
+                free(full_path);
+                break;
+            }
+            free(full_path);
+            path = strtok(NULL, sep);
+        }
+
+        // Check binary found
+        if (validated == NULL) {
+            return 0;
+        }
+    }
+
+    if (validated_comm) {
+        *validated_comm = strdup(validated);
+    }
+
+    free(validated);
+    return 1;
+}
+
+
+/**
+ Check the binary wich executes a commad has the specified hash.
+ Returns:
+     1 if the binary matchs with the specified digest, 0 if not.
+    -1 invalid parameters.
+*/
+int wm_validate_command(const char *command, const char *digest, crypto_type ctype) {
+
+    os_md5 md5_binary;
+    os_sha1 sha1_binary;
+    os_sha256 sha256_binary;
+    int match = 0;
+
+    if (command == NULL || digest == NULL) {
+        return -1;
+    }
+
+    switch (ctype) {
+
+        case MD5SUM:
+            // Get binary MD5
+            OS_MD5_File(command, md5_binary, OS_BINARY);
+            // Compare MD5 sums
+            mdebug2("Comparing MD5 hash: '%s' | '%s'", md5_binary, digest);
+            if (strcasecmp(md5_binary, digest) == 0) {
+                match = 1;
+            }
+            break;
+
+        case SHA1SUM:
+            // Get binary SHA1
+            OS_SHA1_File(command, sha1_binary, OS_BINARY);
+            // Compare SHA1 sums
+            mdebug2("Comparing SHA1 hash: '%s' | '%s'", sha1_binary, digest);
+            if (strcasecmp(sha1_binary, digest) == 0) {
+                match = 1;
+            }
+            break;
+
+        case SHA256SUM:
+            // Get binary SHA256
+            OS_SHA256_File(command, sha256_binary, OS_BINARY);
+            // Compare SHA256 sums
+            mdebug2("Comparing SHA256 hash: '%s' | '%s'", sha256_binary, digest);
+            if (strcasecmp(sha256_binary, digest) == 0) {
+                match = 1;
+            }
+    }
+
+    return match;
 }

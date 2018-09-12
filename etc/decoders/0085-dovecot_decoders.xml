@@ -27,6 +27,9 @@
   - Dec 19 17:30:39 ny dovecot: imap-login: Disconnected: Inactivity (auth failed, 7 attempts in 176 secs): user=<32>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203,session=<7QTLPAZEXrhtycjJ>
   - Dec 19 17:38:54 ny dovecot: pop3-login: Disconnected: Inactivity during authentication (auth failed, 13 attempts in 179 secs): user=<thousands>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203, session=<feETWgZEzJltycjJ>
   - Dec 19 17:20:08 ny dovecot: imap-login: Aborted login (auth failed, 2 attempts in 18 secs): user=<test>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203, session=<i8uMIAZEDrdtycjJ>
+  - Dec 19 17:20:08 ny dovecot: imap-login: Aborted login (auth failed, 2 attempts in 18 secs): user=<test>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203, session=<i8uMIAZEDrdtycjJ>, secured
+  - Dec 19 17:20:08 ny dovecot: imap-login: Aborted login (auth failed, 2 attempts in 18 secs): user=<test>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203, secured
+  - Dec 19 17:20:08 ny dovecot: imap-login: Aborted login (auth failed, 2 attempts in 18 secs): user=<test>, method=PLAIN, rip=109.201.200.201, lip=67.205.141.203
 -->
 
 <decoder name="dovecot">
@@ -43,8 +46,38 @@
 <decoder name="dovecot-aborted">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^\w\w\w\w-login: Aborted login</prematch>
-  <regex offset="after_prematch">: user=\p(\S+)\p, method=\S+, rip=(\S+), lip=(\S+), (\S*)$</regex>
-  <order>user, srcip, dstip, protocol</order>
+  <regex offset="after_prematch">: user=\p(\S+)\p, method=\S+, rip=(\S+), </regex>
+  <order>user, srcip, dstip</order>
+</decoder>
+
+<decoder name="dovecot-aborted">
+  <parent>dovecot</parent>
+  <regex offset="after_regex">lip=(\S+),</regex>
+  <order>dstip</order>
+</decoder>
+
+<decoder name="dovecot-aborted">
+  <parent>dovecot</parent>
+  <regex offset="after_regex">lip=(\S+)</regex>
+  <order>dstip</order>
+</decoder>
+
+<decoder name="dovecot-aborted">
+  <parent>dovecot</parent>
+  <regex offset="after_regex"> session=\p(\S+\S)>,</regex>
+  <order>session</order>
+</decoder>
+
+<decoder name="dovecot-aborted">
+  <parent>dovecot</parent>
+  <regex offset="after_regex"> session=\p(\S+\S)></regex>
+  <order>session</order>
+</decoder>
+
+<decoder name="dovecot-aborted">
+  <parent>dovecot</parent>
+  <regex offset="after_regex"> (\S*)$</regex>
+  <order>protocol</order>
 </decoder>
 
 <decoder name="dovecot-fail">

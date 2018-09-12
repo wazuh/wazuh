@@ -45,9 +45,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     if ( lf->time.tv_sec ) {
 
-        char alert_id[19];
-        alert_id[18] = '\0';
-        if((snprintf(alert_id, 18, "%ld.%ld", (long int)lf->time.tv_sec, __crt_ftell)) < 0) {
+        char alert_id[23];
+        alert_id[22] = '\0';
+        if((snprintf(alert_id, 22, "%ld.%ld", (long int)lf->time.tv_sec, __crt_ftell)) < 0) {
             merror("snprintf failed");
         }
 
@@ -259,6 +259,21 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->diff) {
             if (strcmp(lf->diff, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "diff", lf->diff);
+            }
+        }
+        if(lf->sk_tag) {
+            if (strcmp(lf->sk_tag, "") != 0) {
+                cJSON *tags = cJSON_CreateArray();
+                cJSON_AddItemToObject(file_diff, "tags", tags);
+                char * tag;
+                char * aux_tags;
+                os_strdup(lf->sk_tag, aux_tags);
+                tag = strtok(aux_tags, ",");
+                while (tag != NULL) {
+                    cJSON_AddItemToArray(tags, cJSON_CreateString(tag));
+                    tag = strtok(NULL, ",");
+                }
+                free(aux_tags);
             }
         }
 

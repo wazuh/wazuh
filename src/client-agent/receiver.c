@@ -82,7 +82,7 @@ int receive_msg()
                 break;
             }
         } else {
-            recv_b = recv(agt->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT);
+            recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
 
             if (recv_b <= 0) {
                 break;
@@ -271,7 +271,7 @@ int receive_msg()
         }
 
         else if (!undefined_msg_logged) {
-            mwarn("Unknown message received. No action defined. Maybe restarted while receiving merged file?");
+            mwarn("Unknown message received. No action defined.");
             undefined_msg_logged = 1;
         }
     }

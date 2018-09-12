@@ -597,6 +597,74 @@
                   "doc_values": "true"
                 }
               }
+            },
+            "aws": {
+              "properties": {
+                "bytes": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "dstaddr": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "srcaddr": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "end": {
+                  "type": "date",
+                  "doc_values": "true"
+                },
+                "start": {
+                  "type": "date",
+                  "doc_values": "true"
+                },
+                "source_ip_address": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "resource.instanceDetails.networkInterfaces": {
+                  "properties": {
+                    "privateIpAddress": {
+                      "type": "ip",
+                      "doc_values": "true"
+                    },
+                    "publicIp": {
+                      "type": "ip",
+                      "doc_values": "true"
+                    }
+                  }
+                },
+                "service": {
+                  "properties": {
+                    "count": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "action.networkConnectionAction.remoteIpDetails": {
+                      "properties": {
+                        "ipAddressV4": {
+                          "type": "ip",
+                          "doc_values": "true"
+                        },
+                        "geoLocation": {
+                          "properties": {
+                            "lat": {
+                              "type": "geo_point",
+                              "doc_values": "true"
+                            },
+                            "lon": {
+                              "type": "geo_point",
+                              "doc_values": "true"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         },

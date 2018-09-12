@@ -79,6 +79,7 @@ typedef struct _Eventinfo {
     /* SYSCHECK Results variables */
     syscheck_event_t event_type;
     char *filename;
+    char *sk_tag;
     int perm_before;
     int perm_after;
     char *md5_before;

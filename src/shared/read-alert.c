@@ -208,10 +208,10 @@ alert_data *GetAlertData(int flag, FILE *fp)
 #endif
     int level = 0, rule = 0, srcport = 0, dstport = 0;
 
-    char str[OS_BUFFER_SIZE + 1];
-    str[OS_BUFFER_SIZE] = '\0';
+    char str[OS_MAXSTR + 1];
+    str[OS_MAXSTR] = '\0';
 
-    while (fgets(str, OS_BUFFER_SIZE, fp) != NULL) {
+    while (fgets(str, OS_MAXSTR, fp) != NULL) {
         /* End of alert */
         if (strcmp(str, "\n") == 0 && log_size > 0) {
             /* Found in here */
