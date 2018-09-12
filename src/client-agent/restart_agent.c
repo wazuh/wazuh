@@ -49,8 +49,8 @@ void * restartAgent() {
 			merror("At restartAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
 		}
 	} else {
-		if (OS_SendSecureTCP(sock, length, req) != length) {
-			merror("send(): %s", strerror(errno));
+		if (OS_SendSecureTCP(sock, length, req)) {
+			merror("OS_SendSecureTCP(): %s", strerror(errno));
 		}
 
 		close(sock);
