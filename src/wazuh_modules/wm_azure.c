@@ -43,8 +43,8 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
     time_t time_start;
     time_t time_sleep = 0;
-    wm_azure_api_t *curr_api;
-    wm_azure_storage_t *curr_storage;
+    wm_azure_api_t *curr_api = NULL;
+    wm_azure_storage_t *curr_storage = NULL;
     char msg[OS_SIZE_6144];
     int status = 0;
 
@@ -110,15 +110,18 @@ void* wm_azure_main(wm_azure_t *azure_config) {
             if (curr_api->type == LOG_ANALYTICS) {
                 mtinfo(WM_AZURE_LOGTAG, "Starting Log Analytics collection for the domain '%s'.", curr_api->tenantdomain);
                 wm_azure_log_analytics(curr_api);
+                mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for the domain '%s'.", curr_api->tenantdomain);
             } else if (curr_api->type == GRAPHS) {
                 mtinfo(WM_AZURE_LOGTAG, "Starting Graphs log collection for the domain '%s'.", curr_api->tenantdomain);
                 wm_azure_graphs(curr_api);
+                mtinfo(WM_AZURE_LOGTAG, "Finished Graphs log collection for the domain '%s'.", curr_api->tenantdomain);
             }
         }
 
         for (curr_storage = azure_config->storage; curr_storage; curr_storage = curr_storage->next) {
             mtinfo(WM_AZURE_LOGTAG, "Starting Storage log collection for '%s'.", curr_storage->tag);
             wm_azure_storage(curr_storage);
+            mtinfo(WM_AZURE_LOGTAG, "Finished Storage log collection for '%s'.", curr_storage->tag);
         }
 
         snprintf(msg, OS_SIZE_6144, "Ending Azure-logs scan.");
@@ -179,15 +182,15 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
 void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
 
-    wm_azure_request_t * curr_request;
+    wm_azure_request_t * curr_request = NULL;
     char query[OS_SIZE_1024];
     int status;
     unsigned int timeout;
 
     for (curr_request = log_analytics->request; curr_request; curr_request = curr_request->next) {
 
-        char * command;
-        char * output;
+        char * command = NULL;
+        char * output = NULL;
 
         // Create argument list
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
@@ -245,7 +248,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
                 pthread_exit(NULL);
         }
 
-        mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for the domain '%s'.", log_analytics->tenantdomain);
+        mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for request '%s'.", curr_request->tag);
 
         free(command);
         free(output);
@@ -254,15 +257,15 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
 
 void wm_azure_graphs(wm_azure_api_t *graph) {
 
-    wm_azure_request_t * curr_request;
+    wm_azure_request_t * curr_request = NULL;
     char query[OS_SIZE_1024];
     int status;
     unsigned int timeout;
 
     for (curr_request = graph->request; curr_request; curr_request = curr_request->next) {
 
-        char * command;
-        char * output;
+        char * command = NULL;
+        char * output = NULL;
 
         // Create argument list
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
@@ -317,7 +320,7 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
                 pthread_exit(NULL);
         }
 
-        mtinfo(WM_AZURE_LOGTAG, "Finished Graphs log collection for the domain '%s'.", graph->tenantdomain);
+        mtinfo(WM_AZURE_LOGTAG, "Finished Graphs log collection for request '%s'.", curr_request->tag);
 
         free(command);
         free(output);
@@ -326,7 +329,7 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
 
 void wm_azure_storage(wm_azure_storage_t *storage) {
 
-    wm_azure_container_t * curr_container;
+    wm_azure_container_t * curr_container = NULL;
     char name[OS_SIZE_256];
     char blobs[OS_SIZE_256];
     int status;
@@ -334,8 +337,8 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
 
     for (curr_container = storage->container; curr_container; curr_container = curr_container->next) {
 
-        char * command;
-        char * output;
+        char * command = NULL;
+        char * output = NULL;
 
         // Create argument list
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
@@ -397,7 +400,7 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
                 pthread_exit(NULL);
         }
 
-        mtinfo(WM_AZURE_LOGTAG, "Finished Storage log collection for '%s'.", curr_container->name);
+        mtinfo(WM_AZURE_LOGTAG, "Finished Storage log collection for container '%s'.", curr_container->name);
 
         free(command);
         free(output);

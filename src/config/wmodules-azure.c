@@ -43,10 +43,6 @@ static const char *XML_REQUEST_QUERY = "query";
 static const char *XML_TIME_OFFSET = "time_offset";
 static const char *XML_WORKSPACE = "workspace";
 
-
-
-
-
 static int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_config);
 static int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned int type);
 static int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t * storage);
@@ -202,6 +198,9 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 wm_clean_api(api_config);
                 if (api_config_prev) {
                     api_config = api_config_prev;
+                    api_config->next = NULL;
+                } else {
+                    azure->api_config = api_config = NULL;
                 }
             }
 
@@ -229,6 +228,9 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 wm_clean_api(api_config);
                 if (api_config_prev) {
                     api_config = api_config_prev;
+                    api_config->next = NULL;
+                } else {
+                    azure->api_config = api_config = NULL;
                 }
             }
 
@@ -255,6 +257,9 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 wm_clean_storage(storage);
                 if (storage_prev) {
                     storage = storage_prev;
+                    storage->next = NULL;
+                } else {
+                    azure->storage = storage = NULL;
                 }
             }
 
@@ -322,13 +327,17 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
             return OS_INVALID;
 
         } else if (!strcmp(nodes[i]->element, XML_APP_ID)) {
-            os_strdup(nodes[i]->content, api_config->application_id);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, api_config->application_id);
         } else if (!strcmp(nodes[i]->element, XML_APP_KEY)) {
-            os_strdup(nodes[i]->content, api_config->application_key);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, api_config->application_key);
         } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
-            os_strdup(nodes[i]->content, api_config->auth_path);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, api_config->auth_path);
         } else if (!strcmp(nodes[i]->element, XML_TENANTDOMAIN)) {
-            os_strdup(nodes[i]->content, api_config->tenantdomain);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, api_config->tenantdomain);
         } else if (!strcmp(nodes[i]->element, XML_REQUEST)) {
 
             if (request) {
@@ -350,6 +359,9 @@ int wm_azure_api_read(const OS_XML *xml, XML_NODE nodes, wm_azure_api_t * api_co
                 wm_clean_request(request);
                 if (request_prev) {
                     request = request_prev;
+                    request->next = NULL;
+                } else {
+                    api_config->request = request = NULL;
                 }
             }
 
@@ -402,9 +414,11 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
             return OS_INVALID;
 
         } else if (!strcmp(nodes[i]->element, XML_TAG)) {
-            os_strdup(nodes[i]->content, request->tag);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, request->tag);
         } else if (!strcmp(nodes[i]->element, XML_REQUEST_QUERY)) {
-            os_strdup(nodes[i]->content, request->query);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, request->query);
         } else if (!strcmp(nodes[i]->element, XML_TIME_OFFSET)) {
             char *endptr;
             unsigned int offset = strtoul(nodes[i]->content, &endptr, 0);
@@ -423,7 +437,8 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
 
         } else if (!strcmp(nodes[i]->element, XML_WORKSPACE)) {
             if (type == LOG_ANALYTICS) {
-                os_strdup(nodes[i]->content, request->workspace);
+                if (*nodes[i]->content != '\0')
+                    os_strdup(nodes[i]->content, request->workspace);
             } else {
                 minfo("At module '%s': Workspace ID only available for Log Analytics API. Skipping it...", WM_AZURE_CONTEXT.name);
             }
@@ -497,13 +512,17 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
             return OS_INVALID;
 
         } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_NAME)) {
-            os_strdup(nodes[i]->content, storage->account_name);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, storage->account_name);
         } else if (!strcmp(nodes[i]->element, XML_ACCOUNT_KEY)) {
-            os_strdup(nodes[i]->content, storage->account_key);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, storage->account_key);
         } else if (!strcmp(nodes[i]->element, XML_AUTH_PATH)) {
-            os_strdup(nodes[i]->content, storage->auth_path);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, storage->auth_path);
         } else if (!strcmp(nodes[i]->element, XML_TAG)) {
-            os_strdup(nodes[i]->content, storage->tag);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, storage->tag);
         } else if (!strcmp(nodes[i]->element, XML_CONTAINER)) {
 
             if (container) {
@@ -523,13 +542,16 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
 
             // Read name attribute
             if (nodes[i]->attributes) {
-                if (!strcmp(nodes[i]->attributes[0], XML_CONTAINER_NAME)) {
+                if (!strcmp(nodes[i]->attributes[0], XML_CONTAINER_NAME) && *nodes[i]->content != '\0') {
                     os_strdup(nodes[i]->values[0], container->name);
                 } else {
                     minfo("At module '%s': Invalid container name. Skipping container...", WM_AZURE_CONTEXT.name);
                     wm_clean_container(container);
                     if (container_prev) {
                         container = container_prev;
+                        container->next = NULL;
+                    } else {
+                        storage->container = container = NULL;
                     }
                     continue;
                 }
@@ -538,6 +560,9 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 wm_clean_container(container);
                 if (container_prev) {
                     container = container_prev;
+                    container->next = NULL;
+                } else {
+                    storage->container = container = NULL;
                 }
                 continue;
             }
@@ -546,6 +571,9 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 wm_clean_container(container);
                 if (container_prev) {
                     container = container_prev;
+                    container->next = NULL;
+                } else {
+                    storage->container = container = NULL;
                 }
             }
 
@@ -607,7 +635,8 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
             return OS_INVALID;
 
         } else if (!strcmp(nodes[i]->element, XML_CONTAINER_BLOBS)) {
-            os_strdup(nodes[i]->content, container->blobs);
+            if (*nodes[i]->content != '\0')
+                os_strdup(nodes[i]->content, container->blobs);
         } else if (!strcmp(nodes[i]->element, XML_CONTAINER_TYPE)) {
             if (strncmp(nodes[i]->content, "file", 4) && strncmp(nodes[i]->content, "inline", 6) && strncmp(nodes[i]->content, "text", 4)) {
                 merror("At module '%s': Invalid content type. It should be 'file', 'inline' or 'text'.", WM_AZURE_CONTEXT.name);
@@ -665,7 +694,8 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
 
 void wm_clean_api(wm_azure_api_t * api_config) {
 
-    wm_azure_request_t * next_request;
+    wm_azure_request_t *curr_request = NULL;
+    wm_azure_request_t *next_request = NULL;
 
     if (api_config->application_id)
         free(api_config->application_id);
@@ -676,17 +706,13 @@ void wm_clean_api(wm_azure_api_t * api_config) {
     if (api_config->tenantdomain)
         free(api_config->tenantdomain);
 
-    if (api_config->request) {
-        next_request = api_config->request->next;
-        do {
-            wm_clean_request(api_config->request);
-            api_config->request = next_request;
-            next_request = api_config->request->next;
-        } while(api_config->request);
+    for (curr_request = api_config->request; curr_request; curr_request = next_request) {
+
+        next_request = curr_request->next;
+        wm_clean_request(curr_request);
     }
 
     free(api_config);
-    api_config = NULL;
 }
 
 void wm_clean_request(wm_azure_request_t * request) {
@@ -701,13 +727,13 @@ void wm_clean_request(wm_azure_request_t * request) {
         free(request->time_offset);
 
     free(request);
-    request = NULL;
 }
 
 
 void wm_clean_storage(wm_azure_storage_t * storage) {
 
-    wm_azure_container_t * next_container;
+    wm_azure_container_t *curr_container = NULL;
+    wm_azure_container_t *next_container = NULL;
 
     if (storage->account_name)
         free(storage->account_name);
@@ -718,17 +744,13 @@ void wm_clean_storage(wm_azure_storage_t * storage) {
     if (storage->tag)
         free(storage->tag);
 
-    if (storage->container) {
-        next_container = storage->container->next;
-        do {
-            wm_clean_container(storage->container);
-            storage->container = next_container;
-            next_container = storage->container->next;
-        } while(storage->container);
+    for (curr_container = storage->container; curr_container; curr_container = next_container) {
+
+        next_container = curr_container->next;
+        wm_clean_container(curr_container);
     }
 
     free(storage);
-    storage = NULL;
 }
 
 void wm_clean_container(wm_azure_container_t * container) {
@@ -743,8 +765,6 @@ void wm_clean_container(wm_azure_container_t * container) {
         free(container->time_offset);
 
     free(container);
-    container = NULL;
-
 }
 
 #endif
