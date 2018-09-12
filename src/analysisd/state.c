@@ -164,7 +164,7 @@ int w_analysisd_write_state(){
         "rootcheck_queue_size='%u'\n"
         "\n"
         "# Hostinfo queue\n"
-        "hostinfo_queu_usage='%.2f'\n"
+        "hostinfo_queue_usage='%.2f'\n"
         "\n"
         "# Hostinfo queue size\n"
         "hostinfo_queue_size='%u'\n"
@@ -205,7 +205,44 @@ int w_analysisd_write_state(){
         "# Archives log queue size\n"
         "archives_queue_size='%u'\n"
         "\n",
-        __local_name, s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded ,s_events_syscheck_decoded,s_events_syscheck_decoded / interval ,s_events_syscollector_decoded,s_events_syscollector_decoded / interval,s_events_rootcheck_decoded,s_events_rootcheck_decoded / interval,s_events_hostinfo_decoded,s_events_hostinfo_decoded / interval,s_events_decoded,s_events_decoded / interval,s_events_processed,s_events_processed / interval,s_events_dropped, s_events_received,s_alerts_written,s_firewall_written,s_fts_written,s_syscheck_queue,s_syscheck_queue_size,s_syscollector_queue,s_syscollector_queue_size,s_rootcheck_queue,s_rootcheck_queue_size,s_hostinfo_queue,s_hostinfo_queue_size,s_event_queue,s_event_queue_size,s_process_event_queue,s_process_event_queue_size,s_writer_alerts_queue,s_writer_alerts_queue_size,s_writer_firewall_queue,s_writer_firewall_queue_size,s_writer_statistical_queue,s_writer_statistical_queue_size,s_writer_archives_queue,s_writer_archives_queue_size);
+        __local_name, 
+        s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded ,
+        s_events_syscheck_decoded,
+        s_events_syscheck_decoded / interval ,
+        s_events_syscollector_decoded,
+        s_events_syscollector_decoded / interval,
+        s_events_rootcheck_decoded,
+        s_events_rootcheck_decoded / interval,
+        s_events_hostinfo_decoded,
+        s_events_hostinfo_decoded / interval,
+        s_events_decoded,
+        s_events_decoded / interval,
+        s_events_processed,
+        s_events_processed / interval,
+        s_events_received,
+        s_events_dropped,
+        s_alerts_written,
+        s_firewall_written,
+        s_fts_written,
+        s_syscheck_queue,
+        s_syscheck_queue_size,
+        s_syscollector_queue,
+        s_syscollector_queue_size,
+        s_rootcheck_queue,
+        s_rootcheck_queue_size,
+        s_hostinfo_queue,
+        s_hostinfo_queue_size,
+        s_event_queue,s_event_queue_size,
+        s_process_event_queue,
+        s_process_event_queue_size,
+        s_writer_alerts_queue,
+        s_writer_alerts_queue_size,
+        s_writer_firewall_queue,
+        s_writer_firewall_queue_size,
+        s_writer_statistical_queue,
+        s_writer_statistical_queue_size,
+        s_writer_archives_queue,
+        s_writer_archives_queue_size);
     fclose(fp);
 
     w_reset_stats();

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS agent (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     ip TEXT,
-    key TEXT,
+    internal_key TEXT,
     os_name TEXT,
     os_version TEXT,
     os_major TEXT,

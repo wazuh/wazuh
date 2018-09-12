@@ -761,6 +761,10 @@ void Free_Eventinfo(Eventinfo *lf)
             free(lf->generated_rule->group);
         }
 
+        if(lf->dec_timestamp){
+            free(lf->dec_timestamp);
+        }
+
         if (lf->last_events){
             char **lasts = lf->last_events;
             char **last_event = lf->last_events;
@@ -789,7 +793,7 @@ void Free_Eventinfo(Eventinfo *lf)
             }
         }
     }
-    
+
 
     /* We dont need to free:
      * fts
@@ -893,7 +897,6 @@ char* ParseRuleComment(Eventinfo *lf) {
 
 void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
-    lf_cpy->log = lf->log;
     
     if(lf->full_log){
         os_strdup(lf->full_log,lf_cpy->full_log);
@@ -910,14 +913,17 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->location,lf_cpy->location);
     }
 
-    lf_cpy->hostname = lf->hostname;
-    lf_cpy->program_name = lf->program_name;
-    
+    if(lf->hostname){
+        os_strdup(lf->hostname,lf_cpy->hostname);
+    }
+
     if(lf->comment){
         os_strdup(lf->comment,lf_cpy->comment);
     }
 
-    lf_cpy->dec_timestamp = lf->dec_timestamp;
+    if(lf->dec_timestamp){
+        os_strdup(lf->dec_timestamp,lf_cpy->dec_timestamp);
+    }
     
     /* Extracted from the decoders */
     if(lf->srcip){
