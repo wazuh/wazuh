@@ -19,6 +19,7 @@
 
 import logging
 import time
+import requests
 import sys
 import json
 import os
@@ -26,11 +27,6 @@ import uuid
 import datetime
 import argparse
 import hashlib
-try:
-	import requests
-except Exception as e:
-	print("Pytz is missing: '{}', try 'pip install requests'.".format(e))
-	sys.exit(1)
 try:
 	import pytz
 except Exception as e:
@@ -101,7 +97,7 @@ def set_logger():
 	if args.verbose:
 		logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 	else: 
-		logging.basicConfig(filename='azure_integration.log', level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
+		logging.basicConfig(filename='/var/ossec/logs/azure_integration.log', level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 
 
 ################################################################################################
@@ -191,7 +187,7 @@ def start_log_analytics(first_run):
 	try:
 		# Getting authentication token
 		logging.info("Log Analytics: Getting authentication token.")
-		if os.path.exists(args.la_auth_path) and args.la_tenant_domain:
+		if args.la_auth_path and args.la_tenant_domain:
 			auth_fields = read_auth_path(args.la_auth_path)
 			log_analytics_token = get_token(auth_fields['id'], auth_fields['key'], 'https://api.loganalytics.io', args.la_tenant_domain)
 		elif args.la_id and args.la_key and args.la_tenant_domain:
@@ -353,7 +349,7 @@ def start_graph():
 	try:
 		# Getting authentication token
 		logging.info("Graph: Getting authentication token.")
-		if os.path.exists(args.graph_auth_path) and args.graph_tenant_domain:
+		if args.graph_auth_path and args.graph_tenant_domain:
 			auth_fields = read_auth_path(args.graph_auth_path)
 			graph_token = get_token(auth_fields['id'], auth_fields['key'], "", args.graph_tenant_domain)
 		elif args.graph_id and args.graph_key and args.graph_tenant_domain:
@@ -470,7 +466,7 @@ def start_storage(first_run):
 	try:
 		# Authentication
 		logging.info("Storage: Authenticating.")
-		if os.path.exists(args.storage_auth_path):
+		if args.storage_auth_path:
 			auth_fields = read_auth_path(args.storage_auth_path)
 			block_blob_service = BlockBlobService(account_name = auth_fields['id'], account_key = auth_fields['key'])
 			logging.info("Storage: Authenticated.")
