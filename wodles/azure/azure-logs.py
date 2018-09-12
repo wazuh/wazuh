@@ -19,7 +19,6 @@
 
 import logging
 import time
-import requests
 import sys
 import json
 import os
@@ -27,6 +26,11 @@ import uuid
 import datetime
 import argparse
 import hashlib
+try:
+	import requests
+except Exception as e:
+	print("Pytz is missing: '{}', try 'pip install requests'.".format(e))
+	sys.exit(1)
 try:
 	import pytz
 except Exception as e:
