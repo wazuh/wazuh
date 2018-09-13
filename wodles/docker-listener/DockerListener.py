@@ -2,8 +2,8 @@
 
 import threading
 import time
-import docker
 import json
+import docker
 import socket
 import sys
 
@@ -33,7 +33,7 @@ class DockerListener:
 
         """
         for event in self.client.events():
-            print(event)
+            # print(event)
             self.process(event)
 
     def process(self, event):
@@ -42,36 +42,41 @@ class DockerListener:
 
         :param event: Docker event.
         """
-        if ("\"status\":\"create\"" in str(event)):
-            print("One container was created")
-            self.event_list.append(event)
-            # sends the event to the socket
-            self.send_msg(str(event))
-        elif ("\"status\":\"destroy\"" in str(event)):
-            print("One container was destroyed")
-            self.event_list.append(event)
-            # sends the event to the socket
-            self.send_msg(str(event))
-        elif ("\"status\":\"pause\"" in str(event)):
-            print("One container was paused")
-            self.event_list.append(event)
-            # sends the event to the socket
-            self.send_msg(str(event))
-        if("\"status\":\"unpause\"" in str(event)):
-            print("One container was restarted")
-            self.event_list.append(event)
-            # sends the event to the socket
-            self.send_msg(str(event))
-        elif("\"status\":\"start\"" in str(event)):
-            print("One container was started")
-            self.event_list.append(event)
-            # sends the event to the socket
-            self.send_msg(str(event))
-        elif("\"status\":\"stop\"" in str(event)):
-            print("One container was stopped")
-            self.event_list.append(event)
-            # sends the event to the socket
-            self.send_msg(str(event))
+        """
+        #### events not catched: kill, die
+        if 'status' in event:
+            if event['status'] is "create":
+                print("One container was created")
+                self.event_list.append(event)
+                # sends the event to the socket
+                self.send_msg(str(event))
+            elif event['status'] is "destroy":
+                print("One container was destroyed")
+                self.event_list.append(event)
+                # sends the event to the socket
+                self.send_msg(str(event))
+            elif event['status'] is "pause":
+                print("One container was paused")
+                self.event_list.append(event)
+                # sends the event to the socket
+                self.send_msg(str(event))
+             elif event['status'] is "unpause":
+                print("One container was restarted")
+                self.event_list.append(event)
+                # sends the event to the socket
+                self.send_msg(str(event))
+             elif event['status'] is "start":
+                print("One container was started")
+                self.event_list.append(event)
+                # sends the event to the socket
+                self.send_msg(str(event))
+             elif event['status'] is "stop":
+                print("One container was stopped")
+                self.event_list.append(event)
+                # sends the event to the socket
+                self.send_msg(str(event))
+        """
+        self.send_msg(event.decode("utf-8"))
 
     def debug(self, msg, msg_level):
         # if debug_level >= msg_level:
@@ -84,16 +89,17 @@ class DockerListener:
         :param msg: message to be formatted.
         :return: formatted message.
         """
-        return {'integration': 'docker', 'docker': msg}
+        return {'integration': 'docker', 'docker': json.loads(msg)}
 
     def send_msg(self, msg):
         """
         Sends an AWS event to the Wazuh Queue
 
-        :param msg: JSON message to be sent.
+        :param msg: message to be sent.
         """
         try:
             json_msg = json.dumps(self.format_msg(msg))
+            print(json_msg)
             # self.debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
