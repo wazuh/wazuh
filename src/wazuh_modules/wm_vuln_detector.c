@@ -2413,7 +2413,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         id = (char *) sqlite3_column_text(stmt, 3);
 
         // Check if it is a disconnected agent
-        if (check_discon_keepalvie(last_keepalive)) {
+        if (check_discon_keepalive(last_keepalive)) {
             mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AG_DISC, id);
             continue;
         }
