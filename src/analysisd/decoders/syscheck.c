@@ -347,7 +347,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
 int send_query_wazuhdb(char *wazuhdb_query, char **output) {
     static int sock = -1;
     char response[OS_SIZE_6144];
-    ssize_t length;
     fd_set fdset;
     struct timeval timeout = {0, 1000};
     int size = strlen(wazuhdb_query);
@@ -371,7 +370,7 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output) {
     }
 
     // Send query to Wazuh DB
-    if (send(sock, wazuhdb_query, size + 1, MSG_DONTWAIT) < size) {
+    if (OS_SendSecureTCP(sock, size + 1, wazuhdb_query) != 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             mterror(ARGV0, "at send_query_wazuhdb(): database socket is full");
         } else if (errno == EPIPE) {
@@ -387,7 +386,7 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output) {
                     return (-1);
                 }
 
-                if (send(sock, wazuhdb_query, size + 1, MSG_DONTWAIT) < size) {
+                if (!OS_SendSecureTCP(sock, size + 1, wazuhdb_query)) {
                     last_attempt = mtime;
                     mterror(ARGV0, "at send_query_wazuhdb(): in send reattempt (%d)'%s'.", errno, strerror(errno));
                     return (-1);
@@ -412,11 +411,9 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output) {
     }
 
     // Receive response from socket
-    length = recv(sock, response, OS_SIZE_6144 - 1, 0);
-    response[length] = '\0';
-
-    if (length > 0) {
+    if (OS_RecvSecureTCP(sock, response, OS_SIZE_6144 - 1) > 0) {
         os_strdup(response, *output);
+        minfo("~~~~ recv:'%s'", *output);
 
         if (response[0] == 'o' && response[1] == 'k') {
             retval = 0;
