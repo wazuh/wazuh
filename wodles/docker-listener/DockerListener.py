@@ -74,7 +74,7 @@ class DockerListener:
         :param msg: message to be formatted.
         :return: formatted message.
         """
-        return {'integration': 'docker', 'data': msg}
+        return {'integration': 'docker', 'docker': msg}
 
     def send_msg(self, msg):
         """
