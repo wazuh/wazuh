@@ -113,18 +113,17 @@ int DecodeSyscheck(Eventinfo *lf)
 
     // Clean sdb memory
     fim_clean_sdb_mem();
-    minfo("~~~~ DecodeSyscheck");
 
     /* Every syscheck message must be in the following format:
-     * checksum filename
+     * 'checksum' 'filename'
      * or
-     * checksum!whodatasum filename
+     * 'checksum'!'extradata' 'filename'
      * or
-     * checksum!whodatasum filename\nextradata
+     * 'checksum'!'extradata' 'filename'\n'diff-file'
      */
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
-        mdebug2("Control value for syscheck: '%s'", lf->log);
+        mdebug2("Scan's control message: '%s'", lf->log);
         if (fim_control_msg(lf->log, lf->time.tv_sec, lf) > 0) {
             return(0);
         } else {
@@ -156,6 +155,7 @@ int DecodeSyscheck(Eventinfo *lf)
         while (*ff_ig) {
             if (strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0) {
                 lf->data = NULL;
+                mdebug1("Ignoring file '%s'", f_name);;
                 return (0);
             }
 
@@ -193,8 +193,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
     os_strdup(c_sum, new_check_sum);
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck load %s", lf->agent_id, f_name);
-    //snprintf(wazuhdb_query, OS_SIZE_6144 - 1, "agent %s syscheck save %s %s", lf->agent_id, c_sum, f_name);
-    //snprintf(wazuhdb_query, OS_SIZE_6144 - 1, "agent %s syscheck save %s %s", lf->agent_id, c_sum, f_name);
 
     db_result = send_query_wazuhdb(wazuhdb_query, &response);
 
@@ -212,10 +210,11 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
 
     //extract changes and date_alert fields only available from wazuh_db
     if(sk_decode_extradata(&oldsum, check_sum) > 0) {
-        merror("at fim_db_search(): Error decoding extradata from: '%s'", f_name);
+        merror("at fim_db_search(): Error decoding extradata '%s' from '%s'", check_sum, f_name);
     }
 
     os_strdup(check_sum, old_check_sum);
+    mdebug2("File '%s'", f_name);
     mdebug2("Old checksum '%s'", old_check_sum);
     mdebug2("New checksum '%s'", new_check_sum);
 
@@ -258,7 +257,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
                 return (-1);
             }
 
-            mdebug1("File %s deleted from FIM DDBB", f_name);
+            mdebug2("File %s deleted from FIM DDBB", f_name);
 
             break;
         case 0:
@@ -299,7 +298,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
             );
             free(response);
             response = NULL;
-            minfo("~~~~ sending to wdb '%s'", wazuhdb_query);
             db_result = send_query_wazuhdb(wazuhdb_query, &response);
 
             if (db_result != 0) {
@@ -332,7 +330,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
         sk_fill_event(lf, f_name, &newsum);
         fim_alert (f_name, &oldsum, &newsum, lf);
     } else {
-        mdebug2("Alert discarded (alert_new option or first scan) for: '%s'", f_name);
+        mdebug2("Alert discarded (alert_new option or first scan) file '%s'", f_name);
     }
 
     sk_sum_clean(&newsum);
@@ -413,7 +411,6 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output) {
     // Receive response from socket
     if (OS_RecvSecureTCP(sock, response, OS_SIZE_6144 - 1) > 0) {
         os_strdup(response, *output);
-        minfo("~~~~ recv:'%s'", *output);
 
         if (response[0] == 'o' && response[1] == 'k') {
             retval = 0;
@@ -860,7 +857,7 @@ int fim_update_date (char *file, Eventinfo *lf) {
         return (-1);
     }
 
-    mdebug1("FIM file %s update timestamp for last event", file);
+    mdebug2("FIM file %s update timestamp for last event", file);
 
     free(wazuhdb_query);
     free(response);
@@ -889,7 +886,7 @@ int fim_database_clean (Eventinfo *lf) {
         return (-1);
     }
 
-    mdebug1("FIM database has been cleaned");
+    mdebug2("FIM database has been cleaned");
 
     free(wazuhdb_query);
     free(response);
@@ -920,8 +917,6 @@ int fim_end_first_scan(Eventinfo *lf) {
         free(response);
         return (-1);
     }
-
-    mdebug1("First scan end in %s", response);
 
     if (response[0] == 'o' && response[1] == 'k') {
         if (ts = strchr(response, ' '), !ts) {

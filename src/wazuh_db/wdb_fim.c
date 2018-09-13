@@ -284,11 +284,6 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         sum.date_alert = (long)sqlite3_column_int64(stmt, 12);
 
         output[size - 1] = '\0';
-
-        char msg[OS_MAXSTR];
-        sk_build_sum(&sum, msg, OS_MAXSTR);
-        minfo("~~~~ sk_build_sum: '%s'", msg);
-
         return sk_build_sum(&sum, output, size);
 
     case SQLITE_DONE:
@@ -532,6 +527,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
             case SQLITE_ROW:
                 //call to delete
                 file = (char *)sqlite3_column_text(stmt, 0);
+                mdebug1("Cleaning DDBB. Deleting entry '%s'.", file);
 
                 if (del_result = wdb_fim_delete(wdb, file), del_result < 0) {
                     mdebug1("at wdb_fim_clean_old_entries(): Cannot delete Syscheck entry '%s'.", file);
