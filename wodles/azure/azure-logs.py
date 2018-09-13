@@ -92,6 +92,15 @@ parser.add_argument("--storage_time_offset", metavar = "time", type = str, requi
 
 args = parser.parse_args()
 
+if args.la_query:
+	la_format_query = args.la_query.replace("'","")
+if args.graph_query:
+	graph_format_query = args.graph_query.replace("'","")
+if args.container:
+	container_format = args.container.replace('"','')
+if args.blobs:
+	blobs_format = args.blobs.replace('"','')
+
 ################################################################################################
 # Gets the path to write logs.
 ################################################################################################
@@ -250,7 +259,7 @@ def get_analytic(date, last_time_list, url, log_headers):
 	logging.info("Log Analytics: Sending a request to the Log Analytics API.")	
 	
 	try:
-		query_md5 = hashlib.md5(args.la_query).hexdigest()
+		query_md5 = hashlib.md5(la_format_query).hexdigest()
 		# Differentiates the first execution of the script from the rest of the executions.
 		if date != "0":
 			date_search = date
@@ -260,8 +269,8 @@ def get_analytic(date, last_time_list, url, log_headers):
 			else:
 				date_search = last_time_list["log_analytics"][query_md5]
 
-		logging.info("Log Analytics: The search starts from the date: {} for query: '{}' ".format(date_search, args.la_query))
-		query = " {} | order by TimeGenerated asc | where TimeGenerated > datetime({}) ".format(args.la_query, date_search)
+		logging.info("Log Analytics: The search starts from the date: {} for query: '{}' ".format(date_search, la_format_query))
+		query = " {} | order by TimeGenerated asc | where TimeGenerated > datetime({}) ".format(la_format_query, date_search)
 		body = {'query': query}
 		analytics_request = requests.get(analytics_url, params = body, headers = log_headers)
 		get_time_list(analytics_request, last_time_list, date_search, query_md5)
@@ -390,7 +399,7 @@ def start_graph():
 			logging.error("Error: The file of the last dates could not be updated: '{}.".format(e))
 
 		try:
-			graph_md5 = hashlib.md5(args.graph_query).hexdigest()
+			graph_md5 = hashlib.md5(graph_format_query).hexdigest()
 			# first time for this query
 			if graph_md5 not in all_dates['graph']:
 				range_time = format_date(args.graph_time_offset)
@@ -398,8 +407,8 @@ def start_graph():
 			else:
 				date_time = all_dates["graph"][graph_md5]
 
-			logging.info("Graph: The search starts from the date: {} for query: '{}' ".format(date_time, args.graph_query))
-			graph_url = "{}/{}/{}&$filter=activityDate%20gt%20{}".format(graph_url_base, args.graph_tenant_domain, args.graph_query, date_time)
+			logging.info("Graph: The search starts from the date: {} for query: '{}' ".format(date_time, graph_format_query))
+			graph_url = "{}/{}/{}&$filter=activityDate%20gt%20{}".format(graph_url_base, args.graph_tenant_domain, graph_format_query, date_time)
 			graph_pagination(graph_url, "Graph", graph_headers, graph_md5, all_dates, True)
 		except Exception as e:
 			logging.error("Error: The request for the query could not be made: '{}'.".format(e))
@@ -500,7 +509,7 @@ def start_storage(first_run):
 
 		logging.info("Storage: Getting containers.")
 		# Getting containers from the storage account
-		if args.container == '*':
+		if container_format == '*':
 			try:
 				containers = block_blob_service.list_containers()
 			except Exception as e:
@@ -509,7 +518,7 @@ def start_storage(first_run):
 		# Getting containers from the configuration file
 		else:
 			try:
-				containers = [args.container]
+				containers = [container_format]
 			except Exception as e:
 				logging.error("Storage: The containers could not be obtained. '{}'.".format(e))
 
@@ -530,10 +539,10 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 	for container in containers:
 
 		# Differentiates possible cases of access to containers
-		if args.container == '*':
+		if container_format == '*':
 			name = container.name
 		else:
-			name = args.container
+			name = container_format
 
 		container_md5 = hashlib.md5(name).hexdigest()
 		next_marker = None
@@ -546,10 +555,10 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 			except Exception as e:
 				logging.error("Error getting blobs: '{}'.".format(e))	
 
-			if args.blobs == '*':
+			if blobs_format == '*':
 				search = "."
 			else:
-				search = args.blobs
+				search = blobs_format
 				search = search.replace('*','')
 
 			max_blob = utc.localize(time_format_storage)
