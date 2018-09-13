@@ -40,15 +40,25 @@ class DockerListener:
         """"
         Processes a main Docker event
 
-        :param event: Docker full event.
+        :param event: Docker event.
         """
-        if("\"status\":\"unpause\"" in str(event)):
-            print("One container was restarted")
+        if ("\"status\":\"create\"" in str(event)):
+            print("One container was created")
             self.event_list.append(event)
             # sends the event to the socket
             self.send_msg(str(event))
-        elif("\"status\":\"pause\"" in str(event)):
+        elif ("\"status\":\"destroy\"" in str(event)):
+            print("One container was destroyed")
+            self.event_list.append(event)
+            # sends the event to the socket
+            self.send_msg(str(event))
+        elif ("\"status\":\"pause\"" in str(event)):
             print("One container was paused")
+            self.event_list.append(event)
+            # sends the event to the socket
+            self.send_msg(str(event))
+        if("\"status\":\"unpause\"" in str(event)):
+            print("One container was restarted")
             self.event_list.append(event)
             # sends the event to the socket
             self.send_msg(str(event))
