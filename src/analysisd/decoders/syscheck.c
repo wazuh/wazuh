@@ -804,7 +804,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf) {
         }
 
         // Start scan 3rd_check=2nd_check 2nd_check=1st_check 1st_check=value
-        if(strcmp(key, HC_FIM_DB_SFS) == 0 || strcmp(key, HC_FIM_DB_SS) == 0) {
+        if(strcmp(key, HC_FIM_DB_SFS) == 0) {
             snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck control %s %ld",
                     lf->agent_id,
                     key,
