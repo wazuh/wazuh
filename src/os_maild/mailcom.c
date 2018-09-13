@@ -66,7 +66,19 @@ size_t mailcom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
-    } else {
+    } else if (strcmp(section, "internal") == 0){
+        if (cfg = getMailInternalOptions(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+    }
+     else {
         goto error;
     }
 error:
@@ -83,11 +95,18 @@ void * mailcom_main(__attribute__((unused)) void * arg) {
     char *response = NULL;
     ssize_t length;
     fd_set fdset;
+    char socket_path[PATH_MAX + 1] = {0};
+
+    snprintf(socket_path,PATH_MAX,"%s",DEFAULTDIR MAIL_LOCAL_SOCK);
+
+    if(isChroot()){
+        snprintf(socket_path,PATH_MAX,"%s",MAIL_LOCAL_SOCK);
+    }
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR MAIL_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s'. Closing local server.", ANLSYS_LOCAL_SOCK);
+    if (sock = OS_BindUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        merror("Unable to bind to socket '%s'. Closing local server.", MAIL_LOCAL_SOCK);
         return NULL;
     }
 
