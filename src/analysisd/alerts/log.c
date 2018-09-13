@@ -183,7 +183,7 @@ void OS_LogOutput(Eventinfo *lf)
     if (lf->filename && lf->event_type != FIM_DELETED) {
         printf("Attributes:\n");
 
-        if (lf->size_after){
+        if (lf->size_after && *lf->size_after != '\0'){
             printf(" - Size: %s\n", lf->size_after);
         }
 
@@ -346,7 +346,7 @@ void OS_Log(Eventinfo *lf)
     if (lf->filename && lf->event_type != FIM_DELETED) {
         fprintf(_aflog, "Attributes:\n");
 
-        if (lf->size_after){
+        if (lf->size_after && *lf->size_after != '\0'){
             fprintf(_aflog, " - Size: %s\n", lf->size_after);
         }
 
