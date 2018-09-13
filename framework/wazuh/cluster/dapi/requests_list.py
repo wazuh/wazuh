@@ -22,6 +22,7 @@ import wazuh.rootcheck as rootcheck
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
 import wazuh.ciscat as ciscat
+import wazuh.active_response as active_response
 
 
 functions = {
@@ -354,6 +355,12 @@ functions = {
     # CIS-CAT
     '/ciscat/:agent_id/results': {
         'function': ciscat.get_results_agent,
+        'type': 'distributed_master'
+    },
+
+    # Active response
+    '/PUT/active-response/:agent_id': {
+        'function': active_response.run_command,
         'type': 'distributed_master'
     },
 
