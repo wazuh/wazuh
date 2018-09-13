@@ -825,6 +825,8 @@ void OS_ReadMSG_analysisd(int m_queue)
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 
+    mdebug1("Startup completed. Waiting for new messages..");
+
     if (Config.custom_alert_output) {
         mdebug1("Custom output found.!");
     }
@@ -883,7 +885,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     for(i = 0; i < num_rule_matching_threads;i++){
         fp_ignore[i] = w_get_fp_ignore();
     }
-    
+
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_information->cpu_cores;
@@ -909,6 +911,9 @@ void OS_ReadMSG_analysisd(int m_queue)
         num_rule_matching_threads = cpu_information->cpu_cores;
     }
 
+    /* Create message handler thread */
+    w_create_thread(ad_input_main, &m_queue);
+
     /* Create archives writer thread */
     w_create_thread(w_writer_thread,NULL);
 
@@ -923,7 +928,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Create FTS log writer thread */
     w_create_thread(w_writer_log_fts_thread,NULL);
-    
+
     /* Create log rotation thread */
     w_create_thread(w_log_rotate_thread,NULL);
 
@@ -946,7 +951,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     for(i = 0; i < num_decode_rootcheck_threads;i++){
         w_create_thread(w_decode_rootcheck_thread,NULL);
     }
-    
+
     /* Create decode event threads */
     for(i = 0; i < num_decode_event_threads;i++){
         w_create_thread(w_decode_event_thread,NULL);
@@ -1001,7 +1006,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                   rule->comment);
 #endif
 
-    
+
     /* Check if any decoder pre-matched here for syscheck event */
     if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
             rule->decoded_as != lf->decoder_syscheck_id)){
@@ -1282,7 +1287,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             }
 
             if(_line){
-                os_strdup(_line,_line_cpy); 
+                os_strdup(_line,_line_cpy);
                 free(_line);
                 queue_push_ex_block(writer_queue_log_fts,_line_cpy);
             }
@@ -1547,8 +1552,8 @@ void * ad_input_main(void * args) {
     char * copy;
     char *msg;
     int result;
-    int recv = 0;    
-    
+    int recv = 0;
+
     mdebug1("Input message handler thread started.");
 
     while (1) {
@@ -1576,7 +1581,7 @@ void * ad_input_main(void * args) {
                     free(copy);
                     continue;
                 }
-    
+
                 result = queue_push_ex(decode_queue_syscheck_input,copy);
 
                 if(result < 0){
@@ -1637,7 +1642,7 @@ void * ad_input_main(void * args) {
                 result = queue_push_ex(decode_queue_syscollector_input,copy);
 
                 if(result < 0){
-                    
+
                     if(!reported_syscollector){
                         reported_syscollector = 1;
                         mwarn("Could not decode syscollector event, queue is full");
@@ -1697,7 +1702,7 @@ void * ad_input_main(void * args) {
 
                     if(!reported_event){
                         reported_event = 1;
-                        mwarn("Could not push to input decode event, queue is full"); 
+                        mwarn("Could not push to input decode event, queue is full");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1725,7 +1730,7 @@ void w_free_event_info(Eventinfo *lf){
         /* Free last_events struct */
         char **last_event = lf->last_events;
         char **lasts = lf->last_events;
-        
+
         while (*lasts) {
             free(*lasts);
             lasts++;
@@ -1755,7 +1760,7 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
             if (Config.logall_json){
                 jsonout_output_archive(lf);
             }
-               
+
             w_free_event_info(lf);
             w_mutex_unlock(&writer_threads_mutex);
         } else {
@@ -1833,7 +1838,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             }
 
             free(msg);
-            
+
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
@@ -1847,7 +1852,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             else{
                 queue_push_ex_block(decode_queue_event_output,lf);
             }
-        }    
+        }
     }
 }
 
@@ -1889,7 +1894,7 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
             }
 
             w_inc_syscollector_decoded_events();
-        }    
+        }
     }
 }
 
@@ -1919,7 +1924,7 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
 
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
-            
+
             if (!DecodeRootcheck(lf)) {
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
@@ -1929,7 +1934,7 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
             }
 
             w_inc_rootcheck_decoded_events();
-        }    
+        }
     }
 }
 
@@ -1975,7 +1980,7 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 void * w_decode_event_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char * msg = NULL;
- 
+
     while(1){
 
         /* Receive message from queue */
@@ -2000,9 +2005,9 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             DecodeEvent(lf);
 
             queue_push_ex_block(decode_queue_event_output,lf);
-            
+
             w_inc_decoded_events();
-        }    
+        }
     }
 }
 
@@ -2021,12 +2026,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         if(lf = queue_pop_ex(decode_queue_event_output), lf) {
             mdebug2("Taking out from the queue");
         }
-        
+
         currently_rule = NULL;
 
         lf->size = strlen(lf->log);
 
-        mdebug2("Event extracted from the queue...");   
+        mdebug2("Event extracted from the queue...");
         /* Run accumulator */
         if ( lf->decoder_info->accumulate == 1 ) {
             lf = Accumulate(lf);
@@ -2140,7 +2145,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     currently_rule->time_ignored = lf->time.tv_sec;
                 }
             }
-           
+
             /* Pointer to the rule that generated it */
             lf->generated_rule = currently_rule;
 
@@ -2256,11 +2261,11 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
         }
         w_inc_processed_events();
-        
+
         if (Config.logall || Config.logall_json){
 
             result = queue_push_ex(writer_queue, lf);
-        
+
             if (result < 0) {
                 if(!reported_writer){
                     reported_writer = 1;
@@ -2335,7 +2340,7 @@ void * w_writer_log_statistical_thread(__attribute__((unused)) void * args ){
         if (lf = queue_pop_ex(writer_queue_log_statistical), lf) {
 
             w_mutex_lock(&writer_threads_mutex);
-            
+
             if (Config.custom_alert_output) {
                 __crt_ftell = ftell(_aflog);
                 OS_CustomLog(lf, Config.custom_alert_output_format);
@@ -2394,14 +2399,14 @@ void w_log_flush(){
 
     if (Config.custom_alert_output){
         OS_CustomLog_Flush();
-    }   
+    }
 
     if(Config.alerts_log){
         OS_Log_Flush();
     }
 
     FTS_Flush();
-    
+
 }
 
 void * w_writer_log_fts_thread(__attribute__((unused)) void * args ){
@@ -2452,7 +2457,7 @@ void w_get_initial_queues_size(){
 }
 
 cpu_info *get_cpu_info(){
-    
+
 #if defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__MACH__)
     return get_cpu_info_bsd();
 #else
