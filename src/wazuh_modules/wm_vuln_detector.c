@@ -2388,7 +2388,6 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
     int dist_error;
     char *id;
     char *name;
-    char *last_keepalive;
     char *ip;
     char *os_name;
     char *os_version;
@@ -2408,20 +2407,14 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         return wm_vulnerability_detector_sql_error(db, stmt);
     }
 
+    sqlite3_bind_int(stmt, 1, DISCON_TIME);
+
     while (sqlite3_step(stmt) == SQLITE_ROW) {
-        last_keepalive = (char *) sqlite3_column_text(stmt, 6);
-        id = (char *) sqlite3_column_text(stmt, 3);
-
-        // Check if it is a disconnected agent
-        if (check_discon_keepalive(last_keepalive)) {
-            mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_AG_DISC, id);
-            continue;
-        }
-
         dist_error = -1;
         os_name = (char *) sqlite3_column_text(stmt, 0);
         os_version = (char *) sqlite3_column_text(stmt,1);
         name = (char *) sqlite3_column_text(stmt, 2);
+        id = (char *) sqlite3_column_text(stmt, 3);
 
         if (!os_name) {
             if (name) {

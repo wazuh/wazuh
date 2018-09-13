@@ -1343,33 +1343,3 @@ char **get_agents(int flag)
     closedir(dp);
     return (f_files);
 }
-
-int check_discon_keepalive(char *last_keepalive) {
-    struct tm st_time, *st_now;
-    time_t t_unified;
-    time_t t_now;
-
-    if (last_keepalive) {
-        // Get the agent timestamp
-        if(!strptime(last_keepalive, "%Y-%m-%d %H:%M:%S", &st_time)) {
-            merror("at check_discon_keepalive(): strptime().");
-            return 0;
-        }
-        st_time.tm_isdst = -1;
-        if (t_unified = mktime(&st_time), t_unified == -1) {
-            merror("at check_discon_keepalive(): mktime().");
-            return 0;
-        }
-        // Get the local time
-        t_now = time(NULL);
-        st_now = localtime(&t_now);
-        st_now->tm_isdst = 0;
-        t_now = mktime(st_now);
-        if (t_unified < (t_now - DISCON_TIME)) {
-            // The agent is disconnected
-            return 1;
-        }
-    }
-
-    return 0;
-}
