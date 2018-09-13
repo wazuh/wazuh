@@ -117,6 +117,8 @@ class WazuhException(Exception):
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
+        1734: 'Agent version is not compatible with this feature',
+
         # Manager:
 
         # Database:
