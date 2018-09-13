@@ -23,7 +23,7 @@
 #include "syscheck_op.h"
 
 /* Prototypes */
-static void send_sk_db(void);
+static void send_sk_db(int first_scan);
 
 
 
@@ -60,26 +60,39 @@ int send_rootcheck_msg(const char *msg)
 }
 
 /* Send syscheck db to the server */
-static void send_sk_db()
+static void send_sk_db(int first_start)
 {
-    /* Send scan start message */
-    if (syscheck.dir[0]) {
-        log_realtime_status(2);
-        minfo("Starting syscheck scan (forwarding database).");
-        send_rootcheck_msg("Starting syscheck scan.");
-    } else {
+    if (!syscheck.dir[0]) {
         return;
     }
 
-    create_db();
+    log_realtime_status(2);
+    minfo("Starting syscheck scan.");
 
-    /* Send scan ending message */
-    sleep(syscheck.tsleep * 5);
-
-    if (syscheck.dir[0]) {
-        minfo("Ending syscheck scan (forwarding database).");
-        send_rootcheck_msg("Ending syscheck scan.");
+    /* Send first start scan control message */
+    if(first_start) {
+        send_syscheck_msg(HC_FIM_DB_SFS);
+        sleep(syscheck.tsleep * 5);
+        create_db();
+    } else {
+        send_syscheck_msg(HC_FIM_DB_SS);
+        sleep(syscheck.tsleep * 5);
+        run_dbcheck();
     }
+    sleep(syscheck.tsleep * 5);
+#ifdef WIN32
+    /* Check for registry changes on Windows */
+    os_winreg_check();
+    sleep(syscheck.tsleep * 5);
+#endif
+
+    /* Send end scan control message */
+    if(first_start) {
+        send_syscheck_msg(HC_FIM_DB_EFS);
+    } else {
+        send_syscheck_msg(HC_FIM_DB_ES);
+    }
+    minfo("Ending syscheck scan. Database completed.");
 }
 
 /* Periodically run the integrity checker */
@@ -91,6 +104,7 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
+    int first_start = 1;
 
 #ifndef WIN32
     /* Launch rootcheck thread */
@@ -145,25 +159,13 @@ void start_daemon()
     }
     /* Printing syscheck properties */
 
-    if (!syscheck.disabled)
+    if (!syscheck.disabled) {
         minfo("Syscheck scan frequency: %d seconds", syscheck.time);
-
-    /* Will create the db to store syscheck data */
-    if (syscheck.scan_on_start) {
-        /* Send first start scan control message */
-        send_syscheck_msg(HC_FIM_DB_SFS);
-        sleep(syscheck.tsleep * 5);
-        send_sk_db();
-        sleep(syscheck.tsleep * 5);
-#ifdef WIN32
-        /* Check for registry changes on Windows */
-        os_winreg_check();
-        sleep(syscheck.tsleep * 5);
-#endif
-        /* Send first end scan control message */
-        send_syscheck_msg(HC_FIM_DB_EFS);
-
-        mdebug2("Sending database completed message.");
+        /* Will create the db to store syscheck data */
+        if (syscheck.scan_on_start) {
+            send_sk_db(first_start);
+            first_start = 0;
+        }
     }
 
     /* Before entering in daemon mode itself */
@@ -252,52 +254,12 @@ void start_daemon()
         /* If time elapsed is higher than the syscheck time, run syscheck time */
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
             if (syscheck.scan_on_start == 0) {
-                /* Need to create the db if scan on start is not set */
-                /* Send first start scan control message */
-                send_syscheck_msg(HC_FIM_DB_SFS);
-                sleep(syscheck.tsleep * 5);
-                send_sk_db();
-                sleep(syscheck.tsleep * 5);
-#ifdef WIN32
-                /* Check for registry changes on Windows */
-                os_winreg_check();
-                sleep(syscheck.tsleep * 5);
-#endif
-                /* Send first end scan control message */
-                send_syscheck_msg(HC_FIM_DB_EFS);
-
+                send_sk_db(first_start);
+                first_start = 0;
                 syscheck.scan_on_start = 1;
             } else {
-                /* Send scan start message */
-                if (syscheck.dir[0]) {
-                    log_realtime_status(2);
-                    minfo("Starting syscheck scan.");
-                    send_rootcheck_msg("Starting syscheck scan.");
-                }
-                /* Send start scan control message */
-                send_syscheck_msg(HC_FIM_DB_SS);
-                sleep(syscheck.tsleep * 5);
-                /* Check for changes */
-                run_dbcheck();
-                sleep(syscheck.tsleep * 5);
-#ifdef WIN32
-                /* Check for registry changes on Windows */
-                os_winreg_check();
-                sleep(syscheck.tsleep * 5);
-#endif
-                /* Send end scan control message */
-                send_syscheck_msg(HC_FIM_DB_ES);
+                send_sk_db(first_start);
             }
-
-            /* Send scan ending message */
-            sleep(syscheck.tsleep * 15);
-            if (syscheck.dir[0]) {
-                minfo("Ending syscheck scan.");
-                send_rootcheck_msg("Ending syscheck scan.");
-            }
-
-            mdebug2("Sending database completed message.");
-
             prev_time_sk = time(0);
         }
 
