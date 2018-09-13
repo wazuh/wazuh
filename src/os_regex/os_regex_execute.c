@@ -36,6 +36,7 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
     /* The string can't be NULL */
     if (str == NULL) {
         reg->error = OS_REGEX_STR_NULL;
+        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
         return (0);
     }
     

@@ -96,7 +96,6 @@ OSListNode *OSList_GetLastNode_group(OSList *list)
     w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
     list->cur_node = list->last_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
     return (list->last_node);
 }
 

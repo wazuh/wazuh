@@ -825,10 +825,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 
-    w_create_thread(ad_input_main, &m_queue);
-
-    mdebug1("Startup completed. Waiting for new messages..");
-
     if (Config.custom_alert_output) {
         mdebug1("Custom output found.!");
     }
@@ -875,6 +871,10 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
     int num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
+
+    w_create_thread(ad_input_main, &m_queue);
+
+    mdebug1("Startup completed. Waiting for new messages..");
 
     /* Init the Files Ignore pointers*/
     fp_ignore = (FILE **)calloc(num_rule_matching_threads, sizeof(FILE*));
@@ -2119,7 +2119,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                         == NULL) {
                 continue;
             }
-
             /* Ignore level 0 */
             if (currently_rule->level == 0) {
                 break;
@@ -2232,7 +2231,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     j++;
                 }
             }
-
             OS_AddEvent(lf);
 
             break;
@@ -2257,7 +2255,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 lf->last_events[index] = NULL;
             }
         }
-
         w_inc_processed_events();
         
         if (Config.logall || Config.logall_json){

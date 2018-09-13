@@ -110,10 +110,6 @@ int req_push(char * buffer, size_t length) {
 
 #ifndef WIN32
 
-        if(!OSHash_Get(allowed_sockets,target)){
-            merror("At req_push(): Target '%s' not allowed", target);
-            return -1;
-        }
 
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];
