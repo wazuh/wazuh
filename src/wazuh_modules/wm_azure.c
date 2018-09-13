@@ -359,19 +359,19 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
         }
 
         wm_strcat(&command, "--container", ' ');
-        snprintf(name, OS_SIZE_256 - 1, "\'%s\'", curr_container->name);
+        snprintf(name, OS_SIZE_256 - 1, "\"%s\"", curr_container->name);
         wm_strcat(&command, name, ' ');
 
         wm_strcat(&command, "--blobs", ' ');
-        snprintf(blobs, OS_SIZE_256 - 1, "\'%s\'", curr_container->blobs);
+        snprintf(blobs, OS_SIZE_256 - 1, "\"%s\"", curr_container->blobs);
         wm_strcat(&command, blobs, ' ');
 
         wm_strcat(&command, "--storage_tag", ' ');
         wm_strcat(&command, storage->tag, ' ');
 
-        if (!strncmp(curr_container->content_type, "file", 4)) {
+        if (!strncmp(curr_container->content_type, "json_file", 9)) {
             wm_strcat(&command, "--json_file", ' ');
-        } else if (!strncmp(curr_container->content_type, "inline", 6)) {
+        } else if (!strncmp(curr_container->content_type, "json_inline", 11)) {
             wm_strcat(&command, "--json_inline", ' ');
         }
 

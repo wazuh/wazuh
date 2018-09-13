@@ -542,7 +542,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
 
             // Read name attribute
             if (nodes[i]->attributes) {
-                if (!strcmp(nodes[i]->attributes[0], XML_CONTAINER_NAME) && *nodes[i]->content != '\0') {
+                if (!strcmp(nodes[i]->attributes[0], XML_CONTAINER_NAME) && *nodes[i]->values[0] != '\0') {
                     os_strdup(nodes[i]->values[0], container->name);
                 } else {
                     minfo("At module '%s': Invalid container name. Skipping container...", WM_AZURE_CONTEXT.name);
@@ -638,8 +638,8 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
             if (*nodes[i]->content != '\0')
                 os_strdup(nodes[i]->content, container->blobs);
         } else if (!strcmp(nodes[i]->element, XML_CONTAINER_TYPE)) {
-            if (strncmp(nodes[i]->content, "file", 4) && strncmp(nodes[i]->content, "inline", 6) && strncmp(nodes[i]->content, "text", 4)) {
-                merror("At module '%s': Invalid content type. It should be 'file', 'inline' or 'text'.", WM_AZURE_CONTEXT.name);
+            if (strncmp(nodes[i]->content, "json_file", 9) && strncmp(nodes[i]->content, "json_inline", 11) && strncmp(nodes[i]->content, "text", 4)) {
+                merror("At module '%s': Invalid content type. It should be 'json_file', 'json_inline' or 'text'.", WM_AZURE_CONTEXT.name);
                 return OS_INVALID;
             }
             os_strdup(nodes[i]->content, container->content_type);
