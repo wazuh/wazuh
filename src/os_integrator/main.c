@@ -1,4 +1,3 @@
-
 /* Copyright (C) 2014 Daniel B. Cid
  * All rights reserved.
  *
@@ -11,6 +10,8 @@
 
 #include "integrator.h"
 #include "shared.h"
+
+IntegratorConfig **integrator_config;
 
 void help(const char *prog)
 {
@@ -49,7 +50,7 @@ int main(int argc, char **argv)
     char *group = GROUPGLOBAL;
     char *cfg = DEFAULTCPATH;
 
-    IntegratorConfig **integrator_config = NULL;
+    integrator_config = NULL;
 
     /* Setting the name */
     OS_SetName(ARGV0);
@@ -120,6 +121,9 @@ int main(int argc, char **argv)
     /* Exit here if test config is set */
     if(test_config)
         exit(0);
+
+    // Start com request thread
+    w_create_thread(intgcom_main, NULL);
 
     /* Pid before going into daemon mode. */
     i = getpid();

@@ -339,6 +339,13 @@ class AWSBucket:
         )
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
+        def remove_none_fields(event):
+            for key,value in event.items():
+                if isinstance(value, dict):
+                    remove_none_fields(event[key])
+                elif value is None:
+                    del event[key]
+
         # error_msg will only have a value when event is None and vice versa
         msg = {
             'integration': 'aws',
@@ -351,7 +358,8 @@ class AWSBucket:
             }
         }
         if event:
-            msg['aws'].update({key: value for key, value in filter(lambda x: x[1] is not None, event.items())})
+            remove_none_fields(event)
+            msg['aws'].update(event)
         elif error_msg:
             msg['error_msg'] = error_msg
         return msg
@@ -400,8 +408,11 @@ class AWSBucket:
         single_element_list_to_dictionary(event)
 
         # in order to support both old and new index pattern, change data.aws.sourceIPAddress fieldname and parse that one with type ip
-        if 'sourceIPAddress' in event['aws']:
+        # Only add this field if the sourceIPAddress is an IP and not a DNS.
+        if 'sourceIPAddress' in event['aws'] and re.match(r'\d+\.\d+.\d+.\d+', event['aws']['sourceIPAddress']):
             event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
+        
+        return event
 
 
     def decompress_file(self, log_key):
@@ -569,7 +580,7 @@ class AWSCloudtrailBucket(AWSBucket):
         return aws_region, aws_account_id, log_key
 
     def migrate_legacy_table(self):
-        for row in filter(lambda x: x[0] != '', self.db_connector(sql_select_migrate_legacy)):
+        for row in filter(lambda x: x[0] != '', self.db_connector.execute(sql_select_migrate_legacy)):
             try:
                 aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
                 self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
@@ -653,6 +664,12 @@ class AWSFirehouseBucket(AWSBucket):
         AWSBucket.reformat_msg(self, event)
         if event['aws']['source'] == 'macie' and 'trigger' in event['aws']:
             del event['aws']['trigger']
+
+        if 'service' in event['aws'] and 'additionalInfo' in event['aws']['service'] and \
+                'unusual' in event['aws']['service']['additionalInfo'] and \
+                not isinstance(event['aws']['service']['additionalInfo']['unusual'], dict):
+            event['aws']['service']['additionalInfo']['unusual'] = {
+                'value': event['aws']['service']['additionalInfo']['unusual']}
 
         return event
 

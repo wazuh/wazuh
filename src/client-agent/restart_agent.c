@@ -49,7 +49,7 @@ void * restartAgent() {
 			merror("At restartAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
 		}
 	} else {
-		if (send(sock, req, length, 0) != length) {
+		if (OS_SendSecureTCP(sock, length, req) != length) {
 			merror("send(): %s", strerror(errno));
 		}
 
@@ -58,8 +58,9 @@ void * restartAgent() {
 
 	#else
 
-	char output[OS_MAXSTR + 1];
-	length = wcom_dispatch(req, length, output);
+	char *output = NULL;
+	length = wcom_dispatch(req, length, &output);
+	free(output);
 
 	#endif
 

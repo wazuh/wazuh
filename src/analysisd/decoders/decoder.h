@@ -74,7 +74,7 @@ void SyscheckInit(void);
 void RootcheckInit(void);
 void SyscollectorInit(void);
 void CiscatInit(void);
-int sc_send_db(char * msg);
+int sc_send_db(char * msg,int *sock);
 
 int ReadDecodeXML(const char *file);
 

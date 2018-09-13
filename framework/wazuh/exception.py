@@ -72,11 +72,15 @@ class WazuhException(Exception):
         1500: 'Error reading decoders from ossec.conf',
         1501: 'Error reading decoder files',
 
-        # Syscheck/Rootcheck: 1600 - 1699
+        # Syscheck/Rootcheck/AR: 1600 - 1699
         1600: 'There is no database for selected agent',  # Also, agent
         1601: 'Unable to restart syscheck/rootcheck',
         1602: 'Impossible to run syscheck/run due to agent is not active',
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
+        1650: 'Active response - Bad arguments',
+        1651: 'Active response - Agent is not active',
+        1652: 'Active response - Unable to run command',
+        1653: 'Active response - Agent not available',
 
         # Agents:
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',

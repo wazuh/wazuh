@@ -773,8 +773,6 @@ int SetDecodeXML()
     /* Add rootcheck decoder to list */
     addDecoder2list(ROOTCHECK_MOD);
     addDecoder2list(SYSCHECK_MOD);
-    addDecoder2list(SYSCHECK_MOD2);
-    addDecoder2list(SYSCHECK_MOD3);
     addDecoder2list(SYSCHECK_NEW);
     addDecoder2list(SYSCHECK_DEL);
     addDecoder2list(HOSTINFO_NEW);

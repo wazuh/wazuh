@@ -376,6 +376,7 @@ void OS_ReadMSG(char *ut_str)
     RuleInfoDetail *last_info_detail;
     Eventinfo *lf;
 
+    RuleInfo * currently_rule;
     /* Null global pointer to current rule */
     currently_rule = NULL;
 
@@ -537,7 +538,7 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check if we should ignore it */
-                if (currently_rule->ckignore && IGnore(lf)) {
+                if (currently_rule->ckignore && IGnore(lf,NULL)) {
                     lf->generated_rule = NULL;
                     break;
                 }

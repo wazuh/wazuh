@@ -457,6 +457,9 @@ void Agentlessd()
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
+    // Start com request thread
+    w_create_thread(lessdcom_main, NULL);
+
     /* Main monitor loop */
     while (1) {
         unsigned int i = 0;
@@ -500,4 +503,35 @@ void Agentlessd()
         test_it = 0;
         sleep(60);
     }
+}
+
+cJSON *getAgentlessConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *agent_list = cJSON_CreateArray();
+    unsigned int i, j;
+    i = 0;
+    while (lessdc.entries[i]) {
+        cJSON *agent = cJSON_CreateObject();
+        cJSON *host_list = cJSON_CreateArray();
+        for (j=0;lessdc.entries[i]->server[j];j++) {
+            cJSON_AddItemToArray(host_list,cJSON_CreateString(lessdc.entries[i]->server[j]));
+        }
+        cJSON_AddItemToObject(agent,"host",host_list);
+        cJSON_AddNumberToObject(agent,"port",lessdc.entries[i]->port);
+        cJSON_AddNumberToObject(agent,"frequency",lessdc.entries[i]->frequency);
+        if (lessdc.entries[i]->state & LESSD_STATE_PERIODIC && lessdc.entries[i]->state & LESSD_STATE_DIFF)
+            cJSON_AddStringToObject(agent,"state","periodic_diff");
+        else if (lessdc.entries[i]->state & LESSD_STATE_CONNECTED) cJSON_AddStringToObject(agent,"state","stay_connected");
+        else if (lessdc.entries[i]->state & LESSD_STATE_PERIODIC) cJSON_AddStringToObject(agent,"state","periodic");
+        if (lessdc.entries[i]->options) cJSON_AddStringToObject(agent,"arguments",lessdc.entries[i]->options);
+        if (lessdc.entries[i]->command) cJSON_AddStringToObject(agent,"run_command",lessdc.entries[i]->command);
+        if (lessdc.entries[i]->type) cJSON_AddStringToObject(agent,"type",lessdc.entries[i]->type);
+        cJSON_AddItemToArray(agent_list,agent);
+        i++;
+    }
+
+    cJSON_AddItemToObject(root,"agentless",agent_list);
+
+    return root;
 }

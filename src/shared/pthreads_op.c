@@ -15,7 +15,7 @@
  * Returns 0 on success or -1 on error
  */
 
-#if defined(__MACH__)
+#if defined(__MACH__) || defined(AIX) || defined(HPUX)
 
 #include <sys/resource.h>
 

@@ -13,6 +13,8 @@
 
 #include "os_regex.h"
 #include "os_regex_internal.h"
+#include "debug_op.h"
+#include "pthreads_op.h"
 
 /* Internal prototypes */
 static const char *_OS_Regex(const char *pattern, const char *str, const char **prts_closure,
@@ -38,11 +40,11 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
     /* If we need the sub strings */
     if (reg->prts_closure) {
         int k = 0;
-
         /* Loop over all sub patterns */
         while (reg->patterns[i]) {
             /* Clean the prts_str */
             int j = 0;
+            w_mutex_lock((pthread_mutex_t *)&reg->mutex);
             while (reg->prts_closure[i][j]) {
                 reg->prts_str[i][j] = NULL;
                 j++;
@@ -58,6 +60,7 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
                     reg->sub_strings[k] = (char *) malloc((length + 1) * sizeof(char));
                     if (!reg->sub_strings[k]) {
                         OSRegex_FreeSubStrings(reg);
+                        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
                         return (NULL);
                     }
                     strncpy(reg->sub_strings[k], reg->prts_str[i][j], length);
@@ -70,12 +73,12 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
                     /* Go two by two */
                     j += 2;
                 }
-
+                w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
                 return (ret);
             }
             i++;
         }
-
+        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
         return (0);
     }
 
@@ -84,11 +87,13 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
     /* Loop on all sub patterns */
     while (reg->patterns[i]) {
         if ((ret = _OS_Regex(reg->patterns[i], str, NULL, NULL, reg->flags[i]))) {
+            w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
             return (ret);
         }
         i++;
     }
 
+    w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
     return (NULL);
 }
 

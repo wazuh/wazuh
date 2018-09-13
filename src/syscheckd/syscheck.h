@@ -11,6 +11,8 @@
 #define __SYSCHECK_H
 
 #include "config/syscheck-config.h"
+#include "external/cJSON/cJSON.h"
+
 #define MAX_LINE PATH_MAX+256
 
 /* Notify list size */
@@ -23,6 +25,7 @@
 
 /* Global config */
 extern syscheck_config syscheck;
+extern int sys_debug_level;
 
 /** Function Prototypes **/
 
@@ -34,6 +37,10 @@ void start_daemon(void) __attribute__((noreturn));
 
 /* Read the XML config */
 int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
+
+/* Parse readed config into JSON format */
+cJSON *getSyscheckConfig(void);
+cJSON *getSyscheckInternalOptions(void);
 
 /* Create the database */
 int create_db(void);
@@ -104,5 +111,12 @@ int fim_initialize();
 /* Check for restricts and ignored files */
 int fim_check_ignore(const char *file_name);
 int fim_check_restrict(const char *file_name, OSMatch *restriction);
+
+#ifndef WIN32
+// Com request thread dispatcher
+void * syscom_main(void * arg);
+#endif
+size_t syscom_dispatch(char *command, char ** output);
+size_t syscom_getconfig(const char * section, char ** output);
 
 #endif

@@ -607,10 +607,10 @@ class WazuhDBQuery(object):
         self.data = get_data
         self.total_items = 0
         self.min_select_fields = min_select_fields
-        self.query_regex = re.compile(r"(\()?([\w\.]+)([=!<>]{1,2})([\w _\-.:/]+)(\))?([,;])?")
-        self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
-        self.query_operators = {"=","!=","<",">"}
+        self.query_operators = {"=":"=", "!=":"!=", "<":"<", ">":">", "~":'LIKE'}
         self.query_separators = {',':'OR',';':'AND','':''}
+        self.query_regex = re.compile(r"(\()?([\w\.]+)(["+''.join(self.query_operators.keys())+"]{1,2})([\w _\-.:/]+)(\))?(["+''.join(self.query_separators.keys())+"])?")
+        self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.date_fields = date_fields
         self.extra_fields = extra_fields
         self.q = query
@@ -706,7 +706,7 @@ class WazuhDBQuery(object):
                 level -= 1
 
             if not self._pass_filter(value):
-                self.query_filters.append({'value': None if value == "null" else value, 'operator': operator,
+                self.query_filters.append({'value': None if value == "null" else value, 'operator': self.query_operators[operator],
                                  'field': '{}${}'.format(field, len(list(filter(lambda x: field in x['field'], self.query_filters)))),
                                  'separator': self.query_separators[separator], 'level': level})
 
@@ -715,7 +715,7 @@ class WazuhDBQuery(object):
         """
         Parses legacy filters.
         """
-        self.query_filters += [{'value': subvalue, 'field': name, 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': name, 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
                                for name, value in self.legacy_filters.items() for subvalue in value.split(',') if not self._pass_filter(subvalue)]
         if not self.q and self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
@@ -748,6 +748,8 @@ class WazuhDBQuery(object):
             else:
                 if q_filter['value'] is not None:
                     self.request[field_filter] = q_filter['value'] if q_filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
+                    if q_filter['operator'] == 'LIKE':
+                        self.request[field_filter] = '%{}%'.format(self.request[field_filter])
                     self.query += '{} {} :{}'.format(self.fields[field_name], q_filter['operator'], field_filter)
                     if not field_filter.isdigit():
                         # filtering without being uppercase/lowercase sensitive

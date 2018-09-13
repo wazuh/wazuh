@@ -14,5 +14,7 @@
 
 void jsonout_output_event(const Eventinfo *lf);
 void jsonout_output_archive(const Eventinfo *lf);
+void jsonout_output_archive_flush();
+void jsonout_output_event_flush();
 
 #endif /* _JSONOUT_H_ */

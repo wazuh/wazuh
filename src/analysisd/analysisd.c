@@ -15,6 +15,10 @@
 #define ARGV0 "ossec-analysisd"
 #endif
 
+#include <time.h>
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/sysctl.h>
+#endif
 #include "shared.h"
 #include "alerts/alerts.h"
 #include "alerts/getloglocation.h"
@@ -33,6 +37,7 @@
 #include "dodiff.h"
 #include "output/jsonout.h"
 #include "labels.h"
+#include "state.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -52,7 +57,7 @@ void DecodeEvent(Eventinfo *lf);
 int DecodeSyscheck(Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
-int DecodeSyscollector(Eventinfo *lf);
+int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
 
 /* For stats */
@@ -71,6 +76,8 @@ int __crt_wday;
 struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
+rlim_t nofile;
+int sys_debug_level;
 
 /* execd queue */
 static int execdq = 0;
@@ -78,12 +85,147 @@ static int execdq = 0;
 /* Active response queue */
 static int arq = 0;
 
-static int hourly_alerts;
-static int hourly_events;
-static int hourly_syscheck;
-static int hourly_firewall;
+static unsigned int hourly_alerts;
+static unsigned int hourly_events;
+static unsigned int hourly_syscheck;
+static unsigned int hourly_firewall;
 
-static w_queue_t * input_queue;
+void w_free_event_info(Eventinfo *lf);
+
+/* Output threads */
+void * w_main_output_thread(__attribute__((unused)) void * args);
+
+/* Archives writer thread */
+void * w_writer_thread(__attribute__((unused)) void * args );
+
+/* Alerts log writer thread */
+void * w_writer_log_thread(__attribute__((unused)) void * args );
+
+/* Statistical writer thread */
+void * w_writer_log_statistical_thread(__attribute__((unused)) void * args );
+
+/* Firewall log writer thread */
+void * w_writer_log_firewall_thread(__attribute__((unused)) void * args );
+
+/* FTS log writer thread */
+void * w_writer_log_fts_thread(__attribute__((unused)) void * args );
+
+/* Flush logs thread */
+void w_log_flush();
+
+/* Decode syscollector threads */
+void * w_decode_syscollector_thread(__attribute__((unused)) void * args);
+
+/* Decode syscheck threads */
+void * w_decode_syscheck_thread(__attribute__((unused)) void * args);
+
+/* Decode hostinfo threads */
+void * w_decode_hostinfo_thread(__attribute__((unused)) void * args);
+
+/* Decode rootcheck threads */
+void * w_decode_rootcheck_thread(__attribute__((unused)) void * args);
+
+/* Decode event threads */
+void * w_decode_event_thread(__attribute__((unused)) void * args);
+
+/* Process decoded event - rule matching threads */
+void * w_process_event_thread(__attribute__((unused)) void * id);
+
+/* Do log rotation thread */
+void * w_log_rotate_thread(__attribute__((unused)) void * args);
+
+/* CPU info */
+cpu_info *get_cpu_info();
+cpu_info *get_cpu_info_bsd();
+cpu_info *get_cpu_info_linux();
+
+typedef struct _clean_msg {
+    Eventinfo *lf;
+    char *msg;
+} clean_msg;
+
+typedef struct _decode_event {
+    Eventinfo *lf;
+    char type;
+} decode_event;
+
+typedef struct _osmatch_exec {
+    Eventinfo *lf;
+    RuleInfo *rule;
+} _osmatch_execute;
+
+/* Archives writer queue */
+static w_queue_t * writer_queue;
+
+/* Alerts log writer queue */
+static w_queue_t * writer_queue_log;
+
+/* Statistical log writer queue */
+static w_queue_t * writer_queue_log_statistical;
+
+/* Firewall log writer queue */
+static w_queue_t * writer_queue_log_firewall;
+
+/* FTS log writer queue */
+static w_queue_t * writer_queue_log_fts;
+
+/* Decode syscheck input queue */
+static w_queue_t * decode_queue_syscheck_input;
+
+/* Decode syscollector input queue */
+static w_queue_t * decode_queue_syscollector_input;
+
+/* Decode rootcheck input queue */
+static w_queue_t * decode_queue_rootcheck_input;
+
+/* Decode hostinfo input queue */
+static w_queue_t * decode_queue_hostinfo_input;
+
+/* Decode event input queue */
+static w_queue_t * decode_queue_event_input;
+
+/* Decode pending event output */
+static w_queue_t * decode_queue_event_output;
+
+/* Hourly alerts mutex */
+static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Hourly firewall mutex */
+static pthread_mutex_t hourly_firewall_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Do diff mutex */
+static pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Reported variables */
+static int reported_syscheck = 0;
+static int reported_syscollector = 0;
+static int reported_hostinfo = 0;
+static int reported_rootcheck = 0;
+static int reported_event = 0;
+static int reported_writer = 0;
+
+/* Mutexes */
+pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t process_event_ignore_rule_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Reported mutexes */
+static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Stats */
+static RuleInfo *stats_rule = NULL;
+
+/* Ignore rules Files Pointers */
+FILE **fp_ignore;
+
+/* To translate between month (int) to month (char) */
+static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                  };
+
+/* CPU Info*/
+static cpu_info *cpu_information;
 
 /* Print help statement */
 __attribute__((noreturn))
@@ -134,6 +276,7 @@ int main_analysisd(int argc, char **argv)
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
+    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
 #ifdef LIBGEOIP_ENABLED
     geoipdb = NULL;
@@ -194,7 +337,7 @@ int main_analysisd(int argc, char **argv)
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("analysisd", "debug", 0, 2);
+        debug_level = sys_debug_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
@@ -272,7 +415,7 @@ int main_analysisd(int argc, char **argv)
     // Set resource limit for file descriptors
 
     {
-        rlim_t nofile = getDefine_Int("analysisd", "rlimit_nofile", 1024, INT_MAX);
+        nofile = getDefine_Int("analysisd", "rlimit_nofile", 1024, INT_MAX);
         struct rlimit rlimit = { nofile, nofile };
 
         if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
@@ -308,6 +451,12 @@ int main_analysisd(int argc, char **argv)
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
+
+
+    /* Check the CPU INFO */
+    /* If we have the threads set to 0 on internal_options.conf, then */
+    /* we assign them automatically based on the number of cores */
+    cpu_information = get_cpu_info();
 
     /* Chroot */
     if (Privsep_Chroot(dir) < 0) {
@@ -533,6 +682,9 @@ int main_analysisd(int argc, char **argv)
     /* Startup message */
     minfo(STARTUP_MSG, (int)getpid());
 
+    // Start com request thread
+    w_create_thread(syscom_main, NULL);
+
     /* Going to main loop */
     OS_ReadMSG(m_queue);
 
@@ -548,13 +700,7 @@ __attribute__((noreturn))
 void OS_ReadMSG_analysisd(int m_queue)
 #endif
 {
-    char * msg = NULL;
-    Eventinfo *lf;
-
-    RuleInfo *stats_rule = NULL;
-
-    /* Null to global currently pointers */
-    currently_rule = NULL;
+    Eventinfo *lf = NULL;
 
     /* Initialize the logs */
     OS_InitLog();
@@ -667,7 +813,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         strncpy(lf->mon, prev_month, 3);
         lf->day = today;
 
-        if (OS_GetLogLocation(lf) < 0) {
+        if (OS_GetLogLocation(today,prev_year,prev_month) < 0) {
             merror_exit("Error allocating log files");
         }
 
@@ -679,9 +825,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 
-    // Create input buffer and thread
-
-    input_queue = queue_init(Config.queue_size);
     w_create_thread(ad_input_main, &m_queue);
 
     mdebug1("Startup completed. Waiting for new messages..");
@@ -690,392 +833,135 @@ void OS_ReadMSG_analysisd(int m_queue)
         mdebug1("Custom output found.!");
     }
 
-    /* Daemon loop */
+    /* Init the archives writer queue */
+    writer_queue = queue_init(getDefine_Int("analysisd", "archives_queue_size", 0, 2000000));
+
+    /* Init the alerts log writer queue */
+    writer_queue_log = queue_init(getDefine_Int("analysisd", "alerts_queue_size", 0, 2000000));
+
+    /* Init statistical the log writer queue */
+    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "statistical_queue_size", 0, 2000000));
+
+    /* Init the firewall log writer queue */
+    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "firewall_queue_size", 0, 2000000));
+
+    /* Init the FTS log writer queue */
+    writer_queue_log_fts = queue_init(getDefine_Int("analysisd", "fts_queue_size", 0, 2000000));
+
+    /* Init the decode syscheck queue input */
+    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decode_syscheck_queue_size", 0, 2000000));
+
+    /* Init the decode syscollector queue input */
+    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decode_syscollector_queue_size", 0, 2000000));
+
+    /* Init the decode rootcheck queue input */
+    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
+
+    /* Init the decode hostinfo queue input */
+    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
+
+    /* Init the decode event queue input */
+    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));
+
+    /* Init the decode event queue output */
+    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
+
+    /* Queue stats */
+    w_get_initial_queues_size();
+
+    int num_decode_event_threads = getDefine_Int("analysisd", "event_threads", 0, 32);
+    int num_decode_syscheck_threads = getDefine_Int("analysisd", "syscheck_threads", 0, 32);
+    int num_decode_syscollector_threads = getDefine_Int("analysisd", "syscollector_threads", 0, 32);
+    int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 0, 32);
+    int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
+    int num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
+
+    /* Init the Files Ignore pointers*/
+    fp_ignore = (FILE **)calloc(num_rule_matching_threads, sizeof(FILE*));
+    int i;
+
+    for(i = 0; i < num_rule_matching_threads;i++){
+        fp_ignore[i] = w_get_fp_ignore();
+    }
+    
+
+    if(num_decode_event_threads == 0){
+        num_decode_event_threads = cpu_information->cpu_cores;
+    }
+
+    if(num_decode_syscheck_threads == 0){
+        num_decode_syscheck_threads = cpu_information->cpu_cores;
+    }
+
+    if(num_decode_syscollector_threads == 0){
+        num_decode_syscollector_threads = cpu_information->cpu_cores;
+    }
+
+    if(num_decode_rootcheck_threads == 0){
+        num_decode_rootcheck_threads = cpu_information->cpu_cores;
+    }
+
+    if(num_decode_hostinfo_threads == 0){
+        num_decode_hostinfo_threads = cpu_information->cpu_cores;
+    }
+
+    if(num_rule_matching_threads == 0){
+        num_rule_matching_threads = cpu_information->cpu_cores;
+    }
+
+    /* Create archives writer thread */
+    w_create_thread(w_writer_thread,NULL);
+
+    /* Create alerts log writer thread */
+    w_create_thread(w_writer_log_thread,NULL);
+
+    /* Create statistical log writer thread */
+    w_create_thread(w_writer_log_statistical_thread,NULL);
+
+    /* Create firewall log writer thread */
+    w_create_thread(w_writer_log_firewall_thread,NULL);
+
+    /* Create FTS log writer thread */
+    w_create_thread(w_writer_log_fts_thread,NULL);
+    
+    /* Create log rotation thread */
+    w_create_thread(w_log_rotate_thread,NULL);
+
+    /* Create decode syscheck threads */
+    for(i = 0; i < num_decode_syscheck_threads;i++){
+        w_create_thread(w_decode_syscheck_thread,NULL);
+    }
+
+    /* Create decode syscollector threads */
+    for(i = 0; i < num_decode_syscollector_threads;i++){
+        w_create_thread(w_decode_syscollector_thread,NULL);
+    }
+
+    /* Create decode hostinfo threads */
+    for(i = 0; i < num_decode_hostinfo_threads;i++){
+        w_create_thread(w_decode_hostinfo_thread,NULL);
+    }
+
+    /* Create decode rootcheck threads */
+    for(i = 0; i < num_decode_rootcheck_threads;i++){
+        w_create_thread(w_decode_rootcheck_thread,NULL);
+    }
+    
+    /* Create decode event threads */
+    for(i = 0; i < num_decode_event_threads;i++){
+        w_create_thread(w_decode_event_thread,NULL);
+    }
+
+    /* Create the process event threads */
+    for(i = 0; i < num_rule_matching_threads;i++){
+        w_create_thread(w_process_event_thread,(void *) (intptr_t)i);
+    }
+
+    /* Create State thread */
+    w_create_thread(w_analysisd_state_main,NULL);
+
     while (1) {
-        os_calloc(1, sizeof(Eventinfo), lf);
-        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-        free(msg);
-        msg = NULL;
-
-        DEBUG_MSG("%s: DEBUG: Waiting for msgs - %d ", ARGV0, (int)time(0));
-
-        /* Receive message from queue */
-        if (msg = queue_pop_ex(input_queue), msg) {
-            RuleNode *rulenode_pt;
-
-            /* Get the time we received the event */
-            gettime(&c_timespec);
-
-            /* Default values for the log info */
-            Zero_Eventinfo(lf);
-
-            /* Check for a valid message */
-            if (strlen(msg) < 4) {
-                merror(IMSG_ERROR, msg);
-                Free_Eventinfo(lf);
-                continue;
-            }
-
-            /* Message before extracting header */
-            DEBUG_MSG("%s: DEBUG: Received msg: %s ", ARGV0, msg);
-
-            /* Clean the msg appropriately */
-            if (OS_CleanMSG(msg, lf) < 0) {
-                merror(IMSG_ERROR, msg);
-                Free_Eventinfo(lf);
-                continue;
-            }
-
-            /* Msg cleaned */
-            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
-
-            /* Current rule must be null in here */
-            currently_rule = NULL;
-
-            /** Check the date/hour changes **/
-
-            /* Update the hour */
-            if (thishour != __crt_hour) {
-                /* Search all the rules and print the number
-                 * of alerts that each one fired
-                 */
-                DumpLogstats();
-                thishour = __crt_hour;
-
-                /* Check if the date has changed */
-                if (today != lf->day) {
-                    if (Config.stats) {
-                        /* Update the hourly stats (done daily) */
-                        Update_Hour();
-                    }
-
-                    if (OS_GetLogLocation(lf) < 0) {
-                        merror_exit("Error allocating log files");
-                    }
-
-                    today = lf->day;
-                    strncpy(prev_month, lf->mon, 3);
-                    prev_year = lf->year;
-                }
-            }
-
-            OS_RotateLogs(lf);
-
-            /* Increment number of events received */
-            hourly_events++;
-
-            /***  Run decoders ***/
-
-            /* Integrity check from syscheck */
-            if (msg[0] == SYSCHECK_MQ) {
-                hourly_syscheck++;
-
-                if (!DecodeSyscheck(lf)) {
-                    /* We don't process syscheck events further */
-                    goto CLMEM;
-                }
-
-                /* Get log size */
-                lf->size = strlen(lf->log);
-            }
-
-            /* Rootcheck decoding */
-            else if (msg[0] == ROOTCHECK_MQ) {
-                if (!DecodeRootcheck(lf)) {
-                    /* We don't process rootcheck events further */
-                    goto CLMEM;
-                }
-                lf->size = strlen(lf->log);
-            }
-            /* Syscollector decoding */
-            else if (msg[0] == SYSCOLLECTOR_MQ) {
-                if (!DecodeSyscollector(lf)) {
-                    /* We don't process Syscollector events further */
-                    goto CLMEM;
-                }
-                lf->size = strlen(lf->log);
-            }
-            /* CIS-CAT decoding */
-            else if (msg[0] == CISCAT_MQ) {
-                if (!DecodeCiscat(lf)) {
-                    /* We don't process cis-cat events further */
-                    goto CLMEM;
-                }
-                lf->size = strlen(lf->log);
-            }
-            /* Host information special decoder */
-            else if (msg[0] == HOSTINFO_MQ) {
-                if (!DecodeHostinfo(lf)) {
-                    /* We don't process hostinfo events further */
-                    goto CLMEM;
-                }
-                lf->size = strlen(lf->log);
-            }
-
-            /* Run the general Decoders */
-            else {
-                /* Get log size */
-                lf->size = strlen(lf->log);
-
-                DecodeEvent(lf);
-            }
-
-            /* Run accumulator */
-            if ( lf->decoder_info->accumulate == 1 ) {
-                lf = Accumulate(lf);
-            }
-
-            /* Firewall event */
-            if (lf->decoder_info->type == FIREWALL) {
-                /* If we could not get any information from
-                 * the log, just ignore it
-                 */
-                hourly_firewall++;
-                if (Config.logfw) {
-                    if (!FW_Log(lf)) {
-                        goto CLMEM;
-                    }
-                }
-            }
-
-            /* Stats checking */
-            if (Config.stats) {
-                if (Check_Hour() == 1) {
-                    RuleInfo *saved_rule = lf->generated_rule;
-                    char *saved_log;
-
-                    /* Save previous log */
-                    saved_log = lf->full_log;
-
-                    lf->generated_rule = stats_rule;
-                    lf->full_log = __stats_comment;
-
-                    /* Alert for statistical analysis */
-                    if (stats_rule->alert_opts & DO_LOGALERT) {
-                        if (Config.custom_alert_output) {
-                            __crt_ftell = ftell(_aflog);
-                            OS_CustomLog(lf, Config.custom_alert_output_format);
-                        } else if (Config.alerts_log) {
-                            __crt_ftell = ftell(_aflog);
-                            OS_Log(lf);
-                        } else {
-                            __crt_ftell = ftell(_jflog);
-                        }
-
-                        /* Log to json file */
-                        if (Config.jsonout_output) {
-                            jsonout_output_event(lf);
-                        }
-
-                    }
-
-                    /* Set lf to the old values */
-                    lf->generated_rule = saved_rule;
-                    lf->full_log = saved_log;
-                }
-            }
-
-            // Insert labels
-            lf->labels = labels_find(lf);
-
-            /* Check the rules */
-            DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
-                      ARGV0, lf->decoder_info->type);
-
-            /* Loop over all the rules */
-            rulenode_pt = OS_GetFirstRule();
-            if (!rulenode_pt) {
-                merror_exit("Rules in an inconsistent state. Exiting.");
-            }
-
-            do {
-
-                if (lf->decoder_info->type == OSSEC_ALERT) {
-                    if (!lf->generated_rule) {
-                        goto CLMEM;
-                    }
-
-                    /* Process the alert */
-                    currently_rule = lf->generated_rule;
-                }
-
-                /* Categories must match */
-                else if (rulenode_pt->ruleinfo->category !=
-                         lf->decoder_info->type) {
-                    continue;
-                }
-
-                /* Check each rule */
-                else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt))
-                         == NULL) {
-                    continue;
-                }
-
-                /* Ignore level 0 */
-                if (currently_rule->level == 0) {
-                    break;
-                }
-
-                /* Check ignore time */
-                if (currently_rule->ignore_time) {
-                    if (currently_rule->time_ignored == 0) {
-                        currently_rule->time_ignored = lf->time.tv_sec;
-                    }
-                    /* If the current time - the time the rule was ignored
-                     * is less than the time it should be ignored,
-                     * leave (do not alert again)
-                     */
-                    else if ((lf->time.tv_sec - currently_rule->time_ignored)
-                             < currently_rule->ignore_time) {
-                        break;
-                    } else {
-                        currently_rule->time_ignored = lf->time.tv_sec;
-                    }
-                }
-
-                /* Pointer to the rule that generated it */
-                lf->generated_rule = currently_rule;
-
-                /* Check if we should ignore it */
-                if (currently_rule->ckignore && IGnore(lf)) {
-                    /* Ignore rule */
-                    lf->generated_rule = NULL;
-                    break;
-                }
-
-                /* Check if we need to add to ignore list */
-                if (currently_rule->ignore) {
-                    AddtoIGnore(lf);
-                }
-
-                /* Log the alert if configured to */
-                if (currently_rule->alert_opts & DO_LOGALERT) {
-                    lf->comment = ParseRuleComment(lf);
-
-                    if (Config.custom_alert_output) {
-                        __crt_ftell = ftell(_aflog);
-                        OS_CustomLog(lf, Config.custom_alert_output_format);
-                    } else if (Config.alerts_log) {
-                        __crt_ftell = ftell(_aflog);
-                        OS_Log(lf);
-                    } else {
-                        __crt_ftell = ftell(_jflog);
-                    }
-                    /* Log to json file */
-                    if (Config.jsonout_output) {
-                        jsonout_output_event(lf);
-                    }
-                }
-
-#ifdef PRELUDE_OUTPUT_ENABLED
-                /* Log to prelude */
-                if (Config.prelude) {
-                    if (Config.prelude_log_level <= currently_rule->level) {
-                        OS_PreludeLog(lf);
-                    }
-                }
-#endif
-
-#ifdef ZEROMQ_OUTPUT_ENABLED
-                /* Log to zeromq */
-                if (Config.zeromq_output) {
-                    zeromq_output_event(lf);
-                }
-#endif
-
-
-                /* Execute an active response */
-                if (currently_rule->ar) {
-                    int do_ar;
-                    active_response **rule_ar;
-
-                    rule_ar = currently_rule->ar;
-
-                    while (*rule_ar) {
-                        do_ar = 1;
-                        if ((*rule_ar)->ar_cmd->expect & USERNAME) {
-                            if (!lf->dstuser ||
-                                    !OS_PRegex(lf->dstuser, "^[a-zA-Z._0-9@?-]*$")) {
-                                if (lf->dstuser) {
-                                    mwarn(CRAFTED_USER, lf->dstuser);
-                                }
-                                do_ar = 0;
-                            }
-                        }
-                        if ((*rule_ar)->ar_cmd->expect & SRCIP) {
-                            if (!lf->srcip ||
-                                    !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$")) {
-                                if (lf->srcip) {
-                                    mwarn(CRAFTED_IP, lf->srcip);
-                                }
-                                do_ar = 0;
-                            }
-                        }
-                        if ((*rule_ar)->ar_cmd->expect & FILENAME) {
-                            if (!lf->filename) {
-                                do_ar = 0;
-                            }
-                        }
-
-                        if (do_ar && execdq >= 0) {
-                            OS_Exec(execdq, arq, lf, *rule_ar);
-                        }
-                        rule_ar++;
-                    }
-                }
-
-                /* Copy the structure to the state memory of if_matched_sid */
-                if (currently_rule->sid_prev_matched) {
-                    if (!OSList_AddData(currently_rule->sid_prev_matched, lf)) {
-                        merror("Unable to add data to sig list.");
-                    } else {
-                        lf->sid_node_to_delete =
-                            currently_rule->sid_prev_matched->last_node;
-                    }
-                }
-                /* Group list */
-                else if (currently_rule->group_prev_matched) {
-                    unsigned int j = 0;
-
-                    while (j < currently_rule->group_prev_matched_sz) {
-                        if (!OSList_AddData(
-                                    currently_rule->group_prev_matched[j],
-                                    lf)) {
-                            merror("Unable to add data to grp list.");
-                        }
-                        j++;
-                    }
-                }
-
-                OS_AddEvent(lf);
-
-                break;
-
-            } while ((rulenode_pt = rulenode_pt->next) != NULL);
-
-            /* If configured to log all, do it */
-            if (Config.logall)
-                OS_Store(lf);
-            if (Config.logall_json)
-                jsonout_output_archive(lf);
-
-
-CLMEM:
-            /** Cleaning the memory **/
-
-            /* Only clear the memory if the eventinfo was not
-             * added to the stateful memory
-             * -- message is free inside clean event --
-             */
-            if (lf->generated_rule == NULL) {
-                Free_Eventinfo(lf);
-            } else if (lf->generated_rule->last_events) {
-                lf->generated_rule->last_events[0] = NULL;
-            }
-        } else {
-            free(lf->fields);
-            free(lf);
-        }
+        sleep(1);
     }
 }
 
@@ -1103,7 +989,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     RuleInfo *rule = curr_node->ruleinfo;
     int i;
     const char *field;
-
     /* Can't be null */
     if (!rule) {
         merror("Inconsistent state. currently rule NULL");
@@ -1116,9 +1001,15 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                   rule->comment);
 #endif
 
-    /* Check if any decoder pre-matched here */
-    if (rule->decoded_as &&
-            rule->decoded_as != lf->decoder_info->id) {
+    
+    /* Check if any decoder pre-matched here for syscheck event */
+    if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
+            rule->decoded_as != lf->decoder_syscheck_id)){
+        return (NULL);
+    }
+    /* Check if any decoder pre-matched here for non-syscheck events*/
+    else if (lf->decoder_syscheck_id == 0 && (rule->decoded_as &&
+            rule->decoded_as != lf->decoder_info->id)) {
         return (NULL);
     }
 
@@ -1369,21 +1260,29 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 
         /* Do diff check */
         if (rule->context_opts & SAME_DODIFF) {
+            w_mutex_lock(&do_diff_mutex);
             if (!doDiff(rule, lf)) {
+                w_mutex_unlock(&do_diff_mutex);
                 return (NULL);
             }
+            w_mutex_unlock(&do_diff_mutex);
         }
     }
 
     /* Check for the FTS flag */
     if (rule->alert_opts & DO_FTS) {
         /** FTS CHECKS **/
-        if (lf->decoder_info->fts) {
-            if (lf->decoder_info->fts & FTS_DONE) {
+        if (lf->decoder_info->fts || lf->rootcheck_fts) {
+            char * _line = NULL;
+            char * _line_cpy;
+            if ((lf->decoder_info->fts & FTS_DONE) || (lf->rootcheck_fts & FTS_DONE))  {
                 /* We already did the fts in here */
-            } else if (!FTS(lf)) {
+            } else if (_line = FTS(lf),_line == NULL) {
                 return (NULL);
             }
+            os_strdup(_line,_line_cpy); 
+            free(_line);
+            queue_push_ex_block(writer_queue_log_fts,_line_cpy);
         } else {
             return (NULL);
         }
@@ -1545,7 +1444,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         return (NULL);
     }
 
+    w_mutex_lock(&hourly_alert_mutex);
     hourly_alerts++;
+    w_mutex_unlock(&hourly_alert_mutex);
     rule->firedtimes++;
 
     return (rule); /* Matched */
@@ -1641,30 +1542,1046 @@ void * ad_input_main(void * args) {
     int m_queue = *(int *)args;
     char buffer[OS_MAXSTR + 1] = "";
     char * copy;
-    int reported = 0;
-
+    char *msg;
+    int result;    
+    
     mdebug1("Input message handler thread started.");
 
     while (1) {
         if (OS_RecvUnix(m_queue, OS_MAXSTR, buffer)) {
-            w_mutex_lock(&input_queue->mutex);
+            msg = buffer;
 
-            if (queue_full(input_queue)) {
-                mdebug2("Discarding input event, head='%c'", buffer[0]);
-
-                if (!reported) {
-                    reported = 1;
-                    mwarn("Input buffer is full (%zu). Events may be lost.", input_queue->size);
-                }
-            } else {
-                os_strdup(buffer, copy);
-                queue_push(input_queue, copy);
-                w_cond_signal(&input_queue->available);
+            /* Check for a valid message */
+            if (strlen(msg) < 4) {
+                merror(IMSG_ERROR, msg);
+                continue;
             }
 
-            w_mutex_unlock(&input_queue->mutex);
+            s_events_received++;
+
+            if (msg[0] == SYSCHECK_MQ) {
+
+                os_strdup(buffer, copy);
+                if(queue_full(decode_queue_syscheck_input)){
+                    if(!reported_syscheck){
+                        reported_syscheck = 1;
+                        mwarn("Could not decode syscheck event, queue is full");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+    
+                result = queue_push_ex(decode_queue_syscheck_input,copy);
+
+                if(result < 0){
+                    if(!reported_syscheck){
+                        reported_syscheck = 1;
+                        mwarn("Could not decode syscheck event, queue is full");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+                hourly_syscheck++;
+                /* Increment number of events received */
+                hourly_events++;
+            }
+            else if(msg[0] == ROOTCHECK_MQ){
+                os_strdup(buffer, copy);
+
+                if(queue_full(decode_queue_rootcheck_input)){
+                    if(!reported_rootcheck){
+                        reported_rootcheck = 1;
+                        mwarn("Could not decode rootcheck event, queue is full");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+
+                result = queue_push_ex(decode_queue_rootcheck_input,copy);
+
+                if(result < 0){
+                    if(!reported_rootcheck){
+                        reported_rootcheck = 1;
+                        mwarn("Could not decode rootcheck event, queue is full");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+
+                /* Increment number of events received */
+                hourly_events++;
+            }
+            else if(msg[0] == SYSCOLLECTOR_MQ){
+
+                os_strdup(buffer, copy);
+
+                if(queue_full(decode_queue_syscollector_input)){
+                    if(!reported_syscollector){
+                        reported_syscollector = 1;
+                        mwarn("Could not decode syscollector event, queue is full");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+
+                result = queue_push_ex(decode_queue_syscollector_input,copy);
+
+                if(result < 0){
+                    
+                    if(!reported_syscollector){
+                        reported_syscollector = 1;
+                        mwarn("Could not decode syscollector event, queue is full");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+                /* Increment number of events received */
+                hourly_events++;
+            }
+            else if(msg[0] == HOSTINFO_MQ){
+
+                os_strdup(buffer, copy);
+
+                if(queue_full(decode_queue_hostinfo_input)){
+                    if(!reported_hostinfo){
+                        reported_hostinfo = 1;
+                        mwarn("Could not decode hostinfo event, queue is full");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+
+                result = queue_push_ex(decode_queue_hostinfo_input,copy);
+
+                if(result < 0){
+                    if(!reported_hostinfo){
+                        reported_hostinfo = 1;
+                        mwarn("Could not decode hostinfo event, queue is full");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+                /* Increment number of events received */
+                hourly_events++;
+            }
+            else{
+
+                os_strdup(buffer, copy);
+
+                if(queue_full(decode_queue_event_input)){
+                    if(!reported_event){
+                        reported_event = 1;
+                        mwarn("Could not push to input decode event, queue is full");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+
+                result = queue_push_ex(decode_queue_event_input,copy);
+
+                if(result < 0){
+
+                    if(!reported_event){
+                        reported_event = 1;
+                        mwarn("Could not push to input decode event, queue is full"); 
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+                /* Increment number of events received */
+                hourly_events++;
+            }
         }
     }
 
+    return NULL;
+}
+
+void w_free_event_info(Eventinfo *lf){
+    /** Cleaning the memory **/
+
+    /* Only clear the memory if the eventinfo was not
+        * added to the stateful memory
+        * -- message is free inside clean event --
+    */
+    if (lf->generated_rule == NULL) {
+        Free_Eventinfo(lf);
+    } else if (lf->last_events) {
+        /* Free last_events struct */
+        char **last_event = lf->last_events;
+        char **lasts = lf->last_events;
+        
+        while (*lasts) {
+            free(*lasts);
+            lasts++;
+        }
+        free(last_event);
+
+        w_mutex_lock(&lf->generated_rule->mutex);
+        lf->generated_rule->last_events[0] = NULL;
+        w_mutex_unlock(&lf->generated_rule->mutex);
+    }
+}
+
+void * w_writer_thread(__attribute__((unused)) void * args ){
+    Eventinfo *lf = NULL;
+
+    while(1){
+
+        /* Receive message from queue */
+        if (lf = queue_pop_ex(writer_queue), lf) {
+
+            w_mutex_lock(&writer_threads_mutex);
+
+            /* If configured to log all, do it */
+            if (Config.logall){
+                OS_Store(lf);
+            }
+            if (Config.logall_json){
+                jsonout_output_archive(lf);
+            }
+               
+            w_free_event_info(lf);
+            w_mutex_unlock(&writer_threads_mutex);
+        } else {
+            free(lf->fields);
+            free(lf);
+        }
+    }
+}
+
+void * w_writer_log_thread(__attribute__((unused)) void * args ){
+    Eventinfo *lf;
+
+    while(1){
+            /* Receive message from queue */
+            if (lf = queue_pop_ex(writer_queue_log), lf) {
+
+                w_mutex_lock(&writer_threads_mutex);
+                w_inc_alerts_written();
+
+                if (Config.custom_alert_output) {
+                    __crt_ftell = ftell(_aflog);
+                    OS_CustomLog(lf, Config.custom_alert_output_format);
+                } else if (Config.alerts_log) {
+                    __crt_ftell = ftell(_aflog);
+                    OS_Log(lf);
+                } else if(Config.jsonout_output){
+                    __crt_ftell = ftell(_jflog);
+                }
+                /* Log to json file */
+                if (Config.jsonout_output) {
+                    jsonout_output_event(lf);
+                }
+
+    #ifdef PRELUDE_OUTPUT_ENABLED
+                /* Log to prelude */
+                if (Config.prelude) {
+                    if (Config.prelude_log_level <= currently_rule->level) {
+                        OS_PreludeLog(lf);
+                    }
+                }
+    #endif
+
+    #ifdef ZEROMQ_OUTPUT_ENABLED
+                /* Log to zeromq */
+                if (Config.zeromq_output) {
+                    zeromq_output_event(lf);
+                }
+    #endif
+                w_mutex_unlock(&writer_threads_mutex);
+                Free_Eventinfo(lf);
+            }
+    }
+}
+
+
+void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
+    Eventinfo *lf = NULL;
+    char *msg = NULL;
+
+    while(1){
+
+        /* Receive message from queue */
+        if (msg = queue_pop_ex(decode_queue_syscheck_input), msg) {
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+
+            /* Default values for the log info */
+            Zero_Eventinfo(lf);
+
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
+            }
+
+            free(msg);
+            
+            /* Msg cleaned */
+            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+
+            w_inc_syscheck_decoded_events();
+
+            if (!DecodeSyscheck(lf)) {
+                /* We don't process syscheck events further */
+                w_free_event_info(lf);
+                continue;
+            }
+            else{
+                queue_push_ex_block(decode_queue_event_output,lf);
+            }
+        }    
+    }
+}
+
+void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
+    Eventinfo *lf = NULL;
+    char *msg = NULL;
+    int socket = -1;
+
+    while(1){
+
+        /* Receive message from queue */
+        if (msg = queue_pop_ex(decode_queue_syscollector_input), msg) {
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+
+            /* Default values for the log info */
+            Zero_Eventinfo(lf);
+
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
+            }
+
+            free(msg);
+
+            /* Msg cleaned */
+            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+
+            /** Check the date/hour changes **/
+
+            if (!DecodeSyscollector(lf,&socket)) {
+                /* We don't process syscheck events further */
+                w_free_event_info(lf);
+            }
+            else{
+                queue_push_ex_block(decode_queue_event_output,lf);
+            }
+
+            w_inc_syscollector_decoded_events();
+        }    
+    }
+}
+
+void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
+    Eventinfo *lf = NULL;
+    char *msg = NULL;
+
+    while(1){
+
+        /* Receive message from queue */
+        if (msg = queue_pop_ex(decode_queue_rootcheck_input), msg) {
+
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+
+            /* Default values for the log info */
+            Zero_Eventinfo(lf);
+
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
+            }
+
+            free(msg);
+
+            /* Msg cleaned */
+            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+            
+            if (!DecodeRootcheck(lf)) {
+                /* We don't process rootcheck events further */
+                w_free_event_info(lf);
+            }
+            else{
+                queue_push_ex_block(decode_queue_event_output,lf);
+            }
+
+            w_inc_rootcheck_decoded_events();
+        }    
+    }
+}
+
+void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
+    Eventinfo *lf = NULL;
+    char * msg = NULL;
+
+    while(1){
+
+        /* Receive message from queue */
+        if (msg = queue_pop_ex(decode_queue_hostinfo_input), msg) {
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+
+            /* Default values for the log info */
+            Zero_Eventinfo(lf);
+
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
+            }
+
+            free(msg);
+            /* Msg cleaned */
+            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+
+            if (!DecodeHostinfo(lf)) {
+                /* We don't process syscheck events further */
+                w_free_event_info(lf);
+            }
+            else{
+                queue_push_ex_block(decode_queue_event_output,lf);
+            }
+
+            w_inc_hostinfo_decoded_events();
+        }
+    }
+}
+
+
+void * w_decode_event_thread(__attribute__((unused)) void * args){
+    Eventinfo *lf = NULL;
+    char * msg = NULL;
+ 
+    while(1){
+
+        /* Receive message from queue */
+        if (msg = queue_pop_ex(decode_queue_event_input), msg) {
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+
+            /* Default values for the log info */
+            Zero_Eventinfo(lf);
+
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
+            }
+
+            free(msg);
+            /* Msg cleaned */
+            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+
+            DecodeEvent(lf);
+
+            queue_push_ex_block(decode_queue_event_output,lf);
+            
+            w_inc_decoded_events();
+        }    
+    }
+}
+
+void * w_process_event_thread(__attribute__((unused)) void * id){
+
+    Eventinfo *lf = NULL;
+    RuleInfo *currently_rule = NULL;
+    int result;
+    int t_id = (intptr_t)id;
+
+    while(1){
+
+        RuleNode *rulenode_pt;
+
+        /* Extract decoded event from the queue */
+        if(lf = queue_pop_ex(decode_queue_event_output), lf) {
+            mdebug2("Taking out from the queue");
+        }
+        
+        currently_rule = NULL;
+
+        lf->size = strlen(lf->log);
+
+        mdebug2("Event extracted from the queue...");   
+        /* Run accumulator */
+        if ( lf->decoder_info->accumulate == 1 ) {
+            lf = Accumulate(lf);
+        }
+
+        /* Firewall event */
+        if (lf->decoder_info->type == FIREWALL) {
+            /* If we could not get any information from
+                * the log, just ignore it
+                */
+            w_mutex_lock(&hourly_firewall_mutex);
+            hourly_firewall++;
+            w_mutex_unlock(&hourly_firewall_mutex);
+            if (Config.logfw) {
+
+                if (!lf->action || !lf->srcip || !lf->dstip || !lf->srcport ||
+                        !lf->dstport || !lf->protocol) {
+                    w_free_event_info(lf);
+                    continue;
+                }
+
+                Eventinfo *lf_cpy = NULL;
+
+                os_calloc(1, sizeof(Eventinfo), lf_cpy);
+                w_copy_event_for_log(lf,lf_cpy);
+
+                queue_push_ex_block(writer_queue_log_firewall, lf_cpy);
+            }
+        }
+
+        /* Stats checking */
+        if (Config.stats) {
+            w_mutex_lock(&process_event_check_hour_mutex);
+            if (Check_Hour() == 1) {
+                RuleInfo *saved_rule = lf->generated_rule;
+                char *saved_log;
+
+                /* Save previous log */
+                saved_log = lf->full_log;
+
+                lf->generated_rule = stats_rule;
+                lf->full_log = __stats_comment;
+
+                /* Alert for statistical analysis */
+                if (stats_rule->alert_opts & DO_LOGALERT) {
+                    Eventinfo *lf_cpy = NULL;
+
+                    os_calloc(1, sizeof(Eventinfo), lf_cpy);
+                    w_copy_event_for_log(lf,lf_cpy);
+
+                    queue_push_ex_block(writer_queue_log_statistical, lf_cpy);
+                }
+
+                /* Set lf to the old values */
+                lf->generated_rule = saved_rule;
+                lf->full_log = saved_log;
+            }
+            w_mutex_unlock(&process_event_check_hour_mutex);
+        }
+
+        // Insert labels
+        lf->labels = labels_find(lf);
+
+        /* Check the rules */
+        DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
+                    ARGV0, lf->decoder_info->type);
+
+        /* Loop over all the rules */
+        rulenode_pt = OS_GetFirstRule();
+        if (!rulenode_pt) {
+            merror_exit("Rules in an inconsistent state. Exiting.");
+        }
+        do {
+            if (lf->decoder_info->type == OSSEC_ALERT) {
+                if (!lf->generated_rule) {
+                    w_free_event_info(lf);
+                    continue;
+                }
+
+                /* Process the alert */
+                currently_rule = lf->generated_rule;
+            }
+            /* Categories must match */
+            else if (rulenode_pt->ruleinfo->category !=
+                        lf->decoder_info->type) {
+                continue;
+            }
+            /* Check each rule */
+            else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt))
+                        == NULL) {
+                continue;
+            }
+
+            /* Ignore level 0 */
+            if (currently_rule->level == 0) {
+                break;
+            }
+
+            /* Check ignore time */
+            if (currently_rule->ignore_time) {
+                if (currently_rule->time_ignored == 0) {
+                    currently_rule->time_ignored = lf->time.tv_sec;
+                }
+                /* If the current time - the time the rule was ignored
+                    * is less than the time it should be ignored,
+                    * leave (do not alert again)
+                    */
+                else if ((lf->time.tv_sec - currently_rule->time_ignored)
+                            < currently_rule->ignore_time) {
+                    break;
+                } else {
+                    currently_rule->time_ignored = lf->time.tv_sec;
+                }
+            }
+           
+            /* Pointer to the rule that generated it */
+            lf->generated_rule = currently_rule;
+
+            /* Check if we should ignore it */
+            if (currently_rule->ckignore && IGnore(lf,fp_ignore[t_id])) {
+                /* Ignore rule */
+                lf->generated_rule = NULL;
+                break;
+            }
+
+            /* Check if we need to add to ignore list */
+            if (currently_rule->ignore) {
+                w_mutex_lock(&process_event_ignore_rule_mutex);
+                AddtoIGnore(lf);
+                w_mutex_unlock(&process_event_ignore_rule_mutex);
+            }
+
+            /* Log the alert if configured to */
+            if (currently_rule->alert_opts & DO_LOGALERT) {
+                lf->comment = ParseRuleComment(lf);
+                Eventinfo *lf_cpy = NULL;
+
+                os_calloc(1, sizeof(Eventinfo), lf_cpy);
+                w_copy_event_for_log(lf,lf_cpy);
+
+                queue_push_ex_block(writer_queue_log, lf_cpy);
+            }
+
+            /* Execute an active response */
+            if (currently_rule->ar) {
+                int do_ar;
+                active_response **rule_ar;
+
+                rule_ar = currently_rule->ar;
+
+                while (*rule_ar) {
+                    do_ar = 1;
+                    if ((*rule_ar)->ar_cmd->expect & USERNAME) {
+                        if (!lf->dstuser ||
+                                !OS_PRegex(lf->dstuser, "^[a-zA-Z._0-9@?-]*$")) {
+                            if (lf->dstuser) {
+                                mwarn(CRAFTED_USER, lf->dstuser);
+                            }
+                            do_ar = 0;
+                        }
+                    }
+                    if ((*rule_ar)->ar_cmd->expect & SRCIP) {
+                        if (!lf->srcip ||
+                                !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$")) {
+                            if (lf->srcip) {
+                                mwarn(CRAFTED_IP, lf->srcip);
+                            }
+                            do_ar = 0;
+                        }
+                    }
+                    if ((*rule_ar)->ar_cmd->expect & FILENAME) {
+                        if (!lf->filename) {
+                            do_ar = 0;
+                        }
+                    }
+
+                    if (do_ar && execdq >= 0) {
+                        OS_Exec(execdq, arq, lf, *rule_ar);
+                    }
+                    rule_ar++;
+                }
+            }
+
+            /* Copy the structure to the state memory of if_matched_sid */
+            if (currently_rule->sid_prev_matched) {
+                if (!OSList_AddData(currently_rule->sid_prev_matched, lf)) {
+                    merror("Unable to add data to sig list.");
+                } else {
+                    lf->sid_node_to_delete =
+                        currently_rule->sid_prev_matched->last_node;
+                }
+            }
+            /* Group list */
+            else if (currently_rule->group_prev_matched) {
+                unsigned int j = 0;
+
+                while (j < currently_rule->group_prev_matched_sz) {
+                    if (!OSList_AddData(
+                                currently_rule->group_prev_matched[j],
+                                lf)) {
+                        merror("Unable to add data to grp list.");
+                    }
+                    j++;
+                }
+            }
+
+            OS_AddEvent(lf);
+
+            break;
+
+        } while ((rulenode_pt = rulenode_pt->next) != NULL);
+
+        /* Copy last_events structure if we have matched a rule */
+        if(lf->generated_rule){
+            if (lf->generated_rule->last_events){
+                w_mutex_lock(&lf->generated_rule->mutex);
+                os_calloc(1,sizeof(char *),lf->last_events);
+                char **lasts = lf->generated_rule->last_events;
+                int index = 0;
+
+                while (*lasts) {
+                    os_realloc(lf->last_events, sizeof(char *) * (index + 2),lf->last_events);
+                    os_strdup(*lasts,lf->last_events[index]);
+                    lasts++;
+                    index++;
+                }
+                w_mutex_unlock(&lf->generated_rule->mutex);
+                lf->last_events[index] = NULL;
+            }
+        }
+
+        w_inc_processed_events();
+        
+        if (Config.logall || Config.logall_json){
+
+            result = queue_push_ex(writer_queue, lf);
+        
+            if (result < 0) {
+                if(!reported_writer){
+                    reported_writer = 1;
+                    mwarn("Could not push to archives writer thread, Queue is full");
+                }
+                w_free_event_info(lf);
+            }
+            continue;
+        }
+
+        w_free_event_info(lf);
+    }
+}
+
+void * w_log_rotate_thread(__attribute__((unused)) void * args){
+
+    int day;
+    int year;
+    struct tm *p;
+    char mon[4];
+
+    while(1){
+
+        p = localtime(&c_time);
+        day = p->tm_mday;
+        year = p->tm_year + 1900;
+        strncpy(mon, month[p->tm_mon], 3);
+
+        /* Set the global hour/weekday */
+        __crt_hour = p->tm_hour;
+        __crt_wday = p->tm_wday;
+
+        w_mutex_lock(&writer_threads_mutex);
+
+        w_log_flush();
+        if (thishour != __crt_hour) {
+            /* Search all the rules and print the number
+                * of alerts that each one fired
+                */
+            DumpLogstats();
+            thishour = __crt_hour;
+
+            /* Check if the date has changed */
+            if (today != day) {
+                if (Config.stats) {
+                    /* Update the hourly stats (done daily) */
+                    Update_Hour();
+                }
+
+                if (OS_GetLogLocation(day,year,mon) < 0) {
+                    merror_exit("Error allocating log files");
+                }
+
+                today = day;
+                strncpy(prev_month,mon, 3);
+                prev_year = year;
+            }
+        }
+
+        OS_RotateLogs(day,year,mon);
+        w_mutex_unlock(&writer_threads_mutex);
+        sleep(1);
+    }
+}
+
+void * w_writer_log_statistical_thread(__attribute__((unused)) void * args ){
+
+    Eventinfo *lf;
+
+    while(1){
+            /* Receive message from queue */
+        if (lf = queue_pop_ex(writer_queue_log_statistical), lf) {
+
+            w_mutex_lock(&writer_threads_mutex);
+            
+            if (Config.custom_alert_output) {
+                __crt_ftell = ftell(_aflog);
+                OS_CustomLog(lf, Config.custom_alert_output_format);
+            } else if (Config.alerts_log) {
+                __crt_ftell = ftell(_aflog);
+                OS_Log(lf);
+            } else if (Config.jsonout_output) {
+                __crt_ftell = ftell(_jflog);
+            }
+
+            /* Log to json file */
+            if (Config.jsonout_output) {
+                jsonout_output_event(lf);
+            }
+
+            w_mutex_unlock(&writer_threads_mutex);
+
+            Free_Eventinfo(lf);
+        }
+    }
+}
+
+void * w_writer_log_firewall_thread(__attribute__((unused)) void * args ){
+
+    Eventinfo *lf;
+
+    while(1){
+            /* Receive message from queue */
+        if (lf = queue_pop_ex(writer_queue_log_firewall), lf) {
+
+            w_mutex_lock(&writer_threads_mutex);
+            w_inc_firewall_written();
+            FW_Log(lf);
+            w_mutex_unlock(&writer_threads_mutex);
+
+            Free_Eventinfo(lf);
+        }
+    }
+}
+
+void w_log_flush(){
+
+    /* Flush archives.log and archives.json */
+    if (Config.logall){
+        OS_Store_Flush();
+    }
+
+    if (Config.logall_json){
+        jsonout_output_archive_flush();
+    }
+
+    /* Flush alerts.json */
+    if (Config.jsonout_output) {
+        jsonout_output_event_flush();
+    }
+
+    if (Config.custom_alert_output){
+        OS_CustomLog_Flush();
+    }   
+
+    if(Config.alerts_log){
+        OS_Log_Flush();
+    }
+
+    FTS_Flush();
+    
+}
+
+void * w_writer_log_fts_thread(__attribute__((unused)) void * args ){
+
+    char * line;
+
+    while(1){
+            /* Receive message from queue */
+        if (line = queue_pop_ex(writer_queue_log_fts), line) {
+
+            w_mutex_lock(&writer_threads_mutex);
+            w_inc_fts_written();
+            FTS_Fprintf(line);
+            w_mutex_unlock(&writer_threads_mutex);
+
+            free(line);
+        }
+    }
+}
+
+void w_get_queues_size(){
+
+    s_syscheck_queue = ((decode_queue_syscheck_input->elements / (float)decode_queue_syscheck_input->size));
+    s_syscollector_queue = ((decode_queue_syscollector_input->elements / (float)decode_queue_syscollector_input->size));
+    s_rootcheck_queue = ((decode_queue_rootcheck_input->elements / (float)decode_queue_rootcheck_input->size));
+    s_hostinfo_queue = ((decode_queue_hostinfo_input->elements / (float)decode_queue_hostinfo_input->size));
+    s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
+    s_process_event_queue = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size));
+
+    s_writer_archives_queue = ((writer_queue->elements / (float)writer_queue->size));
+    s_writer_alerts_queue = ((writer_queue_log->elements / (float)writer_queue_log->size));
+    s_writer_statistical_queue = ((writer_queue_log_statistical->elements / (float)writer_queue_log_statistical->size));
+    s_writer_firewall_queue = ((writer_queue_log_firewall->elements / (float)writer_queue_log_firewall->size));
+}
+
+void w_get_initial_queues_size(){
+    s_syscheck_queue_size = decode_queue_syscheck_input->size;
+    s_syscollector_queue_size = decode_queue_syscollector_input->size;
+    s_rootcheck_queue_size = decode_queue_rootcheck_input->size;
+    s_hostinfo_queue_size = decode_queue_hostinfo_input->size;
+    s_event_queue_size = decode_queue_event_input->size;
+    s_process_event_queue_size = decode_queue_event_output->size;
+
+    s_writer_alerts_queue_size = writer_queue_log->size;
+    s_writer_archives_queue_size = writer_queue->size;
+    s_writer_firewall_queue_size = writer_queue_log_firewall->size;
+    s_writer_statistical_queue_size = writer_queue_log_statistical->size;
+}
+
+cpu_info *get_cpu_info(){
+    
+#if defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__MACH__)
+    return get_cpu_info_bsd();
+#else
+    return get_cpu_info_linux();
+#endif
+
+}
+
+/* Get CPU information */
+cpu_info *get_cpu_info_linux(){
+
+    FILE *fp;
+    cpu_info *info;
+    char string[OS_MAXSTR];
+
+    char *end;
+
+    os_calloc(1, sizeof(cpu_info), info);
+
+    if (!(fp = fopen("/proc/cpuinfo", "r"))) {
+        mterror(WM_ANALYSISD_LOGTAG, "Unable to read cpuinfo file.");
+        info->cpu_name = strdup("unknown");
+    } else {
+        char *aux_string = NULL;
+        while (fgets(string, OS_MAXSTR, fp) != NULL){
+            if ((aux_string = strstr(string, "model name")) != NULL){
+
+                char *cpuname;
+                cpuname = strtok(string, ":");
+                cpuname = strtok(NULL, "\n");
+                if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
+                    *end = '\0';
+                }
+
+                free(info->cpu_name);
+                info->cpu_name = strdup(cpuname);
+            } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
+
+                char *cores;
+                cores = strtok(string, ":");
+                cores = strtok(NULL, "\n");
+                if (cores[0] == '\"' && (end = strchr(++cores, '\"'), end)) {
+                    *end = '\0';
+                }
+                info->cpu_cores = atoi(cores);
+
+            } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
+
+                char *frec;
+                frec = strtok(string, ":");
+                frec = strtok(NULL, "\n");
+                if (frec[0] == '\"' && (end = strchr(++frec, '\"'), end)) {
+                    *end = '\0';
+                }
+                info->cpu_MHz = atof(frec);
+            }
+        }
+        free(aux_string);
+        fclose(fp);
+    }
+
+    return info;
+}
+
+cpu_info *get_cpu_info_bsd(){
+#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+    cpu_info *info;
+    os_calloc(1, sizeof(cpu_info), info);
+
+    int mib[2];
+    size_t len;
+
+    /* CPU Name */
+    char cpu_name[1024];
+    mib[0] = CTL_HW;
+    mib[1] = HW_MODEL;
+    len = sizeof(cpu_name);
+    if (!sysctl(mib, 2, &cpu_name, &len, NULL, 0)){
+        info->cpu_name = strdup(cpu_name);
+    }else{
+        info->cpu_name = strdup("unknown");
+        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU name due to (%s)", strerror(errno));
+    }
+
+    /* Number of cores */
+    unsigned int cpu_cores;
+    mib[0] = CTL_HW;
+    mib[1] = HW_NCPU;
+    len = sizeof(cpu_cores);
+    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)){
+        info->cpu_cores = (int)cpu_cores;
+    }else{
+        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU cores due to (%s)", strerror(errno));
+    }
+
+    /* CPU clockrate (MHz) */
+#if defined(__OpenBSD__)
+
+    unsigned long cpu_MHz;
+    mib[0] = CTL_HW;
+    mib[1] = HW_CPUSPEED;
+    len = sizeof(cpu_MHz);
+    if (!sysctl(mib, 2, &cpu_MHz, &len, NULL, 0)){
+        info->cpu_MHz = (double)cpu_MHz/1000000.0;
+    }else{
+        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
+    }
+
+#elif defined(__FreeBSD__) || defined(__MACH__)
+
+    char *clockrate;
+    clockrate = calloc(CLOCK_LENGTH, sizeof(char));
+
+#if defined(__FreeBSD__)
+    snprintf(clockrate, CLOCK_LENGTH-1, "%s", "hw.clockrate");
+#elif defined(__MACH__)
+    snprintf(clockrate, CLOCK_LENGTH-1, "%s", "hw.cpufrequency");
+#endif
+
+    unsigned long cpu_MHz;
+    len = sizeof(cpu_MHz);
+    if (!sysctlbyname(clockrate, &cpu_MHz, &len, NULL, 0)){
+        info->cpu_MHz = (double)cpu_MHz/1000000.0;
+    }else{
+        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
+    }
+
+    free(clockrate);
+
+#endif
+    return info;
+#endif
     return NULL;
 }

@@ -61,7 +61,7 @@ typedef enum sk_syscheck {
 } sk_syscheck;
 
 typedef struct __sdb {
-    char buf[OS_MAXSTR + 1];
+    char buf[MAX_AGENTS + 1][OS_MAXSTR + 1];
     char comment[OS_MAXSTR + 1];
 
     char size[OS_FLSIZE + 1];
@@ -78,18 +78,6 @@ typedef struct __sdb {
     char *agent_ips[MAX_AGENTS + 1];
     FILE *agent_fps[MAX_AGENTS + 1];
 
-    // Whodata fields
-    char user_id[OS_FLSIZE + 1];
-    char user_name[OS_FLSIZE + 1];
-    char group_id[OS_FLSIZE + 1];
-    char group_name[OS_FLSIZE + 1];
-    char process_name[OS_FLSIZE + 1];
-    char audit_uid[OS_FLSIZE + 1];
-    char audit_name[OS_FLSIZE + 1];
-    char effective_uid[OS_FLSIZE + 1];
-    char effective_name[OS_FLSIZE + 1];
-    char ppid[OS_FLSIZE + 1];
-    char process_id[OS_FLSIZE + 1];
 
     int db_err;
 
@@ -104,8 +92,9 @@ typedef struct __sdb {
     OSDecoderInfo  *syscheck_dec;
 
     /* File search variables */
-    fpos_t init_pos;
+    fpos_t init_pos[MAX_AGENTS + 1];
 
+    pthread_mutex_t syscheck_mutex[MAX_AGENTS + 1];
 } _sdb; /* syscheck db information */
 
 typedef struct sk_sum_wdata {

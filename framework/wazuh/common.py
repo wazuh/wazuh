@@ -39,6 +39,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global groups_path
     groups_path = "{0}/queue/agent-groups".format(ossec_path)
 
+    global multi_groups_path
+    multi_groups_path = "{0}/var/multigroups".format(ossec_path)
+
     global shared_path
     shared_path = "{0}/etc/shared".format(ossec_path)
 
@@ -69,6 +72,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     # Queues
     global ARQUEUE
     ARQUEUE = "{0}/queue/alerts/ar".format(ossec_path)
+
+    global EXECQ
+    EXECQ = "{0}/queue/alerts/execq".format(ossec_path)
 
     # Socket
     global AUTHD_SOCKET

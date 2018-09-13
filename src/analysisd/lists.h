@@ -29,6 +29,7 @@ typedef struct ListNode {
     char *txt_filename;
     struct cdb cdb;
     struct ListNode *next;
+    pthread_mutex_t mutex;
 } ListNode;
 
 typedef struct ListRule {
@@ -40,6 +41,7 @@ typedef struct ListRule {
     char *filename;
     ListNode *db;
     struct ListRule *next;
+    pthread_mutex_t mutex;
 } ListRule;
 
 /* Create the rule list */
