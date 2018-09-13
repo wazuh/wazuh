@@ -208,8 +208,7 @@ char * parse_environment_labels(const wlabel_t label) {
     char *ipv4_address;
     char *ipv6_address;
     char * mac;
-    char * timeinfo;
-    char * timezone;
+
     strncpy(orig, label.value, OS_COMMENT_MAX);
 
     for (str = orig; (tok = strstr(str, "$(")); str = end) {
