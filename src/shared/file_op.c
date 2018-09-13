@@ -2348,6 +2348,9 @@ char ** wreaddir(const char * name) {
         }
 
         files = realloc(files, (i + 2) * sizeof(char *));
+        if(!files){
+           merror_exit(MEM_ERROR, errno, strerror(errno)); 
+        }
         files[i++] = strdup(dirent->d_name);
     }
 

@@ -29,6 +29,8 @@
 #define SYSCOLLECTOR_MQ  'd'
 #define CISCAT_MQ        'e'
 
+#define MAX_OPENQ_ATTEMPS 15
+
 extern int sock_fail_time;
 
 int StartMQ(const char *key, short int type) __attribute__((nonnull));
