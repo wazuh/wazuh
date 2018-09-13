@@ -14,7 +14,7 @@
 #include "version_op.h"
 #include "config/client-config.h"
 #include "wazuh_modules/syscollector/syscollector.h"
-
+#include <time.h>
 
 /* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
 wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const char *value, unsigned int hidden, int overwrite) {
@@ -208,8 +208,7 @@ char * parse_environment_labels(const wlabel_t label) {
     char *ipv4_address;
     char *ipv6_address;
     char * mac;
-    char * timeinfo;
-    char * timezone;
+
     strncpy(orig, label.value, OS_COMMENT_MAX);
 
     for (str = orig; (tok = strstr(str, "$(")); str = end) {
@@ -281,15 +280,37 @@ char * parse_environment_labels(const wlabel_t label) {
                 field = ipv6_address;
             }
           }
-        }else if(!strcmp(var,"network.mac")){
+        }else if(!strcmp(var,"mac.primary")){
             network_info = getNetworkIfaces_linux();
             iface = cJSON_GetArrayItem(network_info,default_network_iface);
             mac = cJSON_Print(cJSON_GetObjectItem(iface,"mac"));
             field = mac;
+        }else if(!strcmp(var,"mac.others")){
+          network_info = getNetworkIfaces_linux();
+          for(i = 0; i < cJSON_GetArraySize(network_info);i++){
+            if(i!=default_network_iface){
+              iface = cJSON_GetArrayItem(network_info,i);
+              mac = cJSON_Print(cJSON_GetObjectItem(iface,"mac"));
+              if(field){
+                strcat(field,",");
+                strcat(field,mac);
+              }
+              else
+                field = mac;
+            }
+          }
         }else  if(!strcmp(var,"timezone")){
-            //minfo(system("timedatectl status | grep \"Time zone:\""));
-            //timeinfo = system("timedatectl status | grep \"Time zone:\"");
-            field = "00";
+          int zone;
+            time_t t = time(NULL);
+            struct  tm lt={0};
+            char timezone_number[21];
+            localtime_r(&t, &lt);
+            zone = lt.tm_gmtoff/3600;
+            sprintf(timezone_number,"%d",zone);
+            field = timezone_number;
+        }else if(!strcmp(var,"hostname")){
+          os_info = getunameJSON();
+          field = cJSON_Print(cJSON_GetObjectItem(os_info,"hostname"));
         }
 
 
