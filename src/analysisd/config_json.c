@@ -203,6 +203,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         if (node->ruleinfo->if_group) cJSON_AddStringToObject(rule,"if_group",node->ruleinfo->if_group);
         if (node->ruleinfo->if_matched_regex) cJSON_AddStringToObject(rule,"if_matched_regex",node->ruleinfo->if_matched_regex->raw);
         if (node->ruleinfo->if_matched_group) cJSON_AddStringToObject(rule,"if_matched_group",node->ruleinfo->if_matched_group->raw);
+        if (node->ruleinfo->file) cJSON_AddStringToObject(rule,"rule_file",node->ruleinfo->file);
         if (node->ruleinfo->category == FIREWALL) {
             cJSON_AddStringToObject(rule,"category","firewall");
         } else if (node->ruleinfo->category == IDS) {
