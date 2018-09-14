@@ -22,19 +22,28 @@ class DockerListener:
         # docker variables
         self.interval = interval
         self.client = docker.from_env()
+        # checks if docker service is running
+        try:
+            self.client.ping()
+        except Exception:
+            sys.exit("Docker service is not running.")
         self.event_list = []  # could be removed
-        thread = threading.Thread(target=self.listen)
-        thread.daemon = True
-        thread.start()
+        self.thread = threading.Thread(target=self.listen)
+        self.thread.daemon = True
+        self.thread.start()
 
     def listen(self):
         """
         Listens Docker events
 
         """
-        for event in self.client.events():
-            # print(event)
-            self.process(event)
+        try:
+            for event in self.client.events():
+                # print(event)
+                self.process(event)
+        except Exception:
+
+            raise Exception
 
     def process(self, event):
         """"
