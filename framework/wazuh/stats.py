@@ -156,7 +156,7 @@ def weekly():
     return response
 
 
-def get_stats(filename):
+def get_daemons_stats(filename):
     """
     Returns the stats of an input file.
 
@@ -164,18 +164,21 @@ def get_stats(filename):
 
     :return: A dictionary with the stats of the input file.
     """
-    with open(filename, 'r') as f:
-        input_file = unicode("[root]\n" + f.read())
+    try:
+        with open(filename, 'r') as f:
+            input_file = unicode("[root]\n" + f.read())
 
-    fp = StringIO(input_file)
-    config = configparser.RawConfigParser()
-    config.readfp(fp)
-    items = dict(config.items("root"))
+        fp = StringIO(input_file)
+        config = configparser.RawConfigParser()
+        config.readfp(fp)
+        items = dict(config.items("root"))
 
-    for key, value in items.items():
-        items[key] = float(value[1:-1])  # delete extra quotation marks
+        for key, value in items.items():
+            items[key] = float(value[1:-1])  # delete extra quotation marks
 
-    return items
+        return items
+    except IOError:
+        raise WazuhException(1308, filename)
 
 
 def analysisd():
@@ -184,7 +187,7 @@ def analysisd():
 
     :return: A dictionary with the stats of analysisd.
     """
-    return get_stats(common.analysisd_stats)
+    return get_daemons_stats(common.analysisd_stats)
 
 
 def remoted():
@@ -193,4 +196,4 @@ def remoted():
 
     :return: A dictionary with the stats of remoted.
         """
-    return get_stats(common.remoted_stats)
+    return get_daemons_stats(common.remoted_stats)
