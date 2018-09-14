@@ -177,14 +177,14 @@ def get_daemons_stats(filename):
         try:
             for key, value in items.items():
                 items[key] = float(value[1:-1])  # delete extra quotation marks
-        except ValueError:
-            return WazuhException(1104, "Only numeric values are accepted.")
+        except Exception as e:
+            return WazuhException(1104, str(e))
 
         return items
 
-    except IOError:
+    except Exception as e:
 
-        raise WazuhException(1308, filename)
+        raise WazuhException(1308, str(e))
 
 
 def analysisd():
