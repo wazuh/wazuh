@@ -10,6 +10,11 @@
  */
 
 #include "shared.h"
+#include "file_op.h"
+#include "version_op.h"
+#include "config/client-config.h"
+#include "wazuh_modules/syscollector/syscollector.h"
+
 
 /* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
 wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const char *value, unsigned int hidden, int overwrite) {
@@ -73,12 +78,13 @@ void labels_free(wlabel_t *labels) {
 int labels_format(const wlabel_t *labels, char *str, size_t size) {
     int i;
     size_t z = 0;
-
+    char * value_label;
     for (i = 0; labels[i].key != NULL; i++) {
+        value_label = parse_environment_labels(labels[i]);
         z += (size_t)snprintf(str + z, size - z, "%s\"%s\":%s\n",
             labels[i].flags.hidden ? "!" : "",
             labels[i].key,
-            labels[i].value);
+            value_label);
 
         if (z >= size)
             return -1;
@@ -177,4 +183,140 @@ wlabel_t * labels_dup(const wlabel_t * labels) {
 
     copy[i].key = copy[i].value = NULL;
     return copy;
+}
+
+#define OS_COMMENT_MAX 1024
+//
+
+char * parse_environment_labels(const wlabel_t label) {
+
+    static char final[OS_COMMENT_MAX + 1] = { '\0' };
+    char orig[OS_COMMENT_MAX + 1] = { '\0' };
+    char *field;
+    char *str;
+    char *var;
+    char *end;
+    char *tok;
+    size_t n = 0;
+    size_t z;
+    cJSON *os_info;
+    cJSON *network_info;
+    cJSON *iface = cJSON_CreateArray();
+    cJSON *ipv4 = cJSON_CreateArray();
+    cJSON *ipv6 = cJSON_CreateArray();
+    int i;
+    char *ipv4_address;
+    char *ipv6_address;
+    char * mac;
+    char * timeinfo;
+    char * timezone;
+    strncpy(orig, label.value, OS_COMMENT_MAX);
+
+    for (str = orig; (tok = strstr(str, "$(")); str = end) {
+        field = NULL;
+        *tok = '\0';
+        var = tok + 2;
+
+        if (n + (z = strlen(str)) >= OS_COMMENT_MAX)
+            return strdup(str);
+        strncpy(&final[n], str, z);
+        n += z;
+
+        if (!(end = strchr(var, ')'))) {
+            *tok = '$';
+            str = tok;
+            break;
+        }
+
+        *(end++) = '\0';
+
+        // Find static fields
+        if (!strcmp(var, "os.name")) {
+            os_info = getunameJSON();
+            field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_name"));
+
+        } else if (!strcmp(var, "os.version")) {
+            os_info = getunameJSON();
+            field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_version"));
+
+        } else if(!strcmp(var,"ipv4.primary")){
+            network_info = getNetworkIfaces_linux();
+              iface = cJSON_GetArrayItem(network_info,default_network_iface);
+              ipv4 = cJSON_GetObjectItem(iface,"ipv4");
+              ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
+            field = ipv4_address;
+        } else if(!strcmp(var,"ipv6.primary")){
+            network_info = getNetworkIfaces_linux();
+              iface = cJSON_GetArrayItem(network_info,default_network_iface);
+              ipv6 = cJSON_GetObjectItem(iface,"ipv6");
+              ipv6_address = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
+            field = ipv6_address;
+        }else if(!strcmp(var,"ipv4.others")){
+          network_info = getNetworkIfaces_linux();
+          for(i = 0; i < cJSON_GetArraySize(network_info);i++){
+            if(i!=default_network_iface){
+              iface = cJSON_GetArrayItem(network_info,i);
+              ipv4 = cJSON_GetObjectItem(iface,"ipv4");
+              ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
+              if(field){
+                strcat(field,",");
+                strcat(field,ipv4_address);
+              }
+              else
+                field = ipv4_address;
+            }
+          }
+        }else if(!strcmp(var,"ipv6.others")){
+          network_info = getNetworkIfaces_linux();
+          for(i = 0; i < cJSON_GetArraySize(network_info);i++){
+            if(i!=default_network_iface){
+              iface = cJSON_GetArrayItem(network_info,i);
+              ipv6 = cJSON_GetObjectItem(iface,"ipv6");
+              ipv6_address = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
+              if(field){
+                strcat(field,",");
+                strcat(field,ipv6_address);
+              }
+              else
+                field = ipv6_address;
+            }
+          }
+        }else if(!strcmp(var,"network.mac")){
+            network_info = getNetworkIfaces_linux();
+            iface = cJSON_GetArrayItem(network_info,default_network_iface);
+            mac = cJSON_Print(cJSON_GetObjectItem(iface,"mac"));
+            field = mac;
+        }else  if(!strcmp(var,"timezone")){
+            //minfo(system("timedatectl status | grep \"Time zone:\""));
+            //timeinfo = system("timedatectl status | grep \"Time zone:\"");
+            field = "00";
+        }
+
+
+        if (field) {
+            if (n + (z = strlen(field)) >= OS_COMMENT_MAX){
+
+                return strdup(field);
+            }
+        }
+        else{
+
+            field = var;
+        }
+
+            strncpy(&final[n], field, z);
+            n += z;
+
+    }
+
+    if (n + (z = strlen(str)) >= OS_COMMENT_MAX){
+
+
+        return strdup(field);
+    }
+
+    strncpy(&final[n], str, z);
+    final[n + z] = '\0';
+    return strdup(final);
+
 }

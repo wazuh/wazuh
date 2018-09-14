@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "agentd.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/syscollector/syscollector.h"
 
 int rotate_log;
 
@@ -20,7 +21,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     int maxfd = 0;
     fd_set fdset;
     struct timeval fdtimeout;
-
     available_server = 0;
 
     /* Initial random numbers must happen before chroot */
@@ -34,8 +34,28 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     if (!getuname()) {
         merror(MEM_ERROR, errno, strerror(errno));
-    } else
+    } else{
         minfo("Version detected -> %s", getuname());
+        getunameJSON();
+      }
+
+    /*  Set the primary network interface */
+    cJSON * iface = cJSON_CreateArray();
+    cJSON * ipv4 = cJSON_CreateArray();
+    char * gateway;
+    cJSON * network_info = getNetworkIfaces_linux();
+    int i = 0;
+
+    for(i = 0; i < cJSON_GetArraySize(network_info);i++){
+      iface = cJSON_GetArrayItem(network_info,i);
+      ipv4 = cJSON_GetObjectItem(iface,"ipv4");
+      gateway = cJSON_Print(cJSON_GetObjectItem(ipv4,"gateway"));
+
+      if(strcmp(gateway,"unknown")){
+        default_network_iface = i;
+      }
+    }
+    cJSON_Delete(network_info);
 
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {

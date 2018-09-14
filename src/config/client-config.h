@@ -39,6 +39,8 @@ typedef struct _agent {
     wlabel_t *labels; /* null-ended label set */
     agent_flags_t flags;
 } agent;
+int default_network_iface;
+
 
 /* Frees the Client struct  */
 void Free_Client(agent * config);
