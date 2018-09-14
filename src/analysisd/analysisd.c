@@ -38,6 +38,7 @@
 #include "output/jsonout.h"
 #include "labels.h"
 #include "state.h"
+#include "syscheck_op.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -54,11 +55,13 @@ static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
 void DecodeEvent(Eventinfo *lf);
-int DecodeSyscheck(Eventinfo *lf);
+int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
+// Init sdb struct
+void sdb_init(_sdb *localsdb);
 
 /* For stats */
 static void DumpLogstats(void);
@@ -1816,6 +1819,10 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
 void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char *msg = NULL;
+    _sdb sdb;
+
+    /* Initialize the integrity database */
+    sdb_init(&sdb);
 
     while(1){
 
@@ -1841,7 +1848,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
             w_inc_syscheck_decoded_events();
 
-            if (!DecodeSyscheck(lf)) {
+            if (!DecodeSyscheck(lf, &sdb)) {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
                 continue;

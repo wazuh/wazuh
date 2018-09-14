@@ -18,12 +18,10 @@
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 
-// Init sdb struct
-void sdb_init(_sdb *localsdb);
 // Add events into sqlite DB for FIM
 static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *sdb);
 // Send msg to wazuh-db
-static int send_query_wazuhdb (char *wazuhdb_query, char *output, _sdb *sdb);
+static int send_query_wazuhdb (char *wazuhdb_query, char **output, _sdb *sdb);
 // Build FIM alert
 static int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb);
 // Build fileds whodata alert
@@ -95,21 +93,30 @@ void sdb_init(_sdb *localsdb) {
     memset(localsdb->sha256, '\0', OS_FLSIZE + 1);
     memset(localsdb->mtime, '\0', OS_FLSIZE + 1);
     memset(localsdb->inode, '\0', OS_FLSIZE + 1);
+
+    // Whodata fields
+    memset(localsdb->user_id, '\0', OS_FLSIZE + 1);
+    memset(localsdb->user_name, '\0', OS_FLSIZE + 1);
+    memset(localsdb->group_id, '\0', OS_FLSIZE + 1);
+    memset(localsdb->group_name, '\0', OS_FLSIZE + 1);
+    memset(localsdb->process_name, '\0', OS_FLSIZE + 1);
+    memset(localsdb->audit_uid, '\0', OS_FLSIZE + 1);
+    memset(localsdb->audit_name, '\0', OS_FLSIZE + 1);
+    memset(localsdb->effective_uid, '\0', OS_FLSIZE + 1);
+    memset(localsdb->effective_name, '\0', OS_FLSIZE + 1);
+    memset(localsdb->ppid, '\0', OS_FLSIZE + 1);
+    memset(localsdb->process_id, '\0', OS_FLSIZE + 1);
 }
 
 /* Special decoder for syscheck
  * Not using the default decoding lib for simplicity
  * and to be less resource intensive
  */
-int DecodeSyscheck(Eventinfo *lf)
+int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
 {
     char *c_sum;
     char *w_sum;
     char *f_name;
-    _sdb sdb;
-
-    /* Initialize the integrity database */
-    sdb_init(&sdb);
 
     /* Every syscheck message must be in the following format:
      * 'checksum' 'filename'
@@ -121,7 +128,7 @@ int DecodeSyscheck(Eventinfo *lf)
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
         mdebug2("Scan's control message: '%s'", lf->log);
-        if (fim_control_msg(lf->log, lf->time.tv_sec, lf, &sdb) > 0) {
+        if (fim_control_msg(lf->log, lf->time.tv_sec, lf, sdb) > 0) {
             return(0);
         } else {
             merror(SK_INV_MSG);
@@ -169,7 +176,7 @@ int DecodeSyscheck(Eventinfo *lf)
     }
 
     // Search for file changes
-    return (fim_db_search(f_name, c_sum, w_sum, lf, &sdb));
+    return (fim_db_search(f_name, c_sum, w_sum, lf, sdb));
 }
 
 
@@ -192,7 +199,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck load %s", lf->agent_id, f_name);
 
-    db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
+    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
     // Fail trying load info from DDBB
     if (db_result != 0) {
@@ -243,7 +250,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             );
             free(response);
             response = NULL;
-            db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
+            db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
             if (db_result != 0) {
                 merror("at fim_db_search(): Bad delete query");
@@ -296,7 +303,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             );
             free(response);
             response = NULL;
-            db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
+            db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
             if (db_result != 0) {
                 merror("at fim_db_search(): Bad save query");
@@ -347,7 +354,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 }
 
 
-int send_query_wazuhdb(char *wazuhdb_query, char *output, _sdb *sdb) {
+int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
     char response[OS_SIZE_6144];
     fd_set fdset;
     struct timeval timeout = {0, 1000};
@@ -414,7 +421,7 @@ int send_query_wazuhdb(char *wazuhdb_query, char *output, _sdb *sdb) {
 
     // Receive response from socket
     if (OS_RecvSecureTCP(sdb->socket, response, OS_SIZE_6144 - 1) > 0) {
-        os_strdup(response, output);
+        os_strdup(response, *output);
 
         if (response[0] == 'o' && response[1] == 'k') {
             retval = 0;
@@ -772,7 +779,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
                 (long int)value
         );
 
-        db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
+        db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
         if (db_result != 0) {
             merror("at fim_control_msg(): bad result from metadata query");
@@ -789,7 +796,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
                     (long int)value
             );
 
-            db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
+            db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
             if (db_result != 0) {
                 merror("at fim_control_msg(): bad result from control query");
@@ -826,7 +833,7 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
             (long int)lf->time.tv_sec
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
+    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
     if (db_result != 0) {
         merror("at fim_update_date(): bad result updating date field");
@@ -855,7 +862,7 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
             (unsigned long)lf->time.tv_sec
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
+    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
     if (db_result != 0) {
         merror("at fim_database_clean(): bad result from cleandb query");
@@ -887,7 +894,7 @@ int fim_end_first_scan(Eventinfo *lf, _sdb *sdb) {
             HC_FIM_DB_EFS
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
+    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
     if (db_result != 0) {
         merror("at fim_end_first_scan(): bad result getting timestamp field");

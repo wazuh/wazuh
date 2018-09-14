@@ -33,6 +33,7 @@ int wdb_metadata_initialize (wdb_t *wdb, char *path) {
             merror("at wdb_metadata_fill_version(): Couldn't parse internal minor version '%s'", strminor);
             result = -1;
         } else {
+            *end = '\0';
             if (wdb_metadata_insert_entry(wdb, "version_major", strmajor) < 0) {
                 merror("Couldn't fill metadata into database '%s'", path);
                 result = -1;
