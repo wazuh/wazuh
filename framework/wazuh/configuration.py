@@ -413,8 +413,6 @@ def get_ossec_conf(section=None, field=None):
     except Exception as e:
         raise WazuhException(1101, str(e))
 
-    data["cluster"].pop("key")  # removes key field
-
     if section:
         try:
             data = data[section]
