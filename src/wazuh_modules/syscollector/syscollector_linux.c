@@ -1233,7 +1233,8 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         char *dhcp_status;
         dhcp_status = check_dhcp(ifaces_list[i], AF_INET);
         cJSON_AddStringToObject(ipv4, "DHCP", dhcp_status);
-
+        free(dhcp_status);
+        
         /* Get DHCP status for IPv6 */
         dhcp_status = check_dhcp(ifaces_list[i], AF_INET6);
         cJSON_AddStringToObject(ipv6, "DHCP", dhcp_status);
