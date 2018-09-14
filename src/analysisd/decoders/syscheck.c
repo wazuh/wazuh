@@ -901,8 +901,9 @@ int fim_end_first_scan(Eventinfo *lf, _sdb *sdb) {
             merror("at fim_end_first_scan(): bad result getting timestamp field");
             // In case of error alert is reported
             timestamp = 1;
+        } else {
+            timestamp = atol(ts);
         }
-        timestamp = atol(ts);
     }
 
     free(wazuhdb_query);

@@ -504,7 +504,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
     sqlite3_stmt *stmt = NULL;
     char *file;
     int result, del_result;
-    long int timestamp;
+    long int timestamp = 0;
     char tscheck3[OS_MAXSTR + 1];
 
     tscheck3[0] = '\0';
