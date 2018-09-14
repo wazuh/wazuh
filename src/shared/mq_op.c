@@ -27,33 +27,21 @@ int StartMQ(const char *path, short int type)
     /* We give up to 21 seconds for the other end to start */
     else {
         int rc = 0;
-        if (File_DateofChange(path) < 0) {
-            sleep(1);
-            if (File_DateofChange(path) < 0) {
-                sleep(5);
-                if (File_DateofChange(path) < 0) {
-                    sleep(15);
-                    if (File_DateofChange(path) < 0) {
-                        merror(QUEUE_ERROR, path, "Queue not found");
-                        return (-1);
-                    }
-                }
-            }
-        }
+        int i;
 
-        /* Wait up to 3 seconds to connect to the unix domain.
+        /* Wait up to connect to the unix domain.
          * After three errors, exit.
          */
-        if ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)) < 0) {
-            sleep(1);
-            if ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)) < 0) {
-                sleep(2);
-                if ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)) < 0) {
-                    merror(QUEUE_ERROR, path, strerror(errno));
-                    return (-1);
-                }
-            }
-        }
+         for (i = 0; i < MAX_OPENQ_ATTEMPS; i++) {
+             if (rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256), rc >= 0) {
+                 break;
+             }
+             sleep(1);
+         }
+         if (i == MAX_OPENQ_ATTEMPS) {
+             merror(QUEUE_ERROR, path, strerror(errno));
+             return OS_INVALID;
+         }
 
         mdebug1(MSG_SOCKET_SIZE, OS_getsocketsize(rc));
         return (rc);
