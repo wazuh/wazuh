@@ -165,6 +165,7 @@ def get_daemons_stats(filename):
     :return: A dictionary with the stats of the input file.
     """
     try:
+
         with open(filename, 'r') as f:
             input_file = unicode("[root]\n" + f.read())
 
@@ -173,11 +174,16 @@ def get_daemons_stats(filename):
         config.readfp(fp)
         items = dict(config.items("root"))
 
-        for key, value in items.items():
-            items[key] = float(value[1:-1])  # delete extra quotation marks
+        try:
+            for key, value in items.items():
+                items[key] = float(value[1:-1])  # delete extra quotation marks
+        except ValueError:
+            return WazuhException(1104, "Only numeric values are accepted.")
 
         return items
+
     except IOError:
+
         raise WazuhException(1308, filename)
 
 
