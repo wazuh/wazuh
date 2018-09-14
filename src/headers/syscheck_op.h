@@ -61,9 +61,7 @@ typedef enum sk_syscheck {
 } sk_syscheck;
 
 typedef struct __sdb {
-    char buf[OS_MAXSTR + 1];
     char comment[OS_MAXSTR + 1];
-
     char size[OS_FLSIZE + 1];
     char perm[OS_FLSIZE + 1];
     char owner[OS_FLSIZE + 1];
@@ -73,10 +71,6 @@ typedef struct __sdb {
     char sha256[OS_FLSIZE + 1];
     char mtime[OS_FLSIZE + 1];
     char inode[OS_FLSIZE + 1];
-
-    char agent_cp[MAX_AGENTS + 1][1];
-    char *agent_ips[MAX_AGENTS + 1];
-    FILE *agent_fps[MAX_AGENTS + 1];
 
     // Whodata fields
     char user_id[OS_FLSIZE + 1];
@@ -92,20 +86,6 @@ typedef struct __sdb {
     char process_id[OS_FLSIZE + 1];
 
     int db_err;
-
-    /* Ids for decoder */
-    int id1;
-    int id2;
-    int id3;
-    int idn;
-    int idd;
-
-    /* Syscheck rule */
-    OSDecoderInfo  *syscheck_dec;
-
-    /* File search variables */
-    fpos_t init_pos;
-
 } _sdb; /* syscheck db information */
 
 typedef struct sk_sum_wdata {
@@ -140,8 +120,6 @@ typedef struct sk_sum_t {
     int changes;
     long date_alert;
 } sk_sum_t;
-
-extern _sdb sdb;
 
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
    or -1 on failure. */

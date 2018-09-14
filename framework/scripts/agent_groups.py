@@ -63,7 +63,7 @@ def show_agents_with_group(group_id):
     else:
         print("{0} agent(s) in group '{1}':".format(agents_data['totalItems'], group_id))
         for agent in agents_data['items']:
-            print("  ID: {0}  Name: {1}.".format(agent['id'], agent['name']))
+            print("  ID: {0}  Name: {1}. {2}".format(agent['id'], agent['name'], agent['multi_group']))
 
 
 def show_group_files(group_id):
@@ -80,7 +80,7 @@ def show_group_files(group_id):
         print("  {0}{1}[{2}]".format(item['filename'], spaces*' ', item['hash']))
 
 
-def unset_group(agent_id, quiet=False):
+def unset_group(agent_id, group_id=None, quiet=False):
     ans = 'n'
     if not quiet:
          ans = get_stdin("Do you want to unset the current group of agent '{0}'? [y/N]: ".format(agent_id))
@@ -88,7 +88,7 @@ def unset_group(agent_id, quiet=False):
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.unset_group(agent_id)
+        msg = Agent.unset_group(agent_id, group_id)
     else:
         msg = "Cancelled."
 
@@ -115,7 +115,7 @@ def remove_group(group_id, quiet=False):
     print(msg)
 
 
-def set_group(agent_id, group_id, quiet=False):
+def set_group(agent_id, group_id, quiet=False, replace=False):
     ans = 'n'
     agent_id = "{}".format(int(agent_id)).zfill(3)
     if not quiet:
@@ -124,7 +124,7 @@ def set_group(agent_id, group_id, quiet=False):
         ans = 'y'
 
     if ans.lower() == 'y':
-        msg = Agent.set_group(agent_id, group_id)
+        msg = Agent.set_group(agent_id=agent_id, group_id=group_id, replace=replace)
     else:
         msg = "Cancelled."
 
@@ -148,14 +148,14 @@ def create_group(group_id, quiet=False):
 
 def usage():
     msg = """
-    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
+    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] [-e] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] | -ap -i agent_id -g group_id [-q] ]
 
     Usage:
     \t-l                                    # List all groups
     \t-l -g group_id                        # List agents in group
     \t-c -g group_id                        # List configuration files in group
     \t
-    \t-a -i agent_id -g group_id [-q]       # Set agent group
+    \t-a -i agent_id -g group_id [-q] [-e]  # Set agent group
     \t-r -i agent_id [-q]                   # Unset agent group
     \t-s -i agent_id                        # Show group of agent
     \t
@@ -167,6 +167,7 @@ def usage():
     \t-l, --list
     \t-c, --list-files
     \t-a, --add-group
+    \t-e, --replace-group
     \t-s, --show-group
     \t-r, --remove-group
 
@@ -194,9 +195,9 @@ def main():
     signal(SIGINT, signal_handler)
 
     # Parse arguments
-    arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'show-group': False, 'remove-group': False, 'quiet': False }
+    arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'replace-group': False, 'show-group': False, 'remove-group': False, 'quiet': False }
     try:
-        opts, args = getopt(argv[1:], "lcasri:g:qfdh", ["list", "list-files", "add-group", "show-group", "remove-group", "agent-id=", "group=", "quiet", "debug", "help"])
+        opts, args = getopt(argv[1:], "lcaesri:g:qfdh", ["list", "list-files", "add-group","replace-group", "show-group", "remove-group", "agent-id=", "group=", "quiet", "debug", "help"])
         arguments['n_args'] = len(opts)
     except GetoptError as err:
         print(str(err) + "\n" + "Try '--help' for more information.")
@@ -212,6 +213,8 @@ def main():
         elif o in ("-a", "--add-group"):
             arguments['add-group'] = True
             arguments['n_actions'] += 1
+        elif o in ("-e", "--replace-group"):
+            arguments['replace-group'] = True
         elif o in ("-s", "--show-group"):
             arguments['show-group'] = True
             arguments['n_actions'] += 1
@@ -252,10 +255,10 @@ def main():
     # -c -g group_id
     elif arguments['list-files']:
         show_group_files(arguments['group']) if arguments['group'] else invalid_option("Missing group.")
-    # -a (-i agent_id -g groupd_id | -g group_id) [-q]
+    # -a (-i agent_id -g groupd_id | -g group_id) [-q] [-e]
     elif arguments['add-group']:
         if arguments['agent-id'] and arguments['group']:
-            set_group(arguments['agent-id'], arguments['group'], arguments['quiet'])
+            set_group(arguments['agent-id'], arguments['group'], arguments['quiet'], arguments['replace-group'])
         elif arguments['group']:
             create_group(arguments['group'], arguments['quiet'])
         else:
@@ -266,7 +269,7 @@ def main():
     # -r (-g group_id | -i agent_id) [-q]
     elif arguments['remove-group']:
         if arguments['agent-id']:
-            unset_group(arguments['agent-id'], arguments['quiet'])
+            unset_group(arguments['agent-id'], arguments['group'], arguments['quiet'])
         elif arguments['group']:
             remove_group(arguments['group'], arguments['quiet'])
         else:

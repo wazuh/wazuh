@@ -27,6 +27,8 @@ typedef struct _OSList {
     int max_size;
 
     void (*free_data_function)(void *data);
+    pthread_rwlock_t wr_mutex;
+    pthread_mutex_t mutex;
 } OSList;
 
 OSList *OSList_Create(void);
@@ -36,6 +38,7 @@ int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *));
 
 OSListNode *OSList_GetFirstNode(OSList *) __attribute__((nonnull));
 OSListNode *OSList_GetLastNode(OSList *) __attribute__((nonnull));
+OSListNode *OSList_GetLastNode_group(OSList *) __attribute__((nonnull));
 OSListNode *OSList_GetPrevNode(OSList *) __attribute__((nonnull));
 OSListNode *OSList_GetNextNode(OSList *) __attribute__((nonnull));
 OSListNode *OSList_GetCurrentlyNode(OSList *list) __attribute__((nonnull));

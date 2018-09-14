@@ -20,7 +20,7 @@ void OS_InitFwLog(void);
 /* Get the log file based on the date/logtype
  * Returns 0 on success or -1 on error
  */
-int OS_GetLogLocation(const Eventinfo *lf);
+int OS_GetLogLocation(int day,int year,char *mon);
 
 /* Global declarations */
 extern FILE *_eflog;
@@ -30,6 +30,6 @@ extern FILE *_fflog;
 extern FILE *_jflog;
 extern FILE *_ejflog;
 
-void OS_RotateLogs(const Eventinfo *lf);
+void OS_RotateLogs(int day,int year,char *mon);
 
 #endif /* __GETLL_H */

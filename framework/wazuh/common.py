@@ -39,6 +39,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global groups_path
     groups_path = "{0}/queue/agent-groups".format(ossec_path)
 
+    global multi_groups_path
+    multi_groups_path = "{0}/var/multigroups".format(ossec_path)
+
     global shared_path
     shared_path = "{0}/etc/shared".format(ossec_path)
 

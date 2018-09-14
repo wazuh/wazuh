@@ -14,9 +14,6 @@
 #include <sddl.h>
 #endif
 
-/* Local variables */
-_sdb sdb;
-
 static char *unescape_whodata_sum(char *sum);
 
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
@@ -215,8 +212,6 @@ char *unescape_whodata_sum(char *sum) {
 }
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
-    int i;
-
     os_strdup(f_name, lf->filename);
     os_strdup(f_name, lf->fields[SK_FILE].value);
 
@@ -337,13 +332,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->tag, lf->sk_tag);
         os_strdup(sum->tag, lf->fields[SK_TAG].value);
     }
-
-    /* Fields */
-
-    lf->nfields = SK_NFIELDS;
-
-    for (i = 0; i < SK_NFIELDS; i++)
-        os_strdup(sdb.syscheck_dec->fields[i], lf->fields[i].key);
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {

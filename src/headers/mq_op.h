@@ -19,6 +19,7 @@
 #define SECURE_MQ       '4'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
+#define EVENT_MQ        '10'
 
 
 /* Queues for additional log types */

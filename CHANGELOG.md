@@ -1,8 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.6.2]
+## [v3.7.0]
 
+### Changed
+- Refactor Python framework code to standarize database requests and support API queries ([#921](https://github.com/wazuh/wazuh/pull/921)).
+- Add support for multigroups ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135)).
 
 ## [v3.6.1] 2018-09-07
 
@@ -23,6 +26,25 @@ All notable changes to this project will be documented in this file.
 
 
 ## [v3.6.0] 2018-08-29
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix segmentation fault when the agent version is empty in Vulnerability Detector. ([#1191](https://github.com/wazuh/wazuh/pull/1191))
+- Fix bug that removes file extensions in rootcheck. ([#1197](https://github.com/wazuh/wazuh/pull/1197))
+
+
+## [v3.6.0]
+
+### Added
+
+- Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
+
+
+## [v3.6.0] - 2018-08-29
 
 ### Added
 

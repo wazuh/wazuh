@@ -16,6 +16,8 @@
 #define ARGV0 "ossec-agentd"
 #endif
 
+int agent_debug_level;
+
 /* Prototypes */
 static void help_agentd(void) __attribute((noreturn));
 
@@ -40,11 +42,13 @@ static void help_agentd()
     exit(1);
 }
 
+
 int main(int argc, char **argv)
 {
     int c = 0;
     int test_config = 0;
     int debug_level = 0;
+    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
     const char *dir = DEFAULTDIR;
     const char *user = USER;
@@ -119,7 +123,7 @@ int main(int argc, char **argv)
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("agent", "debug", 0, 2);
+        debug_level = agent_debug_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

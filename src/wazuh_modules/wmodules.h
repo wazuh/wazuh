@@ -45,6 +45,7 @@ typedef struct wm_context {
     const char *name;                   // Name for module
     wm_routine start;                   // Main function
     wm_routine destroy;                 // Destructor
+    cJSON *(* dump)(const void *);
 } wm_context;
 
 // Main module structure
@@ -80,9 +81,12 @@ extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
 extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wazuh Module
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
+extern int wm_debug_level;
 
 // Read XML configuration and internal options
 int wm_config();
+cJSON *getModulesConfig(void);
+cJSON *getModulesInternalOptions(void);
 
 // Add module to the global list
 void wm_add(wmodule *module);
@@ -172,5 +176,12 @@ int wm_get_path(const char *binary, char **validated_comm);
     -2 invalid parameters.
 */
 int wm_validate_command(const char *command, const char *digest, crypto_type ctype);
+
+#ifndef WIN32
+// Com request thread dispatcher
+void * wmcom_main(void * arg);
+#endif
+size_t wmcom_dispatch(char * command, char ** output);
+size_t wmcom_getconfig(const char * section, char ** output);
 
 #endif // W_MODULES

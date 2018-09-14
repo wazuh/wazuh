@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS agent (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     ip TEXT,
-    key TEXT,
+    internal_key TEXT,
     os_name TEXT,
     os_version TEXT,
     os_major TEXT,
@@ -42,5 +42,18 @@ CREATE TABLE IF NOT EXISTS info (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS `group`
+    (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT
+    );
+
+CREATE TABLE IF NOT EXISTS belongs
+    ( 
+    id_agent INTEGER, 
+    id_group INTEGER, 
+    PRIMARY KEY (id_agent, id_group)
+    );
 
 PRAGMA journal_mode=WAL;

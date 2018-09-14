@@ -36,6 +36,7 @@ static void wm_ciscat_cleanup();                     // Cleanup function, doesn'
 #endif
 static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
 static void delay(unsigned int ms);                 // Sleep during 'ms' milliseconds
+cJSON *wm_ciscat_dump(const wm_ciscat *ciscat);
 
 const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event sending
 
@@ -44,7 +45,8 @@ const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event s
 const wm_context WM_CISCAT_CONTEXT = {
     "cis-cat",
     (wm_routine)wm_ciscat_main,
-    (wm_routine)wm_ciscat_destroy
+    (wm_routine)wm_ciscat_destroy,
+    (cJSON * (*)(const void *))wm_ciscat_dump
 };
 
 // CIS-CAT module main function. It won't return.
@@ -1527,6 +1529,40 @@ void wm_ciscat_info() {
 
     mtinfo(WM_CISCAT_LOGTAG, "SHOW_MODULE_CISCAT: ----");
 }
+
+
+// Get readed data
+
+cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_cscat = cJSON_CreateObject();
+
+    if (ciscat->flags.enabled) cJSON_AddStringToObject(wm_cscat,"disabled","no"); else cJSON_AddStringToObject(wm_cscat,"disabled","yes");
+    if (ciscat->flags.scan_on_start) cJSON_AddStringToObject(wm_cscat,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_cscat,"scan-on-start","no");
+    cJSON_AddNumberToObject(wm_cscat,"interval",ciscat->interval);
+    if (ciscat->java_path) cJSON_AddStringToObject(wm_cscat,"java_path",ciscat->java_path);
+    if (ciscat->ciscat_path) cJSON_AddStringToObject(wm_cscat,"ciscat_path",ciscat->ciscat_path);
+    cJSON_AddNumberToObject(wm_cscat,"timeout",ciscat->timeout);
+    if (ciscat->evals) {
+        cJSON *evals = cJSON_CreateArray();
+        wm_ciscat_eval *ptr;
+        for (ptr = ciscat->evals; ptr; ptr = ptr->next) {
+            cJSON *eval = cJSON_CreateObject();
+            if (ptr->path) cJSON_AddStringToObject(eval,"path",ptr->path);
+            if (ptr->profile) cJSON_AddStringToObject(eval,"profile",ptr->profile);
+            cJSON_AddNumberToObject(eval,"timeout",ptr->timeout);
+            cJSON_AddNumberToObject(eval,"type",ptr->type);
+            cJSON_AddItemToArray(evals,eval);
+        }
+        cJSON_AddItemToObject(wm_cscat,"content",evals);
+    }
+
+    cJSON_AddItemToObject(root,"cis-cat",wm_cscat);
+
+    return root;
+}
+
 
 // Destroy data
 

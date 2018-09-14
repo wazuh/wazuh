@@ -51,6 +51,7 @@ int Lists_OP_LoadList(char *listfile)
     os_strdup(b_filename, tmp_listnode_pt->cdb_filename);
 
     tmp_listnode_pt->loaded = 0;
+    tmp_listnode_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
     OS_AddList(tmp_listnode_pt);
 

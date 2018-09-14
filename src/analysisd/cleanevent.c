@@ -562,10 +562,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
              p->tm_min,
              p->tm_sec);
 
-    /* Set the global hour/weekday */
-    __crt_hour = p->tm_hour;
-    __crt_wday = p->tm_wday;
-
 #ifdef TESTRULE
     if (!alert_only) {
         print_out("**Phase 1: Completed pre-decoding.");

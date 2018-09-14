@@ -36,7 +36,12 @@
 #define WDB_ROOTCHECK 2
 #define WDB_AGENTINFO 3
 #define WDB_GROUPS 4
+#define WDB_SHARED_GROUPS 5
 #define WDB_NETADDR_IPV4 0
+
+#define WDB_MULTI_GROUP_DELIM '-'
+
+#define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
@@ -172,14 +177,26 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_keepalive(int id, long keepalive);
 
-/* Update agent group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_group(int id, const char *group);
+/* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_group(int id,char *group);
+
+/* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_multi_group(int id, char *group);
+
+/* Update groups table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_groups(const char *dirname);
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id);
 
+/* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_remove_group_db(const char *name);
+
 /* Get name from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_name(int id);
+
+/* Get group from agent. The string must be freed after using. Returns NULL on error. */
+char* wdb_agent_group(int id);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db(int id, const char *name);
@@ -245,8 +262,23 @@ int wdb_create_file(const char *path, const char *source);
 /* Get an array containing the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents();
 
+/* Fill belongs table on start */
+int wdb_agent_belongs_first_time();
+
 /* Find agent by name and address. Returns ID if success or -1 on failure. */
 int wdb_find_agent(const char *name, const char *ip);
+
+/* Find group by name. Returns id if success or -1 on failure. */
+int wdb_find_group(const char *name);
+
+/* Insert a new group. Returns id if success or -1 on failure. */
+int wdb_insert_group(const char *name);
+
+/* Delete agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_delete_agent_belongs(int id_agent);
+
+/* Update agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_belongs(int id_group, int id_agent);
 
 /* Delete FIM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_delete_fim(int id);

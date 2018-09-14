@@ -43,6 +43,12 @@ typedef struct agent_state_t {
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
+/* Parse readed config into JSON format */
+cJSON *getClientConfig(void);
+cJSON *getBufferConfig(void);
+cJSON *getLabelsConfig(void);
+cJSON *getAgentInternalOptions(void);
+
 /* Agentd init function */
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
 
@@ -109,7 +115,37 @@ void update_status(agent_status_t status);
 void update_keepalive(time_t curr_time);
 void update_ack(time_t curr_time);
 
+#ifndef WIN32
+// Com request thread dispatcher
+void * agcom_main(void * arg);
+#endif
+size_t agcom_dispatch(char * command, char ** output);
+size_t agcom_getconfig(const char * section, char ** output);
+
 /*** Global variables ***/
+extern int agent_debug_level;
+extern int win_debug_level;
+extern int warn_level;
+extern int normal_level;
+extern int tolerance;
+extern int rotate_log;
+extern int request_pool;
+extern int rto_sec;
+extern int rto_msec;
+extern int max_attempts;
+extern int log_compress;
+extern int keep_log_days;
+extern int day_wait;
+extern int daily_rotations;
+extern int size_rotate_read;
+extern int timeout;
+extern int interval;
+extern int remote_conf;
+extern int min_eps;
+
+extern unsigned int _s_comp_print;
+extern unsigned int _s_recv_flush;
+extern int _s_verify_counter;
 
 /* Global variables. Only modified during startup. */
 

@@ -4,7 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
-from wazuh.utils import execute, filemode
+from wazuh.utils import filemode, WazuhDBQuery
 from wazuh.agent import Agent
 from wazuh.database import Connection
 from wazuh.ossec_queue import OssecQueue
@@ -135,17 +135,12 @@ def last_scan(agent_id):
     return data
 
 
-def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, sha1=None, hash=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None):
+def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="", filters={}):
     """
     Return a list of files from the database that match the filters
 
     :param agent_id: Agent ID.
-    :param event: Filters by event: added, readded, modified, deleted.
-    :param filename: Filters by filename.
-    :param filetype: Filters by filetype: file or registry.
-    :param md5: Filters by md5 hash.
-    :param sha1: Filters by sha1 hash.
-    :param hash: Filters by md5 or sha1 hash.
+    :param filters: Fields to filter by
     :param summary: Returns a summary grouping by filename.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
@@ -153,146 +148,64 @@ def files(agent_id=None, event=None, filename=None, filetype='file', md5=None, s
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    if 'filetype' not in q:
+        q = 'filetype=file' + ('' if not q else ';'+q)
 
-    # Connection
-    db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-    if not db_agent:
-        raise WazuhException(1600)
-    else:
-        db_agent = db_agent[0]
-
-    conn = Connection(db_agent)
-
-    agent_info = Agent(agent_id).get_basic_information()
-    if 'os' in agent_info and 'platform' in agent_info['os']:
-        if agent_info['os']['platform'].lower() == 'windows':
-            windows_agent = True
-        else:
-            windows_agent = False
-    else:
-        # We do not know if it is a windows or linux agent.
-        # It is set to windows agent in order to avoid wrong data (uid, gid, ...)
-        windows_agent = True
-
-    fields = {'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'path', 'size': 'size', 'user': 'uname', 'group': 'gname'}
-
-    # Query
-    query = "SELECT {0} FROM fim_event, fim_file WHERE fim_event.id_file = fim_file.id AND fim_file.type = :filetype"
-    request = {'filetype': filetype}
-
-    if event:
-        query += ' AND fim_event.type = :event'
-        request['event'] = event
-
-    if filename:
-        query += ' AND path = :filename'
-        request['filename'] = filename
-
-    if md5:
-        query += ' AND md5 = :md5'
-        request['md5'] = md5
-
-    if sha1:
-        query += ' AND sha1 = :sha1'
-        request['sha1'] = sha1
-
-    if hash:
-        query += ' AND (md5 = :hash OR sha1 = :hash)'
-        request['hash'] = hash
-
-    if search:
-        query += " AND NOT" if bool(search['negation']) else ' AND'
-        query += " (" + " OR ".join(x + ' LIKE :search' for x in ('path', "date", 'size', 'md5', 'sha1', 'uname', 'gname', 'inode', 'perm')) + " )"
-        request['search'] = '%{0}%'.format(search['value'])
-
-    # Total items
-    if summary:
-        query += ' group by path'
-        conn.execute("SELECT COUNT(*) FROM ({0}) AS TEMP".format(query.format("max(date)")), request)
-    else:
-        conn.execute(query.format('COUNT(*)'), request)
-
-    data = {'totalItems': conn.fetch()[0]}
-
-    # Sorting
-    if sort:
-        if sort['fields']:
-            allowed_sort_fields = fields.keys()
-             # Check if every element in sort['fields'] is in allowed_sort_fields
-            if not set(sort['fields']).issubset(allowed_sort_fields):
-                uncorrect_fields = list(map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields)))
-                raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, uncorrect_fields))
-
-            query += ' ORDER BY ' + ','.join(['{0} {1}'.format(fields[i], sort['order']) for i in sort['fields']])
-        else:
-            query += ' ORDER BY date {0}'.format(sort['order'])
-    else:
-        query += ' ORDER BY date DESC'
-
-    if limit:
-        if limit > common.maximum_database_limit:
-            raise WazuhException(1405, str(limit))
-        query += ' LIMIT :offset,:limit'
-        request['offset'] = offset
-        request['limit'] = limit
-    elif limit == 0:
-        raise WazuhException(1406)
-
-    if summary:
-        select = ["max(date)", "mtime", "fim_event.type", "path"]
-    else:
-        select = ["date", "mtime", "fim_event.type", "path", "size", "perm", "uid", "gid", "md5", "sha1", "uname", "gname", "inode"]
-
-    conn.execute(query.format(','.join(select)), request)
-
-    data['items'] = []
-
-    for tuple in conn:
-        data_tuple = {}
-
-        if tuple[0] != None:
-            data_tuple['scanDate'] = tuple[0]
-        if tuple[1] != None:
-            data_tuple['modificationDate'] = tuple[1]  # modificationDate
-        else:
-            data_tuple['modificationDate'] = tuple[0]  # scanDate
-        if tuple[2] != None:
-            data_tuple['event'] = tuple[2]
-        if tuple[3] != None:
-            data_tuple['file'] = tuple[3]
-
-        if not summary:
-            try:
-                permissions = filemode(int(tuple[5], 8))
-            except TypeError:
-                permissions = None
-
-            if tuple[4] != None:
-                data_tuple['size'] = tuple[4]
-            if tuple[8] != None:
-                data_tuple['md5'] = tuple[8]
-            if tuple[9] != None:
-                data_tuple['sha1'] = tuple[9]
-            if tuple[12] != None:
-                data_tuple['inode'] = tuple[12]
-
-            if not windows_agent:
-                if tuple[6] != None:
-                    data_tuple['uid'] = tuple[6]
-                if tuple[7] != None:
-                    data_tuple['gid'] = tuple[7]
-
-                if tuple[10] != None:
-                    data_tuple['user'] = tuple[10]
-                if tuple[11] != None:
-                    data_tuple['group'] = tuple[11]
-
-                if tuple[5] != None:
-                    data_tuple['octalMode'] = tuple[5]
-                if permissions:
-                    data_tuple['permissions'] = permissions
-
-
-        data['items'].append(data_tuple)
-
+    db_query = WazuhDBQuerySyscheck(offset=offset, limit=limit, sort=sort, search=search, count=True, get_data=True,
+                                    query=q, agent_id=agent_id, summary=summary, select=select, filters=filters)
+    data = db_query.run()
+    if not summary:
+        data['items'] = [dict(x, permissions=filemode(int(x['octalMode']))) for x in data['items']]
     return data
+
+
+class WazuhDBQuerySyscheck(WazuhDBQuery):
+
+    def __init__(self, agent_id, summary, offset, limit, sort, search, select, query, count, get_data, default_sort_order='ASC', filters={}, min_select_fields=set()):
+
+        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
+        if not db_agent:
+            raise WazuhException(1600)
+        else:
+            db_agent = db_agent[0]
+
+        self.summary = False if summary == 'no' or not summary else True
+        if self.summary:
+            select = {'fields':["modificationDate", "event", "file", "scanDate"]} if not select else select
+        else:
+            select = {'fields':["scanDate", "modificationDate", "event", "file", "size", "octalMode", "user", "group", "md5", "sha1",
+                                "group", "inode", "gid", "uid"]} if not select else select
+
+        WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
+                              query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
+                              min_select_fields=min_select_fields, table='fim_event, fim_file', date_fields={'scanDate','modificationDate'},
+                              fields={'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'path', 'size': 'size', 'user': 'uname',
+                                      'group': 'gname', 'event':'fim_event.type', 'md5':'md5', 'sha1':'sha1',
+                                      'inode':'inode','uid':'uid','gid':'gid', 'octalMode':'perm', 'filetype':'fim_file.type'},
+                              filters=filters)
+
+
+    def _default_query(self):
+        return "SELECT {0} FROM " + self.table + " WHERE fim_event.id_file = fim_file.id"
+
+
+    def _get_total_items(self):
+        if self.summary:
+            self.query += ' group by path'
+            self.conn.execute("SELECT COUNT(*) FROM ({0}) AS TEMP".format(self.query.format("max(date)")), self.request)
+            self.total_items = self.conn.fetch()[0]
+        else:
+            WazuhDBQuery._get_total_items(self)
+
+
+    def _get_data(self):
+        if self.summary:
+            self.fields['scanDate'] = 'max(date)'
+        WazuhDBQuery._get_data(self)
+
+
+    def _parse_legacy_filters(self):
+        if 'hash' in self.legacy_filters:
+            self.q += (';' if self.q else '') + '(md5={0},sha1={0})'.format(self.legacy_filters['hash'])
+            del self.legacy_filters['hash']
+        WazuhDBQuery._parse_legacy_filters(self)
