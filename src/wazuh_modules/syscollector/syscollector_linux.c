@@ -1234,7 +1234,7 @@ cJSON * getNetworkIfaces_linux( ){
         free(dhcp_status);
 
         cJSON_AddItemToArray(ifaces_list_json,interface);
-        
+
     }
     freeifaddrs(ifaddr);
     for (i=0; ifaces_list[i]; i++){
@@ -1274,7 +1274,8 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     ifaces_list_json = getNetworkIfaces_linux();
 
      /* Send interface data in JSON format */
-    for (int i = 0; i < cJSON_GetArraySize(ifaces_list_json); ++i){
+     int i;
+    for (i = 0; i < cJSON_GetArraySize(ifaces_list_json); ++i){
         cJSON* object = cJSON_GetArrayItem(ifaces_list_json,i);
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
@@ -1283,7 +1284,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     }
-    cJSON_Delete(ifaces_list_json);    
+    cJSON_Delete(ifaces_list_json);
 //////////////////////////////////////////////////////////////////////
 
     cJSON *object = cJSON_CreateObject();

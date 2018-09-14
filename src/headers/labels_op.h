@@ -49,4 +49,5 @@ wlabel_t * labels_dup(const wlabel_t * labels);
  */
 wlabel_t* labels_parse(const char *path);
 
+char* parse_environment_labels(const wlabel_t label);
 #endif

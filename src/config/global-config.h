@@ -114,5 +114,6 @@ typedef struct __Config {
 
 
 void config_free(_Config *config);
+int default_network_iface; 
 
 #endif /* _CCONFIG__H */
