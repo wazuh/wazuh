@@ -69,7 +69,6 @@ CREATE INDEX IF NOT EXISTS pm_event_date ON pm_event (date_last);
 PRAGMA journal_mode=WAL;
 
 CREATE TABLE IF NOT EXISTS sys_netiface (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
     scan_id INTEGER,
     scan_time TEXT,
     name TEXT,
@@ -85,31 +84,30 @@ CREATE TABLE IF NOT EXISTS sys_netiface (
     tx_errors INTEGER,
     rx_errors INTEGER,
     tx_dropped INTEGER,
-    rx_dropped INTEGER
+    rx_dropped INTEGER,
+    PRIMARY KEY (scan_id, name)
 );
 
 CREATE INDEX IF NOT EXISTS netiface_id ON sys_netiface (scan_id);
 
 CREATE TABLE IF NOT EXISTS sys_netproto (
-    id INTEGER REFERENCES sys_netiface (id),
-    scan_id INTEGER,
-    iface TEXT,
+    scan_id INTEGER REFERENCES sys_netiface (scan_id),
+    iface TEXT REFERENCES sys_netiface (name),
     type TEXT,
     gateway TEXT,
     dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
-    PRIMARY KEY (id, type)
+    PRIMARY KEY (scan_id, iface, type)
 );
 
 CREATE INDEX IF NOT EXISTS netproto_id ON sys_netproto (scan_id);
 
 CREATE TABLE IF NOT EXISTS sys_netaddr (
-    id INTEGER REFERENCES sys_netiface (id),
-    scan_id INTEGER,
-    proto TEXT,
+    scan_id INTEGER REFERENCES sys_netproto (scan_id),
+    proto TEXT REFERENCES sys_netproto (type),
     address TEXT,
     netmask TEXT,
     broadcast TEXT,
-    PRIMARY KEY (id, address)
+    PRIMARY KEY (scan_id, proto, address)
 );
 
 CREATE INDEX IF NOT EXISTS netaddr_id ON sys_netaddr (scan_id);
