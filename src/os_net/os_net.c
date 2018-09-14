@@ -466,7 +466,7 @@ int OS_SendUnix(int socket, const char *msg, int size)
 /* Calls gethostbyname (tries x attempts) */
 char *OS_GetHost(const char *host, unsigned int attempts)
 {
-    unsigned int i = 0;
+    unsigned int i = 1;
     size_t sz;
     char *ip;
     struct hostent *h;
@@ -477,6 +477,7 @@ char *OS_GetHost(const char *host, unsigned int attempts)
 
     while (i <= attempts) {
         if ((h = gethostbyname(host)) == NULL) {
+            minfo("Couldn't resolve manager hostname. Retrying in %u seconds...", i);
             sleep(i++);
             continue;
         }
