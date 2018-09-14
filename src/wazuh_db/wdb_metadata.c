@@ -239,6 +239,7 @@ int wdb_metadata_fim_check_control (wdb_t * wdb, const char *last_check) {
         }
         
     }
+    free(value);
 
     return 0;
 }

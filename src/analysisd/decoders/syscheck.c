@@ -21,9 +21,9 @@
 // Init sdb struct
 void sdb_init(_sdb *localsdb);
 // Add events into sqlite DB for FIM
-static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf);
+static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *sdb);
 // Send msg to wazuh-db
-static int send_query_wazuhdb (char *wazuhdb_query, char **output);
+static int send_query_wazuhdb (char *wazuhdb_query, char *output, _sdb *sdb);
 // Build FIM alert
 static int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb);
 // Build fileds whodata alert
@@ -33,13 +33,13 @@ static int SumCompare (const char *s1, const char *s2);
 // Check for exceed num of changes
 static int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf);
 // Send control message to wazuhdb
-static int fim_control_msg (char *key, time_t value, Eventinfo *lf);
+static int fim_control_msg (char *key, time_t value, Eventinfo *lf, _sdb *sdb);
 //Update field date at last event generated
-int fim_update_date (char *file, Eventinfo *lf);
+int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb);
 // Clean for old entries
-int fim_database_clean (Eventinfo *lf);
+int fim_database_clean (Eventinfo *lf, _sdb *sdb);
 // Check if the first scan was made
-int fim_end_first_scan (Eventinfo *lf);
+int fim_end_first_scan (Eventinfo *lf, _sdb *sdb);
 
 
 // Initialize the necessary information to process the syscheck information
@@ -83,6 +83,7 @@ void fim_init(void) {
 // Initialize the necessary information to process the syscheck information
 void sdb_init(_sdb *localsdb) {
     localsdb->db_err = 0;
+    localsdb->socket = -1;
 
     memset(localsdb->comment, '\0', OS_MAXSTR + 1);
     memset(localsdb->size, '\0', OS_FLSIZE + 1);
@@ -105,6 +106,10 @@ int DecodeSyscheck(Eventinfo *lf)
     char *c_sum;
     char *w_sum;
     char *f_name;
+    _sdb sdb;
+
+    /* Initialize the integrity database */
+    sdb_init(&sdb);
 
     /* Every syscheck message must be in the following format:
      * 'checksum' 'filename'
@@ -116,7 +121,7 @@ int DecodeSyscheck(Eventinfo *lf)
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
         mdebug2("Scan's control message: '%s'", lf->log);
-        if (fim_control_msg(lf->log, lf->time.tv_sec, lf) > 0) {
+        if (fim_control_msg(lf->log, lf->time.tv_sec, lf, &sdb) > 0) {
             return(0);
         } else {
             merror(SK_INV_MSG);
@@ -164,11 +169,11 @@ int DecodeSyscheck(Eventinfo *lf)
     }
 
     // Search for file changes
-    return (fim_db_search(f_name, c_sum, w_sum, lf));
+    return (fim_db_search(f_name, c_sum, w_sum, lf, &sdb));
 }
 
 
-int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
+int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *sdb) {
     int decode_newsum = 0;
     int db_result = 0;
     int changes = 0;
@@ -181,17 +186,13 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
     char *check_sum = NULL;
     sk_sum_t oldsum = { .size = NULL };
     sk_sum_t newsum = { .size = NULL };
-    _sdb sdb;
-
-    /* Initialize the integrity database */
-    sdb_init(&sdb);
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
     os_strdup(c_sum, new_check_sum);
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck load %s", lf->agent_id, f_name);
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response);
+    db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
 
     // Fail trying load info from DDBB
     if (db_result != 0) {
@@ -219,7 +220,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
         mdebug1("Alert discarded '%s' same check_sum", f_name);
         lf->data = NULL;
-        fim_update_date (f_name, lf);
+        fim_update_date (f_name, lf, sdb);
         free(wazuhdb_query);
         free(new_check_sum);
         free(old_check_sum);
@@ -228,7 +229,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
     }
 
     if (decode_newsum = sk_decode_sum(&newsum, c_sum, w_sum), decode_newsum != -1) {
-        InsertWhodata(&newsum, &sdb);
+        InsertWhodata(&newsum, sdb);
     }
 
     wazuhdb_query[0] = '\0';
@@ -242,7 +243,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
             );
             free(response);
             response = NULL;
-            db_result = send_query_wazuhdb(wazuhdb_query, &response);
+            db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
 
             if (db_result != 0) {
                 merror("at fim_db_search(): Bad delete query");
@@ -295,7 +296,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
             );
             free(response);
             response = NULL;
-            db_result = send_query_wazuhdb(wazuhdb_query, &response);
+            db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
 
             if (db_result != 0) {
                 merror("at fim_db_search(): Bad save query");
@@ -323,7 +324,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
             return (-1);
     }
 
-    if ((Config.syscheck_alert_new == 1 && fim_end_first_scan(lf))) {
+    if ((Config.syscheck_alert_new == 1 && fim_end_first_scan(lf, sdb))) {
         sk_fill_event(lf, f_name, &newsum);
 
         /* Fields */
@@ -332,7 +333,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
             os_strdup(fim_decoder->fields[i], lf->fields[i].key);
         }
 
-        fim_alert (f_name, &oldsum, &newsum, lf, &sdb);
+        fim_alert (f_name, &oldsum, &newsum, lf, sdb);
     } else {
         mdebug2("Alert discarded (alert_new option or first scan) file '%s'", f_name);
     }
@@ -346,8 +347,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf) {
 }
 
 
-int send_query_wazuhdb(char *wazuhdb_query, char **output) {
-    static int sock = -1;
+int send_query_wazuhdb(char *wazuhdb_query, char *output, _sdb *sdb) {
     char response[OS_SIZE_6144];
     fd_set fdset;
     struct timeval timeout = {0, 1000};
@@ -357,9 +357,9 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output) {
     time_t mtime;
 
     // Connect to socket if disconnected
-    if (sock < 0) {
+    if (sdb->socket < 0) {
         if (mtime = time(NULL), mtime > last_attempt + 10) {
-            if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sock < 0) {
+            if (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sdb->socket < 0) {
                 last_attempt = mtime;
                 mterror(ARGV0, "at send_query_wazuhdb(): Unable connect to socket '%s':'%s'(%d)",
                         WDB_LOCAL_SOCK, strerror(errno), errno);
@@ -372,23 +372,23 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output) {
     }
 
     // Send query to Wazuh DB
-    if (OS_SendSecureTCP(sock, size + 1, wazuhdb_query) != 0) {
+    if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query) != 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             mterror(ARGV0, "at send_query_wazuhdb(): database socket is full");
         } else if (errno == EPIPE) {
             if (mtime = time(NULL), mtime > last_attempt + 10) {
                 // Retry to connect
                 mterror(ARGV0, "at send_query_wazuhdb(): Connection with wazuh-db lost. Reconnecting.");
-                close(sock);
+                close(sdb->socket);
 
-                if (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sock < 0) {
+                if (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sdb->socket < 0) {
                     last_attempt = mtime;
                     mterror(ARGV0, "at send_query_wazuhdb(): Unable connect to socket '%s':'%s'(%d)",
                             WDB_LOCAL_SOCK, strerror(errno), errno);
                     return (-1);
                 }
 
-                if (!OS_SendSecureTCP(sock, size + 1, wazuhdb_query)) {
+                if (!OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
                     last_attempt = mtime;
                     mterror(ARGV0, "at send_query_wazuhdb(): in send reattempt (%d)'%s'.", errno, strerror(errno));
                     return (-1);
@@ -405,16 +405,16 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output) {
 
     // Wait for socket
     FD_ZERO(&fdset);
-    FD_SET(sock, &fdset);
+    FD_SET(sdb->socket, &fdset);
 
-    if (select(sock + 1, &fdset, NULL, NULL, &timeout) < 0) {
+    if (select(sdb->socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
         mterror(ARGV0, "at send_query_wazuhdb(): in select (%d)'%s'.", errno, strerror(errno));
         return (-1);
     }
 
     // Receive response from socket
-    if (OS_RecvSecureTCP(sock, response, OS_SIZE_6144 - 1) > 0) {
-        os_strdup(response, *output);
+    if (OS_RecvSecureTCP(sdb->socket, response, OS_SIZE_6144 - 1) > 0) {
+        os_strdup(response, output);
 
         if (response[0] == 'o' && response[1] == 'k') {
             retval = 0;
@@ -754,7 +754,7 @@ int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf) {
     return freq;
 }
 
-int fim_control_msg(char *key, time_t value, Eventinfo *lf) {
+int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
     char *wazuhdb_query = NULL;
     char *response = NULL;
     int db_result;
@@ -772,7 +772,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf) {
                 (long int)value
         );
 
-        db_result = send_query_wazuhdb(wazuhdb_query, &response);
+        db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
 
         if (db_result != 0) {
             merror("at fim_control_msg(): bad result from metadata query");
@@ -789,7 +789,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf) {
                     (long int)value
             );
 
-            db_result = send_query_wazuhdb(wazuhdb_query, &response);
+            db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
 
             if (db_result != 0) {
                 merror("at fim_control_msg(): bad result from control query");
@@ -801,7 +801,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf) {
 
         // At the end of first scan check and clean DB
         if (strcmp(key, HC_FIM_DB_EFS) == 0) {
-            fim_database_clean(lf);
+            fim_database_clean(lf, sdb);
         }
 
         free(wazuhdb_query);
@@ -812,7 +812,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf) {
     return (0);
 }
 
-int fim_update_date (char *file, Eventinfo *lf) {
+int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
     // If any entry has a date less than last_check it should be deleted.
     char *wazuhdb_query = NULL;
     char *response = NULL;
@@ -826,7 +826,7 @@ int fim_update_date (char *file, Eventinfo *lf) {
             (long int)lf->time.tv_sec
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response);
+    db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
 
     if (db_result != 0) {
         merror("at fim_update_date(): bad result updating date field");
@@ -842,7 +842,7 @@ int fim_update_date (char *file, Eventinfo *lf) {
     return (1);
 }
 
-int fim_database_clean (Eventinfo *lf) {
+int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
     // If any entry has a date less than last_check it should be deleted.
     char *wazuhdb_query = NULL;
     char *response = NULL;
@@ -855,7 +855,7 @@ int fim_database_clean (Eventinfo *lf) {
             (unsigned long)lf->time.tv_sec
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response);
+    db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
 
     if (db_result != 0) {
         merror("at fim_database_clean(): bad result from cleandb query");
@@ -872,7 +872,7 @@ int fim_database_clean (Eventinfo *lf) {
 
 }
 
-int fim_end_first_scan(Eventinfo *lf) {
+int fim_end_first_scan(Eventinfo *lf, _sdb *sdb) {
     // If any entry has a date less than last_check it should be deleted.
     char *wazuhdb_query = NULL;
     char *response = NULL;
@@ -887,7 +887,7 @@ int fim_end_first_scan(Eventinfo *lf) {
             HC_FIM_DB_EFS
     );
 
-    db_result = send_query_wazuhdb(wazuhdb_query, &response);
+    db_result = send_query_wazuhdb(wazuhdb_query, response, sdb);
 
     if (db_result != 0) {
         merror("at fim_end_first_scan(): bad result getting timestamp field");

@@ -86,6 +86,7 @@ typedef struct __sdb {
     char process_id[OS_FLSIZE + 1];
 
     int db_err;
+    int socket;
 } _sdb; /* syscheck db information */
 
 typedef struct sk_sum_wdata {
