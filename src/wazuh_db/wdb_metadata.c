@@ -25,26 +25,26 @@ int wdb_metadata_initialize (wdb_t *wdb, char *path) {
     if (end = strchr(strmajor, '.'), !end) {
         merror("at wdb_metadata_fill_version(): Couldn't parse internal mayor version '%s'", strmajor);
         result = -1;
+    } else {
+        *end = '\0';
+        strminor = end + 1;
+
+        if (end = strchr(strminor, '.'), !end) {
+            merror("at wdb_metadata_fill_version(): Couldn't parse internal minor version '%s'", strminor);
+            result = -1;
+        } else {
+            if (wdb_metadata_insert_entry(wdb, "version_major", strmajor) < 0) {
+                merror("Couldn't fill metadata into database '%s'", path);
+                result = -1;
+            }
+
+            if (wdb_metadata_insert_entry(wdb, "version_minor", strminor) < 0) {
+                merror("Couldn't fill metadata into database '%s'", path);
+                result = -1;
+            }
+        }
     }
 
-    *end = '\0';
-    strminor = end + 1;
-
-    if (end = strchr(strminor, '.'), !end) {
-        merror("at wdb_metadata_fill_version(): Couldn't parse internal minor version '%s'", strminor);
-        result = -1;
-    }
-    *end = '\0';
-
-    if (wdb_metadata_insert_entry(wdb, "version_major", strmajor) < 0) {
-        merror("Couldn't fill metadata into database '%s'", path);
-        result = -1;
-    }
-
-    if (wdb_metadata_insert_entry(wdb, "version_minor", strminor) < 0) {
-        merror("Couldn't fill metadata into database '%s'", path);
-        result = -1;
-    }
     if (wdb_metadata_insert_entry(wdb, "fim-db-1stcheck-scan", "000") < 0) {
         merror("Couldn't fill metadata into database '%s'", path);
         result = -1;

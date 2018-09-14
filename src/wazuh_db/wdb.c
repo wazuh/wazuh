@@ -177,8 +177,7 @@ wdb_t * wdb_open_agent2(int agent_id) {
         wdb = wdb_init(db, sagent_id);
 
         if (wdb_metadata_initialize(wdb, path) < 0) {
-            merror("Couldn't initialize metadata table into database '%s'", path);
-            goto end;
+            mwarn("Couldn't initialize metadata table in '%s'", path);
         }
     }
     else {
