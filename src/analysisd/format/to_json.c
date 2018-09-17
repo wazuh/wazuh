@@ -344,7 +344,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         // Process section
         add_json_field(process_sect, "id", lf->process_id, "0");
         add_json_field(process_sect, "name", lf->process_name, "");
-        add_json_field(process_sect, "ppi", lf->ppid, "");
+        add_json_field(process_sect, "ppid", lf->ppid, "");
 
         // Auser sect
         add_json_field(auser_sect, "id", lf->audit_uid, "");

@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 
 - Prevent offline agents from generating vulnerability-detector alerts. ([#1292](https://github.com/wazuh/wazuh/pull/1292))
 - Fix empty SHA256 of rotated alerts and log files. ([#1308](https://github.com/wazuh/wazuh/pull/1308))
+- Fix typo in whodata alerts. ([#1242](https://github.com/wazuh/wazuh/issues/1242))
+- Fix bug in whodata field extraction for Windows. ([#1233](https://github.com/wazuh/wazuh/issues/1233))
 
 
 ## [v3.6.1] 2018-09-07
@@ -25,7 +27,6 @@ All notable changes to this project will be documented in this file.
 - Fix bug in folder recursion limit count in FIM real-time mode. ([#1226](https://github.com/wazuh/wazuh/issues/1226))
 - Fixed errors when parsing AWS events in Elasticsearch. ([#1229](https://github.com/wazuh/wazuh/issues/1229))
 - Fix bug when launching osquery from Wazuh. ([#1230](https://github.com/wazuh/wazuh/issues/1230))
-- Fix bug in whodata field extraction for Windows. ([#1233](https://github.com/wazuh/wazuh/issues/1233))
 
 
 ## [v3.6.0] 2018-08-29
