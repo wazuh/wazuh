@@ -94,11 +94,11 @@ def get_files(filter_file_list=None, filter_node_list=None):
 
 
 def get_agents(filter_status, filter_node, is_master):
-    filter_status = "all" if not filter_status else filter_status
-    filter_node = "all" if not filter_node else filter_node
+    filter_status = ["all"] if not filter_status else filter_status
+    filter_node = ["all"] if not filter_node else filter_node
 
     if is_master:
-        return Agent.get_agents_overview(limit=None, filters={'status': filter_status, 'node_name':','.join(filter_node)},
+        return Agent.get_agents_overview(limit=None, filters={'status': ','.join(filter_status), 'node_name':','.join(filter_node)},
                                          select={'fields':['id','ip','name','status','node_name']})
     else:
         input_json = {'function': '/agents', 'from_cluster': False,

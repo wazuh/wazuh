@@ -77,7 +77,7 @@ Others:
 
         parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', action = 'store', type=str, help="Agents status")
+        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
         parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
@@ -259,7 +259,7 @@ def print_agents(filter_status, filter_node, is_master):
         exit(1)
 
     if filter_status:
-        print ("\nFound {} agent(s) with status '{}'.".format(agents['totalItems'], filter_status))
+        print ("\nFound {} agent(s) with status '{}'.".format(agents['totalItems'], ' '.join(filter_status)))
     else:
         print ("\nListing {} agent(s).".format(agents['totalItems']))
 
