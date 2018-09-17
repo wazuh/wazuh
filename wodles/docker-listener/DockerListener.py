@@ -39,10 +39,8 @@ class DockerListener:
         """
         try:
             for event in self.client.events():
-                # print(event)
                 self.process(event)
         except Exception:
-
             raise Exception
 
     def process(self, event):
