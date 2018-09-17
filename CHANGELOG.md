@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - Fix typo in whodata alerts. ([#1242](https://github.com/wazuh/wazuh/issues/1242))
 - Fix bug in whodata field extraction for Windows. ([#1233](https://github.com/wazuh/wazuh/issues/1233))
 - Fixed service startup on error. ([#1324](https://github.com/wazuh/wazuh/pull/1324))
+- Fix stack overflow when monitoring deep files. ([#1239](https://github.com/wazuh/wazuh/pull/1239))
 
 
 ## [v3.6.1] 2018-09-07
