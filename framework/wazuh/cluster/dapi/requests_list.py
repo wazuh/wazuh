@@ -149,6 +149,14 @@ functions = {
         'function': Agent.unset_group,
         'type': 'local_master'
     },
+    'DELETE/agents/:agent_id/group/:group_id': {
+        'function': Agent.unset_group,
+        'type': 'local_master'
+    },
+    'DELETE/agents/groups': {
+        'function': Agent.remove_group,
+        'type': 'local_master'
+    },
 
     # Decoders
     '/decoders': {
@@ -183,6 +191,14 @@ functions = {
     },
     '/manager/stats/weekly': {
         'function': stats.weekly,
+        'type': 'local_any'
+    },
+    '/manager/stats/analysisd': {
+        'function': stats.analysisd,
+        'type': 'local_any'
+    },
+    '/manager/stats/remoted': {
+        'function': stats.remoted,
         'type': 'local_any'
     },
     '/manager/logs/summary': {
