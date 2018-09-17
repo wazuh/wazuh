@@ -114,9 +114,12 @@ def forward_request(input_json, master_name, pretty, from_master):
                     return None if not agent_ids else {'error':1000, 'message':result}
                 return result
         except WazuhException as e:
-            if agent_ids:
-                # if the agent is not reporting to any node, execute the request in local to get the error
-                return json.loads(distribute_function(input_json))
+            if e.code == 3017:
+                if agent_ids:
+                    # if the agent is not reporting to any node, execute the request in local to get the error
+                    return json.loads(distribute_function(input_json))
+            else:
+                raise
 
 
     node_name, is_list = get_solver_node(input_json, master_name)
