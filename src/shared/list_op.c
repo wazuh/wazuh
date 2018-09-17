@@ -92,8 +92,8 @@ OSListNode *OSList_GetLastNode(OSList *list)
  */
 OSListNode *OSList_GetLastNode_group(OSList *list)
 {
-    w_mutex_lock((pthread_mutex_t *)&list->mutex);
     w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
     list->cur_node = list->last_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
     return (list->last_node);
@@ -209,6 +209,7 @@ void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode)
     list->cur_node = next;
 
     list->currently_size--;
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 }
 

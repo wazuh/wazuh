@@ -182,6 +182,9 @@ char** wm_strtok(char *string) {
             *(c++) = '\0';
             output[n++] = c;
             output = (char**)realloc(output, (n + 1) * sizeof(char*));
+            if(!output){
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
             output[n] = NULL;
             break;
 

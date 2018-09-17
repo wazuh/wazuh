@@ -205,11 +205,6 @@ void * req_dispatch(req_node_t * node) {
 
     if (strcmp(node->buffer, "getconfig") == 0) {
 
-        if (!_payload){
-            merror("request getconfig needs arguments.");
-            output = strdup("err request getconfig needs arguments");
-            goto cleanup;
-        }
         node->length = rem_getconfig(_payload, &output);
 
         if (OS_SendSecureTCP(node->sock, node->length, output) != 0) {
@@ -323,6 +318,10 @@ cleanup:
 
     w_mutex_unlock(&node->mutex);
     w_mutex_lock(&mutex_table);
+
+    if(output){
+        free(output);
+    }
 
     if (!OSHash_Delete(req_table, node->counter)) {
         merror("At req_dispatch(): OSHash_Delete(): no such key.");

@@ -591,7 +591,7 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
     char *dyn_buffer;
     const size_t bufsz = 512;
     char static_buf[bufsz+1];
-    uint32_t msgsize;
+    uint64_t msgsize;
 
     recvval = recv(sock, static_buf, bufsz, 0);
 
@@ -638,7 +638,7 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
                 case -1:
                 case 0:
                     free(*ret);
-                    return recvmsg;
+                    return 0;
             }
         }
         *(*ret + msgsize) = '\0';
@@ -652,11 +652,11 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
         switch(recvmsg){
             case -1:
                 free(dyn_buffer);
-                return recvmsg;
+                return -1;
 
             case 0:
                 free(dyn_buffer);
-                return recvmsg;
+                return 0;
         }
 
         dyn_buffer[recvmsg + 1] = '\0';

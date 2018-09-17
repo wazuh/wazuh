@@ -731,6 +731,27 @@ class WazuhDBQuery(object):
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
 
 
+    def _process_filter(self, field_name, field_filter, q_filter):
+        if field_name == "status":
+            self._filter_status(q_filter)
+        elif field_name in self.date_fields and not self.date_regex.match(q_filter['value']):
+            # filter a date, but only if it is in timeframe format.
+            # If it matches the same format as DB (YYYY-MM-DD hh:mm:ss), filter directly by value (next if cond).
+            self._filter_date(q_filter, field_name)
+        else:
+            if q_filter['value'] is not None:
+                self.request[field_filter] = q_filter['value'] if q_filter['field'] != "version" else re.sub(
+                    r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
+                if q_filter['operator'] == 'LIKE':
+                    self.request[field_filter] = '%{}%'.format(self.request[field_filter])
+                self.query += '{} {} :{}'.format(self.fields[field_name], q_filter['operator'], field_filter)
+                if not field_filter.isdigit():
+                    # filtering without being uppercase/lowercase sensitive
+                    self.query += ' COLLATE NOCASE'
+            else:
+                self.query += '{} IS null'.format(self.fields[field_name])
+
+
     def _add_filters_to_query(self):
         self._parse_filters()
         curr_level = 0
@@ -739,23 +760,8 @@ class WazuhDBQuery(object):
             field_filter = q_filter['field'].replace('.','_')
 
             self.query += '((' if curr_level < q_filter['level'] else '('
-            if field_name == "status":
-                self._filter_status(q_filter)
-            elif field_name in self.date_fields and not self.date_regex.match(q_filter['value']):
-                # filter a date, but only if it is in timeframe format.
-                # If it matches the same format as DB (YYYY-MM-DD hh:mm:ss), filter directly by value (next if cond).
-                self._filter_date(q_filter, field_name)
-            else:
-                if q_filter['value'] is not None:
-                    self.request[field_filter] = q_filter['value'] if q_filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                    if q_filter['operator'] == 'LIKE':
-                        self.request[field_filter] = '%{}%'.format(self.request[field_filter])
-                    self.query += '{} {} :{}'.format(self.fields[field_name], q_filter['operator'], field_filter)
-                    if not field_filter.isdigit():
-                        # filtering without being uppercase/lowercase sensitive
-                        self.query += ' COLLATE NOCASE'
-                else:
-                    self.query += '{} IS null'.format(self.fields[field_name])
+
+            self._process_filter(field_name, field_filter, q_filter)
 
             self.query += ('))' if curr_level > q_filter['level'] else ')') + ' {} '.format(q_filter['separator'])
             curr_level = q_filter['level']
