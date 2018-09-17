@@ -148,7 +148,6 @@ void * syscom_main(__attribute__((unused)) void * arg) {
             break;
 
         default:
-            merror("RECEIVED buffer %s",buffer);
             length = syscom_dispatch(buffer, &response);
             OS_SendSecureTCP(peer, length, response);
             free(response);
