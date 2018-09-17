@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.7.0]
 
+### Added
+
+- Added support for API calls `GET/manager/stats/analysisd` and `GET/manager/stats/remoted` ([#1297](https://github.com/wazuh/wazuh/pull/1297)).
+
 ### Changed
 - Refactor Python framework code to standarize database requests and support API queries ([#921](https://github.com/wazuh/wazuh/pull/921)).
 - Add support for multigroups ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135)).
