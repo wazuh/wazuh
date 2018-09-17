@@ -53,7 +53,7 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip, int for
     output = cJSON_PrintUnformatted(request);
 
     if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
-        merror_exit("send(): %s", strerror(errno));
+        merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
     }
 
     cJSON_Delete(request);
@@ -61,7 +61,7 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip, int for
 
     switch (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length) {
     case -1:
-        merror_exit("recv(): %s", strerror(errno));
+        merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
         break;
 
     case 0:
@@ -128,16 +128,16 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
 
     output = cJSON_PrintUnformatted(request);
 
-    if (send(sock, output, strlen(output), 0) < 0) {
-        merror_exit("send(): %s", strerror(errno));
+    if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
+        merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
     }
 
     cJSON_Delete(request);
     free(output);
 
-    switch (length = recv(sock, buffer, OS_MAXSTR, 0), length) {
+    switch (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length) {
     case -1:
-        merror_exit("recv(): %s", strerror(errno));
+        merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
         break;
 
     case 0:
