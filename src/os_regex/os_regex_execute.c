@@ -31,20 +31,23 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
     const char *ret;
     int i = 0;
 
+    w_mutex_lock((pthread_mutex_t *)&reg->mutex);
+
     /* The string can't be NULL */
     if (str == NULL) {
         reg->error = OS_REGEX_STR_NULL;
+        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
         return (0);
     }
-
+    
     /* If we need the sub strings */
     if (reg->prts_closure) {
         int k = 0;
+       
         /* Loop over all sub patterns */
         while (reg->patterns[i]) {
             /* Clean the prts_str */
             int j = 0;
-            w_mutex_lock((pthread_mutex_t *)&reg->mutex);
             while (reg->prts_closure[i][j]) {
                 reg->prts_str[i][j] = NULL;
                 j++;

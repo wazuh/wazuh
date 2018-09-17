@@ -137,6 +137,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         WazuhDBQuery._parse_legacy_filters(self)
 
 
+    def _process_filter(self, field_name, field_filter, q_filter):
+        if field_name == 'group' and q_filter['value'] is not None:
+            field_filter_1, field_filter_2, field_filter_3 = field_filter+'_1', field_filter+'_2', field_filter+'_3'
+            self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} LIKE :{3} OR {0} = :{4}'.format(self.fields[field_name], field_filter_1, field_filter_2, field_filter_3, field_filter)
+            self.request[field_filter_1] = '%-'+q_filter['value']
+            self.request[field_filter_2] = q_filter['value']+'-%'
+            self.request[field_filter_3] = '%-{}-%'.format(q_filter['value'])
+            self.request[field_filter] = q_filter['value']
+        else:
+            WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
+
+
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
@@ -151,7 +163,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
     def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'}, remove_extra_fields=True):
         self.group_id = group_id
-        query = 'group~{}'.format(group_id) + (';'+query if query else '')
+        query = 'group={}'.format(group_id) + (';'+query if query else '')
         WazuhDBQueryAgents.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select,
                                     filters=filters, default_sort_field=default_sort_field, query=query,
                                     min_select_fields=min_select_fields, count=count, get_data=get_data,
@@ -1081,7 +1093,7 @@ class Agent:
             agent_info = Agent(agent_id).get_basic_information()
         
         # Check if the group already belongs to the agent
-        if agent_info["group"].find(group_id) > -1:
+        if group_id in agent_info["group"].split('-'):
             return "Group '{0}' already belongs to agent'{1}'.".format(group_id, agent_id)
 
         agent_group = agent_info["group"] + "-" + group_id
@@ -1317,6 +1329,10 @@ class Agent:
         :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        # check whether the group exists or not
+        if group_id != 'null' and not glob("{}/{}".format(common.shared_path, group_id)) and not glob("{}/{}".format(common.multi_groups_path, group_id)):
+            raise WazuhException(1710, group_id)
+
         db_query = WazuhDBQueryMultigroups(group_id=group_id, offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters,
                                            count=True, get_data=True, query=q)
         return db_query.run()
@@ -1456,9 +1472,9 @@ class Agent:
 
         return msg
 
+
     @staticmethod
     def remove_multi_group(group_id):
-
         # Connect DB
         db_global = glob(common.database_path_global)
         if not db_global:
@@ -1467,48 +1483,32 @@ class Agent:
         conn = Connection(db_global[0])
 
         # Query
-        query = "SELECT id, `group` FROM agent WHERE `group` LIKE ?"
-        conn.execute(query,('%'+group_id+'%',))
+        query = "SELECT id, `group` FROM agent WHERE `group` LIKE :group_1 OR `group` LIKE :group_2 OR `group` LIKE :group_3 OR `group` = :group_4"
+        conn.execute(query, {'group_1': group_id+'-%', 'group_2': '%-{}-%'.format(group_id), 'group_3': '%-'+group_id, 'group_4': group_id})
 
-        while True:
-            agent = conn.fetch()
-            if agent == None:
-                return
+        for agent_id, agent_group in conn:
+            # get all groups this agent belongs to
+            group_list = agent_group.split('-')
+            # remove the group
+            group_list.remove(group_id)
+            if len(group_list) > 1:
+                # create new multigroup
+                new_group = '-'.join(group_list)
 
-            agent_id = agent[0]
-            agent_group = agent[1]
-            agent_group = agent_group.replace(group_id,'')
+                if not Agent.multi_group_exists(new_group):
+                    Agent.create_multi_group(new_group)
+            else:
+                new_group = 'default' if not group_list else group_list[0]
 
-            # Check if it has multi group
-            multi_group = agent_group.count('-')
+            Agent.set_group(str(agent_id).zfill(3), new_group, replace=True)
 
-            if multi_group == 1:
-                agent_group = agent_group.replace('-','')
-            elif multi_group > 1:
-                if agent_group[0] == '-':
-                    agent_group = agent_group[1:]
-                elif agent_group[-1:] == '-':
-                    agent_group = agent_group[:-1]
-                elif agent_group.find('--') > 0:
-                    agent_group = agent_group.replace('--','-')
+        # Delete from multi groups folder
+        _, multi_group_dirs, _ = walk(common.multi_groups_path).next()
 
-                # If the new multi group doesnt exists, create it
-                if not Agent().multi_group_exists(agent_group):
-                    Agent.create_multi_group(agent_group)
+        for multi_dir in multi_group_dirs:
+            if group_id in multi_dir.split('-'):
+                rmtree("{}/{}".format(common.multi_groups_path,multi_dir))
 
-                Agent().set_multi_group(str(agent_id),agent_group)
-                
-            else: # Has only one group
-                agent_group = "default"
-                Agent().set_group(str(agent_id),agent_group)
-
-            # Delete from multi groups folder
-            root, multi_group_dirs, files = walk(common.multi_groups_path).next()
-
-            for multi_dir in multi_group_dirs:
-                if multi_dir.find(group_id) > -1:
-                    agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path,multi_dir)
-                    rmtree(agent_multi_group_path)
 
     @staticmethod
     def remove_group(group_id):
@@ -1568,13 +1568,31 @@ class Agent:
 
 
     @staticmethod
-    def set_group(agent_id, group_id, force=False):
+    def set_group(agent_id, group_id, force=False, replace=False):
         """
         Set a group to an agent.
 
         :param agent_id: Agent ID.
         :param group_id: Group ID.
         :param force: No check if agent exists
+        :param replace: Replace agent group instead of appending.
+        :return: Confirmation message.
+        """
+        if replace:
+            return Agent.replace_group(agent_id=agent_id, group_id=group_id, force=force)
+        else:
+            return Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, force=force)
+
+
+    @staticmethod
+    def replace_group(agent_id, group_id, force=False):
+        """
+        Replaces a group to an agent.
+
+        :param agent_id: Agent ID.
+        :param group_id: Group ID.
+        :param force: No check if agent exists
+        :param replace: Replace agent group instead of appending.
         :return: Confirmation message.
         """
         # Input Validation of group_id
@@ -1599,8 +1617,8 @@ class Agent:
         if agent_info.has_key("group") == True:
             
             # Check if multi group still exists in other agents
-            query = "SELECT COUNT(*) FROM agent WHERE `group` = ?"
-            conn.execute(query,(agent_info["group"],))
+            query = "SELECT COUNT(*) FROM agent WHERE `group` = :group_1 OR `group` LIKE :group_2 OR `group` LIKE :group_3 OR `group` LIKE :group_4"
+            conn.execute(query,{'group_1': group_id, 'group_2': group_id+'-%', 'group_3': '%-{}-%'.format(group_id), 'group_4': '%-'+group_id})
         
             # Check if it is a multi group
             if agent_info["group"] is not None and agent_info["group"].find("-") > -1:
@@ -1632,6 +1650,7 @@ class Agent:
             Agent.create_group(group_id)
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
+
 
     @staticmethod
     def set_multi_group(agent_id, group_id, force=False):
@@ -1672,10 +1691,65 @@ class Agent:
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
+
     @staticmethod
-    def unset_group(agent_id, force=False):
+    def unset_group(agent_id, group_id=None, force=False):
         """
-        Unset the agent group. The group will be 'default'.
+        Unset the agent group.
+
+        :param agent_id: Agent ID.
+        :param group_id: Group ID.
+        :param force: No check if agent exists
+        :return: Confirmation message.
+        """
+        if group_id is None:
+            return Agent.unset_all_groups_agent(agent_id=agent_id, force=force)
+        else:
+            return Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=force)
+
+
+    @staticmethod
+    def unset_single_group_agent(agent_id, group_id, force):
+        """
+        Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
+
+        :param agent_id: Agent ID.
+        :param group_id: Group ID.
+        :param force: No check if agent exists
+        :return: Confirmation message.
+        """
+        # Check if agent exists
+        if not force:
+            Agent(agent_id).get_basic_information()
+
+        # get agent's group
+        group_path = "{}/{}".format(common.groups_path, agent_id)
+        if path.exists(group_path):
+            with open(group_path) as f:
+                group_name = f.read().replace('\n','')
+
+            group_list = group_name.split('-')
+            # check agent belongs to group group_id
+            if group_id not in group_list:
+                raise WazuhException(1734, "Agent {} doesn't belong to group {}".format(agent_id, group_id))
+            # remove group from group_list
+            group_list.remove(group_id)
+            if len(group_list) > 1:
+                multigroup_name = '-'.join(group_list)
+                if not Agent.multi_group_exists(multigroup_name):
+                    Agent.create_multi_group(multigroup_name)
+            else:
+                multigroup_name = 'default' if not group_list else group_list[0]
+            Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
+            return "Group '{}' unset for agent '{}'.".format(group_id, agent_id)
+        else:
+            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
+
+
+    @staticmethod
+    def unset_all_groups_agent(agent_id, force, group_id='default'):
+        """
+        Unset the agent group. The group will be group_id ('default' by default).
 
         :param agent_id: Agent ID.
         :param force: No check if agent exists
@@ -1683,36 +1757,37 @@ class Agent:
         """
         # Check if agent exists
         if not force:
-            agent_info = Agent(agent_id).get_basic_information()
-
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
+            Agent(agent_id).get_basic_information()
 
         # Check if multi group still exists in other agents
-        query = "SELECT COUNT(*) FROM agent WHERE `group` = ?"
-        conn.execute(query,(agent_info["group"],))
-    
-        # Check if it is a multi group
-        if agent_info["group"].find("-") > -1:
-            multi_group = conn.fetch()[0]
-
-            # The multi group is not being used in other agents, delete it from multi groups
-            if multi_group <= 1:
-                if Agent().multi_group_exists(agent_info["group"]):
-                    agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, agent_info["group"])
-                    rmtree(agent_multi_group_path)
-            
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-    
         if path.exists(agent_group_path):
-            with open(agent_group_path, "w+") as fo:
-                fo.write("default")
+            with open(agent_group_path) as f:
+                group_name = f.read().replace('\n','')
 
-        return "Group unset for agent '{0}'.".format(agent_id)
+            # Check if it is a multi group
+            if group_name.find("-") > -1:
+                # Connect DB
+                db_global = glob(common.database_path_global)
+                if not db_global:
+                    raise WazuhException(1600)
+
+                conn = Connection(db_global[0])
+                conn.execute('select count(*) from agent where `group` = :group_name', {'group_name': group_name})
+                multi_group = conn.fetch()[0]
+
+                # The multi group is not being used in other agents, delete it from multi groups
+                if multi_group <= 1:
+                    if Agent.multi_group_exists(group_name):
+                        agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, group_name)
+                        rmtree(agent_multi_group_path)
+
+            with open(agent_group_path, "w+") as fo:
+                fo.write(group_id)
+
+            return "Group unset for agent '{0}'.".format(agent_id)
+        else:
+            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
 
 
     @staticmethod

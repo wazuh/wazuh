@@ -24,6 +24,18 @@
             "description": "shared configuration files"
         },
 
+        "/var/multigroups/": {
+            "umask": "0o127",
+            "source": "master",
+            "write_mode": "atomic",
+            "files": ["merged.mg"],
+            "recursive": true,
+            "restart": false,
+            "remove_subdirs_if_empty": true,
+            "extra_valid": false,
+            "description": "shared configuration files"
+        },
+
         "/etc/rules/": {
             "umask": "0o127",
             "source": "master",

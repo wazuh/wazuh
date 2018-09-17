@@ -169,10 +169,6 @@ int main(int argc, char **argv)
 
     mdebug1(STARTED_MSG);
 
-    /* Wait 6 seconds for the analysisd/agentd to settle */
-    mdebug1("Waiting main daemons to settle.");
-    sleep(6);
-
     /* Start the queue */
     if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQPATH);
