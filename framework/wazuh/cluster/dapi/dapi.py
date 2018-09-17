@@ -166,7 +166,7 @@ def get_solver_node(input_json, master_name):
         if isinstance(input_json['arguments']['agent_id'], list):
             agents = Agent.get_agents_overview(select=select_node, limit=None, filters={'id':input_json['arguments']['agent_id']},
                                                   sort={'fields':['node_name'], 'order':'desc'})['items']
-            node_name = {k:list(map(itemgetter('id'), g)) for k,g in groupby(agents, key=itemgetter('node_name'))}
+            node_name = {k:list(map(itemgetter('id'), g)) for k,g in groupby(agents, key=itemgetter('node_name')) if k != 'unknown'}
 
             # add non existing ids in the master's dictionary entry
             non_existent_ids = list(set(input_json['arguments']['agent_id']) - set(map(itemgetter('id'), agents)))
@@ -190,7 +190,7 @@ def get_solver_node(input_json, master_name):
 
     else: # agents, syscheck, rootcheck and syscollector
         agents = Agent.get_agents_overview(select=select_node, limit=None, sort={'fields': ['node_name'], 'order': 'desc'})['items']
-        node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node_name'))}
+        node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node_name')) if k != 'unknown'}
         return node_name, True
 
 
