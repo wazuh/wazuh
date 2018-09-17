@@ -77,10 +77,10 @@ int main(int argc, char **argv)
     // Run modules
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        int error = pthread_create(&cur_module->thread, NULL, cur_module->context->start, cur_module->data);
-
-        if (error)
-            merror_exit("pthread_create(): %s", strerror(error));
+        if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
+            merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
+        }
+        mdebug2("Created new thread for the '%s' module.", cur_module->tag);
     }
 
     // Wait for threads
