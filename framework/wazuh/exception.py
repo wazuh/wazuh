@@ -118,6 +118,8 @@ class WazuhException(Exception):
         1732: 'No agents selected',
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
         1734: "Error unsetting agent group",
+        1735: 'Agent version is not compatible with this feature',
+
         # Manager:
 
         # Database:

@@ -110,7 +110,6 @@ int req_push(char * buffer, size_t length) {
 
 #ifndef WIN32
 
-
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];
             snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);

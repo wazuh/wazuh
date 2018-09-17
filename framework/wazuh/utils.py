@@ -540,7 +540,7 @@ class WazuhVersion:
         return (self >= new_version and self != new_version)
 
     def __le__(self, new_version):
-        return (not (self < new_version) or self == new_version)
+        return (not (self > new_version) or self == new_version)
 
 
 def get_timeframe_in_seconds(timeframe):
