@@ -715,8 +715,8 @@ class WazuhDBQuery(object):
         """
         Parses legacy filters.
         """
-        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': name, 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
-                               for name, value in self.legacy_filters.items() for subvalue in value.split(',') if not self._pass_filter(subvalue)]
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': '{}${}'.format(name,i), 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
+                               for name, value in self.legacy_filters.items() for subvalue,i in zip(value.split(','), range(len(value.split(',')))) if not self._pass_filter(subvalue)]
         if not self.q and self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = ''
