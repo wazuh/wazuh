@@ -2388,6 +2388,15 @@ class Agent:
         """
         sockets_path = common.ossec_path + "/queue/ossec/"
 
+        components = ["agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
+                      "monitor", "request", "syscheck", "wmodules"]
+
+        # checks if the component is correct
+        if component in components:
+            pass
+        else:
+            raise WazuhException(1101, "Invalid target")
+
         # checks if agent version is compatible with this feature
         self._load_info_from_DB()
         agent_version = WazuhVersion(self.version.split(" ")[1])
