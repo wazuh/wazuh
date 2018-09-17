@@ -209,6 +209,20 @@ char * parse_environment_labels(const wlabel_t label) {
     char *ipv6_address;
     char * mac;
 
+    #ifdef WIN32
+    #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+    #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+
+    char * windows_net_info;
+    PIP_ADAPTER_ADDRESSES currentAddress = NULL;
+    DWORD dwRetVal = 0;
+    ULONG flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS;
+    ULONG outBufLen = 0;
+    outBufLen = WORKING_BUFFER_SIZE;
+    currentAddress = (IP_ADAPTER_ADDRESSES *) MALLOC(outBufLen);
+
+    #endif
+
     strncpy(orig, label.value, OS_COMMENT_MAX);
 
     for (str = orig; (tok = strstr(str, "$(")); str = end) {
@@ -239,18 +253,37 @@ char * parse_environment_labels(const wlabel_t label) {
             field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_version"));
 
         } else if(!strcmp(var,"ipv4.primary")){
-            network_info = getNetworkIfaces_linux();
+            #ifndef WIN32
+              network_info = getNetworkIfaces_linux();
               iface = cJSON_GetArrayItem(network_info,default_network_iface);
               ipv4 = cJSON_GetObjectItem(iface,"ipv4");
               ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
+            #else
+              dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
+              windows_net_info = get_network(currentAddress,0,NULL);
+              FREE(currentAddress);
+              network_info = cJSON_Parse(windows_net_info);
+              iface = cJSON_GetObjectItem(network_info,"iface");
+              //ipv4 = cJSON_GetArrayItem(iface,"IPv4");
+              ipv4_address = cJSON_Print(iface);
+            #endif
+
             field = ipv4_address;
         } else if(!strcmp(var,"ipv6.primary")){
+            #ifndef WIN32
             network_info = getNetworkIfaces_linux();
               iface = cJSON_GetArrayItem(network_info,default_network_iface);
               ipv6 = cJSON_GetObjectItem(iface,"ipv6");
               ipv6_address = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
+            #else
+              dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
+              windows_net_info = get_network(currentAddress,0,NULL);
+              FREE(currentAddress);
+              ipv6_address = cJSON_Print(windows_net_info);
+            #endif
             field = ipv6_address;
         }else if(!strcmp(var,"ipv4.others")){
+          #ifndef WIN32
           network_info = getNetworkIfaces_linux();
           for(i = 0; i < cJSON_GetArraySize(network_info);i++){
             if(i!=default_network_iface){
@@ -265,7 +298,11 @@ char * parse_environment_labels(const wlabel_t label) {
                 field = ipv4_address;
             }
           }
+          #else
+            field = "h";
+          #endif
         }else if(!strcmp(var,"ipv6.others")){
+          #ifndef WIN32
           network_info = getNetworkIfaces_linux();
           for(i = 0; i < cJSON_GetArraySize(network_info);i++){
             if(i!=default_network_iface){
@@ -280,12 +317,21 @@ char * parse_environment_labels(const wlabel_t label) {
                 field = ipv6_address;
             }
           }
+          #else
+          field = "a";
+          #endif
         }else if(!strcmp(var,"mac.primary")){
+          #ifndef WIN32
             network_info = getNetworkIfaces_linux();
             iface = cJSON_GetArrayItem(network_info,default_network_iface);
             mac = cJSON_Print(cJSON_GetObjectItem(iface,"mac"));
+          #else
+            mac = "f";
+          #endif
             field = mac;
+
         }else if(!strcmp(var,"mac.others")){
+          #ifndef WIN32
           network_info = getNetworkIfaces_linux();
           for(i = 0; i < cJSON_GetArraySize(network_info);i++){
             if(i!=default_network_iface){
@@ -299,7 +345,11 @@ char * parse_environment_labels(const wlabel_t label) {
                 field = mac;
             }
           }
+          #else
+            field="q";
+          #endif
         }else  if(!strcmp(var,"timezone")){
+          #ifndef WIN32
           int zone;
             time_t t = time(NULL);
             struct  tm lt={0};
@@ -308,6 +358,7 @@ char * parse_environment_labels(const wlabel_t label) {
             zone = lt.tm_gmtoff/3600;
             sprintf(timezone_number,"%d",zone);
             field = timezone_number;
+          #endif
         }else if(!strcmp(var,"hostname")){
           os_info = getunameJSON();
           field = cJSON_Print(cJSON_GetObjectItem(os_info,"hostname"));
@@ -318,7 +369,7 @@ char * parse_environment_labels(const wlabel_t label) {
             if (n + (z = strlen(field)) >= OS_COMMENT_MAX){
 
                 return strdup(field);
-            }
+              }
         }
         else{
 
