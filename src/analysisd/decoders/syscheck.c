@@ -437,7 +437,6 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
     return retval;
 }
 
-
 int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb) {
     int changes = 0;
     int comment_buf = 0;
@@ -455,111 +454,109 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             break;
         case FIM_MODIFIED:
             snprintf(msg_type, sizeof(msg_type), "checksum changed.");
-            // Generate size message
-            if (strcmp(oldsum->size, newsum->size) == 0) {
-                *localsdb->size = '\0';
-            } else {
-                changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "size", ',');
-                snprintf(localsdb->size, OS_FLSIZE,
-                        "Size changed from '%s' to '%s'\n",
-                        oldsum->size, newsum->size);
-
-                os_strdup(oldsum->size, lf->size_before);
-            }
-
-            // Permission message
-            if (oldsum->perm == newsum->perm) {
-                *localsdb->perm = '\0';
-            } else if (oldsum->perm > 0 && newsum->perm > 0) {
-                changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
-                char opstr[10];
-                char npstr[10];
-
-                strncpy(opstr, agent_file_perm(oldsum->perm), sizeof(opstr) - 1);
-                strncpy(npstr, agent_file_perm(newsum->perm), sizeof(npstr) - 1);
-                opstr[9] = npstr[9] = '\0';
-
-                snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
-                            "'%9.9s' to '%9.9s'\n", opstr, npstr);
-
-                lf->perm_before = oldsum->perm;
-            } else {
-                *localsdb->perm = '\0';
-            }
-
-            // Ownership message
-            if (newsum->uid && oldsum->uid) {
-                if (strcmp(newsum->uid, oldsum->uid) == 0) {
-                    *localsdb->owner = '\0';
+                if (strcmp(oldsum->size, newsum->size) == 0) {
+                    localsdb->size[0] = '\0';
                 } else {
                     changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "uid", ',');
-                    if (oldsum->uname && newsum->uname) {
-                        snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->uname, oldsum->uid, newsum->uname, newsum->uid);
-                        os_strdup(oldsum->uname, lf->uname_before);
-                    } else {
-                        snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum->uid, newsum->uid);
-                    }
-                    os_strdup(oldsum->uid, lf->owner_before);
-                }
-            } else {
-                *localsdb->owner = '\0';
-            }
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "size", ',');
+                    snprintf(localsdb->size, OS_FLSIZE,
+                             "Size changed from '%s' to '%s'\n",
+                             oldsum->size, newsum->size);
 
-            // Group ownership message
-            if (newsum->gid && oldsum->gid) {
-                if (strcmp(newsum->gid, oldsum->gid) == 0) {
-                    *localsdb->gowner = '\0';
+                    os_strdup(oldsum->size, lf->size_before);
+                }
+
+                /* Permission message */
+                if (oldsum->perm == newsum->perm) {
+                    localsdb->perm[0] = '\0';
+                } else if (oldsum->perm > 0 && newsum->perm > 0) {
+                    changes = 1;
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
+                    char opstr[10];
+                    char npstr[10];
+
+                    strncpy(opstr, agent_file_perm(oldsum->perm), sizeof(opstr) - 1);
+                    strncpy(npstr, agent_file_perm(newsum->perm), sizeof(npstr) - 1);
+                    opstr[9] = npstr[9] = '\0';
+
+                    snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
+                             "'%9.9s' to '%9.9s'\n", opstr, npstr);
+
+                    lf->perm_before = oldsum->perm;
+                }
+
+                /* Ownership message */
+                if (newsum->uid && oldsum->uid) {
+                    if (strcmp(newsum->uid, oldsum->uid) == 0) {
+                        localsdb->owner[0] = '\0';
+                    } else {
+                        changes = 1;
+                        wm_strcat(&lf->fields[SK_CHFIELDS].value, "uid", ',');
+                        if (oldsum->uname && newsum->uname) {
+                            snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->uname, oldsum->uid, newsum->uname, newsum->uid);
+                            os_strdup(oldsum->uname, lf->uname_before);
+                        } else {
+                            snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum->uid, newsum->uid);
+                        }
+                        os_strdup(oldsum->uid, lf->owner_before);
+                    }
+                }
+
+                /* Group ownership message */
+                if (newsum->gid && oldsum->gid) {
+                    if (strcmp(newsum->gid, oldsum->gid) == 0) {
+                        localsdb->gowner[0] = '\0';
+                    } else {
+                        changes = 1;
+                        wm_strcat(&lf->fields[SK_CHFIELDS].value, "gid", ',');
+                        if (oldsum->gname && newsum->gname) {
+                            snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->gname, oldsum->gid, newsum->gname, newsum->gid);
+                            os_strdup(oldsum->gname, lf->gname_before);
+                        } else {
+                            snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s', now it is '%s'\n", oldsum->gid, newsum->gid);
+                        }
+                        os_strdup(oldsum->gid, lf->gowner_before);
+                    }
+                }
+                /* MD5 message */
+                if (!*newsum->md5 || !*oldsum->md5 || strcmp(newsum->md5, oldsum->md5) == 0) {
+                    localsdb->md5[0] = '\0';
                 } else {
                     changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "gid", ',');
-                    if (oldsum->gname && newsum->gname) {
-                        snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->gname, oldsum->gid, newsum->gname, newsum->gid);
-                        os_strdup(oldsum->gname, lf->gname_before);
-                    } else {
-                        snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s', now it is '%s'\n", oldsum->gid, newsum->gid);
-                    }
-                    os_strdup(oldsum->gid, lf->gowner_before);
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "md5", ',');
+                    snprintf(localsdb->md5, OS_FLSIZE, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
+                             oldsum->md5, newsum->md5);
+                    os_strdup(oldsum->md5, lf->md5_before);
                 }
-            } else {
-                *localsdb->gowner = '\0';
-            }
-            // MD5 message
-            if (!*newsum->md5 || !*oldsum->md5 || strcmp(newsum->md5, oldsum->md5) == 0) {
-                *localsdb->md5 = '\0';
-            } else {
-                changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "md5", ',');
-                snprintf(localsdb->md5, OS_FLSIZE, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
-                            oldsum->md5, newsum->md5);
-                os_strdup(oldsum->md5, lf->md5_before);
-            }
 
-            // SHA-1 message
-            if (!*newsum->sha1 || !*oldsum->sha1 || strcmp(newsum->sha1, oldsum->sha1) == 0) {
-                *localsdb->sha1 = '\0';
-            } else {
-                changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha1", ',');
-                snprintf(localsdb->sha1, OS_FLSIZE, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
-                            oldsum->sha1, newsum->sha1);
-                os_strdup(oldsum->sha1, lf->sha1_before);
-            }
+                /* SHA-1 message */
+                if (!*newsum->sha1 || !*oldsum->sha1 || strcmp(newsum->sha1, oldsum->sha1) == 0) {
+                    localsdb->sha1[0] = '\0';
+                } else {
+                    changes = 1;
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha1", ',');
+                    snprintf(localsdb->sha1, OS_FLSIZE, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
+                             oldsum->sha1, newsum->sha1);
+                    os_strdup(oldsum->sha1, lf->sha1_before);
+                }
 
-            // SHA-256 message
-            if(newsum->sha256 && *newsum->sha256)
-            {
-                if(oldsum->sha256) {
-                    if (strcmp(newsum->sha256, oldsum->sha256) == 0) {
-                        *localsdb->sha256 = '\0';
+                /* SHA-256 message */
+                if(newsum->sha256 && newsum->sha256[0] != '\0')
+                {
+                    if(oldsum->sha256) {
+                        if (strcmp(newsum->sha256, oldsum->sha256) == 0) {
+                            localsdb->sha256[0] = '\0';
+                        } else {
+                            changes = 1;
+                            wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
+                            snprintf(localsdb->sha256, OS_FLSIZE, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
+                                    oldsum->sha256, newsum->sha256);
+                            os_strdup(oldsum->sha256, lf->sha256_before);
+                        }
                     } else {
                         changes = 1;
                         wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
-                        snprintf(localsdb->sha256, OS_FLSIZE, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
-                                oldsum->sha256, newsum->sha256);
-                        os_strdup(oldsum->sha256, lf->sha256_before);
+                        snprintf(localsdb->sha256, OS_FLSIZE, "New sha256sum is : '%s'\n", newsum->sha256);
                     }
                 } else {
                     localsdb->sha256[0] = '\0';
@@ -579,40 +576,18 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     free(old_ctime);
                     free(new_ctime);
                 } else {
-                    changes = 1;
-                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "sha256", ',');
-                    snprintf(localsdb->sha256, OS_FLSIZE, "New sha256sum is : '%s'\n", newsum->sha256);
+                    localsdb->mtime[0] = '\0';
                 }
-            } else {
-                *localsdb->sha256 = '\0';
-            }
 
-            // Modification time message
-            if (oldsum->mtime && newsum->mtime && oldsum->mtime != newsum->mtime) {
-                changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "mtime", ',');
-                char *old_ctime = strdup(ctime(&oldsum->mtime));
-                char *new_ctime = strdup(ctime(&newsum->mtime));
-                old_ctime[strlen(old_ctime) - 1] = '\0';
-                new_ctime[strlen(new_ctime) - 1] = '\0';
-
-                snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
-                lf->mtime_before = oldsum->mtime;
-                free(old_ctime);
-                free(new_ctime);
-            } else {
-                *localsdb->mtime = '\0';
-            }
-
-            // Inode message
-            if (oldsum->inode && newsum->inode && oldsum->inode != newsum->inode) {
-                changes = 1;
-                wm_strcat(&lf->fields[SK_CHFIELDS].value, "inode", ',');
-                snprintf(localsdb->mtime, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum->inode, newsum->inode);
-                lf->inode_before = oldsum->inode;
-            } else {
-                *localsdb->inode = '\0';
-            }
+                /* Inode message */
+                if (oldsum->inode && newsum->inode && oldsum->inode != newsum->inode) {
+                    changes = 1;
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "inode", ',');
+                    snprintf(localsdb->mtime, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum->inode, newsum->inode);
+                    lf->inode_before = oldsum->inode;
+                } else {
+                    localsdb->inode[0] = '\0';
+}
             break;
         default:
             return (-1);
