@@ -955,7 +955,7 @@ class Agent:
         """
 
         return Agent(agent_id).get_key()
-    
+
     @staticmethod
     def get_group_by_name(group_name, select=None):
         """
@@ -1077,7 +1077,7 @@ class Agent:
 
         new_agent = Agent(name=name, ip=ip, force=force)
         return {'id': new_agent.id, 'key': new_agent.key}
-    
+
     @staticmethod
     def add_group_to_agent(agent_id,group_id,force=False):
         """
@@ -1091,7 +1091,7 @@ class Agent:
         # Check if agent exists
         if not force:
             agent_info = Agent(agent_id).get_basic_information()
-        
+
         # Check if the group already belongs to the agent
         if group_id in agent_info["group"].split('-'):
             return "Group '{0}' already belongs to agent'{1}'.".format(group_id, agent_id)
@@ -1211,7 +1211,7 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
-    
+
         # Group names
         data = []
         for entry in listdir(common.shared_path):
@@ -1234,7 +1234,7 @@ class Agent:
             query = "SELECT {0} FROM belongs WHERE id_group = :id"
             request = {'id': id_group}
             conn.execute(query.format('COUNT(*)'), request)
-          
+
             # merged.mg and agent.conf sum
             merged_sum = get_hash(entry + "/merged.mg", hash_algorithm)
             conf_sum   = get_hash(entry + "/agent.conf", hash_algorithm)
@@ -1459,7 +1459,7 @@ class Agent:
 
         # Create group in /var/multigroups
         group_def_path = "{0}/default".format(common.shared_path)
-            
+
         try:
             copytree(group_def_path, group_path)
             chown_r(group_path, common.ossec_uid, common.ossec_gid)
@@ -1612,13 +1612,13 @@ class Agent:
             raise WazuhException(1600)
 
         conn = Connection(db_global[0])
-        
+
         if agent_info.has_key("group") == True:
-            
+
             # Check if multi group still exists in other agents
             query = "SELECT COUNT(*) FROM agent WHERE `group` = :group_1 OR `group` LIKE :group_2 OR `group` LIKE :group_3 OR `group` LIKE :group_4"
             conn.execute(query,{'group_1': group_id, 'group_2': group_id+'-%', 'group_3': '%-{}-%'.format(group_id), 'group_4': '%-'+group_id})
-        
+
             # Check if it is a multi group
             if agent_info["group"] is not None and agent_info["group"].find("-") > -1:
                 multi_group = conn.fetch()[0]
@@ -1628,7 +1628,7 @@ class Agent:
                     if Agent().multi_group_exists(agent_info["group"]):
                         agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, agent_info["group"])
                         rmtree(agent_multi_group_path)
-            
+
         # Assign group in /queue/agent-groups
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
         try:
@@ -2393,7 +2393,7 @@ class Agent:
         agent_version = WazuhVersion(self.version.split(" ")[1])
         required_version = WazuhVersion("v3.7.0")
         if agent_version < required_version:
-            raise WazuhException(1734, "Minimum required version is " + str(required_version))
+            raise WazuhException(1735, "Minimum required version is " + str(required_version))
 
         if int(self.id) == 0:
             dest_socket = sockets_path + component
