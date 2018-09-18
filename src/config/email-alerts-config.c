@@ -42,8 +42,8 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
         while (*ww != NULL) {
             ww++;
             granto_size++;
-            granto_email_counter++;
         }
+        granto_email_counter = granto_size;
     }
 
     if (Mail) {
@@ -99,10 +99,9 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             os_realloc(Mail->gran_to,
                    sizeof(char *) * (granto_email_counter + 2), Mail->gran_to);
 
-            Mail->gran_to[granto_email_counter] = NULL;
+            os_strdup(node[i]->content, Mail->gran_to[granto_email_counter]);
             Mail->gran_to[granto_email_counter + 1] = NULL;
 
-            os_strdup(node[i]->content, Mail->gran_to[granto_email_counter]);
             granto_email_counter++;
         } else if (strcmp(node[i]->element, xml_email_id) == 0) {
             int r_id = 0;
@@ -198,6 +197,43 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             return (OS_INVALID);
         }
         i++;
+    }
+
+    // Expand multimail attributes
+    while (granto_size < (granto_email_counter - 1)) {
+        granto_size++;
+        // Clone alerts id
+        os_realloc(Mail->gran_id, sizeof(unsigned int *) * (granto_size + 2), Mail->gran_id);
+        Mail->gran_id[granto_size] = Mail->gran_id[granto_size + 1] = NULL;
+        for (i = 0; Mail->gran_id[granto_size - 1] && Mail->gran_id[granto_size - 1][i]; i++) {
+            if (!Mail->gran_id[granto_size]) {
+                os_calloc(2, sizeof(unsigned int), Mail->gran_id[granto_size]);
+            } else {
+                os_realloc(Mail->gran_id[granto_size], (i + 2) * sizeof(unsigned int), Mail->gran_id[granto_size]);
+            }
+            Mail->gran_id[granto_size][i] = Mail->gran_id[granto_size - 1][i];
+            Mail->gran_id[granto_size][i + 1] = 0;
+        }
+        // Clone alerts levels
+        os_realloc(Mail->gran_level, sizeof(unsigned int) * (granto_size + 2), Mail->gran_level);
+        Mail->gran_level[granto_size] = Mail->gran_level[granto_size - 1];
+        Mail->gran_level[granto_size + 1] = 0;
+        // Clone set attr
+        os_realloc(Mail->gran_set, sizeof(int) * (granto_size + 2), Mail->gran_set);
+        Mail->gran_set[granto_size] = Mail->gran_set[granto_size - 1];
+        Mail->gran_set[granto_size + 1] = 0;
+        // Clone mail format
+        os_realloc(Mail->gran_format, sizeof(int) * (granto_size + 2), Mail->gran_format);
+        Mail->gran_format[granto_size] = Mail->gran_format[granto_size - 1];
+        Mail->gran_format[granto_size + 1] = 0;
+        // Clone alert location
+        os_realloc(Mail->gran_location, sizeof(OSMatch *) * (granto_size + 2), Mail->gran_location);
+        Mail->gran_location[granto_size] = Mail->gran_location[granto_size - 1];
+        Mail->gran_location[granto_size + 1] = NULL;
+        // Clone alert group
+        os_realloc(Mail->gran_group, sizeof(OSMatch *) * (granto_size + 2), Mail->gran_group);
+        Mail->gran_group[granto_size] = Mail->gran_group[granto_size - 1];
+        Mail->gran_group[granto_size + 1] = NULL;
     }
 
     /* We must have at least one entry set */
