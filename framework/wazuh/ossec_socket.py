@@ -30,7 +30,7 @@ class OssecSocket:
     def send(self, msg):
         try:
             payload = dumps(msg)
-            sent = self.s.send(pack("<I", len(msg)) + payload.encode())
+            sent = self.s.send(pack("<I", len(payload)) + payload.encode())
             if sent == 0:
                 raise WazuhException(1014, self.path)
             return sent
