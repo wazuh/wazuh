@@ -469,7 +469,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         }
 
         if (buffer[0].Type != EvtVarTypeUInt16) {
-            merror("Invalid parameter type (%ld) for 'event_id'.", buffer[0].Type);
+            merror(INV_WDATA_PAR, buffer[0].Type, "event_id");
             goto clean;
         }
         event_id = buffer[0].Int16Val;
@@ -479,7 +479,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             if (event_id == 4658 || event_id == 4660) {
                 path = NULL;
             } else {
-                merror("Invalid parameter type (%ld) for 'path'.", buffer[2].Type);
+                merror(INV_WDATA_PAR, buffer[2].Type, "path");
                 goto clean;
             }
         }  else {
@@ -492,36 +492,52 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         }
 
         if (buffer[1].Type != EvtVarTypeString) {
-            merror("Invalid parameter type (%ld) for 'user_name'.", buffer[1].Type);
-            goto clean;
+            mwarn(INV_WDATA_PAR, buffer[1].Type, "user_name");
+            user_name = NULL;
+        } else {
+            user_name = convert_windows_string(buffer[1].XmlVal);
         }
-        user_name = convert_windows_string(buffer[1].XmlVal);
 
         if (buffer[3].Type != EvtVarTypeString) {
-            merror("Invalid parameter type (%ld) for 'process_name'.", buffer[3].Type);
-            goto clean;
+            mwarn(INV_WDATA_PAR, buffer[3].Type, "process_name");
+            process_name = NULL;
+        } else {
+            process_name = convert_windows_string(buffer[3].XmlVal);
         }
-        process_name = convert_windows_string(buffer[3].XmlVal);
 
         // In 32-bit Windows we find EvtVarTypeSizeT
-        if (buffer[4].Type != EvtVarTypeHexInt64 && buffer[4].Type !=  EvtVarTypeSizeT) {
-            merror("Invalid parameter type (%ld) for 'process_id'.", buffer[4].Type);
-            goto clean;
+        if (buffer[4].Type != EvtVarTypeHexInt64) {
+            if (buffer[4].Type == EvtVarTypeSizeT) {
+                process_id = (unsigned __int64) buffer[4].SizeTVal;
+            } else if (buffer[4].Type == EvtVarTypeHexInt32) {
+                process_id = (unsigned __int64) buffer[4].UInt32Val;
+            } else {
+                mwarn(INV_WDATA_PAR, buffer[4].Type, "process_id");
+                process_id = 0;
+            }
+        } else {
+            process_id = buffer[4].UInt64Val;
         }
-        process_id = buffer[4].UInt64Val;
 
-        // In 32-bit Windows we find EvtVarTypeSizeT
-        if (buffer[5].Type != EvtVarTypeHexInt64 && buffer[5].Type !=  EvtVarTypeSizeT) {
-            merror("Invalid parameter type (%ld) for 'handle_id'.", buffer[5].Type);
-            goto clean;
+        // In 32-bit Windows we find EvtVarTypeSizeT or EvtVarTypeHexInt32
+        if (buffer[5].Type != EvtVarTypeHexInt64) {
+            if (buffer[5].Type == EvtVarTypeSizeT) {
+                handle_id = (unsigned __int64) buffer[5].SizeTVal;
+            } else if (buffer[5].Type == EvtVarTypeHexInt32) {
+                handle_id = (unsigned __int64) buffer[5].UInt32Val;
+            } else {
+                merror(INV_WDATA_PAR, buffer[5].Type, "handle_id");
+                goto clean;
+            }
+        } else {
+            handle_id = buffer[5].UInt64Val;
         }
-        handle_id = buffer[5].UInt64Val;
 
         if (buffer[6].Type != EvtVarTypeHexInt32) {
             if (event_id == 4658 || event_id == 4660) {
                 mask = 0;
             } else {
-                merror("Invalid parameter type (%ld) for 'mask'.", buffer[6].Type);
+                merror(INV_WDATA_PAR, buffer[6].Type, "mask");
                 goto clean;
             }
         } else {
@@ -529,8 +545,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         }
 
         if (buffer[7].Type != EvtVarTypeSid) {
-            merror("Invalid parameter type (%ld) for 'user_id'.", buffer[7].Type);
-            goto clean;
+            mwarn(INV_WDATA_PAR, buffer[7].Type, "user_id");
+            user_id = NULL;
         } else if (!ConvertSidToStringSid(buffer[7].SidVal, &user_id)) {
             mdebug1("Invalid identifier for user '%s'", user_name);
             goto clean;
@@ -631,7 +647,7 @@ add_whodata_evt:
                             if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, path), w_dir) {
                                 // Get the event time
                                 if (buffer[8].Type != EvtVarTypeFileTime) {
-                                    merror("Invalid parameter type (%ld) for 'event_time'.", buffer[8].Type);
+                                    merror(INV_WDATA_PAR, buffer[8].Type, "event_time");
                                     w_evt->scan_directory = 2;
                                     goto clean;
                                 }
