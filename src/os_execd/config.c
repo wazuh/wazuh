@@ -272,7 +272,6 @@ cJSON *getClusterConfig(void) {
 	char sockname[PATH_MAX + 1];
     ssize_t length;
 	length = strlen(req);
-    ssize_t sended;
 
     cJSON *cluster_config_cJSON = cJSON_CreateObject();
 
@@ -300,7 +299,7 @@ cJSON *getClusterConfig(void) {
 
         os_calloc(OS_MAXSTR,sizeof(char),buffer);
 
-        switch (length = OS_RecvSecureClusterTCP(sock, buffer,OS_MAXSTR), length) {
+        switch (length = OS_RecvSecureClusterTCP(sock, buffer), length) {
         case -1:
             merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
             free(buffer);
