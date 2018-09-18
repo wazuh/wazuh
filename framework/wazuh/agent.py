@@ -2392,9 +2392,7 @@ class Agent:
                       "monitor", "request", "syscheck", "wmodules"]
 
         # checks if the component is correct
-        if component in components:
-            pass
-        else:
+        if component not in components:
             raise WazuhException(1101, "Invalid target")
 
         # checks if agent version is compatible with this feature
