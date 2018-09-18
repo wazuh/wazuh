@@ -1,0 +1,686 @@
+# OSSEC Linux Audit - (C) 2018
+#
+# Released under the same license as OSSEC.
+# More details at the LICENSE file included with OSSEC or online
+# at: https://github.com/ossec/ossec-hids/blob/master/LICENSE
+#
+# [Application name] [any or all] [reference]
+# type:<entry name>;
+#
+# Type can be:
+#             - f (for file or directory)
+#             - r (registry entry)
+#             - p (process running)
+#
+# Additional values:
+# For the registry and for directories, use "->" to look for a specific entry and another
+# "->" to look for the value.
+# Also, use " -> r:^\. -> ..." to search all files in a directory
+# For files, use "->" to look for a specific value in the file.
+#
+# Values can be preceeded by: =: (for equal) - default
+#                             r: (for ossec regexes)
+#                             >: (for strcmp greater)
+#                             <: (for strcmp  lower)
+# Multiple patterns can be specified by using " && " between them.
+# (All of them must match for it to return true).
+
+# Level 1 CIS Checks for Debian Linux 7 and Debian Linux 8 
+# Based on Center for Internet Security Benchmark v1.0.0 for Debian Linux 7 (https://workbench.cisecurity.org/benchmarks/80) and Benchmark v1.0.0 for Debian Linux 8 (https://workbench.cisecurity.org/benchmarks/81)
+#
+$rc_dirs=/etc/rc0.d,/etc/rc1.d,/etc/rc2.d,/etc/rc3.d,/etc/rc4.d,/etc/rc5.d,/etc/rc6.d,/etc/rc7.d,/etc/rc8.d,/etc/rc9.d,/etc/rca.d,/etc/rcb.d,/etc/rcc.d,/etc/rcs.d,/etc/rcS.d;
+$rsyslog_files=/etc/rsyslog.conf,/etc/rsyslog.d/*;
+$profiledfiles=/etc/profile.d/*;
+$home_dirs=/usr2/home/*,/home/*,/home,/*/home/*,/*/home,/;
+#
+#
+#2.1 Create Separate Partition for /tmp
+[CIS - Debian Linux 7/8 - 2.1 Create Separate Partition for /tmp] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/tmp;
+#
+#
+#2.2 Set nodev option for /tmp Partition
+[CIS - Debian Linux 7/8 - 2.2 Set nodev option for /tmp Partition] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/tmp\s+\w+\s+\.*nodev;
+#
+#
+#2.3 Set nosuid option for /tmp Partition
+[CIS - Debian Linux 7/8 - 2.3 Set nosuid option for /tmp Partition] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/tmp\s+\w+\s+\.*nosuid;
+#
+#
+#2.4 Set noexec option for /tmp Partition
+[CIS - Debian Linux 7/8 - 2.4 Set noexec option for /tmp Partition] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/tmp\s+\w+\s+\.*noexec;
+#
+#
+#2.5 Create Separate Partition for /var
+[CIS - Debian Linux 7/8 - 2.5 Create Separate Partition for /var] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/var;
+#
+#
+#2.6 Bind Mount the /var/tmp directory to /tmp
+[CIS - Debian Linux 7/8 - 2.6 Bind Mount the /var/tmp directory to /tmp] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/tmp\s+/var/tmp\s+none\s+\.*bind\.*0\s+0;
+#
+#
+#2.7 Create Separate Partition for /var/log
+[CIS - Debian Linux 7/8 - 2.7 Create Separate Partition for /var/log] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/var/log;
+#
+#
+#2.8 Create Separate Partition for /var/log/audit
+[CIS - Debian Linux 7/8 - 2.8 Create Separate Partition for /var/log/audit] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/var/log/audit;
+#
+#
+#2.9 Create Separate Partition for /home
+[CIS - Debian Linux 7/8 - 2.9 Create Separate Partition for /home] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/home;
+#
+#
+#2.10 Add nodev Option to /home
+[CIS - Debian Linux 7/8 - 2.10 Add nodev Option to /home] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/home\s+\w+\s+\.*nodev;
+#
+#
+#2.11 Add nodev Option to Removable Media Partitions
+[CIS - Debian Linux 7/8 - 2.11 Add nodev Option to Removable Media Partitions] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/media\.*\s+\w+\s+\.*nodev;
+#
+#
+#2.12 Add noexec Option to Removable Media Partitions 
+[CIS - Debian Linux 7/8 - 2.12 Add noexec Option to Removable Media Partitions] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/media\.*\s+\w+\s+\.*noexec;
+#
+#
+#2.13 Add nosuid Option to Removable Media Partitions
+[CIS - Debian Linux 7/8 - 2.13 Add nosuid Option to Removable Media Partitions] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/media\.*\s+\w+\s+\.*nosuid;
+#
+#
+#2.14 Add nodev Option to /run/shm Partition
+[CIS - Debian Linux 7/8 - 2.14 Add nodev Option to /run/shm Partition] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/run/shm\s+\w+\s+\.*nodev;
+#
+#
+#2.15 Add nosuid Option to /run/shm Partition
+[CIS - Debian Linux 7/8 - 2.15 Add nosuid Option to /run/shm Partition] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/run/shm\s+\w+\s+\.*nosuid;
+#
+#
+#2.16 Add noexec Option to /run/shm Partition
+[CIS - Debian Linux 7/8 - 2.16 Add noexec Option to /run/shm Partition] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/fstab -> !r:/run/shm\s+\w+\s+\.*noexec;
+#
+#
+#2.25 Disable Automounting
+[CIS - Debian Linux 7/8 - 2.25 Disable Automounting] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:autofsc;
+#
+#
+#3.3 Set Boot Loader Password
+[CIS - Debian Linux 7/8 - 3.3 Set Boot Loader Password] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/boot/grub/grub.cfg -> !r:^set superusers;
+f:/boot/grub/grub.cfg -> !r:^password;
+f:/etc/grub.d -> !r:^set superusers;
+f:/etc/grub.d -> !r:^password;
+#
+#
+#3.4 Require Authentication for Single-User Mode
+[CIS - Debian Linux 7/8 - 3.4 Require Authentication for Single-User Mode] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/shadow -> r:^root:!:;
+f:/etc/shadow -> r:^root:*:;
+f:/etc/shadow -> r:^root:*!:;
+f:/etc/shadow -> r:^root:!*:;
+#
+#
+#4.1 Restrict Core Dumps
+[CIS - Debian Linux 7/8 - 4.1 Restrict Core Dumps] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/security/limits.conf -> !r:^* hard core 0;
+f:/etc/sysctl.conf -> !r:^fs.suid_dumpable = 0;
+#
+#
+#4.3 Enable Randomized Virtual Memory Region Placement
+[CIS - Debian Linux 7/8 - 4.3 Enable Randomized Virtual Memory Region Placement] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^kernel.randomize_va_space = 2;
+#
+#
+#5.1.1 Ensure NIS is not installed
+[CIS - Debian Linux 7/8 - 5.1.1 Ensure NIS is not installed] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/init.d/nis;
+#
+#
+#5.1.2 Ensure rsh server is not enabled
+[CIS - Debian Linux 7/8 - 5.1.2 Ensure rsh server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/inetd.conf -> !r:^# && r:shell|login|exec;
+#
+#
+#5.1.4 Ensure talk server is not enabled
+[CIS - Debian Linux 7/8 - 5.1.4 Ensure talk server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/inetd.conf -> !r:^# && r:talk|ntalk;
+#
+#
+#5.1.6 Ensure telnet server is not enabled
+[CIS - Debian Linux 7/8 - 5.1.6 Ensure telnet server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/inetd.conf -> !r:^# && r:telnet;
+#
+#
+#5.1.7 Ensure tftp-server is not enabled
+[CIS - Debian Linux 7/8 - 5.1.7 Ensure tftp-server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/inetd.conf -> !r:^# && r:tftp;
+#
+#
+#5.1.8 Ensure xinetd is not enabled
+[CIS - Debian Linux 7/8 - 5.1.8 Ensure xinetd is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:xinetd;
+#
+#
+#5.2 Ensure chargen is not enabled
+[CIS - Debian Linux 7/8 - 5.2 Ensure chargen is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/inetd.conf -> !r:^# && r:chargen;
+#
+#
+#5.3 Ensure daytime is not enabled
+[CIS - Debian Linux 7/8 - 5.3 Ensure daytime is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/inetd.conf -> !r:^# && r:daytime;
+#
+#
+#5.4 Ensure echo is not enabled
+[CIS - Debian Linux 7/8 - 5.4 Ensure echo is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/inetd.conf -> !r:^# && r:echo;
+#
+#
+#5.5 Ensure discard is not enabled
+[CIS - Debian Linux 7/8 - 5.5 Ensure discard is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/inetd.conf -> !r:^# && r:discard;
+#
+#
+#5.6 Ensure time is not enabled
+[CIS - Debian Linux 7/8 - 5.6 Ensure time is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/inetd.conf -> !r:^# && r:time;
+#
+#
+#6.2 Ensure Avahi Server is not enabled
+[CIS - Debian Linux 7/8 - 6.2 Ensure Avahi Server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:avahi-daemon;
+#
+#
+#6.3 Ensure print server is not enabled
+[CIS - Debian Linux 7/8 - 6.3 Ensure print server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:cups;
+d:$rc_dirs -> S -> r:cups-browsed;
+#
+#
+#6.4 Ensure DHCP Server is not enabled
+[CIS - Debian Linux 7/8 - 6.4 Ensure DHCP Server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:disc-dhcp-server;
+#
+#
+#6.5 Configure Network Time Protocol (NTP)
+[CIS - Debian Linux 7/8 - 6.5 Configure Network Time Protocol (NTP)] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ntp.conf -> !r:^restrict -4 default kod nomodify notrap nopeer noquery;
+f:/etc/ntp.conf -> !r:^restrict -6 default kod nomodify notrap nopeer noquery;
+f:/etc/ntp.conf -> !r:^server\s\.+;
+#
+#
+#6.6 Ensure LDAP is not ennabled
+[CIS - Debian Linux 7/8 - 6.6 Ensure LDAP is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:/etc/init.d -> r:ldap;
+#
+#
+#6.7 Ensure NFS and RPC are not enabled
+[CIS - Debian Linux 7/8 - 6.7 Ensure NFS and RPC are not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:rpcbind;
+d:$rc_dirs -> S -> r:nfs-kernel-server;
+#
+#
+#6.8 Ensure DNS Server is not enabled
+[CIS - Debian Linux 7/8 - 6.8 Ensure DNS Server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:bind9;
+#
+#
+#6.9 Ensure FTP Server is not enabled
+[CIS - Debian Linux 7/8 - 6.9 Ensure FTP Server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:vsftpd;
+#
+#
+#6.10 Ensure HTTP Server is not enabled
+[CIS - Debian Linux 7/8 - 6.10 Ensure HTTP Server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:apache2;
+#
+#
+#6.11 Ensure IMAP and POP server is not enabled
+[CIS - Debian Linux 7/8 - 6.11 Ensure IMAP and POP server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:dovecot;
+#
+#
+#6.12 Ensure Samba is not enabled
+[CIS - Debian Linux 7/8 - 6.12 Ensure Samba is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:samba;
+#
+#
+#6.13 Ensure HTTP Proxy Server is not enabled
+[CIS - Debian Linux 7/8 - 6.13 Ensure HTTP Proxy Server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:squid3;
+#
+#
+#6.14 Ensure SNMP Server is not enabled
+[CIS - Debian Linux 7/8 - 6.14 Ensure SNMP Server is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$rc_dirs -> S -> r:snmpd;
+#
+#
+#6.15 Configure Mail Transfer Agent for Local-Only Mode
+[CIS - Debian Linux 7/8 - 6.15 Configure Mail Transfer Agent for Local Only Mode] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/exim4/update-exim4.conf.conf -> r:^dc_local_interfaces= && !r:'127.0.0.1\s*\p\s*::1'$|'::1\s*\p\s*127.0.0.1'$|'127.0.0.1'$|'::1'$;
+#
+#
+#6.16 Ensure rsync service is not enabled
+[CIS - Debian Linux 7/8 - 6.16 Ensure rsync service is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/default/rsync -> !r:^# && r:RSYNC_ENABLE=true|inetd;
+f:/etc/default/rsync -> !r:^RSYNC_ENABLE=false;
+#
+#
+#7.1.1 Disable IP Forwarding
+[CIS - Debian Linux 7/8 - 7.1.1 Disable IP Forwarding] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.ip_forward=1;
+f:/etc/sysctl.conf ->  !r:^net.ipv4.ip_forward=0;
+#
+#
+#7.1.2 Disable Send Packet Redirects
+[CIS - Debian Linux 7/8 - 7.1.2 Disable Send Packet Redirects] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.send_redirects=1;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.send_redirects=0;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.send_redirects=1;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.send_redirects=0;
+#
+#
+#7.2.1 Disable Source Routed Packet Acceptance
+[CIS - Debian Linux 7/8 - 7.2.1 Disable Source Routed Packet Acceptance] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.accept_source_route=1;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.accept_source_route=0;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.accept_source_route=1;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.accept_source_route=0;
+#
+#
+#7.2.2 Disable ICMP Redirect Acceptance
+[CIS - Debian Linux 7/8 - 7.2.2 Disable ICMP Redirect Acceptance] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.accept_redirects=1;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.accept_redirects=0;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.accept_redirects=1;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.accept_redirects=0;
+#
+#
+#7.2.3 Disable Secure ICMP Redirect Acceptance
+[CIS - Debian Linux 7/8 - 7.2.3 Disable Secure ICMP Redirect Acceptance] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.secure_redirects=1;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.secure_redirects=0;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.secure_redirects=1;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.secure_redirects=0;
+#
+#
+#7.2.4 Log Suspicious Packets
+[CIS - Debian Linux 7/8 - 7.2.4 Log Suspicious Packets] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.log_martians=0;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.log_martians=1;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.log_martians=0;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.log_martians=1;
+#
+#
+#7.2.5 Enable Ignore Broadcast Requests
+[CIS - Debian Linux 7/8 - 7.2.5 Enable Ignore Broadcast Requests] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.icmp_echo_ignore_broadcasts=0;
+f:/etc/sysctl.conf -> !r:^net.ipv4.icmp_echo_ignore_broadcasts=1;
+#
+#
+#7.2.6 Enable Bad Error Message Protection
+[CIS - Debian Linux 7/8 - 7.2.6 Enable Bad Error Message Protection] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.icmp_ignore_bogus_error_responses=0;
+f:/etc/sysctl.conf -> !r:^net.ipv4.icmp_ignore_bogus_error_responses=1;
+#
+#
+#7.2.7 Enable RFC-recommended Source Route Validation
+[CIS - Debian Linux 7/8 - 7.2.7 Enable RFC-recommended Source Route Validation] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.rp_filter=0;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.rp_filter=1;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.rp_filter=0;
+f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.rp_filter=1;
+#
+#
+#7.2.8 Enable TCP SYN Cookies
+[CIS - Debian Linux 7/8 - 7.2.8 Enable TCP SYN Cookies] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.tcp_syncookies=0;
+f:/etc/sysctl.conf -> !r:^net.ipv4.tcp_syncookies=1;
+#
+#
+#7.3.1 Disable IPv6 Router Advertisements
+[CIS - Debian Linux 7/8 - 7.3.1 Disable IPv6 Router Advertisements] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.all.accept_ra=1;
+f:/etc/sysctl.conf -> !r:^net.ipv6.conf.all.accept_ra=0;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.default.accept_ra=1;
+f:/etc/sysctl.conf -> !r:^net.ipv6.conf.default.accept_ra=0;
+#
+#
+#7.3.2 Disable IPv6 Redirect Acceptance
+[CIS - Debian Linux 7/8 - 7.3.2 Disable IPv6 Redirect Acceptance] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.all.accept_redirects=1;
+f:/etc/sysctl.conf -> !r:^net.ipv6.conf.all.accept_redirects=0;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.default.accept_redirects=1;
+f:/etc/sysctl.conf -> !r:^net.ipv6.conf.default.accept_redirects=0;
+#
+#
+#7.3.3 Disable IPv6
+[CIS - Debian Linux 7/8 - 7.3.3 Disable IPv6] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.all.disable_ipv6=0;
+f:/etc/sysctl.conf -> !r:^net.ipv6.conf.all.disable_ipv6=1;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.default.disable_ipv6=0;
+f:/etc/sysctl.conf -> !r:^net.ipv6.conf.default.disable_ipv6=1;
+f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.lo.disable_ipv6=0;
+f:/etc/sysctl.conf -> !r:^net.ipv6.conf.lo.disable_ipv6=1;
+#
+#
+#7.4.2 Create /etc/hosts.allow
+[CIS - Debian Linux 7/8 - 7.4.2 Create /etc/hosts.allow] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/hosts.allow;
+f:/etc/hosts.allow -> !r:^ALL:\.*;
+#
+#
+#7.4.4 Create /etc/hosts.deny
+[CIS - Debian Linux 7/8 - 7.4.4 Create /etc/hosts.deny] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/hosts.deny;
+f:/etc/hosts.deny -> !r:^ALL:\s*ALL;
+#
+#
+#7.5.1 Disable DCCP
+[CIS - Debian Linux 7/8 - 7.5.1 Disable DCCP] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/modprobe.d/CIS.conf;
+f:/etc/modprobe.d/CIS.conf -> !r:^install dccp /bin/true;
+#
+#
+#7.5.2 Disable SCTP
+[CIS - Debian Linux 7/8 - 7.5.2 Disable SCTP] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/modprobe.d/CIS.conf;
+f:/etc/modprobe.d/CIS.conf -> !r:^install sctp /bin/true;
+#
+#
+#7.5.3 Disable RDS
+[CIS - Debian Linux 7/8 - 7.5.3 Disable RDS] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/modprobe.d/CIS.conf;
+f:/etc/modprobe.d/CIS.conf -> !r:^install rds /bin/true;
+#
+#
+#7.5.4 Disable TIPC
+[CIS - Debian Linux 7/8 - 7.5.4 Disable TIPC] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/modprobe.d/CIS.conf;
+f:/etc/modprobe.d/CIS.conf -> !r:^install tipc /bin/true;
+#
+#
+#7.7 Ensure Firewall is active (RunLevel 2, 3, 4, 5; Priority 01)
+[CIS - Debian Linux 7/8 - 7.7 Ensure Firewall is active (RunLevel 2, 3, 4, 5; Priority 01)] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/rc2.d/S01iptables-persistent; 
+f:!/etc/rc3.d/S01iptables-persistent;
+f:!/etc/rc4.d/S01iptables-persistent;
+f:!/etc/rc5.d/S01iptables-persistent;
+#
+#
+#8.2.2 Ensure the rsyslog Service is activated (RunLevel 2, 3, 4, 5; Priority 01)
+[CIS - Debian Linux 7/8 - 8.2.2 Ensure the rsyslog Service is activated (RunLevel 2, 3, 4, 5; Priority 01)] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/rc2.d/S01rsyslog;
+f:!/etc/rc3.d/S01rsyslog;
+f:!/etc/rc4.d/S01rsyslog;
+f:!/etc/rc5.d/S01rsyslog;
+#
+#
+#8.2.3 Configure /etc/rsyslog.conf
+[CIS - Debian Linux 7/8 - 8.2.3 Configure /etc/rsyslog.conf] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:$rsyslog_files -> !r:^*.emerg\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^mail.*\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^mail.info\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^mail.warning\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^mail.err\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^news.crit\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^news.err\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^news.notice\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^*.=warning;*.=err\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^*.crit\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^*.*;mail.none;news.none\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^local0,local1.*\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^local2,local3.*\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^local4,local5.*\s*\t*\s*\S;
+f:$rsyslog_files -> !r:^local6,local7.*\s*\t*\s*\S;
+#
+#
+#8.2.5 Configure rsyslog to Send Logs to a Remote Log Host
+[CIS - Debian Linux 7/8 - 8.2.5 Configure rsyslog to Send Logs to a Remote Log Host] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/rsyslog.conf -> !r:^*.* @@\w+.\w+.\w+;
+#
+#
+#8.2.6 Accept Remote rsyslog Messages Only on Designated Log Hosts
+[CIS - Debian Linux 7/8 - 8.2.6 Accept Remote rsyslog Messages Only on Designated Log Hosts] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:$rsyslog_files -> !r:^\$ModLoad imtcp.so;
+f:$rsyslog_files -> !r:^\$InputTCPServerRun 514;
+#
+#
+#8.4 Configure logrotate
+[CIS - Debian Linux 7/8 - 8.4 Configure logrotate] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/logrotate.d/rsyslog;
+f:/etc/logrotate.d/rsyslog -> !r:\S+;
+#
+#
+#9.1.1 Enable cron Daemon (RunLevel 2, 3, 4, 5; Priority 15)
+[CIS - Debian Linux 7/8 - 9.1.1 Enable cron Daemon (RunLevel 2, 3, 4, 5; Priority 15)] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/rc2.d/S15anacron;
+f:!/etc/rc2.d/S15cron;
+f:!/etc/rc3.d/S15anacron;
+f:!/etc/rc3.d/S15cron;
+f:!/etc/rc4.d/S15anacron;
+f:!/etc/rc4.d/S15cron;
+f:!/etc/rc5.d/S15anacron;
+f:!/etc/rc5.d/S15cron;
+#
+#
+#9.1.8 Restrict at/cron to Authorized Users
+[CIS - Debian Linux 7/8 - 9.1.8 Restrict at/cron to Authorized Users] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/cron.allow;
+f:!/etc/at.allow;
+#
+#
+#9.2.1 Set Password Creation Requirement Parameters Using pam_cracklib
+[CIS - Debian Linux 7/8 - 9.2.1 Set Password Creation Requirement Parameters Using pam_cracklib] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/pam.d/common-password -> !r:password required pam_cracklib.so retry=\d minlen=\d\d+ dcredit=-\d+ ucredit=-\d+ ocredit=-\d+ lcredit=-\d+;
+#
+#
+#9.2.2 Set Lockout for Failed Password Attempts
+[CIS - Debian Linux 7/8 - 9.2.2 Set Lockout for Failed Password Attempts] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/pam.d/login -> !r:auth required pam_tally2.so onerr=fail audit silent deny=\d unlock_time=\d\d\d+;
+#
+#
+#9.2.3 Limit Password Reuse
+[CIS - Debian Linux 7/8 - 9.2.3 Limit Password Reuse] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/pam.d/common-password -> !r:password [success=1 default=ignore] pam_unix.so obscure sha512 remember=\d;
+#
+#
+#9.3.1 Set SSH Protocol to 2
+[CIS - Debian Linux 7/8 - 9.3.1 Set SSH Protocol to 2] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^# && r:protocol 1;
+f:/etc/ssh/sshd_config -> !r:^protocol 2$;
+#
+#
+#9.3.2 Set LogLevel to INFO
+[CIS - Debian Linux 7/8 - 9.3.2 Set LogLevel to INFO] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^LogLevel\s+INFO;
+#
+#
+#9.3.4 Disable SSH X11 Forwarding
+[CIS - Debian Linux 7/8 - 9.3.4 Disable SSH X11 Forwarding] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^X11Forwarding\s+no;
+#
+#
+#9.3.5 Set SSH MaxAuthTries to 4 or Less
+[CIS - Debian Linux 7/8 - 9.3.5 Set SSH MaxAuthTries to 4 or Less] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^MaxAuthTries\s+\d;
+f:/etc/ssh/sshd_config -> r:^MaxAuthTries\s+\d\d+;
+f:/etc/ssh/sshd_config -> r:^MaxAuthTries\s+5;
+f:/etc/ssh/sshd_config -> r:^MaxAuthTries\s+6;
+f:/etc/ssh/sshd_config -> r:^MaxAuthTries\s+7;
+f:/etc/ssh/sshd_config -> r:^MaxAuthTries\s+8;
+f:/etc/ssh/sshd_config -> r:^MaxAuthTries\s+9;
+#
+#
+#9.3.6 Set SSH IgnoreRhosts to Yes
+[CIS - Debian Linux 7/8 - 9.3.6 Set SSH IgnoreRhosts to Yes] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^IgnoreRhosts\s+yes;
+#
+#
+#9.3.7 Set SSH HostbasedAuthentication to No
+[CIS - Debian Linux 7/8 - 9.3.7 Set SSH HostbasedAuthentication to No] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^HostbasedAuthentication\s+no;
+#
+#
+#9.3.8 Disable SSH Root Login
+[CIS - Debian Linux 7/8 - 9.3.8 Disable SSH Root Login] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\s+yes;
+f:/etc/ssh/sshd_config -> !r:^PermitRootLogin\s+no;
+#
+#
+#9.3.9 Set SSH PermitEmptyPasswords to No
+[CIS - Debian Linux 7/8 - 9.3.9 Set SSH PermitEmptyPasswords to No] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^# && r:PermitEmptyPasswords\s+yes;
+f:/etc/ssh/sshd_config -> !r:^PermitEmptyPasswords\s+no;
+#
+#
+#9.3.10 Do Not Allow Users to Set Environment Options
+[CIS - Debian Linux 7/8 - 9.3.10 Do Not Allow Users to Set Environment Options] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^# && r:PermitUserEnvironment\s+yes;
+f:/etc/ssh/sshd_config -> !r:^PermitUserEnvironment\s+no;
+#
+#
+#9.3.12 Set Idle Timeout Interval for User Login
+[CIS - Debian Linux 7/8 - 9.3.12 Set Idle Timeout Interval for User Login] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^ClientAliveInterval\s+\d+;
+f:/etc/ssh/sshd_config -> !r:^ClientAliveCountMax\s+\d;
+#
+#
+#9.3.13 Limit Access via SSH
+[CIS - Debian Linux 7/8 - 9.3.13 Limit Access via SSH] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^AllowUsers\s+\w+|^AllowGroups\s+\w+|^DenyUsers\s+\w+|^DenyGroups\s+\w+;
+#
+#
+#9.3.14 Set SSH Banner
+[CIS - Debian Linux 7/8 - 9.3.14 Set SSH Banner] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/ssh/sshd_config -> !r:^Banner\s+\S+;
+#
+#
+#9.5 Restrict Access to the su Command
+[CIS - Debian Linux 7/8 - 9.5 Restrict Access to the su Command] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/pam.d/su -> !r:auth required pam_wheel.so use_uid;
+#
+#
+#10.1.1 Set Password Expiration Days
+[CIS - Debian Linux 7/8 - 10.1.1 Set Password Expiration Days] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/login.defs -> !r:^PASS_MAX_DAYS\s+\d+;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+\d\d\d+;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+91;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+92;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+93;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+94;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+95;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+96;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+97;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+98;
+f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+99;
+#
+#
+#10.1.2 Set Password Change Minimum Number of Days
+[CIS - Debian Linux 7/8 - 10.1.2 Set Password Change Minimum Number of Days] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/login.defs -> !r:^PASS_MIN_DAYS\s+\d+;
+f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+1;
+f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+2;
+f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+3;
+f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+4;
+f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+5;
+f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+6;
+#
+#
+#10.1.3 Set Password Expiring Warning Days
+[CIS - Debian Linux 7/8 - 10.1.3 Set Password Expiring Warning Days] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/login.defs -> !r:^PASS_WARN_DAYS\s+\d+;
+f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+1;
+f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+2;
+f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+3;
+f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+4;
+f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+5;
+f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+6;
+#
+#
+#10.3 Set Default Group for root Account
+[CIS - Debian Linux 7/8 - 10.3 Set Default Group for root Account] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/passwd -> !r:^root:\w+:\w+:0:;
+#
+#
+#10.4 Set Default umask for Users
+[CIS - Debian Linux 7/8 - 10.4 Set Default umask for Users] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:$profiledfiles -> !r:^umask 077;
+f:/etc/bash.bashrc -> !r:^umask 077;
+#
+#
+#10.5 Lock Inactive User Accounts
+[CIS - Debian Linux 7/8 - 10.5 Lock Inactive User Accounts] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/default/useradd -> !r:^INACTIVE=\d\d*;
+#
+#
+#11.1 Set Warning Banner for Standard Login Services
+[CIS - Debian Linux 7/8 - 11.1 Set Warning Banner for Standard Login Services] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:!/etc/motd;
+f:!/etc/issue;
+f:!/etc/issue.net;
+#
+#
+#11.2 Remove OS Information from Login Warning Banners
+[CIS - Debian Linux 7/8 - 11.2 Remove OS Information from Login Warning Banners] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/motd -> r:debian|gnu|linux;
+#
+#
+#13.1 Ensure Password Fields are Not Empty
+[CIS - Debian Linux 7/8 - 13.1 Ensure Password Fields are Not Empty] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/shadow -> r:^\w+::;
+#
+#
+#13.2 Verify No Legacy "+" Entries Exist in /etc/passwd File
+[CIS - Debian Linux 7/8 - 13.2 Verify No Legacy "+" Entries Exist in /etc/passwd File] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/passwd -> !r:^# && r:^+:;
+#
+#
+#13.3 Verify No Legacy "+" Entries Exist in /etc/shadow File
+[CIS - Debian Linux 7/8 - 13.3 Verify No Legacy "+" Entries Exist in /etc/shadow File] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/shadow -> !r:^# && r:^+:;
+#
+#
+#13.4 Verify No Legacy "+" Entries Exist in /etc/group File
+[CIS - Debian Linux 7/8 - 13.4 Verify No Legacy "+" Entries Exist in /etc/group File] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/group -> !r:^# && r:^+:;
+#
+#
+#13.5 Verify No UID 0 Accounts Exist Other Than root
+[CIS - Debian Linux 7/8 - 13.5 Verify No UID 0 Accounts Exist Other Than root] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
+#
+#
+#13.10 Check for Presence of User .rhosts Files
+[CIS - Debian Linux 7/8 - 13.10 Check for Presence of User .rhosts Files] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$home_dirs -> r:^.rhosts$;
+#
+#
+#13.18 Check for Presence of User .netrc Files
+[CIS - Debian Linux 7/8 - 13.18 Check for Presence of User .netrc Files] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$home_dirs -> r:^.netrc$;
+#
+#
+#13.19 Check for Presence of User .forward Files
+[CIS - Debian Linux 7/8 - 13.19 Check for Presence of User .forward Files] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+d:$home_dirs -> r:^.forward$;
+#
+#
+#13.20 Ensure shadow group is empty
+[CIS - Debian Linux 7/8 - 13.20 Ensure shadow group is empty] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\S+;

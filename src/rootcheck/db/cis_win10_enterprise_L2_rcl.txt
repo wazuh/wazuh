@@ -1,0 +1,591 @@
+# OSSEC Linux Audit - (C) 2018 OSSEC Project
+#
+# Released under the same license as OSSEC.
+# More details at the LICENSE file included with OSSEC or online
+# at: https://github.com/ossec/ossec-hids/blob/master/LICENSE
+#
+# [Application name] [any or all] [reference]
+# type:<entry name>;
+#
+# Type can be:
+#             - f (for file or directory)
+#             - r (registry entry)
+#             - p (process running)
+#
+# Additional values:
+# For the registry and for directories, use "->" to look for a specific entry and another
+# "->" to look for the value.
+# Also, use " -> r:^\. -> ..." to search all files in a directory
+# For files, use "->" to look for a specific value in the file.
+#
+# Values can be preceeded by: =: (for equal) - default
+#                             r: (for ossec regexes)
+#                             >: (for strcmp greater)
+#                             <: (for strcmp  lower)
+# Multiple patterns can be specified by using " && " between them.
+# (All of them must match for it to return true).
+
+# CIS Checks for Windows 10
+# Based on Center for Internet Security Benchmark v1.4.0 for Microsoft Windows 10 Release 1709 (https://workbench.cisecurity.org/benchmarks/766)
+#
+#
+#2.3.4.2 Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 2.3.4.2 Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> !1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> !AddPrinterDrivers;
+#
+#
+#2.3.7.7 Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)'
+[CIS - Microsoft Windows 10 - 2.3.7.7 Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> CachedLogonsCount -> !4;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> !CachedLogonsCount;
+#
+#
+#2.3.14.1 Ensure 'System cryptography: Force strong key protection for user keys stored on the computer' is set to 'User is prompted when the key is first used' or higher
+[CIS - Microsoft Windows 10 - 2.3.14.1 Ensure 'System cryptography: Force strong key protection for user keys stored on the computer' is set to 'User is prompted when the key is first used' or higher] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography -> ForceKeyProtection -> 0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography -> !ForceKeyProtection;
+#
+#
+#5.1 Ensure 'Bluetooth Handsfree Service (BthHFSrv)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.1 Ensure 'Bluetooth Handsfree Service (BthHFSrv)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\BthHFSrv -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\BthHFSrv -> !Start;
+#
+#
+#5.2 Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.2 Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bthserv -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bthserv -> !Start;
+#
+#
+#5.4 Ensure 'Downloaded Maps Manager (MapsBroker)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.4 Ensure 'Downloaded Maps Manager (MapsBroker)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MapsBroker -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MapsBroker -> !Start;
+#
+#
+#5.5 Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.5 Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lfsvc -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lfsvc -> !Start;
+#
+#
+#5.11 Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.11 Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc -> !Start;
+#
+#
+#5.14 Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.14 Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> !Start;
+#
+#
+#5.15 Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.15 Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> !Start;
+#
+#
+#5.16 Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.16 Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> !Start;
+#
+#
+#5.17 Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.17 Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> !Start;
+#
+#
+#5.18 Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.18 Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> !Start;
+#
+#
+#5.19 Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.19 Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport -> !Start;
+#
+#
+#5.20 Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.20 Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto -> !Start;
+#
+#
+#5.21 Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.21 Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv -> !Start;
+#
+#
+#5.22 Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.22 Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService -> !Start;
+#
+#
+#5.23 Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.23 Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService -> !Start;
+#
+#
+#5.25 Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.25 Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry -> !Start;
+#
+#
+#5.27 Ensure 'Server (LanmanServer)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.27 Ensure 'Server (LanmanServer)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer -> !Start;
+#
+#
+#5.29 Ensure 'SNMP Service (SNMP)' is set to 'Disabled' or 'Not Installed'
+[CIS - Microsoft Windows 10 - 5.29 Ensure 'SNMP Service (SNMP)' is set to 'Disabled' or 'Not Installed'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP -> Start -> !4;
+#
+#
+#5.33 Ensure 'Windows Error Reporting Service (WerSvc)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.33 Ensure 'Windows Error Reporting Service (WerSvc)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WerSvc -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WerSvc -> !Start;
+#
+#
+#5.34 Ensure 'Windows Event Collector (Wecsvc)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.34 Ensure 'Windows Event Collector (Wecsvc)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Wecsvc -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Wecsvc -> !Start;
+#
+#
+#5.37 Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.37 Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WpnService -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WpnService -> !Start;
+#
+#
+#5.38 Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.38 Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PushToInstall -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PushToInstall -> !Start;
+#
+#
+#5.39 Ensure 'Windows Remote Management (WS-Management) (WinRM)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.39 Ensure 'Windows Remote Management (WS-Management) (WinRM)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WinRM -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WinRM -> !Start;
+#
+#
+#5.40 Ensure 'Windows Store Install Service (InstallService)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 5.40 Ensure 'Windows Store Install Service (InstallService)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\InstallService -> Start -> !4;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\InstallService -> !Start;
+#
+#
+#18.1.3 Ensure 'Allow Online Tips' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.1.3 Ensure 'Allow Online Tips' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> AllowOnlineTips -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> !AllowOnlineTips;
+#
+#
+#18.4.4 Ensure 'MSS: (DisableSavePassword) Prevent the dial-up password from being saved' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.4.4 Ensure 'MSS: (DisableSavePassword) Prevent the dial-up password from being saved' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasMan\Parameters -> DisableSavePassword -> !1;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasMan\Parameters -> !DisableSavePassword;
+#
+#
+#18.4.6 Ensure 'MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes (recommended)'
+[CIS - Microsoft Windows 10 - 18.4.6 Ensure 'MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes (recommended)'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> KeepAliveTime -> !493e0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> !KeepAliveTime;
+#
+#
+#18.4.8 Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.4.8 Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> PerformRouterDiscovery  -> !0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> !PerformRouterDiscovery;
+#
+#
+#18.4.11 Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'
+[CIS - Microsoft Windows 10 - 18.4.11 Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> TcpMaxDataRetransmissions -> !3;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> !TcpMaxDataRetransmissions;
+#
+#
+#18.4.12 Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'
+[CIS - Microsoft Windows 10 - 18.4.12 Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> TcpMaxDataRetransmissions -> !3;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> !TcpMaxDataRetransmissions;
+#
+#
+#18.5.5.1 Ensure 'Enable Font Providers' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.5.5.1 Ensure 'Enable Font Providers' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableFontProviders -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> !EnableFontProviders;
+#
+#
+#18.5.9.1 Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.5.9.1 Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnDomain -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnPublicNet -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitLLTDIOOnPrivateNet -> !0;
+#
+#
+#18.5.9.2 Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.5.9.2 Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnDomain -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnPublicNet -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitRspndrOnPrivateNet -> !0;
+#
+#
+#18.5.10.2 Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.5.10.2 Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> !Disabled;
+#
+#
+#18.5.19.2.1 Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')
+[CIS - Microsoft Windows 10 - 18.5.19.2.1 Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> DisabledComponents -> !ff;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> !DisabledComponents;
+#
+#
+#18.5.20.1 Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.5.20.1 Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> EnableRegistrars -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !EnableRegistrars;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableUPnPRegistrar -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !DisableUPnPRegistrar;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableInBand802DOT11Registrar -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !DisableInBand802DOT11Registrar;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableFlashConfigRegistrar -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !DisableFlashConfigRegistrar;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableWPDRegistrar -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !DisableWPDRegistrar;
+#
+#
+#18.5.20.2 Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.5.20.2 Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> DisableWcnUi -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> !DisableWcnUi;
+#
+#
+#18.8.22.1.1 Ensure 'Turn off access to the Store' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.1 Ensure 'Turn off access to the Store' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoUseStoreOpenWith -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> !NoUseStoreOpenWith;
+#
+#
+#18.8.22.1.3 Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.3 Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC -> PreventHandwritingDataSharing -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC -> !PreventHandwritingDataSharing;
+#
+#
+#18.8.22.1.4 Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.4 Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> PreventHandwritingErrorReports -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> !PreventHandwritingErrorReports;
+#
+#
+#18.8.22.1.5 Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.22.1.5 Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> ExitOnMSICW -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> !ExitOnMSICW;
+#
+#
+#18.8.22.1.8 Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.8 Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\Policies\Microsoft\Windows\Registration Wizard Control -> NoRegistration -> !1;
+r:HKEY_LOCAL_MACHINE\Policies\Microsoft\Windows\Registration Wizard Control -> !NoRegistration;
+#
+#
+#18.8.22.1.9 Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.9 Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion -> DisableContentFileUpdates -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion -> !DisableContentFileUpdates;
+#
+#
+#18.8.22.1.10 Ensure 'Turn off the "Order Prints" picture task' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.10 Ensure 'Turn off the "Order Prints" picture task' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoOnlinePrintsWizard -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> !NoOnlinePrintsWizard;
+#
+#
+#18.8.22.1.11 Ensure 'Turn off the "Publish to Web" task for files and folders' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.11 Ensure 'Turn off the "Publish to Web" task for files and folders' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoPublishingWizard -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> !NoPublishingWizard;
+#
+#
+#18.8.22.1.12 Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.12 Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> CEIP -> 1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> !CEIP;
+#
+#
+#18.8.22.1.13 Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.13 Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> CEIPEnable -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> !CEIPEnable;
+#
+#
+#18.8.22.1.14 Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.22.1.14 Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> !Disabled;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PCHealth\ErrorReporting -> DoReport -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PCHealth\ErrorReporting -> !DoReport;
+#
+#
+#18.8.25.1 Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'
+[CIS - Microsoft Windows 10 - 18.8.25.1 Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitBehavior -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitEnabled -> !1;
+#
+#
+#18.8.26.1 Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.26.1 Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International -> BlockUserInputMethodsForSignIn -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International -> !BlockUserInputMethodsForSignIn;
+#
+#
+#18.8.44.5.1 Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.8.44.5.1 Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> DisableQueryRemoteServer -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> !DisableQueryRemoteServer;
+#
+#
+#18.8.44.11.1 Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.8.44.11.1 Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> ScenarioExecutionEnabled -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> !ScenarioExecutionEnabled;
+#
+#
+#18.8.46.1 Ensure 'Turn off the advertising ID' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.46.1 Ensure 'Turn off the advertising ID' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> DisabledByGroupPolicy -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> !DisabledByGroupPolicy;
+#
+#
+#18.8.49.1.1 Ensure 'Enable Windows NTP Client' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.8.49.1.1 Ensure 'Enable Windows NTP Client' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> !Enabled;
+#
+#
+#18.8.49.1.2 Ensure 'Enable Windows NTP Server' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.8.49.1.2 Ensure 'Enable Windows NTP Server' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled -> !0;
+#
+#
+#18.9.4.1 Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.4.1 Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData -> !0;
+#
+#
+#18.9.6.2 Ensure 'Block launching Windows Store apps with Windows Runtime API access from hosted content.' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.6.2 Ensure 'Block launching Windows Store apps with Windows Runtime API access from hosted content.' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> BlockHostedAppAccessWinRT -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> !BlockHostedAppAccessWinRT;
+#
+#
+#18.9.12.1 Ensure 'Allow Use of Camera' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.12.1 Ensure 'Allow Use of Camera' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> !AllowCamera;
+#
+#
+#18.9.16.2 Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'
+[CIS - Microsoft Windows 10 - 18.9.16.2 Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableEnterpriseAuthProxy -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> !DisableEnterpriseAuthProxy;
+#
+#
+#18.9.39.2 Ensure 'Turn off location' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.39.2 Ensure 'Turn off location' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> !DisableLocation;
+#
+#
+#18.9.43.1 Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.43.1 Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> AllowMessageSync -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Messaging -> !AllowMessageSync;
+#
+#
+#18.9.45.1 Ensure 'Allow Address bar drop-down list suggestions' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.45.1 Ensure 'Allow Address bar drop-down list suggestions' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\ServiceUI -> ShowOneBox -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\ServiceUI -> !ShowOneBox;
+#
+#
+#18.9.45.2 Ensure 'Allow Adobe Flash' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.45.2 Ensure 'Allow Adobe Flash' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Addons -> FlashPlayerEnabled -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Addons -> !FlashPlayerEnabled;
+#
+#
+#18.9.45.3 Ensure 'Allow InPrivate Browsing' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.45.3 Ensure 'Allow InPrivate Browsing' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main -> AllowInPrivate -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main -> !AllowInPrivate;
+#
+#
+#18.9.45.6 Ensure 'Configure Pop-up Blocker' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.45.6 Ensure 'Configure Pop-up Blocker' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main -> AllowPopups -> !r:yes;
+#
+#
+#18.9.45.7 Ensure 'Configure search suggestions in Address bar' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.45.7 Ensure 'Configure search suggestions in Address bar' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\SearchScopes -> ShowSearchSuggestionsGlobal -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\SearchScopes -> !ShowSearchSuggestionsGlobal;
+#
+#
+#18.9.45.9 Ensure 'Prevent access to the about:flags page in Microsoft Edge' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.45.9 Ensure 'Prevent access to the about:flags page in Microsoft Edge' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main -> PreventAccessToAboutFlagsInMicrosoftEdge -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main -> !PreventAccessToAboutFlagsInMicrosoftEdge;
+#
+#
+#18.9.45.10 Ensure 'Prevent using Localhost IP address for WebRTC' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.45.10 Ensure 'Prevent using Localhost IP address for WebRTC' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main -> HideLocalHostIP -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main -> !HideLocalHostIP;
+#
+#
+#18.9.57.1 Ensure 'Turn off Push To Install service' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.57.1 Ensure 'Turn off Push To Install service' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> !DisablePushToInstall;
+#
+#
+#18.9.58.3.2.1 Ensure 'Allow users to connect remotely by using Remote Desktop Services' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.58.3.2.1 Ensure 'Allow users to connect remotely by using Remote Desktop Services' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDenyTSConnections -> !1;
+#
+#
+#18.9.58.3.3.1 Ensure 'Do not allow COM port redirection' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.58.3.3.1 Ensure 'Do not allow COM port redirection' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisableCcm;
+#
+#
+#18.9.58.3.3.3 Ensure 'Do not allow LPT port redirection' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.58.3.3.3 Ensure 'Do not allow LPT port redirection' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisableLPT;
+#
+#
+#18.9.58.3.3.4 Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.58.3.3.4 Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisablePNPRedir;
+#
+#
+#18.9.58.3.10.1 Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less' 
+[CIS - Microsoft Windows 10 - 18.9.58.3.10.1 Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba2;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba3;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba4;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba5;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba6;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba7;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba8;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba9;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba\D;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbb\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbc\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbd\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbe\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbf\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbc\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbd\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbe\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbf\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dc\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dd\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:de\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:df\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:e\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:f\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:\w\w\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !MaxIdleTime;
+#
+#
+#18.9.58.3.10.2 Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'
+[CIS - Microsoft Windows 10 - 18.9.58.3.10.2 Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime -> !EA60;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !MaxDisconnectionTime;
+#
+#
+#18.9.60.2 Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'
+[CIS - Microsoft Windows 10 - 18.9.60.2 Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> !AllowCloudSearch;
+#
+#
+#18.9.65.1 Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.65.1 Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> !NoGenTicket;
+#
+#
+#18.9.68.1 Ensure 'Disable all apps from Windows Store' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.68.1 Ensure 'Disable all apps from Windows Store' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableStoreApps -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> !DisableStoreApps;
+#
+#
+#18.9.68.4 Ensure 'Turn off the Store application' is set to 'Enabled'
+[CIS - Microsoft Windows 10 - 18.9.68.4 Ensure 'Turn off the Store application' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RemoveWindowsStore -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> !RemoveWindowsStore;
+#
+#
+#18.9.76.3.2 Ensure 'Join Microsoft MAPS' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.76.3.2 Ensure 'Join Microsoft MAPS' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> SpynetReporting -> !0;
+#
+#
+#18.9.76.9.1 Ensure 'Configure Watson events' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.76.9.1 Ensure 'Configure Watson events' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> !DisableGenericRePorts;
+#
+#
+#18.9.84.1 Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.84.1 Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> !AllowSuggestedAppsInWindowsInkWorkspace;
+#
+#
+#18.9.85.3 Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.85.3 Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> !0;
+#
+#
+#18.9.97.2.2 Ensure 'Allow remote server management through WinRM' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.97.2.2 Ensure 'Allow remote server management through WinRM' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> !0;
+#
+#
+#18.9.98.1 Ensure 'Allow Remote Shell Access' is set to 'Disabled'
+[CIS - Microsoft Windows 10 - 18.9.98.1 Ensure 'Allow Remote Shell Access' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/766]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> !AllowRemoteShellAccess;
+#
+#
+#
