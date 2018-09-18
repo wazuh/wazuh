@@ -2442,8 +2442,8 @@ class Agent:
             msg = loads(rec_msg)
             return msg
         else:
-            #raise WazuhException(1101, rec_msg.replace("err ", ""))
-            raise WazuhException(1101, "Unable to get configuration due to the component is not running")
+            raise WazuhException(1101, rec_msg.replace("err ", ""))
+            #raise WazuhException(1101, "Unable to get configuration due to the component is not running")
 
     @staticmethod
     def get_config(agent_id, component, configuration):
