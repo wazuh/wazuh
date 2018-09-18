@@ -1539,7 +1539,34 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
 
     if (ciscat->flags.enabled) cJSON_AddStringToObject(wm_cscat,"disabled","no"); else cJSON_AddStringToObject(wm_cscat,"disabled","yes");
     if (ciscat->flags.scan_on_start) cJSON_AddStringToObject(wm_cscat,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_cscat,"scan-on-start","no");
-    cJSON_AddNumberToObject(wm_cscat,"interval",ciscat->interval);
+    if (ciscat->interval) cJSON_AddNumberToObject(wm_cscat, "interval", ciscat->interval);
+    if (ciscat->scan_day) cJSON_AddNumberToObject(wm_cscat, "day", ciscat->scan_day);
+    switch (ciscat->scan_wday) {
+        case 0:
+            cJSON_AddStringToObject(wm_cscat, "wday", "sunday");
+            break;
+        case 1:
+            cJSON_AddStringToObject(wm_cscat, "wday", "monday");
+            break;
+        case 2:
+            cJSON_AddStringToObject(wm_cscat, "wday", "tuesday");
+            break;
+        case 3:
+            cJSON_AddStringToObject(wm_cscat, "wday", "wednesday");
+            break;
+        case 4:
+            cJSON_AddStringToObject(wm_cscat, "wday", "thursday");
+            break;
+        case 5:
+            cJSON_AddStringToObject(wm_cscat, "wday", "friday");
+            break;
+        case 6:
+            cJSON_AddStringToObject(wm_cscat, "wday", "saturday");
+            break;
+        default:
+            break;
+    }
+    if (ciscat->scan_time) cJSON_AddStringToObject(wm_cscat, "time", ciscat->scan_time);
     if (ciscat->java_path) cJSON_AddStringToObject(wm_cscat,"java_path",ciscat->java_path);
     if (ciscat->ciscat_path) cJSON_AddStringToObject(wm_cscat,"ciscat_path",ciscat->ciscat_path);
     cJSON_AddNumberToObject(wm_cscat,"timeout",ciscat->timeout);

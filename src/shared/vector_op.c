@@ -27,6 +27,9 @@ void W_Vector_insert(W_Vector *v, const char *element) {
         if (v->used == v->size) {
             v->size *= 2;
             v->vector = (char **)realloc(v->vector, v->size * sizeof(char *));
+            if(!v->vector){
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
         }
         v->vector[v->used++] = strdup(element);
     }

@@ -143,6 +143,10 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
         }
     }
 
+    if(!fileq->fp){
+        return (NULL);
+    }
+    
     if (al_data = GetAlertData(fileq->flags, fileq->fp), al_data) {
         return al_data;
     }

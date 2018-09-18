@@ -110,11 +110,6 @@ int req_push(char * buffer, size_t length) {
 
 #ifndef WIN32
 
-        if(!OSHash_Get(allowed_sockets,target)){
-            merror("At req_push(): Target '%s' not allowed", target);
-            return -1;
-        }
-
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];
             snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
@@ -248,11 +243,9 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             mdebug2("req_receiver(): sending '%s' to socket", node->buffer);
 
             // Send data
-
-            merror("SENDING MSG: %s ",node->buffer);
             if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != 0) {
                 merror("OS_SendSecureTCP(): %s", strerror(errno));
-                os_strdup("err Send data", buffer);
+                strcpy(buffer,"err Send data");
                 length = strlen(buffer);
             } else {
 
@@ -261,19 +254,19 @@ void * req_receiver(__attribute__((unused)) void * arg) {
                 switch (length = OS_RecvSecureTCP(node->sock, buffer_response,OS_MAXSTR), length) {
                 case -1:
                     merror("recv(): %s", strerror(errno));
-                    os_strdup("err Receive data", buffer);
+                    strcpy(buffer,"err Receive data");
                     length = strlen(buffer);
                     break;
 
                 case 0:
                     mdebug1("Empty message from local client.");
-                    os_strdup("err Empty response", buffer);
+                    strcpy(buffer,"err Empty response");
                     length = strlen(buffer);
                     break;
 
                 case OS_MAXLEN:
                     mdebug1("Maximum buffer length reached.");
-                    os_strdup("err Maximum buffer length reached", buffer);
+                    strcpy(buffer,"err Maximum buffer length reached");
                     length = strlen(buffer);
                     break;
 
@@ -287,7 +280,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
         if (length <= 0) {
             // Build error string
-            os_strdup("err Disconnected", buffer);
+            strcpy(buffer,"err Disconnected");
             length = strlen(buffer);
         }
 

@@ -65,6 +65,7 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail) __attribute
 // Read config
 cJSON *getMailConfig(void);
 cJSON *getMailAlertsConfig(void);
+cJSON *getMailInternalOptions(void);
 
 // Com request thread dispatcher
 void * mailcom_main(__attribute__((unused)) void * arg);
