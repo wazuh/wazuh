@@ -2285,8 +2285,10 @@ cJSON* getunameJSON()
               free_osinfo(read_info);
               return root;
           }
+          #ifndef WIN32
           else
             return NULL;
+          #endif
       }
       else
         return root;
