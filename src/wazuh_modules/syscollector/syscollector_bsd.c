@@ -673,7 +673,7 @@ hw_info *get_system_bsd(){
 
 //Get network inventory in JSON
 cJSON * getNetworkIfaces_bsd(){
-  
+
       char ** ifaces_list;
       int i = 0, j = 0, found;
       struct ifaddrs *ifaddrs_ptr, *ifa;
@@ -948,6 +948,7 @@ cJSON * getNetworkIfaces_bsd(){
           }
           return object;
 
+    }
 }
 // Send network inventory
 
