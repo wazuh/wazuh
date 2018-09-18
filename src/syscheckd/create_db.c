@@ -581,7 +581,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
                 }
                 // Update database
-                snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
+                snprintf(alert_msg, OS_MAXSTR, "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
                 s_node->checksum = strdup(alert_msg);
 
                 /* Send the new checksum to the analysis server */
