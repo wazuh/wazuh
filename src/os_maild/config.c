@@ -160,3 +160,21 @@ cJSON *getMailAlertsConfig(void) {
 
     return root;
 }
+
+cJSON *getMailInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+    cJSON *maild = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(maild,"strict_checking",mail.strict_checking);
+    cJSON_AddNumberToObject(maild,"grouping",mail.grouping);
+#ifdef LIBGEOIP_ENABLED
+    cJSON_AddNumberToObject(maild,"geoip",mail.geoip);
+#endif
+
+    cJSON_AddItemToObject(internals,"mail",maild);
+    cJSON_AddItemToObject(root,"internal",internals);
+
+    return root;
+}
