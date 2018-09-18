@@ -234,7 +234,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
 
         // Run script
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
-        switch (wm_exec(command, &output, &status, timeout)) {
+        switch (wm_exec(command, &output, &status, timeout, NULL)) {
             case 0:
                 if (status > 0) {
                     mtwarn(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
@@ -306,7 +306,7 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
 
         // Run script
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
-        switch (wm_exec(command, &output, &status, timeout)) {
+        switch (wm_exec(command, &output, &status, timeout, NULL)) {
             case 0:
                 if (status > 0) {
                     mtwarn(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_request->tag, status);
@@ -386,7 +386,7 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
 
         // Run script
         mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
-        switch (wm_exec(command, &output, &status, timeout)) {
+        switch (wm_exec(command, &output, &status, timeout, NULL)) {
             case 0:
                 if (status > 0) {
                     mtwarn(WM_AZURE_LOGTAG, "%s: Returned error code: '%d'.", curr_container->name, status);
