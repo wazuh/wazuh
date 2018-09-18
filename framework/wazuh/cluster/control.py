@@ -102,7 +102,7 @@ def get_agents(filter_status, filter_node, is_master):
                                          select={'fields':['id','ip','name','status','node_name']})
     else:
         input_json = {'function': '/agents', 'from_cluster': False,
-                      'arguments': {'filters': {'status': filter_status, 'node_name': filter_node}, 'limit': None,
+                      'arguments': {'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)}, 'limit': None,
                                     'select': {'fields': ['id', 'ip', 'name', 'status', 'node_name']}}}
 
         request = "dapi {}".format(json.dumps(input_json))
