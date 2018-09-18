@@ -7,6 +7,7 @@ from wazuh.exception import WazuhException
 from wazuh import common
 import socket
 from json import dumps, loads
+from struct import pack, unpack
 
 class OssecSocket:
 
@@ -28,7 +29,8 @@ class OssecSocket:
 
     def send(self, msg):
         try:
-            sent = self.s.send(dumps(msg))
+            payload = dumps(msg)
+            sent = self.s.send(pack("<I", len(msg)) + payload.encode())
             if sent == 0:
                 raise WazuhException(1014, self.path)
             return sent
@@ -38,7 +40,12 @@ class OssecSocket:
     def receive(self):
 
         try:
-            chunk = self.s.recv(OssecSocket.MAX_SIZE)
+            size = unpack("<I", self.s.recv(4))[0]
+
+            if size > OssecSocket.MAX_SIZE:
+                raise WazuhException(1014, self.path)
+
+            chunk = self.s.recv(size, socket.MSG_WAITALL)
             response = loads(chunk)
         except:
             raise WazuhException(1014, self.path)
