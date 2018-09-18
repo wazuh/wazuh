@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 - Fix bug in whodata field extraction for Windows. ([#1233](https://github.com/wazuh/wazuh/issues/1233))
 - Fixed service startup on error. ([#1324](https://github.com/wazuh/wazuh/pull/1324))
 - Fix stack overflow when monitoring deep files. ([#1239](https://github.com/wazuh/wazuh/pull/1239))
-
+- Set connection timeout for Auth server ([#1336](https://github.com/wazuh/wazuh/pull/1336))
 
 ## [v3.6.1] 2018-09-07
 
