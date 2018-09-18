@@ -331,7 +331,9 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             return (-1);
     }
 
-    if ((Config.syscheck_alert_new == 1 && fim_end_first_scan(lf, sdb))) {
+    int ts_end = fim_end_first_scan(lf, sdb);
+
+    if ((Config.syscheck_alert_new == 1 && ts_end != 0 && ts_end > lf->time.tv_nsec)) {
         sk_fill_event(lf, f_name, &newsum);
 
         /* Fields */
@@ -340,7 +342,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             os_strdup(fim_decoder->fields[i], lf->fields[i].key);
         }
 
-        fim_alert (f_name, &oldsum, &newsum, lf, sdb);
+        fim_alert(f_name, &oldsum, &newsum, lf, sdb);
     } else {
         mdebug2("Alert discarded (alert_new option or first scan) file '%s'", f_name);
     }
@@ -583,7 +585,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 if (oldsum->inode && newsum->inode && oldsum->inode != newsum->inode) {
                     changes = 1;
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, "inode", ',');
-                    snprintf(localsdb->mtime, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum->inode, newsum->inode);
+                    snprintf(localsdb->inode, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum->inode, newsum->inode);
                     lf->inode_before = oldsum->inode;
                 } else {
                     localsdb->inode[0] = '\0';
@@ -595,9 +597,11 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     }
 
     // Provide information about the file
-    comment_buf = snprintf(localsdb->comment, OS_SIZE_6144, "File"
+    comment_buf = snprintf(localsdb->comment, OS_MAXSTR, "File"
             " '%.756s' "
             "%s\n"
+            "%s"
+            "%s"
             "%s"
             "%s"
             "%s"
@@ -620,6 +624,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             localsdb->md5,
             localsdb->sha1,
             localsdb->sha256,
+            localsdb->mtime,
+            localsdb->inode,
             localsdb->user_name,
             localsdb->audit_name,
             localsdb->effective_name,
@@ -636,7 +642,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     }
 
     if(lf->data) {
-        snprintf(localsdb->comment+comment_buf, OS_SIZE_6144-comment_buf, "What changed:\n%s", lf->data);
+        snprintf(localsdb->comment+comment_buf, OS_MAXSTR-comment_buf, "What changed:\n%s", lf->data);
         os_strdup(lf->data, lf->diff);
     }
 
