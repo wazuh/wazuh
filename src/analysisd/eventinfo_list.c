@@ -19,6 +19,8 @@ static int _memoryused = 0;
 static int _memorymaxsize = 0;
 int _max_freq = 0;
 
+static pthread_mutex_t event_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 /* Create the Event List */
 void OS_CreateEventList(int maxsize)
@@ -42,6 +44,7 @@ EventNode *OS_GetLastEvent()
 /* Add an event to the list -- always to the beginning */
 void OS_AddEvent(Eventinfo *lf)
 {
+    w_mutex_lock(&event_mutex);
     EventNode *tmp_node = eventnode;
 
     if (tmp_node) {
@@ -104,6 +107,8 @@ void OS_AddEvent(Eventinfo *lf)
 
         lastnode = eventnode;
     }
+
+    w_mutex_unlock(&event_mutex);
 
     return;
 }

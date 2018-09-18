@@ -20,8 +20,8 @@
  * and one without. This is going to improve greatly the
  * performance of our decoder matching.
  */
-static OSDecoderNode *osdecodernode_forpname;
-static OSDecoderNode *osdecodernode_nopname;
+OSDecoderNode *osdecodernode_forpname;
+OSDecoderNode *osdecodernode_nopname;
 
 static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi);
 

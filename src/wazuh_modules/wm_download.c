@@ -20,6 +20,7 @@
 
 static void * wm_download_main(wm_download_t * data);   // Module main function. It won't return
 static void wm_download_destroy(wm_download_t * data);  // Destroy data
+cJSON *wm_download_dump(void);     // Read config
 
 // Dispatch request. Write the output into the same input buffer.
 static void wm_download_dispatch(char * buffer);
@@ -27,7 +28,8 @@ static void wm_download_dispatch(char * buffer);
 const wm_context WM_DOWNLOAD_CONTEXT = {
     "download",
     (wm_routine)wm_download_main,
-    (wm_routine)wm_download_destroy
+    (wm_routine)wm_download_destroy,
+    (cJSON * (*)(const void *))wm_download_dump
 };
 
 // Module main function. It won't return
@@ -198,4 +200,12 @@ wmodule * wm_download_read() {
 
     return module;
 #endif
+}
+
+cJSON *wm_download_dump(void) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_wd = cJSON_CreateObject();
+    cJSON_AddStringToObject(wm_wd,"enabled","yes");
+    cJSON_AddItemToObject(root,"wazuh_download",wm_wd);
+    return root;
 }

@@ -34,6 +34,9 @@
 #define WM_POOL_SIZE    8                           // Child process pool size.
 #define WM_HEADER_SIZE  OS_SIZE_2048
 
+#define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
+#define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
+
 #define DAY_SEC    86400
 #define WEEK_SEC   604800
 
@@ -45,6 +48,7 @@ typedef struct wm_context {
     const char *name;                   // Name for module
     wm_routine start;                   // Main function
     wm_routine destroy;                 // Destructor
+    cJSON *(* dump)(const void *);
 } wm_context;
 
 // Main module structure
@@ -75,14 +79,18 @@ typedef enum crypto_type {
 #include "wm_vuln_detector.h"
 #include "wm_osquery_monitor.h"
 #include "wm_download.h"
+#include "wm_azure.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
 extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wazuh Module
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
+extern int wm_debug_level;
 
 // Read XML configuration and internal options
 int wm_config();
+cJSON *getModulesConfig(void);
+cJSON *getModulesInternalOptions(void);
 
 // Add module to the global list
 void wm_add(wmodule *module);
@@ -103,8 +111,9 @@ void wm_module_free(wmodule * config);
  * On success, return 0. On another error, returns -1.
  * If the called program timed-out, returns WM_ERROR_TIMEOUT and output may
  * contain data.
+ * env_path is a pointer to an string to add to the PATH environment variable.
  */
-int wm_exec(char *command, char **output, int *exitcode, int secs);
+int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 
 #ifdef WIN32
 // Add process to pool
@@ -172,5 +181,15 @@ int wm_get_path(const char *binary, char **validated_comm);
     -2 invalid parameters.
 */
 int wm_validate_command(const char *command, const char *digest, crypto_type ctype);
+
+#ifndef WIN32
+// Com request thread dispatcher
+void * wmcom_main(void * arg);
+#endif
+size_t wmcom_dispatch(char * command, char ** output);
+size_t wmcom_getconfig(const char * section, char ** output);
+
+// Sleep function for Windows and Unix (milliseconds)
+void wm_delay(unsigned int ms);
 
 #endif // W_MODULES

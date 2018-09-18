@@ -19,6 +19,7 @@
 #define SECURE_MQ       '4'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
+#define EVENT_MQ        '10'
 
 
 /* Queues for additional log types */
@@ -27,6 +28,8 @@
 #define AUTH_MQ          'c'
 #define SYSCOLLECTOR_MQ  'd'
 #define CISCAT_MQ        'e'
+
+#define MAX_OPENQ_ATTEMPS 15
 
 extern int sock_fail_time;
 

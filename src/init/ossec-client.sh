@@ -10,7 +10,7 @@ DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
 AUTHOR="Wazuh Inc."
-DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd wazuh-modulesd"
+DAEMONS="wazuh-modulesd ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
 INITCONF="/etc/ossec-init.conf"
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
@@ -125,7 +125,7 @@ start()
 
     echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     checkpid;
-    
+
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp/*"
     rm -f $TO_DELETE

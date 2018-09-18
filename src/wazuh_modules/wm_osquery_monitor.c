@@ -36,14 +36,16 @@ static void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
 static int wm_osquery_check_logfile(const char * path, FILE * fp);
 static int wm_osquery_packs(wm_osquery_monitor_t *osquery);
 static char * wm_osquery_already_running(char * text);
+cJSON *wm_osquery_dump(const wm_osquery_monitor_t *osquery_monitor);
 
 static volatile int active = 1;
 
-const wm_context WM_OSQUERYMONITOR_CONTEXT =
-    {
-        "osquery",
-        (wm_routine)wm_osquery_monitor_main,
-        (wm_routine)wm_osquery_monitor_destroy};
+const wm_context WM_OSQUERYMONITOR_CONTEXT = {
+    "osquery",
+    (wm_routine)wm_osquery_monitor_main,
+    (wm_routine)wm_osquery_monitor_destroy,
+    (cJSON * (*)(const void *))wm_osquery_dump
+};
 
 void *Read_Log(wm_osquery_monitor_t * osquery)
 {
@@ -562,6 +564,7 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     return NULL;
 }
 
+
 void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
 {
     int i;
@@ -579,4 +582,35 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
 
         free(osquery_monitor);
     }
+}
+
+
+// Get readed data
+cJSON *wm_osquery_dump(const wm_osquery_monitor_t *osquery_monitor) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_osq = cJSON_CreateObject();
+    unsigned int i;
+
+    if (osquery_monitor->disable) cJSON_AddStringToObject(wm_osq,"disabled","yes"); else cJSON_AddStringToObject(wm_osq,"disabled","no");
+    if (osquery_monitor->run_daemon) cJSON_AddStringToObject(wm_osq,"run_daemon","yes"); else cJSON_AddStringToObject(wm_osq,"run_daemon","no");
+    if (osquery_monitor->add_labels) cJSON_AddStringToObject(wm_osq,"add_labels","yes"); else cJSON_AddStringToObject(wm_osq,"add_labels","no");
+    if (osquery_monitor->bin_path) cJSON_AddStringToObject(wm_osq,"bin_path",osquery_monitor->bin_path);
+    if (osquery_monitor->log_path) cJSON_AddStringToObject(wm_osq,"log_path",osquery_monitor->log_path);
+    if (osquery_monitor->config_path) cJSON_AddStringToObject(wm_osq,"config_path",osquery_monitor->config_path);
+
+    if (osquery_monitor->packs && *osquery_monitor->packs) {
+        cJSON *packs = cJSON_CreateArray();
+        for (i=0;osquery_monitor->packs[i] && osquery_monitor->packs[i]->name;i++) {
+            cJSON *pack = cJSON_CreateObject();
+            cJSON_AddStringToObject(pack,"name",osquery_monitor->packs[i]->name);
+            cJSON_AddStringToObject(pack,"path",osquery_monitor->packs[i]->path);
+            cJSON_AddItemToArray(packs, pack);
+        }
+        cJSON_AddItemToObject(wm_osq,"packs",packs);
+    }
+
+    cJSON_AddItemToObject(root,"osquery",wm_osq);
+
+    return root;
 }

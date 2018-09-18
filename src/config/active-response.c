@@ -254,10 +254,8 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* Check if timeout is allowed */
     if (tmp_ar->timeout && !tmp_ar->ar_cmd->timeout_allowed) {
         mdebug1("Timeout is not allowed");
-        merror(AR_NO_TIMEOUT, tmp_ar->ar_cmd->name);
-        fclose(fp);
-        free(tmp_ar);
-        return (-1);
+        minfo(AR_NO_TIMEOUT, tmp_ar->ar_cmd->name);
+        tmp_ar->timeout = 0;
     }
 
     /* d1 is the active response list */
@@ -364,6 +362,15 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
             return (OS_INVALID);
         }
         if (strcmp(node[i]->element, command_name) == 0) {
+            // The command name must not start with '!'
+
+            if (node[i]->content[0] == '!') {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                free(tmp_str);
+                free(tmp_command);
+                return (OS_INVALID);
+            }
+
             tmp_command->name = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_expect) == 0) {
             free(tmp_str);

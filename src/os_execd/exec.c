@@ -51,6 +51,13 @@ int ReadExecConfig()
 
         str_pt = buffer;
 
+        // The command name must not start with '!'
+
+        if (buffer[0] == '!') {
+            merror(EXEC_INV_CONF, DEFAULTARPATH);
+            continue;
+        }
+
         /* Clean up the buffer */
         tmp_str = strstr(buffer, " - ");
         if (!tmp_str) {
@@ -147,6 +154,20 @@ int ReadExecConfig()
 char *GetCommandbyName(const char *name, int *timeout)
 {
     int i = 0;
+
+    // Filter custom commands
+
+    if (name[0] == '!') {
+        static char command[OS_FLSIZE];
+
+        if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIRPATH, name + 1) >= (int)sizeof(command)) {
+            mwarn("Cannot execute command '%32s...': path too long.", name + 1);
+            return NULL;
+        }
+
+        *timeout = 0;
+        return command;
+    }
 
     for (; i < exec_size; i++) {
         if (strcmp(name, exec_names[i]) == 0) {

@@ -347,11 +347,16 @@ static void ExecdStart(int q)
         /* Zero the name */
         tmp_msg = strchr(buffer, ' ');
         if (!tmp_msg) {
-            mwarn(EXECD_INV_MSG, buffer);
-            continue;
+            if (name[0] != '!') {
+                mwarn(EXECD_INV_MSG, buffer);
+                continue;
+            } else {
+                tmp_msg = buffer + strlen(buffer);
+            }
+        } else {
+            *tmp_msg = '\0';
+            tmp_msg++;
         }
-        *tmp_msg = '\0';
-        tmp_msg++;
 
         /* Get the command to execute (valid name) */
         command = GetCommandbyName(name, &timeout_value);
@@ -382,8 +387,7 @@ static void ExecdStart(int q)
         timeout_args[2] = NULL;
 
         /* Get the arguments */
-        i = 2;
-        while (i < (MAX_ARGS - 1)) {
+        for (i = 2; *tmp_msg && i < (MAX_ARGS - 1); i++) {
             cmd_args[i] = tmp_msg;
             cmd_args[i + 1] = NULL;
 
@@ -398,8 +402,6 @@ static void ExecdStart(int q)
 
             timeout_args[i] = strdup(cmd_args[i]);
             timeout_args[i + 1] = NULL;
-
-            i++;
         }
 
         /* Check if this command was already executed */
@@ -407,9 +409,9 @@ static void ExecdStart(int q)
         added_before = 0;
 
         /* Check for the username and IP argument */
-        if (!timeout_args[2] || !timeout_args[3]) {
+        if (name[0] != '!' && (!timeout_args[2] || !timeout_args[3])) {
             added_before = 1;
-            merror("Invalid number of arguments.");
+            merror("Invalid number of arguments (%s).", name);
         }
 
         while (timeout_node) {

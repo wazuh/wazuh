@@ -16,6 +16,10 @@
 
 #ifdef WIN32
 #include "../os_execd/execd.h"
+#include "../client-agent/agentd.h"
+#include "../syscheckd/syscheck.h"
+#include "../wazuh_modules/wmodules.h"
+#include "../logcollector/logcollector.h"
 #endif
 
 static OSHash * req_table;
@@ -27,10 +31,12 @@ static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
 
-static int request_pool;
-static int rto_sec;
-static int rto_msec;
-static int max_attempts;
+int request_pool;
+int rto_sec;
+int rto_msec;
+int max_attempts;
+
+static OSHash * allowed_sockets;
 
 // Initialize request module
 void req_init() {
@@ -48,6 +54,18 @@ void req_init() {
     }
 
     os_calloc(request_pool, sizeof(req_node_t *), req_pool);
+
+    // Create hash table allowed sockets
+
+    if (allowed_sockets = OSHash_Create(), !allowed_sockets) {
+        merror_exit("At req_main(): OSHash_Create()");
+    }
+
+    OSHash_Add(allowed_sockets,SOCKET_LOGCOLLECTOR,strdup(SOCKET_LOGCOLLECTOR));
+    OSHash_Add(allowed_sockets,SOCKET_SYSCHECK,strdup(SOCKET_SYSCHECK));
+    OSHash_Add(allowed_sockets,SOCKET_WMODULES,strdup(SOCKET_WMODULES));
+    OSHash_Add(allowed_sockets,SOCKET_AGENT,strdup(SOCKET_AGENT));
+
 }
 
 // Push a request message into dispatching queue. Return 0 on success or -1 on error.
@@ -92,36 +110,26 @@ int req_push(char * buffer, size_t length) {
 
 #ifndef WIN32
 
-        char sockname[PATH_MAX];
-        snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
+        if (strcmp(target, "agent")) {
+            char sockname[PATH_MAX];
+            snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
 
-        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-            switch (errno) {
-            case ECONNREFUSED:
-                merror("At req_push(): Target '%s' refused connection. Is Active Response enabled?", target);
-                break;
+            if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+                switch (errno) {
+                case ECONNREFUSED:
+                    merror("At req_push(): Target '%s' refused connection. Is Active Response enabled?", target);
+                    break;
 
-            default:
-                merror("At req_push(): Could not connect to socket '%s': %s (%d).", target, strerror(errno), errno);
+                default:
+                    merror("At req_push(): Could not connect to socket '%s': %s (%d).", target, strerror(errno), errno);
+                }
+
+                // Example: #!-req 16 err Permission denied
+                snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, errno == ENOENT ? "Invalid target" : strerror(errno));
+                send_msg(response, -1);
+
+                return -1;
             }
-
-            // Example: #!-req 16 err Permission denied
-            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, errno == ENOENT ? "Invalid target" : strerror(errno));
-            send_msg(response, -1);
-
-            return -1;
-        }
-
-#else
-
-        // Windows only supports requests to "com"
-
-        if (strcmp(target, "com")) {
-            merror("Request attempt to invalid target '%s'", target);
-            // Example: #!-req 16 err Permission denied
-            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err Invalid target", counter);
-            send_msg(response, -1);
-            return -1;
         }
 
 #endif
@@ -136,7 +144,7 @@ int req_push(char * buffer, size_t length) {
         }
 
         // Create and insert node
-        node = req_create(sock, counter, payload, length);
+        node = req_create(sock, counter, target, payload, length);
         w_mutex_lock(&mutex_table);
         error = OSHash_Add(req_table, counter, node);
         w_mutex_unlock(&mutex_table);
@@ -185,11 +193,14 @@ int req_push(char * buffer, size_t length) {
 void * req_receiver(__attribute__((unused)) void * arg) {
     int attempts;
     long nsec;
-    ssize_t length;
+    ssize_t length = 0;
     req_node_t * node;
-    char buffer[OS_MAXSTR + 1];
+    char *buffer = NULL;
+    char *buffer_response = NULL;
     char response[REQ_RESPONSE_LENGTH];
     int rlen;
+
+    
 
     while (1) {
 
@@ -208,50 +219,82 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         w_mutex_lock(&node->mutex);
 
 #ifdef WIN32
-        // In Windows, execute directly
-        length = wcom_dispatch(node->buffer, node->length, buffer);
+        // In Windows, forward request to target socket
+        if (strncmp(node->target, "agent", 5) == 0) {
+            length = agcom_dispatch(node->buffer, &buffer);
+        } else if (strncmp(node->target, "logcollector", 12) == 0) {
+            length = lccom_dispatch(node->buffer, &buffer);
+        } else if (strncmp(node->target, "com", 3) == 0) {
+            length = wcom_dispatch(node->buffer, node->length, &buffer);
+        } else if (strncmp(node->target, "syscheck", 8) == 0) {
+            length = syscom_dispatch(node->buffer, &buffer);
+        } else if (strncmp(node->target, "wmodules", 8) == 0) {
+            length = wmcom_dispatch(node->buffer, &buffer);
+        }
 #else
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        os_calloc(OS_MAXSTR, sizeof(char), buffer_response);
         // In Unix, forward request to target socket
+        if (strncmp(node->target, "agent", 5) == 0) {
+            length = agcom_dispatch(node->buffer, &buffer);
+        }
+        else {
 
-        mdebug2("req_receiver(): sending '%s' to socket", node->buffer);
+            mdebug2("req_receiver(): sending '%s' to socket", node->buffer);
 
-        // Send data
-
-        if (send(node->sock, node->buffer, node->length, 0) != (ssize_t)node->length) {
-            merror("send(): %s", strerror(errno));
-            strcpy(buffer, "err Send data");
-            length = strlen(buffer);
-        } else {
-
-            // Get response
-
-            switch (length = recv(node->sock, buffer, OS_MAXSTR, 0), length) {
-            case -1:
-                merror("recv(): %s", strerror(errno));
-                strcpy(buffer, "err Receive data");
+            // Send data
+            if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != 0) {
+                merror("OS_SendSecureTCP(): %s", strerror(errno));
+                strcpy(buffer,"err Send data");
                 length = strlen(buffer);
-                break;
+            } else {
 
-            case 0:
-                mdebug1("Empty message from local client.");
-                strcpy(buffer, "err Empty response");
-                length = strlen(buffer);
-                break;
+                // Get response
+               
+                switch (length = OS_RecvSecureTCP(node->sock, buffer_response,OS_MAXSTR), length) {
+                case -1:
+                    merror("recv(): %s", strerror(errno));
+                    strcpy(buffer,"err Receive data");
+                    length = strlen(buffer);
+                    break;
 
-            default:
-                buffer[length] = '\0';
+                case 0:
+                    mdebug1("Empty message from local client.");
+                    strcpy(buffer,"err Empty response");
+                    length = strlen(buffer);
+                    break;
+
+                case OS_MAXLEN:
+                    mdebug1("Maximum buffer length reached.");
+                    strcpy(buffer,"err Maximum buffer length reached");
+                    length = strlen(buffer);
+                    break;
+
+                default:
+                    buffer_response[length] = '\0';
+                }
             }
         }
 
 #endif
 
+        if (length <= 0) {
+            // Build error string
+            strcpy(buffer,"err Disconnected");
+            length = strlen(buffer);
+        }
+
         // Build response string
         // Example: #!-req 16 Hello World
         rlen = snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
-        length = length + rlen > OS_MAXSTR ? OS_MAXSTR : length + rlen;
-        memmove(buffer + rlen, buffer, length - rlen);
+        length += rlen;
+        os_realloc(buffer, length + 1, buffer);
+        memmove(buffer + rlen, buffer_response, length - rlen);
         memcpy(buffer, response, rlen);
         buffer[length] = '\0';
+
+        free(buffer_response);
+
 
         mdebug2("req_receiver(): sending '%s' to server", buffer);
 
@@ -297,6 +340,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         w_mutex_unlock(&mutex_table);
 
         // Delete node
+        free(buffer);
         req_free(node);
     }
 

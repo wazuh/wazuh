@@ -27,6 +27,11 @@
 /* Read logcollector config */
 int LogCollectorConfig(const char *cfgfile);
 
+/* Parse readed config into JSON format */
+cJSON *getLocalfileConfig(void);
+cJSON *getSocketConfig(void);
+cJSON *getLogcollectorInternalOptions(void);
+
 /* Start log collector daemon */
 void LogCollectorStart(void) __attribute__((noreturn));
 
@@ -79,6 +84,13 @@ void win_read_vista_sec();
 void win_start_event_channel(char *evt_log, char future, char *query);
 void win_format_event_string(char *string);
 #endif
+
+#ifndef WIN32
+// Com request thread dispatcher
+void * lccom_main(void * arg);
+#endif
+size_t lccom_dispatch(char * command, char ** output);
+size_t lccom_getconfig(const char * section, char ** output);
 
 /*** Global variables ***/
 extern int loop_timeout;
@@ -164,5 +176,9 @@ void w_create_input_threads();
 /* Set mutexes for each file */
 void w_set_file_mutexes();
 extern int sample_log_length;
+extern int lc_debug_level;
+extern int accept_remote;
+extern int N_INPUT_THREADS;
+extern int OUTPUT_QUEUE_SIZE;
 
 #endif /* __LOGREADER_H */

@@ -5,6 +5,8 @@
 #define CDB_H
 
 #include "uint32.h"
+#include "pthreads_op.h"
+#include <pthread.h>
 
 #define CDB_HASHSTART 5381
 extern uint32 cdb_hashadd(uint32, unsigned char);
@@ -21,6 +23,7 @@ struct cdb {
     uint32 hslots; /* initialized if loop is nonzero */
     uint32 dpos; /* initialized if cdb_findnext() returns 1 */
     uint32 dlen; /* initialized if cdb_findnext() returns 1 */
+    pthread_mutex_t mutex;
 } ;
 
 extern void cdb_free(struct cdb *);

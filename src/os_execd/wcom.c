@@ -16,6 +16,10 @@
 #include "os_crypto/signature/signature.h"
 #include "wazuh_modules/wmodules.h"
 #include "external/zlib/zlib.h"
+#include "client-agent/agentd.h"
+#include "logcollector/logcollector.h"
+#include "syscheckd/syscheck.h"
+#include "rootcheck/rootcheck.h"
 
 // Current opened file
 
@@ -27,8 +31,10 @@ static struct {
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 static int _unsign(const char * source, char dest[PATH_MAX + 1]);
 static int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
+int req_timeout;
+int max_restart_lock;
 
-size_t wcom_dispatch(char *command, size_t length, char *output){
+size_t wcom_dispatch(char *command, size_t length, char ** output){
 
     char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -49,8 +55,8 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     if (strcmp(rcv_comm, "open") == 0){
         if (!rcv_args){
             merror("WCOM open needs arguments.");
-            strcpy(output, "err WCOM open needs arguments");
-            return strlen(output);
+            *output = strdup("err WCOM open needs arguments");
+            return strlen(*output);
         }
         // open [rw file_path]
         mode = rcv_args;
@@ -60,31 +66,31 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
             return wcom_open(path, mode, output);
         }else {
             merror("Bad WCOM open message.");
-            strcpy(output, "err Open file");
-            return strlen(output);
+            *output = strdup("err Open file");
+            return strlen(*output);
         }
 
     }else if (strcmp(rcv_comm, "write") == 0){
         if (!rcv_args){
             merror("WCOM write needs arguments.");
-            strcpy(output, "err WCOM write needs arguments");
-            return strlen(output);
+            *output = strdup("err WCOM write needs arguments");
+            return strlen(*output);
         }
         // write [length file_path data]
         ssize_t data_length = (ssize_t)strtol(rcv_args, &path, 10);
 
         if (*path != ' ' || data_length < 0) {
             merror("Bad WCOM write message.");
-            strcpy(output, "err Write file");
-            return strlen(output);
+            *output = strdup("err Write file");
+            return strlen(*output);
         }
         // write length[ file_path data]
         path++;
         // write length [file_path data]
         if ((command + length - data_length - path) <= 0){
             merror("Bad size WCOM path message.");
-            strcpy(output, "err Write file");
-            return strlen(output);
+            *output = strdup("err Write file");
+            return strlen(*output);
         }
         char *ptr = &command[length - data_length - 1];
         // write length file_path[ data]
@@ -93,8 +99,8 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
             *ptr = '\0';
         }else{
             merror("Bad WCOM write message.");
-            strcpy(output, "err Write file");
-            return strlen(output);
+            *output = strdup("err Write file");
+            return strlen(*output);
         }
 
         return wcom_write(path, data, (size_t)data_length, output);
@@ -102,8 +108,8 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     }else if (strcmp(rcv_comm, "close") == 0){
         if (!rcv_args){
             merror("WCOM close needs arguments.");
-            strcpy(output, "err WCOM close needs arguments");
-            return strlen(output);
+            *output = strdup("err WCOM close needs arguments");
+            return strlen(*output);
         }
         // close [file_path]
         return wcom_close(rcv_args, output);
@@ -111,8 +117,8 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     }else if (strcmp(rcv_comm, "sha1") == 0){
         if (!rcv_args){
             merror("WCOM sha1 needs arguments.");
-            strcpy(output, "err WCOM sha1 needs arguments");
-            return strlen(output);
+            *output = strdup("err WCOM sha1 needs arguments");
+            return strlen(*output);
         }
         // sha1 [file_path]
         return wcom_sha1(rcv_args, output);
@@ -120,8 +126,8 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     }else if (strcmp(rcv_comm, "unmerge") == 0){
         if (!rcv_args){
             merror("WCOM unmerge needs arguments.");
-            strcpy(output, "err WCOM unmerge needs arguments");
-            return strlen(output);
+            *output = strdup("err WCOM unmerge needs arguments");
+            return strlen(*output);
         }
         // unmerge [file_path]
         return wcom_unmerge(rcv_args, output);
@@ -133,8 +139,8 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
     } else if (strcmp(rcv_comm, "uncompress") == 0){
         if (!rcv_args){
             merror("WCOM uncompress needs arguments.");
-            strcpy(output, "err WCOM uncompress needs arguments");
-            return strlen(output);
+            *output = strdup("err WCOM uncompress needs arguments");
+            return strlen(*output);
         }
         // uncompress [file_path]
         source = rcv_args;
@@ -144,16 +150,16 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
             return wcom_uncompress(source, target, output);
         } else {
             merror("Bad WCOM uncompress message.");
-            strcpy(output, "err Too few commands");
-            return strlen(output);
+            *output = strdup("err Too few commands");
+            return strlen(*output);
         }
 
     } else if (strcmp(rcv_comm, "upgrade") == 0) {
         // upgrade <package> <installer>
         if (!rcv_args){
             merror("WCOM upgrade needs arguments.");
-            strcpy(output, "err WCOM upgrade needs arguments");
-            return strlen(output);
+            *output = strdup("err WCOM upgrade needs arguments");
+            return strlen(*output);
         }
 
         package = rcv_args;
@@ -163,13 +169,13 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
             return wcom_upgrade(package, installer, output);
         } else {
             merror("Bad WCOM upgrade message.");
-            strcpy(output, "err Too few commands");
-            return strlen(output);
+            *output = strdup("err Too few commands");
+            return strlen(*output);
         }
     } else if (strcmp(rcv_comm, "restart") == 0) {
         return wcom_restart(output);
     } else if (strcmp(rcv_comm, "lock_restart") == 0) {
-        static int max_restart_lock = 0;
+        max_restart_lock = 0;
         int timeout;
 
         if (!max_restart_lock) {
@@ -178,9 +184,9 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         timeout = atoi(rcv_args);
 
         if (timeout < -1) {
-            strcpy(output, "err Invalid timeout");
+            *output = strdup("err Invalid timeout");
         } else {
-            strcpy(output, "ok");
+            *output = strdup("ok");
             if (timeout == -1 || timeout > max_restart_lock) {
                 if (timeout > max_restart_lock) {
                     mwarn("Timeout exceeds the maximum allowed.");
@@ -190,15 +196,25 @@ size_t wcom_dispatch(char *command, size_t length, char *output){
         }
         lock_restart(timeout);
 
-        return strlen(output);
+        return strlen(*output);
+
+    } else if (strcmp(rcv_comm, "getconfig") == 0){
+        // getconfig section
+        if (!rcv_args){
+            merror("WCOM getconfig needs arguments.");
+            *output = strdup("err WCOM getconfig needs arguments");
+            return strlen(*output);
+        }
+        return wcom_getconfig(rcv_args, output);
+
     } else {
         merror("WCOM Unrecognized command '%s'.", rcv_comm);
-        strcpy(output, "err Unrecognized command");
-        return strlen(output);
+        *output = strdup("err Unrecognized command");
+        return strlen(*output);
     }
 }
 
-size_t wcom_open(const char *file_path, const char *mode, char *output) {
+size_t wcom_open(const char *file_path, const char *mode, char ** output) {
     char final_path[PATH_MAX + 1];
 
     if (*file.path) {
@@ -209,130 +225,132 @@ size_t wcom_open(const char *file_path, const char *mode, char *output) {
 
     if (strcmp(mode, "w") && strcmp(mode, "wb")) {
         merror("At WCOM open: Unsupported mode '%s'", mode);
-        strcpy(output, "err Unsupported mode");
-        return strlen(output);
+        *output = strdup("err Unsupported mode");
+        return strlen(*output);
     }
 
     if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
         merror("At WCOM open: Invalid file name");
-        strcpy(output, "err Invalid file name");
-        return strlen(output);
+        *output = strdup("err Invalid file name");
+        return strlen(*output);
     }
 
     if (file.fp = fopen(final_path, mode), file.fp) {
         strncpy(file.path, final_path, PATH_MAX);
-        strcpy(output, "ok");
-        return 2;
+        *output = strdup("ok");
+        return strlen(*output);
     } else {
         merror(FOPEN_ERROR, file_path, errno, strerror(errno));
-        snprintf(output, OS_MAXSTR + 1, "err %s", strerror(errno));
-        return strlen(output);
+        os_malloc(OS_MAXSTR + 1, *output);
+        snprintf(*output, OS_MAXSTR + 1, "err %s", strerror(errno));
+        return strlen(*output);
     }
 }
 
-size_t wcom_write(const char *file_path, char *buffer, size_t length, char *output) {
+size_t wcom_write(const char *file_path, char *buffer, size_t length, char ** output) {
     char final_path[PATH_MAX + 1];
 
     if (!*file.path) {
         merror("At WCOM write: No file is opened.");
-        strcpy(output, "err No file opened");
-        return strlen(output);
+        *output = strdup("err No file opened");
+        return strlen(*output);
     }
 
     if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
         merror("At WCOM write: Invalid file name");
-        strcpy(output, "err Invalid file name");
-        return strlen(output);
+        *output = strdup("err Invalid file name");
+        return strlen(*output);
     }
 
     if (strcmp(file.path, final_path) != 0) {
         merror("At WCOM write: The target file doesn't match the opened file (%s).", file.path);
-        strcpy(output, "err The target file doesn't match the opened file");
-        return strlen(output);
+        *output = strdup("err The target file doesn't match the opened file");
+        return strlen(*output);
     }
 
     if (fwrite(buffer, 1, length, file.fp) == length) {
-        strcpy(output, "ok");
-        return 2;
+        *output = strdup("ok");
+        return strlen(*output);
     } else {
         merror("At WCOM write: Cannot write on '%s'", final_path);
-        strcpy(output, "err Cannot write");
-        return strlen(output);
+        *output = strdup("err Cannot write");
+        return strlen(*output);
     }
 }
 
-size_t wcom_close(const char *file_path, char *output){
+size_t wcom_close(const char *file_path, char ** output){
     char final_path[PATH_MAX + 1];
 
     if (!*file.path) {
         merror("At WCOM close: No file is opened.");
-        strcpy(output, "err No file opened");
-        return strlen(output);
+        *output = strdup("err No file opened");
+        return strlen(*output);
     }
 
     if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
         merror("At WCOM close: Invalid file name");
-        strcpy(output, "err Invalid file name");
-        return strlen(output);
+        *output = strdup("err Invalid file name");
+        return strlen(*output);
     }
 
     if (strcmp(file.path, final_path) != 0) {
         merror("At WCOM close: The target file doesn't match the opened file (%s).", file.path);
-        strcpy(output, "err The target file doesn't match the opened file");
-        return strlen(output);
+        *output = strdup("err The target file doesn't match the opened file");
+        return strlen(*output);
     }
 
     *file.path = '\0';
 
     if (fclose(file.fp)) {
         merror("At WCOM close: %s", strerror(errno));
-        strcpy(output, "err Cannot close");
-        return strlen(output);
+        *output = strdup("err Cannot close");
+        return strlen(*output);
     } else {
-        strcpy(output, "ok");
-        return 2;
+        *output = strdup("ok");
+        return strlen(*output);
     }
 }
 
-size_t wcom_sha1(const char *file_path, char *output){
+size_t wcom_sha1(const char *file_path, char ** output){
     char final_path[PATH_MAX + 1];
     os_sha1 sha1;
 
     if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
         merror("At WCOM sha1: Invalid file name");
-        strcpy(output, "err Invalid file name");
-        return strlen(output);
+        *output = strdup("err Invalid file name");
+        return strlen(*output);
     }
 
     if (OS_SHA1_File(final_path, sha1, OS_BINARY) < 0){
         merror("At WCOM sha1: Error generating SHA1.");
-        strcpy(output, "err Cannot generate SHA1");
-        return strlen(output);
+        *output = strdup("err Cannot generate SHA1");
+        return strlen(*output);
     } else {
-        snprintf(output, OS_MAXSTR + 1, "ok %s", sha1);
-        return strlen(output);
+        os_malloc(OS_MAXSTR + 1, *output);
+        snprintf(*output, OS_MAXSTR + 1, "ok %s", sha1);
+        return strlen(*output);
     }
 }
-size_t wcom_unmerge(const char *file_path, char *output){
+size_t wcom_unmerge(const char *file_path, char ** output){
     char final_path[PATH_MAX + 1];
 
     if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
         merror("At WCOM unmerge: Invalid file name");
-        strcpy(output, "err Invalid file name");
-        return strlen(output);
+        *output = strdup("err Invalid file name");
+        return strlen(*output);
     }
 
     if (UnmergeFiles(final_path, isChroot() ? INCOMING_DIR : DEFAULTDIR INCOMING_DIR, OS_BINARY) == 0){
         merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
-        strcpy(output, "err Cannot unmerge file");
-        return strlen(output);
+        *output = strdup("err Cannot unmerge file");
+        return strlen(*output);
     } else {
-        strcpy(output, "ok");
-        return 2;
+        *output = strdup("ok");
+        return strlen(*output);
     }
 }
 
-size_t wcom_uncompress(const char * source, const char * target, char * output) {
+size_t wcom_uncompress(const char * source, const char * target, char ** output) {
     char final_source[PATH_MAX + 1];
     char final_target[PATH_MAX + 1];
     char buffer[4096];
@@ -342,27 +360,27 @@ size_t wcom_uncompress(const char * source, const char * target, char * output) 
 
     if (_jailfile(final_source, INCOMING_DIR, source) > PATH_MAX) {
         merror("At WCOM uncompress: Invalid file name");
-        strcpy(output, "err Invalid file name");
-        return strlen(output);
+        *output = strdup("err Invalid file name");
+        return strlen(*output);
     }
 
     if (_jailfile(final_target, INCOMING_DIR, target) > PATH_MAX) {
         merror("At WCOM uncompress: Invalid file name");
-        strcpy(output, "err Invalid file name");
-        return strlen(output);
+        *output = strdup("err Invalid file name");
+        return strlen(*output);
     }
 
     if (fsource = gzopen(final_source, "rb"), !fsource) {
         merror("At WCOM uncompress: Unable to open '%s'", final_source);
-        strcpy(output, "err Unable to open source");
-        return strlen(output);
+        *output = strdup("err Unable to open source");
+        return strlen(*output);
     }
 
     if (ftarget = fopen(final_target, "wb"), !ftarget) {
         gzclose(fsource);
         merror("At WCOM uncompress: Unable to open '%s'", final_target);
-        strcpy(output, "err Unable to open target");
-        return strlen(output);
+        *output = strdup("err Unable to open target");
+        return strlen(*output);
     }
 
     while (length = gzread(fsource, buffer, 4096), length > 0) {
@@ -370,49 +388,49 @@ size_t wcom_uncompress(const char * source, const char * target, char * output) 
             gzclose(fsource);
             fclose(ftarget);
             merror("At WCOM uncompress: Unable to write '%s'", final_target);
-            strcpy(output, "err Unable to write target");
-            return strlen(output);
+            *output = strdup("err Unable to write target");
+            return strlen(*output);
         }
     }
 
     if (length < 0) {
         merror("At WCOM uncompress: Unable to read '%s'", final_source);
-        strcpy(output, "err Unable to read source");
+        *output = strdup("err Unable to read source");
     } else {
         unlink(final_source);
-        strcpy(output, "ok");
+        *output = strdup("ok");
     }
 
     gzclose(fsource);
     fclose(ftarget);
-    return strlen(output);
+    return strlen(*output);
 }
 
-size_t wcom_upgrade(const char * package, const char * installer, char * output) {
+size_t wcom_upgrade(const char * package, const char * installer, char ** output) {
     char installer_j[PATH_MAX + 1];
     char compressed[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
-    static int timeout = 0;
+    req_timeout = 0;
     int status;
     char *out;
 
-    if (timeout == 0) {
-        timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
+    if (req_timeout == 0) {
+        req_timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
     }
 
     // Unsign
 
     if (_unsign(package, compressed) < 0) {
-        strcpy(output, "err Could not verify signature");
-        return strlen(output);
+        *output = strdup("err Could not verify signature");
+        return strlen(*output);
     }
 
     // Uncompress
 
     if (_uncompress(compressed, package, merged) < 0) {
         unlink(compressed);
-        strcpy(output, "err Could not uncompress package");
-        return strlen(output);
+        *output = strdup("err Could not uncompress package");
+        return strlen(*output);
     }
 
     // Clean up upgrade folder
@@ -423,8 +441,8 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
     if (cldir_ex(UPGRADE_DIR)) {
 #endif
         merror("At WCOM upgrade: Could not clean up upgrade directory");
-        strcpy(output, "err Cannot clean up directory");
-        return strlen(output);
+        *output = strdup("err Cannot clean up directory");
+        return strlen(*output);
     }
     // Unmerge
 
@@ -435,8 +453,8 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
 #endif
         unlink(merged);
         merror("At WCOM upgrade: Error unmerging file '%s.'", merged);
-        strcpy(output, "err Cannot unmerge file");
-        return strlen(output);
+        *output = strdup("err Cannot unmerge file");
+        return strlen(*output);
     }
 
     unlink(merged);
@@ -445,8 +463,8 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
 
     if (_jailfile(installer_j, UPGRADE_DIR, installer) > PATH_MAX) {
         merror("At WCOM upgrade: Invalid file name '%s'", installer);
-        strcpy(output, "err Invalid installer name");
-        return strlen(output);
+        *output = strdup("err Invalid installer name");
+        return strlen(*output);
     }
 
     // Execute
@@ -454,24 +472,25 @@ size_t wcom_upgrade(const char * package, const char * installer, char * output)
 #ifndef WIN32
     if (chmod(installer_j, 0750) < 0) {
         merror("At WCOM upgrade: Could not chmod '%s'", installer_j);
-        strcpy(output, "err Could not chmod");
-        return strlen(output);
+        *output = strdup("err Could not chmod");
+        return strlen(*output);
     }
 #endif
 
-    if (wm_exec(installer_j, &out, &status, timeout) < 0) {
+    if (wm_exec(installer_j, &out, &status, req_timeout, NULL) < 0) {
         merror("At WCOM upgrade: Error executing command [%s]", installer_j);
-        strcpy(output, "err Cannot execute installer");
-        return strlen(output);
+        *output = strdup("err Cannot execute installer");
+        return strlen(*output);
     } else {
-        int offset = snprintf(output, OS_MAXSTR, "ok %d ", status);
-        strncpy(output + offset, out, OS_MAXSTR - offset + 1);
+        os_malloc(OS_MAXSTR + 1, *output);
+        int offset = snprintf(*output, OS_MAXSTR, "ok %d ", status);
+        strncpy(*output + offset, out, OS_MAXSTR - offset + 1);
         free(out);
-        return strlen(output);
+        return strlen(*output);
     }
 }
 
-size_t wcom_upgrade_result(char *output){
+size_t wcom_upgrade_result(char ** output){
     char buffer[20];
 
 #ifndef WIN32
@@ -488,18 +507,19 @@ size_t wcom_upgrade_result(char *output){
     if (result_file = fopen(PATH, "rb"), result_file) {
 #endif
         if (fgets(buffer,20,result_file)){
-            snprintf(output, OS_MAXSTR, "ok %s", buffer);
+            os_malloc(OS_MAXSTR + 1, *output);
+            snprintf(*output, OS_MAXSTR, "ok %s", buffer);
             fclose(result_file);
-            return strlen(output);
+            return strlen(*output);
         }
         fclose(result_file);
     }
-    strcpy(output, "err Cannot read upgrade_result file.");
-    mdebug1("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
-    return strlen(output);
+    *output = strdup("err Cannot read upgrade_result file.");
+    merror("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
+    return strlen(*output);
 }
 
-size_t wcom_restart(char *output) {
+size_t wcom_restart(char ** output) {
     time_t lock = pending_upg - time(NULL);
 
     if (lock <= 0) {
@@ -517,11 +537,11 @@ size_t wcom_restart(char *output) {
                 sleep(1);
                 if (execv(exec_cmd[0], exec_cmd) < 0) {
                     merror(EXEC_CMDERROR, *exec_cmd, strerror(errno));
-                    return strlen(output);
+                    _exit(1);
                 }
             break;
             default:
-                strcpy(output, "ok");
+                *output = strdup("ok");
             break;
         }
 #else
@@ -532,16 +552,63 @@ size_t wcom_restart(char *output) {
         minfo(LOCK_RES, (int)lock);
     }
 
-    return strlen(output);
+    return strlen(*output);
+}
+
+
+size_t wcom_getconfig(const char * section, char ** output) {
+
+    cJSON *cfg;
+    char *json_str;
+
+    if (strcmp(section, "active-response") == 0){
+        if (cfg = getARConfig(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "logging") == 0){
+        if (cfg = getLoggingConfig(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+    } else if (strcmp(section, "internal") == 0){
+        if (cfg = getExecdInternalOptions(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+    } else {
+        goto error;
+    }
+error:
+    merror("At WCOM getconfig: Could not get '%s' section", section);
+    *output = strdup("err Could not get requested section");
+    return strlen(*output);
 }
 
 #ifndef WIN32
-
 void * wcom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
-    char buffer[OS_MAXSTR + 1];
-    char response[OS_MAXSTR + 1];
+    char *buffer = NULL;
+    char *response = NULL;
     ssize_t length;
     fd_set fdset;
 
@@ -578,9 +645,10 @@ void * wcom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
-        switch (length = recv(peer, buffer, OS_MAXSTR, 0), length) {
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case -1:
-            merror("At wcom_main(): recv(): %s", strerror(errno));
+            merror("At wcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
             break;
 
         case 0:
@@ -588,12 +656,18 @@ void * wcom_main(__attribute__((unused)) void * arg) {
             close(peer);
             break;
 
+        case OS_MAXLEN:
+            merror("Received message > %i", MAX_DYN_STR);
+            close(peer);
+            break;
+
         default:
-            buffer[length] = '\0';
-            length = wcom_dispatch(buffer, length, response);
-            send(peer, response, length, 0);
+            length = wcom_dispatch(buffer, length, &response);
+            OS_SendSecureTCP(peer, length, response);
+            free(response);
             close(peer);
         }
+        free(buffer);
     }
 
     mdebug1("Local server thread finished.");

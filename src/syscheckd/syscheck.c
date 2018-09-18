@@ -18,6 +18,7 @@
 // Global variables
 syscheck_config syscheck;
 pthread_cond_t audit_thread_started;
+int sys_debug_level;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -55,12 +56,13 @@ static void read_internal(int debug_level)
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
 #endif
+    sys_debug_level = getDefine_Int("syscheck", "debug", 0, 2);
 
     /* Check current debug_level
      * Command line setting takes precedence
      */
     if (debug_level == 0) {
-        debug_level = getDefine_Int("syscheck", "debug", 0, 2);
+        int debug_level = sys_debug_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
@@ -228,6 +230,8 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = DEFAULTCPATH;
+    gid_t gid;
+    const char *group = GROUPGLOBAL;
 #ifdef ENABLE_AUDIT
     audit_thread_active = 0;
 #endif
@@ -263,6 +267,17 @@ int main(int argc, char **argv)
                 help_syscheckd();
                 break;
         }
+    }
+
+    /* Check if the group given is valid */
+    gid = Privsep_GetGroup(group);
+    if (gid == (gid_t) - 1) {
+        merror_exit(USER_ERROR, "", group);
+    }
+
+    /* Privilege separation */
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Read internal options */
@@ -327,6 +342,9 @@ int main(int argc, char **argv)
 
     /* Start signal handling */
     StartSIG(ARGV0);
+
+    // Start com request thread
+    w_create_thread(syscom_main, NULL);
 
     /* Create pid */
     if (CreatePID(ARGV0, getpid()) < 0) {
@@ -421,6 +439,7 @@ int main(int argc, char **argv)
 
     /* Start the daemon */
     start_daemon();
+
 }
 
 #endif /* !WIN32 */

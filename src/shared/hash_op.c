@@ -82,7 +82,6 @@ void *OSHash_Free(OSHash *self)
     return (NULL);
 }
 
-
 /* Generates hash for key */
 static unsigned int _os_genhash(const OSHash *self, const char *key)
 {
