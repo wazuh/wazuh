@@ -94,6 +94,10 @@ class MasterManagerHandler(ServerHandler):
             response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
+        elif command == 'get_config':
+            response = self.manager.get_configuration()
+            serialized_response = ['ok', json.dumps(response)]
+            return serialized_response
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
@@ -529,6 +533,14 @@ class MasterManager(Server):
 
         return result
 
+    def get_configuration(self):
+        result = False
+
+        if self.config:
+            result = self.config
+
+        return result
+
 
     def req_file_status_to_workers(self):
         responses = list(self.send_request_broadcast(command = 'file_status'))
@@ -707,6 +719,10 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             else:
                 response = list(self.manager.send_request_broadcast(command=command, data=data))
                 serialized_response = ['ok', json.dumps({node:data for node,data in response})]
+            return serialized_response
+        elif command == 'get_config':
+            response = self.manager.get_configuration()
+            serialized_response = ['ok', json.dumps(response)]
             return serialized_response
 
         else:

@@ -676,6 +676,11 @@ uint32_t wnet_order(uint32_t value) {
 #endif
 }
 
+
+uint32_t wnet_order_big(uint32_t value) {
+    return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
+}
+
 /* Set the maximum buffer size for the socket */
 int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
 
@@ -714,4 +719,134 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
     }
 
     return 0;
+}
+
+
+/* Send secure TCP to Cluster message
+ * Return 0 on success or OS_SOCKTERR on error.
+ */
+int OS_SendSecureTCPCluster(int sock, const void * command,const void * payload) {
+    int retval;
+    void * buffer = NULL;
+    void * header = NULL;
+    uint32_t max_msg_size = 1000000;
+    uint32_t payload_length = 0;
+    int cmd_size = 12;
+    uint32_t counter = os_random() % 4294967295;
+    int cmd_length = 0;
+    unsigned int header_size = 0;
+    unsigned int buffer_size = 0;
+    char *padding_command = NULL;
+
+    if(!command){
+        merror("Empty command, not sending message to cluster");
+        return -1;
+    }
+
+    cmd_length = strlen(command);
+
+    if(cmd_length > cmd_size){
+        merror("Command of length %d exceeds maximum allowed %d",cmd_length,cmd_size);
+        return -1;
+    }
+
+    if (payload){
+        payload_length = strlen(payload);
+        if (payload_length > max_msg_size){
+            merror("Data of length %d exceeds maximum allowed %d",payload_length,max_msg_size);
+            return -1;
+        }
+    }
+
+    /*Format header*/
+    header_size = 8 + cmd_size;
+    os_calloc(header_size,sizeof(char),padding_command);
+    snprintf(padding_command,header_size,"%s %0*d",(char *)command,(int)(cmd_size - cmd_length - 1),0);
+    padding_command = wstr_replace(padding_command,"0","-");
+  
+    os_malloc(header_size, header);
+    *(uint32_t *)header = wnet_order_big(counter);
+    header += sizeof(uint32_t);
+    *(uint32_t *)header = wnet_order_big(payload_length);
+    header += sizeof(uint32_t);
+    memcpy(header,padding_command,strlen(padding_command));
+    header -= sizeof(uint32_t) * 2;
+
+    /* Format buffer */
+    buffer_size = header_size + payload_length;
+    os_malloc(buffer_size , buffer);
+    memcpy(buffer, header, header_size);
+    memcpy(buffer+header_size,payload,payload_length);
+
+    retval = send(sock, buffer, buffer_size, 0) == (ssize_t)buffer_size ? 0 : OS_SOCKTERR;
+
+    free(padding_command);
+    free(header);
+    free(buffer);
+    return retval;
+}
+
+
+/* Receive secure TCP message
+ * Return recvval on success or OS_SOCKTERR on error.
+ */
+int OS_RecvSecureClusterTCP(int sock, char * ret) {
+    int recvval;
+    int cmd_size = 12;
+    uint32_t header_size = 8 + cmd_size;
+    uint32_t counter = 0;
+    uint32_t size = 0;
+    char *payload;
+    char command[12] = {0};
+    char * buffer;
+    size_t bufsz = header_size;
+
+    os_malloc(bufsz, buffer);
+    recvval = recv(sock, buffer, bufsz, 0);
+
+    switch(recvval){
+
+        case -1:
+            free(buffer);
+            return recvval;
+            break;
+
+        case 0:
+            free(buffer);
+            return recvval;
+            break;
+    }
+
+    counter = wnet_order_big(*(uint32_t*)buffer);
+    buffer += sizeof(uint32_t);
+    size = wnet_order_big(*(uint32_t*)buffer);
+    buffer += sizeof(uint32_t);
+    snprintf(command,cmd_size,"%s",buffer);
+    buffer -= sizeof(uint32_t)*2;
+
+    mdebug1("Counter: %d",counter);
+    
+    /* Read the payload */
+    os_calloc(size, sizeof(char),payload);
+    int recvb = recv(sock, payload, size, MSG_WAITALL);
+
+    switch(recvb){
+        case -1:
+            free(buffer);
+            free(payload);
+            return recvb;
+            break;
+
+        case 0:
+            free(buffer);
+            free(payload);
+            return recvb;
+            break;
+    }
+    recvval+=recvb;
+
+    memcpy(ret,payload,size);
+    free(buffer);
+    free(payload);
+    return recvval - header_size;
 }

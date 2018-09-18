@@ -42,6 +42,7 @@ void CheckExecConfig();
 cJSON *getARConfig(void);
 cJSON *getARInternalOptions(void);
 cJSON *getExecdInternalOptions(void);
+cJSON *getClusterConfig(void);
 char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);

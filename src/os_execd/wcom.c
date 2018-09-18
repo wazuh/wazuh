@@ -594,7 +594,18 @@ size_t wcom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
-    } else {
+    } else if (strcmp(section, "cluster") == 0){
+        if (cfg = getClusterConfig(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+    }else {
         goto error;
     }
 error:
