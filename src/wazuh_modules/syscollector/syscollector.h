@@ -209,6 +209,7 @@ int read_entry(u_int8_t* bytes, rpm_data *info);
 
 // Network inventory for Linux
 cJSON * getNetworkIfaces_linux();
+cJSON * getNetworkIfaces_bsd();
 
 #endif
 #endif
