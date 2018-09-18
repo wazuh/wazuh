@@ -111,6 +111,6 @@ typedef struct __Config {
     long queue_size;
 } _Config;
 
-int default_network_iface; 
+extern int default_network_iface; 
 
 #endif /* _CCONFIG__H */

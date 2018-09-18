@@ -1278,7 +1278,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         cJSON* object = cJSON_GetArrayItem(ifaces_list_json,i);
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
-
         string = cJSON_PrintUnformatted(object);
         mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);

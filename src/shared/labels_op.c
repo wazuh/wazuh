@@ -189,7 +189,6 @@ wlabel_t * labels_dup(const wlabel_t * labels) {
 //
 
 char * parse_environment_labels(const wlabel_t label) {
-
     static char final[OS_COMMENT_MAX + 1] = { '\0' };
     char orig[OS_COMMENT_MAX + 1] = { '\0' };
     char *field;
@@ -245,9 +244,10 @@ char * parse_environment_labels(const wlabel_t label) {
 
         // Find static fields
         if (!strcmp(var, "os.name")) {
+
             os_info = getunameJSON();
             field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_name"));
-
+            
         } else if (!strcmp(var, "os.version")) {
             os_info = getunameJSON();
             field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_version"));
@@ -265,7 +265,7 @@ char * parse_environment_labels(const wlabel_t label) {
             #else
               network_info = getNetworkIfaces_linux();
               iface = cJSON_GetArrayItem(network_info,default_network_iface);
-
+            #endif
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
             ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
             field = ipv4_address;
@@ -326,13 +326,15 @@ char * parse_environment_labels(const wlabel_t label) {
             if(i!=default_network_iface){
               iface = cJSON_GetArrayItem(network_info,i);
               ipv4 = cJSON_GetObjectItem(iface,"ipv4");
-              ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
-              if(field){
-                strcat(field,",");
-                strcat(field,ipv4_address);
+              if(ipv4){
+                ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
+                if(field){
+                  strcat(field,",");
+                  strcat(field,ipv4_address);
+                }
+                else
+                  field = ipv4_address;
               }
-              else
-                field = ipv4_address;
             }
           }
 
@@ -374,13 +376,15 @@ char * parse_environment_labels(const wlabel_t label) {
             if(i!=default_network_iface){
               iface = cJSON_GetArrayItem(network_info,i);
               ipv6 = cJSON_GetObjectItem(iface,"ipv6");
-              ipv6_address = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
-              if(field){
-                strcat(field,",");
-                strcat(field,ipv6_address);
-              }
-              else
-                field = ipv6_address;
+              if(ipv6){
+                ipv6_address = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
+                if(field){
+                  strcat(field,",");
+                  strcat(field,ipv6_address);
+                }
+                else
+                  field = ipv6_address;
+                }
             }
           }
           #endif
