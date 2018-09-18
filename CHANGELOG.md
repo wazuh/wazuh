@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fixed mandatory configuration labels check ([#1208](https://github.com/wazuh/wazuh/pull/1208))
+- Fixed email_alerts configuration for multiple recipients ([#1193 ](https://github.com/wazuh/wazuh/pull/1193))
 - Fixed manager stopping when no command timeout is allowed ([#1194](https://github.com/wazuh/wazuh/pull/1194))
 
 ## [v3.6.2]
