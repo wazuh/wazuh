@@ -47,8 +47,6 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
     }
 
     if (Mail) {
-        /*os_realloc(Mail->gran_to,
-                   sizeof(char *) * (granto_size + 2), Mail->gran_to);*/
         os_realloc(Mail->gran_id,
                    sizeof(unsigned int *) * (granto_size + 2), Mail->gran_id);
         os_realloc(Mail->gran_level,
@@ -61,9 +59,6 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                    sizeof(OSMatch *) * (granto_size + 2), Mail->gran_location);
         os_realloc(Mail->gran_group,
                    sizeof(OSMatch *) * (granto_size + 2), Mail->gran_group);
-
-        /*Mail->gran_to[granto_size] = NULL;
-        Mail->gran_to[granto_size + 1] = NULL;*/
 
         Mail->gran_id[granto_size] = NULL;
         Mail->gran_id[granto_size + 1] = NULL;
