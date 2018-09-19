@@ -19,6 +19,12 @@ All notable changes to this project will be documented in this file.
 - API requests are forwarded to the proper manager node in cluster. ([#885](https://github.com/wazuh/wazuh/pull/885))
 
 ### Changed
+<<<<<<< HEAD
+=======
+- Refactor Python framework code to standarize database requests and support API queries ([#921](https://github.com/wazuh/wazuh/pull/921)).
+- Add support for multigroups ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135)).
+- Add automatic labels ([#1004](https://github.com/wazuh/wazuh/pull/1340)).
+>>>>>>> 26491dbae... Update CHANGELOG
 
 - Refactor Python framework code to standardize database requests and support queries. ([#921](https://github.com/wazuh/wazuh/pull/921))
 - Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
