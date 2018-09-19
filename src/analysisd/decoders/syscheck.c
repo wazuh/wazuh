@@ -42,7 +42,6 @@ int fim_end_first_scan (Eventinfo *lf, _sdb *sdb);
 
 // Initialize the necessary information to process the syscheck information
 void fim_init(void) {
-    int fields = SK_NFIELDS;
     // Create decoder
     os_calloc(1, sizeof(OSDecoderInfo), fim_decoder);
     fim_decoder->id = getDecoderfromlist(SYSCHECK_MOD);
@@ -50,7 +49,7 @@ void fim_init(void) {
     fim_decoder->type = OSSEC_RL;
     fim_decoder->fts = 0;
 
-    os_calloc(fields, sizeof(char *), fim_decoder->fields);
+    os_calloc(Config.decoder_order_size, sizeof(char *), fim_decoder->fields);
     fim_decoder->fields[SK_FILE] = "file";
     fim_decoder->fields[SK_SIZE] = "size";
     fim_decoder->fields[SK_PERM] = "perm";
@@ -185,6 +184,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     int db_result = 0;
     int changes = 0;
     int i = 0;
+    int alert_event = 1;
     char *ttype[OS_SIZE_128];
     char *wazuhdb_query = NULL;
     char *new_check_sum = NULL;
@@ -285,6 +285,11 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             } else {
                 // File added
                 lf->event_type = FIM_ADDED;
+                if(Config.syscheck_alert_new == 0) {
+                    alert_event = 0;
+                } else {
+                    alert_event = 1;
+                }
             }
 
             if (strstr(lf->location, "syscheck-registry")) {
@@ -331,12 +336,10 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             return (-1);
     }
 
-    int ts_end = fim_end_first_scan(lf, sdb);
-
-    if ((Config.syscheck_alert_new == 1 && ts_end != 0 && ts_end > lf->time.tv_nsec)) {
+    if (alert_event == 1) {
         sk_fill_event(lf, f_name, &newsum);
 
-        /* Fields */
+        /* Dyanmic Fields */
         lf->nfields = SK_NFIELDS;
         for (i = 0; i < SK_NFIELDS; i++) {
             os_strdup(fim_decoder->fields[i], lf->fields[i].key);
@@ -344,7 +347,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
         fim_alert(f_name, &oldsum, &newsum, lf, sdb);
     } else {
-        mdebug2("Alert discarded (alert_new option or first scan) file '%s'", f_name);
+        mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
     }
 
     sk_sum_clean(&newsum);
@@ -867,8 +870,32 @@ int fim_end_first_scan(Eventinfo *lf, _sdb *sdb) {
     char *ts = NULL;
     int db_result;
     unsigned long timestamp = 0;
+    unsigned long old_timestamp = 0;
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck get %s",
+            lf->agent_id,
+            "syscheck-db-completed" // Old msg end scan (agent < 3.7)
+    );
+
+    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+
+    if (db_result != 0) {
+        merror("at fim_end_first_scan(): bad result getting timestamp field");
+        free(wazuhdb_query);
+        free(response);
+        return (-1);
+    }
+
+    if (response[0] == 'o' && response[1] == 'k') {
+        if (ts = strchr(response, ' '), !ts) {
+            merror("at fim_end_first_scan(): bad result getting timestamp field");
+            old_timestamp = 0;
+        } else {
+            old_timestamp = atol(ts);
+        }
+    }
 
     snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck get %s",
             lf->agent_id,
@@ -887,8 +914,7 @@ int fim_end_first_scan(Eventinfo *lf, _sdb *sdb) {
     if (response[0] == 'o' && response[1] == 'k') {
         if (ts = strchr(response, ' '), !ts) {
             merror("at fim_end_first_scan(): bad result getting timestamp field");
-            // In case of error alert is reported
-            timestamp = 1;
+            timestamp = 0;
         } else {
             timestamp = atol(ts);
         }
@@ -896,5 +922,5 @@ int fim_end_first_scan(Eventinfo *lf, _sdb *sdb) {
 
     free(wazuhdb_query);
     free(response);
-    return (timestamp);
+    return (timestamp > old_timestamp)? timestamp : old_timestamp;
 }
