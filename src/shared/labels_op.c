@@ -16,6 +16,8 @@
 #include "wazuh_modules/syscollector/syscollector.h"
 #include <time.h>
 
+int default_network_iface;
+
 /* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
 wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const char *value, unsigned int hidden, int overwrite) {
     size_t i;
@@ -202,6 +204,9 @@ char * parse_environment_labels(const wlabel_t label) {
     cJSON *network_info;
     cJSON *iface = cJSON_CreateArray();
     cJSON *ipv4 = cJSON_CreateArray();
+    cJSON *ipv4_addresses = cJSON_CreateArray();
+    cJSON *ipv6_addresses = cJSON_CreateArray();
+    cJSON *mac_addresses = cJSON_CreateArray();
     cJSON *ipv6 = cJSON_CreateArray();
     int i;
     char *ipv4_address;
@@ -247,7 +252,7 @@ char * parse_environment_labels(const wlabel_t label) {
 
             os_info = getunameJSON();
             field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_name"));
-            
+
         } else if (!strcmp(var, "os.version")) {
             os_info = getunameJSON();
             field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_version"));
@@ -300,20 +305,15 @@ char * parse_environment_labels(const wlabel_t label) {
                   continue;
               }
 
-            windows_net_info = get_network(currentAddress,0,NULL);
-            network_info = cJSON_Parse(windows_net_info);
-            iface = cJSON_GetArrayItem(network_info,2);
-            ipv4 = cJSON_GetObjectItem(iface,"ipv4");
-            ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
-            if(field){
-              strcat(field,",");
-              strcat(field,ipv4_address);
+              windows_net_info = get_network(currentAddress,0,NULL);
+              network_info = cJSON_Parse(windows_net_info);
+              iface = cJSON_GetArrayItem(network_info,2);
+              ipv4 = cJSON_GetObjectItem(iface,"ipv4");
+              cJSON_AddItemToArray(ipv4_addresses, cJSON_GetObjectItem(ipv4,"address"));
+
+              currentAddress = currentAddress->Next;
             }
-            else{
-              field = ipv4_address;
-            }
-            currentAddress = currentAddress->Next;
-          }
+            field = cJSON_PrintUnformatted(ipv4_addresses);
         }
         FREE(currentAddress);
         #else
@@ -327,16 +327,11 @@ char * parse_environment_labels(const wlabel_t label) {
               iface = cJSON_GetArrayItem(network_info,i);
               ipv4 = cJSON_GetObjectItem(iface,"ipv4");
               if(ipv4){
-                ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
-                if(field){
-                  strcat(field,",");
-                  strcat(field,ipv4_address);
-                }
-                else
-                  field = ipv4_address;
+                cJSON_AddItemToArray(ipv4_addresses, cJSON_GetObjectItem(ipv4,"address"));
               }
             }
           }
+        field = cJSON_PrintUnformatted(ipv4_addresses);
 
         #endif
 
@@ -355,15 +350,12 @@ char * parse_environment_labels(const wlabel_t label) {
             network_info = cJSON_Parse(windows_net_info);
             iface = cJSON_GetArrayItem(network_info,2);
             ipv6 = cJSON_GetObjectItem(iface,"ipv6");
-            ipv6_address = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
-            if(field){
-              strcat(field,",");
-              strcat(field,ipv6_address);
-            }
-            else
-              field = ipv6_address;
+            cJSON_AddItemToArray(ipv6_addresses, cJSON_GetObjectItem(ipv6,"address"));
             currentAddress = currentAddress->Next;
             }
+
+            field = cJSON_PrintUnformatted(ipv4_addresses);
+
           }
           FREE(currentAddress);
           #else
@@ -377,16 +369,12 @@ char * parse_environment_labels(const wlabel_t label) {
               iface = cJSON_GetArrayItem(network_info,i);
               ipv6 = cJSON_GetObjectItem(iface,"ipv6");
               if(ipv6){
-                ipv6_address = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
-                if(field){
-                  strcat(field,",");
-                  strcat(field,ipv6_address);
-                }
-                else
-                  field = ipv6_address;
+                cJSON_AddItemToArray(ipv6_addresses, cJSON_GetObjectItem(ipv6,"address"));
                 }
             }
           }
+          field = cJSON_PrintUnformatted(ipv6_addresses);
+
           #endif
 
         }else if(!strcmp(var,"mac.primary")){
@@ -422,15 +410,10 @@ char * parse_environment_labels(const wlabel_t label) {
             windows_net_info = get_network(currentAddress,0,NULL);
             network_info = cJSON_Parse(windows_net_info);
             iface = cJSON_GetArrayItem(network_info,2);
-            mac = cJSON_Print(cJSON_GetObjectItem(iface,"mac"));
-            if(field){
-              strcat(field,",");
-              strcat(field,mac);
-            }
-            else
-              field = mac;
+            cJSON_AddItemToArray(mac_addresses, cJSON_GetObjectItem(iface,"mac"));
             currentAddress = currentAddress->Next;
             }
+            field = cJSON_PrintUnformatted(mac_addresses);
           }
           FREE(currentAddress);
           #else
@@ -442,15 +425,10 @@ char * parse_environment_labels(const wlabel_t label) {
           for(i = 0; i < cJSON_GetArraySize(network_info);i++){
             if(i!=default_network_iface){
               iface = cJSON_GetArrayItem(network_info,i);
-              mac = cJSON_Print(cJSON_GetObjectItem(iface,"mac"));
-              if(field){
-                strcat(field,",");
-                strcat(field,mac);
-              }
-              else
-                field = mac;
+              cJSON_AddItemToArray(mac_addresses, cJSON_GetObjectItem(iface,"mac"));
             }
           }
+          field = cJSON_PrintUnformatted(mac_addresses);
 
           #endif
         }else  if(!strcmp(var,"timezone")){

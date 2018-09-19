@@ -13,6 +13,8 @@
 #include "wazuh_modules/syscollector/syscollector.h"
 
 int rotate_log;
+int default_network_iface;
+
 
 /* Start the agent daemon */
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
