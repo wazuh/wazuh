@@ -262,7 +262,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
                     length = strlen(buffer);
                     break;
 
-                case OS_MAXLEN:
+                case OS_SOCKTERR:
                     mdebug1("Maximum buffer length reached.");
                     strcpy(buffer,"err Maximum buffer length reached");
                     length = strlen(buffer);
