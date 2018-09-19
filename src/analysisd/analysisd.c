@@ -213,6 +213,7 @@ pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_ignore_rule_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -2028,14 +2029,14 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         /* Extract decoded event from the queue */
         if(lf = queue_pop_ex(decode_queue_event_output), lf) {
-            mdebug2("Taking out from the queue");
+            //mdebug2("Taking out from the queue");
         }
 
         currently_rule = NULL;
 
         lf->size = strlen(lf->log);
 
-        mdebug2("Event extracted from the queue...");
+        //mdebug2("Event extracted from the queue...");
         /* Run accumulator */
         if ( lf->decoder_info->accumulate == 1 ) {
             lf = Accumulate(lf);
@@ -2097,7 +2098,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         }
 
         // Insert labels
+        w_mutex_lock(&lf_mutex);
         lf->labels = labels_find(lf);
+        w_mutex_unlock(&lf_mutex);
 
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
