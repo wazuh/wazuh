@@ -36,8 +36,6 @@ static int fim_control_msg (char *key, time_t value, Eventinfo *lf, _sdb *sdb);
 int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb);
 // Clean for old entries
 int fim_database_clean (Eventinfo *lf, _sdb *sdb);
-// Check if the first scan was made
-int fim_end_first_scan (Eventinfo *lf, _sdb *sdb);
 
 
 // Initialize the necessary information to process the syscheck information
@@ -76,6 +74,9 @@ void fim_init(void) {
     fim_decoder->fields[SK_PPID] = "ppid";
     fim_decoder->fields[SK_PROC_ID] = "process_id";
     fim_decoder->fields[SK_TAG] = "tag";
+
+    //Create hash table for agent information
+    fim_agentinfo = OSHash_Create();
 }
 // Initialize the necessary information to process the syscheck information
 void sdb_init(_sdb *localsdb) {
@@ -184,7 +185,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     int db_result = 0;
     int changes = 0;
     int i = 0;
-    int alert_event = 1;
     char *ttype[OS_SIZE_128];
     char *wazuhdb_query = NULL;
     char *new_check_sum = NULL;
@@ -193,6 +193,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     char *check_sum = NULL;
     sk_sum_t oldsum = { .size = NULL };
     sk_sum_t newsum = { .size = NULL };
+    time_t *end_first_scan;
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
     os_strdup(c_sum, new_check_sum);
@@ -285,11 +286,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             } else {
                 // File added
                 lf->event_type = FIM_ADDED;
-                if(Config.syscheck_alert_new == 0) {
-                    alert_event = 0;
-                } else {
-                    alert_event = 1;
-                }
             }
 
             if (strstr(lf->location, "syscheck-registry")) {
@@ -322,6 +318,36 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             mdebug2("File %s saved/updated in FIM DDBB", f_name);
 
+            if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), !end_first_scan) {
+                mdebug2("Alert discarded, first scan. File '%s'", f_name);
+                lf->data = NULL;
+                free(wazuhdb_query);
+                free(new_check_sum);
+                free(old_check_sum);
+                free(response);
+                return (0);
+            }
+
+            if(lf->time.tv_sec < *end_first_scan) {
+                mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
+                lf->data = NULL;
+                free(wazuhdb_query);
+                free(new_check_sum);
+                free(old_check_sum);
+                free(response);
+                return (0);
+            }
+
+            if(Config.syscheck_alert_new == 0) {
+                mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
+                lf->data = NULL;
+                free(wazuhdb_query);
+                free(new_check_sum);
+                free(old_check_sum);
+                free(response);
+                return (0);
+            }
+
             break;
 
         default: // Error in fim check sum
@@ -336,19 +362,15 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             return (-1);
     }
 
-    if (alert_event == 1) {
-        sk_fill_event(lf, f_name, &newsum);
+    sk_fill_event(lf, f_name, &newsum);
 
-        /* Dyanmic Fields */
-        lf->nfields = SK_NFIELDS;
-        for (i = 0; i < SK_NFIELDS; i++) {
-            os_strdup(fim_decoder->fields[i], lf->fields[i].key);
-        }
-
-        fim_alert(f_name, &oldsum, &newsum, lf, sdb);
-    } else {
-        mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
+    /* Dyanmic Fields */
+    lf->nfields = SK_NFIELDS;
+    for (i = 0; i < SK_NFIELDS; i++) {
+        os_strdup(fim_decoder->fields[i], lf->fields[i].key);
     }
+
+    fim_alert(f_name, &oldsum, &newsum, lf, sdb);
 
     sk_sum_clean(&newsum);
     free(response);
@@ -592,7 +614,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     lf->inode_before = oldsum->inode;
                 } else {
                     localsdb->inode[0] = '\0';
-}
+            }
             break;
         default:
             return (-1);
@@ -645,7 +667,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     }
 
     if(lf->data) {
-        snprintf(localsdb->comment+comment_buf, OS_MAXSTR-comment_buf, "What changed:\n%s", lf->data);
+        snprintf(localsdb->comment+comment_buf, OS_MAXSTR-comment_buf, "What changed:\n%s",
+                lf->data);
         os_strdup(lf->data, lf->diff);
     }
 
@@ -749,12 +772,14 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
     char *wazuhdb_query = NULL;
     char *response = NULL;
     int db_result;
+    time_t *ts_end;
 
     // If we don't have a valid syscheck message, it may be a scan control message
 
-    if (strcmp(key, HC_SK_DB_COMPLETED) == 0 || strcmp(key, HC_FIM_DB_SFS) == 0 ||
-            strcmp(key, HC_FIM_DB_EFS) == 0 || strcmp(key, HC_FIM_DB_SS) == 0 ||
-            strcmp(key, HC_FIM_DB_ES) == 0) {
+    if (strcmp(key, HC_FIM_DB_SFS) == 0 || strcmp(key, HC_FIM_DB_EFS) == 0 || 
+            strcmp(key, HC_FIM_DB_SS) == 0 || strcmp(key, HC_FIM_DB_ES) == 0 ||
+            strcmp(key, HC_SK_DB_COMPLETED) == 0) {
+
         os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
         snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck metadata %s %ld",
@@ -772,8 +797,26 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
             return (-1);
         }
 
+        // If end first scan store timestamp in a hash table
+        if(strcmp(key, HC_FIM_DB_EFS) == 0) {
+            if (ts_end = (time_t *) OSHash_Get_ex(fim_agentinfo, lf->agent_id),
+                    !ts_end) {
+                os_calloc(1, sizeof(time_t), ts_end);
+                *ts_end = value + 2;
+
+                if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, ts_end) <= 0) {
+                    free(ts_end);
+                    merror("Unable to add metadata to hash table for agent: %s",
+                            lf->agent_id);
+                }
+            }
+            else {
+                *ts_end = value;
+            }
+        }
+
         // Start scan 3rd_check=2nd_check 2nd_check=1st_check 1st_check=value
-        if(strcmp(key, HC_FIM_DB_SFS) == 0) {
+        if (strcmp(key, HC_FIM_DB_SFS) == 0) {
             snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck control %s %ld",
                     lf->agent_id,
                     key,
@@ -861,66 +904,4 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
     free(response);
     return (1);
 
-}
-
-int fim_end_first_scan(Eventinfo *lf, _sdb *sdb) {
-    // If any entry has a date less than last_check it should be deleted.
-    char *wazuhdb_query = NULL;
-    char *response = NULL;
-    char *ts = NULL;
-    int db_result;
-    unsigned long timestamp = 0;
-    unsigned long old_timestamp = 0;
-
-    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
-
-    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck get %s",
-            lf->agent_id,
-            "syscheck-db-completed" // Old msg end scan (agent < 3.7)
-    );
-
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
-
-    if (db_result != 0) {
-        merror("at fim_end_first_scan(): bad result getting timestamp field");
-        free(wazuhdb_query);
-        free(response);
-        return (-1);
-    }
-
-    if (response[0] == 'o' && response[1] == 'k') {
-        if (ts = strchr(response, ' '), !ts) {
-            merror("at fim_end_first_scan(): bad result getting timestamp field");
-            old_timestamp = 0;
-        } else {
-            old_timestamp = atol(ts);
-        }
-    }
-
-    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck get %s",
-            lf->agent_id,
-            HC_FIM_DB_EFS
-    );
-
-    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
-
-    if (db_result != 0) {
-        merror("at fim_end_first_scan(): bad result getting timestamp field");
-        free(wazuhdb_query);
-        free(response);
-        return (-1);
-    }
-
-    if (response[0] == 'o' && response[1] == 'k') {
-        if (ts = strchr(response, ' '), !ts) {
-            merror("at fim_end_first_scan(): bad result getting timestamp field");
-            timestamp = 0;
-        } else {
-            timestamp = atol(ts);
-        }
-    }
-
-    free(wazuhdb_query);
-    free(response);
-    return (timestamp > old_timestamp)? timestamp : old_timestamp;
 }
