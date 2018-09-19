@@ -26,6 +26,7 @@ class WazuhException(Exception):
         1012: 'Invalid message to queue',
         1013: 'Unable to connect with socket',
         1014: 'Error communicating with socket',
+        1015: 'Error agent version is null. Was the agent ever connected?',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',

@@ -2397,6 +2397,9 @@ class Agent:
 
         # checks if agent version is compatible with this feature
         self._load_info_from_DB()
+        if self.version is None:
+            raise WazuhException(1015)
+            
         agent_version = WazuhVersion(self.version.split(" ")[1])
         required_version = WazuhVersion("v3.7.0")
         if agent_version < required_version:
@@ -2414,7 +2417,7 @@ class Agent:
         try:
             s.connect(dest_socket)
         except socket.error:
-            raise WazuhException(1013)
+            raise WazuhException(1013,"Is the daemon running?")
 
         # Generate message
         msg = "{0}".format(command)
@@ -2424,12 +2427,11 @@ class Agent:
         # Send message
         s.send(msg)
 
-        # Receive data length
-        data_size = s.recv(4)
-        data_size = struct.unpack('<I',data_size[0:4])[0]
-
         # Receive response
         try:
+            # Receive data length
+            data_size = s.recv(4)
+            data_size = struct.unpack('<I',data_size[0:4])[0]
             data = s.recv(data_size,socket.MSG_WAITALL).decode().split(" ", 1)
             rec_msg_ok = data[0]
             rec_msg = data[1]
