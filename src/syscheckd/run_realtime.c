@@ -139,6 +139,10 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
         snprintf(buf, strlen(filename) + 1, "%s", filename);
     }
 
+#ifdef WIN32
+    str_lowercase(buf);
+#endif
+
     while (c = strrchr(buf, PATH_SEP), c && c != buf) {
         *c = '\0';
 
