@@ -636,8 +636,8 @@ hw_info *get_system_bsd(){
 
 #elif defined(__MACH__)
 
-    u_int page_size;
-    uint64_t free_pages;
+    u_int page_size = 0;
+    uint64_t free_pages = 0;
 
     len = sizeof(page_size);
 
@@ -648,6 +648,11 @@ hw_info *get_system_bsd(){
 
             uint64_t cpu_free_kb = (free_pages * (uint64_t)page_size) / 1024;
             info->ram_free = cpu_free_kb;
+
+            if (info->ram_free > info->ram_total) {
+                mwarn("Failed reading free memory RAM.");
+                info->ram_free = info->ram_total;
+            }
 
             if (info->ram_total > 0) {
                 info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
