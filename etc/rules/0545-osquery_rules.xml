@@ -26,7 +26,7 @@
   <rule id="24010" level="3">
     <if_sid>24000</if_sid>
     <decoded_as>json</decoded_as>
-    <description>osquery data grouped</description>
+    <description>osquery event: $(name)</description>
   </rule>
 
   <rule id="24011" level="4">
