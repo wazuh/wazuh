@@ -53,4 +53,67 @@
     <description>Disk busy time is over $(columns.threshold)</description>
   </rule>
 
+  <rule id="24020" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">^pack_osquery-monitoring</field>
+    <description>osquery event: $(name)</description>
+    <group>osquery_monitoring</group>
+  </rule>
+
+  <rule id="24030" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">^pack_incident-response</field>
+    <description>osquery event: $(name)</description>
+    <group>incident_response</group>
+  </rule>
+
+  <rule id="24040" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">^pack_it-compliance</field>
+    <description>osquery event: $(name)</description>
+    <group>it_compliance</group>
+  </rule>
+
+  <rule id="24050" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">^pack_osx-attacks</field>
+    <description>osquery event: $(name)</description>
+    <group>osx_attacks</group>
+  </rule>
+
+  <rule id="24060" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">^pack_vuln-management</field>
+    <description>osquery event: $(name)</description>
+    <group>vuln_management</group>
+  </rule>
+
+  <rule id="24070" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">^pack_hardware-monitoring</field>
+    <description>osquery event: $(name)</description>
+    <group>hardware_monitoring</group>
+  </rule>
+
+  <rule id="24080" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">^pack_ossec-rootkit</field>
+    <description>osquery event: $(name)</description>
+    <group>ossec_rootkit</group>
+  </rule>
+
+  <rule id="24090" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">^pack_windows-hardening</field>
+    <description>osquery event: $(name)</description>
+    <group>windows_hardening</group>
+  </rule>
+
+  <rule id="24100" level="4">
+    <if_sid>24010</if_sid>
+    <field name="name">^pack_windows-attacks</field>
+    <description>osquery event: $(name)</description>
+    <group>windows_attacks</group>
+  </rule>
+
 </group>
