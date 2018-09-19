@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
+
+try:
+    import docker
+except:
+    raise Exception("\'docker\' module needs to be installed")
 import threading
-import time
 import json
-import docker
 import socket
 import sys
 
@@ -12,25 +15,33 @@ class DockerListener:
 
     def __init__(self, interval=1):
         """"
-        Docker constructor
+        DockerListener constructor
 
         """
         # socket variables
-        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+        if sys.platform == "win32":
+            self.wazuh_path = 'C:\Program Files (x86)\ossec-agent'
+        else:
+            self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
         self.interval = interval
         self.client = docker.from_env()
-        # checks if docker service is running
+        self.check_docker_service()
+        # self.event_list = []  # could be removed
+        self.thread = threading.Thread(target=self.listen)
+        self.thread.start()
+
+    def check_docker_service(self):
+        """
+        Checks if Docker service is running
+
+        """
         try:
             self.client.ping()
         except Exception:
             sys.exit("Docker service is not running.")
-        self.event_list = []  # could be removed
-        self.thread = threading.Thread(target=self.listen)
-        self.thread.daemon = True
-        self.thread.start()
 
     def listen(self):
         """
@@ -127,5 +138,3 @@ class DockerListener:
 
 if __name__ == "__main__":
     dl = DockerListener()
-    while True:
-        time.sleep(60)
