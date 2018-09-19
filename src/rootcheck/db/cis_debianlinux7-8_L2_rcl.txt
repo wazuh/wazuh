@@ -25,8 +25,8 @@
 # Multiple patterns can be specified by using " && " between them.
 # (All of them must match for it to return true).
 
-# Level 2 CIS Checks for Debian Linux 7 
-# Based on Center for Internet Security Benchmark v1.0.0 for Debian Linux 7 (https://workbench.cisecurity.org/benchmarks/80)
+# Level 2 CIS Checks for Debian Linux 7 and Debian Linux 8 
+# Based on Center for Internet Security Benchmark v1.0.0 for Debian Linux 7 (https://workbench.cisecurity.org/benchmarks/80) and Benchmark v1.0.0 for Debian Linux 8 (https://workbench.cisecurity.org/benchmarks/81)
 #
 #
 $rc_dirfiles=/etc/rc0.d/*,/etc/rc1.d/*,/etc/rc2.d/*,/etc/rc3.d/*,/etc/rc4.d/*,/etc/rc5.d/*,/etc/rc6.d/*,/etc/rc7.d/*,/etc/rc8.d/*,/etc/rc9.d/*,/etc/rca.d/*,/etc/rcb.d/*,/etc/rcc.d/*,/etc/rcs.d/*,/etc/rcS.d/*;
@@ -75,19 +75,19 @@ f:/etc/modprobe.d/CIS.conf -> !r:^install udf /bin/true;
 #
 #
 #4.5 Activate AppArmor
-[CIS - Debian Linux 7 - 4.5 Activate AppArmor] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 4.5 Activate AppArmor] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:/etc/default/grub -> !r:apparmor=1 && !r:security=apparmor;
 #
 #
 #8.1.1.1 Configure Audit Log Storage Size
-[CIS - Debian Linux 7 - 8.1.1.1 Configure Audit Log Storage Size] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.1.1 Configure Audit Log Storage Size] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/auditd.conf;
 f:/etc/audit/auditd.conf -> !r:max_log_file\s*=\s*\d+;
 #
 #
 #8.1.1.2 Disable System on Audit Log Full
-[CIS - Debian Linux 7 - 8.1.1.2 Disable System on Audit Log Full] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.1.2 Disable System on Audit Log Full] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/auditd.conf;
 f:/etc/audit/auditd.conf -> !r:^space_left_action\s*=\s*email;
@@ -98,7 +98,7 @@ f:/etc/audit/auditd.conf -> !r:^# && r:admin_space_left_action\s*=\s*ignore|sysl
 #
 #
 #8.1.1.3 Keep All Auditing Information
-[CIS - Debian Linux 7 - 8.1.1.3 Keep All Auditing Information] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.1.3 Keep All Auditing Information] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/auditd.conf;
 f:/etc/audit/auditd.conf -> !r:^max_log_file_action\s*=\s*keep_logs;
@@ -106,7 +106,7 @@ f:/etc/audit/auditd.conf -> !r:^# && r:max_log_file_action\s*=\s*ignore|syslog|s
 #
 #
 #8.1.3 Enable Auditing for Processes That Start Prior to auditd
-[CIS - Debian Linux 7 - 8.1.3 Enable Auditing for Processes That Start Prior to auditd] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.3 Enable Auditing for Processes That Start Prior to auditd] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:/etc/default/grub -> !r:^GRUB_CMDLINE_LINUX\s*=\s*\.*audit\s*=\s*1\.*;
 #
 #
@@ -120,7 +120,7 @@ f:/etc/audit/audit.rules -> !r:^-w /etc/localtime -p wa -k time-change;
 #
 #
 #8.1.5 Record Events That Modify User/Group Information
-[CIS - Debian Linux 7 - 8.1.5 Record Events That Modify User/Group Information] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.5 Record Events That Modify User/Group Information] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-w /etc/group -p wa -k identity;
@@ -131,7 +131,7 @@ f:/etc/audit/audit.rules -> !r:^-w /etc/security/opasswd -p wa -k identity;
 #
 #
 #8.1.6 Record Events That Modify the System's Network Environment
-[CIS - Debian Linux 7 - 8.1.6 Record Events That Modify the System's Network Environment] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.6 Record Events That Modify the System's Network Environment] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-a exit,always -F arch=b32 -S sethostname -S setdomainname -k system-locale;
@@ -142,14 +142,14 @@ f:/etc/audit/audit.rules -> !r:^-w /etc/network -p wa -k system-locale;
 #
 #
 #8.1.7 Record Events That Modify the System's Mandatory Access Controls
-[CIS - Debian Linux 7 - 8.1.7 Record Events That Modify the System's Mandatory Access Controls] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.7 Record Events That Modify the System's Mandatory Access Controls] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-w /etc/selinux/ -p wa -k MAC-policy;
 #
 #
 #8.1.8 Collect Login and Logout Events
-[CIS - Debian Linux 7 - 8.1.8 Collect Login and Logout Events] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.8 Collect Login and Logout Events] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-w /var/log/faillog -p wa -k logins;
@@ -158,7 +158,7 @@ f:/etc/audit/audit.rules -> !r:^-w /var/log/tallylog -p wa -k logins;
 #
 #
 #8.1.9 Collect Session Initiation Information
-[CIS - Debian Linux 7 - 8.1.9 Collect Session Initiation Information] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.9 Collect Session Initiation Information] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-w /var/run/utmp -p wa -k session;
@@ -167,7 +167,7 @@ f:/etc/audit/audit.rules -> !r:^-w /var/log/btmp -p wa -k session;
 #
 #
 #8.1.10 Collect Discretionary Access Control Permission Modification Events
-[CIS - Debian Linux 7 - 8.1.10 Collect Discretionary Access Control Permission Modification Events] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.10 Collect Discretionary Access Control Permission Modification Events] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 \\;
@@ -179,7 +179,7 @@ f:/etc/audit/audit.rules -> !r:^lremovexattr -S fremovexattr -F auid>=1000 -F au
 #
 #
 #8.1.11 Collect Unsuccessful Unauthorized Access Attempts to Files
-[CIS - Debian Linux 7 - 8.1.11 Collect Unsuccessful Unauthorized Access Attempts to Files] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.11 Collect Unsuccessful Unauthorized Access Attempts to Files] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate \\;
@@ -189,14 +189,14 @@ f:/etc/audit/audit.rules -> !r:^-F exit=-EPERM -F auid>=1000 -F auid!=4294967295
 #
 #
 #8.1.13 Collect Successful File System Mounts
-[CIS - Debian Linux 7 - 8.1.13 Collect Successful File System Mounts] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.13 Collect Successful File System Mounts] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts;
 #
 #
 #8.1.14 Collect File Deletion Events by User
-[CIS - Debian Linux 7 - 8.1.14 Collect File Deletion Events by User] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.14 Collect File Deletion Events by User] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 \\;
@@ -204,21 +204,21 @@ f:/etc/audit/audit.rules -> !r:^-F auid!=4294967295 -k delete;
 #
 #
 #8.1.15 Collect Changes to System Administration Scope (sudoers)
-[CIS - Debian Linux 7 - 8.1.15 Collect Changes to System Administration Scope (sudoers)] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.15 Collect Changes to System Administration Scope (sudoers)] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-w /etc/sudoers -p wa -k scope;
 #
 #
 #8.1.16 Collect System Administrator Actions (sudolog)
-[CIS - Debian Linux 7 - 8.1.16 Collect System Administrator Actions (sudolog)] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.16 Collect System Administrator Actions (sudolog)] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-w /var/log/sudo.log -p wa -k actions;
 #
 #
 #8.1.17 Collect Kernel Module Loading and Unloading
-[CIS - Debian Linux 7 - 8.1.17 Collect Kernel Module Loading and Unloading] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.17 Collect Kernel Module Loading and Unloading] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-w /sbin/insmod -p x -k modules;
@@ -228,18 +228,18 @@ f:/etc/audit/audit.rules -> !r:^-a always,exit -F arch=b32 -S init_module -S del
 #
 #
 #8.1.18 Make the Audit Configuration Immutable
-[CIS - Debian Linux 7 - 8.1.18 Make the Audit Configuration Immutable] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.1.18 Make the Audit Configuration Immutable] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/etc/audit;
 f:!/etc/audit/audit.rules;
 f:/etc/audit/audit.rules -> !r:^-e 2$;
 #
 #
 #8.3.1 Install AIDE
-[CIS - Debian Linux 7 - 8.3.1 Install AIDE] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.3.1 Install AIDE] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:!/usr/sbin/aideinit;
 #
 #
 #8.3.2 Implement Periodic Execution of File Integrity
-[CIS - Debian Linux 7 - 8.3.2 Implement Periodic Execution of File Integrity] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
+[CIS - Debian Linux 7/8 - 8.3.2 Implement Periodic Execution of File Integrity] [any] [https://workbench.cisecurity.org/benchmarks/80, https://workbench.cisecurity.org/benchmarks/81]
 f:/etc/crontab -> !r:/usr/sbin/aide --check;
 #
