@@ -4,7 +4,6 @@ All notable changes to this project will be documented in this file.
 ## [v3.7.0]
 
 ### Added
-
 - Adding feature to **remotely query agent configuration on demand.** ([#548](https://github.com/wazuh/wazuh/pull/548))
 - **Boost Analysisd performance with multithreading.** ([#1039](https://github.com/wazuh/wazuh/pull/1039))
 - Adding feature to **let agents belong to multiple groups.** ([#1135](https://github.com/wazuh/wazuh/pull/1135))
@@ -20,14 +19,11 @@ All notable changes to this project will be documented in this file.
 - Centralized configuration pushed from manager overwrite the configuration of directories that exist with the same path in ossec.conf. ([#1740](https://github.com/wazuh/wazuh/pull/1740))
 
 ### Changed
-<<<<<<< HEAD
-=======
 - Refactor Python framework code to standarize database requests and support API queries ([#921](https://github.com/wazuh/wazuh/pull/921)).
 - Add support for multigroups ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135)).
 - Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
 - Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315))
 - Add automatic labels ([#1004](https://github.com/wazuh/wazuh/pull/1340)).
->>>>>>> 26491dbae... Update CHANGELOG
 
 - Refactor Python framework code to standardize database requests and support queries. ([#921](https://github.com/wazuh/wazuh/pull/921))
 - Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
@@ -68,7 +64,25 @@ All notable changes to this project will be documented in this file.
 - Fix timeout overtaken message using infinite timeout. ([#1604](https://github.com/wazuh/wazuh/pull/1604))
 - Prevent service from crashing if _global.db_ is not created. ([#1485](https://github.com/wazuh/wazuh/pull/1485))
 - Set new agent.conf template when creating new groups. ([#1647](https://github.com/wazuh/wazuh/pull/1647))
+- Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
+- Added support for API calls `GET/manager/stats/analysisd` and `GET/manager/stats/remoted`. ([#1297](https://github.com/wazuh/wazuh/pull/1297))
+- Added rule testing output when restarting manager. ([#1196](https://github.com/wazuh/wazuh/pull/1196))
+- Add automatic labels ([#1340](https://github.com/wazuh/wazuh/pull/1340)).
 
+### Changed
+
+- Refactor Python framework code to standardize database requests and support API queries. ([#921](https://github.com/wazuh/wazuh/pull/921)).
+- Add support for multigroups ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135)).
+- Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
+- Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315))
+
+### Fixed
+
+- Fixed mandatory configuration labels check ([#1208](https://github.com/wazuh/wazuh/pull/1208))
+- Fixed email_alerts configuration for multiple recipients ([#1193 ](https://github.com/wazuh/wazuh/pull/1193))
+- Fixed manager stopping when no command timeout is allowed ([#1194](https://github.com/wazuh/wazuh/pull/1194))
+
+## [v3.6.2]
 
 ## [v3.6.1] 2018-09-07
 
