@@ -269,7 +269,7 @@ char * parse_environment_labels(const wlabel_t label) {
               iface = cJSON_GetArrayItem(network_info, 2);
             #else
               network_info = getNetworkIfaces_linux();
-              iface = cJSON_GetArrayItem(network_info, [a-z]efault_network_iface);
+              iface = cJSON_GetArrayItem(network_info, default_network_iface);
             #endif
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
             ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
