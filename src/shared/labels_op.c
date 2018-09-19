@@ -194,7 +194,7 @@ wlabel_t * labels_dup(const wlabel_t * labels) {
 char * parse_environment_labels(const wlabel_t label) {
     static char final[OS_COMMENT_MAX + 1] = { '\0' };
     char orig[OS_COMMENT_MAX + 1] = { '\0' };
-    char *field;
+    char *field = NULL;
     char *str;
     char *var;
     char *end;
@@ -205,7 +205,7 @@ char * parse_environment_labels(const wlabel_t label) {
     cJSON *network_info;
     cJSON *iface = cJSON_CreateArray();
     cJSON *ipv4 = cJSON_CreateArray();
-    cJSON *ipv4_addresses = cJSON_CreateArray();
+    cJSON *ipv4_array_addresses = cJSON_CreateArray();
     cJSON *ipv6_addresses = cJSON_CreateArray();
     cJSON *mac_addresses = cJSON_CreateArray();
     cJSON *ipv6 = cJSON_CreateArray();
@@ -310,11 +310,11 @@ char * parse_environment_labels(const wlabel_t label) {
               network_info = cJSON_Parse(windows_net_info);
               iface = cJSON_GetArrayItem(network_info,2);
               ipv4 = cJSON_GetObjectItem(iface,"ipv4");
-              cJSON_AddItemToArray(ipv4_addresses, cJSON_GetObjectItem(ipv4,"address"));
+              cJSON_AddItemReferenceToArray(ipv4_array_addresses, cJSON_GetObjectItem(ipv4,"address"));
 
               currentAddress = currentAddress->Next;
             }
-            field = cJSON_PrintUnformatted(ipv4_addresses);
+            field = cJSON_PrintUnformatted(ipv4_array_addresses);
         }
         FREE(currentAddress);
         #else
@@ -323,18 +323,23 @@ char * parse_environment_labels(const wlabel_t label) {
           #else
             network_info = getNetworkIfaces_linux();
           #endif
+          cJSON * ipv4_others = cJSON_CreateObject();
           for(i = 0; i < cJSON_GetArraySize(network_info);i++){
             if(i!=default_network_iface){
               iface = cJSON_GetArrayItem(network_info,i);
               ipv4 = cJSON_GetObjectItem(iface,"ipv4");
               if(ipv4){
-                cJSON_AddItemToArray(ipv4_addresses, cJSON_GetObjectItem(ipv4,"address"));
+                ipv4_others = cJSON_GetObjectItem(ipv4,"address");
+                minfo(cJSON_Print(ipv4_others));
+                cJSON_AddItemReferenceToArray(ipv4_array_addresses,ipv4_others);
               }
             }
           }
-        field = cJSON_PrintUnformatted(ipv4_addresses);
+          minfo(cJSON_PrintUnformatted(ipv4_array_addresses));
+        field = cJSON_Print(ipv4_array_addresses);
 
         #endif
+        cJSON_Delete(ipv4_array_addresses);
 
         }else if(!strcmp(var,"ipv6.others")){
           #if defined  WIN32
@@ -351,11 +356,11 @@ char * parse_environment_labels(const wlabel_t label) {
             network_info = cJSON_Parse(windows_net_info);
             iface = cJSON_GetArrayItem(network_info,2);
             ipv6 = cJSON_GetObjectItem(iface,"ipv6");
-            cJSON_AddItemToArray(ipv6_addresses, cJSON_GetObjectItem(ipv6,"address"));
+            cJSON_AddItemReferenceToArray(ipv6_addresses, cJSON_GetObjectItem(ipv6,"address"));
             currentAddress = currentAddress->Next;
             }
 
-            field = cJSON_PrintUnformatted(ipv4_addresses);
+            field = cJSON_PrintUnformatted(ipv6_addresses);
 
           }
           FREE(currentAddress);
@@ -370,13 +375,14 @@ char * parse_environment_labels(const wlabel_t label) {
               iface = cJSON_GetArrayItem(network_info,i);
               ipv6 = cJSON_GetObjectItem(iface,"ipv6");
               if(ipv6){
-                cJSON_AddItemToArray(ipv6_addresses, cJSON_GetObjectItem(ipv6,"address"));
+                cJSON_AddItemReferenceToArray(ipv6_addresses, cJSON_GetObjectItem(ipv6,"address"));
                 }
             }
           }
           field = cJSON_PrintUnformatted(ipv6_addresses);
 
           #endif
+          cJSON_Delete(ipv6_addresses);
 
         }else if(!strcmp(var,"mac.primary")){
           #ifdef WIN32
@@ -411,7 +417,7 @@ char * parse_environment_labels(const wlabel_t label) {
             windows_net_info = get_network(currentAddress,0,NULL);
             network_info = cJSON_Parse(windows_net_info);
             iface = cJSON_GetArrayItem(network_info,2);
-            cJSON_AddItemToArray(mac_addresses, cJSON_GetObjectItem(iface,"mac"));
+            cJSON_AddItemReferenceToArray(mac_addresses, cJSON_GetObjectItem(iface,"mac"));
             currentAddress = currentAddress->Next;
             }
             field = cJSON_PrintUnformatted(mac_addresses);
@@ -426,12 +432,13 @@ char * parse_environment_labels(const wlabel_t label) {
           for(i = 0; i < cJSON_GetArraySize(network_info);i++){
             if(i!=default_network_iface){
               iface = cJSON_GetArrayItem(network_info,i);
-              cJSON_AddItemToArray(mac_addresses, cJSON_GetObjectItem(iface,"mac"));
+              cJSON_AddItemReferenceToArray(mac_addresses, cJSON_GetObjectItem(iface,"mac"));
             }
           }
           field = cJSON_PrintUnformatted(mac_addresses);
-
           #endif
+          cJSON_Delete(mac_addresses);
+
         }else  if(!strcmp(var,"timezone")){
           int zone;
           char timezone_number[21];
