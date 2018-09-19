@@ -266,6 +266,7 @@ cJSON *getExecdInternalOptions(void) {
 
 cJSON *getClusterConfig(void) {
 
+#ifndef WIN32
     char req[] = "get_config";
     char *buffer = NULL;
     int sock = -1;
@@ -332,4 +333,7 @@ cJSON *getClusterConfig(void) {
     
     free(buffer);
     return cluster_config_cJSON;
+#else
+    return NULL;
+#endif
 }
