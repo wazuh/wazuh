@@ -8,7 +8,7 @@
 from re import compile
 from sys import argv, exit, version_info
 from os.path import isfile, isdir
-from os import mkfifo, unlink
+from os import mkfifo, unlink, devnull
 from subprocess import CalledProcessError, STDOUT, Popen, PIPE
 from getopt import getopt, GetoptError
 from signal import signal, SIGINT
@@ -126,7 +126,8 @@ def oscap(profile=None):
         if debug:
             print("\nCMD: '{0}'".format(' '.join(cmd)))
 
-        ps = Popen(cmd, shell=False, stdout=PIPE, stderr=STDOUT)
+        DEVNULL = open(devnull, 'wb')
+        ps = Popen(cmd, shell=False, stdout=DEVNULL, stderr=None)
 
     except CalledProcessError as error:
 
