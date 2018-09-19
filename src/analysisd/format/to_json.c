@@ -383,7 +383,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         // Dynamic fields, except for syscheck events
         if (lf->fields && !lf->filename) {
             for (i = 0; i < lf->nfields; i++) {
-                if (lf->fields[i].value) {
+                if (lf->fields[i].value && *lf->fields[i].value) {
                     W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);
                 }
             }
