@@ -44,10 +44,10 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     cJSON * iface = cJSON_CreateArray();
     cJSON * ipv4 = cJSON_CreateArray();
     cJSON * network_info;
-    default_network_iface = -1;
 
     /*  Set the primary network interface */
     #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+      default_network_iface = -1;
       network_info = getNetworkIfaces_bsd();
       int i=0;
       while(default_network_iface == -1 && i < cJSON_GetArraySize(network_info)){
