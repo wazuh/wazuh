@@ -47,8 +47,9 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
             return (0);
         }
 
-    }
         free(location_headless);
+    }
+
 
 
 
