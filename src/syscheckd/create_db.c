@@ -188,10 +188,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char *buf;
     syscheck_node *s_node;
     struct stat statbuf;
-    char str_size[50], str_perm[50], str_owner[50], str_group[50], str_mtime[50], str_inode[50];
+    char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
     char *wd_sum = NULL;
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
-#ifdef WIN32
+#ifndef WIN32
+    char str_owner[50], str_group[50];
+#else
     const char *user;
     char *sid = NULL;
 #endif

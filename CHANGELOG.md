@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.6.2]
 
+### Changed
+
+- Make Syscheck case insensitive. ([#1349](https://github.com/wazuh/wazuh/pull/1349))
+
 ### Fixed
 
 - Fix 0 value at check options from Syscheck. ([1209](https://github.com/wazuh/wazuh/pull/1209))
