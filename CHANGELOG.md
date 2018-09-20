@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Fixed email_alerts configuration for multiple recipients. ([#1193 ](https://github.com/wazuh/wazuh/pull/1193))
 - Fixed manager stopping when no command timeout is allowed. ([#1194](https://github.com/wazuh/wazuh/pull/1194))
 - Fix the cleaning of the temporary folder. ([#1361](https://github.com/wazuh/wazuh/pull/1361))
+- Fix check_mtime and check_inode views in Syscheck alerts. ([#1364](https://github.com/wazuh/wazuh/pull/1364))
 
 
 ## [v3.6.2]
