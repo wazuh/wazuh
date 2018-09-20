@@ -289,12 +289,86 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     curr = input;
     *next++ = '\0';
 
-    if (strcmp(curr, "load") == 0) {
+    if (strcmp(curr, "get") == 0) {
+        if (result = wdb_metadata_get_entry(wdb, next, buffer), result < 0) {
+            mdebug1("Cannot get fim metadata.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot get fim metadata.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok %s", buffer);
+        }
+
+        return result;
+    } else if (strcmp(curr, "updatedate") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, ' '), !next) {
+            mdebug1("Invalid Syscheck query syntax.");
+            mdebug2("Syscheck query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        if (result = wdb_fim_update_date_entry(wdb, curr, next), result < 0) {
+            mdebug1("Cannot update fim date field.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot update fim date field.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "cleandb") == 0) {
+        if (result = wdb_fim_clean_old_entries(wdb), result < 0) {
+            mdebug1("Cannot clean fim database.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot clean fim database.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "metadata") == 0) {
+        if (result = wdb_fim_fill_metadata(wdb, next), result < 0) {
+            mdebug1("Cannot save fim control message.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "control") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, ' '), !next) {
+            mdebug1("Invalid Syscheck query syntax.");
+            mdebug2("Syscheck query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        if (result = wdb_metadata_fim_check_control(wdb, next), result < 0) {
+            mdebug1("Cannot save fim check_control message.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "load") == 0) {
         if (result = wdb_syscheck_load(wdb, next, buffer, sizeof(buffer)), result < 0) {
             mdebug1("Cannot load Syscheck.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot load Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %s", buffer);
+        }
+
+        return result;
+    } else if (strcmp(curr, "delete") == 0) {
+        if (result = wdb_fim_delete(wdb, next), result < 0) {
+            mdebug1("Cannot delete Syscheck entry.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete Syscheck");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
         return result;

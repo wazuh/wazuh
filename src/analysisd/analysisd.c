@@ -38,6 +38,7 @@
 #include "output/jsonout.h"
 #include "labels.h"
 #include "state.h"
+#include "syscheck_op.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -54,11 +55,13 @@ static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
 void DecodeEvent(Eventinfo *lf);
-int DecodeSyscheck(Eventinfo *lf);
+int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
+// Init sdb struct
+void sdb_init(_sdb *localsdb);
 
 /* For stats */
 static void DumpLogstats(void);
@@ -78,6 +81,7 @@ char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 rlim_t nofile;
 int sys_debug_level;
+OSDecoderInfo *fim_decoder;
 
 /* execd queue */
 static int execdq = 0;
@@ -209,6 +213,7 @@ pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_ignore_rule_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -706,7 +711,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     OS_InitLog();
 
     /* Initialize the integrity database */
-    SyscheckInit();
+    fim_init();
 
     /* Initialize Rootcheck */
     RootcheckInit();
@@ -1815,6 +1820,10 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
 void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char *msg = NULL;
+    _sdb sdb;
+
+    /* Initialize the integrity database */
+    sdb_init(&sdb);
 
     while(1){
 
@@ -1840,7 +1849,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
             w_inc_syscheck_decoded_events();
 
-            if (!DecodeSyscheck(lf)) {
+            if (!DecodeSyscheck(lf, &sdb)) {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
                 continue;
@@ -2019,15 +2028,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         RuleNode *rulenode_pt;
 
         /* Extract decoded event from the queue */
-        if(lf = queue_pop_ex(decode_queue_event_output), lf) {
-            mdebug2("Taking out from the queue");
-        }
+        lf = queue_pop_ex(decode_queue_event_output), lf)
 
         currently_rule = NULL;
 
         lf->size = strlen(lf->log);
 
-        mdebug2("Event extracted from the queue...");
         /* Run accumulator */
         if ( lf->decoder_info->accumulate == 1 ) {
             lf = Accumulate(lf);
@@ -2089,7 +2095,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         }
 
         // Insert labels
+        w_mutex_lock(&lf_mutex);
         lf->labels = labels_find(lf);
+        w_mutex_unlock(&lf_mutex);
 
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",

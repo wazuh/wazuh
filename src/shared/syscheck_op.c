@@ -14,9 +14,6 @@
 #include <sddl.h>
 #endif
 
-/* Local variables */
-_sdb sdb;
-
 static char *unescape_whodata_sum(char *sum);
 
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
@@ -83,19 +80,20 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
             sum->sha256 = NULL;
 
-            if ((sum->sha256 = strchr(c_inode, ':')))
+            if ((sum->sha256 = strchr(c_inode, ':'))) {
                 *(sum->sha256++) = '\0';
 
-            /* Look for a defined tag */
-            if (sum->sha256) {
-                if (tag = strchr(sum->sha256, ':'), tag) {
-                    *(tag++) = '\0';
-                    sum->tag = tag;
+                /* Look for a defined tag */
+                if (sum->sha256) {
+                    if (tag = strchr(sum->sha256, ':'), tag) {
+                        *(tag++) = '\0';
+                        sum->tag = tag;
+                    }
                 }
-            }
 
-            sum->mtime = atol(c_mtime);
-            sum->inode = atol(c_inode);
+                sum->mtime = atol(c_mtime);
+                sum->inode = atol(c_inode);
+            }
         }
     }
 
@@ -180,6 +178,26 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     return retval;
 }
 
+// Only decoded by manager
+int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
+    char *changes;
+    char *date_alert;
+
+    if (changes = strchr(c_sum, '!'), !changes) {
+        return -1;
+    }
+    *changes++ = '\0';
+
+    if (date_alert = strchr(changes, ':'), !date_alert) {
+        return -1;
+    }
+    *(date_alert++) = '\0';
+    sum->changes = atoi(changes);
+    sum->date_alert = atol(date_alert);
+
+    return 0;
+}
+
 char *unescape_whodata_sum(char *sum) {
     char *esc_it;
 
@@ -194,8 +212,6 @@ char *unescape_whodata_sum(char *sum) {
 }
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
-    int i;
-
     os_strdup(f_name, lf->filename);
     os_strdup(f_name, lf->fields[SK_FILE].value);
 
@@ -316,23 +332,26 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->tag, lf->sk_tag);
         os_strdup(sum->tag, lf->fields[SK_TAG].value);
     }
-
-    /* Fields */
-
-    lf->nfields = SK_NFIELDS;
-
-    for (i = 0; i < SK_NFIELDS; i++)
-        os_strdup(sdb.syscheck_dec->fields[i], lf->fields[i].key);
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     int r;
 
-    if (sum->uname || sum->gname || sum->mtime || sum->inode) {
-        r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld", sum->size, sum->perm, sum->uid, sum->gid, sum->md5, sum->sha1, sum->uname, sum->gname, sum->mtime, sum->inode);
-    } else {
-        r = snprintf(output, size, "%s:%d:%s:%s:%s:%s", sum->size, sum->perm, sum->uid, sum->gid, sum->md5, sum->sha1);
-    }
+    r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld:%s!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
+            sum->size,
+            sum->perm,
+            sum->uid,
+            sum->gid,
+            sum->md5,
+            sum->sha1,
+            sum->uname? sum->uname : "",
+            sum->gname? sum->gname : "",
+            sum->mtime? sum->mtime : 0,
+            sum->inode? sum->inode : 0,
+            sum->sha256? sum->sha256 : "",
+            sum->changes,
+            sum->date_alert
+    );
 
     return r < (int)size ? 0 : -1;
 }

@@ -7,14 +7,16 @@ All notable changes to this project will be documented in this file.
 
 - Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
 - Added support for API calls `GET/manager/stats/analysisd` and `GET/manager/stats/remoted`. ([#1297](https://github.com/wazuh/wazuh/pull/1297))
+- FIM database is cleaned after restart agent 3 times, deleting all entries not monitorized. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
 - Added rule testing output when restarting manager. ([#1196](https://github.com/wazuh/wazuh/pull/1196))
 
 ### Changed
 
-- Refactor Python framework code to standardize database requests and support API queries. ([#921](https://github.com/wazuh/wazuh/pull/921)).
-- Add support for multigroups. ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135)).
+- Refactor Python framework code to standardize database requests and support API queries. ([#921](https://github.com/wazuh/wazuh/pull/921))
+- Add support for multigroups. ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135))
 - Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
 - Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315))
+- Fim data is stored in SQLite using Wazuh-DB. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
 
 ### Fixed
 
@@ -23,7 +25,6 @@ All notable changes to this project will be documented in this file.
 - Fixed manager stopping when no command timeout is allowed. ([#1194](https://github.com/wazuh/wazuh/pull/1194))
 - Fix the cleaning of the temporary folder. ([#1361](https://github.com/wazuh/wazuh/pull/1361))
 - Fix check_mtime and check_inode views in Syscheck alerts. ([#1364](https://github.com/wazuh/wazuh/pull/1364))
-
 
 ## [v3.6.2]
 
