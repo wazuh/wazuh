@@ -2028,15 +2028,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         RuleNode *rulenode_pt;
 
         /* Extract decoded event from the queue */
-        if(lf = queue_pop_ex(decode_queue_event_output), lf) {
-            //mdebug2("Taking out from the queue");
-        }
+        lf = queue_pop_ex(decode_queue_event_output), lf)
 
         currently_rule = NULL;
 
         lf->size = strlen(lf->log);
 
-        //mdebug2("Event extracted from the queue...");
         /* Run accumulator */
         if ( lf->decoder_info->accumulate == 1 ) {
             lf = Accumulate(lf);
