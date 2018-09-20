@@ -786,7 +786,6 @@ class Agent:
     def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}, q=""):
         """
         Gets a list of available agents with basic attributes.
-
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
@@ -978,6 +977,7 @@ class Agent:
         return group_id
 
 
+
     @staticmethod
     def remove_agent(agent_id, backup=False, purge=False):
         """
@@ -1109,6 +1109,7 @@ class Agent:
         Agent().set_multi_group(str(agent_id),agent_group)
 
         return "Group '{0}' added to agent '{1}'.".format(group_id, agent_id)
+
 
 
     @staticmethod
@@ -1390,7 +1391,7 @@ class Agent:
 
             try:
                 # ar.conf
-                ar_path = "{0}/ar.conf".format(common.shared_path, entry)
+                ar_path = "{0}/ar.conf".format(common.shared_path)
                 with open(ar_path, 'rb') as f:
                     hash_ar = hashlib.md5(f.read()).hexdigest()
                 data.append({'filename': "ar.conf", 'hash': hash_ar})
