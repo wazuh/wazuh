@@ -942,7 +942,7 @@ void * audit_main(int * audit_sock) {
     }
 
     // Auditd is not runnig or socket closed.
-    merror("Audit thread finished.");
+    mdebug1("Audit thread finished.");
     free(buffer);
     close(*audit_sock);
 

@@ -21,7 +21,7 @@ static int queue_fd;                                // Output queue file descrip
 static void* wm_ciscat_main(wm_ciscat *ciscat);        // Module main function. It won't return
 static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_check();                       // Check configuration, disable flag
-static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id);      // Run a CIS-CAT policy
+static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path);      // Run a CIS-CAT policy
 static char * wm_ciscat_get_profile();               // Read evaluated profile from the report
 static void wm_ciscat_preparser();                   // Prepare report for the xml parser
 static wm_scan_data* wm_ciscat_txt_parser();        // Parse CIS-CAT csv reports
@@ -57,7 +57,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     int skip_java = 0;
     int status = 0;
     char *cis_path = NULL;
-    char *jre_path = NULL;
     char java_fullpath[OS_MAXSTR];
     char bench_fullpath[OS_MAXSTR];
 
@@ -79,7 +78,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     // Check if Java path is defined and include it in "PATH" variable
 
-    if (ciscat->java_path){
+    if (ciscat->java_path) {
 
         // Check if the defined path is relative or not
         switch (wm_relative_path(ciscat->java_path)) {
@@ -105,34 +104,11 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
         if (!skip_java) {
             os_strdup(java_fullpath, ciscat->java_path);
-            os_calloc(OS_MAXSTR, sizeof(char), jre_path);
-
-            char *env_var = getenv("PATH");
-
-            if (!env_var){
-                snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
-            } else if (strlen(env_var) >= OS_MAXSTR) {
-                mterror(WM_CISCAT_LOGTAG, "'PATH' variable too long.");
-                ciscat->flags.error = 1;
-            } else {
-
-        #ifdef WIN32
-                snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
+        } else {
+            if (ciscat->java_path) {
+                free(ciscat->java_path);
             }
-            if (_putenv(jre_path) < 0) {
-                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-                ciscat->flags.error = 1;
-            }      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
-        #else
-                snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", ciscat->java_path, env_var);
-            }
-            if(setenv("PATH", jre_path, 1) < 0) {
-                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-                ciscat->flags.error = 1;
-            }
-        #endif
-            char *new_env = getenv("PATH");
-            mtdebug1(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
+            ciscat->java_path = NULL;
         }
     }
 
@@ -264,7 +240,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     if (IsFile(eval->path) < 0) {
                         mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
                     } else {
-                        wm_ciscat_run(eval, cis_path, id);
+                        wm_ciscat_run(eval, cis_path, id, ciscat->java_path);
                         ciscat->flags.error = 0;
                     }
                 }
@@ -322,7 +298,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     }
 
     free(cis_path);
-    free(jre_path);
 #ifdef WIN32
     free(current);
 #endif
@@ -379,7 +354,7 @@ void wm_ciscat_cleanup() {
 
 #ifdef WIN32
 
-void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path) {
     char *command = NULL;
     int status;
     char *output = NULL;
@@ -459,7 +434,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
     mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
-    switch (wm_exec(command, &output, &status, eval->timeout)) {
+    switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
         case 0:
 
             mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
@@ -510,7 +485,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
 // Run a CIS-CAT policy for UNIX systems
 
-void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path) {
 
     char *command = NULL;
     int status, child_status;
@@ -597,7 +572,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
             mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
-            switch (wm_exec(command, &output, &status, eval->timeout)) {
+            switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
                 case 0:
                     if (status > 0) {
                         ciscat->flags.error = 1;

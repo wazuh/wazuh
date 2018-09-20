@@ -39,7 +39,6 @@ USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
-USE_EXEC_ENVIRON=no
 USE_FRAMEWORK_LIB=no
 
 ifneq ($(HAS_CHECKMODULE),)
@@ -83,7 +82,6 @@ ifeq (${uname_S},Linux)
 #		OSSEC_LDFLAGS+=-lmagic
 		CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
-		USE_EXEC_ENVIRON=yes
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
 		CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif
@@ -194,10 +192,6 @@ ifdef DEBUG
 else
 	OFLAGS+=-O2
 endif #DEBUG
-
-ifneq (,$(filter ${USE_EXEC_ENVIRON},yes y Y 1))
-	DEFINES+=-DUSE_EXEC_ENVIRON
-endif
 
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
@@ -443,7 +437,6 @@ help: failtarget
 	@echo "   make USE_SELINUX=0           Build with SELinux policies"
 	@echo "   make USE_AUDIT=1             Build with audit service support"
 	@echo "   make USE_FRAMEWORK_LIB=0     Use external SQLite library for the framework"
-	@echo "   make USE_EXEC_ENVIRON=no     Use modern non-standard execvpe in Modulesd"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
 	@echo
 	@echo "Database options: "
@@ -492,7 +485,6 @@ settings:
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
-	@echo "    USE_EXEC_ENVIRON:   ${USE_EXEC_ENVIRON}"
 	@echo "    USE_FRAMEWORK_LIB:  ${USE_FRAMEWORK_LIB}"
 	@echo "Mysql settings:"
 	@echo "    includes:           ${MI}"

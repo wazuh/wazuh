@@ -111,8 +111,9 @@ void wm_module_free(wmodule * config);
  * On success, return 0. On another error, returns -1.
  * If the called program timed-out, returns WM_ERROR_TIMEOUT and output may
  * contain data.
+ * env_path is a pointer to an string to add to the PATH environment variable.
  */
-int wm_exec(char *command, char **output, int *exitcode, int secs);
+int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 
 #ifdef WIN32
 // Add process to pool

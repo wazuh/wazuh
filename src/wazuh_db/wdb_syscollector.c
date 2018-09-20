@@ -11,7 +11,6 @@
 
 #include "wdb.h"
 
-static int iface_id = 0;
 
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
 int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped) {
@@ -113,7 +112,6 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     }
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
-        iface_id = (int)sqlite3_last_insert_rowid(wdb->db);
         return 0;
     }
     else {
@@ -155,17 +153,16 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
 
     stmt = wdb->stmt[WDB_STMT_PROTO_INSERT];
 
-    sqlite3_bind_int(stmt, 1, iface_id);
-    sqlite3_bind_text(stmt, 2, scan_id, -1, NULL);
-    sqlite3_bind_text(stmt, 3, iface, -1, NULL);
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, iface, -1, NULL);
 
     if (type == WDB_NETADDR_IPV4)
-        sqlite3_bind_text(stmt, 4, "ipv4", -1, NULL);
+        sqlite3_bind_text(stmt, 3, "ipv4", -1, NULL);
     else
-        sqlite3_bind_text(stmt, 4, "ipv6", -1, NULL);
+        sqlite3_bind_text(stmt, 3, "ipv6", -1, NULL);
 
-    sqlite3_bind_text(stmt, 5, gateway, -1, NULL);
-    sqlite3_bind_text(stmt, 6, dhcp, -1, NULL);
+    sqlite3_bind_text(stmt, 4, gateway, -1, NULL);
+    sqlite3_bind_text(stmt, 5, dhcp, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
@@ -209,17 +206,16 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char 
 
     stmt = wdb->stmt[WDB_STMT_ADDR_INSERT];
 
-    sqlite3_bind_int(stmt, 1, iface_id);
-    sqlite3_bind_text(stmt, 2, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
 
     if (proto == WDB_NETADDR_IPV4)
-        sqlite3_bind_text(stmt, 3, "ipv4", -1, NULL);
+        sqlite3_bind_text(stmt, 2, "ipv4", -1, NULL);
     else
-        sqlite3_bind_text(stmt, 3, "ipv6", -1, NULL);
+        sqlite3_bind_text(stmt, 2, "ipv6", -1, NULL);
 
-    sqlite3_bind_text(stmt, 4, address, -1, NULL);
-    sqlite3_bind_text(stmt, 5, netmask, -1, NULL);
-    sqlite3_bind_text(stmt, 6, broadcast, -1, NULL);
+    sqlite3_bind_text(stmt, 3, address, -1, NULL);
+    sqlite3_bind_text(stmt, 4, netmask, -1, NULL);
+    sqlite3_bind_text(stmt, 5, broadcast, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
