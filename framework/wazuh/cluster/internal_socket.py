@@ -104,13 +104,13 @@ class InternalSocketThread(threading.Thread):
             time.sleep(2)
 
 
-class InternalSocketWorker(communication.AbstractWorker):
+class InternalSocketClient(communication.AbstractClient):
 
     def __init__(self, socket_name, asyncore_map = {}):
         self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
         connect_query = str(random.randint(0, 2 ** 32 - 1))
-        logger.debug("[InternalSocketWorker] Worker ID: {}".format(connect_query))
-        communication.AbstractWorker.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM,
+        logger.debug("[InternalSocketClient] Worker ID: {}".format(connect_query))
+        communication.AbstractClient.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM,
                                               connect_query, "[InternalSocket-Worker] [{}]".format(connect_query), asyncore_map)
         self.final_response = communication.Response()
         self.string_receiver = None
@@ -121,7 +121,7 @@ class InternalSocketWorker(communication.AbstractWorker):
         if data:
             data = "{} {}".format(self.name, data)
 
-        res = communication.AbstractWorker.send_request(self, command, data)
+        res = communication.AbstractClient.send_request(self, command, data)
         after = time.time()
         logger.debug("{} Time sending request to internal socket server: {}s".format(self.tag, after - before))
         return res
@@ -158,7 +158,7 @@ class InternalSocketWorker(communication.AbstractWorker):
                 self.string_receiver.stop()
             return 'ack','thanks'
         else:
-            return communication.AbstractWorker.process_request(self, command, data)
+            return communication.AbstractClient.process_request(self, command, data)
 
 
     def handle_error(self):
@@ -200,7 +200,7 @@ class InternalSocketWorkerThread(communication.ClusterThread):
     def __init__(self, socket_name, stopper = threading.Event()):
         communication.ClusterThread.__init__(self, stopper)
         asyncore_map = {}
-        self.manager = InternalSocketWorker(socket_name=socket_name, asyncore_map=asyncore_map)
+        self.manager = InternalSocketClient(socket_name=socket_name, asyncore_map=asyncore_map)
 
 
     def run(self):

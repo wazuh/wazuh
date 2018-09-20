@@ -750,7 +750,7 @@ class Server(AbstractServer):
         return node_id
 
 
-class AbstractWorker(Handler):
+class AbstractClient(Handler):
 
     def __init__(self, key, addr, name, socket_family, socket_type, connect_query, tag, asyncore_map = {}):
         Handler.__init__(self, key=key, asyncore_map=asyncore_map)
@@ -794,12 +794,12 @@ class AbstractWorker(Handler):
         return self.my_connected
 
 
-class WorkerHandler(AbstractWorker):
+class ClientHandler(AbstractClient):
 
     def __init__(self, key, host, port, name, cluster_name, asyncore_map = {}):
         connect_query = '{}*{} {} {}'.format(name, cluster_name, 'worker', __version__)
-        AbstractWorker.__init__(self, key, (host, port), name, socket.AF_INET, socket.SOCK_STREAM, connect_query,
-                                "[Transport-WorkerHandler]", asyncore_map)
+        AbstractClient.__init__(self, key, (host, port), name, socket.AF_INET, socket.SOCK_STREAM, connect_query,
+                                "[Transport-ClientHandler]", asyncore_map)
         self.host = host
         self.cluster_name = cluster_name
         self.port = port
@@ -808,7 +808,7 @@ class WorkerHandler(AbstractWorker):
 
     def handle_connect(self):
         logger.info("[Worker] Connecting to {0}:{1}.".format(self.host, self.port))
-        AbstractWorker.handle_connect(self)
+        AbstractClient.handle_connect(self)
 
 
 class FragmentedRequestReceiver(ClusterThread):

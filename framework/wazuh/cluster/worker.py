@@ -17,7 +17,7 @@ from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_file
     decompress_files, get_files_status, get_cluster_items_worker_intervals, unmerge_agent_info, merge_agent_info
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
-from wazuh.cluster.communication import WorkerHandler, ClusterThread, FragmentedFileReceiver, FragmentedStringReceiverWorker
+from wazuh.cluster.communication import ClientHandler, ClusterThread, FragmentedFileReceiver, FragmentedStringReceiverWorker
 from wazuh.cluster.internal_socket import InternalSocketHandler
 from wazuh.cluster.dapi import dapi
 
@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 # Worker Handler
 # There is only one WorkerManagerHandler: the connection with master.
 #
-class WorkerManagerHandler(WorkerHandler):
+class WorkerManagerHandler(ClientHandler):
 
     def __init__(self, manager, cluster_config):
-        WorkerHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'], cluster_config['name'])
+        ClientHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'], cluster_config['name'])
         self.config = cluster_config
         self.integrity_received_and_processed = threading.Event()
         self.integrity_received_and_processed.clear()  # False
@@ -38,7 +38,7 @@ class WorkerManagerHandler(WorkerHandler):
 
     # Overridden methods
     def handle_connect(self):
-        WorkerHandler.handle_connect(self)
+        ClientHandler.handle_connect(self)
         dir_path = "{}/queue/cluster/{}".format(common.ossec_path, self.name)
         if not os.path.exists(dir_path):
             mkdir_with_mode(dir_path)
@@ -83,7 +83,7 @@ class WorkerManagerHandler(WorkerHandler):
             self.isocket_handler.send_request(command=command, data=err_msg, worker_name=worker_id)
             return 'ack','thanks'
         else:
-            return WorkerHandler.process_request(self, command, data)
+            return ClientHandler.process_request(self, command, data)
 
 
     def process_response(self, response):
@@ -94,7 +94,7 @@ class WorkerManagerHandler(WorkerHandler):
         if answer == 'ok-c':  # test
             response_data = '[response_only_for_worker] Master answered: {}.'.format(payload)
         else:
-            response_data = WorkerHandler.process_response(self, response)
+            response_data = ClientHandler.process_response(self, response)
 
         return response_data
 
