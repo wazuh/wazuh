@@ -4,7 +4,7 @@
 try:
     import docker
 except:
-    raise Exception("\'docker\' module needs to be installed")
+    raise Exception("\'docker\' module needs to be installed.")
 import threading
 import json
 import socket
@@ -50,11 +50,10 @@ class DockerListener:
             self.send_msg(json.dumps({self.field_debug_name: "Connected to Docker service"}))
         else:
             if first_time:
-                print("Docker service is not running.")
+                print("Docker service is not running.")  # delete
                 self.send_msg(json.dumps({self.field_debug_name: "Docker service is not running"}))
             while not self.check_docker_service():
                 print("Reconnecting...")  # delete
-                # self.send_msg(json.dumps({self.field_debug_name: "Reconnecting to Docker service"}))
                 time.sleep(self.wait_time)
             self.connect()
 
