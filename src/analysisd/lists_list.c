@@ -294,34 +294,28 @@ int OS_DBSearch(ListRule *lrule, char *key)
 
     switch (lrule->lookup_type) {
         case LR_STRING_MATCH:
-            //mdebug1("LR_STRING_MATCH");
             if (OS_DBSeachKey(lrule, key) == 1) {
                 return 1;
             }
             return 0;
         case LR_STRING_NOT_MATCH:
-            //mdebug1("LR_STRING_NOT_MATCH");
             if (OS_DBSeachKey(lrule, key) == 1) {
                 return 0;
             }
             return 1;
         case LR_STRING_MATCH_VALUE:
-            //mdebug1("LR_STRING_MATCH_VALUE");
             if (OS_DBSearchKeyValue(lrule, key) == 1) {
                 return 1;
             }
             return 0;
         case LR_ADDRESS_MATCH:
-            //mdebug1("LR_ADDRESS_MATCH");
             return OS_DBSeachKeyAddress(lrule, key);
         case LR_ADDRESS_NOT_MATCH:
-            //mdebug1("LR_ADDRESS_NOT_MATCH");
             if (OS_DBSeachKeyAddress(lrule, key) == 0) {
                 return 1;
             }
             return 0;
         case LR_ADDRESS_MATCH_VALUE:
-            //mdebug1("LR_ADDRESS_MATCH_VALUE");
             if (OS_DBSearchKeyAddressValue(lrule, key) == 0) {
                 return 1;
             }
