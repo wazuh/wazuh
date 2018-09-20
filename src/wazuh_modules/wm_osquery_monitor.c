@@ -54,6 +54,10 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
     char line[OS_MAXSTR];
     FILE *result_log = NULL;
     char * end;
+    char * payload;
+    cJSON * root;
+    cJSON * name;
+    char * begin;
 
     while (active) {
         // Wait to open log file
@@ -96,15 +100,49 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
             // Get file until EOF
 
             while (fgets(line, OS_MAXSTR, result_log)) {
+                payload = NULL;
+
                 // Remove newline
                 if (end = strchr(line, '\n'), end) {
                     *end = '\0';
                 }
 
-                mdebug2("Sending... '%s'", line);
-                if (wm_sendmsg(osquery->msg_delay, osquery->queue_fd, line, "osquery", LOCALFILE_MQ) < 0) {
+                if (root = cJSON_Parse(line), root) {
+                    if (!cJSON_GetObjectItem(root, "pack")) {
+                        // Try to find a name matching "pack_.*_.+"
+
+                        if (name = cJSON_GetObjectItem(root, "name"), name && cJSON_IsString(name)) {
+                            if (strstr(name->valuestring, "pack_")) {
+                                begin = name->valuestring + 5;
+
+                                if (end = strchr(begin, '_'), end && end[1]) {
+                                    *end = '\0';
+                                    cJSON_AddStringToObject(root, "pack", begin);
+                                    *end = '_';
+                                    payload = cJSON_PrintUnformatted(root);
+                                }
+                            }
+                        }
+                    }
+
+                    cJSON_Delete(root);
+                } else {
+                    static int reported = 0;
+
+                    if (!reported) {
+                        mwarn("Result line not in JSON format: '%64s'...", line);
+                        reported = 1;
+                    }
+                }
+
+                mdebug2("Sending... '%s'", payload ? payload : line);
+                if (wm_sendmsg(osquery->msg_delay, osquery->queue_fd, payload ? payload : line, "osquery", LOCALFILE_MQ) < 0) {
                     mterror(WM_OSQUERYMONITOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 }
+
+                free(payload);
+
+
             }
 
             // Check if result path inode has changed.

@@ -26,7 +26,7 @@
   <rule id="24010" level="3">
     <if_sid>24000</if_sid>
     <decoded_as>json</decoded_as>
-    <description>osquery event: $(name)</description>
+    <description>osquery: result for '$(name)' query</description>
   </rule>
 
   <rule id="24011" level="4">
@@ -55,65 +55,65 @@
 
   <rule id="24020" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">^pack_osquery-monitoring</field>
-    <description>osquery event: $(name)</description>
-    <group>osquery_monitoring</group>
+    <field name="pack">^osquery-monitoring$</field>
+    <description>osquery: result for '$(name)' query</description>
+    <group>osquery_monitoring,</group>
   </rule>
 
   <rule id="24030" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">^pack_incident-response</field>
-    <description>osquery event: $(name)</description>
-    <group>incident_response</group>
+    <field name="pack">^incident-response$</field>
+    <description>osquery: result for '$(name)' query</description>
+    <group>incident_response,</group>
   </rule>
 
   <rule id="24040" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">^pack_it-compliance</field>
-    <description>osquery event: $(name)</description>
-    <group>it_compliance</group>
+    <field name="pack">^it-compliance$</field>
+    <description>osquery: result for '$(name)' query</description>
+    <group>it_compliance,</group>
   </rule>
 
   <rule id="24050" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">^pack_osx-attacks</field>
-    <description>osquery event: $(name)</description>
-    <group>osx_attacks</group>
+    <field name="pack">^osx-attacks$</field>
+    <description>osquery: result for '$(name)' query</description>
+    <group>osx_attacks,</group>
   </rule>
 
   <rule id="24060" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">^pack_vuln-management</field>
-    <description>osquery event: $(name)</description>
-    <group>vuln_management</group>
+    <field name="pack">^vuln-management$</field>
+    <description>osquery: result for '$(name)' query</description>
+    <group>vuln_management,</group>
   </rule>
 
   <rule id="24070" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">^pack_hardware-monitoring</field>
-    <description>osquery event: $(name)</description>
-    <group>hardware_monitoring</group>
+    <field name="pack">^hardware-monitoring$</field>
+    <description>osquery: result for '$(name)' query</description>
+    <group>hardware_monitoring,</group>
   </rule>
 
   <rule id="24080" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">^pack_ossec-rootkit</field>
-    <description>osquery event: $(name)</description>
-    <group>ossec_rootkit</group>
+    <field name="pack">^ossec-rootkit$</field>
+    <description>osquery: result for '$(name)' query</description>
+    <group>ossec_rootkit,</group>
   </rule>
 
   <rule id="24090" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">^pack_windows-hardening</field>
-    <description>osquery event: $(name)</description>
-    <group>windows_hardening</group>
+    <field name="pack">^windows-hardening$</field>
+    <description>osquery: result for '$(name)' query</description>
+    <group>windows_hardening,</group>
   </rule>
 
   <rule id="24100" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">^pack_windows-attacks</field>
-    <description>osquery event: $(name)</description>
-    <group>windows_attacks</group>
+    <field name="pack">^windows-attacks$</field>
+    <description>osquery: result for '$(name)' query</description>
+    <group>windows_attacks,</group>
   </rule>
 
 </group>
