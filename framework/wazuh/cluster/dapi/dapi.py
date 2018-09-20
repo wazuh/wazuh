@@ -97,58 +97,67 @@ def execute_remote_request(input_json, pretty):
 
 
 def forward_request(input_json, master_name, pretty, from_master):
-    def forward_list(item):
-        try:
-            name, agent_ids = item
-            if name == 'unknown' or name == '':
-                raise WazuhException(3017)
-            if agent_ids:
-                input_json['arguments']['agent_id'] = agent_ids
-            command = 'dapi_forward {}'.format(name) if name != master_name else 'dapi'
+    """
+    Forwards a request to the node who has all available information to answer it. This function is called when a
+    distributed_master function is used. Only the master node calls this function. An API request will only be forwarded
+    to worker nodes.
+
+    :param input_json: API request: Example: {"function": "/agents", "arguments":{"limit":5}, "ossec_path": "/var/ossec", "from_cluster":false}
+    :param master_name: Name of the master node. Necessary to check whether to forward it to a worker node or not.
+    :param pretty: JSON pretty print
+    :param from_master: whether the request was already forwarded from a master node or not.
+    :return: a JSON response.
+    """
+    def forward(node_name, return_none=False):
+        """
+        Forwards a request to a node.
+        :param node_name: Node to forward a request to.
+        :param return_none: Whether to return an error message or nothing (if there's an error forwarding the request).
+        :return: a JSON response
+        """
+        if node_name == 'unknown' or node_name == '':
+            # if the agent is never connected or pending (i.e. its node name is unknown or empty), do the request locally
+            response = json.loads(distribute_function(input_json))
+        else:
+            # if not, check if the node the request is being forwarded to is the master or a worker.
+            command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
             if command == 'dapi' and from_master:
-                return json.loads(distribute_function(input_json))
+                # if it's the master, execute the request directly
+                response = json.loads(distribute_function(input_json))
             else:
-                result = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
-                if not isinstance(result, dict):
-                    # there has been an error
-                    return None if not agent_ids else {'error':1000, 'message':result}
-                return result
-        except WazuhException as e:
-            if e.code == 3017:
-                if agent_ids:
-                    # if the agent is not reporting to any node, execute the request in local to get the error
-                    return json.loads(distribute_function(input_json))
-            else:
-                raise
+                # if it's a worker, forward it
+                response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+                if not isinstance(response, dict):
+                    # If there's an error and the flag return_none is not set, return a dictionary with the response.
+                    response = {'error':3016, 'message':str(WazuhException(3016,response))} if not return_none else None
+        return response
+
+    def forward_list(item):
+        """
+        Function called when there are multiple nodes to forward a request to.
+        :param item: A dictionary with {node_name: [list of agents ids]}
+        :return: JSON response of a single node
+        """
+        name, agent_ids = item
+        if agent_ids:
+            input_json['arguments']['agent_id'] = agent_ids
+        return forward(name, agent_ids == [])
 
 
+    # get the node(s) who has all available information to answer the request.
     node_name, is_list = get_solver_node(input_json, master_name)
     input_json['from_cluster'] = True
 
     if is_list:
-        old_offset = 0 if 'offset' not in input_json['arguments'] else input_json['arguments']['offset']
-        old_limit = common.database_limit if 'limit' not in input_json['arguments'] else input_json['arguments']['limit']
-        if old_offset > 0:
-            input_json['arguments']['offset'] = 0
-            input_json['arguments']['limit'] = None
+        # if there are multiple nodes to forward the request, create a ThreadPool and forward it in parallel.
         pool = ThreadPool(len(node_name))
         responses = list(filter(lambda x: x is not None, pool.map(forward_list, node_name.items())))
         pool.close()
         pool.join()
         final_json = {}
-        input_json['arguments']['offset'], input_json['arguments']['limit'] = old_offset, old_limit
         response = merge_results(responses, final_json, input_json)
     else:
-        if node_name == 'unknown' or node_name == '':
-            raise WazuhException(3017)
-        command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
-        if command == 'dapi' and from_master:
-            response = json.loads(distribute_function(input_json))
-        else:
-            response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
-            if not isinstance(response, dict):
-                # there has been an error
-                response = {'error':1000, 'message':response}
+        response = forward(node_name)
 
     data, error = __split_response_data(response)
     return print_json(data=data, pretty=pretty, error=error)
@@ -241,6 +250,11 @@ def merge_results(responses, final_json, input_json):
                     final_json[key] = field
 
     if 'data' in final_json and 'items' in final_json['data'] and isinstance(final_json['data']['items'],list):
+        if 'offset' not in input_json['arguments']:
+            input_json['arguments']['offset'] = 0
+        if 'limit' not in input_json['arguments']:
+            input_json['arguments']['limit'] = common.database_limit
+
         offset,limit = input_json['arguments']['offset'], input_json['arguments']['limit']
         final_json['data']['items'] = final_json['data']['items'][offset:offset+limit]
 
