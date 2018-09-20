@@ -2028,7 +2028,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         RuleNode *rulenode_pt;
 
         /* Extract decoded event from the queue */
-        lf = queue_pop_ex(decode_queue_event_output), lf)
+        lf = queue_pop_ex(decode_queue_event_output);
 
         currently_rule = NULL;
 
