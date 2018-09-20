@@ -503,8 +503,8 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                             snprintf(gowner, OS_FLSIZE, "Group ownership was '%s', now it is '%s'\n", oldsum.gid, newsum.gid);
                         }
                         os_strdup(oldsum.gid, lf->gowner_before);
+                    }
                 }
-}
                 /* MD5 message */
                 if (!*newsum.md5 || !*oldsum.md5 || strcmp(newsum.md5, oldsum.md5) == 0) {
                     md5[0] = '\0';
@@ -570,7 +570,7 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                 if (oldsum.inode && newsum.inode && oldsum.inode != newsum.inode) {
                     changes = 1;
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, "inode", ',');
-                    snprintf(mtime, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum.inode, newsum.inode);
+                    snprintf(inode, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum.inode, newsum.inode);
                     lf->inode_before = oldsum.inode;
                 } else {
                     inode[0] = '\0';
@@ -591,9 +591,13 @@ static int DB_Search(const char *f_name, char *c_sum, char *w_sum, Eventinfo *lf
                         "%s"
                         "%s"
                         "%s"
+                        "%s"
+                        "%s"
                         "%s",
                         f_name,
                         size,
+                        mtime,
+                        inode,
                         perm,
                         owner,
                         gowner,
