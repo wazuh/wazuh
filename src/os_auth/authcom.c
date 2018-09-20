@@ -26,14 +26,14 @@ size_t authcom_dispatch(const char * command, char ** output){
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("AUTHCOM getconfig needs arguments.");
+            mdebug1("AUTHCOM getconfig needs arguments.");
             *output = strdup("err AUTHCOM getconfig needs arguments");
             return strlen(*output);
         }
         return authcom_getconfig(rcv_args, output);
 
     } else {
-        merror("AUTHCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("AUTHCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -59,7 +59,7 @@ size_t authcom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    merror("At AUTHCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At AUTHCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }

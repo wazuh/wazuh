@@ -26,14 +26,14 @@ size_t intgcom_dispatch(char * command, char ** output) {
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("INTGCOM getconfig needs arguments.");
+            mdebug1("INTGCOM getconfig needs arguments.");
             *output = strdup("err INTGCOM getconfig needs arguments");
             return strlen(*output);
         }
         return intgcom_getconfig(rcv_args, output);
 
     } else {
-        merror("INTGCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("INTGCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -59,7 +59,7 @@ size_t intgcom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    merror("At INTGCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At INTGCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }
