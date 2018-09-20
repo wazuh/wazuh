@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
 - Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315))
 - Fim data is stored in SQLite using Wazuh-DB. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
+- Avoid conflicts with the size of time_t variable in wazuh-db. ([#1366](https://github.com/wazuh/wazuh/pull/1366))
 
 ### Fixed
 
