@@ -19,6 +19,11 @@ All notable changes to this project will be documented in this file.
 - Fim data is stored in SQLite using Wazuh-DB. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
 - Make Syscheck case insensitive. ([#1349](https://github.com/wazuh/wazuh/pull/1349))
 - Avoid conflicts with the size of time_t variable in wazuh-db. ([#1366](https://github.com/wazuh/wazuh/pull/1366))
+- Osquery integration updated: ([#1369](https://github.com/wazuh/wazuh/pull/1369))
+  - Nest the result data into a "osquery" object.
+  - Extract the pack name into a new field.
+  - Include the query name in the alert description.
+  - Minor fixes.
 
 ### Fixed
 
