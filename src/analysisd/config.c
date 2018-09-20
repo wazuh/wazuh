@@ -97,6 +97,10 @@ int GlobalConf(const char *cfgfile)
         ReadConfig(CLABELS, cfgfile, &Config.labels, NULL) < 0) {
         return (OS_INVALID);
     }
+    int current_label = 0;
+    for (current_label; Config.labels[current_label].key != NULL; current_label++){
+      Config.labels[current_label].value = parse_environment_labels(Config.labels[current_label]);
+    }
 
     Config.min_rotate_interval = getDefine_Int("analysisd", "min_rotate_interval", 10, 86400);
 
