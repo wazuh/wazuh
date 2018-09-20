@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest
+from wazuh.utils import execute, cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, get_hash
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket
@@ -1408,73 +1408,58 @@ class Agent:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+        :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        def get_hash(file, hash_algorithm='md5'):
-            filename = "{0}/{1}".format(common.shared_path, file)
+        try:
+            # Connect DB
+            db_global = glob(common.database_path_global)
+            if not db_global:
+                raise WazuhException(1600)
 
-            # check hash algorithm
-            try:
-                algorithm_list = hashlib.algorithms_available
-            except Exception as e:
-                algorithm_list = hashlib.algorithms
+            conn = Connection(db_global[0])
+            query = "SELECT {0} FROM agent WHERE `group` = :group_id"
 
-            if not hash_algorithm in algorithm_list:
-                raise WazuhException(1723, "Available algorithms are {0}.".format(algorithm_list))
+            # Group names
+            data = []
+            for entry in listdir(common.shared_path):
+                full_entry = path.join(common.shared_path, entry)
+                if not path.isdir(full_entry):
+                    continue
 
-            hashing = hashlib.new(hash_algorithm)
+                # Group count
+                request = {'group_id': entry}
+                conn.execute(query.format('COUNT(*)'), request)
 
-            try:
-                with open(filename, 'rb') as f:
-                    hashing.update(f.read())
-            except IOError:
-                return None
+                # merged.mg and agent.conf sum
+                merged_sum = get_hash(full_entry + "/merged.mg", hash_algorithm)
+                conf_sum   = get_hash(full_entry + "/agent.conf", hash_algorithm)
 
-            return hashing.hexdigest()
+                item = {'count':conn.fetch()[0], 'name': entry}
 
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
+                if merged_sum:
+                    item['mergedSum'] = merged_sum
 
-        conn = Connection(db_global[0])
-        query = "SELECT {0} FROM agent WHERE `group` = :group_id"
+                if conf_sum:
+                    item['configSum'] = conf_sum
 
-        # Group names
-        data = []
-        for entry in listdir(common.shared_path):
-            full_entry = path.join(common.shared_path, entry)
-            if not path.isdir(full_entry):
-                continue
-
-            # Group count
-            request = {'group_id': entry}
-            conn.execute(query.format('COUNT(*)'), request)
-
-            # merged.mg and agent.conf sum
-            merged_sum = get_hash(entry + "/merged.mg", hash_algorithm)
-            conf_sum   = get_hash(entry + "/agent.conf", hash_algorithm)
-
-            item = {'count':conn.fetch()[0], 'name': entry}
-
-            if merged_sum:
-                item['mergedSum'] = merged_sum
-
-            if conf_sum:
-                item['configSum'] = conf_sum
-
-            data.append(item)
+                data.append(item)
 
 
-        if search:
-            data = search_array(data, search['value'], search['negation'], fields=['name'])
+            if search:
+                data = search_array(data, search['value'], search['negation'], fields=['name'])
 
-        if sort:
-            data = sort_array(data, sort['fields'], sort['order'])
-        else:
-            data = sort_array(data, ['name'])
+            if sort:
+                data = sort_array(data, sort['fields'], sort['order'])
+            else:
+                data = sort_array(data, ['name'])
+        except WazuhException as e:
+            raise e
+        except Exception as e:
+            raise WazuhException(1734, str(e))
 
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+
 
     @staticmethod
     def group_exists_sql(group_id):
@@ -1635,7 +1620,7 @@ class Agent:
 
 
     @staticmethod
-    def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
         """
         Gets the group files.
 
@@ -1662,8 +1647,7 @@ class Agent:
                 item = {}
                 try:
                     item['filename'] = entry
-                    with open("{0}/{1}".format(group_path, entry), 'rb') as f:
-                        item['hash'] = hashlib.md5(f.read()).hexdigest()
+                    item['hash'] = get_hash('{}/{}'.format(group_path, entry), hash_algorithm)
                     data.append(item)
                 except (OSError, IOError) as e:
                     pass
@@ -1671,9 +1655,7 @@ class Agent:
             try:
                 # ar.conf
                 ar_path = "{0}/ar.conf".format(common.shared_path, entry)
-                with open(ar_path, 'rb') as f:
-                    hash_ar = hashlib.md5(f.read()).hexdigest()
-                data.append({'filename': "ar.conf", 'hash': hash_ar})
+                data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
             except (OSError, IOError) as e:
                 pass
 
@@ -1686,6 +1668,8 @@ class Agent:
                 data = sort_array(data, ["filename"])
 
             return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+        except WazuhException as e:
+            raise e
         except Exception as e:
             raise WazuhException(1727, str(e))
 
