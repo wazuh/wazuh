@@ -113,7 +113,7 @@ int connect_server(int initial_id)
             }
         } else {
             if (agt->server[rc].protocol == TCP_PROTO) {
-                if (OS_SetRecvTimeout(agt->sock, timeout) < 0){
+                if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0){
                     merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
                 }
             }

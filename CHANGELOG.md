@@ -29,6 +29,22 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.6.2]
 
+### Changed
+
+- Make Syscheck case insensitive. ([#1349](https://github.com/wazuh/wazuh/pull/1349))
+
+### Fixed
+
+- Fix 0 value at check options from Syscheck. ([1209](https://github.com/wazuh/wazuh/pull/1209))
+- Prevent offline agents from generating vulnerability-detector alerts. ([#1292](https://github.com/wazuh/wazuh/pull/1292))
+- Fix empty SHA256 of rotated alerts and log files. ([#1308](https://github.com/wazuh/wazuh/pull/1308))
+- Fix typo in whodata alerts. ([#1242](https://github.com/wazuh/wazuh/issues/1242))
+- Fix bug in whodata field extraction for Windows. ([#1233](https://github.com/wazuh/wazuh/issues/1233))
+- Fixed service startup on error. ([#1324](https://github.com/wazuh/wazuh/pull/1324))
+- Fix stack overflow when monitoring deep files. ([#1239](https://github.com/wazuh/wazuh/pull/1239))
+- Fix bug when running quick commands with timeout of 1 second. ([#1259](https://github.com/wazuh/wazuh/pull/1259))
+- Fixed getting RAM memory information from mac OS X and FreeBSD agents. ([#1203](https://github.com/wazuh/wazuh/pull/1203))
+- Set connection timeout for Auth server ([#1336](https://github.com/wazuh/wazuh/pull/1336))
 
 ## [v3.6.1] 2018-09-07
 
@@ -98,6 +114,7 @@ All notable changes to this project will be documented in this file.
 - Fixed legacy configuration for `vulnerability-detector`. ([#1174](https://github.com/wazuh/wazuh/pull/1174))
 - Fix active-response scripts installation for Windows. ([#1182](https://github.com/wazuh/wazuh/pull/1182)).
 - Fixed `open-scap` deadlock when opening large files. ([#1206](https://github.com/wazuh/wazuh/pull/1206)). Thanks to @juergenc for detecting this issue.
+
 
 ### Removed
 

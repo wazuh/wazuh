@@ -503,9 +503,9 @@ int OS_CloseSocket(int socket)
 #endif /* WIN32 */
 }
 
-int OS_SetRecvTimeout(int socket, int seconds)
+int OS_SetRecvTimeout(int socket, long seconds, long useconds)
 {
-    struct timeval tv = { seconds, 0 };
+    struct timeval tv = { seconds, useconds };
     return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
 }
 
@@ -537,7 +537,7 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
     ssize_t recvval, recvb;
     uint32_t msgsize;
 
-    recvval = recv(sock, &msgsize, sizeof(msgsize), 0);
+    recvval = recv(sock, (char *) &msgsize, sizeof(msgsize), 0);
 
     switch(recvval) {
         case -1:
@@ -557,7 +557,7 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
 
     recvb = recv(sock, ret, msgsize, MSG_WAITALL);
 
-    if (recvb == msgsize && msgsize < size) {
+    if (recvb == (int32_t) msgsize && msgsize < size) {
         ret[msgsize] = '\0';
     }
 

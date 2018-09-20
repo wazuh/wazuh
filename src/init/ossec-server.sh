@@ -36,6 +36,9 @@ USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
 DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 
+# Reverse order of daemons
+SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+
 if ! is_rhel_le_5
 then
     DAEMONS="wazuh-clusterd $DAEMONS"
@@ -259,8 +262,6 @@ testconfig()
 # Start function
 start()
 {
-    # Reverse order of daemons
-    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
     incompatible=false
 
     if [ $USE_JSON = false ]; then
