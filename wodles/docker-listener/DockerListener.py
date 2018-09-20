@@ -9,11 +9,14 @@ import threading
 import json
 import socket
 import sys
+import time
 
 
 class DockerListener:
 
-    def __init__(self, interval=1):
+    wait_time = 5
+
+    def __init__(self):
         """"
         DockerListener constructor
 
@@ -21,17 +24,36 @@ class DockerListener:
         # socket variables
         if sys.platform == "win32":
             self.wazuh_path = 'C:\Program Files (x86)\ossec-agent'
+            print("ERROR: This wodle does't work on Windows.")
+            sys.exit(1)
         else:
             self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
-        self.interval = interval
         self.client = docker.from_env()
         self.check_docker_service()
-        # self.event_list = []  # could be removed
-        self.thread = threading.Thread(target=self.listen)
-        self.thread.start()
+        self.thread1 = threading.Thread(target=self.listen)
+        self.thread1.start()
+
+    def reconnect(self):
+        """
+        Tries to reconnect to Docker service waiting the time specified in class variable 'wait_time'
+
+        """
+        try:
+            if self.client.ping():
+                self.thread1 = threading.Thread(target=self.listen)
+                self.thread1.start()
+            print("Docker service was restarted.")  # delete
+            self.send_msg(json.dumps({"info_docker": "Reconnected to Docker service"}))
+            return
+        except:
+            print("Reconnecting...")  # delete
+            # self.send_msg(json.dumps({"info_docker": "Reconnecting to Docker service"}))
+            time.sleep(self.wait_time)
+            self.reconnect()
+
 
     def check_docker_service(self):
         """
@@ -40,8 +62,17 @@ class DockerListener:
         """
         try:
             self.client.ping()
+            print("Docker service is running.")  # delete
+            self.send_msg(json.dumps({"info_docker": "Connected to Docker service"}))
+            # return True
         except Exception:
-            sys.exit("Docker service is not running.")
+            # print("Docker service is not running.")
+            # return False
+            print("Docker service is not running.")
+            time.sleep(self.wait_time)
+            self.check_docker_service()
+
+            # sys.exit("Docker service isn't running.")
 
     def listen(self):
         """
@@ -53,6 +84,9 @@ class DockerListener:
                 self.process(event)
         except Exception:
             raise Exception
+        print("Docker service was stopped.")  # delete
+        self.send_msg(json.dumps({"info_docker": "Docker service was stopped"}))
+        self.reconnect()
 
     def process(self, event):
         """"
@@ -60,45 +94,7 @@ class DockerListener:
 
         :param event: Docker event.
         """
-        """
-        #### events not catched: kill, die
-        if 'status' in event:
-            if event['status'] is "create":
-                print("One container was created")
-                self.event_list.append(event)
-                # sends the event to the socket
-                self.send_msg(str(event))
-            elif event['status'] is "destroy":
-                print("One container was destroyed")
-                self.event_list.append(event)
-                # sends the event to the socket
-                self.send_msg(str(event))
-            elif event['status'] is "pause":
-                print("One container was paused")
-                self.event_list.append(event)
-                # sends the event to the socket
-                self.send_msg(str(event))
-             elif event['status'] is "unpause":
-                print("One container was restarted")
-                self.event_list.append(event)
-                # sends the event to the socket
-                self.send_msg(str(event))
-             elif event['status'] is "start":
-                print("One container was started")
-                self.event_list.append(event)
-                # sends the event to the socket
-                self.send_msg(str(event))
-             elif event['status'] is "stop":
-                print("One container was stopped")
-                self.event_list.append(event)
-                # sends the event to the socket
-                self.send_msg(str(event))
-        """
         self.send_msg(event.decode("utf-8"))
-
-    def debug(self, msg, msg_level):
-        # if debug_level >= msg_level:
-        print('DEBUG: {debug_msg}'.format(debug_msg=msg))
 
     def format_msg(self, msg):
         """
@@ -118,7 +114,6 @@ class DockerListener:
         try:
             json_msg = json.dumps(self.format_msg(msg))
             print(json_msg)
-            # self.debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
             s.send("{header}{msg}".format(header=self.msg_header,
