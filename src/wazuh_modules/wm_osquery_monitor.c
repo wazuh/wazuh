@@ -64,7 +64,10 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
         }
 
         if (!active) {
-            fclose(result_log);
+            if (result_log) {
+                fclose(result_log);
+            }
+
             break;
         }
 
