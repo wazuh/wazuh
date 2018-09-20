@@ -10,6 +10,7 @@ import wazuh.cluster.communication as communication
 from wazuh import common
 from wazuh.agent import Agent
 from wazuh.exception import WazuhException
+from wazuh.utils import sort_array
 import json
 from itertools import groupby
 from operator import itemgetter
@@ -297,6 +298,10 @@ def merge_results(responses, final_json, input_json):
             input_json['arguments']['offset'] = 0
         if 'limit' not in input_json['arguments']:
             input_json['arguments']['limit'] = common.database_limit
+
+        if 'sort' in input_json['arguments']:
+            final_json['data']['items'] = sort_array(final_json['data']['items'], input_json['arguments']['sort']['fields'],
+                                                     input_json['arguments']['sort']['order'])
 
         offset,limit = input_json['arguments']['offset'], input_json['arguments']['limit']
         final_json['data']['items'] = final_json['data']['items'][offset:offset+limit]
