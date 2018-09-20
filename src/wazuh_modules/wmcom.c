@@ -26,14 +26,14 @@ size_t wmcom_dispatch(char * command, char ** output){
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("WMCOM getconfig needs arguments.");
+            mdebug1("WMCOM getconfig needs arguments.");
             *output = strdup("err WMCOM getconfig needs arguments");
             return strlen(*output);
         }
         return wmcom_getconfig(rcv_args, output);
 
     } else {
-        merror("WMCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("WMCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -70,7 +70,7 @@ size_t wmcom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    merror("At WMCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At WMCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }
@@ -116,7 +116,7 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
             continue;
         }
-        
+
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case -1:
