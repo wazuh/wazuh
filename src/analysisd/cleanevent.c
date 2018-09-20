@@ -554,7 +554,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     localtime(&c_time);
     gettime(&local_c_timespec);
     lf->time = local_c_timespec;
-    localtime_r(&local_c_timespec, &p);
+    localtime_r(&lf->time.tv_sec, &p);
 
     /* Assign hour, day, year and month values */
     lf->day = p.tm_mday;
