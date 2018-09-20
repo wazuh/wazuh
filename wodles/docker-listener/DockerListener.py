@@ -32,6 +32,7 @@ class DockerListener:
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
         self.client = docker.from_env()
+        self.thread1 = threading.Thread(target=self.listen)
         self.connect(first_time=True)
 
     def connect(self, first_time=False):
@@ -40,7 +41,8 @@ class DockerListener:
 
         """
         if self.check_docker_service():
-            self.thread1 = threading.Thread(target=self.listen)
+            if not first_time:
+                self.thread1 = threading.Thread(target=self.listen)
             self.thread1.start()
             print("Docker service was started.")  # delete
             self.send_msg(json.dumps({"info_docker": "Connected to Docker service"}))
@@ -51,23 +53,18 @@ class DockerListener:
                 print("Reconnecting...")  # delete
                 # self.send_msg(json.dumps({"info_docker": "Reconnecting to Docker service"}))
                 time.sleep(self.wait_time)
-            print("Docker service was started.")  # delete
-            self.send_msg(json.dumps({"info_docker": "Connected to Docker service"}))
-            return self.connect()
+            self.connect()
 
     def check_docker_service(self):
         """
         Checks if Docker service is running
 
+        :return: True if Docker service is active or False if it is inactive.
         """
         try:
             self.client.ping()
-            #print("Docker service is running.")  # delete
-            # self.send_msg(json.dumps({"info_docker": "Connected to Docker service"}))
             return True
         except Exception:
-            #print("Docker service is not running.")
-            # self.send_msg(json.dumps({"info_docker": "Docker service is not running"}))
             return False
 
     def listen(self):
@@ -82,7 +79,7 @@ class DockerListener:
             raise Exception
         print("Docker service was stopped.")  # delete
         self.send_msg(json.dumps({"info_docker": "Docker service was stopped"}))
-        return self.connect()
+        self.connect()
 
     def process(self, event):
         """"
