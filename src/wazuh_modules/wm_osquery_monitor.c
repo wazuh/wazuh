@@ -59,8 +59,9 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
         // Wait to open log file
 
         while (result_log = wfopen(osquery->log_path, "r"), !result_log && active) {
-            mwarn("Results file '%s' not available: %s (%d)", osquery->log_path, strerror(errno), errno);
-            sleep((i < 60 ? ++i : 60));
+            i += i < 60;
+            mwarn("Results file '%s' not available: %s (%d). Retrying in %d sec.", osquery->log_path, strerror(errno), errno, i);
+            sleep(i);
         }
 
         if (!active) {
@@ -70,6 +71,8 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
 
             break;
         }
+
+        minfo("Following osquery results file '%s'.", osquery->log_path);
 
         // Move to end of the file
 
