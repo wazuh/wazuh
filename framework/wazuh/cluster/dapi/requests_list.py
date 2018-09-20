@@ -24,7 +24,10 @@ import wazuh.syscollector as syscollector
 import wazuh.ciscat as ciscat
 import wazuh.active_response as active_response
 
-
+# Requests types:
+#   * local_master       -> requests that must be executed in the master node.
+#   * distributed_master -> requests that the master node must forward to the worker nodes able to answer them.
+#   * local_any          -> requests any node can answer to.
 functions = {
     # Agents
     '/agents/:agent_id': {

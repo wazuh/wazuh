@@ -24,18 +24,36 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 def distribute_function(input_json, pretty=False, debug=False, from_master=False):
+    """
+    Distributes an API call.
+
+    :param input_json: API call to execute.
+    :param pretty: JSON pretty print.
+    :param debug: whether to raise an exception or return an error.
+    :param from_master: whether the request came forwarded from the master node or not.
+    :return: a JSON response
+    """
     try:
         node_info = cluster.get_node()
         request_type = rq.functions[input_json['function']]['type']
 
+        # First case: execute the request local.
+        # If the cluster is disabled or the request type is local_any
+        # if the request was made in the master node and the request type is local_master
+        # if the request came forwarded from the master node and its type is distributed_master
         if not cluster.check_cluster_status() or request_type == 'local_any' or\
                 (request_type == 'local_master' and node_info['type'] == 'master')   or\
                 (request_type == 'distributed_master' and input_json['from_cluster']):
 
             return execute_local_request(input_json, pretty, debug)
 
+        # Second case: forward the request
+        # Only the master node will forward a request, and it will only be forwarded if its type is distributed_master
         elif request_type == 'distributed_master' and node_info['type'] == 'master':
             return forward_request(input_json, node_info['node'], pretty, from_master)
+
+        # Last case: execute the request remotely.
+        # A request will only be executed remotely if it was made in a worker node and its type isn't local_any
         else:
             return execute_remote_request(input_json, pretty)
     except WazuhException as e:
@@ -61,6 +79,14 @@ def print_json(data, error=0, pretty=False):
 
 
 def execute_local_request(input_json, pretty, debug):
+    """
+    Executes an API request locally.
+
+    :param input_json: API request to execute.
+    :param pretty: JSON pretty print.
+    :param debug: whether to raise an exception or return it.
+    :return: a JSON response.
+    """
     try:
         before = time.time()
         if 'arguments' in input_json and input_json['arguments']:
@@ -82,6 +108,12 @@ def execute_local_request(input_json, pretty, debug):
 
 
 def __split_response_data(response):
+    """
+    Splits error code and result / error message
+
+    :param response: Response from another node.
+    :return: a tuple with the response data and response error code.
+    """
     if response.get('err'):
         raise WazuhException(3018, response['err'])
 
@@ -91,6 +123,13 @@ def __split_response_data(response):
 
 
 def execute_remote_request(input_json, pretty):
+    """
+    Executes a remote request. This function is used by worker nodes to execute master_only API requests.
+
+    :param input_json: API request to execute. Example: {"function": "/agents", "arguments":{"limit":5}, "ossec_path": "/var/ossec", "from_cluster":false}
+    :param pretty: JSON pretty print
+    :return: JSON response
+    """
     response = i_s.execute('dapi {}'.format(json.dumps(input_json)))
     data, error = __split_response_data(response)
     return print_json(data=data, pretty=pretty, error=error)
@@ -165,7 +204,7 @@ def forward_request(input_json, master_name, pretty, from_master):
 
 def get_solver_node(input_json, master_name):
     """
-    Gets the node that can solve a request.
+    Gets the node(s) that can solve a request, the node(s) that has all the necessary information to answer it.
     Only called when the request type is 'master_distributed' and the node_type is master.
 
     :param input_json: API request parameters and description
@@ -178,7 +217,7 @@ def get_solver_node(input_json, master_name):
         if isinstance(input_json['arguments']['agent_id'], list):
             agents = Agent.get_agents_overview(select=select_node, limit=None, filters={'id':input_json['arguments']['agent_id']},
                                                   sort={'fields':['node_name'], 'order':'desc'})['items']
-            node_name = {k:list(map(itemgetter('id'), g)) for k,g in groupby(agents, key=itemgetter('node_name')) if k != 'unknown'}
+            node_name = {k:list(map(itemgetter('id'), g)) for k,g in groupby(agents, key=itemgetter('node_name'))}
 
             # add non existing ids in the master's dictionary entry
             non_existent_ids = list(set(input_json['arguments']['agent_id']) - set(map(itemgetter('id'), agents)))
@@ -201,8 +240,9 @@ def get_solver_node(input_json, master_name):
         return node_id, False
 
     else: # agents, syscheck, rootcheck and syscollector
+        # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
         agents = Agent.get_agents_overview(select=select_node, limit=None, sort={'fields': ['node_name'], 'order': 'desc'})['items']
-        node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node_name')) if k != 'unknown'}
+        node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node_name'))}
         return node_name, True
 
 
@@ -213,6 +253,9 @@ def merge_results(responses, final_json, input_json):
     To do the merging process, the following is considered:
         1.- If the field is a list, append items to it
         2.- If the field is a message (msg), only replace it if the new message has more priority.
+        3.- If the field is a integer:
+            * if it's totalItems, sum
+            * if it's an error, only replace it if its value is higher
 
     The priorities are defined in a list of tuples. The first item of the tuple is the element which has more priority.
 
@@ -262,7 +305,17 @@ def merge_results(responses, final_json, input_json):
 
 
 class APIRequestQueue(communication.ClusterThread):
+    """
+    Represents a queue of API requests. This thread will be always in background, it will remain blocked until a
+    request is pushed into its request_queue. Then, it will answer the request and get blocked again.
+    """
     def __init__(self, server, stopper):
+        """
+        Constructor.
+
+        :param server: Master/Worker object which will be used to send requests.
+        :param stopper: A shared event to stop the thread.
+        """
         communication.ClusterThread.__init__(self, stopper=stopper)
         self.server = server
         self.request_queue = Queue()
@@ -271,15 +324,19 @@ class APIRequestQueue(communication.ClusterThread):
 
     def run(self):
         while not self.stopper.is_set() and self.running:
-            name, id, request = self.request_queue.get(block=True).split(' ', 2)
-            result = distribute_function(json.loads(request), from_master=True)
+            # name    -> node name the request must be sent to. None if called from a worker node.
+            # id      -> id of the request.
+            # request -> JSON containing request's necessary information
+            name, id, request = self.request_queue.get(block=True).split(' ', 2)    # wait until a request is received
+            result = distribute_function(json.loads(request), from_master=True)     # get request answer
             try:
-                self.send_string(result, id, name)
+                self.send_string(result, id, name)                                  # send the request's response
             except Exception as e:
-                self.send_request(command='err-is', data=str(e), id=id, name=name)
+                self.send_request(command='err-is', data=str(e), id=id, name=name)  # tell the client an error has taken place
 
 
     def send_string(self, result, id, name):
+        # send_string's function for workers doesn't have "worker_name" parameter. That's why it is necessary to differentiate both.
         if name == 'None':
             self.server.send_string(reason='dapi_res', string_data=result, new_req="fwd_new", upd_req="fwd_upd",
                                     end_req="fwd_end", extra_data=id)
@@ -289,6 +346,7 @@ class APIRequestQueue(communication.ClusterThread):
 
 
     def send_request(self, command, data, id, name):
+        # send_request's function for workers doesn't have "worker_name" parameter. That's why it is necessary to differentiate both.
         if name == 'None':
             self.server.send_request(command=command, data=id + ' ' + data)
         else:
@@ -296,5 +354,10 @@ class APIRequestQueue(communication.ClusterThread):
 
 
     def set_request(self, request):
+        """
+        Adds a request to the queue.
+
+        :param request: Request to add
+        """
         logger.debug("{} Receiving request: {}".format(self.tag, request))
         self.request_queue.put(request)
