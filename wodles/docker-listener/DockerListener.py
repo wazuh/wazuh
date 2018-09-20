@@ -15,6 +15,7 @@ import time
 class DockerListener:
 
     wait_time = 5
+    field_debug_name = "Wodle event"
 
     def __init__(self):
         """"
@@ -24,7 +25,7 @@ class DockerListener:
         # socket variables
         if sys.platform == "win32":
             self.wazuh_path = 'C:\Program Files (x86)\ossec-agent'
-            print("ERROR: This wodle does't work on Windows.")
+            print("ERROR: This wodle does not work on Windows.")
             sys.exit(1)
         else:
             self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
@@ -32,6 +33,7 @@ class DockerListener:
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
         self.client = docker.from_env()
+        self.send_msg(json.dumps({self.field_debug_name: "Started"}))
         self.thread1 = threading.Thread(target=self.listen)
         self.connect(first_time=True)
 
@@ -45,13 +47,14 @@ class DockerListener:
                 self.thread1 = threading.Thread(target=self.listen)
             self.thread1.start()
             print("Docker service was started.")  # delete
-            self.send_msg(json.dumps({"info_docker": "Connected to Docker service"}))
+            self.send_msg(json.dumps({self.field_debug_name: "Connected to Docker service"}))
         else:
             if first_time:
                 print("Docker service is not running.")
+                self.send_msg(json.dumps({self.field_debug_name: "Docker service is not running"}))
             while not self.check_docker_service():
                 print("Reconnecting...")  # delete
-                # self.send_msg(json.dumps({"info_docker": "Reconnecting to Docker service"}))
+                # self.send_msg(json.dumps({self.field_debug_name: "Reconnecting to Docker service"}))
                 time.sleep(self.wait_time)
             self.connect()
 
@@ -78,7 +81,7 @@ class DockerListener:
         except Exception:
             raise Exception
         print("Docker service was stopped.")  # delete
-        self.send_msg(json.dumps({"info_docker": "Docker service was stopped"}))
+        self.send_msg(json.dumps({self.field_debug_name: "Disconnected to Docker service"}))
         self.connect()
 
     def process(self, event):
