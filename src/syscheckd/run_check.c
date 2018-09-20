@@ -334,8 +334,10 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
     syscheck_node *s_node;
-    char str_size[50], str_perm[50], str_owner[50], str_group[50], str_mtime[50], str_inode[50];
-#ifdef WIN32
+    char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
+#ifndef WIN32
+    char str_owner[50], str_group[50];
+#else
     char *sid = NULL;
     const char *user;
 #endif

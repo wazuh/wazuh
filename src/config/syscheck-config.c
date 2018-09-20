@@ -753,9 +753,10 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         /* Get directories */
         else if (strcmp(node[i]->element, xml_directories) == 0) {
             char dirs[OS_MAXSTR];
-
             char *ptfile;
+
 #ifdef WIN32
+            str_lowercase(node[i]->content);
             /* Change backslashes to forwardslashes on entry */
             ptfile = strchr(node[i]->content, '/');
             while (ptfile) {

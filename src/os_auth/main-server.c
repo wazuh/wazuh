@@ -477,6 +477,12 @@ int main(int argc, char **argv)
 
     nowChroot();
 
+    if (config.timeout_sec || config.timeout_usec) {
+        minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
+    } else {
+        mdebug1("Network timeout is disabled.");
+    }
+
     /* Initialize queues */
 
     insert_tail = &queue_insert;
@@ -536,7 +542,19 @@ int main(int argc, char **argv)
         }
 
         if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
-            w_mutex_lock(&mutex_pool);
+            if (config.timeout_sec || config.timeout_usec) {
+                if (OS_SetRecvTimeout(client_sock, config.timeout_sec, config.timeout_usec) < 0) {
+                    static int reported = 0;
+
+                    if (!reported) {
+                        int error = errno;
+                        merror("Could not set timeout to network socket: %s (%d)", strerror(error), error);
+                        reported = 1;
+                    }
+                }
+            }
+
+            pthread_mutex_lock(&mutex_pool);
 
             if (full(pool_i, pool_j)) {
                 merror("Too many connections. Rejecting.");
@@ -641,6 +659,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         if (ssl_error(ssl, ret)) {
             merror("SSL Error (%d)", ret);
+            SSL_free(ssl);
+            close(client.socket);
+            continue;
+        } else if (ret <= 0) {
+            minfo("Client was disconnected, or network timeout.");
             SSL_free(ssl);
             close(client.socket);
             continue;
