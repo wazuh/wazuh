@@ -122,9 +122,6 @@ int main(int argc, char **argv)
     if(test_config)
         exit(0);
 
-    // Start com request thread
-    w_create_thread(intgcom_main, NULL);
-
     /* Pid before going into daemon mode. */
     i = getpid();
 
@@ -151,6 +148,9 @@ int main(int argc, char **argv)
     /* Changing user */
     if(Privsep_SetUser(uid) < 0)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
+
+    // Start com request thread
+    w_create_thread(intgcom_main, NULL);
 
     /* Basic start up completed. */
     mdebug1(PRIVSEP_MSG ,dir,user);

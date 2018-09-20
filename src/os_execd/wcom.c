@@ -54,7 +54,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
 
     if (strcmp(rcv_comm, "open") == 0){
         if (!rcv_args){
-            merror("WCOM open needs arguments.");
+            mdebug1("WCOM open needs arguments.");
             *output = strdup("err WCOM open needs arguments");
             return strlen(*output);
         }
@@ -65,14 +65,14 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
             path++;
             return wcom_open(path, mode, output);
         }else {
-            merror("Bad WCOM open message.");
+            mdebug1("Bad WCOM open message.");
             *output = strdup("err Open file");
             return strlen(*output);
         }
 
     }else if (strcmp(rcv_comm, "write") == 0){
         if (!rcv_args){
-            merror("WCOM write needs arguments.");
+            mdebug1("WCOM write needs arguments.");
             *output = strdup("err WCOM write needs arguments");
             return strlen(*output);
         }
@@ -80,7 +80,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
         ssize_t data_length = (ssize_t)strtol(rcv_args, &path, 10);
 
         if (*path != ' ' || data_length < 0) {
-            merror("Bad WCOM write message.");
+            mdebug1("Bad WCOM write message.");
             *output = strdup("err Write file");
             return strlen(*output);
         }
@@ -88,7 +88,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
         path++;
         // write length [file_path data]
         if ((command + length - data_length - path) <= 0){
-            merror("Bad size WCOM path message.");
+            mdebug1("Bad size WCOM path message.");
             *output = strdup("err Write file");
             return strlen(*output);
         }
@@ -98,7 +98,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
             data = ptr + 1;
             *ptr = '\0';
         }else{
-            merror("Bad WCOM write message.");
+            mdebug1("Bad WCOM write message.");
             *output = strdup("err Write file");
             return strlen(*output);
         }
@@ -107,7 +107,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
 
     }else if (strcmp(rcv_comm, "close") == 0){
         if (!rcv_args){
-            merror("WCOM close needs arguments.");
+            mdebug1("WCOM close needs arguments.");
             *output = strdup("err WCOM close needs arguments");
             return strlen(*output);
         }
@@ -116,7 +116,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
 
     }else if (strcmp(rcv_comm, "sha1") == 0){
         if (!rcv_args){
-            merror("WCOM sha1 needs arguments.");
+            mdebug1("WCOM sha1 needs arguments.");
             *output = strdup("err WCOM sha1 needs arguments");
             return strlen(*output);
         }
@@ -125,7 +125,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
 
     }else if (strcmp(rcv_comm, "unmerge") == 0){
         if (!rcv_args){
-            merror("WCOM unmerge needs arguments.");
+            mdebug1("WCOM unmerge needs arguments.");
             *output = strdup("err WCOM unmerge needs arguments");
             return strlen(*output);
         }
@@ -138,7 +138,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
 
     } else if (strcmp(rcv_comm, "uncompress") == 0){
         if (!rcv_args){
-            merror("WCOM uncompress needs arguments.");
+            mdebug1("WCOM uncompress needs arguments.");
             *output = strdup("err WCOM uncompress needs arguments");
             return strlen(*output);
         }
@@ -149,7 +149,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
             *(target++) = '\0';
             return wcom_uncompress(source, target, output);
         } else {
-            merror("Bad WCOM uncompress message.");
+            mdebug1("Bad WCOM uncompress message.");
             *output = strdup("err Too few commands");
             return strlen(*output);
         }
@@ -157,7 +157,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
     } else if (strcmp(rcv_comm, "upgrade") == 0) {
         // upgrade <package> <installer>
         if (!rcv_args){
-            merror("WCOM upgrade needs arguments.");
+            mdebug1("WCOM upgrade needs arguments.");
             *output = strdup("err WCOM upgrade needs arguments");
             return strlen(*output);
         }
@@ -168,7 +168,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
             *(installer++) = '\0';
             return wcom_upgrade(package, installer, output);
         } else {
-            merror("Bad WCOM upgrade message.");
+            mdebug1("Bad WCOM upgrade message.");
             *output = strdup("err Too few commands");
             return strlen(*output);
         }
@@ -201,14 +201,14 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
     } else if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("WCOM getconfig needs arguments.");
+            mdebug1("WCOM getconfig needs arguments.");
             *output = strdup("err WCOM getconfig needs arguments");
             return strlen(*output);
         }
         return wcom_getconfig(rcv_args, output);
 
     } else {
-        merror("WCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("WCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -594,11 +594,36 @@ size_t wcom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
-    } else {
+    } else if (strcmp(section, "cluster") == 0){
+        /* Check socket connection with cluster first */
+        int sock = -1;
+        char sockname[PATH_MAX + 1] = {0};
+
+        if (isChroot()) {
+            strcpy(sockname, CLUSTER_SOCK);
+        } else {
+            strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
+        }
+
+        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+            *output = strdup("err Unable to connect with socket. The component might be disabled");
+            return strlen(*output);
+        }
+        else if (cfg = getClusterConfig(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+    }else {
         goto error;
     }
 error:
-    merror("At WCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At WCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }

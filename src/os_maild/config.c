@@ -103,60 +103,73 @@ cJSON *getMailConfig(void) {
 cJSON *getMailAlertsConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
-    cJSON *email = cJSON_CreateObject();
+    cJSON *mail_list = cJSON_CreateArray();
     unsigned int i;
 
     if (mail.gran_to) {
-        cJSON *mail_list = cJSON_CreateArray();
         for (i=0;mail.gran_to[i];i++) {
-            cJSON_AddItemToArray(mail_list,cJSON_CreateString(mail.gran_to[i]));
-        }
-        cJSON_AddItemToObject(email,"email_to",mail_list);
-    }
-    if (mail.gran_level) {
-        cJSON *list = cJSON_CreateArray();
-        for (i=0;mail.gran_level[i];i++) {
-            cJSON_AddItemToArray(list,cJSON_CreateNumber(mail.gran_level[i]));
-        }
-        cJSON_AddItemToObject(email,"level",list);
-    }
-    if (mail.gran_group) {
-        cJSON *list = cJSON_CreateArray();
-        OSMatch **wl;
-        wl = mail.gran_group;
-        while (*wl) {
-            char **tmp_pts = (*wl)->patterns;
-            while (*tmp_pts) {
-                cJSON_AddItemToArray(list,cJSON_CreateString(*tmp_pts));
-                tmp_pts++;
+            cJSON *email = cJSON_CreateObject();
+            cJSON_AddItemToObject(email,"email_to",cJSON_CreateString(mail.gran_to[i]));
+
+            cJSON_AddItemToObject(email,"level",cJSON_CreateNumber(mail.gran_level[i]));
+
+            if (mail.gran_group[i]) {
+                cJSON *list = cJSON_CreateArray();
+                OSMatch *wl;
+                wl = mail.gran_group[i];
+                char **tmp_pts = wl->patterns;
+                while (*tmp_pts) {
+                    cJSON_AddItemToArray(list,cJSON_CreateString(*tmp_pts));
+                    tmp_pts++;
+                }
+                cJSON_AddItemToObject(email,"group",list);
             }
-            wl++;
-        }
-        cJSON_AddItemToObject(email,"group",list);
-    }
-    if (mail.gran_location) {
-        cJSON *list = cJSON_CreateArray();
-        OSMatch **wl;
-        wl = mail.gran_location;
-        while (*wl) {
-            char **tmp_pts = (*wl)->patterns;
-            while (*tmp_pts) {
-                cJSON_AddItemToArray(list,cJSON_CreateString(*tmp_pts));
-                tmp_pts++;
+
+            if (mail.gran_location[i]) {
+                cJSON *list = cJSON_CreateArray();
+                OSMatch *wl;
+                wl = mail.gran_location[i];
+                char **tmp_pts = wl->patterns;
+                while (*tmp_pts) {
+                    cJSON_AddItemToArray(list,cJSON_CreateString(*tmp_pts));
+                    tmp_pts++;
+                }
+                cJSON_AddItemToObject(email,"location",list);
             }
-            wl++;
+
+            if (mail.gran_id[i]) {
+                cJSON *list = cJSON_CreateArray();
+                unsigned int j = 0;
+                while (mail.gran_id[i][j]) {
+                    cJSON_AddItemToArray(list,cJSON_CreateNumber(mail.gran_id[i][j]));
+                    j++;
+                }
+                cJSON_AddItemToObject(email,"rule_id",list);
+            }
+
+            switch (mail.gran_format[i]) {
+                case FULL_FORMAT:
+                    cJSON_AddStringToObject(email,"format","full");
+                    break;
+
+                case SMS_FORMAT:
+                    cJSON_AddStringToObject(email,"format","sms");
+                    break;
+
+                case FORWARD_NOW:
+                    cJSON_AddStringToObject(email,"format","do_not_delay");
+                    break;
+
+                case DONOTGROUP:
+                    cJSON_AddStringToObject(email,"format","do_not_group");
+                    break;
+            }
+
+            cJSON_AddItemToArray(mail_list,email);
         }
-        cJSON_AddItemToObject(email,"location",list);
-    }
-    if (mail.gran_format) {
-        cJSON *list = cJSON_CreateArray();
-        for (i=0;mail.gran_format[i];i++) {
-            cJSON_AddItemToArray(list,cJSON_CreateNumber(mail.gran_format[i]));
-        }
-        cJSON_AddItemToObject(email,"format",list);
     }
 
-    cJSON_AddItemToObject(root,"alerts",email);
+    cJSON_AddItemToObject(root,"email_alerts",mail_list);
 
     return root;
 }

@@ -28,14 +28,14 @@ size_t syscom_dispatch(char * command, char ** output){
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("SYSCOM getconfig needs arguments.");
+            mdebug1("SYSCOM getconfig needs arguments.");
             *output = strdup("err SYSCOM getconfig needs arguments");
             return strlen(*output);
         }
         return syscom_getconfig(rcv_args, output);
 
     } else {
-        merror("SYSCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("SYSCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -83,7 +83,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    merror("At SYSCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At SYSCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }

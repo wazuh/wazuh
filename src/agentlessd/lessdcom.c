@@ -26,14 +26,14 @@ size_t lessdcom_dispatch(char * command, char ** output) {
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("LESSDCOM getconfig needs arguments.");
+            mdebug1("LESSDCOM getconfig needs arguments.");
             *output = strdup("err LESSDCOM getconfig needs arguments");
             return strlen(*output);
         }
         return lessdcom_getconfig(rcv_args, output);
 
     } else {
-        merror("LESSDCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("LESSDCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -59,7 +59,7 @@ size_t lessdcom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    merror("At LESSDCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At LESSDCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }
@@ -73,7 +73,7 @@ void * lessdcom_main(__attribute__((unused)) void * arg) {
     ssize_t length;
     fd_set fdset;
 
-    
+
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(DEFAULTDIR LESSD_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
