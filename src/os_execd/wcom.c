@@ -595,7 +595,21 @@ size_t wcom_getconfig(const char * section, char ** output) {
             goto error;
         }
     } else if (strcmp(section, "cluster") == 0){
-        if (cfg = getClusterConfig(), cfg) {
+        /* Check socket connection with cluster first */
+        int sock = -1;
+        char sockname[PATH_MAX + 1] = {0};
+
+        if (isChroot()) {
+            strcpy(sockname, CLUSTER_SOCK);
+        } else {
+            strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
+        }
+
+        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+            *output = strdup("err Unable to connect with socket: Is the daemon running?");
+            return strlen(*output);
+        }
+        else if (cfg = getClusterConfig(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
