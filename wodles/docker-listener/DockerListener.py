@@ -32,28 +32,28 @@ class DockerListener:
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
         self.client = docker.from_env()
-        self.check_docker_service()
-        self.thread1 = threading.Thread(target=self.listen)
-        self.thread1.start()
+        self.connect(first_time=True)
 
-    def reconnect(self):
+    def connect(self, first_time=False):
         """
-        Tries to reconnect to Docker service waiting the time specified in class variable 'wait_time'
+        Connects to Docker service, retrying if connection is not successful
 
         """
-        try:
-            if self.client.ping():
-                self.thread1 = threading.Thread(target=self.listen)
-                self.thread1.start()
-            print("Docker service was restarted.")  # delete
-            self.send_msg(json.dumps({"info_docker": "Reconnected to Docker service"}))
-            return
-        except:
-            print("Reconnecting...")  # delete
-            # self.send_msg(json.dumps({"info_docker": "Reconnecting to Docker service"}))
-            time.sleep(self.wait_time)
-            self.reconnect()
-
+        if self.check_docker_service():
+            self.thread1 = threading.Thread(target=self.listen)
+            self.thread1.start()
+            print("Docker service was started.")  # delete
+            self.send_msg(json.dumps({"info_docker": "Connected to Docker service"}))
+        else:
+            if first_time:
+                print("Docker service is not running.")
+            while not self.check_docker_service():
+                print("Reconnecting...")  # delete
+                # self.send_msg(json.dumps({"info_docker": "Reconnecting to Docker service"}))
+                time.sleep(self.wait_time)
+            print("Docker service was started.")  # delete
+            self.send_msg(json.dumps({"info_docker": "Connected to Docker service"}))
+            return self.connect()
 
     def check_docker_service(self):
         """
@@ -62,17 +62,13 @@ class DockerListener:
         """
         try:
             self.client.ping()
-            print("Docker service is running.")  # delete
-            self.send_msg(json.dumps({"info_docker": "Connected to Docker service"}))
-            # return True
+            #print("Docker service is running.")  # delete
+            # self.send_msg(json.dumps({"info_docker": "Connected to Docker service"}))
+            return True
         except Exception:
-            # print("Docker service is not running.")
-            # return False
-            print("Docker service is not running.")
-            time.sleep(self.wait_time)
-            self.check_docker_service()
-
-            # sys.exit("Docker service isn't running.")
+            #print("Docker service is not running.")
+            # self.send_msg(json.dumps({"info_docker": "Docker service is not running"}))
+            return False
 
     def listen(self):
         """
@@ -86,7 +82,7 @@ class DockerListener:
             raise Exception
         print("Docker service was stopped.")  # delete
         self.send_msg(json.dumps({"info_docker": "Docker service was stopped"}))
-        self.reconnect()
+        return self.connect()
 
     def process(self, event):
         """"
