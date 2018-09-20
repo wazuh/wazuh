@@ -606,7 +606,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         }
 
         if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-            *output = strdup("err Unable to connect with socket: Is the daemon running?");
+            *output = strdup("err Unable to connect with socket. The component might be disabled");
             return strlen(*output);
         }
         else if (cfg = getClusterConfig(), cfg) {

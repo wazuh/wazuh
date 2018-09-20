@@ -2399,7 +2399,7 @@ class Agent:
         self._load_info_from_DB()
         if self.version is None:
             raise WazuhException(1015)
-            
+
         agent_version = WazuhVersion(self.version.split(" ")[1])
         required_version = WazuhVersion("v3.7.0")
         if agent_version < required_version:
@@ -2416,8 +2416,11 @@ class Agent:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             s.connect(dest_socket)
-        except socket.error:
-            raise WazuhException(1013,"Is the daemon running?")
+        except Exception as e:
+            if int(self.id) == 0:
+                raise WazuhException(1013,"The component might be disabled")
+            else:
+                raise WazuhException(1013,str(e))
 
         # Generate message
         msg = "{0}".format(command)
@@ -2444,8 +2447,10 @@ class Agent:
             msg = loads(rec_msg)
             return msg
         else:
-            raise WazuhException(1101, rec_msg.replace("err ", ""))
-            #raise WazuhException(1101, "Unable to get configuration due to the component is not running")
+            if "No such file or directory" in rec_msg:
+                raise WazuhException(1013,"The component might be disabled")
+            else:
+                raise WazuhException(1101, rec_msg.replace("err ", ""))
 
     @staticmethod
     def get_config(agent_id, component, configuration):
