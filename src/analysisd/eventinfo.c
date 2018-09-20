@@ -1073,6 +1073,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->sha1_before,lf_cpy->sha1_before);
     }
 
+    if(lf->sha1_after){
+        os_strdup(lf->sha1_after,lf_cpy->sha1_after);
+    }
+
     if(lf->sha256_before){
         os_strdup(lf->sha256_before,lf_cpy->sha256_before);
     }
@@ -1083,6 +1087,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->size_before){
         os_strdup(lf->size_before,lf_cpy->size_before);
+    }
+
+    if(lf->size_after){
+        os_strdup(lf->size_after,lf_cpy->size_after);
     }
 
     if(lf->owner_before){
