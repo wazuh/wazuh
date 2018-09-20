@@ -23,7 +23,7 @@
 #include "syscheck_op.h"
 
 /* Prototypes */
-static void send_sk_db(void);
+static void send_sk_db(int first_scan);
 
 
 
@@ -60,26 +60,39 @@ int send_rootcheck_msg(const char *msg)
 }
 
 /* Send syscheck db to the server */
-static void send_sk_db()
+static void send_sk_db(int first_start)
 {
-    /* Send scan start message */
-    if (syscheck.dir[0]) {
-        log_realtime_status(2);
-        minfo("Starting syscheck scan (forwarding database).");
-        send_rootcheck_msg("Starting syscheck scan.");
-    } else {
+    if (!syscheck.dir[0]) {
         return;
     }
 
-    create_db();
+    log_realtime_status(2);
+    minfo("Starting syscheck scan.");
 
-    /* Send scan ending message */
-    sleep(syscheck.tsleep * 5);
-
-    if (syscheck.dir[0]) {
-        minfo("Ending syscheck scan (forwarding database).");
-        send_rootcheck_msg("Ending syscheck scan.");
+    /* Send first start scan control message */
+    if(first_start) {
+        send_syscheck_msg(HC_FIM_DB_SFS);
+        sleep(syscheck.tsleep * 5);
+        create_db();
+    } else {
+        send_syscheck_msg(HC_FIM_DB_SS);
+        sleep(syscheck.tsleep * 5);
+        run_dbcheck();
     }
+    sleep(syscheck.tsleep * 5);
+#ifdef WIN32
+    /* Check for registry changes on Windows */
+    os_winreg_check();
+    sleep(syscheck.tsleep * 5);
+#endif
+
+    /* Send end scan control message */
+    if(first_start) {
+        send_syscheck_msg(HC_FIM_DB_EFS);
+    } else {
+        send_syscheck_msg(HC_FIM_DB_ES);
+    }
+    minfo("Ending syscheck scan. Database completed.");
 }
 
 /* Periodically run the integrity checker */
@@ -91,6 +104,7 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
+    int first_start = 1;
 
 #ifndef WIN32
     /* Launch rootcheck thread */
@@ -145,22 +159,13 @@ void start_daemon()
     }
     /* Printing syscheck properties */
 
-    if (!syscheck.disabled)
+    if (!syscheck.disabled) {
         minfo("Syscheck scan frequency: %d seconds", syscheck.time);
-
-    /* Will create the db to store syscheck data */
-    if (syscheck.scan_on_start) {
-        sleep(syscheck.tsleep * 15);
-        send_sk_db();
-
-#ifdef WIN32
-        /* Check for registry changes on Windows */
-        os_winreg_check();
-#endif
-
-        /* Send database completed message */
-        send_syscheck_msg(HC_SK_DB_COMPLETED);
-        mdebug2("Sending database completed message.");
+        /* Will create the db to store syscheck data */
+        if (syscheck.scan_on_start) {
+            send_sk_db(first_start);
+            first_start = 0;
+        }
     }
 
     /* Before entering in daemon mode itself */
@@ -254,38 +259,12 @@ void start_daemon()
         /* If time elapsed is higher than the syscheck time, run syscheck time */
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
             if (syscheck.scan_on_start == 0) {
-                /* Need to create the db if scan on start is not set */
-                sleep(syscheck.tsleep * 10);
-                send_sk_db();
-                sleep(syscheck.tsleep * 10);
-
+                send_sk_db(first_start);
+                first_start = 0;
                 syscheck.scan_on_start = 1;
             } else {
-                /* Send scan start message */
-                if (syscheck.dir[0]) {
-                    log_realtime_status(2);
-                    minfo("Starting syscheck scan.");
-                    send_rootcheck_msg("Starting syscheck scan.");
-                }
-#ifdef WIN32
-                /* Check for registry changes on Windows */
-                os_winreg_check();
-#endif
-                /* Check for changes */
-                run_dbcheck();
+                send_sk_db(first_start);
             }
-
-            /* Send scan ending message */
-            sleep(syscheck.tsleep * 15);
-            if (syscheck.dir[0]) {
-                minfo("Ending syscheck scan.");
-                send_rootcheck_msg("Ending syscheck scan.");
-            }
-
-            /* Send database completed message */
-            send_syscheck_msg(HC_SK_DB_COMPLETED);
-            mdebug2("Sending database completed message.");
-
             prev_time_sk = time(0);
         }
 
@@ -339,7 +318,10 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
     syscheck_node *s_node;
-#ifdef WIN32
+    char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
+#ifndef WIN32
+    char str_owner[50], str_group[50];
+#else
     char *sid = NULL;
     const char *user;
 #endif
@@ -468,31 +450,92 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             }
         }
     }
-    snprintf(newsum, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
-        size == 0 ? 0 : (long)statbuf.st_size,
-        perm == 0 ? 0 : (int)statbuf.st_mode,
-        owner == 0 ? 0 : (int)statbuf.st_uid,
-        group == 0 ? 0 : (int)statbuf.st_gid,
+
+    if (size == 0){
+        *str_size = '\0';
+    } else {
+        sprintf(str_size, "%ld", (long)statbuf.st_size);
+    }
+
+    if (perm == 0){
+        *str_perm = '\0';
+    } else {
+        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+    }
+
+    if (owner == 0){
+        *str_owner = '\0';
+    } else {
+        sprintf(str_owner, "%ld", (long)statbuf.st_uid);
+    }
+
+    if (group == 0){
+        *str_group = '\0';
+    } else {
+        sprintf(str_group, "%ld", (long)statbuf.st_gid);
+    }
+
+    if (mtime == 0){
+        *str_mtime = '\0';
+    } else {
+        sprintf(str_mtime, "%ld", (long)statbuf.st_gid);
+    }
+
+    if (inode == 0){
+        *str_inode = '\0';
+    } else {
+        sprintf(str_inode, "%ld", (long)statbuf.st_gid);
+    }
+
+    snprintf(newsum, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+        str_size,
+        str_perm,
+        str_owner,
+        str_group,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
         owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
         group == 0 ? "" : get_group(statbuf.st_gid),
-        mtime ? (long)statbuf.st_mtime : 0,
-        inode ? (long)statbuf.st_ino : 0,
+        str_mtime,
+        str_inode,
         sha256sum  == 0 ? "" : sf256_sum);
 #else
     user = get_user(file_name, statbuf.st_uid, &sid);
 
-    snprintf(newsum, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
-        size == 0 ? 0 : (long)statbuf.st_size,
-        perm == 0 ? 0 : (int)statbuf.st_mode,
+    if (size == 0){
+        *str_size = '\0';
+    } else {
+        sprintf(str_size, "%ld", (long)statbuf.st_size);
+    }
+
+    if (perm == 0){
+        *str_perm = '\0';
+    } else {
+        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+    }
+
+    if (mtime == 0){
+        *str_mtime = '\0';
+    } else {
+        sprintf(str_mtime, "%ld", (long)statbuf.st_gid);
+    }
+
+    if (inode == 0){
+        *str_inode = '\0';
+    } else {
+        sprintf(str_inode, "%ld", (long)statbuf.st_gid);
+    }
+
+    snprintf(newsum, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s",
+        str_size,
+        str_perm,
         (owner == 0) && sid ? "" : sid,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
         owner == 0 ? "" : user,
         group == 0 ? "" : get_group(statbuf.st_gid),
-        mtime ? (long)statbuf.st_mtime : 0,
-        inode ? (long)statbuf.st_ino : 0,
+        str_mtime,
+        str_inode,
         sha256sum  == 0 ? "" : sf256_sum);
 
         if (sid) {

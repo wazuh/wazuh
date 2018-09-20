@@ -48,7 +48,7 @@ try:
     from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items, CustomFileRotatingHandler
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
     from wazuh.cluster.worker import WorkerManager, WorkerInternalSocketHandler
-    from wazuh.cluster.communication import InternalSocketThread
+    from wazuh.cluster.internal_socket import InternalSocketThread
     from wazuh import configuration as config
     from wazuh.manager import status
 
@@ -153,6 +153,7 @@ def master_main(cluster_configuration):
     internal_socket_thread = InternalSocketThread("c-internal", tag="[Master]")
     internal_socket_thread.start()
     internal_socket_thread.setmanager(manager, MasterInternalSocketHandler)
+    manager.handler.isocket_handler = internal_socket_thread.internal_socket
 
     # Loop
     asyncore.loop(timeout=1, use_poll=False, map=manager.map, count=None)
@@ -175,6 +176,8 @@ def worker_main(cluster_configuration):
             manager = WorkerManager(cluster_config=cluster_configuration)
 
             internal_socket_thread.setmanager(manager, WorkerInternalSocketHandler)
+
+            manager.handler.isocket_handler = internal_socket_thread.internal_socket
 
             asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 

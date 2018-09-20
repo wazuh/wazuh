@@ -78,7 +78,7 @@ int OS_CloseSocket(int socket);
 /* Set the receiving timeout for a socket
  * Returns 0 on success, else -1
  */
-int OS_SetRecvTimeout(int socket, int seconds);
+int OS_SetRecvTimeout(int socket, long seconds, long useconds);
 
 /* Send secure TCP message
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.

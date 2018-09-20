@@ -24,6 +24,9 @@
 char *convert_windows_string(LPCWSTR string);
 #endif
 
+// Convert string to lowercase
+#define str_lowercase(str_lc) { char *x = str_lc; while (*x != '\0') { *x = tolower(*x); x++; } }
+
 /* Trim the CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str) __attribute__((nonnull));
 

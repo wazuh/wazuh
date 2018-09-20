@@ -32,14 +32,14 @@ try:
     myWazuh = Wazuh(get_init=True)
 
     # Import cluster
-    from wazuh.cluster.cluster import read_config, get_status_json
+    from wazuh.cluster.cluster import read_config
     from wazuh.cluster.control import get_nodes, get_healthcheck, get_agents, sync, get_files
 
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
 
-logging.basicConfig(level=logging.CRITICAL, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.ERROR, format='%(levelname)s: %(message)s')
 
 def get_parser(type):
     if type == "master":
@@ -77,7 +77,7 @@ Others:
 
         parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
         #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', action = 'store', type=str, help="Agents status")
+        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
         parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
         exclusive = parser.add_mutually_exclusive_group()
@@ -246,28 +246,23 @@ def sync_master(filter_node):
 
 
 ### Get agents
-def print_agents(filter_status=None, filter_node=None):
-    total_agents = 0
-
+def print_agents(filter_status, filter_node, is_master):
+    agents = get_agents(filter_status, filter_node, is_master)
     try:
-        gen_agents = get_agents(filter_status, filter_node)
-
-        for agents in gen_agents:
-            table_str = ""
-            total_agents += len(agents['items'])
-            for agent in agents['items']:
-                table_str += "  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}\n".format(agent['id'], agent['name'], agent['ip'], agent['status'], agent['node_name'])
-            stdout.write(table_str)
-            stdout.flush()
+        table = ["  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}".format(agent['id'], agent['name'], agent['ip'],
+                                                                            agent['status'], agent['node_name'])
+                 for agent in agents['items']]
+        print('\n'.join(table))
 
     except Exception as e:
         print ("{}".format(e))
         exit(1)
 
     if filter_status:
-        print ("\nFound {} agent(s) with status '{}'.".format(total_agents, filter_status))
+        print ("\nFound {} agent(s) with status '{}'.".format(agents['totalItems'], ' '.join(filter_status)))
     else:
-        print ("\nListing {} agent(s).".format(total_agents))
+        print ("\nListing {} agent(s).".format(agents['totalItems']))
+
 
 ### Get healthchech
 def print_healthcheck(conf, more=False, filter_node=None):
@@ -358,11 +353,7 @@ if __name__ == '__main__':
             print ("Wrong arguments.")
             parser.print_help()
         elif args.list_agents:
-            if is_master:
-                print_agents(args.filter_status, args.filter_node)
-            else:
-                print ("Wrong arguments. To use this command you need to be a master node.")
-                parser.print_help()
+            print_agents(args.filter_status, args.filter_node, is_master)
 
         elif args.list_nodes:
             print_nodes_status(args.filter_node)
@@ -374,13 +365,6 @@ if __name__ == '__main__':
         else:
             parser.print_help()
             exit()
-
-        #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_worker(args.filter_file, cluster_config['node_name'])
-        #elif is_master and args.sync is not None:
-        #    sync_master(args.filter_node)
-        #elif args.list_files is not None:
-        #    print_file_status_master(args.filter_file, args.filter_node) if is_master else print_file_status_worker(args.filter_file, cluster_config['node_name'])
 
     except Exception as e:
         logging.error(str(e))

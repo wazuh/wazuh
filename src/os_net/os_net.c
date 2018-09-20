@@ -432,7 +432,7 @@ int OS_RecvUnix(int socket, int sizet, char *ret)
 {
     ssize_t recvd;
     ret[sizet] = '\0';
-    
+
     if ((recvd = recvfrom(socket, ret, sizet - 1, 0,
                           (struct sockaddr *)&n_us, &us_l)) < 0) {
         return (0);
@@ -503,9 +503,9 @@ int OS_CloseSocket(int socket)
 #endif /* WIN32 */
 }
 
-int OS_SetRecvTimeout(int socket, int seconds)
+int OS_SetRecvTimeout(int socket, long seconds, long useconds)
 {
-    struct timeval tv = { seconds, 0 };
+    struct timeval tv = { seconds, useconds };
     return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
 }
 
@@ -534,55 +534,34 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
  * Return recvval on success or OS_SOCKTERR on error.
  */
 int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
-    int recvval;
-    char * buffer;
-    size_t bufsz = size + sizeof(uint32_t);
+    ssize_t recvval, recvb;
     uint32_t msgsize;
 
-    os_malloc(bufsz, buffer);
-    recvval = recv(sock, buffer, bufsz, 0);
+    recvval = recv(sock, (char *) &msgsize, sizeof(msgsize), 0);
 
-    switch(recvval){
-
+    switch(recvval) {
         case -1:
-            free(buffer);
             return recvval;
             break;
 
         case 0:
-            free(buffer);
             return recvval;
             break;
     }
 
-    msgsize = wnet_order(*(uint32_t*)buffer);
+    msgsize = wnet_order(msgsize);
 
     if(msgsize > size){
-        free(buffer);
         return OS_SOCKTERR;
     }
 
-    if((uint32_t)recvval < msgsize){
-        int recvb = recv(sock, buffer + recvval, msgsize-recvval, MSG_WAITALL);
+    recvb = recv(sock, ret, msgsize, MSG_WAITALL);
 
-        switch(recvb){
-            case -1:
-                free(buffer);
-                return recvb;
-                break;
-
-            case 0:
-                free(buffer);
-                return recvb;
-                break;
-        }
-        recvval+=recvb;
+    if (recvb == (int32_t) msgsize && msgsize < size) {
+        ret[msgsize] = '\0';
     }
 
-    memcpy(ret, buffer + sizeof(uint32_t), recvval - sizeof(uint32_t));
-    ret[recvval - sizeof(uint32_t)] = '\0';
-    free(buffer);
-    return recvval - sizeof(uint32_t);
+    return msgsize;
 }
 
 

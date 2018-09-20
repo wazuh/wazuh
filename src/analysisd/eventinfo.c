@@ -199,7 +199,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
     /* Get last node */
     w_mutex_lock(&eventinfo_mutex);
     lf_node = OSList_GetLastNode_group(rule->group_search);
-    
+
     if (!lf_node) {
         w_mutex_unlock(&rule->group_search->mutex);
         w_mutex_unlock(&eventinfo_mutex);
@@ -897,14 +897,14 @@ char* ParseRuleComment(Eventinfo *lf) {
 
 void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
-    
+
     if(lf->full_log){
         os_strdup(lf->full_log,lf_cpy->full_log);
-    }    
+    }
 
     lf_cpy->log_after_parent = lf->log_after_parent;
     lf_cpy->log_after_prematch = lf->log_after_prematch;
-    
+
     if(lf->agent_id){
         os_strdup(lf->agent_id,lf_cpy->agent_id);
     }
@@ -924,7 +924,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     if(lf->dec_timestamp){
         os_strdup(lf->dec_timestamp,lf_cpy->dec_timestamp);
     }
-    
+
     /* Extracted from the decoders */
     if(lf->srcip){
         os_strdup(lf->srcip,lf_cpy->srcip);
@@ -1005,14 +1005,14 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     }
 
     /* Pointer to the rule that generated it */
-  
+
     os_calloc(1,sizeof(RuleInfo),lf_cpy->generated_rule);
     lf_cpy->generated_rule->last_events = NULL;
-   
+
     if(lf->generated_rule){
         os_strdup(lf->generated_rule->group,lf_cpy->generated_rule->group);
         lf_cpy->generated_rule->alert_opts = lf->generated_rule->alert_opts;
-        lf_cpy->generated_rule->sigid = lf->generated_rule->sigid; 
+        lf_cpy->generated_rule->sigid = lf->generated_rule->sigid;
         lf_cpy->generated_rule->level = lf->generated_rule->level;
 
         if (lf->generated_rule->last_events){
@@ -1034,6 +1034,8 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         }
     }
 
+    lf_cpy->decoder_info = lf->decoder_info;
+
     /* Sid node to delete */
     lf_cpy->sid_node_to_delete = lf->sid_node_to_delete;
 
@@ -1051,7 +1053,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     /* SYSCHECK Results variables */
     lf_cpy->event_type = lf->event_type;
-    
+
     if(lf->filename){
         os_strdup(lf->filename,lf_cpy->filename);
     }
@@ -1070,7 +1072,11 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     if(lf->sha1_before){
         os_strdup(lf->sha1_before,lf_cpy->sha1_before);
     }
-    
+
+    if(lf->sha1_after){
+        os_strdup(lf->sha1_after,lf_cpy->sha1_after);
+    }
+
     if(lf->sha256_before){
         os_strdup(lf->sha256_before,lf_cpy->sha256_before);
     }
@@ -1081,6 +1087,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->size_before){
         os_strdup(lf->size_before,lf_cpy->size_before);
+    }
+
+    if(lf->size_after){
+        os_strdup(lf->size_after,lf_cpy->size_after);
     }
 
     if(lf->owner_before){
