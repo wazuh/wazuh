@@ -12,15 +12,17 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Refactor Python framework code to standardize database requests and support API queries. ([#921](https://github.com/wazuh/wazuh/pull/921)).
-- Add support for multigroups ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135)).
+- Add support for multigroups. ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135)).
 - Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
 - Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315))
 
 ### Fixed
 
-- Fixed mandatory configuration labels check ([#1208](https://github.com/wazuh/wazuh/pull/1208))
-- Fixed email_alerts configuration for multiple recipients ([#1193 ](https://github.com/wazuh/wazuh/pull/1193))
-- Fixed manager stopping when no command timeout is allowed ([#1194](https://github.com/wazuh/wazuh/pull/1194))
+- Fixed mandatory configuration labels check. ([#1208](https://github.com/wazuh/wazuh/pull/1208))
+- Fixed email_alerts configuration for multiple recipients. ([#1193 ](https://github.com/wazuh/wazuh/pull/1193))
+- Fixed manager stopping when no command timeout is allowed. ([#1194](https://github.com/wazuh/wazuh/pull/1194))
+- Fix the cleaning of the temporary folder. ([#1361](https://github.com/wazuh/wazuh/pull/1361))
+
 
 ## [v3.6.2]
 
