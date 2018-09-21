@@ -37,12 +37,15 @@ def distribute_function(input_json, pretty=False, debug=False, from_master=False
     try:
         node_info = cluster.get_node()
         request_type = rq.functions[input_json['function']]['type']
+        is_dapi_enabled = cluster.get_cluster_items()['distributed_api']['enabled']
+        logger.debug("[DistributedAPI] Distributed API is {}.".format("enabled" if is_dapi_enabled else "disabled"))
 
         # First case: execute the request local.
+        # If the distributed api is not enabled
         # If the cluster is disabled or the request type is local_any
         # if the request was made in the master node and the request type is local_master
         # if the request came forwarded from the master node and its type is distributed_master
-        if not cluster.check_cluster_status() or request_type == 'local_any' or\
+        if not is_dapi_enabled or not cluster.check_cluster_status() or request_type == 'local_any' or\
                 (request_type == 'local_master' and node_info['type'] == 'master')   or\
                 (request_type == 'distributed_master' and input_json['from_cluster']):
 
