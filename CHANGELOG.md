@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
   - Extract the pack name into a new field.
   - Include the query name in the alert description.
   - Minor fixes.
+- Increased AWS S3 database entry limit to 5000 to prevent reprocessing repeated events ([#1391](https://github.com/wazuh/wazuh/pull/1391)).
 
 ### Fixed
 
