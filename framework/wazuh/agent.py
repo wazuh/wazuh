@@ -1806,7 +1806,7 @@ class Agent:
 
         select = {'fields':['version','id','name']} if select is None else select
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query="version!={};id!=0".format(manager.version) + ('' if not q else ';'+q),
+                                      query="version<{};id!=0".format(manager.version) + ('' if not q else ';'+q),
                                       get_data=True, count=True)
         return db_query.run()
 
