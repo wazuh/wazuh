@@ -13,13 +13,15 @@
 
 static void * wm_command_main(wm_command_t * command);    // Module main function. It won't return
 static void wm_command_destroy(wm_command_t * command);   // Destroy data
+cJSON *wm_command_dump(const wm_command_t * command);
 
 // Command module context definition
 
 const wm_context WM_COMMAND_CONTEXT = {
     "command",
     (wm_routine)wm_command_main,
-    (wm_routine)wm_command_destroy
+    (wm_routine)wm_command_destroy,
+    (cJSON * (*)(const void *))wm_command_dump
 };
 
 // Module module main function. It won't return.
@@ -173,7 +175,7 @@ void * wm_command_main(wm_command_t * command) {
         // Get time and execute
         time_start = time(NULL);
 
-        switch (wm_exec(command->full_command, command->ignore_output ? NULL : &output, &status, command->timeout)) {
+        switch (wm_exec(command->full_command, command->ignore_output ? NULL : &output, &status, command->timeout, NULL)) {
         case 0:
             if (status > 0) {
                 mtwarn(WM_COMMAND_LOGTAG, "Command '%s' returned exit code %d.", command->tag, status);
@@ -228,6 +230,31 @@ void * wm_command_main(wm_command_t * command) {
 
     return NULL;
 }
+
+
+// Get readed data
+
+cJSON *wm_command_dump(const wm_command_t * command) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_comm = cJSON_CreateObject();
+
+    if (command->enabled) cJSON_AddStringToObject(wm_comm,"disabled","no"); else cJSON_AddStringToObject(wm_comm,"disabled","yes");
+    if (command->run_on_start) cJSON_AddStringToObject(wm_comm,"run_on_start","yes"); else cJSON_AddStringToObject(wm_comm,"run_on_start","no");
+    if (command->ignore_output) cJSON_AddStringToObject(wm_comm,"ignore_output","yes"); else cJSON_AddStringToObject(wm_comm,"ignore_output","no");
+    if (command->skip_verification) cJSON_AddStringToObject(wm_comm,"skip_verification","yes"); else cJSON_AddStringToObject(wm_comm,"skip_verification","no");
+    cJSON_AddNumberToObject(wm_comm,"interval",command->interval);
+    if (command->tag) cJSON_AddStringToObject(wm_comm,"tag",command->tag);
+    if (command->command) cJSON_AddStringToObject(wm_comm,"command",command->command);
+    if (command->md5_hash) cJSON_AddStringToObject(wm_comm,"verify_md5",command->md5_hash);
+    if (command->sha1_hash) cJSON_AddStringToObject(wm_comm,"verify_sha1",command->sha1_hash);
+    if (command->sha256_hash) cJSON_AddStringToObject(wm_comm,"verify_sha256",command->sha256_hash);
+
+    cJSON_AddItemToObject(root,"command",wm_comm);
+
+    return root;
+}
+
 
 // Destroy data
 

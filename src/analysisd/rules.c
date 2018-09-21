@@ -14,6 +14,7 @@
 
 /* Global definition */
 RuleInfo *currently_rule;
+int default_timeframe;
 
 /* Change path for test rule */
 #ifdef TESTRULE
@@ -150,7 +151,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     char *location = NULL;
 
     size_t i;
-    int default_timeframe = 360;
+    default_timeframe = 360;
 
     /* If no directory in the rulefile, add the default */
     if ((strchr(rulefile, '/')) == NULL) {
@@ -321,6 +322,7 @@ int Rules_OP_ReadRules(const char *rulefile)
              * be fine
              */
             os_strdup(node[i]->values[0], config_ruleinfo->group);
+            os_strdup(rulefile,config_ruleinfo->file);
 
             /* Rule elements block */
             {
@@ -1311,7 +1313,9 @@ int Rules_OP_ReadRules(const char *rulefile)
 
                 /* Zero each entry */
                 for (; ii <= MAX_LAST_EVENTS; ii++) {
+                    w_mutex_lock(&config_ruleinfo->mutex);
                     config_ruleinfo->last_events[ii] = NULL;
+                    w_mutex_unlock(&config_ruleinfo->mutex);
                 }
             }
 
@@ -1883,6 +1887,9 @@ static void Rule_AddAR(RuleInfo *rule_config)
             rule_config->ar = (active_response **) realloc(rule_config->ar,
                                       (rule_ar_size + 1)
                                       * sizeof(active_response *));
+            if(!rule_config->ar){
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
 
             /* Always set the last node to NULL */
             rule_config->ar[rule_ar_size - 1] = my_ar;

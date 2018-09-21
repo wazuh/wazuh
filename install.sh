@@ -107,11 +107,6 @@ Install()
         LIB_FLAG="USE_FRAMEWORK_LIB=yes"
     fi
 
-    # Do not use execvpe() in CentOS 5
-    if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 5 ]; then
-        EXEC_FLAG="USE_EXEC_ENVIRON=no"
-    fi
-
     # Makefile
     echo " - ${runningmake}"
     echo ""
@@ -125,7 +120,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${EXEC_FLAG} -j${THREADS} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../

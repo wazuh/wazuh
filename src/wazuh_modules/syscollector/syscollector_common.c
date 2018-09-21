@@ -17,20 +17,21 @@ static wm_sys_t *sys;                           // Pointer to configuration
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
 static void wm_sys_destroy(wm_sys_t *sys);      // Destroy data
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
+cJSON *wm_sys_dump(const wm_sys_t *sys);
 
 // Syscollector module context definition
 
 const wm_context WM_SYS_CONTEXT = {
     "syscollector",
     (wm_routine)wm_sys_main,
-    (wm_routine)wm_sys_destroy
+    (wm_routine)wm_sys_destroy,
+    (cJSON * (*)(const void *))wm_sys_dump
 };
 
 #ifndef WIN32
 int queue_fd;                                   // Output queue file descriptor
 #endif
 
-static void delay(unsigned int ms);
 static void wm_sys_setup(wm_sys_t *_sys);       // Setup module
 static void wm_sys_check();                     // Check configuration, disable flag
 #ifndef WIN32
@@ -56,11 +57,11 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         if (sys->state.next_time > time_start) {
             mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
-            delay(1000 * (sys->state.next_time - time_start));
+            wm_delay(1000 * (sys->state.next_time - time_start));
         }
     } else {
         // Wait for Wazuh DB start
-        delay(1000);
+        wm_delay(1000);
     }
 
     #ifdef WIN32
@@ -168,7 +169,7 @@ void* wm_sys_main(wm_sys_t *sys) {
             mterror(WM_SYS_LOGTAG, "Couldn't save running state: %s (%d)", strerror(errno), errno);
 
         // If time_sleep=0, yield CPU
-        delay(1000 * time_sleep);
+        wm_delay(1000 * time_sleep);
     }
 
     return NULL;
@@ -191,7 +192,7 @@ static void wm_sys_setup(wm_sys_t *_sys) {
     int i;
     // Connect to socket
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        delay(1000 * WM_MAX_WAIT);
+        wm_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_SYS_LOGTAG, "Can't connect to queue.");
@@ -254,14 +255,28 @@ void wm_sys_check() {
         sys->interval = WM_SYS_DEF_INTERVAL;
 }
 
-void delay(unsigned int ms) {
-#ifdef WIN32
-    Sleep(ms);
-#else
-    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
-    select(0, NULL, NULL, NULL, &timeout);
-#endif
 
+// Get readed data
+
+cJSON *wm_sys_dump(const wm_sys_t *sys) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_sys = cJSON_CreateObject();
+
+    if (sys->flags.enabled) cJSON_AddStringToObject(wm_sys,"disabled","no"); else cJSON_AddStringToObject(wm_sys,"disabled","yes");
+    if (sys->flags.scan_on_start) cJSON_AddStringToObject(wm_sys,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_sys,"scan-on-start","no");
+    cJSON_AddNumberToObject(wm_sys,"interval",sys->interval);
+    if (sys->flags.netinfo) cJSON_AddStringToObject(wm_sys,"network","yes"); else cJSON_AddStringToObject(wm_sys,"network","no");
+    if (sys->flags.osinfo) cJSON_AddStringToObject(wm_sys,"os","yes"); else cJSON_AddStringToObject(wm_sys,"os","no");
+    if (sys->flags.hwinfo) cJSON_AddStringToObject(wm_sys,"hardware","yes"); else cJSON_AddStringToObject(wm_sys,"hardware","no");
+    if (sys->flags.programinfo) cJSON_AddStringToObject(wm_sys,"packages","yes"); else cJSON_AddStringToObject(wm_sys,"packages","no");
+    if (sys->flags.portsinfo) cJSON_AddStringToObject(wm_sys,"ports","yes"); else cJSON_AddStringToObject(wm_sys,"ports","no");
+    if (sys->flags.allports) cJSON_AddStringToObject(wm_sys,"ports_all","yes"); else cJSON_AddStringToObject(wm_sys,"ports_all","no");
+    if (sys->flags.procinfo) cJSON_AddStringToObject(wm_sys,"processes","yes"); else cJSON_AddStringToObject(wm_sys,"processes","no");
+
+    cJSON_AddItemToObject(root,"syscollector",wm_sys);
+
+    return root;
 }
 
 void wm_sys_destroy(wm_sys_t *sys) {

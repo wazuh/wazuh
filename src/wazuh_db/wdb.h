@@ -36,13 +36,21 @@
 #define WDB_ROOTCHECK 2
 #define WDB_AGENTINFO 3
 #define WDB_GROUPS 4
+#define WDB_SHARED_GROUPS 5
 #define WDB_NETADDR_IPV4 0
+
+#define WDB_MULTI_GROUP_DELIM '-'
+
+#define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
     WDB_STMT_FIM_INSERT_ENTRY,
     WDB_STMT_FIM_UPDATE_ENTRY,
+    WDB_STMT_FIM_DELETE,
+    WDB_STMT_FIM_UPDATE_DATE,
+    WDB_STMT_FIM_FIND_DATE_ENTRIES,
     WDB_STMT_OSINFO_INSERT,
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_PROGRAM_INSERT,
@@ -62,6 +70,10 @@ typedef enum wdb_stmt {
     WDB_STMT_ADDR_DEL,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
+    WDB_STMT_METADATA_VERSION,
+    WDB_STMT_METADATA_INSERT,
+    WDB_STMT_METADATA_UPDATE,
+    WDB_STMT_METADATA_FIND,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -145,6 +157,8 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
+int wdb_fim_delete(wdb_t * wdb, const char * file);
+
 /* Insert policy monitoring entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
 
@@ -163,21 +177,61 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
 /* Update agent's last keepalive. It opens and closes the DB. Returns number of affected rows or -1 on error. */
 int wdb_update_agent_keepalive(int id, long keepalive);
 
-/* Update agent group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_group(int id, const char *group);
+/* Update agent group. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_update_agent_group(int id,char *group);
+
+/* Update agent multi group. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_multi_group(int id, char *group);
+
+/* Update groups table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_groups(const char *dirname);
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id);
 
+/* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_remove_group_db(const char *name);
+
 /* Get name from agent. The string must be freed after using. Returns NULL on error. */
 char* wdb_agent_name(int id);
+
+/* Get group from agent. The string must be freed after using. Returns NULL on error. */
+char* wdb_agent_group(int id);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db(int id, const char *name);
 
 int wdb_create_agent_db2(const char * agent_id);
 
-int wdb_fill_metadata(sqlite3 * db);
+/* Initialize table metadata Returns 0 on success or -1 on error. */
+int wdb_metadata_initialize (wdb_t *wdb, char *path);
+
+/* Insert or update metadata entries. Returns 0 on success or -1 on error. */
+int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
+
+/* Find metadata entries. Returns 0 if doesn't found, 1 on success or -1 on error. */
+int wdb_metadata_find_entry(wdb_t * wdb, const char * key);
+
+/* Insert entry. Returns 0 on success or -1 on error. */
+int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value);
+
+/* Update entries. Returns 0 on success or -1 on error. */
+int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value);
+
+/* Insert metadata for minor and major version. Returns 0 on success or -1 on error. */
+int wdb_metadata_fill_version(sqlite3 *db);
+
+/* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
+int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
+
+/* Change value for. Returns 0 if doesn't found, 1 on success or -1 on error. */
+int wdb_metadata_fim_check_control (wdb_t * wdb, const char *last_check);
+
+/* Update field date for specific fim_entry. */
+int wdb_fim_update_date_entry(wdb_t * wdb, const char *path, const char *date);
+
+/* Clear entries prior to the first scan. */
+int wdb_fim_clean_old_entries(wdb_t * wdb);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_remove_agent_db(int id, const char * name);
@@ -208,8 +262,23 @@ int wdb_create_file(const char *path, const char *source);
 /* Get an array containing the ID of every agent (except 0), ended with -1 */
 int* wdb_get_all_agents();
 
+/* Fill belongs table on start */
+int wdb_agent_belongs_first_time();
+
 /* Find agent by name and address. Returns ID if success or -1 on failure. */
 int wdb_find_agent(const char *name, const char *ip);
+
+/* Find group by name. Returns id if success or -1 on failure. */
+int wdb_find_group(const char *name);
+
+/* Insert a new group. Returns id if success or -1 on failure. */
+int wdb_insert_group(const char *name);
+
+/* Delete agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_delete_agent_belongs(int id_agent);
+
+/* Update agent belongs table. It opens and closes the DB. Returns number of affected rows or -1 on error. */
+int wdb_update_agent_belongs(int id_group, int id_agent);
 
 /* Delete FIM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_delete_fim(int id);

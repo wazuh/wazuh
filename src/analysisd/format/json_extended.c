@@ -162,7 +162,6 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
     rule = cJSON_GetObjectItem(root, "rule");
 
     if (!rule) {
-        merror("at W_JSON_ParseGroups(): No rule object found.");
         return;
     }
 

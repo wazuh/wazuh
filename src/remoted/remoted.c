@@ -19,13 +19,13 @@
 keystore keys;
 remoted logr;
 char* node_name;
-
+int timeout;    //timeout in seconds waiting for a client reply
+rlim_t nofile;
 
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
     int position = logr.position;
-    int timeout;    //timeout in seconds waiting for a client reply
 
     timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
 
@@ -48,7 +48,7 @@ void HandleRemote(int uid)
     // Set resource limit for file descriptors
 
     {
-        rlim_t nofile = getDefine_Int("remoted", "rlimit_nofile", 1024, INT_MAX);
+        nofile = getDefine_Int("remoted", "rlimit_nofile", 1024, INT_MAX);
         struct rlimit rlimit = { nofile, nofile };
 
         if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {

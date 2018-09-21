@@ -12,6 +12,8 @@
 /* Prototypes */
 static void help_csyslogd(void) __attribute__((noreturn));
 
+/* Database Structure */
+SyslogConfig **syslog_config;
 
 /* Print help statement */
 static void help_csyslogd()
@@ -44,9 +46,6 @@ int main(int argc, char **argv)
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
-
-    /* Database Structure */
-    SyslogConfig **syslog_config;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -163,6 +162,9 @@ int main(int argc, char **argv)
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
+
+    // Start com request thread
+    w_create_thread(csyscom_main, NULL);
 
     /* Basic start up completed */
     mdebug1(PRIVSEP_MSG, dir, user);

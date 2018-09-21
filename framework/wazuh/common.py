@@ -39,6 +39,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global groups_path
     groups_path = "{0}/queue/agent-groups".format(ossec_path)
 
+    global multi_groups_path
+    multi_groups_path = "{0}/var/multigroups".format(ossec_path)
+
     global shared_path
     shared_path = "{0}/etc/shared".format(ossec_path)
 
@@ -65,6 +68,12 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
 
     global os_pidfile
     os_pidfile = "/var/run"
+
+    global analysisd_stats
+    analysisd_stats = "{0}/var/run/ossec-analysisd.state".format(ossec_path)
+
+    global remoted_stats
+    remoted_stats = "{0}/var/run/ossec-remoted.state".format(ossec_path)
 
     # Queues
     global ARQUEUE
@@ -95,6 +104,7 @@ agent_info_sleep = 2 # Seconds between retries
 database_limit = 500
 maximum_database_limit = 1000
 limit_seconds = 1800 # 600*3
+cluster_timeout_msg = 20
 
 ossec_uid = getpwnam("ossec").pw_uid
 ossec_gid = getgrnam("ossec").gr_gid

@@ -21,8 +21,13 @@
 /* Main monitord */
 void Agentlessd(void) __attribute__((noreturn));
 
+// Read config
+cJSON *getAgentlessConfig(void);
+size_t lessdcom_dispatch(char * command, char ** output);
+size_t lessdcom_getconfig(const char * section, char ** output);
+void * lessdcom_main(__attribute__((unused)) void * arg);
+
 /* Global variables */
 extern agentlessd_config lessdc;
 
 #endif
-

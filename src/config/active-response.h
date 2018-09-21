@@ -39,4 +39,3 @@ typedef struct _ar {
 extern int ar_flag;
 
 #endif /* _CAR__H */
-

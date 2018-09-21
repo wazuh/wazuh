@@ -11,12 +11,13 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+int timeout;    //timeout in seconds waiting for a server reply
+
 /* Attempt to connect to all configured servers */
 int connect_server(int initial_id)
 {
     int attempts = 2;
     int rc = initial_id;
-    int timeout;    //timeout in seconds waiting for a server reply
 
     timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 

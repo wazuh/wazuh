@@ -41,13 +41,41 @@ static volatile HANDLE wm_children[WM_POOL_SIZE] = { NULL };   // Child process 
 
 // Execute command with timeout of secs
 
-int wm_exec(char *command, char **output, int *status, int secs) {
+int wm_exec(char *command, char **output, int *status, int secs, const char * add_path) {
     HANDLE hThread = NULL;
     DWORD dwCreationFlags;
     STARTUPINFO sinfo = { 0 };
     PROCESS_INFORMATION pinfo = { 0 };
     ThreadInfo tinfo = { 0 };
     int retval = 0;
+
+    // Add environment variable if exists
+
+    if (add_path != NULL) {
+
+        char * new_path;
+        os_calloc(OS_SIZE_6144, sizeof(char), new_path);
+        char *env_path = getenv("PATH");
+
+        if (!env_path) {
+            snprintf(new_path, OS_SIZE_6144 - 1, "PATH=%s", add_path);
+        } else if (strlen(env_path) >= OS_SIZE_6144) {
+            merror("at wm_exec(): PATH environment variable too large.");
+            retval = -1;
+        } else {
+            snprintf(new_path, OS_SIZE_6144 - 1, "PATH=%s;%s", add_path, env_path);
+        }
+
+        // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
+        if (_putenv(new_path) < 0) {
+            merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
+            retval = -1;
+        }
+
+        char *new_env = getenv("PATH");
+        mdebug1("New 'PATH' environment variable set: '%s'", new_env);
+        free(new_path);
+    }
 
     sinfo.cb = sizeof(STARTUPINFO);
 
@@ -239,7 +267,7 @@ static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child
 
 // Execute command with timeout of secs
 
-int wm_exec(char *command, char **output, int *exitcode, int secs)
+int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
 {
     char **argv;
     pid_t pid;
@@ -271,6 +299,33 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         // Child
 
+        // Add environment variable if exists
+
+        if (add_path != NULL) {
+
+            char * new_path = NULL;
+            os_calloc(OS_SIZE_6144, sizeof(char), new_path);
+            char *env_path = getenv("PATH");
+
+            if (!env_path) {
+                snprintf(new_path, OS_SIZE_6144 - 1, "%s", add_path);
+            } else if (strlen(env_path) >= OS_SIZE_6144) {
+                merror("at wm_exec(): PATH environment variable too large.");
+                retval = -1;
+            } else {
+                snprintf(new_path, OS_SIZE_6144 - 1, "%s:%s", add_path, env_path);
+            }
+
+            if (setenv("PATH", new_path, 1) < 0) {
+                merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
+                retval = -1;
+            }
+
+            char *new_env = getenv("PATH");
+            mdebug1("New 'PATH' environment variable set: '%s'", new_env);
+            free(new_path);
+        }
+
         argv = wm_strtok(command);
 
         int fd = open("/dev/null", O_RDWR, 0);
@@ -295,11 +350,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         setsid();
         if (nice(wm_task_nice)) {}
-#ifdef USE_EXEC_ENVIRON
-        if (execvpe(argv[0], argv, environ) < 0)
-#else
         if (execvp(argv[0], argv) < 0)
-#endif
             exit(EXECVE_ERROR);
 
         // Dead code

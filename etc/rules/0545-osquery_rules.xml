@@ -26,31 +26,94 @@
   <rule id="24010" level="3">
     <if_sid>24000</if_sid>
     <decoded_as>json</decoded_as>
-    <description>osquery data grouped</description>
+    <description>osquery: $(osquery.name) query result</description>
   </rule>
 
   <rule id="24011" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">high_load_average</field>
+    <field name="osquery.name">high_load_average</field>
     <description>System memory is under $(columns.threshold)</description>
   </rule>
 
   <rule id="24012" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">low_free_memory</field>
+    <field name="osquery.name">low_free_memory</field>
     <description>System memory is under $(columns.threshold)</description>
   </rule>
 
   <rule id="24013" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">low_disk_space</field>
+    <field name="osquery.name">low_disk_space</field>
     <description>Free disk space is under $(columns.threshold)</description>
   </rule>
 
   <rule id="24014" level="4">
     <if_sid>24010</if_sid>
-    <field name="name">disk_time_busy</field>
+    <field name="osquery.name">disk_time_busy</field>
     <description>Disk busy time is over $(columns.threshold)</description>
+  </rule>
+
+  <rule id="24020" level="4">
+    <if_sid>24010</if_sid>
+    <field name="osquery.pack">^osquery-monitoring$</field>
+    <description>osquery: $(osquery.name) query result</description>
+    <group>osquery_monitoring,</group>
+  </rule>
+
+  <rule id="24030" level="4">
+    <if_sid>24010</if_sid>
+    <field name="osquery.pack">^incident-response$</field>
+    <description>osquery: $(osquery.name) query result</description>
+    <group>incident_response,</group>
+  </rule>
+
+  <rule id="24040" level="4">
+    <if_sid>24010</if_sid>
+    <field name="osquery.pack">^it-compliance$</field>
+    <description>osquery: $(osquery.name) query result</description>
+    <group>it_compliance,</group>
+  </rule>
+
+  <rule id="24050" level="4">
+    <if_sid>24010</if_sid>
+    <field name="osquery.pack">^osx-attacks$</field>
+    <description>osquery: $(osquery.name) query result</description>
+    <group>osx_attacks,</group>
+  </rule>
+
+  <rule id="24060" level="4">
+    <if_sid>24010</if_sid>
+    <field name="osquery.pack">^vuln-management$</field>
+    <description>osquery: $(osquery.name) query result</description>
+    <group>vuln_management,</group>
+  </rule>
+
+  <rule id="24070" level="4">
+    <if_sid>24010</if_sid>
+    <field name="osquery.pack">^hardware-monitoring$</field>
+    <description>osquery: $(osquery.name) query result</description>
+    <group>hardware_monitoring,</group>
+  </rule>
+
+  <rule id="24080" level="4">
+    <if_sid>24010</if_sid>
+    <field name="osquery.pack">^ossec-rootkit$</field>
+    <description>osquery: $(osquery.name) query result</description>
+    <group>ossec_rootkit,</group>
+  </rule>
+
+  <rule id="24090" level="4">
+    <if_sid>24010</if_sid>
+    <field name="osquery.pack">^windows-hardening$</field>
+    <description>osquery: $(osquery.name) query result</description>
+    <group>windows_hardening,</group>
+  </rule>
+
+  <rule id="24100" level="4">
+    <if_sid>24010</if_sid>
+    <field name="osquery.pack">^windows-attacks$</field>
+    <description>osquery: $(osquery.name) query result</description>
+    <group>windows_attacks,</group>
   </rule>
 
 </group>

@@ -40,9 +40,9 @@ static int _CHour[25];
 static int _cignorehour = 0;
 static int _fired = 0;
 static int _daily_errors = 0;
-static int maxdiff = 0;
-static int mindiff = 0;
-static int percent_diff = 20;
+int maxdiff = 0;
+int mindiff = 0;
+int percent_diff = 20;
 
 /* Last msgs, to avoid floods */
 static char *_lastmsg;

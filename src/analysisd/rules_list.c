@@ -11,7 +11,7 @@
 #include "rules.h"
 
 /* Rulenode local  */
-static RuleNode *rulenode;
+RuleNode *rulenode;
 
 /* _OS_Addrule: Internal AddRule */
 static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
