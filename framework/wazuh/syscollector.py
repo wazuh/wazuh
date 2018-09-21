@@ -128,7 +128,7 @@ def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}
     """
     Get info about an agent's network address
     """
-    valid_select_fields = {'id', 'scan_id', 'proto', 'address',
+    valid_select_fields = {'scan_id', 'proto', 'address',
                            'netmask', 'broadcast'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select,
@@ -140,7 +140,7 @@ def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's network protocol
     """
-    valid_select_fields = {'id', 'scan_id', 'iface', 'type',
+    valid_select_fields = {'scan_id', 'iface', 'type',
                            'gateway', 'dhcp'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select,
@@ -152,7 +152,7 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's network interface
     """
-    valid_select_fields = {'id', 'scan_id', 'scan_time', 'name',
+    valid_select_fields = {'scan_id', 'scan_time', 'name',
                            'adapter', 'type', 'state', 'mtu', 'mac', 'tx_packets',
                             'rx_packets', 'tx_bytes', 'rx_bytes', 'tx_errors', 'rx_errors',
                            'tx_dropped', 'rx_dropped'}
