@@ -55,7 +55,7 @@ static int read_dir_diff(char *dir_name) {
         }
     }
 
-
+    int ret_add;
     while ((entry = readdir(dp)) != NULL) {
         char *s_name;
 
@@ -80,7 +80,7 @@ static int read_dir_diff(char *dir_name) {
         if (strcmp(DIFF_LAST_FILE, s_name) == 0) {
             memset(file_name, 0, strlen(file_name));
             memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
-            if (OSHash_Add(syscheck.local_hash, file_name, NULL) <= 0) {
+            if ((ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL)), ret_add < 2) {
                 merror("Unable to add file to db: %s", file_name);
             }
         } else {
@@ -108,6 +108,7 @@ void remove_local_diff(){
 
     /* Delete all  monitored files from hash table */
     OSHashNode *curr_node_local;
+    OSHashNode *internal_node;
 #ifdef WIN32
     OSHashNode *curr_node_monitoring;
     unsigned int j = 0;
@@ -124,7 +125,7 @@ void remove_local_diff(){
                 strcat(full_path, (windows_path + 1));
                 if (strcmp(full_path, curr_node_local->key) == 0) {
                     mdebug2("Deleting '%s' from local hash table.", curr_node_local->key);
-                    OSHash_Delete(syscheck.local_hash, curr_node_local->key);
+                    OSHash_Delete_ex(syscheck.local_hash, curr_node_local->key);
                     break;
                 }
             }
@@ -135,15 +136,20 @@ void remove_local_diff(){
     for (i = 0; i <= syscheck.local_hash->rows; i++) {
         curr_node_local = syscheck.local_hash->table[i];
         if (curr_node_local && curr_node_local->key) {
-            monitoring_path = curr_node_local->key;
-            monitoring_path += strlen(local_path);
-            if(OSHash_Get_ex(syscheck.fp, monitoring_path)){
-                mdebug2("Deleting '%s' from local hash table.", curr_node_local->key);
-                OSHash_Delete(syscheck.local_hash, curr_node_local->key);
+            do{
+                internal_node=curr_node_local->next;
+                monitoring_path = curr_node_local->key;
+                monitoring_path += strlen(local_path);
+                if(OSHash_Get_ex(syscheck.fp, monitoring_path)){
+                    mdebug2("Deleting '%s' from local hash table.", curr_node_local->key);
+                    OSHash_Delete_ex(syscheck.local_hash, curr_node_local->key);
+                }
+                else{
+                    mdebug1("Couldn't get '%s' from monitoring hash table.", monitoring_path);
+                }   
+                curr_node_local=internal_node;
             }
-            else{
-                mdebug1("Couldn't get '%s' from monitoring hash table.", monitoring_path);
-            }
+            while(curr_node_local);
         }
     }
 #endif
@@ -156,8 +162,8 @@ void remove_local_diff(){
                 mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
             }
             remove_empty_folders(curr_node_local->key);
-
-            if (OSHash_Delete(syscheck.local_hash, curr_node_local->key) != 0) {
+            
+            if (OSHash_Delete_ex(syscheck.local_hash, curr_node_local->key) != 0) {
                 mwarn("Could not delete from hash table '%s'", curr_node_local->key);
             }
         }
@@ -624,20 +630,25 @@ int run_dbcheck()
         syscheck.last_check = OSHash_Duplicate_ex(syscheck.fp);
         w_mutex_unlock(&lastcheck_mutex);
 
+        OSHashNode *internal_node;
         // Send messages for deleted files
         for (i = 0; i <= last_backup->rows; i++) {
             curr_node = last_backup->table[i];
             if(curr_node && curr_node->key) {
-
-                pos = find_dir_pos(curr_node->key, 1, 0, 0);
-                mdebug2("Sending delete msg for file: %s", curr_node->key);
-                snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
-                send_syscheck_msg(alert_msg);
-                OSHash_Delete_ex(syscheck.last_check, curr_node->key);
-                if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
-                    free(data->checksum);
-                    free(data);
+                do{
+                    internal_node=curr_node->next;
+                    pos = find_dir_pos(curr_node->key, 1, 0, 0);
+                    mdebug2("Sending delete msg for file: %s", curr_node->key);
+                    snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
+                    send_syscheck_msg(alert_msg);
+                    OSHash_Delete_ex(syscheck.last_check, curr_node->key);
+                    if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
+                        free(data->checksum);
+                        free(data);
+                    }
+                    curr_node=internal_node;
                 }
+                while(curr_node);
             }
         }
 
