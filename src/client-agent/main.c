@@ -160,6 +160,9 @@ int main(int argc, char **argv)
         merror_exit(USER_ERROR, user, group);
     }
 
+    /* Check client keys */
+    OS_ReadKeys(&keys, 1, 0, 0);
+    
     /* Exit if test config */
     if (test_config) {
         exit(0);

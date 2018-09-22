@@ -375,9 +375,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         } else {
             // Kill and timeout
+            retval = 0;
+            sleep(1);
+            secs--;
             do {
                 if (waitpid(pid,&status,WNOHANG) == 0){ // Command yet not finished
-
+                    retval = -1;
                     switch (kill(pid, 0)){
                         case -1:
                             switch(errno){
@@ -393,8 +396,13 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                             break;
 
                         default:
-                            sleep(1);
-                            secs--;
+                            if (secs > 0) {
+                                sleep(1);
+                                secs--;
+                            } else if (!secs) {
+                                secs--;
+                                continue;
+                            }
                     }
 
                     if (retval == -2 || retval == -3) {
@@ -405,8 +413,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
                     retval = 0;
                     break;
                 }
-
-            } while(secs);
+            } while(secs >= 0);
 
             if(retval != 0){
                 kill(pid,SIGTERM);

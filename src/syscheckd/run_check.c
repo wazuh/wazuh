@@ -334,7 +334,10 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
     syscheck_node *s_node;
-#ifdef WIN32
+    char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
+#ifndef WIN32
+    char str_owner[50], str_group[50];
+#else
     char *sid = NULL;
     const char *user;
 #endif
@@ -463,31 +466,92 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             }
         }
     }
-    snprintf(newsum, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
-        size == 0 ? 0 : (long)statbuf.st_size,
-        perm == 0 ? 0 : (int)statbuf.st_mode,
-        owner == 0 ? 0 : (int)statbuf.st_uid,
-        group == 0 ? 0 : (int)statbuf.st_gid,
+
+    if (size == 0){
+        *str_size = '\0';
+    } else {
+        sprintf(str_size, "%ld", (long)statbuf.st_size);
+    }
+
+    if (perm == 0){
+        *str_perm = '\0';
+    } else {
+        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+    }
+
+    if (owner == 0){
+        *str_owner = '\0';
+    } else {
+        sprintf(str_owner, "%ld", (long)statbuf.st_uid);
+    }
+
+    if (group == 0){
+        *str_group = '\0';
+    } else {
+        sprintf(str_group, "%ld", (long)statbuf.st_gid);
+    }
+
+    if (mtime == 0){
+        *str_mtime = '\0';
+    } else {
+        sprintf(str_mtime, "%ld", (long)statbuf.st_gid);
+    }
+
+    if (inode == 0){
+        *str_inode = '\0';
+    } else {
+        sprintf(str_inode, "%ld", (long)statbuf.st_gid);
+    }
+
+    snprintf(newsum, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+        str_size,
+        str_perm,
+        str_owner,
+        str_group,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
         owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
         group == 0 ? "" : get_group(statbuf.st_gid),
-        mtime ? (long)statbuf.st_mtime : 0,
-        inode ? (long)statbuf.st_ino : 0,
+        str_mtime,
+        str_inode,
         sha256sum  == 0 ? "" : sf256_sum);
 #else
     user = get_user(file_name, statbuf.st_uid, &sid);
 
-    snprintf(newsum, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
-        size == 0 ? 0 : (long)statbuf.st_size,
-        perm == 0 ? 0 : (int)statbuf.st_mode,
+    if (size == 0){
+        *str_size = '\0';
+    } else {
+        sprintf(str_size, "%ld", (long)statbuf.st_size);
+    }
+
+    if (perm == 0){
+        *str_perm = '\0';
+    } else {
+        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+    }
+
+    if (mtime == 0){
+        *str_mtime = '\0';
+    } else {
+        sprintf(str_mtime, "%ld", (long)statbuf.st_gid);
+    }
+
+    if (inode == 0){
+        *str_inode = '\0';
+    } else {
+        sprintf(str_inode, "%ld", (long)statbuf.st_gid);
+    }
+
+    snprintf(newsum, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s",
+        str_size,
+        str_perm,
         (owner == 0) && sid ? "" : sid,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
         owner == 0 ? "" : user,
         group == 0 ? "" : get_group(statbuf.st_gid),
-        mtime ? (long)statbuf.st_mtime : 0,
-        inode ? (long)statbuf.st_ino : 0,
+        str_mtime,
+        str_inode,
         sha256sum  == 0 ? "" : sf256_sum);
 
         if (sid) {

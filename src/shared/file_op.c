@@ -474,7 +474,6 @@ int CreatePID(const char *name, int pid)
     }
 
     fprintf(fp, "%d\n", pid);
-
     if (chmod(file, 0640) != 0) {
         merror(CHMOD_ERROR, file, errno, strerror(errno));
         fclose(fp);
