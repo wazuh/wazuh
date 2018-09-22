@@ -25,6 +25,7 @@ static void helpmsg()
 int main(int argc, char **argv)
 {
     const char *pattern;
+    char * string;
 
     char msg[OS_MAXSTR + 1];
     memset(msg, '\0', OS_MAXSTR + 1);
@@ -62,34 +63,33 @@ int main(int argc, char **argv)
             msg[strlen(msg) - 1] = '\0';
         }
 
-        /* Make sure we ignore blank lines */
-        if (strlen(msg) < 2) {
-            continue;
-        }
+        string = strdup(msg);
 
-        if (OSRegex_Execute(msg, &regex)) {
-            printf("+OSRegex_Execute: %s\n", msg);
+        if (OSRegex_Execute(string, &regex)) {
+            printf("+OSRegex_Execute: %s\n", string);
         }
         /*
         else
             printf("-OSRegex_Execute: \n");
          */
 
-        if (OS_Regex(pattern, msg)) {
-            printf("+OS_Regex       : %s\n", msg);
+        if (OS_Regex(pattern, string)) {
+            printf("+OS_Regex       : %s\n", string);
         }
         /*
         else
             printf("-OS_Regex: \n");
          */
 
-        if (OSMatch_Execute(msg, strlen(msg), &matcher)) {
-            printf("+OSMatch_Compile: %s\n", msg);
+        if (OSMatch_Execute(string, strlen(string), &matcher)) {
+            printf("+OSMatch_Compile: %s\n", string);
         }
 
-        if (OS_Match2(pattern, msg)) {
-            printf("+OS_Match2      : %s\n", msg);
+        if (OS_Match2(pattern, string)) {
+            printf("+OS_Match2      : %s\n", string);
         }
+
+        free(string);
     }
     return (0);
 }
