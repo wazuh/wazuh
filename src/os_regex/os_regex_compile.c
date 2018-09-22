@@ -76,7 +76,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     pt = new_str;
 
     /* Get the number of sub patterns */
-    do {
+    while (*pt != '\0') {
         if (*pt == BACKSLASH) {
             pt++;
             /* Give the new values for each regex */
@@ -164,7 +164,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
             count++;
         }
         pt++;
-    } while (*pt != '\0');
+    }
 
     /* After the whole pattern is read, the parentheses must all be closed */
     if (parenthesis != 0) {
@@ -225,7 +225,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
             }
 
             /* If string ends with $, set the END_SET flag */
-            if (*(pt - 1) == ENDREGEX) {
+            if (pt > new_str && *(pt - 1) == ENDREGEX) {
                 *(pt - 1) = '\0';
                 reg->flags[i] |= END_SET;
             }
