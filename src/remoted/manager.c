@@ -348,7 +348,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             }
 
             snprintf(file, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, files[i]);
-
+       
             if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
                 merror("Accessing file '%s'", file);
                 continue;
@@ -437,16 +437,18 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum) {
             
             char destination_path[PATH_MAX + 1] = {0};
             char source_path[PATH_MAX + 1] = {0};
+            char agent_conf_chunck_message[PATH_MAX + 1]= {0};
 
             snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
             snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, multi_group_cpy, files[i]);
 
             /* If the file is agent.conf, append */
             if(strcmp(files[i],"agent.conf") == 0){
-                w_copy_file(source_path,destination_path,'a');
+                snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
+                w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message);
             }
             else {
-                w_copy_file(source_path,destination_path,'c');
+                w_copy_file(source_path,destination_path,'c',NULL);
             }
             
         }
@@ -464,29 +466,21 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum) {
         return;
     }
 
-    while (entry = readdir(dp), entry) {
-        // Skip "." and ".."
-        if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
-            continue;
-        }
-
-        if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
-            merror("At c_files(): path too long.");
-            break;
-        }
-
-        // Try to open directory, avoid TOCTOU hazard
-
-        if (subdir = wreaddir(path), !subdir) {
-            if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", path);
-            }
-            continue;
-        }
-
-        c_group(entry->d_name, subdir, _f_sum,MULTIGROUPS_DIR);
-        free_strarray(subdir);
+    if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", multi_group_cpy) > PATH_MAX) {
+        merror("At c_files(): path too long.");
+       return;
     }
+
+    // Try to open directory, avoid TOCTOU hazard
+    if (subdir = wreaddir(path), !subdir) {
+        if (errno != ENOTDIR) {
+            merror("Could not open directory '%s'", path);
+        }
+       return;
+    }
+
+    c_group(multi_group_cpy, subdir, _f_sum,MULTIGROUPS_DIR);
+    free_strarray(subdir);
     
     closedir(dp);
 }
@@ -616,7 +610,7 @@ static void c_files()
         free_strarray(subdir);
         p_size++;
     }
-    
+
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
 
@@ -754,6 +748,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     } else if (get_agent_group(agent_id, group, KEYSIZE) < 0) {
         group[0] = '\0';
     }
+    mdebug2("Agent '%s' group is '%s'",agent_id,group);
 
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
@@ -804,6 +799,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         // If group was not got, guess it by matching sum
 
+        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'",agent_id,group,file,md5);
         if (!f_sum) {
             if (f_sum = find_group(file, md5, group), !f_sum) {
                 // If the group could not be guessed, set to "default"

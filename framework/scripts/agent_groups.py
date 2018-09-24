@@ -155,7 +155,7 @@ def usage():
     \t-l -g group_id                        # List agents in group
     \t-c -g group_id                        # List configuration files in group
     \t
-    \t-a -i agent_id -g group_id [-q] [-e]  # Set agent group
+    \t-a -i agent_id -g group_id [-q] [-e]  # Add agent group
     \t-r -i agent_id [-q]                   # Unset agent group
     \t-s -i agent_id                        # Show group of agent
     \t

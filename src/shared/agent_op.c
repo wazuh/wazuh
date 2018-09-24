@@ -282,6 +282,10 @@ int set_agent_group(const char * id, const char * group) {
     FILE *fp;
     mode_t oldmask;
 
+    if(create_multigroup_dir(group)){
+        return -1;
+    }
+
     if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
         merror("At set_agent_group(): file path too large for agent '%s'.", id);
         return -1;
@@ -298,6 +302,49 @@ int set_agent_group(const char * id, const char * group) {
 
     fprintf(fp, "%s\n", group);
     fclose(fp);
+    return 0;
+}
+
+/* Create multigroup dir. Returns 0 on success or -1 on failure. */
+int create_multigroup_dir(const char * multigroup) {
+    char path[PATH_MAX];
+    DIR *dp;
+    char *has_multigroup =  strchr(multigroup,'-');
+
+    if(!has_multigroup){
+        return 0;
+    }
+    mdebug1("Attempting to create multigroup dir: '%s'",multigroup);
+    
+    if (snprintf(path, PATH_MAX, isChroot() ? MULTIGROUPS_DIR "/%s" : DEFAULTDIR MULTIGROUPS_DIR "/%s", multigroup) >= PATH_MAX) {
+        merror("At create_multigroup_dir(): path too large for multigroup '%s'.", multigroup);
+        return -1;
+    }
+
+    dp = opendir(path);
+
+    /* Multigroup doesnt exists, create the directory */
+    if(!dp){
+       if (mkdir(path, 0770) == -1) {
+            merror("At create_multigroup_dir(): couldn't create directory '%s'", path);
+            return -1;
+        }
+
+        if(chmod(path,0770) < 0){
+            merror("Error in chmod setting permissions for path: %s",path);
+        }
+
+        uid_t uid = Privsep_GetUser(USER);
+        gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+
+        if (chown(path, uid, gid) == -1) {
+            merror(CHOWN_ERROR, path, errno, strerror(errno));
+            return -1;
+        }
+    }
+    closedir(dp);
+    mdebug1("Multigroup dir created: '%s'",multigroup);
+ 
     return 0;
 }
 
