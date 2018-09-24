@@ -339,6 +339,8 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 
 int remove_empty_folders(const char *path) {
     const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
+    char DIFF_PATH[MAXPATHLEN] = DIFF_DIR_PATH;
+    strcat(DIFF_PATH, LOCALDIR);
     const char *c;
     char parent[PATH_MAX] = "\0";
     char ** subdir;
@@ -350,7 +352,7 @@ int remove_empty_folders(const char *path) {
         memcpy(parent, path, c - path);
         parent[c - path] = '\0';
         // Don't delete above /local
-        if (c = strrchr(parent, PATH_SEP), c && strcmp(c, LOCALDIR) != 0) {
+        if (strcmp(DIFF_PATH, parent) != 0) {
             subdir = wreaddir(parent);
             if (!(subdir && *subdir)) {
                 // Remove empty folder
@@ -368,7 +370,6 @@ int remove_empty_folders(const char *path) {
             free_strarray(subdir);
         }
     }
-
     return retval;
 }
 
