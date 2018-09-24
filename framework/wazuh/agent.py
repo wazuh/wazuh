@@ -109,6 +109,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                 return str(value).zfill(3)
             elif field_name == 'status':
                 return Agent.calculate_status(lastKeepAlive, version is None, today)
+            elif field_name == 'group':
+                return value.split('-')
             else:
                 return value
 
