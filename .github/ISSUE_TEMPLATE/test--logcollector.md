@@ -38,6 +38,6 @@ about: Test suite for Logcollector.
 
 ## Commands
 
-- [ ] Prevent remote commands, with `command` or `full_command`, if `logcollector.remote_commands` is enabled.
+- [ ] Prevent remote commands, with `command` or `full_command`, if `logcollector.remote_commands` is disabled.
 - [ ] Check that the output of a command is captured line by line (with `command`) and completely (with `full_command`)
 - [ ] Check the correct output of *netstat* commands.
