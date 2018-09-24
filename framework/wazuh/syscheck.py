@@ -11,6 +11,7 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh import common
 from glob import glob
 from os import remove, path
+from datetime import datetime
 
 
 def run(agent_id=None, all_agents=False):
@@ -108,12 +109,11 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    data = {}
-    data['start'] = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
-                                                           filters={'key': 'fim-db-start-first-scan'})[0]['value']
-    data['end'] = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
-                                                             filters={'key': 'fim-db-end-first-scan'})[0]['value']
-    return data
+    start_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'], filters={'key': 'fim-db-start-first-scan'})[0]['value'])
+    start = datetime.utcfromtimestamp(start_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    end_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'], filters={'key': 'fim-db-end-first-scan'})[0]['value'])
+    end = datetime.utcfromtimestamp(end_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    return {'start': start, 'end': end}
 
 
 def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="", filters={}):
@@ -143,7 +143,6 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
 class WazuhDBQuerySyscheck(WazuhDBQuery):
 
     def __init__(self, agent_id, summary, offset, limit, sort, search, select, query, count, get_data, default_sort_order='ASC', filters={}, min_select_fields=set()):
-
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_agent:
             raise WazuhException(1600)
