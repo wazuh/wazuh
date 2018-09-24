@@ -12,6 +12,7 @@ from wazuh import common
 from glob import glob
 from os import remove, path
 from datetime import datetime
+from wazuh.wdb import WazuhDBConnection
 
 
 def run(agent_id=None, all_agents=False):
@@ -129,15 +130,16 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    """
     if 'filetype' not in q:
         q = 'filetype=file' + ('' if not q else ';'+q)
+    """
 
-    db_query = WazuhDBQuerySyscheck(offset=offset, limit=limit, sort=sort, search=search, count=True, get_data=True,
-                                    query=q, agent_id=agent_id, summary=summary, select=select, filters=filters)
-    data = db_query.run()
-    if not summary:
-        data['items'] = [dict(x, permissions=filemode(int(x['octalMode']))) for x in data['items']]
-    return data
+    select_fields = ["date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
+                     "uid", "type"]
+    db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select_fields, offset=offset,
+                                                        limit=limit, sort=sort, search=search)
+    return {'items': db_query}
 
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):
@@ -190,24 +192,3 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
             self.q += (';' if self.q else '') + '(md5={0},sha1={0})'.format(self.legacy_filters['hash'])
             del self.legacy_filters['hash']
         WazuhDBQuery._parse_legacy_filters(self)
-
-
-class WazuhDBQueryMetadata(WazuhDBQuery):
-
-    def __init__(self, agent_id, summary, offset, limit, sort, search, select, query, count, get_data, default_sort_order='ASC', filters={}, min_select_fields=set()):
-
-        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-        if not db_agent:
-            raise WazuhException(1600)
-        else:
-            db_agent = db_agent[0]
-
-        self.summary = False if summary == 'no' or not summary else True
-
-        select = {'fields': ["key", "value"]}
-
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
-                              query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
-                              min_select_fields=min_select_fields, table='metadata', date_fields={},
-                              fields={'key':'key', 'value':'value'},
-                              filters=filters)
