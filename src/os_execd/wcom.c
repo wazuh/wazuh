@@ -595,6 +595,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
             goto error;
         }
     } else if (strcmp(section, "cluster") == 0){
+#ifndef WIN32
         /* Check socket connection with cluster first */
         int sock = -1;
         char sockname[PATH_MAX + 1] = {0};
@@ -619,6 +620,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
+#endif
     }else {
         goto error;
     }
