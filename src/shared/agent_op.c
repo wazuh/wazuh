@@ -342,7 +342,9 @@ int create_multigroup_dir(const char * multigroup) {
             return -1;
         }
     }
-    closedir(dp);
+    else{
+        closedir(dp);
+    }
     mdebug1("Multigroup dir created: '%s'",multigroup);
  
     return 0;

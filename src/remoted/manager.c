@@ -396,7 +396,6 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum) {
     char ** subdir;
     char agent_conf_multi_path[PATH_MAX + 1] = {0};
     char multi_group_cpy[PATH_MAX+1] = {0};
-    struct dirent *entry;
 
     snprintf(multi_group_cpy,PATH_MAX + 1,"%s",multi_group);
     /* Get each group of the multi-group */
