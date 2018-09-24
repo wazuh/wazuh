@@ -111,9 +111,9 @@ def last_scan(agent_id):
     :return: Dictionary: end, start.
     """
     start_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'], filters={'key': 'fim-db-start-first-scan'})[0]['value'])
-    start = datetime.utcfromtimestamp(start_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    start = datetime.fromtimestamp(start_timestamp).strftime('%Y-%m-%d %H:%M:%S')
     end_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'], filters={'key': 'fim-db-end-first-scan'})[0]['value'])
-    end = datetime.utcfromtimestamp(end_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    end = datetime.fromtimestamp(end_timestamp).strftime('%Y-%m-%d %H:%M:%S')
     return {'start': start, 'end': end}
 
 
@@ -139,6 +139,8 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
                      "uid", "type"]
     db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select_fields, offset=offset,
                                                         limit=limit, sort=sort, search=search)
+    for item in db_query:
+        item['mtime'] = datetime.fromtimestamp(float(item['mtime'])).strftime('%Y-%m-%d %H:%M:%S')
     return {'items': db_query}
 
 
