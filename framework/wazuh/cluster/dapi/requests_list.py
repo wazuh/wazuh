@@ -9,7 +9,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import Wazuh
-from wazuh import commona
+from wazuh import common
 from wazuh.agent import Agent
 from wazuh.rule import Rule
 from wazuh.decoder import Decoder
