@@ -9,7 +9,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import Wazuh
-from wazuh import common
+from wazuh import commona
 from wazuh.agent import Agent
 from wazuh.rule import Rule
 from wazuh.decoder import Decoder
@@ -64,6 +64,10 @@ functions = {
     },
     '/agents/:agent_id/upgrade_result': {
         'function': Agent.get_upgrade_result,
+        'type': 'distributed_master'
+    },
+    '/agents/:agent_id/config/:component/:configuration"': {
+        'function': Agent.get_conf,
         'type': 'distributed_master'
     },
     'PUT/agents/:agent_id/upgrade': {
