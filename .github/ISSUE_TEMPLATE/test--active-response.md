@@ -1,5 +1,5 @@
 ---
-name: Test: Active response
+name: 'Test: Active response'
 about: Test suite for Active response
 
 ---

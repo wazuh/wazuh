@@ -1,6 +1,6 @@
 ---
 name: Bug
-about: Report a bug
+about: Report a bug.
 
 ---
 
@@ -29,5 +29,3 @@ Log sample
 
 Bug description
 ----------------
-
-

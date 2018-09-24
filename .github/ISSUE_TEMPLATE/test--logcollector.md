@@ -20,7 +20,7 @@ about: Test suite for Logcollector.
 
 - [ ] Solve the reading of a file when changing its inode.
 - [ ] Check that Eventlog logs are read in all supported versions of Windows.
-- [ ] Rotate file.
+- [ ] Truncate file.
 - [ ] Check for new paths that match a wildcards after starting Logcollector.
 - [ ] Check **all the tests** changing the order of the parameters in combination with normal and daily wildcards.
 - [ ] Check that labels are added to JSON files.
@@ -36,7 +36,7 @@ about: Test suite for Logcollector.
 - [ ] Configure one and multiple sockets output as target. (https://github.com/wazuh/wazuh/pull/395)
 - [ ] Test the `out_format` option for different socket targets. (https://github.com/wazuh/wazuh/pull/863)
 
-## COmmands
+## Commands
 
 - [ ] Prevent remote commands, with `command` or `full_command`, if `logcollector.remote_commands` is enabled.
 - [ ] Check that the output of a command is captured line by line (with `command`) and completely (with `full_command`)

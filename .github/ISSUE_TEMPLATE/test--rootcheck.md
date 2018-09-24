@@ -1,5 +1,5 @@
 ---
-name: Test: Rootcheck
+name: 'Test: Rootcheck'
 about: Test suite for Rootcheck
 
 ---
@@ -12,7 +12,7 @@ about: Test suite for Rootcheck
 
 ## Rootkit
 
-### CentOS 7 
+### CentOS 7
 
 - [ ] Check running processes
 - [ ] Check hidden ports
@@ -62,5 +62,3 @@ about: Test suite for Rootcheck
 ### Suse 12
 
 - [ ] Check Unix audit, system_audit_rcl.txt, system_audit_ssh.txt, cis_sles12_linux_rcl.txt
-
-

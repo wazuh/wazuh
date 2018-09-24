@@ -1,5 +1,5 @@
 ---
-name: Test: Syscheck
+name: 'Test: Syscheck'
 about: Test suite for Syscheck
 
 ---
