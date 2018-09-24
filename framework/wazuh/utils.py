@@ -761,7 +761,7 @@ class WazuhDBQuery(object):
             self._filter_date(q_filter, field_name)
         else:
             if q_filter['value'] is not None:
-                self.request[field_filter] = q_filter['value'] if q_filter['field'] != "version" else re.sub(
+                self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
                 if q_filter['operator'] == 'LIKE':
                     self.request[field_filter] = '%{}%'.format(self.request[field_filter])
