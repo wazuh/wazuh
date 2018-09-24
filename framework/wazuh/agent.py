@@ -1090,13 +1090,21 @@ class Agent:
         """
         # Check if agent exists
         if not force:
-            agent_info = Agent(agent_id).get_basic_information()
+            Agent(agent_id).get_basic_information()
 
-        # Check if the group already belongs to the agent
-        if group_id in agent_info["group"].split('-'):
-            return "Group '{0}' already belongs to agent'{1}'.".format(group_id, agent_id)
+        # get agent's group
+        group_path = "{}/{}".format(common.groups_path, agent_id)
+        if path.exists(group_path):
+            with open(group_path) as f:
+                group_name = f.read().replace('\n', '')
 
-        agent_group = agent_info["group"] + "-" + group_id
+            # Check if the group already belongs to the agent
+            if group_id in group_name.split('-'):
+                return "Group '{0}' already belongs to agent'{1}'.".format(group_id, agent_id)
+        else:
+            group_name = ""
+
+        agent_group = (group_name + '-' if group_name else '') + group_id
 
         # Check if the group exists
         if not Agent.group_exists(group_id):
