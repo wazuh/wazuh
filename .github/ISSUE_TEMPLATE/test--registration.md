@@ -28,14 +28,14 @@ about: Test suite for agent registration.
 
 ### Secure methods
 
-- [ ] Register an agent using a password. (3)
-- [ ] Register an agent using SSL. (3)
+- [ ] Register an agent using a password. (2)
+- [ ] Register an agent using SSL. (2)
 
 (2) https://documentation.wazuh.com/3.x/user-manual/registering/use-registration-service.html#secure-methods
 
 ## Tool _manage_agents_
 
-- [ ] Check same test as using Authd. (2)
-- [ ] Use -F option to remove duplicated agents. (2)
+- [ ] Check same test as using Authd. (3)
+- [ ] Use -F option to remove duplicated agents. (3)
 
 (3) https://documentation.wazuh.com/3.x/user-manual/reference/tools/manage_agents.html
