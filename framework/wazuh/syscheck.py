@@ -77,8 +77,7 @@ def clear(agent_id=None, all_agents=False):
         conn = Connection(db_agent)
         conn.begin()
         try:
-            conn.execute('DELETE FROM fim_event')
-            conn.execute('DELETE FROM fim_file')
+            conn.execute('DELETE FROM fim_entry')
         except Exception as exception:
             raise exception
         finally:
@@ -109,29 +108,11 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-
-    # Connection
-    db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-    if not db_agent:
-        raise WazuhException(1600)
-    else:
-        db_agent = db_agent[0]
-
-    conn = Connection(db_agent)
-
     data = {}
-    # end time
-    query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending syscheck scan.'"
-    conn.execute(query)
-    for tuple in conn:
-        data['end'] = tuple[0]
-
-    # start time
-    query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting syscheck scan.'"
-    conn.execute(query)
-    for tuple in conn:
-        data['start'] = tuple[0]
-
+    data['start'] = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+                                                           filters={'key': 'fim-db-start-first-scan'})[0]['value']
+    data['end'] = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+                                                             filters={'key': 'fim-db-end-first-scan'})[0]['value']
     return data
 
 
@@ -171,10 +152,10 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
 
         self.summary = False if summary == 'no' or not summary else True
         if self.summary:
-            select = {'fields':["modificationDate", "event", "file", "scanDate"]} if not select else select
+            select = {'fields':["modificationDate", "file", "scanDate"]} if not select else select
         else:
-            select = {'fields':["scanDate", "modificationDate", "event", "file", "size", "octalMode", "user", "group", "md5", "sha1",
-                                "group", "inode", "gid", "uid"]} if not select else select
+            select = {'fields':["scanDate", "modificationDate", "file", "size", "octalMode", "user", "group", "md5", "sha1",
+                                "group", "inode", "gid", "uid"]} if not select else select  # sha256 field needs to be added
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
                               query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
@@ -210,3 +191,24 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
             self.q += (';' if self.q else '') + '(md5={0},sha1={0})'.format(self.legacy_filters['hash'])
             del self.legacy_filters['hash']
         WazuhDBQuery._parse_legacy_filters(self)
+
+
+class WazuhDBQueryMetadata(WazuhDBQuery):
+
+    def __init__(self, agent_id, summary, offset, limit, sort, search, select, query, count, get_data, default_sort_order='ASC', filters={}, min_select_fields=set()):
+
+        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
+        if not db_agent:
+            raise WazuhException(1600)
+        else:
+            db_agent = db_agent[0]
+
+        self.summary = False if summary == 'no' or not summary else True
+
+        select = {'fields': ["key", "value"]}
+
+        WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
+                              query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
+                              min_select_fields=min_select_fields, table='metadata', date_fields={},
+                              fields={'key':'key', 'value':'value'},
+                              filters=filters)
