@@ -117,7 +117,7 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
         }
     }
     else if (strcmp(msg_type, "network") == 0 || strcmp(msg_type, "network_end") == 0) {
-        if (decode_netinfo(lf->agent_id, logJSON,socket) < 0) {
+        if (decode_netinfo(lf->agent_id, logJSON, socket) < 0) {
             merror("Unable to send netinfo message to Wazuh DB.");
             cJSON_Delete (logJSON);
             return (0);
@@ -1349,7 +1349,6 @@ int sc_send_db(char * msg,int *sock) {
     int retval = -1;
     static time_t last_attempt = 0;
     time_t mtime;
-    char *msg_cpy = NULL;
 
     // Connect to socket if disconnected
     if (*sock < 0) {
@@ -1366,18 +1365,14 @@ int sc_send_db(char * msg,int *sock) {
     }
 
     // Send msg to Wazuh DB
-    size_t bufsz = size + sizeof(uint32_t);
-    os_calloc(bufsz + 1,sizeof(char),msg_cpy);
-    *(uint32_t *)msg_cpy = wnet_order(size);
-    memcpy(msg_cpy + sizeof(uint32_t), msg, size);
 
-    if (send(*sock, msg_cpy, bufsz+1, MSG_DONTWAIT) < size) {
+    if (OS_SendSecureTCP(*sock, size + 1, msg) != 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            merror("Syscollector decoder: database socket is full");
+            merror("at sc_send_db(): database socket is full");
         } else if (errno == EPIPE) {
             if (mtime = time(NULL), mtime > last_attempt + 10) {
                 // Retry to connect
-                mwarn("Connection with wazuh-db lost. Reconnecting.");
+                merror("at sc_send_db(): Connection with wazuh-db lost. Reconnecting.");
                 close(*sock);
 
                 if (*sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), *sock < 0) {
@@ -1386,9 +1381,9 @@ int sc_send_db(char * msg,int *sock) {
                     goto end;
                 }
 
-                if (send(*sock, msg_cpy, bufsz + 1, MSG_DONTWAIT) < size) {
+                if (!OS_SendSecureTCP(*sock, size + 1, msg)) {
                     last_attempt = mtime;
-                    merror("at sc_send_db(): at send() (retry): %s (%d)", strerror(errno), errno);
+                    merror("at sc_send_db(): at OS_SendSecureTCP() (retry): %s (%d)", strerror(errno), errno);
                     goto end;
                 }
             } else {
@@ -1397,7 +1392,7 @@ int sc_send_db(char * msg,int *sock) {
             }
 
         } else {
-            merror("at sc_send_db(): at send(): %s (%d)", strerror(errno), errno);
+            merror("at sc_send_db(): at OS_SendSecureTCP(): %s (%d)", strerror(errno), errno);
             goto end;
         }
     }
@@ -1416,7 +1411,7 @@ int sc_send_db(char * msg,int *sock) {
     length = OS_RecvSecureTCP(*sock,response,OS_MAXSTR);
     switch (length) {
         case -1:
-            merror("at sc_send_db(): at recv(): %s (%d)", strerror(errno), errno);
+            merror("at sc_send_db(): at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);
             goto end;
 
         default:
@@ -1432,6 +1427,5 @@ int sc_send_db(char * msg,int *sock) {
 
 end:
     free(msg);
-    free(msg_cpy);
     return retval;
 }
