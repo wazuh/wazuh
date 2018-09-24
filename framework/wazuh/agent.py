@@ -1598,7 +1598,7 @@ class Agent:
 
         # Check if agent exists
         if not force:
-            agent_info = Agent(agent_id).get_basic_information()
+            Agent(agent_id).get_basic_information()
 
         # Connect DB
         db_global = glob(common.database_path_global)
@@ -1607,20 +1607,24 @@ class Agent:
 
         conn = Connection(db_global[0])
 
-        if agent_info.has_key("group") == True:
+        # get agent's group
+        group_path = "{}/{}".format(common.groups_path, agent_id)
+        if path.exists(group_path):
+            with open(group_path) as f:
+                group_name = f.read().replace('\n', '')
 
             # Check if multi group still exists in other agents
             query = "SELECT COUNT(*) FROM agent WHERE `group` = :group_1 OR `group` LIKE :group_2 OR `group` LIKE :group_3 OR `group` LIKE :group_4"
             conn.execute(query,{'group_1': group_id, 'group_2': group_id+'-%', 'group_3': '%-{}-%'.format(group_id), 'group_4': '%-'+group_id})
 
             # Check if it is a multi group
-            if agent_info["group"] is not None and agent_info["group"].find("-") > -1:
+            if group_name and group_name.find("-") > -1:
                 multi_group = conn.fetch()[0]
 
                 # The multi group is not being used in other agents, delete it from multi groups
                 if multi_group <= 1:
-                    if Agent().multi_group_exists(agent_info["group"]):
-                        agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, agent_info["group"])
+                    if Agent().multi_group_exists(group_name):
+                        agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, group_name)
                         rmtree(agent_multi_group_path)
 
         # Assign group in /queue/agent-groups
