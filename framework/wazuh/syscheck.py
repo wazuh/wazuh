@@ -178,15 +178,16 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
                               query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
-                              min_select_fields=min_select_fields, table='fim_event, fim_file', date_fields={'scanDate','modificationDate'},
-                              fields={'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'path', 'size': 'size', 'user': 'uname',
-                                      'group': 'gname', 'event':'fim_event.type', 'md5':'md5', 'sha1':'sha1',
-                                      'inode':'inode','uid':'uid','gid':'gid', 'octalMode':'perm', 'filetype':'fim_file.type'},
+                              min_select_fields=min_select_fields, table='fim_entry', date_fields={'scanDate','modificationDate'},
+                              fields={'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'file', 'size': 'size', 'user': 'uname',
+                                      'group': 'gname', 'md5':'md5', 'sha1':'sha1', 'sha256':'sha256',
+                                      'inode':'inode','uid':'uid','gid':'gid', 'octalMode':'perm', 'filetype':'type'},
                               filters=filters)
 
 
     def _default_query(self):
-        return "SELECT {0} FROM " + self.table + " WHERE fim_event.id_file = fim_file.id"
+        # return "SELECT {0} FROM " + self.table + " WHERE fim_event.id_file = fim_file.id"  #### OLD!
+        return "SELECT {0} FROM " + self.table
 
 
     def _get_total_items(self):
