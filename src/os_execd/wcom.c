@@ -610,15 +610,19 @@ size_t wcom_getconfig(const char * section, char ** output) {
             *output = strdup("err Unable to connect with socket. The component might be disabled");
             return strlen(*output);
         }
-        else if (cfg = getClusterConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
+        else {
+            close(sock);
+
+            if (cfg = getClusterConfig(), cfg) {
+                *output = strdup("ok");
+                json_str = cJSON_PrintUnformatted(cfg);
+                wm_strcat(output, json_str, ' ');
+                free(json_str);
+                cJSON_free(cfg);
+                return strlen(*output);
+            } else {
+                goto error;
+            }
         }
 #endif
     }else {
