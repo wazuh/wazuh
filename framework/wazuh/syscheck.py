@@ -4,13 +4,9 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
-from wazuh.utils import filemode, WazuhDBQuery
 from wazuh.agent import Agent
-from wazuh.database import Connection
 from wazuh.ossec_queue import OssecQueue
 from wazuh import common
-from glob import glob
-from os import remove, path
 from datetime import datetime
 from wazuh.wdb import WazuhDBConnection
 
@@ -131,55 +127,3 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     for item in db_query:
         item['mtime'] = datetime.fromtimestamp(float(item['mtime'])).strftime('%Y-%m-%d %H:%M:%S')
     return {'items': db_query}
-
-
-class WazuhDBQuerySyscheck(WazuhDBQuery):
-
-    def __init__(self, agent_id, summary, offset, limit, sort, search, select, query, count, get_data, default_sort_order='ASC', filters={}, min_select_fields=set()):
-        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-        if not db_agent:
-            raise WazuhException(1600)
-        else:
-            db_agent = db_agent[0]
-
-        self.summary = False if summary == 'no' or not summary else True
-        if self.summary:
-            select = {'fields':["modificationDate", "file", "scanDate"]} if not select else select
-        else:
-            select = {'fields':["scanDate", "modificationDate", "file", "size", "octalMode", "user", "group", "md5", "sha1",
-                                "group", "inode", "gid", "uid"]} if not select else select  # sha256 field needs to be added
-
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
-                              query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
-                              min_select_fields=min_select_fields, table='fim_entry', date_fields={'scanDate','modificationDate'},
-                              fields={'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'file', 'size': 'size', 'user': 'uname',
-                                      'group': 'gname', 'md5':'md5', 'sha1':'sha1', 'sha256':'sha256',
-                                      'inode':'inode','uid':'uid','gid':'gid', 'octalMode':'perm', 'filetype':'type'},
-                              filters=filters)
-
-
-    def _default_query(self):
-        # return "SELECT {0} FROM " + self.table + " WHERE fim_event.id_file = fim_file.id"  #### OLD!
-        return "SELECT {0} FROM " + self.table
-
-
-    def _get_total_items(self):
-        if self.summary:
-            self.query += ' group by path'
-            self.conn.execute("SELECT COUNT(*) FROM ({0}) AS TEMP".format(self.query.format("max(date)")), self.request)
-            self.total_items = self.conn.fetch()[0]
-        else:
-            WazuhDBQuery._get_total_items(self)
-
-
-    def _get_data(self):
-        if self.summary:
-            self.fields['scanDate'] = 'max(date)'
-        WazuhDBQuery._get_data(self)
-
-
-    def _parse_legacy_filters(self):
-        if 'hash' in self.legacy_filters:
-            self.q += (';' if self.q else '') + '(md5={0},sha1={0})'.format(self.legacy_filters['hash'])
-            del self.legacy_filters['hash']
-        WazuhDBQuery._parse_legacy_filters(self)
