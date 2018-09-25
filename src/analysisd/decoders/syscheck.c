@@ -811,7 +811,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
         }
 
         // If end first scan store timestamp in a hash table
-        if(strcmp(key, HC_FIM_DB_EFS) == 0) {
+        if(strcmp(key, HC_FIM_DB_EFS) == 0 || strcmp(key, HC_SK_DB_COMPLETED) == 0) {
             if (ts_end = (time_t *) OSHash_Get_ex(fim_agentinfo, lf->agent_id),
                     !ts_end) {
                 os_calloc(1, sizeof(time_t), ts_end);
