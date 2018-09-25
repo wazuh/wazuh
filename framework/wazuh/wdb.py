@@ -41,7 +41,8 @@ class WazuhDBConnection:
             (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
             (query_elements[0] == 'agent' or query_elements[0] == 'global', "The {} database is not valid".format(query_elements[0])),
             (query_elements[1].isdigit() if query_elements[0] == 'agent' else True, "Incorrect agent ID {}".format(query_elements[1])),
-            (query_elements[sql_first_index+1] == 'select' or query_elements[sql_first_index+1] == 'delete', "The API can only send select requests to WDB"),
+            (query_elements[sql_first_index+1] == 'select' or query_elements[sql_first_index+1] == 'delete' or
+             query_elements[sql_first_index+1] == 'update', "The API can only send select requests to WDB"),
             (not ';' in query, "Found a not valid symbol in database query: ;")
         ]
 
@@ -93,7 +94,7 @@ class WazuhDBConnection:
 
 
 
-    def execute(self, query, count=False, delete=False):
+    def execute(self, query, count=False, delete=False, update=False):
         """
         Sends a sql query to wdb socket
         """
@@ -115,6 +116,12 @@ class WazuhDBConnection:
         # only for delete queries
         if delete:
             regex = re.compile(r"\w+ \d+? sql delete from ([a-z0-9,*_ ]+)")
+            return self.__send(query_lower)
+
+        # only for update queries
+        if update:
+            ###### ###### "update metadata set values = '000' where key = 'fim-db-start-scan'" #######
+            regex = re.compile(r"\w+ \d+? sql update ([a-z0-9,*_ ]+) set values = '([a-z0-9,*_ ]+)' where key = '([a-z0-9,*_ ]+)'")
             return self.__send(query_lower)
 
         # if the query has already a parameter limit / offset, divide using it
