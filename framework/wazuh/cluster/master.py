@@ -630,7 +630,7 @@ class MasterManager(Server):
 
     def get_healthcheck(self, filter_nodes=None):
         workers_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_workers().items() if not filter_nodes or name in filter_nodes}
-        n_connected_nodes = len(self.get_connected_workers().items()) + 1 # workers + master
+        n_connected_nodes = len(workers_info) + 1 # workers + master
 
         cluster_config = read_config()
         if  not filter_nodes or cluster_config['node_name'] in filter_nodes:
@@ -638,9 +638,11 @@ class MasterManager(Server):
                                                                   "ip": cluster_config['nodes'][0], "version": __version__,
                                                                   "type": "master"}}})
 
-        # Get active agents by node
+        # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             workers_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
+            if workers_info[node_name]['info']['type'] != 'master' and isinstance(workers_info[node_name]['status']['last_keep_alive'], float):
+                workers_info[node_name]['status']['last_keep_alive'] = str(datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
 
         health_info = {"n_connected_nodes":n_connected_nodes, "nodes": workers_info}
         return health_info
