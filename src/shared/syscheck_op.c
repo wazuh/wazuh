@@ -431,11 +431,20 @@ int fim_find_child_depth(const char *parent, const char *child) {
         p_second[length_B - 1] = '\0';
     }
 
-    if(strncmp(parent, child, length_A) == 0){
+
+#ifndef WIN32
+    if(strncmp(parent, child, length_A) == 0) {
+#else
+    if(strncasecmp(parent, child, length_A) == 0) {
+#endif
         diff_str = p_second;
         diff_str += length_A;
     }
+#ifndef WIN32
     else if(strncmp(child, parent, length_B) == 0) {
+#else
+    else if(strncasecmp(child, parent, length_B) == 0) {
+#endif
         diff_str = p_first;
         diff_str += length_B;
     }
