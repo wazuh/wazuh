@@ -66,12 +66,13 @@ def clear(agent_id=None, all_agents=False):
     :return: Message.
     """
     wdb_conn = WazuhDBConnection()
-    table = "fim_entry"
+    table1 = "fim_entry"
     action = "delete"
-    query = "agent {} sql {} from {}".format(agent_id, action, table)
-    wdb_conn.execute(query, delete=True)
-    table = "metadata"
-    wdb_conn.execute(query, delete=True)
+    query1 = "agent {} sql {} from {}".format(agent_id, action, table1)
+    wdb_conn.execute(query1, delete=True)
+    table2 = "metadata"
+    query2 = "agent {} sql {} from {}".format(agent_id, action, table2)
+    wdb_conn.execute(query2, delete=True)
 
     return "Syscheck database deleted"
 
@@ -83,9 +84,18 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    start_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'], filters={'key': 'fim-db-start-first-scan'})[0]['value'])
+    # if fim-db-start-scan or fim-db-end-scan is 000, fim-db-start-fist-scan and fim-db-end-first-scan are used
+    start_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+                                                                     filters={'key': 'fim-db-start-scan'})[0]['value'])
+    if start_timestamp == 0:
+        start_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+                                                                         filters={'key': 'fim-db-start-first-scan'})[0]['value'])
     start = datetime.fromtimestamp(start_timestamp).strftime('%Y-%m-%d %H:%M:%S')
-    end_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'], filters={'key': 'fim-db-end-first-scan'})[0]['value'])
+    end_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+                                                                   filters={'key': 'fim-db-end-scan'})[0]['value'])
+    if end_timestamp == 0:
+        end_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+                                                                       filters={'key': 'fim-db-end-first-scan'})[0]['value'])
     end = datetime.fromtimestamp(end_timestamp).strftime('%Y-%m-%d %H:%M:%S')
     return {'start': start, 'end': end}
 
