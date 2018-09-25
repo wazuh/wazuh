@@ -75,7 +75,7 @@ def clear(agent_id=None, all_agents=False):
     action2 = "update"
     new_value = "000"
     keys = ["fim-db-start-first-scan", "fim-db-start-scan", "fim-db-end-first-scan",
-                        "fim-db-end-first-scan"]
+                        "fim-db-end-scan"]
     for key in keys:
         query2 = "agent {} sql {} {} set value = '{}' where key = '{}'".format(agent_id, action2, table2, new_value,
                                                                                key)
