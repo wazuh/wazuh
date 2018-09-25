@@ -36,6 +36,8 @@ static int fim_control_msg (char *key, time_t value, Eventinfo *lf, _sdb *sdb);
 int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb);
 // Clean for old entries
 int fim_database_clean (Eventinfo *lf, _sdb *sdb);
+// Clean sdb memory
+void sdb_clean(_sdb *localsdb);
 
 
 // Initialize the necessary information to process the syscheck information
@@ -78,11 +80,17 @@ void fim_init(void) {
     //Create hash table for agent information
     fim_agentinfo = OSHash_Create();
 }
+
 // Initialize the necessary information to process the syscheck information
 void sdb_init(_sdb *localsdb) {
     localsdb->db_err = 0;
     localsdb->socket = -1;
 
+    sdb_clean(localsdb);
+}
+
+// Initialize the necessary information to process the syscheck information
+void sdb_clean(_sdb *localsdb) {
     memset(localsdb->comment, '\0', OS_MAXSTR + 1);
     memset(localsdb->size, '\0', OS_FLSIZE + 1);
     memset(localsdb->perm, '\0', OS_FLSIZE + 1);
@@ -125,6 +133,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      * 'checksum'!'extradata' 'filename'\n'diff-file'
      */
+    sdb_clean(sdb);
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
         mdebug2("Scan's control message: '%s'", lf->log);
@@ -802,7 +811,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
         }
 
         // If end first scan store timestamp in a hash table
-        if(strcmp(key, HC_FIM_DB_EFS) == 0) {
+        if(strcmp(key, HC_FIM_DB_EFS) == 0 || strcmp(key, HC_SK_DB_COMPLETED) == 0) {
             if (ts_end = (time_t *) OSHash_Get_ex(fim_agentinfo, lf->agent_id),
                     !ts_end) {
                 os_calloc(1, sizeof(time_t), ts_end);

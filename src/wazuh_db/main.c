@@ -239,7 +239,8 @@ void * run_dealer(__attribute__((unused)) void * args) {
                     peer, strerror(errno), errno);
             goto error;
         }
-        mdebug2("New client enqueued.");
+
+        mdebug1("New client connected (%d).", peer);
     }
 
     wnotify_close(notify_queue);
@@ -276,8 +277,6 @@ void * run_worker(__attribute__((unused)) void * args) {
             merror("at run_worker(): wnotify_delete(%d): %s (%d)",
                     peer, strerror(errno), errno);
         }
-        mdebug1("Dispatching new client thread(%u) peer(%d)",
-                (unsigned int)pthread_self(), peer);
 
         w_mutex_unlock(&queue_mutex);
 
