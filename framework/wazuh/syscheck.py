@@ -65,40 +65,13 @@ def clear(agent_id=None, all_agents=False):
     :param all_agents: For all agents.
     :return: Message.
     """
-
-    # Clear DB
-    if int(all_agents):
-        db_agents = glob('{0}/*-*.db'.format(common.database_path_agents))
-    else:
-        db_agents = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-
-    if not db_agents:
-        raise WazuhException(1600)
-
-    for db_agent in db_agents:
-        conn = Connection(db_agent)
-        conn.begin()
-        try:
-            conn.execute('DELETE FROM fim_entry')
-        except Exception as exception:
-            raise exception
-        finally:
-            conn.commit()
-            conn.vacuum()
-
-    # Clear OSSEC info
-    if int(all_agents):
-        syscheck_files = glob('{0}/queue/syscheck/*'.format(common.ossec_path))
-    else:
-        if agent_id == "000":
-            syscheck_files = ['{0}/queue/syscheck/syscheck'.format(common.ossec_path)]
-        else:
-            agent_info = Agent(agent_id).get_basic_information()
-            syscheck_files = glob('{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, agent_info['name'], agent_info['ip']))
-
-    for syscheck_file in syscheck_files:
-        if path.exists(syscheck_file):
-            remove(syscheck_file)
+    wdb_conn = WazuhDBConnection()
+    table = "fim_entry"
+    action = "delete"
+    query = "agent {} sql {} from {}".format(agent_id, action, table)
+    wdb_conn.execute(query, delete=True)
+    table = "metadata"
+    wdb_conn.execute(query, delete=True)
 
     return "Syscheck database deleted"
 
