@@ -42,8 +42,8 @@ class MasterManagerHandler(ServerHandler):
     def process_request(self, command, data):
         logger.debug("[Master] [{0}] [Request-R]: '{1}'.".format(self.name, command))
 
-
         if command == 'echo-c':  # Echo
+            self.process_keep_alive_from_worker()
             return 'ok-c ', data.decode()
         elif command == 'sync_i_c_m_p':
             result = self.manager.get_worker_status(worker_id=self.name, key='sync_integrity_free')
@@ -216,6 +216,10 @@ class MasterManagerHandler(ServerHandler):
 
 
     # New methods
+    def process_keep_alive_from_worker(self):
+        self.manager.set_worker_status(worker_id=self.name, key='last_keep_alive', status=time.time())
+
+
     def process_files_from_worker(self, worker_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
         sync_result = False
 
