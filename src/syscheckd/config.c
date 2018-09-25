@@ -166,6 +166,10 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.opts[i] & CHECK_WHODATA) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
             cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
+            cJSON_AddNumberToObject(pair,"recursion_level",syscheck.recursion_level[i]);
+            if (syscheck.tag && syscheck.tag[i]) {
+                cJSON_AddStringToObject(pair,"tags",syscheck.tag[i]);
+            }
             cJSON_AddItemToArray(dirs, pair);
         }
         cJSON_AddItemToObject(syscfg,"directories",dirs);
@@ -192,6 +196,7 @@ cJSON *getSyscheckConfig(void) {
             cJSON *pair = cJSON_CreateObject();
             cJSON_AddStringToObject(pair,"entry",syscheck.registry[i].entry);
             if (syscheck.registry[i].arch == 0) cJSON_AddStringToObject(pair,"arch","32bit"); else cJSON_AddStringToObject(pair,"arch","64bit");
+            if (syscheck.registry[i].tag) cJSON_AddStringToObject(pair,"tags",syscheck.registry[i].tag);
             cJSON_AddItemToArray(rg, pair);
         }
         cJSON_AddItemToObject(syscfg,"registry",rg);

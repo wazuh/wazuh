@@ -298,6 +298,8 @@ int main(int argc, char **argv)
         }
     }
 
+    w_init_queues();
+    
     /* Fix the levels/accuracy */
     {
         int total_rules;

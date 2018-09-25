@@ -41,6 +41,9 @@ then
     DAEMONS="wazuh-clusterd $DAEMONS"
 fi
 
+# Reverse order of daemons
+SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
 ## Locking for the start/stop
@@ -243,6 +246,9 @@ testconfig()
 {
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
+        if [ X"$i" = "Xwazuh-clusterd" ]; then
+            continue
+        fi
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
@@ -259,8 +265,6 @@ testconfig()
 # Start function
 start()
 {
-    # Reverse order of daemons
-    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
     incompatible=false
 
     if [ $USE_JSON = false ]; then
@@ -291,7 +295,7 @@ start()
 
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp/*"
-    rm -f $TO_DELETE
+    rm -rf $TO_DELETE
 
     # We actually start them now.
     first=true

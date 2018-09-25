@@ -11,6 +11,10 @@ DIR=`dirname $PWD`;
 ###  Do not modify bellow here ###
 AUTHOR="Wazuh Inc."
 DAEMONS="wazuh-modulesd ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
+
+# Reverse order of daemons
+SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+
 INITCONF="/etc/ossec-init.conf"
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
@@ -120,15 +124,12 @@ testconfig()
 # Start function
 start()
 {
-    # Reverse order of daemons
-    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-
     echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     checkpid;
 
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp/*"
-    rm -f $TO_DELETE
+    rm -rf $TO_DELETE
 
     # We actually start them now.
     for i in ${SDAEMONS}; do

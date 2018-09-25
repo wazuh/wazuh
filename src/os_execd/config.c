@@ -13,6 +13,7 @@
 #include "logcollector/logcollector.h"
 #include "syscheckd/syscheck.h"
 #include "rootcheck/rootcheck.h"
+#include "os_net/os_net.h"
 
 
 char **wcom_ca_store;
@@ -260,4 +261,79 @@ cJSON *getExecdInternalOptions(void) {
     cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
+}
+
+
+cJSON *getClusterConfig(void) {
+
+#ifndef WIN32
+    char req[] = "get_config";
+    char *buffer = NULL;
+    int sock = -1;
+	char sockname[PATH_MAX + 1];
+    ssize_t length;
+	length = strlen(req);
+
+    cJSON *cluster_config_cJSON = cJSON_CreateObject();
+
+	if (isChroot()) {
+		strcpy(sockname, CLUSTER_SOCK);
+	} else {
+		strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
+	}
+
+	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+		switch (errno) {
+		case ECONNREFUSED:
+			merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+			break;
+
+		default:
+			merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+		}
+	} else {
+		if (OS_SendSecureTCPCluster(sock, req, NULL) != 0) {
+			merror("send(): %s", strerror(errno));
+            close(sock);
+            return NULL;
+		}
+
+        os_calloc(OS_MAXSTR,sizeof(char),buffer);
+
+        switch (length = OS_RecvSecureClusterTCP(sock, buffer), length) {
+        case -1:
+            merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
+            free(buffer);
+            close(sock);
+            return NULL;
+
+        case 0:
+            mdebug1("Empty message from local client.");
+            free(buffer);
+            close(sock);
+            return NULL;
+
+        case OS_MAXLEN:
+            merror("Received message > %i", OS_MAXSTR);
+            free(buffer);
+            close(sock);
+            return NULL;
+
+        default:
+            close(sock);
+        }
+	}
+
+    cluster_config_cJSON = cJSON_Parse(buffer);
+    if (!cluster_config_cJSON) {
+        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        free(buffer);
+        return NULL;
+    }
+    
+    free(buffer);
+    return cluster_config_cJSON;
+#else
+    return NULL;
+#endif
 }

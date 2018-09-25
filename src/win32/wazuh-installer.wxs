@@ -71,11 +71,11 @@
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
-                    <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
-                        <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" />
+                    <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes">
+                        <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
                     <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes">
-                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf">
+                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
                     </Component>
@@ -335,6 +335,6 @@
             <ComponentRef Id="REVISION" />
             <ComponentRef Id="WPK_ROOT.PEM" />
         </Feature>
-        <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
+        <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>
 </Wix>

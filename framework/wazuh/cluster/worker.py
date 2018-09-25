@@ -9,15 +9,17 @@ import threading
 import time
 import os
 import shutil
-import ast
 from operator import itemgetter
 import errno
 import fnmatch
 
-from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_files, decompress_files, get_files_status, get_cluster_items_worker_intervals, unmerge_agent_info, merge_agent_info
+from wazuh.cluster.cluster import get_cluster_items, _update_file, compress_files, \
+    decompress_files, get_files_status, get_cluster_items_worker_intervals, unmerge_agent_info, merge_agent_info
 from wazuh import common
 from wazuh.utils import mkdir_with_mode
-from wazuh.cluster.communication import WorkerHandler, ProcessFiles, ClusterThread, InternalSocketHandler
+from wazuh.cluster.communication import ClientHandler, ClusterThread, FragmentedFileReceiver, FragmentedStringReceiverWorker
+from wazuh.cluster.internal_socket import InternalSocketHandler
+from wazuh.cluster.dapi import dapi
 
 logger = logging.getLogger(__name__)
 
@@ -25,18 +27,18 @@ logger = logging.getLogger(__name__)
 # Worker Handler
 # There is only one WorkerManagerHandler: the connection with master.
 #
-class WorkerManagerHandler(WorkerHandler):
+class WorkerManagerHandler(ClientHandler):
 
-    def __init__(self, cluster_config):
-        WorkerHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'], cluster_config['name'])
-
+    def __init__(self, manager, cluster_config):
+        ClientHandler.__init__(self, cluster_config['key'], cluster_config['nodes'][0], cluster_config['port'], cluster_config['node_name'], cluster_config['name'])
         self.config = cluster_config
         self.integrity_received_and_processed = threading.Event()
         self.integrity_received_and_processed.clear()  # False
+        self.manager = manager
 
     # Overridden methods
     def handle_connect(self):
-        WorkerHandler.handle_connect(self)
+        ClientHandler.handle_connect(self)
         dir_path = "{}/queue/cluster/{}".format(common.ossec_path, self.name)
         if not os.path.exists(dir_path):
             mkdir_with_mode(dir_path)
@@ -65,8 +67,23 @@ class WorkerManagerHandler(WorkerHandler):
             files = master_files
             files.update(worker_files)
             return 'json', json.dumps(files)
+        elif command == 'string':
+            string_sender_thread = FragmentedStringReceiverWorker(manager_handler=self, stopper=self.stopper)
+            string_sender_thread.start()
+            return 'ack', self.set_worker_thread(command, string_sender_thread)
+        elif command == 'dapi':
+            self.manager.add_api_request('None ' + data.decode())
+            return 'ack', 'Request is being processed'
+        elif command == "dapi_res":
+            string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper, worker_id=data.decode())
+            string_receiver.start()
+            return 'ack', self.set_worker_thread(command, string_receiver)
+        elif command == 'err-is':
+            worker_id, err_msg = data.decode().split(' ',1)
+            self.isocket_handler.send_request(command=command, data=err_msg, worker_name=worker_id)
+            return 'ack','thanks'
         else:
-            return WorkerHandler.process_request(self, command, data)
+            return ClientHandler.process_request(self, command, data)
 
 
     def process_response(self, response):
@@ -77,9 +94,10 @@ class WorkerManagerHandler(WorkerHandler):
         if answer == 'ok-c':  # test
             response_data = '[response_only_for_worker] Master answered: {}.'.format(payload)
         else:
-            response_data = WorkerHandler.process_response(self, response)
+            response_data = ClientHandler.process_response(self, response)
 
         return response_data
+
 
     # Private methods
     def _update_master_files_in_worker(self, wrong_files, zip_path_dir, tag=None):
@@ -344,18 +362,69 @@ class WorkerManagerHandler(WorkerHandler):
 #
 # Threads (worker_threads) created by WorkerManagerHandler
 #
-class WorkerProcessMasterFiles(ProcessFiles):
+class FragmentedAPIResponseReceiver(FragmentedStringReceiverWorker):
+
+    def __init__(self, manager_handler, stopper, worker_id):
+        FragmentedStringReceiverWorker.__init__(self, manager_handler, stopper)
+        self.thread_tag = "[APIResponseReceiverWorker]"
+        self.worker_id = worker_id
+        # send request to the worker
+        self.worker_thread_id = self.manager_handler.process_response(self.manager_handler.isocket_handler.send_request(self.worker_id, "dapi_res"))
+
+
+    def process_received_data(self):
+        return True
+
+
+    def close_reception(self, md5_sum):
+        self.received_all_information = True
+
+
+    def forward_msg(self, command, data):
+        cmd, message =  self.manager_handler.isocket_handler.send_request(self.worker_id, command,
+                                self.worker_thread_id if not data else self.worker_thread_id + ' ' + data).split(' ',1)
+        if cmd == 'err':
+            raise Exception("Error forwarding message: {}".format(message))
+
+        return cmd + ' ' + message
+
+
+    def update(self, chunk):
+        self.size_received += len(chunk)
+
+
+    def process_cmd(self, command, data):
+        requests = {'fwd_new':'new_f_r', 'fwd_upd':'update_f_r', 'fwd_end':'end_f_r'}
+
+        if command == 'fwd_new':
+            self.start_time = time.time()
+            return self.forward_msg(requests[command], data)
+        elif command == 'fwd_upd':
+            self.update(data)
+            return self.forward_msg(requests[command], data)
+        elif command == 'fwd_end':
+            self.close_reception(data)
+            self.end_time = time.time()
+            self.total_time = self.end_time - self.start_time
+            return self.forward_msg(requests[command], data)
+        else:
+            return FragmentedStringReceiverWorker.process_cmd(self, command, data)
+
+
+    def unlock_and_stop(self, reason, send_err_request=None):
+        if reason == 'error':
+            self.manager_handler.isocket_handler.send_request(self.worker_id, 'err-is', send_err_request)
+        FragmentedStringReceiverWorker.unlock_and_stop(self, reason, None)
+
+
+class WorkerProcessMasterFiles(FragmentedFileReceiver):
 
     def __init__(self, manager_handler, filename, stopper):
-        ProcessFiles.__init__(self, manager_handler, filename, manager_handler.name, stopper)
+        FragmentedFileReceiver.__init__(self, manager_handler, filename, manager_handler.name, stopper)
         self.thread_tag = "[Worker] [Integrity-R  ]"
 
 
     def check_connection(self):
-        # if not self.manager_handler:
-        #     self.sleep(2)
-        #     return False
-
         if not self.manager_handler.is_connected():
             logger.info("{0}: Worker is not connected. Waiting {1}s".format(self.thread_tag, 2))
             self.sleep(2)
@@ -377,7 +446,7 @@ class WorkerProcessMasterFiles(ProcessFiles):
 
     def unlock_and_stop(self, reason, send_err_request=None):
         logger.info("{0}: Unlocking due to {1}.".format(self.thread_tag, reason))
-        ProcessFiles.unlock_and_stop(self, reason, send_err_request)
+        FragmentedFileReceiver.unlock_and_stop(self, reason, send_err_request)
 
 
 #
@@ -387,9 +456,10 @@ class WorkerManager:
     SYNC_I_T = "Sync_I_Thread"
     SYNC_AI_T = "Sync_AI_Thread"
     KA_T = "KeepAlive_Thread"
+    APIRequests_T = "API_Requests_Thread"
 
     def __init__(self, cluster_config):
-        self.handler = WorkerManagerHandler(cluster_config=cluster_config)
+        self.handler = WorkerManagerHandler(cluster_config=cluster_config, manager=self)
         self.cluster_config = cluster_config
 
         # Threads
@@ -397,22 +467,31 @@ class WorkerManager:
         self.threads = {}
         self._initiate_worker_threads()
 
+
     # Private methods
     def _initiate_worker_threads(self):
         logger.debug("[Worker] Creating threads.")
         # Sync integrity
         self.threads[WorkerManager.SYNC_I_T] = SyncIntegrityThread(worker_handler=self.handler, stopper=self.stopper)
-        self.threads[WorkerManager.SYNC_I_T].start()
 
         # Sync AgentInfo
         self.threads[WorkerManager.SYNC_AI_T] = SyncAgentInfoThread(worker_handler=self.handler, stopper=self.stopper)
-        self.threads[WorkerManager.SYNC_AI_T].start()
 
         # KA
         self.threads[WorkerManager.KA_T] = KeepAliveThread(worker_handler=self.handler, stopper=self.stopper)
-        self.threads[WorkerManager.KA_T].start()
+
+        # API requests
+        self.threads[WorkerManager.APIRequests_T] = dapi.APIRequestQueue(server=self.handler, stopper=self.stopper)
+
+        for thread in self.threads.values():
+            thread.start()
+
 
     # New methods
+    def add_api_request(self, request):
+        self.threads[self.APIRequests_T].set_request(request)
+
+
     def exit(self):
         logger.debug("[Worker] Cleaning threads. Start.")
 
@@ -657,6 +736,7 @@ class SyncExtraValidFilesThread(SyncWorkerThread):
         self.function = self.worker_handler.send_extra_valid_files_to_master
         self.files = files
 
+
     def job(self):
         result = False
         compressed_data_path = self.function(reason="ExtraValid files", tag=self.thread_tag,
@@ -682,53 +762,21 @@ class SyncExtraValidFilesThread(SyncWorkerThread):
 # Internal socket
 #
 class WorkerInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, asyncore_map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
+    def __init__(self, sock, manager, asyncore_map, addr):
+        InternalSocketHandler.__init__(self, sock=sock, server=manager, asyncore_map=asyncore_map, addr=addr)
 
     def process_request(self, command, data):
         logger.debug("[Transport-I] Forwarding request to cluster workers '{0}' - '{1}'".format(command, data))
 
-        if command == "get_files":
-            split_data = data.split(' ', 1)
-            file_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-            node_response = self.manager.handler.process_request(command = 'file_status', data="")
-
-            if node_response[0] == 'err': # Error response
-                response = ["err", json.dumps({"err":node_response[1]})]
-            else:
-                response = json.loads(node_response[1])
-                # Filter files
-                if file_list and len(response):
-                    response = {my_file:content for my_file,content in response.items() if my_file in file_list}
-                response = ['ok', json.dumps(response)]
-        elif command == "get_nodes":
-            node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
-            type_response = node_response[0]
-            response = node_response[1]
-            if type_response == "err":
-                response = ["err", json.dumps({"err":response})]
-            else:
-                response = ['ok', response]
-
-        elif command == "get_health":
-            node_list = data if data != 'None' else None
-            node_response = self.manager.handler.send_request(command=command, data=node_list).split(' ', 1)
-            type_response = node_response[0]
-            response = node_response[1]
-            if type_response == "err":
-                response = ["err", json.dumps({"err":response})]
-            else:
-                response = ['ok', response]
-
-        elif command == "get_agents":
-            node_response = self.manager.handler.send_request(command=command, data=data).split(' ', 1)
-            type_response = node_response[0]
-            response = node_response[1]
-            if type_response == "err":
-                response = ["err", json.dumps({"err":response})]
-            else:
-                response = ['ok', response]
+        if command not in ['get_nodes','get_health','dapi']:  # ToDo: create a list of valid internal socket commands
+            response = InternalSocketHandler.process_request(self, command, data)
         else:
-            response = json.dumps({'err': "Received an unknown command '{}'".format(command)})
+            node_response = self.server.manager.handler.send_request(command=command, data=data if data != 'None' else None).split(' ', 1)
+            type_response = node_response[0]
+            response = node_response[1]
+            if type_response == "err":
+                response = ["err", json.dumps({"err": response})]
+            else:
+                response = [type_response, response]
 
         return response

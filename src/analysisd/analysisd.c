@@ -38,6 +38,7 @@
 #include "output/jsonout.h"
 #include "labels.h"
 #include "state.h"
+#include "syscheck_op.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -54,11 +55,13 @@ static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
 void DecodeEvent(Eventinfo *lf);
-int DecodeSyscheck(Eventinfo *lf);
+int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
+// Init sdb struct
+void sdb_init(_sdb *localsdb);
 
 /* For stats */
 static void DumpLogstats(void);
@@ -78,6 +81,7 @@ char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 rlim_t nofile;
 int sys_debug_level;
+OSDecoderInfo *fim_decoder;
 
 /* execd queue */
 static int execdq = 0;
@@ -209,6 +213,7 @@ pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_ignore_rule_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -706,7 +711,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     OS_InitLog();
 
     /* Initialize the integrity database */
-    SyscheckInit();
+    fim_init();
 
     /* Initialize Rootcheck */
     RootcheckInit();
@@ -829,38 +834,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         mdebug1("Custom output found.!");
     }
 
-    /* Init the archives writer queue */
-    writer_queue = queue_init(getDefine_Int("analysisd", "archives_queue_size", 0, 2000000));
-
-    /* Init the alerts log writer queue */
-    writer_queue_log = queue_init(getDefine_Int("analysisd", "alerts_queue_size", 0, 2000000));
-
-    /* Init statistical the log writer queue */
-    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "statistical_queue_size", 0, 2000000));
-
-    /* Init the firewall log writer queue */
-    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "firewall_queue_size", 0, 2000000));
-
-    /* Init the FTS log writer queue */
-    writer_queue_log_fts = queue_init(getDefine_Int("analysisd", "fts_queue_size", 0, 2000000));
-
-    /* Init the decode syscheck queue input */
-    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decode_syscheck_queue_size", 0, 2000000));
-
-    /* Init the decode syscollector queue input */
-    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decode_syscollector_queue_size", 0, 2000000));
-
-    /* Init the decode rootcheck queue input */
-    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
-
-    /* Init the decode hostinfo queue input */
-    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
-
-    /* Init the decode event queue input */
-    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));
-
-    /* Init the decode event queue output */
-    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
+    w_init_queues();
 
     /* Queue stats */
     w_get_initial_queues_size();
@@ -1815,6 +1789,10 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
 void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char *msg = NULL;
+    _sdb sdb;
+
+    /* Initialize the integrity database */
+    sdb_init(&sdb);
 
     while(1){
 
@@ -1840,7 +1818,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
             w_inc_syscheck_decoded_events();
 
-            if (!DecodeSyscheck(lf)) {
+            if (!DecodeSyscheck(lf, &sdb)) {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
                 continue;
@@ -2019,15 +1997,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         RuleNode *rulenode_pt;
 
         /* Extract decoded event from the queue */
-        if(lf = queue_pop_ex(decode_queue_event_output), lf) {
-            mdebug2("Taking out from the queue");
-        }
+        lf = queue_pop_ex(decode_queue_event_output);
 
         currently_rule = NULL;
 
         lf->size = strlen(lf->log);
 
-        mdebug2("Event extracted from the queue...");
         /* Run accumulator */
         if ( lf->decoder_info->accumulate == 1 ) {
             lf = Accumulate(lf);
@@ -2089,7 +2064,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         }
 
         // Insert labels
+        w_mutex_lock(&lf_mutex);
         lf->labels = labels_find(lf);
+        w_mutex_unlock(&lf_mutex);
 
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
@@ -2587,4 +2564,39 @@ cpu_info *get_cpu_info_bsd(){
     return info;
 #endif
     return NULL;
+}
+
+void w_init_queues(){
+     /* Init the archives writer queue */
+    writer_queue = queue_init(getDefine_Int("analysisd", "archives_queue_size", 0, 2000000));
+
+    /* Init the alerts log writer queue */
+    writer_queue_log = queue_init(getDefine_Int("analysisd", "alerts_queue_size", 0, 2000000));
+
+    /* Init statistical the log writer queue */
+    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "statistical_queue_size", 0, 2000000));
+
+    /* Init the firewall log writer queue */
+    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "firewall_queue_size", 0, 2000000));
+
+    /* Init the FTS log writer queue */
+    writer_queue_log_fts = queue_init(getDefine_Int("analysisd", "fts_queue_size", 0, 2000000));
+
+    /* Init the decode syscheck queue input */
+    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decode_syscheck_queue_size", 0, 2000000));
+
+    /* Init the decode syscollector queue input */
+    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decode_syscollector_queue_size", 0, 2000000));
+
+    /* Init the decode rootcheck queue input */
+    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
+
+    /* Init the decode hostinfo queue input */
+    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
+
+    /* Init the decode event queue input */
+    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));
+
+    /* Init the decode event queue output */
+    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
 }

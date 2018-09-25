@@ -322,6 +322,7 @@ int Rules_OP_ReadRules(const char *rulefile)
              * be fine
              */
             os_strdup(node[i]->values[0], config_ruleinfo->group);
+            os_strdup(rulefile,config_ruleinfo->file);
 
             /* Rule elements block */
             {

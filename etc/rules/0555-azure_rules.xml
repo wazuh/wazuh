@@ -1,4 +1,11 @@
 <!--
+  Microsoft Azure ruleset
+  Created by Wazuh, Inc. <support@wazuh.com>.
+  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+ID: 87800--87899
+-->
+
+<!--
 
 #Log-analytics
 
@@ -15,43 +22,43 @@
 -->
 <group name="azure,">
 
-  <rule id="200001" level="3">
+  <rule id="87801" level="3">
     <decoded_as>json</decoded_as>
     <field name="azure_tag">azure-log-analytics</field>
     <description>Azure: Log analytics</description>
   </rule>
 
-  <rule id="200002" level="3">
+  <rule id="87802" level="3">
     <decoded_as>json</decoded_as>
     <field name="azure_tag">azure-ad-graph</field>
     <description>Azure: AD $(activity)</description>
   </rule>
 
-  <rule id="200003" level="3">
+  <rule id="87803" level="3">
     <decoded_as>json</decoded_as>
     <field name="azure_tag">azure-storage</field>
     <description>Azure: Storage</description>
   </rule>
 
-  <rule id="200004" level="3">
+  <rule id="87804" level="3">
     <decoded_as>azure-storage</decoded_as>
     <description>Azure: Storage</description>
   </rule>
 
-  <rule id="200010" level="3">
-    <if_sid>200001</if_sid>
+  <rule id="87810" level="3">
+    <if_sid>87801</if_sid>
     <field name="Type">AzureActivity</field>
     <description>Azure: Log analytics activity</description>
   </rule>
 
-  <rule id="200011" level="3">
-    <if_sid>200010</if_sid>
+  <rule id="87811" level="3">
+    <if_sid>87810</if_sid>
     <field name="OperationName">\.+</field>
     <description>Azure: Log analytics: $(OperationName)</description>
   </rule>
 
-  <rule id="200013" level="3">
-    <if_sid>200003</if_sid>
+  <rule id="87813" level="3">
+    <if_sid>87803</if_sid>
     <field name="operationName">\.+</field>
     <description>Azure: Storage: $(OperationName)</description>
   </rule>

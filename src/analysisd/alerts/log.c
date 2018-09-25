@@ -92,7 +92,7 @@ void OS_Store(const Eventinfo *lf)
             lf->location[0] != '(' ? "->" : "",
             lf->location,
             lf->full_log);
-            
+
     return;
 }
 
@@ -185,7 +185,7 @@ void OS_LogOutput(Eventinfo *lf)
     if (lf->filename && lf->event_type != FIM_DELETED) {
         printf("Attributes:\n");
 
-        if (lf->size_after){
+        if (lf->size_after && *lf->size_after != '\0'){
             printf(" - Size: %s\n", lf->size_after);
         }
 
@@ -243,7 +243,7 @@ void OS_LogOutput(Eventinfo *lf)
     // Dynamic fields, except for syscheck events
     if (lf->fields && !lf->filename) {
         for (i = 0; i < lf->nfields; i++) {
-            if (lf->fields[i].value) {
+            if (lf->fields[i].value && *lf->fields[i].value) {
                 printf("%s: %s\n", lf->fields[i].key, lf->fields[i].value);
             }
         }
@@ -349,7 +349,7 @@ void OS_Log(Eventinfo *lf)
     if (lf->filename && lf->event_type != FIM_DELETED) {
         fprintf(_aflog, "Attributes:\n");
 
-        if (lf->size_after){
+        if (lf->size_after && *lf->size_after != '\0'){
             fprintf(_aflog, " - Size: %s\n", lf->size_after);
         }
 
@@ -410,7 +410,7 @@ void OS_Log(Eventinfo *lf)
     // Dynamic fields, except for syscheck events
     if (lf->fields && !lf->filename) {
         for (i = 0; i < lf->nfields; i++) {
-            if (lf->fields[i].value) {
+            if (lf->fields[i].value && *lf->fields[i].value) {
                 fprintf(_aflog, "%s: %s\n", lf->fields[i].key, lf->fields[i].value);
             }
         }

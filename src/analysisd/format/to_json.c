@@ -325,44 +325,54 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddStringToObject(data, "system_name", lf->systemname);
 
     // Whodata fields
-    if (lf->user_id && lf->user_name && file_diff) {
-        cJSON* audit = cJSON_CreateObject();
+    if (file_diff) {
+        cJSON* audit_sect = NULL;
+        cJSON* process_sect = NULL;
+        cJSON* user_sect = NULL;
+        cJSON* group_sect = NULL;
+        cJSON* auser_sect = NULL;
+        cJSON* euser_sect = NULL;
 
-        cJSON* user = cJSON_CreateObject();
-        cJSON_AddStringToObject(user, "id", lf->user_id);
-        cJSON_AddStringToObject(user, "name", lf->user_name);
-        cJSON_AddItemToObject(audit, "user", user);
+        // User section
+        add_json_field(user_sect, "id", lf->user_id, "");
+        add_json_field(user_sect, "name", lf->user_name, "");
 
-        if (lf->group_id && *lf->group_id != '\0') {
-            cJSON* group = cJSON_CreateObject();
-            cJSON_AddStringToObject(group, "id", lf->group_id);
-            if (lf->group_name) cJSON_AddStringToObject(group, "name", lf->group_name);
-            cJSON_AddItemToObject(audit, "group", group);
+        // Group sect
+        add_json_field(group_sect, "id", lf->group_id, "");
+        add_json_field(group_sect, "name", lf->group_name, "");
+
+        // Process section
+        add_json_field(process_sect, "id", lf->process_id, "0");
+        add_json_field(process_sect, "name", lf->process_name, "");
+        add_json_field(process_sect, "ppid", lf->ppid, "");
+
+        // Auser sect
+        add_json_field(auser_sect, "id", lf->audit_uid, "");
+        add_json_field(auser_sect, "name", lf->audit_name, "");
+
+        // Effective user
+        add_json_field(euser_sect, "id", lf->effective_uid, "");
+        add_json_field(euser_sect, "name", lf->effective_name, "");
+
+        if (user_sect || process_sect || group_sect || auser_sect || euser_sect) {
+            audit_sect = cJSON_CreateObject();
+            if (user_sect) {
+                cJSON_AddItemToObject(audit_sect, "user", user_sect);
+            }
+            if (process_sect) {
+                cJSON_AddItemToObject(audit_sect, "process", process_sect);
+            }
+            if (group_sect) {
+                cJSON_AddItemToObject(audit_sect, "group", group_sect);
+            }
+            if (auser_sect) {
+                cJSON_AddItemToObject(audit_sect, "login_user", auser_sect);
+            }
+            if (euser_sect) {
+                cJSON_AddItemToObject(audit_sect, "effective_user", euser_sect);
+            }
+            cJSON_AddItemToObject(file_diff, "audit", audit_sect);
         }
-
-        if (lf->process_id) {
-            cJSON* proc = cJSON_CreateObject();
-            cJSON_AddStringToObject(proc, "id", lf->process_id);
-            if (lf->process_name) cJSON_AddStringToObject(proc, "name", lf->process_name);
-            if (lf->ppid && *lf->ppid != '\0') cJSON_AddStringToObject(proc, "ppid", lf->ppid);
-            cJSON_AddItemToObject(audit, "proccess", proc);
-        }
-
-        if (lf->audit_uid && *lf->audit_uid != '\0') {
-            cJSON* auser = cJSON_CreateObject();
-            cJSON_AddStringToObject(auser, "id", lf->audit_uid);
-            if (lf->audit_name) cJSON_AddStringToObject(auser, "name", lf->audit_name);
-            cJSON_AddItemToObject(audit, "login_user", auser);
-        }
-
-        if (lf->effective_uid && *lf->effective_uid != '\0') {
-            cJSON* euser = cJSON_CreateObject();
-            cJSON_AddStringToObject(euser, "id", lf->effective_uid);
-            if (lf->effective_name) cJSON_AddStringToObject(euser, "name", lf->effective_name);
-            cJSON_AddItemToObject(audit, "effective_user", euser);
-        }
-
-        cJSON_AddItemToObject(file_diff, "audit", audit);
     }
 
     // DecoderInfo
@@ -373,7 +383,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         // Dynamic fields, except for syscheck events
         if (lf->fields && !lf->filename) {
             for (i = 0; i < lf->nfields; i++) {
-                if (lf->fields[i].value) {
+                if (lf->fields[i].value && *lf->fields[i].value) {
                     W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);
                 }
             }

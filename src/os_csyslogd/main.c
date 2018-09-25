@@ -132,9 +132,6 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    // Start com request thread
-    w_create_thread(csyscom_main, NULL);
-
     if (!run_foreground) {
         /* Going on daemon mode */
         nowDaemon();
@@ -165,6 +162,9 @@ int main(int argc, char **argv)
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
+
+    // Start com request thread
+    w_create_thread(csyscom_main, NULL);
 
     /* Basic start up completed */
     mdebug1(PRIVSEP_MSG, dir, user);

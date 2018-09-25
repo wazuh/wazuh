@@ -378,6 +378,27 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
+def get_hash(filename, hash_algorithm='md5'):
+    # check hash algorithm
+    try:
+        algorithm_list = hashlib.algorithms_available
+    except Exception as e:
+        algorithm_list = hashlib.algorithms
+
+    if not hash_algorithm in algorithm_list:
+        raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
+
+    hashing = hashlib.new(hash_algorithm)
+
+    try:
+        with open(filename, 'rb') as f:
+            hashing.update(f.read())
+    except IOError:
+        return None
+
+    return hashing.hexdigest()
+
+
 def get_fields_to_nest(fields, force_fields=[], split_character="_"):
     nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
              for k,g in groupby(map(lambda x: x.split(split_character), sorted(fields)),
@@ -715,8 +736,8 @@ class WazuhDBQuery(object):
         """
         Parses legacy filters.
         """
-        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': name, 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
-                               for name, value in self.legacy_filters.items() for subvalue in value.split(',') if not self._pass_filter(subvalue)]
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': '{}${}'.format(name,i), 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
+                               for name, value in self.legacy_filters.items() for subvalue,i in zip(value.split(','), range(len(value.split(',')))) if not self._pass_filter(subvalue)]
         if not self.q and self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = ''
@@ -740,7 +761,7 @@ class WazuhDBQuery(object):
             self._filter_date(q_filter, field_name)
         else:
             if q_filter['value'] is not None:
-                self.request[field_filter] = q_filter['value'] if q_filter['field'] != "version" else re.sub(
+                self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
                 if q_filter['operator'] == 'LIKE':
                     self.request[field_filter] = '%{}%'.format(self.request[field_filter])

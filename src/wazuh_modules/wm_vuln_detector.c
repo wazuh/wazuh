@@ -2409,11 +2409,14 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
         return wm_vulnerability_detector_sql_error(db, stmt);
     }
 
+    sqlite3_bind_int(stmt, 1, DISCON_TIME);
+
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         dist_error = -1;
         os_name = (char *) sqlite3_column_text(stmt, 0);
         os_version = (char *) sqlite3_column_text(stmt,1);
         name = (char *) sqlite3_column_text(stmt, 2);
+        id = (char *) sqlite3_column_text(stmt, 3);
 
         if (!os_name) {
             if (name) {
@@ -2489,7 +2492,6 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
             }
         }
 
-        id = (char *) sqlite3_column_text(stmt, 3);
         ip = (char *) sqlite3_column_text(stmt, 4);
         arch = (char *) sqlite3_column_text(stmt, 5);
 
