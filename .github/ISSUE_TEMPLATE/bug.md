@@ -10,7 +10,7 @@ about: Report a bug.
 _Ubuntu16/CentOS7/RHEL7/AIX.._
 
 **Wazuh version**
-_x.y.z_
+_x.y.z-rev_
 
 **Wazuh API version**
 _x.y.z_
@@ -21,7 +21,7 @@ _manager/agent_
 **Install method**
 _packages/sources_
 
-*Log sample*
+**Log sample**
 
 ```
 Log sample
