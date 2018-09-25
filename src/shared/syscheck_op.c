@@ -205,7 +205,7 @@ char *unescape_whodata_sum(char *sum) {
         // The parameter string is not released
         esc_it = wstr_replace(sum, "\\ ", " ");
         sum = wstr_replace(esc_it, "\\:", ":");
-        free(esc_it);
+        os_free(esc_it);
         return sum;
     }
     return NULL;
@@ -409,8 +409,8 @@ int delete_target_file(const char *path) {
 }
 
 void sk_sum_clean(sk_sum_t * sum) {
-    free(sum->wdata.user_name);
-    free(sum->wdata.process_name);
+    os_free(sum->wdata.user_name);
+    os_free(sum->wdata.process_name);
 }
 
 int fim_find_child_depth(const char *parent, const char *child) {
@@ -440,8 +440,8 @@ int fim_find_child_depth(const char *parent, const char *child) {
         diff_str += length_B;
     }
     else{
-        free(p_first);
-        free(p_second);
+        os_free(p_first);
+        os_free(p_second);
         return INT_MAX;
     }
 
@@ -453,8 +453,8 @@ int fim_find_child_depth(const char *parent, const char *child) {
         c = strchr(c + 1, PATH_SEP);
     }
 
-    free(p_first);
-    free(p_second);
+    os_free(p_first);
+    os_free(p_second);
     return child_depth;
 }
 
