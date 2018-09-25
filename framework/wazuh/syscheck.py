@@ -67,13 +67,19 @@ def clear(agent_id=None, all_agents=False):
     """
     wdb_conn = WazuhDBConnection()
     table1 = "fim_entry"
-    action = "delete"
-    query1 = "agent {} sql {} from {}".format(agent_id, action, table1)
+    action1 = "delete"
+    query1 = "agent {} sql {} from {}".format(agent_id, action1, table1)
     wdb_conn.execute(query1, delete=True)
+    # update key fields which contains keys to value 000
     table2 = "metadata"
-    query2 = "agent {} sql {} from {}".format(agent_id, action, table2)
-    wdb_conn.execute(query2, delete=True)
-
+    action2 = "update"
+    new_value = "000"
+    keys = ["fim-db-start-first-scan", "fim-db-start-scan", "fim-db-end-first-scan",
+                        "fim-db-end-first-scan"]
+    for key in keys:
+        query2 = "agent {} sql {} {} set value = '{}' where key = '{}'".format(agent_id, action2, table2, new_value,
+                                                                               key)
+        wdb_conn.execute(query2, update=True)
     return "Syscheck database deleted"
 
 
