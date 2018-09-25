@@ -24,14 +24,13 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-def distribute_function(input_json, pretty=False, debug=False, from_master=False):
+def distribute_function(input_json, pretty=False, debug=False):
     """
     Distributes an API call.
 
     :param input_json: API call to execute.
     :param pretty: JSON pretty print.
     :param debug: whether to raise an exception or return an error.
-    :param from_master: whether the request came forwarded from the master node or not.
     :return: a JSON response
     """
     try:
@@ -54,7 +53,7 @@ def distribute_function(input_json, pretty=False, debug=False, from_master=False
         # Second case: forward the request
         # Only the master node will forward a request, and it will only be forwarded if its type is distributed_master
         elif request_type == 'distributed_master' and node_info['type'] == 'master':
-            return forward_request(input_json, node_info['node'], pretty, from_master)
+            return forward_request(input_json, node_info['node'], pretty)
 
         # Last case: execute the request remotely.
         # A request will only be executed remotely if it was made in a worker node and its type isn't local_any
@@ -139,7 +138,7 @@ def execute_remote_request(input_json, pretty):
     return print_json(data=data, pretty=pretty, error=error)
 
 
-def forward_request(input_json, master_name, pretty, from_master):
+def forward_request(input_json, master_name, pretty):
     """
     Forwards a request to the node who has all available information to answer it. This function is called when a
     distributed_master function is used. Only the master node calls this function. An API request will only be forwarded
@@ -148,7 +147,6 @@ def forward_request(input_json, master_name, pretty, from_master):
     :param input_json: API request: Example: {"function": "/agents", "arguments":{"limit":5}, "ossec_path": "/var/ossec", "from_cluster":false}
     :param master_name: Name of the master node. Necessary to check whether to forward it to a worker node or not.
     :param pretty: JSON pretty print
-    :param from_master: whether the request was already forwarded from a master node or not.
     :return: a JSON response.
     """
     def forward(node_name, return_none=False):
@@ -164,7 +162,7 @@ def forward_request(input_json, master_name, pretty, from_master):
         else:
             # if not, check if the node the request is being forwarded to is the master or a worker.
             command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
-            if command == 'dapi' and from_master:
+            if command == 'dapi':
                 # if it's the master, execute the request directly
                 response = json.loads(distribute_function(input_json))
             else:
@@ -336,7 +334,7 @@ class APIRequestQueue(communication.ClusterThread):
             # id      -> id of the request.
             # request -> JSON containing request's necessary information
             name, id, request = self.request_queue.get(block=True).split(' ', 2)    # wait until a request is received
-            result = distribute_function(json.loads(request), from_master=True)     # get request answer
+            result = distribute_function(json.loads(request))                       # get request answer
             try:
                 self.send_string(result, id, name)                                  # send the request's response
             except Exception as e:
