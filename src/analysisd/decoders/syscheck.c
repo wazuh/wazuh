@@ -220,7 +220,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     switch (db_result) {
     case -2:
         merror("FIM decoder: Bad load query.");
-    case -1: // Fallthrough
+        // Fallthrough
+    case -1:
         lf->data = NULL;
         os_free(new_check_sum);
         os_free(wazuhdb_query);
@@ -272,7 +273,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             switch (db_result) {
             case -2:
                 merror("FIM decoder: Bad delete query.");
-            case -1: // Fallthrough
+                // Fallthrough
+            case -1:
                 sk_sum_clean(&newsum);
                 os_free(wazuhdb_query);
                 os_free(new_check_sum);
@@ -327,6 +329,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             switch (db_result) {
             case -2:
                 merror("FIM decoder: Bad save query.");
+                // Fallthrough
             case -1:
                 sk_sum_clean(&newsum);
                 os_free(wazuhdb_query);
@@ -827,7 +830,8 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
         switch (db_result) {
         case -2:
             merror("FIM decoder: Bad result from metadata query.");
-        case -1: // Fallthrough
+            // Fallthrough
+        case -1:
             os_free(wazuhdb_query);
             os_free(response);
             return db_result;
@@ -864,7 +868,8 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
             switch (db_result) {
             case -2:
                 merror("FIM decoder: Bad result from control query.");
-            case -1: // Fallthrough
+                // Fallthrough
+            case -1:
                 os_free(wazuhdb_query);
                 os_free(response);
                 return db_result;
@@ -903,7 +908,8 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
     switch (db_result) {
     case -2:
         merror("FIM decoder: Bad result updating date field.");
-    case -1: // Fallthrough
+        // Fallthrough
+    case -1:
         os_free(wazuhdb_query);
         os_free(response);
         return (-1);
@@ -934,7 +940,8 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
     switch (db_result) {
     case -2:
         merror("FIM decoder: Bad result from cleandb query.");
-    case -1: // Fallthrough
+        // Fallthrough
+    case -1:
         os_free(wazuhdb_query);
         os_free(response);
         return (-1);
