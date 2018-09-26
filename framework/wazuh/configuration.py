@@ -76,6 +76,11 @@ conf_sections = {
     'cluster': {
         'type': 'last',
         'list_options': ['nodes']
+    },
+
+    'vulnerability-detector': {
+        'type': 'merge',
+        'list_options': ['feed']
     }
 }
 
