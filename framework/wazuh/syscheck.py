@@ -112,22 +112,23 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    parameters = ["date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
-                  "uid", "type"]
+    parameters = {"date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
+                  "uid", "type"}
 
-    #return {'select -> ': select}
+    if select is None:
+        select = {'fields': parameters}
 
-    if not select:
-        fields = parameters
-    else:
-        for param in select['fields']:
-            if param not in parameters:
-                return WazuhException(1307)
-        fields = select['fields']
+    if not set(select['fields']).issubset(parameters):
+        raise WazuhException(1724, "Allowed select fields: {0}".format(', '.join(parameters)))
 
-    db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=fields, offset=offset, limit=limit,
+    db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
                                                         sort=sort, search=search, count=True)
-    if "mtime" in fields:
+    if "mtime" in select['fields']:
         for item in db_query[0]:
-            item['mtime'] = datetime.fromtimestamp(float(item['mtime'])).strftime('%Y-%m-%d %H:%M:%S')
+            # if mtime field is 0, returns "ND"
+            if item['mtime'] == 0:
+                item['mtime'] = "ND"
+            else:
+                item['mtime'] = datetime.fromtimestamp(float(item['mtime'])).strftime('%Y-%m-%d %H:%M:%S')
+
     return {'totalItems': db_query[1], 'items': db_query[0]}
