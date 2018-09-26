@@ -129,7 +129,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             break;
 
         case 0:
-            mdebug1("Empty message from local client.");
+            mdebug2("Empty message from local client.");
             close(peer);
             break;
 
