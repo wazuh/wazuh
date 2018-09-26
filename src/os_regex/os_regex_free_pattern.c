@@ -10,16 +10,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-#include "os_regex.h"
-#include "os_regex_internal.h"
-
+#include "shared.h"
 
 /* Release all the memory created by the compilation/execution phases */
 void OSRegex_FreePattern(OSRegex *reg)
 {
-    int i = 0;
+    int i = 0, j;
 
+    w_mutex_lock((pthread_mutex_t *)&reg->mutex);
     /* Free the patterns */
     if (reg->patterns) {
         char **pattern = reg->patterns;
@@ -30,17 +28,14 @@ void OSRegex_FreePattern(OSRegex *reg)
             pattern++;
         }
 
-        free(reg->patterns);
-        reg->patterns = NULL;
+        os_free(reg->patterns);
     }
 
     /* Free the flags */
-    free(reg->flags);
-    reg->flags = NULL;
+    os_free(reg->flags);
 
     if (reg->raw) {
-        free(reg->raw);
-        reg->raw = NULL;
+        os_free(reg->raw);
     }
 
     /* Free the closure */
@@ -50,27 +45,30 @@ void OSRegex_FreePattern(OSRegex *reg)
             free(reg->prts_closure[i]);
             i++;
         }
-        free(reg->prts_closure);
-        reg->prts_closure = NULL;
+        os_free(reg->prts_closure);
     }
 
-    /* Free the str */
-    if (reg->prts_str) {
+    /* Free the matching array*/
+    for (j = 0; j < reg->instances; j++) {
+        /* Free the str */
         i = 0;
-        while (reg->prts_str[i]) {
-            free(reg->prts_str[i]);
-            i++;
+        if (reg->matching[j]->prts_str) {
+            while (reg->matching[j]->prts_str[i]) {
+                free(reg->matching[j]->prts_str[i]);
+                i++;
+            }
+            os_free(reg->matching[j]->prts_str);
         }
-        free(reg->prts_str);
-        reg->prts_str = NULL;
-    }
 
-    /* Free the sub strings */
-    if (reg->sub_strings) {
-        OSRegex_FreeSubStrings(reg);
-        free(reg->sub_strings);
-        reg->sub_strings = NULL;
+        /* Free the sub strings */
+        if (reg->matching[j]->sub_strings) {
+            OSRegex_FreeSubStrings(reg, j);
+            os_free(reg->matching[j]->sub_strings);
+        }
+        free(reg->matching[j]);
     }
+    free(reg->matching);
 
+    w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
     return;
 }

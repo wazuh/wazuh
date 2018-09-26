@@ -16,17 +16,16 @@
 
 
 /* Release all the memory created to store the sub strings */
-void OSRegex_FreeSubStrings(OSRegex *reg)
+void OSRegex_FreeSubStrings(OSRegex *reg, int pos)
 {
     /* Free the sub strings */
-    if (reg->sub_strings) {
+    if (reg->matching[pos]->sub_strings) {
         int i = 0;
-        while (reg->sub_strings[i]) {
-            free(reg->sub_strings[i]);
-            reg->sub_strings[i] = NULL;
+        while (reg->matching[pos]->sub_strings[i]) {
+            free(reg->matching[pos]->sub_strings[i]);
+            reg->matching[pos]->sub_strings[i] = NULL;
             i++;
         }
     }
     return;
 }
-

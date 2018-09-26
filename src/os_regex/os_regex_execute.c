@@ -26,7 +26,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
  * Returns the end of the string on success or NULL on error.
  * The error code is set on reg->error.
  */
-const char *OSRegex_Execute(const char *str, OSRegex *reg)
+const char *OSRegex_Execute(const char *str, OSRegex *reg, int pos)
 {
     const char *ret;
     int i = 0;
@@ -39,39 +39,40 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
         w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
         return (0);
     }
-    
+
     /* If we need the sub strings */
     if (reg->prts_closure) {
         int k = 0;
-       
+
         /* Loop over all sub patterns */
         while (reg->patterns[i]) {
             /* Clean the prts_str */
             int j = 0;
             while (reg->prts_closure[i][j]) {
-                reg->prts_str[i][j] = NULL;
+                reg->matching[pos]->prts_str[i][j] = NULL;
                 j++;
             }
 
             if ((ret = _OS_Regex(reg->patterns[i], str, reg->prts_closure[i],
-                                 reg->prts_str[i], reg->flags[i]))) {
+                                 reg->matching[pos]->prts_str[i], reg->flags[i]))) {
                 j = 0;
 
                 /* We must always have the open and the close */
-                while (reg->prts_str[i][j] && reg->prts_str[i][j + 1]) {
-                    size_t length = (size_t) (reg->prts_str[i][j + 1] - reg->prts_str[i][j]);
-                    reg->sub_strings[k] = (char *) malloc((length + 1) * sizeof(char));
-                    if (!reg->sub_strings[k]) {
-                        OSRegex_FreeSubStrings(reg);
+                while (reg->matching[pos]->prts_str[i][j] && reg->matching[pos]->prts_str[i][j + 1]) {
+                    size_t length = (size_t) (reg->matching[pos]->prts_str[i][j + 1] - reg->matching[pos]->prts_str[i][j]);
+                    reg->matching[pos]->sub_strings[k] = (char *) malloc((length + 1) * sizeof(char));
+                    if (!reg->matching[pos]->sub_strings[k]) {
+                        OSRegex_FreeSubStrings(reg, pos);
                         w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
                         return (NULL);
                     }
-                    strncpy(reg->sub_strings[k], reg->prts_str[i][j], length);
-                    reg->sub_strings[k][length] = '\0';
+                    strncpy(reg->matching[pos]->sub_strings[k], reg->matching[pos]->prts_str[i][j], length);
+                    reg->matching[pos]->sub_strings[k][length] = '\0';
 
                     /* Set the next one to null */
                     k++;
-                    reg->sub_strings[k] = NULL;
+
+                    reg->matching[pos]->sub_strings[k] = NULL;
 
                     /* Go two by two */
                     j += 2;
