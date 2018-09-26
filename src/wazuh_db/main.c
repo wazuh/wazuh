@@ -263,7 +263,11 @@ void * run_worker(__attribute__((unused)) void * args) {
 
         switch (wnotify_wait(notify_queue, 1000)) {
         case -1:
-            merror_exit("at run_worker(): wnotify_wait(): %s", strerror(errno));
+            if (!running) {
+                w_mutex_unlock(&queue_mutex);
+                continue;
+            }
+            merror("at run_worker(): wnotify_wait(): %s", strerror(errno));
             w_mutex_unlock(&queue_mutex);
             continue;
 
