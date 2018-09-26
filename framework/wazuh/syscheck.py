@@ -84,7 +84,6 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    # if fim-db-start-scan or fim-db-end-scan is 000, fim-db-start-fist-scan and fim-db-end-first-scan are used
     start_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
                                                                filters={'key': 'fim-db-start-scan'})[0]['value']
     if start_timestamp == "000":
@@ -113,10 +112,18 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    select_fields = ["date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
-                     "uid", "type"]
-    db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select_fields, offset=offset,
-                                                        limit=limit, sort=sort, search=search, count=True)
-    for item in db_query[0]:
-        item['mtime'] = datetime.fromtimestamp(float(item['mtime'])).strftime('%Y-%m-%d %H:%M:%S')
+    parameters = ["date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
+                  "uid", "type"]
+    if select is None:
+        select = parameters
+    else:
+        for param in select:
+            if param not in parameters:
+                return WazuhException(1307)
+
+    db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
+                                                        sort=sort, search=search, count=True)
+    if "mtime" in select:
+        for item in db_query[0]:
+            item['mtime'] = datetime.fromtimestamp(float(item['mtime'])).strftime('%Y-%m-%d %H:%M:%S')
     return {'totalItems': db_query[1], 'items': db_query[0]}
