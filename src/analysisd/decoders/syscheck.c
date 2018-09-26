@@ -137,11 +137,15 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
         mdebug2("Scan's control message: '%s'", lf->log);
-        if (fim_control_msg(lf->log, lf->time.tv_sec, lf, sdb) > 0) {
-            return(0);
-        } else {
+        switch (fim_control_msg(lf->log, lf->time.tv_sec, lf, sdb)) {
+        case -2:
+        case -1:
+            return (-1);
+        case 0:
             merror(SK_INV_MSG);
             return (-1);
+        default:
+            return(0);
         }
     }
 
@@ -212,8 +216,11 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
     // Fail trying load info from DDBB
-    if (db_result != 0) {
-        merror("at fim_db_search(): Bad load query");
+
+    switch (db_result) {
+    case -2:
+        merror("FIM decoder: Bad load query.");
+    case -1: // Fallthrough
         lf->data = NULL;
         os_free(new_check_sum);
         os_free(wazuhdb_query);
@@ -262,8 +269,10 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             response = NULL;
             db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
-            if (db_result != 0) {
-                merror("at fim_db_search(): Bad delete query");
+            switch (db_result) {
+            case -2:
+                merror("FIM decoder: Bad delete query.");
+            case -1: // Fallthrough
                 sk_sum_clean(&newsum);
                 os_free(wazuhdb_query);
                 os_free(new_check_sum);
@@ -315,8 +324,10 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             response = NULL;
             db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
-            if (db_result != 0) {
-                merror("at fim_db_search(): Bad save query");
+            switch (db_result) {
+            case -2:
+                merror("FIM decoder: Bad save query.");
+            case -1:
                 sk_sum_clean(&newsum);
                 os_free(wazuhdb_query);
                 os_free(new_check_sum);
@@ -395,18 +406,23 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
     fd_set fdset;
     struct timeval timeout = {0, 1000};
     int size = strlen(wazuhdb_query);
-    int retval = -1;
+    int retval = -2;
     static time_t last_attempt = 0;
     time_t mtime;
 
     // Connect to socket if disconnected
     if (sdb->socket < 0) {
-        if (mtime = time(NULL), mtime > last_attempt + 10) {
+        if (mtime = time(NULL), mtime >= last_attempt + 10) {
             if (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sdb->socket < 0) {
                 last_attempt = mtime;
-                mterror(ARGV0, "at send_query_wazuhdb(): Unable connect to socket '%s':'%s'(%d)",
-                        WDB_LOCAL_SOCK, strerror(errno), errno);
-                return (-1);
+                switch (errno) {
+                case ENOENT:
+                    mterror(ARGV0, "FIM decoder: Cannot find '%s'. Please check that Wazuh DB is running.", WDB_LOCAL_SOCK);
+                    break;
+                default:
+                    mterror(ARGV0, "FIM decoder: Cannot connect to '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
+                }
+                return (-2);
             }
         } else {
             // Return silently
@@ -417,24 +433,29 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
     // Send query to Wazuh DB
     if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query) != 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            mterror(ARGV0, "at send_query_wazuhdb(): database socket is full");
+            mterror(ARGV0, "FIM decoder: database socket is full");
         } else if (errno == EPIPE) {
-            if (mtime = time(NULL), mtime > last_attempt + 10) {
+            if (mtime = time(NULL), mtime >= last_attempt + 10) {
                 // Retry to connect
-                mterror(ARGV0, "at send_query_wazuhdb(): Connection with wazuh-db lost. Reconnecting.");
+                mterror(ARGV0, "FIM decoder: Connection with wazuh-db lost. Reconnecting.");
                 close(sdb->socket);
 
                 if (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sdb->socket < 0) {
                     last_attempt = mtime;
-                    mterror(ARGV0, "at send_query_wazuhdb(): Unable connect to socket '%s':'%s'(%d)",
-                            WDB_LOCAL_SOCK, strerror(errno), errno);
-                    return (-1);
+                    switch (errno) {
+                    case ENOENT:
+                        mterror(ARGV0, "FIM decoder: Cannot find '%s'. Please check that Wazuh DB is running.", WDB_LOCAL_SOCK);
+                        break;
+                    default:
+                        mterror(ARGV0, "FIM decoder: Cannot connect to '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
+                    }
+                    return (-2);
                 }
 
                 if (!OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
                     last_attempt = mtime;
-                    mterror(ARGV0, "at send_query_wazuhdb(): in send reattempt (%d)'%s'.", errno, strerror(errno));
-                    return (-1);
+                    mterror(ARGV0, "FIM decoder: in send reattempt (%d) '%s'.", errno, strerror(errno));
+                    return (-2);
                 }
             } else {
                 // Return silently
@@ -442,7 +463,7 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
             }
 
         } else {
-            mterror(ARGV0, "at send_query_wazuhdb(): in send (%d)'%s'.", errno, strerror(errno));
+            mterror(ARGV0, "FIM decoder: in send (%d) '%s'.", errno, strerror(errno));
         }
     }
 
@@ -451,8 +472,8 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
     FD_SET(sdb->socket, &fdset);
 
     if (select(sdb->socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        mterror(ARGV0, "at send_query_wazuhdb(): in select (%d)'%s'.", errno, strerror(errno));
-        return (-1);
+        mterror(ARGV0, "FIM decoder: in select (%d) '%s'.", errno, strerror(errno));
+        return (-2);
     }
 
     // Receive response from socket
@@ -462,11 +483,11 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
         if (response[0] == 'o' && response[1] == 'k') {
             retval = 0;
         } else {
-            mterror(ARGV0, "at send_query_wazuhdb(): bad response '%s'.", response);
+            mterror(ARGV0, "FIM decoder: Bad response '%s'.", response);
             return retval;
         }
     } else {
-        mterror(ARGV0, "at send_query_wazuhdb(): no response from wazuh-db.");
+        mterror(ARGV0, "FIM decoder: no response from wazuh-db.");
         return retval;
     }
 
@@ -803,11 +824,13 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
-        if (db_result != 0) {
-            merror("at fim_control_msg(): bad result from metadata query");
+        switch (db_result) {
+        case -2:
+            merror("FIM decoder: Bad result from metadata query.");
+        case -1: // Fallthrough
             os_free(wazuhdb_query);
             os_free(response);
-            return (-1);
+            return db_result;
         }
 
         // If end first scan store timestamp in a hash table
@@ -838,11 +861,13 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
             db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
-            if (db_result != 0) {
-                merror("at fim_control_msg(): bad result from control query");
+            switch (db_result) {
+            case -2:
+                merror("FIM decoder: Bad result from control query.");
+            case -1: // Fallthrough
                 os_free(wazuhdb_query);
                 os_free(response);
-                return (-1);
+                return db_result;
             }
         }
 
@@ -875,8 +900,10 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
 
     db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
-    if (db_result != 0) {
-        merror("at fim_update_date(): bad result updating date field");
+    switch (db_result) {
+    case -2:
+        merror("FIM decoder: Bad result updating date field.");
+    case -1: // Fallthrough
         os_free(wazuhdb_query);
         os_free(response);
         return (-1);
@@ -904,8 +931,10 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
 
     db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
-    if (db_result != 0) {
-        merror("at fim_database_clean(): bad result from cleandb query");
+    switch (db_result) {
+    case -2:
+        merror("FIM decoder: Bad result from cleandb query.");
+    case -1: // Fallthrough
         os_free(wazuhdb_query);
         os_free(response);
         return (-1);
