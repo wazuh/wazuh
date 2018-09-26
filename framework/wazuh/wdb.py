@@ -115,13 +115,17 @@ class WazuhDBConnection:
 
         # only for delete queries
         if delete:
-            regex = re.compile(r"\w+ \d+? sql delete from ([a-z0-9,*_ ]+)")
+            regex = re.compile(r"\w+ \d+? sql delete from ([a-z0-9,_ ]+)")
+            if regex.match(query_lower) is None:
+                raise WazuhException(2004, "Delete query is wrong")
             return self.__send(query_lower)
 
         # only for update queries
         if update:
-            ###### ###### "update metadata set values = '000' where key = 'fim-db-start-scan'" #######
-            regex = re.compile(r"\w+ \d+? sql update ([a-z0-9,*_ ]+) set values = '([a-z0-9,*_ ]+)' where key = '([a-z0-9,*_ ]+)'")
+            regex = re.compile(r"\w+ \d+? sql update ([a-z0-9,*_ ]+) set value = '([a-z0-9,*_ ]+)' where key (=|like)?"
+                               r" '([a-z0-9,*_%\- ]+)'")
+            if regex.match(query_lower) is None:
+                raise WazuhException(2004, "Update query is wrong")
             return self.__send(query_lower)
 
         # if the query has already a parameter limit / offset, divide using it
