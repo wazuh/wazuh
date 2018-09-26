@@ -176,12 +176,22 @@ int Start_win32_Syscheck()
         /* Print ignores. */
         if(syscheck.ignore)
             for (r = 0; syscheck.ignore[r] != NULL; r++)
-                minfo("Ignoring: '%s'", syscheck.ignore[r]->raw);
+                minfo("Ignoring: '%s'", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
         if(syscheck.ignore_regex)
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
                 minfo("Ignoring sregex: '%s'", syscheck.ignore_regex[r]->raw);
+
+        /* Print registry ignores. */
+        if(syscheck.registry_ignore)
+            for (r = 0; syscheck.registry_ignore[r].entry != NULL; r++)
+                minfo("Ignoring registry: '%s'", syscheck.registry_ignore[r].entry);
+
+        /* Print sregex registry ignores. */
+        if(syscheck.registry_ignore_regex)
+            for (r = 0; syscheck.registry_ignore_regex[r].regex != NULL; r++)
+                minfo("Ignoring registry sregex: '%s'", syscheck.registry_ignore_regex[r].regex->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
