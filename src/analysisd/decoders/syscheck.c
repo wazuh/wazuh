@@ -36,6 +36,8 @@ static int fim_control_msg (char *key, time_t value, Eventinfo *lf, _sdb *sdb);
 int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb);
 // Clean for old entries
 int fim_database_clean (Eventinfo *lf, _sdb *sdb);
+// Clean sdb memory
+void sdb_clean(_sdb *localsdb);
 
 
 // Initialize the necessary information to process the syscheck information
@@ -78,11 +80,17 @@ void fim_init(void) {
     //Create hash table for agent information
     fim_agentinfo = OSHash_Create();
 }
+
 // Initialize the necessary information to process the syscheck information
 void sdb_init(_sdb *localsdb) {
     localsdb->db_err = 0;
     localsdb->socket = -1;
 
+    sdb_clean(localsdb);
+}
+
+// Initialize the necessary information to process the syscheck information
+void sdb_clean(_sdb *localsdb) {
     memset(localsdb->comment, '\0', OS_MAXSTR + 1);
     memset(localsdb->size, '\0', OS_FLSIZE + 1);
     memset(localsdb->perm, '\0', OS_FLSIZE + 1);
@@ -125,6 +133,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      * 'checksum'!'extradata' 'filename'\n'diff-file'
      */
+    sdb_clean(sdb);
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
         mdebug2("Scan's control message: '%s'", lf->log);
@@ -206,9 +215,9 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     if (db_result != 0) {
         merror("at fim_db_search(): Bad load query");
         lf->data = NULL;
-        free(new_check_sum);
-        free(wazuhdb_query);
-        free(response);
+        os_free(new_check_sum);
+        os_free(wazuhdb_query);
+        os_free(response);
         return (-1);
     }
     check_sum = strchr(response, ' ');
@@ -229,10 +238,10 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         mdebug1("Alert discarded '%s' same check_sum", f_name);
         lf->data = NULL;
         fim_update_date (f_name, lf, sdb);
-        free(wazuhdb_query);
-        free(new_check_sum);
-        free(old_check_sum);
-        free(response);
+        os_free(wazuhdb_query);
+        os_free(new_check_sum);
+        os_free(old_check_sum);
+        os_free(response);
         return (0);
     }
 
@@ -249,17 +258,17 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     lf->agent_id,
                     f_name
             );
-            free(response);
+            os_free(response);
             response = NULL;
             db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
             if (db_result != 0) {
                 merror("at fim_db_search(): Bad delete query");
                 sk_sum_clean(&newsum);
-                free(wazuhdb_query);
-                free(new_check_sum);
-                free(old_check_sum);
-                free(response);
+                os_free(wazuhdb_query);
+                os_free(new_check_sum);
+                os_free(old_check_sum);
+                os_free(response);
                 return (-1);
             }
 
@@ -277,10 +286,10 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 if (changes == -1) {
                     mdebug1("Alert discarded '%s' frequency exceeded", f_name);
                     lf->data = NULL;
-                    free(wazuhdb_query);
-                    free(new_check_sum);
-                    free(old_check_sum);
-                    free(response);
+                    os_free(wazuhdb_query);
+                    os_free(new_check_sum);
+                    os_free(old_check_sum);
+                    os_free(response);
                     return (0);
                 }
             } else {
@@ -302,17 +311,17 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     lf->time.tv_nsec,
                     f_name
             );
-            free(response);
+            os_free(response);
             response = NULL;
             db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
 
             if (db_result != 0) {
                 merror("at fim_db_search(): Bad save query");
                 sk_sum_clean(&newsum);
-                free(wazuhdb_query);
-                free(new_check_sum);
-                free(old_check_sum);
-                free(response);
+                os_free(wazuhdb_query);
+                os_free(new_check_sum);
+                os_free(old_check_sum);
+                os_free(response);
                 return (-1);
             }
 
@@ -321,30 +330,30 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), !end_first_scan) {
                 mdebug2("Alert discarded, first scan. File '%s'", f_name);
                 lf->data = NULL;
-                free(wazuhdb_query);
-                free(new_check_sum);
-                free(old_check_sum);
-                free(response);
+                os_free(wazuhdb_query);
+                os_free(new_check_sum);
+                os_free(old_check_sum);
+                os_free(response);
                 return (0);
             }
 
             if(lf->time.tv_sec < *end_first_scan) {
                 mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
                 lf->data = NULL;
-                free(wazuhdb_query);
-                free(new_check_sum);
-                free(old_check_sum);
-                free(response);
+                os_free(wazuhdb_query);
+                os_free(new_check_sum);
+                os_free(old_check_sum);
+                os_free(response);
                 return (0);
             }
 
             if(Config.syscheck_alert_new == 0) {
                 mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
                 lf->data = NULL;
-                free(wazuhdb_query);
-                free(new_check_sum);
-                free(old_check_sum);
-                free(response);
+                os_free(wazuhdb_query);
+                os_free(new_check_sum);
+                os_free(old_check_sum);
+                os_free(response);
                 return (0);
             }
 
@@ -355,10 +364,10 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     new_check_sum, f_name);
             lf->data = NULL;
             sk_sum_clean(&newsum);
-            free(wazuhdb_query);
-            free(new_check_sum);
-            free(old_check_sum);
-            free(response);
+            os_free(wazuhdb_query);
+            os_free(new_check_sum);
+            os_free(old_check_sum);
+            os_free(response);
             return (-1);
     }
 
@@ -373,10 +382,10 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     fim_alert(f_name, &oldsum, &newsum, lf, sdb);
 
     sk_sum_clean(&newsum);
-    free(response);
-    free(new_check_sum);
-    free(old_check_sum);
-    free(wazuhdb_query);
+    os_free(response);
+    os_free(new_check_sum);
+    os_free(old_check_sum);
+    os_free(wazuhdb_query);
     return (1);
 }
 
@@ -604,8 +613,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
 
                 snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
                 lf->mtime_before = oldsum->mtime;
-                free(old_ctime);
-                free(new_ctime);
+                os_free(old_ctime);
+                os_free(new_ctime);
             } else {
                 localsdb->mtime[0] = '\0';
             }
@@ -677,7 +686,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     }
 
     // Create a new log message
-    free(lf->full_log);
+    os_free(lf->full_log);
     os_strdup(localsdb->comment, lf->full_log);
     lf->log = lf->full_log;
 
@@ -796,20 +805,20 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         if (db_result != 0) {
             merror("at fim_control_msg(): bad result from metadata query");
-            free(wazuhdb_query);
-            free(response);
+            os_free(wazuhdb_query);
+            os_free(response);
             return (-1);
         }
 
         // If end first scan store timestamp in a hash table
-        if(strcmp(key, HC_FIM_DB_EFS) == 0) {
+        if(strcmp(key, HC_FIM_DB_EFS) == 0 || strcmp(key, HC_SK_DB_COMPLETED) == 0) {
             if (ts_end = (time_t *) OSHash_Get_ex(fim_agentinfo, lf->agent_id),
                     !ts_end) {
                 os_calloc(1, sizeof(time_t), ts_end);
                 *ts_end = value + 2;
 
                 if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, ts_end) <= 0) {
-                    free(ts_end);
+                    os_free(ts_end);
                     merror("Unable to add metadata to hash table for agent: %s",
                             lf->agent_id);
                 }
@@ -831,8 +840,8 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
             if (db_result != 0) {
                 merror("at fim_control_msg(): bad result from control query");
-                free(wazuhdb_query);
-                free(response);
+                os_free(wazuhdb_query);
+                os_free(response);
                 return (-1);
             }
         }
@@ -842,8 +851,8 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
             fim_database_clean(lf, sdb);
         }
 
-        free(wazuhdb_query);
-        free(response);
+        os_free(wazuhdb_query);
+        os_free(response);
         return (1);
     }
 
@@ -868,15 +877,15 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
 
     if (db_result != 0) {
         merror("at fim_update_date(): bad result updating date field");
-        free(wazuhdb_query);
-        free(response);
+        os_free(wazuhdb_query);
+        os_free(response);
         return (-1);
     }
 
     mdebug2("FIM file %s update timestamp for last event", file);
 
-    free(wazuhdb_query);
-    free(response);
+    os_free(wazuhdb_query);
+    os_free(response);
     return (1);
 }
 
@@ -897,15 +906,15 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
 
     if (db_result != 0) {
         merror("at fim_database_clean(): bad result from cleandb query");
-        free(wazuhdb_query);
-        free(response);
+        os_free(wazuhdb_query);
+        os_free(response);
         return (-1);
     }
 
     mdebug2("FIM database has been cleaned");
 
-    free(wazuhdb_query);
-    free(response);
+    os_free(wazuhdb_query);
+    os_free(response);
     return (1);
 
 }

@@ -318,3 +318,21 @@ cJSON *getRulesConfig(void) {
 
     return root;
 }
+
+
+cJSON *getManagerLabelsConfig(void) {
+
+    unsigned int i;
+    cJSON *root = cJSON_CreateObject();
+    cJSON *labels = cJSON_CreateObject();
+
+    if (Config.labels) {
+        for (i=0;Config.labels[i].key;i++) {
+            cJSON_AddStringToObject(labels,Config.labels[i].key,Config.labels[i].value);
+        }
+    }
+
+    cJSON_AddItemToObject(root,"labels",labels);
+
+    return root;
+}

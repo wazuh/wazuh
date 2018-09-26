@@ -595,6 +595,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
             goto error;
         }
     } else if (strcmp(section, "cluster") == 0){
+#ifndef WIN32
         /* Check socket connection with cluster first */
         int sock = -1;
         char sockname[PATH_MAX + 1] = {0};
@@ -609,16 +610,21 @@ size_t wcom_getconfig(const char * section, char ** output) {
             *output = strdup("err Unable to connect with socket. The component might be disabled");
             return strlen(*output);
         }
-        else if (cfg = getClusterConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_free(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
+        else {
+            close(sock);
+
+            if (cfg = getClusterConfig(), cfg) {
+                *output = strdup("ok");
+                json_str = cJSON_PrintUnformatted(cfg);
+                wm_strcat(output, json_str, ' ');
+                free(json_str);
+                cJSON_free(cfg);
+                return strlen(*output);
+            } else {
+                goto error;
+            }
         }
+#endif
     }else {
         goto error;
     }

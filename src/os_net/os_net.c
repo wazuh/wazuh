@@ -537,7 +537,7 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
     ssize_t recvval, recvb;
     uint32_t msgsize;
 
-    recvval = recv(sock, (char *) &msgsize, sizeof(msgsize), 0);
+    recvval = recv(sock, (char *) &msgsize, sizeof(msgsize), MSG_WAITALL);
 
     switch(recvval) {
         case -1:
@@ -561,7 +561,7 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
         ret[msgsize] = '\0';
     }
 
-    return msgsize;
+    return recvb;
 }
 
 

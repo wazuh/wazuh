@@ -128,6 +128,18 @@ size_t syscom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
+    }
+    else if (strcmp(section, "labels") == 0){
+        if (cfg = getManagerLabelsConfig(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
     } else {
         goto error;
     }

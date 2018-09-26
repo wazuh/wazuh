@@ -128,7 +128,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
     const char *pt_error_str[4] = {NULL, NULL, NULL, NULL};
 
     /* Will loop the whole string, trying to find a match */
-    do {
+    for (st = str; *st != '\0'; ++st) {
         switch (*pt) {
             case '\0':
                 if (!(flags & END_SET) || ((flags & END_SET) && (*st == '\0'))) {
@@ -373,7 +373,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
         pt = pattern;
         r_code = NULL;
 
-    } while (*(++st) != '\0');
+    }
 
     /* Match for a possible last parenthesis */
     if (prts_closure) {
@@ -421,4 +421,3 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
 
     return (NULL);
 }
-

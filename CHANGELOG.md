@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
   - Extract the pack name into a new field.
   - Include the query name in the alert description.
   - Minor fixes.
+- Increased AWS S3 database entry limit to 5000 to prevent reprocessing repeated events ([#1391](https://github.com/wazuh/wazuh/pull/1391)).
 
 ### Fixed
 
@@ -42,6 +43,8 @@ All notable changes to this project will be documented in this file.
 - Set connection timeout for Auth server ([#1336](https://github.com/wazuh/wazuh/pull/1336))
 - Fix the cleaning of the temporary folder. ([#1361](https://github.com/wazuh/wazuh/pull/1361))
 - Fix check_mtime and check_inode views in Syscheck alerts. ([#1364](https://github.com/wazuh/wazuh/pull/1364))
+- Fixed the reading of the destination address and type for PPP interfaces. ([#1405](https://github.com/wazuh/wazuh/pull/1405))
+- Fixed a memory bug in regex when getting empty strings. ([#1430](https://github.com/wazuh/wazuh/pull/1430))
 
 
 ## [v3.6.1] 2018-09-07
