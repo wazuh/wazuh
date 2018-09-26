@@ -69,13 +69,11 @@ def clear(agent_id=None, all_agents=False):
     # update key fields which contains keys to value 000
     table2 = "metadata"
     action2 = "update"
-    new_value = "000"
-    keys = ["fim-db-start-first-scan", "fim-db-start-scan", "fim-db-end-first-scan",
-                        "fim-db-end-scan"]
-    for key in keys:
-        query2 = "agent {} sql {} {} set value = '{}' where key = '{}'".format(agent_id, action2, table2, new_value,
-                                                                               key)
-        wdb_conn.execute(query2, update=True)
+    new_value = "ND"
+    query2 = "agent {} sql {} {} set value = '{}' where key like '{}%'".format(agent_id, action2, table2, new_value,
+                                                                               "fim_db")
+    wdb_conn.execute(query2, update=True)
+
     return "Syscheck database deleted"
 
 
@@ -87,19 +85,24 @@ def last_scan(agent_id):
     :return: Dictionary: end, start.
     """
     # if fim-db-start-scan or fim-db-end-scan is 000, fim-db-start-fist-scan and fim-db-end-first-scan are used
-    start_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
-                                                                     filters={'key': 'fim-db-start-scan'})[0]['value'])
-    if start_timestamp == 0:
-        start_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
-                                                                         filters={'key': 'fim-db-start-first-scan'})[0]['value'])
-    start = datetime.fromtimestamp(start_timestamp).strftime('%Y-%m-%d %H:%M:%S')
-    end_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
-                                                                   filters={'key': 'fim-db-end-scan'})[0]['value'])
-    if end_timestamp == 0:
-        end_timestamp = float(Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
-                                                                       filters={'key': 'fim-db-end-first-scan'})[0]['value'])
-    end = datetime.fromtimestamp(end_timestamp).strftime('%Y-%m-%d %H:%M:%S')
-    return {'start': start, 'end': end}
+    start_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+                                                               filters={'key': 'fim-db-start-scan'})[0]['value']
+    if start_timestamp != "000":
+        try:
+            start = datetime.fromtimestamp(float(start_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+            end_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'], filters={'key': 'fim-db-end-scan'})[0]['value']
+            if end_timestamp != "000":
+                try:
+                    end = datetime.fromtimestamp(float(end_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+                    return {'start': start, 'end': end}
+                except:
+                    return {'start': start, 'end': "ND"}
+            else:
+                return {'start': start, 'end': "ND"}
+        except:
+            return {'start': 'ND', 'end': 'ND'}
+    else:
+        return {'start': 'ND', 'end': 'ND'}
 
 
 def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="", filters={}):
