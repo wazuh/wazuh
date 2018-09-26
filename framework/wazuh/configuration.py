@@ -164,9 +164,14 @@ def _read_option(section_name, opt):
     else:
         if opt.attrib:
             opt_value = {}
-            opt_value['item'] = opt.text
             for a in opt.attrib:
                 opt_value[a] = opt.attrib[a]
+            if opt._children:
+                for child in opt:
+                    child_section, child_config = _read_option(child.tag.lower(),child)
+                    opt_value[child_section] = child_config
+            else:
+                opt_value['item'] = opt.text
         else:
             opt_value = opt.text
 
