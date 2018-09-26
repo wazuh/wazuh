@@ -420,7 +420,9 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum) {
 
         if (files = wreaddir(dir), !files) {
             if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", dir);
+                merror("At c_multi_group() 1: Could not open directory '%s'", dir);
+                closedir(dp);
+                return;
             }
             continue;
         }
@@ -466,14 +468,14 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum) {
     }
 
     if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", multi_group_cpy) > PATH_MAX) {
-        merror("At c_files(): path too long.");
-       return;
+        merror("At c_multi_group(): path too long.");
+        return;
     }
 
     // Try to open directory, avoid TOCTOU hazard
     if (subdir = wreaddir(path), !subdir) {
         if (errno != ENOTDIR) {
-            merror("Could not open directory '%s'", path);
+            mdebug1("At c_multi_group() 2: Could not open directory '%s'", path);
         }
        return;
     }
@@ -509,12 +511,17 @@ static void c_files()
             for (i = 0; groups[i]; i++) {
                 f_sum = groups[i]->f_sum;
                 
-                for (j = 0; f_sum[j]; j++) {
-                    free(f_sum[j]->name);
-                    free(f_sum[j]);
-                }
+                if(f_sum){
+                    for (j = 0; f_sum[j]; j++) {
+                        free(f_sum[j]->name);
+                        free(f_sum[j]);
+                        f_sum[j] = NULL;
+                    }
 
-                free(f_sum);
+                    free(f_sum);
+                    f_sum = NULL;
+                }
+                
                 free(groups[i]->group);
             }
 
@@ -553,9 +560,8 @@ static void c_files()
 
         if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", path);
+                mdebug1("At c_files() 1: Could not open directory '%s'", path);
             }
-
             continue;
         }
 
@@ -595,7 +601,7 @@ static void c_files()
 
         if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", path);
+                mdebug1("At c_files() 2: Could not open directory '%s'", path);
             }
 
             continue;
