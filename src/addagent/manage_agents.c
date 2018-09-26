@@ -126,6 +126,8 @@ int add_agent(int json_output, int no_limit)
         /* Set time 2 */
         time2 = time(0);
         rand1 = os_random();
+    } else {
+        close(sock);
     }
 
     if (!json_output)
@@ -365,6 +367,16 @@ int add_agent(int json_output, int no_limit)
                 free(file.name);
                 OS_AddAgentTimestamp(id, name, ip, time3);
             } else {
+                if (sock = auth_connect(), sock < 0) {
+                    if (json_output) {
+                        cJSON *json_root = cJSON_CreateObject();
+                        cJSON_AddNumberToObject(json_root, "error", 80);
+                        cJSON_AddStringToObject(json_root, "message", "Lost authd socket connection.");
+                        printf("%s", cJSON_PrintUnformatted(json_root));
+                        exit(1);
+                    } else
+                        merror_exit("Lost authd socket connection.");
+                }
                 if (auth_add_agent(sock, id, name, ip, env_remove_dup ? force_antiquity : -1, json_output) < 0) {
                     break;
                 }
@@ -411,6 +423,7 @@ int remove_agent(int json_output)
     // Create socket
 
     sock = auth_connect();
+    auth_close(sock);
 
     do {
         if (!json_output) {
@@ -506,6 +519,16 @@ int remove_agent(int json_output)
                 free(full_name);
                 full_name = NULL;
             } else {
+                if (sock = auth_connect(), sock < 0) {
+                    if (json_output) {
+                        cJSON *json_root = cJSON_CreateObject();
+                        cJSON_AddNumberToObject(json_root, "error", 80);
+                        cJSON_AddStringToObject(json_root, "message", "Lost authd socket connection.");
+                        printf("%s", cJSON_PrintUnformatted(json_root));
+                        exit(1);
+                    } else
+                        merror_exit("Lost authd socket connection.");
+                }
                 if (auth_remove_agent(sock, u_id, json_output) < 0) {
                     break;
                 }
