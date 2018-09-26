@@ -202,7 +202,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     restriction = syscheck.filerestrict[dir_position];
 
     if (fim_check_ignore (file_name) == 1) {
-        mdebug1("Ignoring file '%s', continuing...", file_name);
         free(wd_sum);
         return (0);
     }
@@ -955,6 +954,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore[i] != NULL) {
             if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
+                mdebug1("Ignoring file '%s' ignore '%s', continuing...", file_name, syscheck.ignore[i]);
                 return (1);
             }
             i++;
@@ -966,6 +966,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
+                mdebug1("Ignoring file '%s' sregex '%s', continuing...", file_name, syscheck.ignore_regex[i]->raw);
                 return (1);
             }
             i++;
