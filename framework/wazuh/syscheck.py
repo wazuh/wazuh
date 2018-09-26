@@ -69,7 +69,7 @@ def clear(agent_id=None, all_agents=False):
     # update key fields which contains keys to value 000
     table2 = "metadata"
     action2 = "update"
-    new_value = "ND"
+    new_value = "000"
     query2 = "agent {} sql {} {} set value = '{}' where key like '{}%'".format(agent_id, action2, table2, new_value,
                                                                                "fim_db")
     wdb_conn.execute(query2, update=True)
@@ -87,22 +87,17 @@ def last_scan(agent_id):
     # if fim-db-start-scan or fim-db-end-scan is 000, fim-db-start-fist-scan and fim-db-end-first-scan are used
     start_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
                                                                filters={'key': 'fim-db-start-scan'})[0]['value']
-    if start_timestamp != "000":
-        try:
-            start = datetime.fromtimestamp(float(start_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
-            end_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'], filters={'key': 'fim-db-end-scan'})[0]['value']
-            if end_timestamp != "000":
-                try:
-                    end = datetime.fromtimestamp(float(end_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
-                    return {'start': start, 'end': end}
-                except:
-                    return {'start': start, 'end': "ND"}
-            else:
-                return {'start': start, 'end': "ND"}
-        except:
-            return {'start': 'ND', 'end': 'ND'}
-    else:
+    if start_timestamp == "000":
         return {'start': 'ND', 'end': 'ND'}
+    else:
+        start = datetime.fromtimestamp(float(start_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+        end_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+                                                                 filters={'key': 'fim-db-end-scan'})[0]['value']
+        if end_timestamp == "000":
+            return {'start': start, 'end': 'ND'}
+        else:
+            end = datetime.fromtimestamp(float(end_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+            return {'start': start, 'end': end}
 
 
 def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="", filters={}):
