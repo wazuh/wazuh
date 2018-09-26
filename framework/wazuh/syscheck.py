@@ -114,16 +114,20 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     """
     parameters = ["date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
                   "uid", "type"]
-    if select is None:
-        select = parameters
+
+    #return {'select -> ': select}
+
+    if not select:
+        fields = parameters
     else:
-        for param in select:
+        for param in select['fields']:
             if param not in parameters:
                 return WazuhException(1307)
+        fields = select['fields']
 
-    db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
+    db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=fields, offset=offset, limit=limit,
                                                         sort=sort, search=search, count=True)
-    if "mtime" in select:
+    if "mtime" in fields:
         for item in db_query[0]:
             item['mtime'] = datetime.fromtimestamp(float(item['mtime'])).strftime('%Y-%m-%d %H:%M:%S')
     return {'totalItems': db_query[1], 'items': db_query[0]}
