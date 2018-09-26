@@ -176,7 +176,7 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
         items = [items] if not array else items['items']
 
         for item in items:
-            if limit > 0 and limit + 1 <= len(result):
+            if 0 < limit <= len(result):
                 break
             item['agent_id'] = agent['id']
             result.append(item)
