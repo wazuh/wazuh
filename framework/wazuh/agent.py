@@ -288,15 +288,15 @@ class Agent:
         """
         wdb_conn = WazuhDBConnection()
 
-        query = "agent {} sql select {} from {}".format(self.id, ','.join(select), table)
+        query = "agent {} sql select {} from {}".format(self.id, ','.join(select['fields']), table)
 
         if filters:
             for key, value in filters.items():
                 query += " and {} = '{}'".format(key, value)
 
         if search:
-            query += " and not" if bool(search['negation']) else " and"
-            query += '(' + " or ".join("{} like '%{}%'".format(x, search['value']) for x in search['fields']) + ')'
+            query += " and not" if bool(search['negation']) else " and "
+            query += '(' + " or ".join("{} like '%{}%'".format(x, search['value']) for x in select['fields']) + ')'
 
         if "from {} and".format(table) in query:
             query = query.replace("from {} and".format(table), "from {} where".format(table))
