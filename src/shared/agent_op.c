@@ -341,11 +341,11 @@ int create_multigroup_dir(const char * multigroup) {
             merror(CHOWN_ERROR, path, errno, strerror(errno));
             return -1;
         }
+        mdebug1("Multigroup dir created: '%s'",multigroup);
     }
     else{
         closedir(dp);
     }
-    mdebug1("Multigroup dir created: '%s'",multigroup);
  
     return 0;
 }

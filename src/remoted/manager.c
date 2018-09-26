@@ -720,6 +720,8 @@ static void read_controlmsg(const char *agent_id, char *msg)
     os_md5 tmp_sum;
     char *end;
     agent_group *agt_group;
+    char path[PATH_MAX + 1] = {0};
+    DIR *dp = NULL;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -749,6 +751,34 @@ static void read_controlmsg(const char *agent_id, char *msg)
     }
     mdebug2("Agent '%s' group is '%s'",agent_id,group);
 
+    /* Check if the multigroup dir is created */
+    snprintf(path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,group);
+    dp = opendir(path);
+
+    if(!dp){
+        if (errno == ENOENT) {
+            if (mkdir(path, 0770) == -1) {
+                mdebug1("At read_controlmsg(): couldn't create directory '%s'", path);
+                return;
+            }
+
+            if(chmod(path,0770) < 0){
+                mdebug1("At read_controlmsg(): Error in chmod setting permissions for path: %s",path);
+            }
+
+            uid_t uid = Privsep_GetUser(USER);
+            gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+
+            if (chown(path, uid, gid) == -1) {
+                merror(CHOWN_ERROR, path, errno, strerror(errno));
+                return;
+            }
+        }
+    }
+    else{
+        closedir(dp);
+    }
+
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
 
@@ -759,7 +789,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
 
-            merror("No such group '%s' for agent '%s'", group, agent_id);
+            mdebug1("No such group '%s' for agent '%s'", group, agent_id);
             return;
         }
     }
