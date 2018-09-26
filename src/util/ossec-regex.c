@@ -26,8 +26,9 @@ int main(int argc, char **argv)
 {
     const char *pattern;
     char * string;
-
+    int i;
     char msg[OS_MAXSTR + 1];
+
     memset(msg, '\0', OS_MAXSTR + 1);
     OSRegex regex;
     OSMatch matcher;
@@ -48,7 +49,7 @@ int main(int argc, char **argv)
 
     pattern = argv[1];
 
-    if (!OSRegex_Compile(pattern, &regex, 0)) {
+    if (!OSRegex_Compile(pattern, &regex, OS_RETURN_SUBSTRING)) {
         printf("pattern does not compile with OSRegex_Compile\n");
         return (-1);
     }
@@ -67,19 +68,14 @@ int main(int argc, char **argv)
 
         if (OSRegex_Execute(string, &regex)) {
             printf("+OSRegex_Execute: %s\n", string);
+            for (i = 0; regex.sub_strings[i]; i++) {
+                printf(" -Substring: %s\n", regex.sub_strings[i]);
+            }
         }
-        /*
-        else
-            printf("-OSRegex_Execute: \n");
-         */
 
         if (OS_Regex(pattern, string)) {
             printf("+OS_Regex       : %s\n", string);
         }
-        /*
-        else
-            printf("-OS_Regex: \n");
-         */
 
         if (OSMatch_Execute(string, strlen(string), &matcher)) {
             printf("+OSMatch_Compile: %s\n", string);
