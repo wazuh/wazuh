@@ -142,3 +142,37 @@ cJSON *getMonitorInternalOptions(void) {
 
     return root;
 }
+
+
+cJSON *getReportsOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    unsigned int i;
+
+    if (mond.reports) {
+        cJSON *arr = cJSON_CreateArray();
+        for (i=0;mond.reports[i];i++) {
+            cJSON *rep = cJSON_CreateObject();
+            if (mond.reports[i]->title) cJSON_AddStringToObject(rep,"title",mond.reports[i]->title);
+            if (mond.reports[i]->r_filter.group) cJSON_AddStringToObject(rep,"group",mond.reports[i]->r_filter.group);
+            if (mond.reports[i]->r_filter.rule) cJSON_AddStringToObject(rep,"rule",mond.reports[i]->r_filter.rule);
+            if (mond.reports[i]->r_filter.level) cJSON_AddStringToObject(rep,"level",mond.reports[i]->r_filter.level);
+            if (mond.reports[i]->r_filter.srcip) cJSON_AddStringToObject(rep,"srcip",mond.reports[i]->r_filter.srcip);
+            if (mond.reports[i]->r_filter.user) cJSON_AddStringToObject(rep,"user",mond.reports[i]->r_filter.user);
+            if (mond.reports[i]->r_filter.show_alerts) cJSON_AddStringToObject(rep,"showlogs","yes"); else cJSON_AddStringToObject(rep,"showlogs","no");
+            if (mond.reports[i]->emailto) {
+                unsigned int j = 0;
+                cJSON *email = cJSON_CreateArray();
+                while (mond.reports[i]->emailto[j]) {
+                    cJSON_AddItemToArray(email, cJSON_CreateString(mond.reports[i]->emailto[j]));
+                    j++;
+                }
+                cJSON_AddItemToObject(rep,"email_to",email);
+            }
+            cJSON_AddItemToArray(arr, rep);
+        }
+        cJSON_AddItemToObject(root,"reports",arr);
+    }
+
+    return root;
+}
