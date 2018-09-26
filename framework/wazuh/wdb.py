@@ -122,7 +122,8 @@ class WazuhDBConnection:
 
         # only for update queries
         if update:
-            regex = re.compile(r"\w+ \d+? sql update ([a-z0-9,*_ ]+) set value = '([a-z0-9,*_ ]+)' where key (=|like)?"
+            # regex = re.compile(r"\w+ \d+? sql update ([a-z0-9,*_ ]+) set value = '([a-z0-9,*_ ]+)' where key (=|like)?"
+            regex = re.compile(r"\w+ \d+? sql update ([\w\d,*_ ]+) set value = '([\w\d,*_ ]+)' where key (=|like)?"
                                r" '([a-z0-9,*_%\- ]+)'")
             if regex.match(query_lower) is None:
                 raise WazuhException(2004, "Update query is wrong")
