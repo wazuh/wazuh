@@ -113,10 +113,7 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     summary_parameters = ["date", "mtime", "file"]
 
     if select is None:
-        if summary:
-            select = {'fields': summary_parameters}
-        else:
-            select = {'fields': parameters}
+        select = {'fields': summary_parameters if summary else parameters}
     else:
         if not set(select['fields']).issubset(set(parameters)):
             raise WazuhException(1724, "Allowed select fields: {0}".format(', '.join(parameters)))
