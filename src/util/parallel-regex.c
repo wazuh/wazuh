@@ -14,14 +14,15 @@
 #define ARGV0 "parallel-regex"
 
 static void helpmsg(void) __attribute__((noreturn));
-OSRegex regex, second_regex;
-int input_number = 10;
+OSRegex regex, second_regex, third_regex;
+int input_number = 11;
 char *inputs[] = {
     "This is a test pattern for testing the parallel regex.",
     "This Is a test patrn for testing the parallel regex.",
     "This os a test pattern 4 testing the sequential regex",
     "This is a test pattern for testing the parallel regex",
     "NO",
+    "Without substrings.",
     "This is the 2 pattern.",
     "This his a test patron for testing the paralel regex",
     "This IS a test PATTERN for testing the PARALLEL regex",
@@ -48,17 +49,6 @@ void *t_regex(__attribute__((unused)) void * id){
     printf("Starting thread %d\n", t_id);
     while (1) {
         counter = (t_id + counter + 1) % input_number;
-        if (OSRegex_Execute_ex(inputs[counter], &regex, &str_match.sub_strings, &str_match.prts_str, &str_match.d_size)) {
-            ptr = msg;
-            size = snprintf(ptr, 1024, "+ [Thread %d][FIRST_PATTERN_MATCH]: %s\n", t_id, inputs[counter]);
-            ptr += size;
-            for (i = 0; str_match.sub_strings[i]; i++) {
-                size = snprintf(ptr, 1024, " -Substring: %s\n", str_match.sub_strings[i]);
-                ptr += size;
-            }
-            printf("%s\n", msg);
-            w_FreeArray(str_match.sub_strings);
-        }
 
         if (OSRegex_Execute_ex(inputs[counter], &second_regex, &str_match.sub_strings, &str_match.prts_str, &str_match.d_size)) {
             ptr = msg;
@@ -69,7 +59,29 @@ void *t_regex(__attribute__((unused)) void * id){
                 ptr += size;
             }
             printf("%s\n", msg);
-            w_FreeArray(str_match.sub_strings);
+        }
+
+        if (OSRegex_Execute_ex(inputs[counter], &regex, &str_match.sub_strings, &str_match.prts_str, &str_match.d_size)) {
+            ptr = msg;
+            size = snprintf(ptr, 1024, "+ [Thread %d][FIRST_PATTERN_MATCH]: %s\n", t_id, inputs[counter]);
+            ptr += size;
+            for (i = 0; str_match.sub_strings[i]; i++) {
+                size = snprintf(ptr, 1024, " -Substring: %s\n", str_match.sub_strings[i]);
+                ptr += size;
+            }
+            printf("%s\n", msg);
+        }
+
+
+        if (OSRegex_Execute_ex(inputs[counter], &third_regex, &str_match.sub_strings, &str_match.prts_str, &str_match.d_size)) {
+            ptr = msg;
+            size = snprintf(ptr, 1024, "+ [Thread %d][THIRD_PATTERN_MATCH]: %s\n", t_id, inputs[counter]);
+            ptr += size;
+            for (i = 0; str_match.sub_strings[i]; i++) {
+                size = snprintf(ptr, 1024, " -Substring: %s\n", str_match.sub_strings[i]);
+                ptr += size;
+            }
+            printf("%s\n", msg);
         }
     }
 }
@@ -80,6 +92,7 @@ int main(int argc, char **argv)
     int threads;
     char *pattern = "This (\\w+) a test (\\w*) for testing the (\\w+) regex|pattern (\\w).";
     char *second_pattern = "This is the (\\w*) pattern.";
+    char *third_pattern = "Without substrings.";
 
     OS_SetName(ARGV0);
 
@@ -104,6 +117,11 @@ int main(int argc, char **argv)
     }
 
     if (!OSRegex_Compile(second_pattern, &second_regex, OS_RETURN_SUBSTRING)) {
+        printf("Pattern '%s' does not compile with OSRegex_Compile\n", second_pattern);
+        return (-1);
+    }
+
+    if (!OSRegex_Compile(third_pattern, &third_regex, OS_RETURN_SUBSTRING)) {
         printf("Pattern '%s' does not compile with OSRegex_Compile\n", second_pattern);
         return (-1);
     }

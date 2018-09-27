@@ -42,15 +42,19 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, char ***sub_string
     } else {
         if (str_sizes->sub_strings_size < reg->d_size.sub_strings_size &&
             (*sub_strings = (char **) realloc(*sub_strings, reg->d_size.sub_strings_size))) {
+            memset((void*)*sub_strings + str_sizes->sub_strings_size, 0, reg->d_size.sub_strings_size - str_sizes->sub_strings_size);
             str_sizes->sub_strings_size = reg->d_size.sub_strings_size;
         }
+
+        w_FreeArray(*sub_strings);
     }
 
     if (!prts_str) {
         prts_str = &reg->d_prts_str;
     } else {
-        if (str_sizes->prts_str_alloc_size < reg->d_size.prts_str_alloc_size &&
-            (*prts_str = (const char ***) realloc(*prts_str, reg->d_size.prts_str_alloc_size))) {
+        if (str_sizes->prts_str_alloc_size < reg->d_size.prts_str_alloc_size) {
+            *prts_str = (const char ***) realloc(*prts_str, reg->d_size.prts_str_alloc_size);
+            memset((void*)*prts_str + str_sizes->prts_str_alloc_size, 0, reg->d_size.prts_str_alloc_size - str_sizes->prts_str_alloc_size);
             str_sizes->prts_str_alloc_size = reg->d_size.prts_str_alloc_size;
             if (!str_sizes->prts_str_size) {
                 str_sizes->prts_str_size = (int *) calloc(str_sizes->prts_str_alloc_size, sizeof(int));
@@ -59,13 +63,17 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, char ***sub_string
             }
         }
 
-        for (i = 0; reg->d_size.prts_str_size[i]; i++) {
-            if (!str_sizes->prts_str_size[i]) {
-                (*prts_str)[i] = (const char **) calloc(reg->d_size.prts_str_size[i], sizeof(char *));
-                str_sizes->prts_str_size[i] = reg->d_size.prts_str_size[i];
-            } else if (str_sizes->prts_str_size[i] < reg->d_size.prts_str_size[i]) {
-                (*prts_str)[i] = (const char **) realloc(*prts_str[i], reg->d_size.prts_str_size[i]);
-                str_sizes->prts_str_size[i] = reg->d_size.prts_str_size[i];
+        if (reg->d_size.prts_str_size) {
+            // It is a pattern from which to extract substrings
+            for (i = 0; reg->d_size.prts_str_size[i]; i++) {
+                if (!str_sizes->prts_str_size[i]) {
+                    (*prts_str)[i] = (const char **) calloc(reg->d_size.prts_str_size[i], sizeof(char *));
+                    str_sizes->prts_str_size[i] = reg->d_size.prts_str_size[i];
+                } else if (str_sizes->prts_str_size[i] < reg->d_size.prts_str_size[i]) {
+                    (*prts_str)[i] = (const char **) realloc(*prts_str[i], reg->d_size.prts_str_size[i]);
+                    memset((void*)(*prts_str)[i] + str_sizes->prts_str_size[i], 0, reg->d_size.prts_str_size[i] - str_sizes->prts_str_size[i]);
+                    str_sizes->prts_str_size[i] = reg->d_size.prts_str_size[i];
+                }
             }
         }
     }
@@ -85,12 +93,10 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, char ***sub_string
 
         /* Loop over all sub patterns */
         while (reg->patterns[i]) {
-            /* Clean the prts_str */
             int j = 0;
-            while (reg->prts_closure[i][j]) {
-                (*prts_str)[i][j] = NULL;
-                j++;
-            }
+
+            /* Clean the prts_str */
+            memset((void*)(*prts_str)[i], 0, (str_sizes) ? str_sizes->prts_str_size[i] : reg->d_size.prts_str_size[i]);
 
             if ((ret = _OS_Regex(reg->patterns[i], str, reg->prts_closure[i],
                                  (*prts_str)[i], reg->flags[i]))) {
@@ -128,12 +134,11 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, char ***sub_string
     /* If we don't need the sub strings */
 
     /* Loop on all sub patterns */
-    while (reg->patterns[i]) {
+    for (i = 0; reg->patterns[i]; i++) {
         if ((ret = _OS_Regex(reg->patterns[i], str, NULL, NULL, reg->flags[i]))) {
             w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
             return (ret);
         }
-        i++;
     }
 
     w_mutex_unlock((pthread_mutex_t *)&reg->mutex);

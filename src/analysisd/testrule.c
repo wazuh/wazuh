@@ -32,9 +32,9 @@
 void OS_ReadMSG(char *ut_str);
 
 /* Analysisd function */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
 
-void DecodeEvent(Eventinfo *lf);
+void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
 
 // Cleanup at exit
 static void onexit();
@@ -299,7 +299,7 @@ int main(int argc, char **argv)
     }
 
     w_init_queues();
-    
+
     /* Fix the levels/accuracy */
     {
         int total_rules;
@@ -353,6 +353,9 @@ void OS_ReadMSG(char *ut_str)
     char *ut_alertlevel = NULL;
     char *ut_rulelevel = NULL;
     char *ut_decoder_name = NULL;
+    regex_matching rule_match, decoder_match;
+    memset(&rule_match, 0, sizeof(regex_matching));
+    memset(&decoder_match, 0, sizeof(regex_matching));
 
     if (ut_str) {
         /* XXX Break apart string */
@@ -458,7 +461,7 @@ void OS_ReadMSG(char *ut_str)
             lf->size = strlen(lf->log);
 
             /* Decode event */
-            DecodeEvent(lf);
+            DecodeEvent(lf, &decoder_match);
 
             /* Run accumulator */
             if ( lf->decoder_info->accumulate == 1 ) {
@@ -495,8 +498,7 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check each rule */
-                else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt))
-                         == NULL) {
+                else if (currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match), !currently_rule) {
                     continue;
                 }
 

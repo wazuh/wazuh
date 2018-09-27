@@ -50,11 +50,11 @@
 
 /** Prototypes **/
 void OS_ReadMSG(int m_queue);
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
 static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
-void DecodeEvent(Eventinfo *lf);
+void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
 int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
@@ -941,7 +941,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 }
 
 /* Checks if the current_rule matches the event information */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match)
 {
     /* We check for:
      * decoded_as,
@@ -1023,7 +1023,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 
     /* Check if exist any regex for this rule */
     if (rule->regex) {
-        if (!OSRegex_Execute(lf->log, rule->regex)) {
+        if (!OSRegex_Execute_ex(lf->log, rule->regex, &rule_match->sub_strings, &rule_match->prts_str, &rule_match->d_size)) {
             return (NULL);
         }
     }
@@ -1066,8 +1066,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {
         field = FindField(lf, rule->fields[i]->name);
 
-        if (!(field && OSRegex_Execute(field, rule->fields[i]->regex)))
+        if (!(field && OSRegex_Execute_ex(field, rule->fields[i]->regex,
+            &rule_match->sub_strings, &rule_match->prts_str, &rule_match->d_size))) {
             return NULL;
+        }
     }
 
     /* Get TCP/IP packet information */
@@ -1383,7 +1385,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     if (rule->context == 1) {
         if (!(rule->context_opts & SAME_DODIFF)) {
             if (rule->event_search) {
-                if (!rule->event_search(lf, rule)) {
+                if (!rule->event_search(lf, rule, rule_match)) {
                     return (NULL);
                 }
             }
@@ -1408,7 +1410,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 #endif
 
         while (child_node) {
-            child_rule = OS_CheckIfRuleMatch(lf, child_node);
+            child_rule = OS_CheckIfRuleMatch(lf, child_node, rule_match);
             if (child_rule != NULL) {
                 return (child_rule);
             }
@@ -1954,6 +1956,8 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 void * w_decode_event_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char * msg = NULL;
+    regex_matching decoder_match;
+    memset(&decoder_match, 0, sizeof(regex_matching));
 
     while(1){
 
@@ -1976,7 +1980,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            DecodeEvent(lf);
+            DecodeEvent(lf, &decoder_match);
 
             queue_push_ex_block(decode_queue_event_output,lf);
 
@@ -1991,6 +1995,8 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     RuleInfo *currently_rule = NULL;
     int result;
     int t_id = (intptr_t)id;
+    regex_matching rule_match;
+    memset(&rule_match, 0, sizeof(regex_matching));
 
     while(1){
 
@@ -2093,7 +2099,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 continue;
             }
             /* Check each rule */
-            else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt))
+            else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
                         == NULL) {
                 continue;
             }

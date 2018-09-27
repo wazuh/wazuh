@@ -16,7 +16,7 @@
 
 
 /* Use the osdecoders to decode the received event */
-void DecodeEvent(Eventinfo *lf)
+void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
 {
     OSDecoderNode *node;
     OSDecoderNode *child_node;
@@ -54,7 +54,7 @@ void DecodeEvent(Eventinfo *lf)
 
         /* If prematch fails, go to the next osdecoder in the list */
         if (nnode->prematch) {
-            if (!(pmatch = OSRegex_Execute(lf->log, nnode->prematch))) {
+            if (!(pmatch = OSRegex_Execute_ex(lf->log, nnode->prematch, &decoder_match->sub_strings, &decoder_match->prts_str, &decoder_match->d_size))) {
                 continue;
             }
 
@@ -100,7 +100,7 @@ void DecodeEvent(Eventinfo *lf)
                         llog2 = lf->log;
                     }
 
-                    if ((cmatch = OSRegex_Execute(llog2, nnode->prematch))) {
+                    if ((cmatch = OSRegex_Execute_ex(llog2, nnode->prematch, &decoder_match->sub_strings, &decoder_match->prts_str, &decoder_match->d_size))) {
                         if (*cmatch != '\0') {
                             cmatch++;
                         }
@@ -174,7 +174,7 @@ void DecodeEvent(Eventinfo *lf)
                 }
 
                 /* If Regex does not match, return */
-                if (!(result = OSRegex_Execute(llog, nnode->regex))) {
+                if (!(result = OSRegex_Execute_ex(llog, nnode->regex, &decoder_match->sub_strings, &decoder_match->prts_str, &decoder_match->d_size))) {
                     if (nnode->get_next) {
                         child_node = child_node->next;
                         nnode = child_node->osdecoder;
@@ -189,19 +189,19 @@ void DecodeEvent(Eventinfo *lf)
                     regex_prev++;
                 }
 
-                for (i = 0; nnode->regex->sub_strings[i]; i++) {
+                for (i = 0; decoder_match->sub_strings[i]; i++) {
                     if (lf->nfields >= Config.decoder_order_size) {
                         merror("Regex has too many groups.");
                         return;
                     }
 
                     if (nnode->order[i])
-                        nnode->order[i](lf, nnode->regex->sub_strings[i], nnode->fields[i]);
+                        nnode->order[i](lf, decoder_match->sub_strings[i], nnode->fields[i]);
                     else
                         /* We do not free any memory used above */
-                        os_free(nnode->regex->sub_strings[i]);
+                        os_free(decoder_match->sub_strings[i]);
 
-                    nnode->regex->sub_strings[i] = NULL;
+                    decoder_match->sub_strings[i] = NULL;
                 }
             } else {
                 /* If we don't have a regex, we may leave now */

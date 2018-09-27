@@ -1345,7 +1345,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
             /* Set the event_search pointer */
             if (config_ruleinfo->if_matched_sid) {
-                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                     Search_LastSids;
 
                 /* Mark rules that match this id */
@@ -1364,14 +1364,14 @@ int Rules_OP_ReadRules(const char *rulefile)
                 OS_MarkGroup(NULL, config_ruleinfo);
 
                 /* Set function pointer */
-                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                     Search_LastGroups;
             } else if (config_ruleinfo->context) {
                 if ((config_ruleinfo->context == 1) &&
                         (config_ruleinfo->context_opts & SAME_DODIFF)) {
                     config_ruleinfo->context = 0;
                 } else {
-                    config_ruleinfo->event_search = (void *(*)(void *, void *))
+                    config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                         Search_LastEvents;
                 }
             }
