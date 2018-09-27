@@ -84,13 +84,13 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    start_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+    start_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select={'fields': ['value']},
                                                                filters={'key': 'fim-db-start-scan'})[0]['value']
     if start_timestamp == "000":
         return {'start': 'ND', 'end': 'ND'}
     else:
         start = datetime.fromtimestamp(float(start_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
-        end_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select=['value'],
+        end_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select={'fields': ['value']},
                                                                  filters={'key': 'fim-db-end-scan'})[0]['value']
         if end_timestamp == "000":
             return {'start': start, 'end': 'ND'}
@@ -112,14 +112,18 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    parameters = {"date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
-                  "uid", "type"}
+    parameters = ["date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
+                  "uid", "type"]
+    summary_parameters = ["date", "mtime", "file"]
 
     if select is None:
-        select = {'fields': parameters}
-
-    if not set(select['fields']).issubset(parameters):
-        raise WazuhException(1724, "Allowed select fields: {0}".format(', '.join(parameters)))
+        if summary:
+            select = {'fields': summary_parameters}
+        else:
+            select = {'fields': parameters}
+    else:
+        if not set(select['fields']).issubset(set(parameters)):
+            raise WazuhException(1724, "Allowed select fields: {0}".format(', '.join(parameters)))
 
     db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
                                                         sort=sort, search=search, count=True)
