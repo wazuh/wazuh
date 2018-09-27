@@ -3,6 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from operator import itemgetter
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh.ossec_queue import OssecQueue
@@ -61,18 +62,13 @@ def clear(agent_id=None, all_agents=False):
     :param all_agents: For all agents.
     :return: Message.
     """
+    agents = [agent_id] if not all_agents else map(itemgetter('id'), Agent.get_agents_overview(select={'fields': ['id']})['items'])
+
     wdb_conn = WazuhDBConnection()
-    table1 = "fim_entry"
-    action1 = "delete"
-    query1 = "agent {} sql {} from {}".format(agent_id, action1, table1)
-    wdb_conn.execute(query1, delete=True)
-    # update key fields which contains keys to value 000
-    table2 = "metadata"
-    action2 = "update"
-    new_value = "000"
-    query2 = "agent {} sql {} {} set value = '{}' where key like '{}%'".format(agent_id, action2, table2, new_value,
-                                                                               "fim_db")
-    wdb_conn.execute(query2, update=True)
+    for agent in agents:
+        wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)
+        # update key fields which contains keys to value 000
+        wdb_conn.execute("agent {} sql update metadata set value = '000' where key like 'fim_db%'".format(agent), update=True)
 
     return "Syscheck database deleted"
 
