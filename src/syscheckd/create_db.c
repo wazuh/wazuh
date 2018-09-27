@@ -12,6 +12,7 @@
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "syscheck_op.h"
+#include "wazuh_modules/wmodules.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
 #include "syscheck.h"
@@ -118,7 +119,7 @@ void remove_local_diff(){
     unsigned int i = 0;
 
     /* Delete all monitored files from hash table */
-    OSHashNode *curr_node_local;
+    OSHashNode *curr_node_local, *internal_node;
     OSHashNode *curr_node_fp;
 
     char *full_path = NULL;
@@ -142,7 +143,7 @@ void remove_local_diff(){
                     OSHash_Delete_ex(syscheck.local_hash, full_path);
                 }
                 curr_node_fp=curr_node_fp->next;
-            } while(curr_node_fp);
+            } while(curr_node_fp && curr_node_fp->key);
         }
     }
     free(full_path);
@@ -152,6 +153,7 @@ void remove_local_diff(){
         curr_node_local = syscheck.local_hash->table[i];
         if (curr_node_local && curr_node_local->key) {
             do{
+                internal_node = curr_node_local->next;
                 mdebug1("Deleting '%s'. Not monitored anymore.", curr_node_local->key);
                 if (rmdir_ex(curr_node_local->key) != 0) {
                     mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
@@ -160,9 +162,9 @@ void remove_local_diff(){
                 if (OSHash_Delete_ex(syscheck.local_hash, curr_node_local->key) != 0) {
                     mwarn("Could not delete from hash table '%s'", curr_node_local->key);
                 }
-                curr_node_local=curr_node_local->next;
+                curr_node_local = internal_node;
             }
-            while(curr_node_local);
+            while(curr_node_local && curr_node_local->key);
         }
     }
 
@@ -794,7 +796,7 @@ int run_dbcheck()
                     }
                     curr_node=curr_node->next;
                 }
-                while(curr_node);
+                while(curr_node && curr_node->key);
             }
         }
 
