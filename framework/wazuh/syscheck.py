@@ -118,8 +118,15 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
         if not set(select['fields']).issubset(set(parameters)):
             raise WazuhException(1724, "Allowed select fields: {0}".format(', '.join(parameters)))
 
+    if 'hash' in filters:
+        or_filters = {'md5': filters['hash'], 'sha1': filters['hash'], 'sha256': filters['hash']}
+        del filters['hash']
+    else:
+        or_filters = {}
+
     db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
-                                                        sort=sort, search=search, filters=filters, count=True)
+                                                        sort=sort, search=search, filters=filters, count=True,
+                                                        or_filters=or_filters)
     if "mtime" in select['fields']:
         for item in db_query[0]:
             # if mtime field is 0, returns "ND"
