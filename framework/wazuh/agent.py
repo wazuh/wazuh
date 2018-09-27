@@ -1645,7 +1645,8 @@ class Agent:
             file = open("{0}/{1}".format(common.groups_path,filename),"r")
             group_readed = file.read()
             group_readed = group_readed.strip()
-            multi_group_list.append(group_readed)
+            if filename != agent_id:
+                multi_group_list.append(group_readed)
             file.close()
 
         # Check if it is a multi group
