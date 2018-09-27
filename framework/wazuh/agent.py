@@ -289,7 +289,7 @@ class Agent:
         wdb_conn = WazuhDBConnection()
 
         query = "agent {} sql select {} from {}".format(self.id, ','.join(select['fields']), table)
-        print("query ----> " + query)
+
         if filters:
             for key, value in filters.items():
                 query += " and {} = '{}'".format(key, value)
