@@ -14,7 +14,7 @@ about: Test suite for cluster.
 
 - [ ] Installation by default: Run `/var/ossec/bin/wazuh-clusterd -f`
 - [ ] Installation by default - centos6: Run `/var/ossec/bin/wazuh-clusterd -f`
-- [ ] Installation by default: Run `/var/ossec/bin/cluster-control -n`
+- [ ] Installation by default: Run `/var/ossec/bin/cluster-control -l`
 
 ## Configuration
 
@@ -30,7 +30,7 @@ about: Test suite for cluster.
 - [ ] Synchronization process when one of the clients is down.
 - [ ] Stop master and start it after some time.
 - [ ] File level tests: Run automatic tests and review KO files.
-- [ ] check `cluster_control -n`
+- [ ] check `cluster_control -l`
 - [ ] check `cluster_control -a`
 - [ ] check `cluster_control -i`
 
