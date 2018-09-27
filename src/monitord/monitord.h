@@ -29,6 +29,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
 
 /* Parse readed config into JSON format */
 cJSON *getMonitorInternalOptions(void);
+cJSON *getReportsOptions(void);
 size_t moncom_dispatch(char * command, char ** output);
 size_t moncom_getconfig(const char * section, char ** output);
 void * moncom_main(__attribute__((unused)) void * arg);

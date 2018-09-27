@@ -183,6 +183,7 @@ int main(int argc, char ** argv) {
         pthread_join(worker_pool[i], NULL);
     }
 
+    wnotify_close(notify_queue);
     free(worker_pool);
     pthread_join(thread_gc, NULL);
     wdb_close_all();
@@ -239,10 +240,10 @@ void * run_dealer(__attribute__((unused)) void * args) {
                     peer, strerror(errno), errno);
             goto error;
         }
-        mdebug2("New client enqueued.");
+
+        mdebug1("New client connected (%d).", peer);
     }
 
-    wnotify_close(notify_queue);
 error:
     close(sock);
     unlink(WDB_LOCAL_SOCK);
@@ -260,9 +261,14 @@ void * run_worker(__attribute__((unused)) void * args) {
         // Dequeue peer
         w_mutex_lock(&queue_mutex);
 
-        switch (wnotify_wait(notify_queue, 1000)) {
+        switch (wnotify_wait(notify_queue, 100)) {
         case -1:
-            merror_exit("at run_worker(): wnotify_wait(): %s", strerror(errno));
+            if (errno == EINTR) {
+                mdebug1("at run_worker(): wnotify_wait(): %s", strerror(EINTR));
+            } else {
+                merror("at run_worker(): wnotify_wait(): %s", strerror(errno));
+            }
+
             w_mutex_unlock(&queue_mutex);
             continue;
 
@@ -276,8 +282,6 @@ void * run_worker(__attribute__((unused)) void * args) {
             merror("at run_worker(): wnotify_delete(%d): %s (%d)",
                     peer, strerror(errno), errno);
         }
-        mdebug1("Dispatching new client thread(%u) peer(%d)",
-                (unsigned int)pthread_self(), peer);
 
         w_mutex_unlock(&queue_mutex);
 

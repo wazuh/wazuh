@@ -137,5 +137,9 @@
 
     "sync_options": {
         "get_agentinfo_newer_than": 1800
+    },
+
+    "distributed_api": {
+        "enabled": true
     }
 }

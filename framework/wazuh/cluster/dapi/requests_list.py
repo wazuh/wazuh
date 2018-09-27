@@ -66,6 +66,10 @@ functions = {
         'function': Agent.get_upgrade_result,
         'type': 'distributed_master'
     },
+    '/agents/:agent_id/config/:component/:configuration': {
+        'function': Agent.get_config,
+        'type': 'distributed_master'
+    },
     'PUT/agents/:agent_id/upgrade': {
         'function': Agent.upgrade_agent,
         'type': 'distributed_master'

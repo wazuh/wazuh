@@ -781,7 +781,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
                 serialized_response = ['json', json.dumps({node:data for node,data in response})]
             return serialized_response
         elif command == 'get_config':
-            response = self.manager.get_configuration()
+            response = self.server.manager.get_configuration()
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
 

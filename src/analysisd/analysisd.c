@@ -834,38 +834,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         mdebug1("Custom output found.!");
     }
 
-    /* Init the archives writer queue */
-    writer_queue = queue_init(getDefine_Int("analysisd", "archives_queue_size", 0, 2000000));
-
-    /* Init the alerts log writer queue */
-    writer_queue_log = queue_init(getDefine_Int("analysisd", "alerts_queue_size", 0, 2000000));
-
-    /* Init statistical the log writer queue */
-    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "statistical_queue_size", 0, 2000000));
-
-    /* Init the firewall log writer queue */
-    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "firewall_queue_size", 0, 2000000));
-
-    /* Init the FTS log writer queue */
-    writer_queue_log_fts = queue_init(getDefine_Int("analysisd", "fts_queue_size", 0, 2000000));
-
-    /* Init the decode syscheck queue input */
-    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decode_syscheck_queue_size", 0, 2000000));
-
-    /* Init the decode syscollector queue input */
-    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decode_syscollector_queue_size", 0, 2000000));
-
-    /* Init the decode rootcheck queue input */
-    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
-
-    /* Init the decode hostinfo queue input */
-    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
-
-    /* Init the decode event queue input */
-    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));
-
-    /* Init the decode event queue output */
-    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
+    w_init_queues();
 
     /* Queue stats */
     w_get_initial_queues_size();
@@ -2595,4 +2564,39 @@ cpu_info *get_cpu_info_bsd(){
     return info;
 #endif
     return NULL;
+}
+
+void w_init_queues(){
+     /* Init the archives writer queue */
+    writer_queue = queue_init(getDefine_Int("analysisd", "archives_queue_size", 0, 2000000));
+
+    /* Init the alerts log writer queue */
+    writer_queue_log = queue_init(getDefine_Int("analysisd", "alerts_queue_size", 0, 2000000));
+
+    /* Init statistical the log writer queue */
+    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "statistical_queue_size", 0, 2000000));
+
+    /* Init the firewall log writer queue */
+    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "firewall_queue_size", 0, 2000000));
+
+    /* Init the FTS log writer queue */
+    writer_queue_log_fts = queue_init(getDefine_Int("analysisd", "fts_queue_size", 0, 2000000));
+
+    /* Init the decode syscheck queue input */
+    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decode_syscheck_queue_size", 0, 2000000));
+
+    /* Init the decode syscollector queue input */
+    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decode_syscollector_queue_size", 0, 2000000));
+
+    /* Init the decode rootcheck queue input */
+    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
+
+    /* Init the decode hostinfo queue input */
+    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
+
+    /* Init the decode event queue input */
+    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));
+
+    /* Init the decode event queue output */
+    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
 }
