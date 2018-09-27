@@ -336,10 +336,6 @@ functions = {
         'function': syscheck.run,
         'type': 'distributed_master'
     },
-    'DELETE/syscheck': {
-        'function': syscheck.clear,
-        'type': 'distributed_master'
-    },
 
     # Syscollector
     '/syscollector/:agent_id/os': {
@@ -422,6 +418,10 @@ functions = {
     },
     '/experimental/ciscat/results': {
         'function': ciscat.get_ciscat_results,
+        'type': 'distributed_master'
+    },
+    'DELETE/experimental/syscheck': {
+        'function': syscheck.clear,
         'type': 'distributed_master'
     },
 }
