@@ -782,6 +782,18 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     char multi_group_cpy[PATH_MAX+1] = {0};
                     snprintf(multi_group_cpy,PATH_MAX + 1,"%s",centralized_group);
 
+                    /* Check if the multigroup is well formed */
+                    if(strstr(multi_group_cpy,"--") || (strnlen(multi_group_cpy,PATH_MAX) == 1 && strchr(multi_group_cpy,'-'))){
+                        merror("Invalid multigroup: %.255s",multi_group_cpy);
+                        snprintf(response, 2048, "ERROR: Invalid multigroup: %s\n\n", multi_group_cpy);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        continue;
+                    }
+
                     char *group = strtok(multi_group_cpy, delim);
                     int error = 0;
 
