@@ -99,7 +99,7 @@ def last_scan(agent_id):
             return {'start': start, 'end': end}
 
 
-def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="", filters={}):
+def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
     """
     Return a list of files from the database that match the filters
 
