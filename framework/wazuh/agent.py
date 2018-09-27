@@ -1484,10 +1484,7 @@ class Agent:
             raise WazuhException(1711, group_id)
 
         # Create group in /var/multigroups
-        group_def_path = "{0}/default".format(common.shared_path)
-
         try:
-            copytree(group_def_path, group_path)
             chown_r(group_path, common.ossec_uid, common.ossec_gid)
             chmod_r(group_path, 0o660)
             chmod(group_path, 0o770)
