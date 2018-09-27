@@ -15,7 +15,7 @@
 /* Release all the memory created by the compilation/execution phases */
 void OSRegex_FreePattern(OSRegex *reg)
 {
-    int i = 0, j;
+    int i = 0;
 
     w_mutex_lock((pthread_mutex_t *)&reg->mutex);
     /* Free the patterns */
@@ -48,26 +48,23 @@ void OSRegex_FreePattern(OSRegex *reg)
         os_free(reg->prts_closure);
     }
 
-    /* Free the matching array*/
-    for (j = 0; j < reg->instances; j++) {
-        /* Free the str */
+    /* Free the str */
+    if (reg->d_prts_str) {
         i = 0;
-        if (reg->matching[j]->prts_str) {
-            while (reg->matching[j]->prts_str[i]) {
-                free(reg->matching[j]->prts_str[i]);
-                i++;
-            }
-            os_free(reg->matching[j]->prts_str);
+        while (reg->d_prts_str[i]) {
+            free(reg->d_prts_str[i]);
+            i++;
         }
-
-        /* Free the sub strings */
-        if (reg->matching[j]->sub_strings) {
-            OSRegex_FreeSubStrings(reg, j);
-            os_free(reg->matching[j]->sub_strings);
-        }
-        free(reg->matching[j]);
+        free(reg->d_prts_str);
+        reg->d_prts_str = NULL;
     }
-    free(reg->matching);
+
+    /* Free the sub strings */
+    if (reg->d_sub_strings) {
+        w_FreeArray(reg->d_sub_strings);
+        free(reg->d_sub_strings);
+        reg->d_sub_strings = NULL;
+}
 
     w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
     return;

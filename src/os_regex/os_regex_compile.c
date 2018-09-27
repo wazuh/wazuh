@@ -16,11 +16,6 @@
 #include "shared.h"
 #include "os_regex_internal.h"
 
-/* Alloc sizes */
-static unsigned glob_prts_size = 0;
-static unsigned prts_size = 0;
-static unsigned max_prts_size = 0;
-
 
 /* Compile a regular expression to be used later
  * Allowed flags are:
@@ -35,7 +30,8 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     size_t count = 0;
     int end_of_string = 0;
     int parenthesis = 0;
-
+    unsigned prts_size = 0;
+    unsigned max_prts_size = 0;
     char *pt;
     char *new_str;
     char *new_str_free = NULL;
@@ -47,11 +43,13 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
     /* Initialize OSRegex structure */
     reg->error = 0;
-    reg->instances = 1;
     reg->patterns = NULL;
     reg->flags = NULL;
+    reg->d_prts_str = NULL;
+    reg->d_sub_strings = NULL;
     reg->prts_closure = NULL;
     reg->raw = NULL;
+    memset(&reg->d_size, 0, sizeof(regex_dynamic_size));
     reg->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
     /* The pattern can't be null */
@@ -61,8 +59,6 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     }
 
     reg->raw = strdup(pattern);
-    reg->matching = (regex_matching **) malloc(sizeof(regex_matching *));
-    *reg->matching = (regex_matching *) calloc(1, sizeof(regex_matching));
 
     /* Maximum size of the pattern */
     if (strlen(pattern) > OS_PATTERN_MAXSIZE) {
@@ -189,10 +185,10 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
     /* For the substrings */
     if ((prts_size > 0) && (flags & OS_RETURN_SUBSTRING)) {
-        glob_prts_size = count + 1;
-        reg->prts_closure = (const char ** *) calloc(glob_prts_size, sizeof(const char **));
-        reg->matching[0]->prts_str = (const char ** *) calloc(glob_prts_size, sizeof(const char **));
-        if (!reg->prts_closure || !reg->matching[0]->prts_str) {
+        reg->prts_closure = (const char ** *) calloc(count + 1, sizeof(const char **));
+        reg->d_size.prts_str_alloc_size = (count + 1) * sizeof(const char **);
+        reg->d_prts_str = (const char ** *) calloc(1, reg->d_size.prts_str_alloc_size);
+        if (!reg->prts_closure || !reg->d_prts_str) {
             reg->error = OS_REGEX_OUTOFMEMORY;
             goto compile_error;
         }
@@ -206,7 +202,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
         /* The parenthesis closure if set */
         if (reg->prts_closure) {
             reg->prts_closure[i] = NULL;
-            reg->matching[0]->prts_str[i] = NULL;
+            reg->d_prts_str[i] = NULL;
         }
     }
     i = 0;
@@ -274,8 +270,15 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
                 /* Allocate the memory */
                 reg->prts_closure[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
-                reg->matching[0]->prts_str[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
-                if ((reg->prts_closure[i] == NULL) || (reg->matching[0]->prts_str[i] == NULL)) {
+                if (!reg->d_size.prts_str_size) {
+                    reg->d_size.prts_str_size = calloc(2, sizeof(int));
+                } else {
+                    reg->d_size.prts_str_size = realloc(reg->d_size.prts_str_size, (i + 2) * sizeof(int));
+                    reg->d_size.prts_str_size[i + 1] = 0;
+                }
+                reg->d_size.prts_str_size[i] = (prts_size + 1) * sizeof(const char *);
+                reg->d_prts_str[i] = (const char **) calloc(1, reg->d_size.prts_str_size[i]);
+                if ((reg->prts_closure[i] == NULL) || (reg->d_prts_str[i] == NULL)) {
                     reg->error = OS_REGEX_OUTOFMEMORY;
                     goto compile_error;
                 }
@@ -291,7 +294,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
                         /* Sett the pointer to the string */
                         reg->prts_closure[i][tmp_int] = tmp_str;
-                        reg->matching[0]->prts_str[i][tmp_int] = NULL;
+                        reg->d_prts_str[i][tmp_int] = NULL;
 
                         tmp_int++;
                     }
@@ -314,8 +317,9 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
 
     /* Allocate sub string for the maximum number of parenthesis */
-    reg->matching[0]->sub_strings = (char **) calloc(max_prts_size + 1, sizeof(char *));
-    if (reg->matching[0]->sub_strings == NULL) {
+    reg->d_size.sub_strings_size = (max_prts_size + 1) * sizeof(char *);
+    reg->d_sub_strings = (char **) calloc(1, reg->d_size.sub_strings_size);
+    if (reg->d_sub_strings == NULL) {
         reg->error = OS_REGEX_OUTOFMEMORY;
         goto compile_error;
     }
@@ -334,43 +338,4 @@ compile_error:
     OSRegex_FreePattern(reg);
 
     return (0);
-}
-
-int OSRegex_SetInstances(OSRegex *reg, int number) {
-    int i, new_size, retval = 1;
-    unsigned j;
-
-    w_mutex_lock((pthread_mutex_t *)&reg->mutex);
-    new_size = number + 1;
-    if (new_size <= reg->instances) {
-        retval = 0;
-        goto end;
-    }
-
-    reg->matching = realloc(reg->matching, new_size * sizeof(regex_matching *));
-    memset(reg->matching + reg->instances, 0, (new_size - reg->instances) * sizeof(regex_matching *));
-
-    for (i = reg->instances; i < new_size; i++) {
-        reg->matching[i] = (regex_matching *) calloc(1, sizeof(regex_matching));
-
-        // Allocate sub string for the maximum number of parenthesis
-        reg->matching[i]->sub_strings = (char **) calloc(max_prts_size + 1, sizeof(char *));
-        if (!reg->matching[i]->sub_strings) {
-            goto end;
-        }
-
-        reg->matching[i]->prts_str = (const char ** *) calloc(glob_prts_size, sizeof(const char **));
-        for (j = 0; j < glob_prts_size; j++) {
-            reg->matching[i]->prts_str[j] = (const char **) calloc(prts_size + 1, sizeof(const char *));
-        }
-    }
-
-    reg->instances = new_size;
-    retval = 0;
-end:
-    w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
-    if (retval) {
-        reg->error = OS_REGEX_SET_INST_ERR;
-    }
-    return retval;
 }

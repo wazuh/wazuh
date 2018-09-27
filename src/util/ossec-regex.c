@@ -65,11 +65,10 @@ int main(int argc, char **argv)
         }
 
         string = strdup(msg);
-
-        if (OSRegex_Execute(string, &regex, 0)) {
+        if (OSRegex_Execute(string, &regex)) {
             printf("+OSRegex_Execute: %s\n", string);
-            for (i = 0; regex.matching[0]->sub_strings[i]; i++) {
-                printf(" -Substring: %s\n", regex.matching[0]->sub_strings[i]);
+            for (i = 0; regex.d_sub_strings[i]; i++) {
+                printf(" -Substring: %s\n", regex.d_sub_strings[i]);
             }
         }
 
@@ -85,7 +84,7 @@ int main(int argc, char **argv)
             printf("+OS_Match2      : %s\n", string);
         }
 
-        OSRegex_FreeSubStrings(&regex, 0);
+        w_FreeArray(regex.d_sub_strings);
         free(string);
     }
     return (0);
