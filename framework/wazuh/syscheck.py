@@ -135,4 +135,12 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
             else:
                 item['mtime'] = datetime.fromtimestamp(float(item['mtime'])).strftime('%Y-%m-%d %H:%M:%S')
 
+    if "date" in select['fields']:
+        for item in db_query[0]:
+            # if mtime field is 0, returns "ND"
+            if item['date'] == 0:
+                item['date'] = "ND"
+            else:
+                item['date'] = datetime.fromtimestamp(float(item['date'])).strftime('%Y-%m-%d %H:%M:%S')
+
     return {'totalItems': db_query[1], 'items': db_query[0]}
