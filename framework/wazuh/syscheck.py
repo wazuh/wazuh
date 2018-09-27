@@ -126,7 +126,7 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
             raise WazuhException(1724, "Allowed select fields: {0}".format(', '.join(parameters)))
 
     db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
-                                                        sort=sort, search=search, count=True)
+                                                        sort=sort, search=search, filters=filters, count=True)
     if "mtime" in select['fields']:
         for item in db_query[0]:
             # if mtime field is 0, returns "ND"
