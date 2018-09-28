@@ -419,7 +419,7 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
-int wdb_scan_info_initialize (wdb_t *wdb, char *path);
+int wdb_scan_info_init (wdb_t *wdb, char *path);
 int wdb_scan_info_find(wdb_t * wdb, const char * module);
 int wdb_scan_info_insert (wdb_t * wdb, const char *module);
 int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value);

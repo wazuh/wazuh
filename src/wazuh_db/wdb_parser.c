@@ -274,10 +274,11 @@ int wdb_parse(char * input, char * output) {
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
-    int ftype;
     char * checksum;
-    int result;
     char buffer[OS_MAXSTR + 1];
+    int ftype;
+    int result;
+    long ts;
 
     if (next = strchr(input, ' '), !next) {
         mdebug1("Invalid Syscheck query syntax.");
@@ -289,12 +290,12 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     curr = input;
     *next++ = '\0';
 
-    if (strcmp(curr, "get") == 0) {
-        if (result = wdb_metadata_get_entry(wdb, next, buffer), result < 0) {
-            mdebug1("Cannot get fim metadata.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot get fim metadata.");
+    if (strcmp(curr, "scan_info_get") == 0) {
+        if (result = wdb_scan_info_get(wdb, "fim", next, &ts), result < 0) {
+            mdebug1("Cannot get fim scan info.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot get fim scan info.");
         } else {
-            snprintf(output, OS_MAXSTR + 1, "ok %s", buffer);
+            snprintf(output, OS_MAXSTR + 1, "ok %ld", ts);
         }
 
         return result;
@@ -326,8 +327,18 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
-    } else if (strcmp(curr, "metadata") == 0) {
-        if (result = wdb_fim_fill_metadata(wdb, next), result < 0) {
+    } else if (strcmp(curr, "scan_info_update") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, ' '), !next) {
+            mdebug1("Invalid scan_info fim query syntax.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        ts = atol(next);
+        if (result = wdb_scan_info_update(wdb, "fim", curr, ts), result < 0) {
             mdebug1("Cannot save fim control message.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
         } else {
@@ -336,17 +347,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         return result;
     } else if (strcmp(curr, "control") == 0) {
-        curr = next;
-
-        if (next = strchr(curr, ' '), !next) {
-            mdebug1("Invalid Syscheck query syntax.");
-            mdebug2("Syscheck query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        *next++ = '\0';
-        if (result = wdb_metadata_fim_check_control(wdb, next), result < 0) {
+        if (result = wdb_scan_info_fim_checks_control(wdb, next), result < 0) {
             mdebug1("Cannot save fim check_control message.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
         } else {

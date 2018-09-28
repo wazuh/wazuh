@@ -819,7 +819,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
-        snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck metadata %s %ld",
+        snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_update %s %ld",
                 lf->agent_id,
                 key,
                 (long int)value
@@ -829,7 +829,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         switch (db_result) {
         case -2:
-            merror("FIM decoder: Bad result from metadata query.");
+            merror("FIM decoder: Bad result from scan_info query.");
             // Fallthrough
         case -1:
             os_free(wazuhdb_query);
@@ -846,7 +846,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
                 if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, ts_end) <= 0) {
                     os_free(ts_end);
-                    merror("Unable to add metadata to hash table for agent: %s",
+                    merror("Unable to add scan_info to hash table for agent: %s",
                             lf->agent_id);
                 }
             }
@@ -857,9 +857,8 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         // Start scan 3rd_check=2nd_check 2nd_check=1st_check 1st_check=value
         if (strcmp(key, HC_FIM_DB_SFS) == 0) {
-            snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck control %s %ld",
+            snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck control %ld",
                     lf->agent_id,
-                    key,
                     (long int)value
             );
 
@@ -867,7 +866,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
             switch (db_result) {
             case -2:
-                merror("FIM decoder: Bad result from control query.");
+                merror("FIM decoder: Bad result from checks control query.");
                 // Fallthrough
             case -1:
                 os_free(wazuhdb_query);
