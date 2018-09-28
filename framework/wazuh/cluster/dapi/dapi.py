@@ -53,7 +53,7 @@ def distribute_function(input_json, pretty=False, debug=False):
         # Second case: forward the request
         # Only the master node will forward a request, and it will only be forwarded if its type is distributed_master
         elif request_type == 'distributed_master' and node_info['type'] == 'master':
-            return forward_request(input_json, node_info['node'], pretty)
+            return forward_request(input_json, node_info['node'], pretty, debug)
 
         # Last case: execute the request remotely.
         # A request will only be executed remotely if it was made in a worker node and its type isn't local_any
@@ -62,6 +62,8 @@ def distribute_function(input_json, pretty=False, debug=False):
     except WazuhException as e:
         return print_json(data=e.message, error=e.code, pretty=pretty)
     except Exception as e:
+        if debug:
+            raise
         return print_json(data=str(e), error=1000, pretty=pretty)
 
 
@@ -138,7 +140,7 @@ def execute_remote_request(input_json, pretty):
     return print_json(data=data, pretty=pretty, error=error)
 
 
-def forward_request(input_json, master_name, pretty):
+def forward_request(input_json, master_name, pretty, debug):
     """
     Forwards a request to the node who has all available information to answer it. This function is called when a
     distributed_master function is used. Only the master node calls this function. An API request will only be forwarded
@@ -147,6 +149,7 @@ def forward_request(input_json, master_name, pretty):
     :param input_json: API request: Example: {"function": "/agents", "arguments":{"limit":5}, "ossec_path": "/var/ossec", "from_cluster":false}
     :param master_name: Name of the master node. Necessary to check whether to forward it to a worker node or not.
     :param pretty: JSON pretty print
+    :param debug: Debug
     :return: a JSON response.
     """
     def forward(node_name, return_none=False):
@@ -164,7 +167,7 @@ def forward_request(input_json, master_name, pretty):
             command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
             if command == 'dapi':
                 # if it's the master, execute the request directly
-                response = json.loads(distribute_function(input_json))
+                response = json.loads(distribute_function(input_json, debug=debug))
             else:
                 # if it's a worker, forward it
                 response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
