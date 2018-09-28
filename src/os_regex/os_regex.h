@@ -94,7 +94,7 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg) __attribute__((nonnul
  * Returns end of str on success or NULL on error.
  * The error code is set on reg->error.
  */
- const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, char ***sub_strings, const char ****prts_str, regex_dynamic_size *str_sizes) __attribute__((nonnull(2)));
+ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match) __attribute__((nonnull(2)));
 
 /* Release all the memory created by the compilation/execution phases */
 void OSRegex_FreePattern(OSRegex *reg) __attribute__((nonnull));

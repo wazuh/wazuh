@@ -50,7 +50,7 @@ void *t_regex(__attribute__((unused)) void * id){
     while (1) {
         counter = (t_id + counter + 1) % input_number;
 
-        if (OSRegex_Execute_ex(inputs[counter], &second_regex, &str_match.sub_strings, &str_match.prts_str, &str_match.d_size)) {
+        if (OSRegex_Execute_ex(inputs[counter], &second_regex, &str_match)) {
             ptr = msg;
             size = snprintf(ptr, 1024, "+ [Thread %d][SECOND_PATTERN_MATCH]: %s\n", t_id, inputs[counter]);
             ptr += size;
@@ -61,7 +61,7 @@ void *t_regex(__attribute__((unused)) void * id){
             printf("%s\n", msg);
         }
 
-        if (OSRegex_Execute_ex(inputs[counter], &regex, &str_match.sub_strings, &str_match.prts_str, &str_match.d_size)) {
+        if (OSRegex_Execute_ex(inputs[counter], &regex, &str_match)) {
             ptr = msg;
             size = snprintf(ptr, 1024, "+ [Thread %d][FIRST_PATTERN_MATCH]: %s\n", t_id, inputs[counter]);
             ptr += size;
@@ -73,7 +73,7 @@ void *t_regex(__attribute__((unused)) void * id){
         }
 
 
-        if (OSRegex_Execute_ex(inputs[counter], &third_regex, &str_match.sub_strings, &str_match.prts_str, &str_match.d_size)) {
+        if (OSRegex_Execute_ex(inputs[counter], &third_regex, &str_match)) {
             ptr = msg;
             size = snprintf(ptr, 1024, "+ [Thread %d][THIRD_PATTERN_MATCH]: %s\n", t_id, inputs[counter]);
             ptr += size;

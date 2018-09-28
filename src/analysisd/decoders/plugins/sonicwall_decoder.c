@@ -89,7 +89,7 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match)
     lf->decoder_info->type = SYSLOG;
 
     /* First run regex to extract the severity, cat and id */
-    if (!(tmp_str = OSRegex_Execute_ex(lf->log, __sonic_regex_prid, &decoder_match->sub_strings, &decoder_match->prts_str, &decoder_match->d_size))) {
+    if (!(tmp_str = OSRegex_Execute_ex(lf->log, __sonic_regex_prid, decoder_match))) {
         return (NULL);
     }
 
@@ -121,7 +121,7 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match)
     }
 
     /* Get ips and ports */
-    if (!(tmp_str = OSRegex_Execute_ex(tmp_str, __sonic_regex_sdip, &decoder_match->sub_strings, &decoder_match->prts_str, &decoder_match->d_size))) {
+    if (!(tmp_str = OSRegex_Execute_ex(tmp_str, __sonic_regex_sdip, decoder_match))) {
         return (NULL);
     }
     if (decoder_match->sub_strings[0] &&
@@ -218,7 +218,7 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match)
         }
 
         /* First run regex to extract the severity and id */
-        if (!OSRegex_Execute_ex(tmp_str, __sonic_regex_prox, &decoder_match->sub_strings, &decoder_match->prts_str, &decoder_match->d_size)) {
+        if (!OSRegex_Execute_ex(tmp_str, __sonic_regex_prox, decoder_match)) {
             return (NULL);
         }
 

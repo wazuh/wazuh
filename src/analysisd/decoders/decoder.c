@@ -54,7 +54,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
 
         /* If prematch fails, go to the next osdecoder in the list */
         if (nnode->prematch) {
-            if (!(pmatch = OSRegex_Execute_ex(lf->log, nnode->prematch, &decoder_match->sub_strings, &decoder_match->prts_str, &decoder_match->d_size))) {
+            if (!(pmatch = OSRegex_Execute_ex(lf->log, nnode->prematch, decoder_match))) {
                 continue;
             }
 
@@ -100,7 +100,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
                         llog2 = lf->log;
                     }
 
-                    if ((cmatch = OSRegex_Execute_ex(llog2, nnode->prematch, &decoder_match->sub_strings, &decoder_match->prts_str, &decoder_match->d_size))) {
+                    if ((cmatch = OSRegex_Execute_ex(llog2, nnode->prematch, decoder_match))) {
                         if (*cmatch != '\0') {
                             cmatch++;
                         }
@@ -174,7 +174,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
                 }
 
                 /* If Regex does not match, return */
-                if (!(result = OSRegex_Execute_ex(llog, nnode->regex, &decoder_match->sub_strings, &decoder_match->prts_str, &decoder_match->d_size))) {
+                if (!(result = OSRegex_Execute_ex(llog, nnode->regex, decoder_match))) {
                     if (nnode->get_next) {
                         child_node = child_node->next;
                         nnode = child_node->osdecoder;

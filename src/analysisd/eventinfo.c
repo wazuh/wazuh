@@ -377,7 +377,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 
         /* If regex does not match, go to next */
         if (rule->if_matched_regex) {
-            if (!OSRegex_Execute_ex(lf->log, rule->if_matched_regex, &rule_match->sub_strings, &rule_match->prts_str, &rule_match->d_size)) {
+            if (!OSRegex_Execute_ex(lf->log, rule->if_matched_regex, rule_match)) {
                 /* Didn't match */
                 continue;
             }

@@ -1023,7 +1023,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
 
     /* Check if exist any regex for this rule */
     if (rule->regex) {
-        if (!OSRegex_Execute_ex(lf->log, rule->regex, &rule_match->sub_strings, &rule_match->prts_str, &rule_match->d_size)) {
+        if (!OSRegex_Execute_ex(lf->log, rule->regex, rule_match)) {
             return (NULL);
         }
     }
@@ -1066,8 +1066,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {
         field = FindField(lf, rule->fields[i]->name);
 
-        if (!(field && OSRegex_Execute_ex(field, rule->fields[i]->regex,
-            &rule_match->sub_strings, &rule_match->prts_str, &rule_match->d_size))) {
+        if (!(field && OSRegex_Execute_ex(field, rule->fields[i]->regex, rule_match))) {
             return NULL;
         }
     }

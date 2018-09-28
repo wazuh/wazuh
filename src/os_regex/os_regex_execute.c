@@ -29,17 +29,28 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
  */
 const char *OSRegex_Execute(const char *str, OSRegex *reg)
 {
-    return OSRegex_Execute_ex(str, reg, NULL, NULL, NULL);
+    return OSRegex_Execute_ex(str, reg, NULL);
 }
 
-const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, char ***sub_strings, const char ****prts_str, regex_dynamic_size *str_sizes)
+const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match)
 {
+    char ***sub_strings;
+    const char ****prts_str;
+    regex_dynamic_size *str_sizes;
     const char *ret;
     int i;
 
-    if (!sub_strings) {
-        sub_strings = &reg->d_sub_strings;
+    if (regex_match) {
+        sub_strings = &regex_match->sub_strings;
+        prts_str = &regex_match->prts_str;
+        str_sizes = &regex_match->d_size;
     } else {
+        sub_strings = &reg->d_sub_strings;
+        prts_str = &reg->d_prts_str;
+        str_sizes = &reg->d_size;
+    }
+
+    if (regex_match && sub_strings) {
         if (str_sizes->sub_strings_size < reg->d_size.sub_strings_size &&
             (*sub_strings = (char **) realloc(*sub_strings, reg->d_size.sub_strings_size))) {
             memset((void*)*sub_strings + str_sizes->sub_strings_size, 0, reg->d_size.sub_strings_size - str_sizes->sub_strings_size);
@@ -49,9 +60,7 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, char ***sub_string
         w_FreeArray(*sub_strings);
     }
 
-    if (!prts_str) {
-        prts_str = &reg->d_prts_str;
-    } else {
+    if (regex_match && prts_str) {
         if (str_sizes->prts_str_alloc_size < reg->d_size.prts_str_alloc_size) {
             *prts_str = (const char ***) realloc(*prts_str, reg->d_size.prts_str_alloc_size);
             memset((void*)*prts_str + str_sizes->prts_str_alloc_size, 0, reg->d_size.prts_str_alloc_size - str_sizes->prts_str_alloc_size);
