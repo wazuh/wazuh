@@ -110,11 +110,6 @@ int req_push(char * buffer, size_t length) {
 
 #ifndef WIN32
 
-        if(!OSHash_Get(allowed_sockets,target)){
-            merror("At req_push(): Target '%s' not allowed", target);
-            return -1;
-        }
-
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];
             snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
@@ -122,7 +117,7 @@ int req_push(char * buffer, size_t length) {
             if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
                 switch (errno) {
                 case ECONNREFUSED:
-                    merror("At req_push(): Target '%s' refused connection. Is Active Response enabled?", target);
+                    merror("At req_push(): Target '%s' refused connection. The component might be disabled", target);
                     break;
 
                 default:
@@ -130,7 +125,7 @@ int req_push(char * buffer, size_t length) {
                 }
 
                 // Example: #!-req 16 err Permission denied
-                snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, errno == ENOENT ? "Invalid target" : strerror(errno));
+                snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err %s", counter, strerror(errno));
                 send_msg(response, -1);
 
                 return -1;
@@ -201,11 +196,10 @@ void * req_receiver(__attribute__((unused)) void * arg) {
     ssize_t length = 0;
     req_node_t * node;
     char *buffer = NULL;
-    char *buffer_response = NULL;
     char response[REQ_RESPONSE_LENGTH];
     int rlen;
 
-    
+
 
     while (1) {
 
@@ -238,7 +232,6 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         }
 #else
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        os_calloc(OS_MAXSTR, sizeof(char), buffer_response);
         // In Unix, forward request to target socket
         if (strncmp(node->target, "agent", 5) == 0) {
             length = agcom_dispatch(node->buffer, &buffer);
@@ -248,37 +241,35 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             mdebug2("req_receiver(): sending '%s' to socket", node->buffer);
 
             // Send data
-
-            merror("SENDING MSG: %s ",node->buffer);
             if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != 0) {
                 merror("OS_SendSecureTCP(): %s", strerror(errno));
-                os_strdup("err Send data", buffer);
+                strcpy(buffer,"err Send data");
                 length = strlen(buffer);
             } else {
 
                 // Get response
-               
-                switch (length = OS_RecvSecureTCP(node->sock, buffer_response,OS_MAXSTR), length) {
+
+                switch (length = OS_RecvSecureTCP(node->sock, buffer,OS_MAXSTR), length) {
                 case -1:
                     merror("recv(): %s", strerror(errno));
-                    os_strdup("err Receive data", buffer);
+                    strcpy(buffer,"err Receive data");
                     length = strlen(buffer);
                     break;
 
                 case 0:
                     mdebug1("Empty message from local client.");
-                    os_strdup("err Empty response", buffer);
+                    strcpy(buffer,"err Empty response");
                     length = strlen(buffer);
                     break;
 
-                case OS_MAXLEN:
+                case OS_SOCKTERR:
                     mdebug1("Maximum buffer length reached.");
-                    os_strdup("err Maximum buffer length reached", buffer);
+                    strcpy(buffer,"err Maximum buffer length reached");
                     length = strlen(buffer);
                     break;
 
                 default:
-                    buffer_response[length] = '\0';
+                    buffer[length] = '\0';
                 }
             }
         }
@@ -287,7 +278,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
         if (length <= 0) {
             // Build error string
-            os_strdup("err Disconnected", buffer);
+            strcpy(buffer,"err Disconnected");
             length = strlen(buffer);
         }
 
@@ -296,11 +287,9 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         rlen = snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
         length += rlen;
         os_realloc(buffer, length + 1, buffer);
-        memmove(buffer + rlen, buffer_response, length - rlen);
+        memmove(buffer + rlen, buffer, length - rlen);
         memcpy(buffer, response, rlen);
         buffer[length] = '\0';
-
-        free(buffer_response);
 
 
         mdebug2("req_receiver(): sending '%s' to server", buffer);

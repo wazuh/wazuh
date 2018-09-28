@@ -3,10 +3,52 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.7.0]
 
-### Changed
-- Refactor Python framework code to standarize database requests and support API queries ([#921](https://github.com/wazuh/wazuh/pull/921)).
+### Added
 
-## [v3.6.1]
+- Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
+- Added support for API calls `GET/manager/stats/analysisd` and `GET/manager/stats/remoted`. ([#1297](https://github.com/wazuh/wazuh/pull/1297))
+- FIM database is cleaned after restart agent 3 times, deleting all entries not monitorized. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
+- Added rule testing output when restarting manager. ([#1196](https://github.com/wazuh/wazuh/pull/1196))
+
+### Changed
+
+- Refactor Python framework code to standardize database requests and support API queries. ([#921](https://github.com/wazuh/wazuh/pull/921))
+- Add support for multigroups. ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135))
+- Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
+- Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315))
+- Fim data is stored in SQLite using Wazuh-DB. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
+- Make Syscheck case insensitive. ([#1349](https://github.com/wazuh/wazuh/pull/1349))
+- Avoid conflicts with the size of time_t variable in wazuh-db. ([#1366](https://github.com/wazuh/wazuh/pull/1366))
+- Osquery integration updated: ([#1369](https://github.com/wazuh/wazuh/pull/1369))
+  - Nest the result data into a "osquery" object.
+  - Extract the pack name into a new field.
+  - Include the query name in the alert description.
+  - Minor fixes.
+- Increased AWS S3 database entry limit to 5000 to prevent reprocessing repeated events ([#1391](https://github.com/wazuh/wazuh/pull/1391)).
+
+### Fixed
+
+- Fixed email_alerts configuration for multiple recipients. ([#1193](https://github.com/wazuh/wazuh/pull/1193))
+- Fixed manager stopping when no command timeout is allowed. ([#1194](https://github.com/wazuh/wazuh/pull/1194))
+- Fixed getting RAM memory information from mac OS X and FreeBSD agents. ([#1203](https://github.com/wazuh/wazuh/pull/1203))
+- Fixed mandatory configuration labels check. ([#1208](https://github.com/wazuh/wazuh/pull/1208))
+- Fix 0 value at check options from Syscheck. ([1209](https://github.com/wazuh/wazuh/pull/1209))
+- Fix bug in whodata field extraction for Windows. ([#1233](https://github.com/wazuh/wazuh/issues/1233))
+- Fix stack overflow when monitoring deep files. ([#1239](https://github.com/wazuh/wazuh/pull/1239))
+- Fix typo in whodata alerts. ([#1242](https://github.com/wazuh/wazuh/issues/1242))
+- Fix bug when running quick commands with timeout of 1 second. ([#1259](https://github.com/wazuh/wazuh/pull/1259))
+- Prevent offline agents from generating vulnerability-detector alerts. ([#1292](https://github.com/wazuh/wazuh/pull/1292))
+- Fix empty SHA256 of rotated alerts and log files. ([#1308](https://github.com/wazuh/wazuh/pull/1308))
+- Fixed service startup on error. ([#1324](https://github.com/wazuh/wazuh/pull/1324))
+- Set connection timeout for Auth server ([#1336](https://github.com/wazuh/wazuh/pull/1336))
+- Fix the cleaning of the temporary folder. ([#1361](https://github.com/wazuh/wazuh/pull/1361))
+- Fix check_mtime and check_inode views in Syscheck alerts. ([#1364](https://github.com/wazuh/wazuh/pull/1364))
+- Fixed the reading of the destination address and type for PPP interfaces. ([#1405](https://github.com/wazuh/wazuh/pull/1405))
+- Fixed a memory bug in regex when getting empty strings. ([#1430](https://github.com/wazuh/wazuh/pull/1430))
+- Fixed report_changes with a big ammount of files. ([#1465](https://github.com/wazuh/wazuh/pull/1465))
+
+
+## [v3.6.1] 2018-09-07
 
 ### Fixed
 
@@ -22,25 +64,6 @@ All notable changes to this project will be documented in this file.
 - Fix bug in folder recursion limit count in FIM real-time mode. ([#1226](https://github.com/wazuh/wazuh/issues/1226))
 - Fixed errors when parsing AWS events in Elasticsearch. ([#1229](https://github.com/wazuh/wazuh/issues/1229))
 - Fix bug when launching osquery from Wazuh. ([#1230](https://github.com/wazuh/wazuh/issues/1230))
-
-
-## [v3.6.0] 2018-08-29
-
-### Added
-
-### Changed
-
-### Fixed
-
-- Fix segmentation fault when the agent version is empty in Vulnerability Detector. ([#1191](https://github.com/wazuh/wazuh/pull/1191))
-- Fix bug that removes file extensions in rootcheck. ([#1197](https://github.com/wazuh/wazuh/pull/1197))
-
-
-## [v3.6.0]
-
-### Added
-
-- Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
 
 
 ## [v3.6.0] - 2018-08-29
@@ -92,6 +115,8 @@ All notable changes to this project will be documented in this file.
 - Prevents some vulnerabilities from not being checked for Debian. ([#1166](https://github.com/wazuh/wazuh/pull/1166))
 - Fixed legacy configuration for `vulnerability-detector`. ([#1174](https://github.com/wazuh/wazuh/pull/1174))
 - Fix active-response scripts installation for Windows. ([#1182](https://github.com/wazuh/wazuh/pull/1182)).
+- Fixed `open-scap` deadlock when opening large files. ([#1206](https://github.com/wazuh/wazuh/pull/1206)). Thanks to @juergenc for detecting this issue.
+
 
 ### Removed
 

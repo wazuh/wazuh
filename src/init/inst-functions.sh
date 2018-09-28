@@ -510,6 +510,7 @@ WriteManager()
     echo "" >> $NEWCONFIG
 
     echo "</ossec_config>" >> $NEWCONFIG
+
 }
 
 ##########
@@ -763,6 +764,7 @@ InstallCommon(){
 
   ${INSTALL} -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
 
+  ./init/fw-check.sh execute
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.py ${PREFIX}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
@@ -778,9 +780,14 @@ InstallCommon(){
     InstallSELinuxPolicyPackage
   fi
 
+  if [ ! ${INSTYPE} = 'agent' ]; then
+      # Add Azure script (for manager only)
+      ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/azure
+      ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/azure/azure-logs.py ${PREFIX}/wodles/azure/azure-logs
+  fi
+
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
 
-  ./init/fw-check.sh execute
 }
 
 InstallLocal(){

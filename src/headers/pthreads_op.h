@@ -23,6 +23,7 @@
 
 #ifndef WIN32
 int CreateThread(void * (*function_pointer)(void *), void * data) __attribute__((nonnull(1)));
+int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *), void *data);
 #endif
 
 #endif

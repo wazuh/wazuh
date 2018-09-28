@@ -474,7 +474,6 @@ int CreatePID(const char *name, int pid)
     }
 
     fprintf(fp, "%d\n", pid);
-
     if (chmod(file, 0640) != 0) {
         merror(CHMOD_ERROR, file, errno, strerror(errno));
         fclose(fp);
@@ -2348,6 +2347,9 @@ char ** wreaddir(const char * name) {
         }
 
         files = realloc(files, (i + 2) * sizeof(char *));
+        if(!files){
+           merror_exit(MEM_ERROR, errno, strerror(errno)); 
+        }
         files[i++] = strdup(dirent->d_name);
     }
 

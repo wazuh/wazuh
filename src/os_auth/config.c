@@ -33,6 +33,9 @@ int authd_read_config(const char *path) {
         config.ciphers = strdup(DEFAULT_CIPHERS);
     }
 
+    config.timeout_sec = getDefine_Int("auth", "timeout_seconds", 0, INT_MAX);
+    config.timeout_usec = getDefine_Int("auth", "timeout_microseconds", 0, 999999);
+
     return 0;
 }
 
@@ -50,7 +53,7 @@ cJSON *getAuthdConfig(void) {
         cJSON_AddStringToObject(auth,"force_time","always");
     else
         cJSON_AddNumberToObject(auth,"force_time",config.force_time);
-    if (config.flags.disabled) cJSON_AddStringToObject(auth,"disabled","no"); else cJSON_AddStringToObject(auth,"disabled","yes");
+    if (config.flags.disabled) cJSON_AddStringToObject(auth,"disabled","yes"); else cJSON_AddStringToObject(auth,"disabled","no");
     if (config.flags.use_source_ip) cJSON_AddStringToObject(auth,"use_source_ip","yes"); else cJSON_AddStringToObject(auth,"use_source_ip","no");
     if (config.flags.force_insert) cJSON_AddStringToObject(auth,"force_insert","yes"); else cJSON_AddStringToObject(auth,"force_insert","no");
     if (config.flags.clear_removed) cJSON_AddStringToObject(auth,"purge","yes"); else cJSON_AddStringToObject(auth,"purge","no");

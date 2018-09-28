@@ -36,6 +36,7 @@ extern OSDecoderNode *osdecodernode_nopname;
 extern RuleNode *rulenode;
 extern rlim_t nofile;
 extern int sys_debug_level;
+extern OSDecoderInfo *fim_decoder;
 
 // Com request thread dispatcher
 void * syscom_main(__attribute__((unused)) void * arg) ;
@@ -52,8 +53,11 @@ typedef struct cpu_info {
 
 void w_get_queues_size();
 void w_get_initial_queues_size();
+void w_init_queues();
 
 #define OSSEC_SERVER    "ossec-server"
 #define MAX_DECODER_ORDER_SIZE  1024
+
+OSHash *fim_agentinfo;
 
 #endif /* _LOGAUDIT__H */

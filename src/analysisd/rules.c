@@ -322,6 +322,7 @@ int Rules_OP_ReadRules(const char *rulefile)
              * be fine
              */
             os_strdup(node[i]->values[0], config_ruleinfo->group);
+            os_strdup(rulefile,config_ruleinfo->file);
 
             /* Rule elements block */
             {
@@ -1886,6 +1887,9 @@ static void Rule_AddAR(RuleInfo *rule_config)
             rule_config->ar = (active_response **) realloc(rule_config->ar,
                                       (rule_ar_size + 1)
                                       * sizeof(active_response *));
+            if(!rule_config->ar){
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
 
             /* Always set the last node to NULL */
             rule_config->ar[rule_ar_size - 1] = my_ar;

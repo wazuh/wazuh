@@ -48,6 +48,9 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_FIND_ENTRY,
     WDB_STMT_FIM_INSERT_ENTRY,
     WDB_STMT_FIM_UPDATE_ENTRY,
+    WDB_STMT_FIM_DELETE,
+    WDB_STMT_FIM_UPDATE_DATE,
+    WDB_STMT_FIM_FIND_DATE_ENTRIES,
     WDB_STMT_OSINFO_INSERT,
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_PROGRAM_INSERT,
@@ -67,6 +70,10 @@ typedef enum wdb_stmt {
     WDB_STMT_ADDR_DEL,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
+    WDB_STMT_METADATA_VERSION,
+    WDB_STMT_METADATA_INSERT,
+    WDB_STMT_METADATA_UPDATE,
+    WDB_STMT_METADATA_FIND,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -150,6 +157,8 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
+int wdb_fim_delete(wdb_t * wdb, const char * file);
+
 /* Insert policy monitoring entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
 
@@ -194,7 +203,35 @@ int wdb_create_agent_db(int id, const char *name);
 
 int wdb_create_agent_db2(const char * agent_id);
 
-int wdb_fill_metadata(sqlite3 * db);
+/* Initialize table metadata Returns 0 on success or -1 on error. */
+int wdb_metadata_initialize (wdb_t *wdb, char *path);
+
+/* Insert or update metadata entries. Returns 0 on success or -1 on error. */
+int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
+
+/* Find metadata entries. Returns 0 if doesn't found, 1 on success or -1 on error. */
+int wdb_metadata_find_entry(wdb_t * wdb, const char * key);
+
+/* Insert entry. Returns 0 on success or -1 on error. */
+int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value);
+
+/* Update entries. Returns 0 on success or -1 on error. */
+int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value);
+
+/* Insert metadata for minor and major version. Returns 0 on success or -1 on error. */
+int wdb_metadata_fill_version(sqlite3 *db);
+
+/* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
+int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
+
+/* Change value for. Returns 0 if doesn't found, 1 on success or -1 on error. */
+int wdb_metadata_fim_check_control (wdb_t * wdb, const char *last_check);
+
+/* Update field date for specific fim_entry. */
+int wdb_fim_update_date_entry(wdb_t * wdb, const char *path, const char *date);
+
+/* Clear entries prior to the first scan. */
+int wdb_fim_clean_old_entries(wdb_t * wdb);
 
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_remove_agent_db(int id, const char * name);

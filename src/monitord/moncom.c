@@ -26,14 +26,14 @@ size_t moncom_dispatch(char * command, char ** output) {
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("MONCOM getconfig needs arguments.");
+            mdebug1("MONCOM getconfig needs arguments.");
             *output = strdup("err MONCOM getconfig needs arguments");
             return strlen(*output);
         }
         return moncom_getconfig(rcv_args, output);
 
     } else {
-        merror("MONCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("MONCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -55,11 +55,23 @@ size_t moncom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
+    }
+    else if (strcmp(section, "reports") == 0){
+        if (cfg = getReportsOptions(), cfg) {
+            *output = strdup("ok");
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_free(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
     } else {
         goto error;
     }
 error:
-    merror("At MONCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At MONCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }

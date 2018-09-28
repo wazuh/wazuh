@@ -12,6 +12,7 @@
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "syscheck_op.h"
+#include "wazuh_modules/wmodules.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
 #include "syscheck.h"
@@ -28,34 +29,39 @@ static int __counter = 0;
 
 static int read_dir_diff(char *dir_name) {
     size_t dir_size;
-    char f_name[PATH_MAX + 2];
-    char file_name[PATH_MAX] = "\0";
-    char local_dir[PATH_MAX];
+    char *f_name = NULL;
+    char *file_name = NULL;
+    char *local_dir = NULL;
+    int retval = -1;
+
+    os_calloc(PATH_MAX + 2, sizeof(char), f_name);
+    os_calloc(PATH_MAX, sizeof(char), file_name);
+    os_calloc(PATH_MAX, sizeof(char), local_dir);
 
     snprintf(local_dir, PATH_MAX - 1, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
     DIR *dp;
     struct dirent *entry;
 
-    f_name[PATH_MAX + 1] = '\0';
     /* Directory should be valid */
     if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
         merror(NULL_ERROR);
-        return (-1);
+        goto end;
     }
 
     /* Open the directory given */
     dp = opendir(dir_name);
     if (!dp) {
         if (errno == ENOTDIR || (errno == ENOENT && !strcmp(dir_name, local_dir))) {
-            return 0;
+            retval = 0;
+            goto end;
         } else {
             mwarn("Accessing to '%s': [(%d) - (%s)]", dir_name, errno, strerror(errno));
-            return -1;
+            goto end;
         }
     }
 
-
+    int ret_add;
     while ((entry = readdir(dp)) != NULL) {
         char *s_name;
 
@@ -80,7 +86,7 @@ static int read_dir_diff(char *dir_name) {
         if (strcmp(DIFF_LAST_FILE, s_name) == 0) {
             memset(file_name, 0, strlen(file_name));
             memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
-            if (OSHash_Add(syscheck.local_hash, file_name, NULL) <= 0) {
+            if (ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL), ret_add < 2) {
                 merror("Unable to add file to db: %s", file_name);
             }
         } else {
@@ -89,15 +95,21 @@ static int read_dir_diff(char *dir_name) {
     }
 
     closedir(dp);
-    return (0);
+    retval = 0;
+end:
+    free(f_name);
+    free(file_name);
+    free(local_dir);
+    return retval;
 }
 
 
 void remove_local_diff(){
 
     /* Fill hash table with the content of DIFF_DIR_PATH/local */
-    char local_path[PATH_MAX] = "\0";
     const char LOCALDIR[] = {PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0'};
+    char *local_path = NULL;
+    os_calloc(PATH_MAX, sizeof(char), local_path);
 
     strcpy(local_path, DIFF_DIR_PATH);
     strcat(local_path, LOCALDIR);
@@ -106,62 +118,57 @@ void remove_local_diff(){
 
     unsigned int i = 0;
 
-    /* Delete all  monitored files from hash table */
-    OSHashNode *curr_node_local;
-#ifdef WIN32
-    OSHashNode *curr_node_monitoring;
-    unsigned int j = 0;
-    char full_path[PATH_MAX] = "\0";
-    char *windows_path;
+    /* Delete all monitored files from hash table */
+    OSHashNode *curr_node_local, *internal_node;
+    OSHashNode *curr_node_fp;
 
-    for (i = 0; i <= syscheck.local_hash->rows; i++) {
-        curr_node_local = syscheck.local_hash->table[i];
-        for (j = 0; j <= syscheck.fp->rows; j++) {
-            curr_node_monitoring = syscheck.fp->table[j];
-            strcpy(full_path, local_path);
-            if (curr_node_monitoring && curr_node_monitoring->key && curr_node_local && curr_node_local->key) {
-                windows_path = strchr(curr_node_monitoring->key, ':');
-                strcat(full_path, (windows_path + 1));
-                if (strcmp(full_path, curr_node_local->key) == 0) {
-                    mdebug2("Deleting '%s' from local hash table.", curr_node_local->key);
-                    OSHash_Delete(syscheck.local_hash, curr_node_local->key);
-                    break;
-                }
-            }
-        }
-    }
+    char *full_path = NULL;
+    os_calloc(OS_SIZE_8192, sizeof(char), full_path);
+
+    for (i = 0; i <= syscheck.fp->rows; i++) {
+        curr_node_fp = syscheck.fp->table[i];
+        if (curr_node_fp && curr_node_fp->key) {
+            do {
+                *full_path='\0';
+                wm_strcat(&full_path, local_path, '\0');
+#ifdef WIN32
+                char *windows_path;
+                windows_path = strchr(curr_node_fp->key, ':');
+                wm_strcat(&full_path, windows_path+1, '\0');
 #else
-    const char *monitoring_path;
-    for (i = 0; i <= syscheck.local_hash->rows; i++) {
-        curr_node_local = syscheck.local_hash->table[i];
-        if (curr_node_local && curr_node_local->key) {
-            monitoring_path = curr_node_local->key;
-            monitoring_path += strlen(local_path);
-            if(OSHash_Get_ex(syscheck.fp, monitoring_path)){
-                mdebug2("Deleting '%s' from local hash table.", curr_node_local->key);
-                OSHash_Delete(syscheck.local_hash, curr_node_local->key);
-            }
-            else{
-                mdebug1("Couldn't get '%s' from monitoring hash table.", monitoring_path);
-            }
+                wm_strcat(&full_path, curr_node_fp->key, '\0');
+#endif
+                if (!OSHash_Get_ex(syscheck.local_hash, full_path)) {
+                    mdebug2("Deleting '%s' from local hash table.", full_path);
+                    OSHash_Delete_ex(syscheck.local_hash, full_path);
+                }
+                curr_node_fp=curr_node_fp->next;
+            } while(curr_node_fp && curr_node_fp->key);
         }
     }
-#endif
+    free(full_path);
+
     /* Delete local files that aren't monitored */
     for (i = 0; i <= syscheck.local_hash->rows; i++) {
         curr_node_local = syscheck.local_hash->table[i];
         if (curr_node_local && curr_node_local->key) {
-            mdebug1("Deleting '%s'. Not monitored anymore.", curr_node_local->key);
-            if (rmdir_ex(curr_node_local->key) != 0) {
-                mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
+            do{
+                internal_node = curr_node_local->next;
+                mdebug1("Deleting '%s'. Not monitored anymore.", curr_node_local->key);
+                if (rmdir_ex(curr_node_local->key) != 0) {
+                    mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
+                }
+                remove_empty_folders(curr_node_local->key);
+                if (OSHash_Delete_ex(syscheck.local_hash, curr_node_local->key) != 0) {
+                    mwarn("Could not delete from hash table '%s'", curr_node_local->key);
+                }
+                curr_node_local = internal_node;
             }
-            remove_empty_folders(curr_node_local->key);
-
-            if (OSHash_Delete(syscheck.local_hash, curr_node_local->key) != 0) {
-                mwarn("Could not delete from hash table '%s'", curr_node_local->key);
-            }
+            while(curr_node_local && curr_node_local->key);
         }
     }
+
+    free(local_path);
 }
 
 /* Read and generate the integrity data of a file */
@@ -172,8 +179,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char *buf;
     syscheck_node *s_node;
     struct stat statbuf;
-    char wd_sum[OS_SIZE_6144 + 1];
-#ifdef WIN32
+    char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
+    char *wd_sum = NULL;
+    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
+#ifndef WIN32
+    char str_owner[50], str_group[50];
+#else
     const char *user;
     char *sid = NULL;
 #endif
@@ -182,7 +193,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     restriction = syscheck.filerestrict[dir_position];
 
     if (fim_check_ignore (file_name) == 1) {
-        mdebug1("Ingnoring file '%s', continuing...", file_name);
+        free(wd_sum);
         return (0);
     }
 
@@ -193,16 +204,18 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
-        char alert_msg[OS_SIZE_6144];
+        char *alert_msg = NULL;
+        os_calloc(OS_SIZE_6144, sizeof(char), alert_msg);
 
         switch (errno) {
         case ENOENT:
             mwarn("Cannot access '%s': it was removed during scan.", file_name);
+            free(alert_msg);
+            free(wd_sum);
             return (-1);
 
         case ENOTDIR:
             /*Deletion message sending*/
-            alert_msg[OS_SIZE_6144 - 1] = '\0';
             snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
             send_syscheck_msg(alert_msg);
 
@@ -211,13 +224,18 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 free(s_node->checksum);
                 free(s_node);
             }
-
+            free(alert_msg);
+            free(wd_sum);
             return (0);
 
         default:
             merror("Error accessing '%s': %s (%d)", file_name, strerror(errno), errno);
+            free(alert_msg);
+            free(wd_sum);
             return (-1);
         }
+
+        free(alert_msg);
     }
 
     if (S_ISDIR(statbuf.st_mode)) {
@@ -225,15 +243,18 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         /* Directory links are not supported */
         if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
             mwarn("Links are not supported: '%s'", file_name);
+            free(wd_sum);
             return (-1);
         }
 #endif
+        free(wd_sum);
         return (read_dir(file_name, dir_position, NULL, max_depth-1));
 
     }
 
     if (fim_check_restrict (file_name, restriction) == 1) {
         mdebug1("Ingnoring file '%s' for a restriction...", file_name);
+        free(wd_sum);
         return (0);
     }
 
@@ -281,8 +302,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
 
         if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
-            char alert_msg[OS_MAXSTR + 1];    /* to accommodate a long */
-            alert_msg[OS_MAXSTR] = '\0';
+            char *alert_msg = NULL;
+            os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
+
             char * alertdump = NULL;
 
             if (opts & CHECK_SEECHANGES) {
@@ -290,7 +312,31 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 #ifdef WIN32
             user = get_user(file_name, statbuf.st_uid, &sid);
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s",
+            if (opts & CHECK_SIZE) {
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+            } else {
+                *str_size = '\0';
+            }
+
+            if (opts & CHECK_PERM) {
+                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+            } else {
+                *str_perm = '\0';
+            }
+
+            if (opts & CHECK_MTIME) {
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+            } else {
+                *str_mtime = '\0';
+            }
+
+            if (opts & CHECK_INODE) {
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+            } else {
+                *str_inode = '\0';
+            }
+
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%s:%s:%s::%s:%s:%s:%s:%s:%s:%s",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
                     opts & CHECK_OWNER ? '+' : '-',
@@ -301,22 +347,58 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_INODE ? '+' : '-',
                     opts & CHECK_SHA256SUM ? '+' : '-',
                     opts & CHECK_SEECHANGES ? '+' : '-',
-                    opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                    opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+                    str_size,
+                    str_perm,
                     (opts & CHECK_OWNER) && sid ? sid : "",
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
                     opts & CHECK_OWNER ? user : "",
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                    opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                    opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                    str_mtime,
+                    str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "");
 
                 if (sid) {
                      LocalFree(sid);
                  }
 #else
-            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s",
+            if (opts & CHECK_SIZE) {
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+            } else {
+                *str_size = '\0';
+            }
+
+            if (opts & CHECK_PERM) {
+                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+            } else {
+                *str_perm = '\0';
+            }
+
+            if (opts & CHECK_OWNER) {
+                sprintf(str_owner,"%d",(int)statbuf.st_uid);
+            } else {
+                *str_owner = '\0';
+            }
+
+            if (opts & CHECK_GROUP) {
+                sprintf(str_group,"%d",(int)statbuf.st_gid);
+            } else {
+                *str_group = '\0';
+            }
+
+            if (opts & CHECK_MTIME) {
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+            } else {
+                *str_mtime = '\0';
+            }
+
+            if (opts & CHECK_INODE) {
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+            } else {
+                *str_inode = '\0';
+            }
+
+            snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
                     opts & CHECK_SIZE ? '+' : '-',
                     opts & CHECK_PERM ? '+' : '-',
                     opts & CHECK_OWNER ? '+' : '-',
@@ -327,16 +409,16 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_INODE ? '+' : '-',
                     opts & CHECK_SHA256SUM ? '+' : '-',
                     opts & CHECK_SEECHANGES ? '+' : '-',
-                    opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                    opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                    opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
-                    opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
+                    str_size,
+                    str_perm,
+                    str_owner,
+                    str_group,
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
                     opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                    opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                    opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                    str_mtime,
+                    str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "");
 #endif
 
@@ -360,16 +442,40 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
 #ifdef WIN32
             user = get_user(file_name, statbuf.st_uid, &sid);
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%s::%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
-                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
+            if (opts & CHECK_SIZE) {
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+            } else {
+                *str_size = '\0';
+            }
+
+            if (opts & CHECK_PERM) {
+                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+            } else {
+                *str_perm = '\0';
+            }
+
+            if (opts & CHECK_MTIME) {
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+            } else {
+                *str_mtime = '\0';
+            }
+
+            if (opts & CHECK_INODE) {
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+            } else {
+                *str_inode = '\0';
+            }
+
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s!%s:%s %s%s%s",
+                str_size,
+                str_perm,
                 (opts & CHECK_OWNER) && sid ? sid : "",
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
                 opts & CHECK_OWNER ? user : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                str_mtime,
+                str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
@@ -380,17 +486,53 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 LocalFree(sid);
             }
 #else
-            snprintf(alert_msg, OS_MAXSTR, "%ld:%d:%d:%d:%s:%s:%s:%s:%ld:%ld:%s!%s:%s %s%s%s",
-                opts & CHECK_SIZE ? (long)statbuf.st_size : 0,
-                opts & CHECK_PERM ? (int)statbuf.st_mode : 0,
-                opts & CHECK_OWNER ? (int)statbuf.st_uid : 0,
-                opts & CHECK_GROUP ? (int)statbuf.st_gid : 0,
+            if (opts & CHECK_SIZE) {
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+            } else {
+                *str_size = '\0';
+            }
+
+            if (opts & CHECK_PERM) {
+                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+            } else {
+                *str_perm = '\0';
+            }
+
+            if (opts & CHECK_OWNER) {
+                sprintf(str_owner,"%d",(int)statbuf.st_uid);
+            } else {
+                *str_owner = '\0';
+            }
+
+            if (opts & CHECK_GROUP) {
+                sprintf(str_group,"%d",(int)statbuf.st_gid);
+            } else {
+                *str_group = '\0';
+            }
+
+            if (opts & CHECK_MTIME) {
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+            } else {
+                *str_mtime = '\0';
+            }
+
+            if (opts & CHECK_INODE) {
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+            } else {
+                *str_inode = '\0';
+            }
+
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%s:%s %s%s%s",
+                str_size,
+                str_perm,
+                str_owner,
+                str_group,
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
                 opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-                opts & CHECK_MTIME ? (long)statbuf.st_mtime : 0,
-                opts & CHECK_INODE ? (long)statbuf.st_ino : 0,
+                str_mtime,
+                str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
@@ -401,19 +543,23 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             if(max_depth <= syscheck.max_depth){
                 send_syscheck_msg(alert_msg);
             }
+
+            free(alert_msg);
             free(alertdump);
         } else {
-            char alert_msg[OS_MAXSTR + 1];
-            char c_sum[OS_MAXSTR + 1];
+            char *alert_msg = NULL;
+            os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
+            char *c_sum;
+            os_calloc(OS_MAXSTR + 1, sizeof(char), c_sum);
+
 
             buf = s_node->checksum;
-            c_sum[0] = '\0';
-            c_sum[OS_MAXSTR] = '\0';
-            alert_msg[0] = '\0';
-            alert_msg[OS_MAXSTR] = '\0';
 
             /* If it returns < 0, we have already alerted */
             if (c_read_file(file_name, buf, c_sum, NULL) < 0) {
+                free(alert_msg);
+                free(c_sum);
+                free(wd_sum);
                 return (0);
             }
 
@@ -427,7 +573,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
                 }
                 // Update database
-                snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
+                snprintf(alert_msg, OS_MAXSTR, "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
                 s_node->checksum = strdup(alert_msg);
 
                 /* Send the new checksum to the analysis server */
@@ -451,6 +597,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 free(buf);
                 send_syscheck_msg(alert_msg);
             }
+            free(alert_msg);
+            free(c_sum);
         }
 
         /* Sleep here too */
@@ -462,6 +610,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     } else {
         mdebug2("IRREG File: '%s'", file_name);
     }
+
+    free(wd_sum);
 
     return (0);
 }
@@ -475,18 +625,18 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 
     int opts;
     size_t dir_size;
-    char f_name[PATH_MAX + 2];
+    char *f_name;
     short is_nfs;
+    os_calloc(PATH_MAX + 2, sizeof(char), f_name);
 
     DIR *dp;
     struct dirent *entry;
-
-    f_name[PATH_MAX + 1] = '\0';
 
     opts = syscheck.opts[dir_position];
 
     /* Directory should be valid */
     if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
+        free(f_name);
         merror(NULL_ERROR);
         return (-1);
     }
@@ -498,6 +648,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         if (is_nfs != 0)
         {
             // Error will be -1, and 1 means skipped
+            free(f_name);
             return (is_nfs);
         }
     }
@@ -507,6 +658,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     if (!dp) {
         if (errno == ENOTDIR) {
             if (read_file(dir_name, dir_position, evt, max_depth) == 0) {
+                free(f_name);
                 return (0);
             }
         }
@@ -535,11 +687,13 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #endif
             mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
         } else {
+            free(f_name);
             return 0;
         }
 #else
         mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
 #endif /* WIN32 */
+        free(f_name);
         return (-1);
     }
 
@@ -585,6 +739,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         read_file(f_name, dir_position, NULL, max_depth);
     }
 
+    free(f_name);
     closedir(dp);
     return (0);
 }
@@ -592,11 +747,12 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 int run_dbcheck()
 {
     unsigned int i = 0;
-    char alert_msg[OS_SIZE_6144];
+    char *alert_msg = NULL;
     OSHash *last_backup;
     OSHashNode *curr_node;
     syscheck_node *data;
     int pos;
+    os_calloc(OS_SIZE_6144, sizeof(char), alert_msg);
 
     __counter = 0;
     while (syscheck.dir[i] != NULL) {
@@ -628,16 +784,19 @@ int run_dbcheck()
         for (i = 0; i <= last_backup->rows; i++) {
             curr_node = last_backup->table[i];
             if(curr_node && curr_node->key) {
-
-                pos = find_dir_pos(curr_node->key, 1, 0, 0);
-                mdebug2("Sending delete msg for file: %s", curr_node->key);
-                snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
-                send_syscheck_msg(alert_msg);
-                OSHash_Delete_ex(syscheck.last_check, curr_node->key);
-                if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
-                    free(data->checksum);
-                    free(data);
+                do{
+                    pos = find_dir_pos(curr_node->key, 1, 0, 0);
+                    mdebug2("Sending delete msg for file: %s", curr_node->key);
+                    snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
+                    send_syscheck_msg(alert_msg);
+                    OSHash_Delete_ex(syscheck.last_check, curr_node->key);
+                    if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
+                        free(data->checksum);
+                        free(data);
+                    }
+                    curr_node=curr_node->next;
                 }
+                while(curr_node && curr_node->key);
             }
         }
 
@@ -649,6 +808,7 @@ int run_dbcheck()
         }
     }
 
+    free(alert_msg);
 
     return (0);
 }
@@ -757,11 +917,11 @@ int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
         name_esc = wstr_replace(evt->user_name, " ", "\\ ");
 #endif
         if (snprintf(wd_sum, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%i:%lli",
-                evt->user_id,
-                name_esc,
+                (evt->user_id)?evt->user_id:"",
+                (name_esc)?name_esc:"",
                 (evt->group_id)?evt->group_id:"",
                 (evt->group_name)?evt->group_name:"",
-                process_esc,
+                (process_esc)?process_esc:"",
                 (evt->audit_uid)?evt->audit_uid:"",
                 (evt->audit_name)?evt->audit_name:"",
                 (evt->effective_uid)?evt->effective_uid:"",
@@ -788,6 +948,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore[i] != NULL) {
             if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
+                mdebug1("Ignoring file '%s' ignore '%s', continuing...", file_name, syscheck.ignore[i]);
                 return (1);
             }
             i++;
@@ -799,6 +960,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
+                mdebug1("Ignoring file '%s' sregex '%s', continuing...", file_name, syscheck.ignore_regex[i]->raw);
                 return (1);
             }
             i++;

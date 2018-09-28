@@ -26,14 +26,14 @@ size_t csyscom_dispatch(const char * command, char ** output){
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("CSYSCOM getconfig needs arguments.");
+            mdebug1("CSYSCOM getconfig needs arguments.");
             *output = strdup("err CSYSCOM getconfig needs arguments");
             return strlen(*output);
         }
         return csyscom_getconfig(rcv_args, output);
 
     } else {
-        merror("CSYSCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("CSYSCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -59,7 +59,7 @@ size_t csyscom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    merror("At CSYSCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At CSYSCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }
@@ -75,7 +75,7 @@ void * csyscom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR CSYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(CSYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror("Unable to bind to socket '%s'. Closing local server.", CSYS_LOCAL_SOCK);
         return NULL;
     }

@@ -42,6 +42,9 @@ static char* filter(const char *string) {
     while (*ptr) {
         clen = strcspn(ptr + 1, "\"\\$`");
         out = realloc(out, len + clen + 3);
+        if(!out){
+            merror_exit(MEM_ERROR, errno, strerror(errno));
+        }
         out[len] = '\\';
         out[len + 1] = *ptr;
         strncpy(out + len + 2, ptr + 1, clen);

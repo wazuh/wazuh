@@ -26,6 +26,7 @@ class WazuhException(Exception):
         1012: 'Invalid message to queue',
         1013: 'Unable to connect with socket',
         1014: 'Error communicating with socket',
+        1015: 'Error agent version is null. Was the agent ever connected?',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
@@ -117,6 +118,10 @@ class WazuhException(Exception):
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
+        1734: 'Error unsetting agent group',
+        1735: 'Agent version is not compatible with this feature',
+        1736: 'Error getting all groups',
+
         # Manager:
 
         # Database:
@@ -145,7 +150,9 @@ class WazuhException(Exception):
         3012: 'Cluster is not running',
         3013: 'Cluster is disabled',
         3015: 'Cannot access directory',
-        3016: 'Received an error response'
+        3016: 'Received an error response',
+        3017: 'The agent is not reporting to any manager',
+        3018: 'Error sending request to the master'
 
         # > 9000: Authd
     }

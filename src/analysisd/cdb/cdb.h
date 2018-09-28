@@ -5,8 +5,8 @@
 #define CDB_H
 
 #include "uint32.h"
-#include "pthreads_op.h"
 #include <pthread.h>
+#include "pthreads_op.h"
 
 #define CDB_HASHSTART 5381
 extern uint32 cdb_hashadd(uint32, unsigned char);

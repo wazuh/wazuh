@@ -54,19 +54,30 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
     char line[OS_MAXSTR];
     FILE *result_log = NULL;
     char * end;
+    char * payload;
+    cJSON * root;
+    cJSON * name;
+    cJSON * osquery_json;
+    char * begin;
 
     while (active) {
         // Wait to open log file
 
         while (result_log = wfopen(osquery->log_path, "r"), !result_log && active) {
-            mwarn("Results file '%s' not available: %s (%d)", osquery->log_path, strerror(errno), errno);
-            sleep((i < 60 ? ++i : 60));
+            i += i < 60;
+            mwarn("Results file '%s' not available: %s (%d). Retrying in %d sec.", osquery->log_path, strerror(errno), errno, i);
+            sleep(i);
         }
 
         if (!active) {
-            fclose(result_log);
+            if (result_log) {
+                fclose(result_log);
+            }
+
             break;
         }
+
+        minfo("Following osquery results file '%s'.", osquery->log_path);
 
         // Move to end of the file
 
@@ -90,14 +101,54 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
             // Get file until EOF
 
             while (fgets(line, OS_MAXSTR, result_log)) {
+
                 // Remove newline
+
                 if (end = strchr(line, '\n'), end) {
                     *end = '\0';
                 }
 
-                mdebug2("Sending... '%s'", line);
-                if (wm_sendmsg(osquery->msg_delay, osquery->queue_fd, line, "osquery", LOCALFILE_MQ) < 0) {
-                    mterror(WM_OSQUERYMONITOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                if (osquery_json = cJSON_Parse(line), osquery_json) {
+
+                    // Nest object into a "osquery" object
+
+                    root = cJSON_CreateObject();
+                    cJSON_AddItemToObject(root, "osquery", osquery_json);
+
+                    if (!cJSON_GetObjectItem(osquery_json, "pack")) {
+
+                        // Try to find a name matching "pack_.*_.+"
+
+                        if (name = cJSON_GetObjectItem(osquery_json, "name"), name && cJSON_IsString(name)) {
+                            if (strstr(name->valuestring, "pack_")) {
+                                begin = name->valuestring + 5;
+
+                                if (end = strchr(begin, '_'), end && end[1]) {
+                                    *end = '\0';
+                                    cJSON_AddStringToObject(osquery_json, "pack", begin);
+                                    *end = '_';
+
+                                }
+                            }
+                        }
+                    }
+
+                    payload = cJSON_PrintUnformatted(root);
+                    mdebug2("Sending... '%s'", payload);
+
+                    if (wm_sendmsg(osquery->msg_delay, osquery->queue_fd, payload, "osquery", LOCALFILE_MQ) < 0) {
+                        mterror(WM_OSQUERYMONITOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                    }
+
+                    free(payload);
+                    cJSON_Delete(root);
+                } else {
+                    static int reported = 0;
+
+                    if (!reported) {
+                        mwarn("Result line not in JSON format: '%64s'...", line);
+                        reported = 1;
+                    }
                 }
             }
 

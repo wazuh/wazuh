@@ -124,6 +124,7 @@
 #define SK_DUP          "(1756): Duplicated directory given: '%s'."
 #define SK_INV_REG      "(1757): Invalid syscheck registry entry: '%s'."
 #define SK_REG_OPEN     "(1758): Unable to open registry key: '%s'."
+#define INV_WDATA_PAR   "Invalid parameter type (%ld) for '%s'."
 
 /* analysisd */
 #define FTS_LIST_ERROR   "(1260): Error initiating FTS list"

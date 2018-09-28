@@ -34,6 +34,9 @@
 #define WM_POOL_SIZE    8                           // Child process pool size.
 #define WM_HEADER_SIZE  OS_SIZE_2048
 
+#define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
+#define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
+
 #define DAY_SEC    86400
 #define WEEK_SEC   604800
 
@@ -76,6 +79,7 @@ typedef enum crypto_type {
 #include "wm_vuln_detector.h"
 #include "wm_osquery_monitor.h"
 #include "wm_download.h"
+#include "wm_azure.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
@@ -107,8 +111,9 @@ void wm_module_free(wmodule * config);
  * On success, return 0. On another error, returns -1.
  * If the called program timed-out, returns WM_ERROR_TIMEOUT and output may
  * contain data.
+ * env_path is a pointer to an string to add to the PATH environment variable.
  */
-int wm_exec(char *command, char **output, int *exitcode, int secs);
+int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 
 #ifdef WIN32
 // Add process to pool
@@ -183,5 +188,8 @@ void * wmcom_main(void * arg);
 #endif
 size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
+
+// Sleep function for Windows and Unix (milliseconds)
+void wm_delay(unsigned int ms);
 
 #endif // W_MODULES

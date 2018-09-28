@@ -173,6 +173,8 @@ typedef struct _RuleInfo {
     active_response **ar;
     
     pthread_mutex_t mutex;
+
+    char *file;
 } RuleInfo;
 
 

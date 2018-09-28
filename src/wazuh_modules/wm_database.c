@@ -156,14 +156,14 @@ void* wm_database_main(wm_database *data) {
 
         // Systems that don't support inotify, or real-time disabled
 
-        time_t tsleep;
-        time_t tstart;
+        long long tsleep;
+        long long tstart;
         clock_t cstart;
         struct timespec spec0;
         struct timespec spec1;
 
         while (1) {
-            tstart = time(NULL);
+            tstart = (long long) time(NULL);
             cstart = clock();
             gettime(&spec0);
 
@@ -187,10 +187,10 @@ void* wm_database_main(wm_database *data) {
             time_sub(&spec1, &spec0);
             mtdebug1(WM_DATABASE_LOGTAG, "Cycle completed: %.3lf ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - cstart) / CLOCKS_PER_SEC * 1000);
 
-            if (tsleep = tstart + data->interval - time(NULL), tsleep >= 0) {
+            if (tsleep = tstart + (long long) data->interval - (long long) time(NULL), tsleep >= 0) {
                 sleep(tsleep);
             } else {
-                mtwarn(WM_DATABASE_LOGTAG, "Time interval exceeded by %ld seconds.", -tsleep);
+                mtwarn(WM_DATABASE_LOGTAG, "Time interval exceeded by %lld seconds.", -tsleep);
             }
         }
 #ifdef INOTIFY_ENABLED
@@ -708,7 +708,7 @@ int wm_sync_shared_group(const char *fname) {
     dp = opendir(path);
 
     /* The group was deleted */
-    if (!dp) { 
+    if (!dp) {
         wdb_remove_group_db(fname);
     }
     else {
@@ -791,7 +791,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     }
 
     switch (type) {
-        
+
     case WDB_GROUPS:
         id_agent = atoi(fname);
 
@@ -1325,7 +1325,7 @@ void wm_inotify_setup(wm_database * data) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
-        
+
         if ((wd_shared_groups = inotify_add_watch(inotify_fd, DEFAULTDIR SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
 

@@ -149,8 +149,6 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    // Start com request thread
-    w_create_thread(mailcom_main, NULL);
 
     if (!run_foreground) {
         nowDaemon();
@@ -177,6 +175,9 @@ int main(int argc, char **argv)
     }
 
     mdebug1(PRIVSEP_MSG, dir, user);
+
+    // Start com request thread
+    w_create_thread(mailcom_main, NULL);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

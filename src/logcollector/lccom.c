@@ -27,14 +27,14 @@ size_t lccom_dispatch(char * command, char ** output){
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            merror("LCCOM getconfig needs arguments.");
+            mdebug1("LCCOM getconfig needs arguments.");
             *output = strdup("err LCCOM getconfig needs arguments");
             return strlen(*output);
         }
         return lccom_getconfig(rcv_args, output);
 
     } else {
-        merror("LCCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("LCCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -82,7 +82,7 @@ size_t lccom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    merror("At LCCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At LCCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }
@@ -129,7 +129,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
 
             continue;
         }
-        
+
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case -1:

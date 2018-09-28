@@ -78,7 +78,7 @@ int OS_CloseSocket(int socket);
 /* Set the receiving timeout for a socket
  * Returns 0 on success, else -1
  */
-int OS_SetRecvTimeout(int socket, int seconds);
+int OS_SetRecvTimeout(int socket, long seconds, long useconds);
 
 /* Send secure TCP message
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
@@ -91,6 +91,17 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
  * Return recvval on success or OS_SOCKTERR on error.
  */
 int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
+
+
+/* Send secure TCP Cluster message
+ * Return 0 on success or OS_SOCKTERR on error.
+ */
+int OS_SendSecureTCPCluster(int sock, const void * command,const void * payload);
+
+/* Receive secure TCP message
+ * Return recvval on success or OS_SOCKTERR on error.
+ */
+int OS_RecvSecureClusterTCP(int sock, char * ret);
 
 
 // Receive dynamic size message. Use with OS_SendSecureTCP function.

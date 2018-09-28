@@ -31,20 +31,23 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
     const char *ret;
     int i = 0;
 
+    w_mutex_lock((pthread_mutex_t *)&reg->mutex);
+
     /* The string can't be NULL */
     if (str == NULL) {
         reg->error = OS_REGEX_STR_NULL;
+        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
         return (0);
     }
-
+    
     /* If we need the sub strings */
     if (reg->prts_closure) {
         int k = 0;
+       
         /* Loop over all sub patterns */
         while (reg->patterns[i]) {
             /* Clean the prts_str */
             int j = 0;
-            w_mutex_lock((pthread_mutex_t *)&reg->mutex);
             while (reg->prts_closure[i][j]) {
                 reg->prts_str[i][j] = NULL;
                 j++;
@@ -125,7 +128,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
     const char *pt_error_str[4] = {NULL, NULL, NULL, NULL};
 
     /* Will loop the whole string, trying to find a match */
-    do {
+    for (st = str; *st != '\0'; ++st) {
         switch (*pt) {
             case '\0':
                 if (!(flags & END_SET) || ((flags & END_SET) && (*st == '\0'))) {
@@ -370,7 +373,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
         pt = pattern;
         r_code = NULL;
 
-    } while (*(++st) != '\0');
+    }
 
     /* Match for a possible last parenthesis */
     if (prts_closure) {
@@ -418,4 +421,3 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
 
     return (NULL);
 }
-

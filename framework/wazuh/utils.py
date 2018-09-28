@@ -378,6 +378,27 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
+def get_hash(filename, hash_algorithm='md5'):
+    # check hash algorithm
+    try:
+        algorithm_list = hashlib.algorithms_available
+    except Exception as e:
+        algorithm_list = hashlib.algorithms
+
+    if not hash_algorithm in algorithm_list:
+        raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
+
+    hashing = hashlib.new(hash_algorithm)
+
+    try:
+        with open(filename, 'rb') as f:
+            hashing.update(f.read())
+    except IOError:
+        return None
+
+    return hashing.hexdigest()
+
+
 def get_fields_to_nest(fields, force_fields=[], split_character="_"):
     nest = {k:set(filter(lambda x: x != k, chain.from_iterable(g)))
              for k,g in groupby(map(lambda x: x.split(split_character), sorted(fields)),
@@ -540,7 +561,7 @@ class WazuhVersion:
         return (self >= new_version and self != new_version)
 
     def __le__(self, new_version):
-        return (not (self < new_version) or self == new_version)
+        return (not (self > new_version) or self == new_version)
 
 
 def get_timeframe_in_seconds(timeframe):
@@ -715,8 +736,8 @@ class WazuhDBQuery(object):
         """
         Parses legacy filters.
         """
-        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': name, 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
-                               for name, value in self.legacy_filters.items() for subvalue in value.split(',') if not self._pass_filter(subvalue)]
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': '{}${}'.format(name,i), 'operator': '=', 'separator': 'OR' if ',' in value else 'AND', 'level': 0}
+                               for name, value in self.legacy_filters.items() for subvalue,i in zip(value.split(','), range(len(value.split(',')))) if not self._pass_filter(subvalue)]
         if not self.q and self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = ''
@@ -731,6 +752,27 @@ class WazuhDBQuery(object):
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
 
 
+    def _process_filter(self, field_name, field_filter, q_filter):
+        if field_name == "status":
+            self._filter_status(q_filter)
+        elif field_name in self.date_fields and not self.date_regex.match(q_filter['value']):
+            # filter a date, but only if it is in timeframe format.
+            # If it matches the same format as DB (YYYY-MM-DD hh:mm:ss), filter directly by value (next if cond).
+            self._filter_date(q_filter, field_name)
+        else:
+            if q_filter['value'] is not None:
+                self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
+                    r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
+                if q_filter['operator'] == 'LIKE':
+                    self.request[field_filter] = '%{}%'.format(self.request[field_filter])
+                self.query += '{} {} :{}'.format(self.fields[field_name], q_filter['operator'], field_filter)
+                if not field_filter.isdigit():
+                    # filtering without being uppercase/lowercase sensitive
+                    self.query += ' COLLATE NOCASE'
+            else:
+                self.query += '{} IS null'.format(self.fields[field_name])
+
+
     def _add_filters_to_query(self):
         self._parse_filters()
         curr_level = 0
@@ -739,23 +781,8 @@ class WazuhDBQuery(object):
             field_filter = q_filter['field'].replace('.','_')
 
             self.query += '((' if curr_level < q_filter['level'] else '('
-            if field_name == "status":
-                self._filter_status(q_filter)
-            elif field_name in self.date_fields and not self.date_regex.match(q_filter['value']):
-                # filter a date, but only if it is in timeframe format.
-                # If it matches the same format as DB (YYYY-MM-DD hh:mm:ss), filter directly by value (next if cond).
-                self._filter_date(q_filter, field_name)
-            else:
-                if q_filter['value'] is not None:
-                    self.request[field_filter] = q_filter['value'] if q_filter['field'] != "version" else re.sub( r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                    if q_filter['operator'] == 'LIKE':
-                        self.request[field_filter] = '%{}%'.format(self.request[field_filter])
-                    self.query += '{} {} :{}'.format(self.fields[field_name], q_filter['operator'], field_filter)
-                    if not field_filter.isdigit():
-                        # filtering without being uppercase/lowercase sensitive
-                        self.query += ' COLLATE NOCASE'
-                else:
-                    self.query += '{} IS null'.format(self.fields[field_name])
+
+            self._process_filter(field_name, field_filter, q_filter)
 
             self.query += ('))' if curr_level > q_filter['level'] else ')') + ' {} '.format(q_filter['separator'])
             curr_level = q_filter['level']

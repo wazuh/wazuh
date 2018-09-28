@@ -36,6 +36,15 @@
 #define UDP_PROTO   6
 #define TCP_PROTO   17
 
+#define MAX_NEEDED_TAGS 4
+
+typedef enum needed_tags {
+    JSONOUT_OUTPUT = 0,
+    ALERTS_LOG,
+    LOGALL,
+    LOGALL_JSON
+} NeededTags;
+
 #include "os_xml/os_xml.h"
 
 /* Main function to read the config */
