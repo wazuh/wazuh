@@ -82,13 +82,13 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    start_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select={'fields': ['value']},
+    start_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select={'value'},
                                                                filters={'key': 'fim-db-start-scan'})[0]['value']
     if start_timestamp == "000":
         return {'start': 'ND', 'end': 'ND'}
     else:
         start = datetime.fromtimestamp(float(start_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
-        end_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select={'fields': ['value']},
+        end_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select={'value'},
                                                                  filters={'key': 'fim-db-end-scan'})[0]['value']
         if end_timestamp == "000":
             return {'start': start, 'end': 'ND'}
@@ -110,15 +110,17 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    parameters = ["date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
-                  "uid", "type"]
-    summary_parameters = ["date", "mtime", "file"]
+    parameters = {"date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
+                  "uid", "type"}
+    summary_parameters = {"date", "mtime", "file"}
 
     if select is None:
-        select = {'fields': summary_parameters if summary else parameters}
+        select = summary_parameters if summary else parameters
     else:
-        if not (set(select['fields'])).issubset(set(parameters)):
-            raise WazuhException(1724, "Allowed select fields: {0}".format(', '.join(parameters)))
+        select = set(select['fields'])
+        if not select.issubset(parameters):
+            raise WazuhException(1724, "Allowed select fields: {0}. Fields: {1}.".format(', '.join(parameters),
+                                                                                         ','.join(select - parameters)))
 
     if 'hash' in filters:
         or_filters = {'md5': filters['hash'], 'sha1': filters['hash'], 'sha256': filters['hash']}
