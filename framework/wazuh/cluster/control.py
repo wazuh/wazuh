@@ -107,8 +107,8 @@ def get_agents(filter_status, filter_node, is_master):
 
         request = "dapi {}".format(json.dumps(input_json))
         response = execute(request)
-        if not isinstance(response, dict):
-            raise WazuhException(1000, response)
+        if response.get('err'):
+            raise Exception(response['err'])
 
         if response['error'] == 0:
             return response['data']
