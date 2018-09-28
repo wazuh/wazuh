@@ -69,6 +69,7 @@ def clear(agent_id=None, all_agents=False):
         wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)
         # update key fields which contains keys to value 000
         wdb_conn.execute("agent {} sql update metadata set value = '000' where key like 'fim_db%'".format(agent), update=True)
+        wdb_conn.execute("agent {} sql update metadata set value = '000' where key ='syscheck-db-completed'".format(agent), update=True)
 
     return "Syscheck database deleted"
 
@@ -118,7 +119,7 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
         else:
             select = {'fields': parameters}
     else:
-        if not set(select['fields']).issubset(set(parameters)):
+        if not (set(select['fields'])).issubset(set(parameters)):
             raise WazuhException(1724, "Allowed select fields: {0}".format(', '.join(parameters)))
 
     db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
