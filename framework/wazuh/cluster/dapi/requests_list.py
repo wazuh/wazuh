@@ -336,6 +336,10 @@ functions = {
         'function': syscheck.run,
         'type': 'distributed_master'
     },
+    'DELETE/syscheck/:agent_id': {
+        'function': syscheck.clear,
+        'type': 'distributed_master'
+    },
 
     # Syscollector
     '/syscollector/:agent_id/os': {
