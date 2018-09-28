@@ -5,49 +5,49 @@
 -->
 
 <!--
-ID: 87800 - 87899
+ID: 87900 - 87999
 -->
 
 <group name="docker,">
 
-    <rule id="87800" level="0">
+    <rule id="87900" level="0">
         <decoded_as>json</decoded_as>
         <field name="integration">docker</field>
         <description>Docker alerts: $(docker.Type).</description>
     </rule>
 
-     <rule id="87801" level="3">
-        <if_sid>87800</if_sid>
+     <rule id="87901" level="3">
+        <if_sid>87900</if_sid>
         <field name="docker.status">create</field>
         <description>Container $(docker.Actor.Attributes.name) created</description>
     </rule>
 
-    <rule id="87802" level="3">
-        <if_sid>87800</if_sid>
+    <rule id="87902" level="3">
+        <if_sid>87900</if_sid>
         <field name="docker.status">destroy</field>
         <description>Container $(docker.Actor.Attributes.name) destroyed</description>
     </rule>
 
-    <rule id="87803" level="3">
-        <if_sid>87800</if_sid>
+    <rule id="87903" level="3">
+        <if_sid>87900</if_sid>
         <field name="docker.status">start</field>
         <description>Container $(docker.Actor.Attributes.name) started</description>
     </rule>
 
-	<rule id="87804" level="3">
-        <if_sid>87800</if_sid>
+	<rule id="87904" level="3">
+        <if_sid>87900</if_sid>
         <field name="docker.status">stop</field>
         <description>Container $(docker.Actor.Attributes.name) stopped</description>
     </rule>
 
-    <rule id="87805" level="3">
-        <if_sid>87800</if_sid>
+    <rule id="87905" level="3">
+        <if_sid>87900</if_sid>
         <field name="docker.status">pause</field>
         <description>Container $(docker.Actor.Attributes.name) paused</description>
     </rule>
 
-    <rule id="87806" level="3">
-        <if_sid>87800</if_sid>
+    <rule id="87906" level="3">
+        <if_sid>87900</if_sid>
         <field name="docker.status">unpause</field>
         <description>Container $(docker.Actor.Attributes.name) unpaused</description>
     </rule>
