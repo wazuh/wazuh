@@ -53,7 +53,11 @@ static const char *SQL_STMT[] = {
     "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);",
     "INSERT INTO metadata (key, value) VALUES (?, ?);",
     "UPDATE metadata SET value = ? WHERE key = ?;",
-    "SELECT value FROM metadata WHERE key = ?;"
+    "SELECT value FROM metadata WHERE key = ?;",
+    "SELECT first_start, first_end, start_scan, end_scan, first_check, second_check, third_check FROM scan_info WHERE module = ?;",
+    "INSERT INTO scan_info (module, first_start, first_end, start_scan, end_scan, fim_first_check, fim_second_check, fim_third_check) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE scan_info SET ? = ? WHERE module = ?;",
+    "SELECT ? FROM scan_info WHERE module = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
@@ -179,6 +183,10 @@ wdb_t * wdb_open_agent2(int agent_id) {
         if (wdb_metadata_initialize(wdb, path) < 0) {
             mwarn("Couldn't initialize metadata table in '%s'", path);
         }
+
+        //TODO: comprobar la version del agente guardada en metadata. Esto indica la version de la BBDD,
+        // si es menor a 3.7 debe haber un error, en un upgrade anterior a 3.7 erán eliminadas
+        // si es menor a __ossec_version 
     }
     else {
         wdb = wdb_init(db, sagent_id);
