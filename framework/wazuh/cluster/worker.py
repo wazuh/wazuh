@@ -589,7 +589,8 @@ class KeepAliveThread(WorkerThread):
         # Intervals
         self.init_interval = get_cluster_items_worker_intervals()['keep_alive']
         self.interval = self.init_interval
-
+        self.failed_attempts = 0
+        self.max_failed_attempts = get_cluster_items_worker_intervals()['max_failed_keepalive_attempts']
 
 
     def ask_for_permission(self):
@@ -601,7 +602,18 @@ class KeepAliveThread(WorkerThread):
 
 
     def job(self):
-        return self.worker_handler.send_request('echo-c', 'Keep-alive from worker!')
+        try:
+            message = self.worker_handler.send_request('echo-c', 'Keep-alive from worker!')
+            self.failed_attempts = 0
+            return message
+        except Exception as e:
+            self.failed_attempts += 1
+            logger.error("{} Error sending keep alive to master ({}): {}".format(self.thread_tag, self.failed_attempts, e))
+            if self.failed_attempts >= self.max_failed_attempts:
+                logger.critical("{} Maximum failed attempts exceeded. Disconnecting worker.".format(self.thread_tag))
+                self.stopper.set()
+            else:
+                raise e
 
 
     def process_result(self):
