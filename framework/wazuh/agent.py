@@ -289,6 +289,8 @@ class Agent:
         :param sort: Dictionary of form {'fields':[], 'order':'asc'}/{'fields':[], 'order':'desc'}
         :param search: Dictionary of form {'value': '', 'negation':false, 'fields': []}
         """
+        self.get_basic_information()  # check if the agent exists
+
         wdb_conn = WazuhDBConnection()
 
         query = "agent {} sql select {} from {}".format(self.id, ','.join(select['fields']), table)

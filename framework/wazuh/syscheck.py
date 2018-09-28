@@ -66,6 +66,7 @@ def clear(agent_id=None, all_agents=False):
 
     wdb_conn = WazuhDBConnection()
     for agent in agents:
+        Agent(agent).get_basic_information()  # check if the agent exists
         wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)
         # update key fields which contains keys to value 000
         wdb_conn.execute("agent {} sql update metadata set value = '000' where key like 'fim_db%'".format(agent), update=True)
