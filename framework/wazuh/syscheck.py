@@ -128,23 +128,13 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     else:
         or_filters = {}
 
-    db_query = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
+    items, totalItems = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
                                                         sort=sort, search=search, filters=filters, count=True,
                                                         or_filters=or_filters)
-    if "mtime" in select['fields']:
-        for item in db_query[0]:
-            # if mtime field is 0, returns "ND"
-            if item['mtime'] == 0:
-                item['mtime'] = "ND"
-            else:
-                item['mtime'] = datetime.fromtimestamp(float(item['mtime'])).strftime('%Y-%m-%d %H:%M:%S')
+    for date_field in select & {'mtime', 'date'}:
+        for item in items:
+            # date fields with value 0 are returned as ND
+            item[date_field] = "ND" if item[date_field] == 0 \
+                                    else datetime.fromtimestamp(float(item[date_field])).strftime('%Y-%m-%d %H:%M:%S')
 
-    if "date" in select['fields']:
-        for item in db_query[0]:
-            # if mtime field is 0, returns "ND"
-            if item['date'] == 0:
-                item['date'] = "ND"
-            else:
-                item['date'] = datetime.fromtimestamp(float(item['date'])).strftime('%Y-%m-%d %H:%M:%S')
-
-    return {'totalItems': db_query[1], 'items': db_query[0]}
+    return {'totalItems': totalItems, 'items': items}
