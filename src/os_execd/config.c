@@ -274,7 +274,7 @@ cJSON *getClusterConfig(void) {
     ssize_t length;
 	length = strlen(req);
 
-    cJSON *cluster_config_cJSON = cJSON_CreateObject();
+    cJSON *cluster_config_cJSON;
 
 	if (isChroot()) {
 		strcpy(sockname, CLUSTER_SOCK);
