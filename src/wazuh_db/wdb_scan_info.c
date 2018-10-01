@@ -89,6 +89,8 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATEFS];
+        sqlite3_bind_int64(stmt, 2, value);
+        sqlite3_bind_text(stmt, 3, module, -1, NULL);
     }
     if(strcmp(field, "first_end") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATEFE) < 0) {
@@ -96,6 +98,8 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATEFE];
+        sqlite3_bind_int64(stmt, 2, value);
+        sqlite3_bind_text(stmt, 3, module, -1, NULL);
     }
     if(strcmp(field, "start_scan") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATESS) < 0) {
@@ -103,6 +107,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATESS];
+        sqlite3_bind_text(stmt, 2, module, -1, NULL);
     }
     if(strcmp(field, "end_scan") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATEES) < 0) {
@@ -110,6 +115,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATEES];
+        sqlite3_bind_text(stmt, 2, module, -1, NULL);
     }
     if(strcmp(field, "fim_first_check") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE1C) < 0) {
@@ -117,6 +123,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE1C];
+        sqlite3_bind_text(stmt, 2, module, -1, NULL);
     }
     if(strcmp(field, "fim_second_check") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE2C) < 0) {
@@ -124,6 +131,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE2C];
+        sqlite3_bind_text(stmt, 2, module, -1, NULL);
     }
     if(strcmp(field, "fim_third_check") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE3C) < 0) {
@@ -131,10 +139,10 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE3C];
+        sqlite3_bind_text(stmt, 2, module, -1, NULL);
     }
 
     sqlite3_bind_int64(stmt, 1, value);
-    sqlite3_bind_text(stmt, 2, module, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
