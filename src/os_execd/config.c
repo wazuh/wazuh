@@ -292,7 +292,7 @@ cJSON *getClusterConfig(void) {
 			merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
 		}
 	} else {
-		if (OS_SendSecureTCPCluster(sock, req, "") != 0) {
+		if (OS_SendSecureTCPCluster(sock, req, "", 0) != 0) {
 			merror("send(): %s", strerror(errno));
             close(sock);
             return NULL;
@@ -300,7 +300,7 @@ cJSON *getClusterConfig(void) {
 
         os_calloc(OS_MAXSTR,sizeof(char),buffer);
 
-        switch (length = OS_RecvSecureClusterTCP(sock, buffer), length) {
+        switch (length = OS_RecvSecureClusterTCP(sock, buffer, OS_MAXSTR), length) {
         case -1:
             merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
             free(buffer);
