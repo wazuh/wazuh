@@ -70,7 +70,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
     int found = 0;
     char rk_buf[OS_SIZE_1024 + 1];
 
-    for (i = 0; rk_agent_ips[i] && i < MAX_AGENTS; i++) {
+    for (i = 0; i < MAX_AGENTS && rk_agent_ips[i]; i++) {
         if (strcmp(rk_agent_ips[i], agent) == 0) {
             snprintf(rk_buf, OS_SIZE_1024, "%s/%s", ROOTCHECK_DIR, agent);
 
