@@ -13,6 +13,7 @@
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_INTERVAL = "interval";
+static const char *XML_ATTEMPTS = "attempts";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_DISABLED = "disabled";
 
@@ -28,12 +29,13 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
     os_calloc(1, sizeof(wm_docker_t), docker);
     docker->flags.enabled = 1;
     docker->flags.run_on_start = 1;
+    docker->attempts = 5;
+    docker->interval = WM_DOCKER_DEF_INTERVAL;
     module->context = &WM_DOCKER_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = docker;
 
     if (!nodes) {
-        docker->interval = WM_DOCKER_DEF_INTERVAL;
         return 0;
     }
 
@@ -74,8 +76,15 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-            if (docker->interval < 60) {
-                merror("At module '%s': Interval must be greater than 60 seconds.", WM_DOCKER_CONTEXT.name);
+            if (docker->interval < 5) {
+                merror("At module '%s': Interval must be greater than 5 seconds.", WM_DOCKER_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_ATTEMPTS)) {
+            docker->attempts = strtoul(nodes[i]->content, NULL, 0);
+
+            if (docker->attempts < 0 || docker->attempts == INT_MAX) {
+                merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_ATTEMPTS);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
@@ -101,9 +110,6 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
             return OS_INVALID;
         }
     }
-
-    if (!docker->interval)
-        docker->interval = WM_DOCKER_DEF_INTERVAL;
 
     return 0;
 }

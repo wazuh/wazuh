@@ -38,6 +38,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
     int status = 0;
     char * command = NULL;
     char * output = NULL;
+    int attempts = 0;
 
     wm_docker_setup(docker_conf);
     mtinfo(WM_DOCKER_LOGTAG, "Module docker-listener started");
@@ -45,7 +46,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
     // First sleeping
 
     if (!docker_conf->flags.run_on_start) {
-        mtinfo(WM_DOCKER_LOGTAG, "Waiting the interval to run the listener.");
+        mtinfo(WM_DOCKER_LOGTAG, "Waiting the interval (%u seconds) to run the listener.", docker_conf->interval);
         sleep(docker_conf->interval);
     }
 
@@ -53,7 +54,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
     while (1) {
 
-        mtinfo(WM_DOCKER_LOGTAG, "Starting listening Docker events.");
+        mtinfo(WM_DOCKER_LOGTAG, "Starting to listening Docker events.");
 
         // Running the docker listener script
 
@@ -67,15 +68,23 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
                     mtwarn(WM_DOCKER_LOGTAG, "Returned exit code %d", status);
                     mterror(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
                 } else {
-                    mtdebug2(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
+                    if (output) {
+                        mtdebug2(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
+                    }
                 }
+                attempts++;
                 break;
             default:
                 mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
                 pthread_exit(NULL);
         }
 
-        mtinfo(WM_DOCKER_LOGTAG, "Docker-listener finished unexpected. Retrying to start it in %u seconds...", docker_conf->interval);
+        if (attempts > docker_conf->attempts) {
+            mtinfo(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
+            pthread_exit(NULL);
+        }
+
+        mtinfo(WM_DOCKER_LOGTAG, "Docker-listener finished unexpected. Retrying to run it in %u seconds...", docker_conf->interval);
         sleep(docker_conf->interval);
 
     }
@@ -126,7 +135,7 @@ void wm_docker_check() {
     // Check if disabled
 
     if (!docker_conf->flags.enabled) {
-        mtinfo(WM_DOCKER_LOGTAG, "Module Docker listener is disabled. Exiting...");
+        mtinfo(WM_DOCKER_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }
 
@@ -140,7 +149,7 @@ void wm_docker_check() {
 // Cleanup function, doesn't overwrite wm_cleanup
 
 void wm_docker_cleanup() {
-    mtinfo(WM_DOCKER_LOGTAG, "Module Docker listener finished.");
+    mtinfo(WM_DOCKER_LOGTAG, "Module finished.");
 }
 
 #endif

@@ -4,7 +4,7 @@
 try:
     import docker
 except:
-    print("'docker' module needs to be installed. Execute 'pip install docker' for do it.")
+    print("'docker' module needs to be installed. Execute 'pip install docker' to do it.")
     exit(1)
 import threading
 import json
@@ -81,7 +81,7 @@ class DockerListener:
         except Exception:
             raise Exception
         print("Docker service was stopped.")
-        self.send_msg(json.dumps({self.field_debug_name: "Disconnected to Docker service"}))
+        self.send_msg(json.dumps({self.field_debug_name: "Disconnected from the Docker service"}))
         self.connect()
 
     def process(self, event):
@@ -103,7 +103,7 @@ class DockerListener:
 
     def send_msg(self, msg):
         """
-        Sends an AWS event to the Wazuh Queue
+        Sends a Docker event to the Wazuh Queue
 
         :param msg: message to be sent.
         """

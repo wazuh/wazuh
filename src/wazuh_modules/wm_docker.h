@@ -26,6 +26,7 @@ typedef struct wm_docker_flags_t {
 
 typedef struct wm_docker_t {
     unsigned int interval;             // Time interval to retry to run the listener
+    int attempts;                      // Maximum attempts to run the module after fails
     wm_docker_flags_t flags;           // Default flags
 } wm_docker_t;
 
