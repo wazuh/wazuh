@@ -59,15 +59,17 @@ def _get_agents():
 
 def _fim_decode(line):
     '''Decode a line from syscheck into a tuple'''
-
-    line = line[:-1].split('!')
+    readed = line
+    line = line[3:-1].split('!')
     if len(line) == 2:
-        fim = line[0][3:-1]
-        parsed = line[1][1:].split(' ', 1)
+        fim = line[0][:-1]
+        parsed = line[1].split(' ', 1)
         if len(parsed) == 2:
             timestamp = parsed[0]
             path = parsed[1]
         else:
+            if _debug:
+                print("Error parsing line: {0}".format(readed))
             raise Exception("Couldn't decode line at syscheck database.")
     else:
         raise Exception("Couldn't decode line at syscheck database.")
@@ -97,10 +99,10 @@ def check_file_entry(agent, file, wdb_socket):
         return False
 
 
-def insert_fim(agent, fim_array, wdb_socket):
+def insert_fim(agent, fim_array, type, wdb_socket):
 
     # Send message
-    msg = "agent {0} syscheck save file {1}!{2}:0 {3}".format(str(agent).zfill(3), fim_array[0], fim_array[1], fim_array[2])
+    msg = "agent {0} syscheck save {1} {2}!{3}:0 {4}".format(str(agent).zfill(3), type, fim_array[0], fim_array[1], fim_array[2])
     if _debug:
         print(msg)
     msg = struct.pack('<I', len(msg)) + msg.encode()
@@ -119,7 +121,7 @@ def insert_fim(agent, fim_array, wdb_socket):
     if data.startswith('ok'):
         return 1, 'ok'
     else:
-        return 0, rec_msg
+        return 0, data
 
 
 def _print_help():
@@ -171,45 +173,71 @@ if __name__ == '__main__':
     if _verbose:
         print("Connected to WazuhDB socket ({0})".format(_wdb_socket))
 
-    for agt in _get_agents():
-        count = 0
-        dbfile = "{0}/({1}) {2}->syscheck".format(_syscheck_dir,agt[1],agt[2])
+    # Manager DB
+    count = 0
+    mandbfile = "{0}/syscheck".format(_syscheck_dir)
+    if os.path.isfile(mandbfile):
         if _verbose:
-            print("Reading agent ({0}) syscheck DB.".format(str(agt[0]).zfill(3)))
-        with open(dbfile, 'r') as syscheck:
+            print("Reading manager syscheck DB.")
+        with open(mandbfile, 'r') as syscheck:
             for line in syscheck:
                 if not line.startswith('#'):
                     decoded = _fim_decode(line)
                     if not _force:
-                        if not check_file_entry(agt[0], decoded[2], s):
-                            res = insert_fim(agt[0], decoded, s)
+                        if not check_file_entry('000', decoded[2], s):
+                            res = insert_fim('000', decoded, 'file', s)
                     else:
-                        res = insert_fim(agt[0], decoded, s)
+                        res = insert_fim('000', decoded, 'file', s)
                         if res[0]:
                             count = count + 1
                         else:
                             print("ERR: {0}".format(res[1]))
         if _verbose:
-            print("Added {0} file entries for agent {1}.".format(count, str(agt[0]).zfill(3)))
+            print("Added {0} file entries manager.".format(count))
 
-        # Registry files
-        regfile = "{0}/({1}) {2}->syscheck-registry".format(_syscheck_dir,agt[1],agt[2])
-        if os.path.isfile(regfile):
+    for agt in _get_agents():
+        # Monitorized files
+        count = 0
+        dbfile = "{0}/({1}) {2}->syscheck".format(_syscheck_dir,agt[1],agt[2])
+        if os.path.isfile(dbfile):
             if _verbose:
-                print("Reading agent ({0}) syscheck-registry DB.".format(str(agt[0]).zfill(3)))
+                print("Reading agent ({0}) syscheck DB.".format(str(agt[0]).zfill(3)))
             with open(dbfile, 'r') as syscheck:
                 for line in syscheck:
                     if not line.startswith('#'):
                         decoded = _fim_decode(line)
                         if not _force:
                             if not check_file_entry(agt[0], decoded[2], s):
-                                res = insert_fim(agt[0], decoded, s)
+                                res = insert_fim(agt[0], decoded, 'file', s)
                         else:
-                            res = insert_fim(agt[0], decoded, s)
+                            res = insert_fim(agt[0], decoded, 'file', s)
                             if res[0]:
                                 count = count + 1
                             else:
                                 print("ERR: {0}".format(res[1]))
+            if _verbose:
+                print("Added {0} file entries for agent {1}.".format(count, str(agt[0]).zfill(3)))
+
+        # Registry files
+        count = 0
+        regfile = "{0}/({1}) {2}->syscheck-registry".format(_syscheck_dir,agt[1],agt[2])
+        if os.path.isfile(regfile):
+            if _verbose:
+                print("Reading agent ({0}) syscheck-registry DB.".format(str(agt[0]).zfill(3)))
+            with open(regfile, 'r') as syscheck:
+                for line in syscheck:
+                    if not line.startswith('#'):
+                        decoded = _fim_decode(line)
+                        if not _force:
+                            if not check_file_entry(agt[0], decoded[2], s):
+                                res = insert_fim(agt[0], decoded, 'registry', s)
+                        else:
+                            res = insert_fim(agt[0], decoded, 'registry', s)
+                            if res[0]:
+                                count = count + 1
+                            else:
+                                print("ERR: {0}".format(res[1]))
+                                exit()
             if _verbose:
                 print("Added {0} registry entries for agent {1}.".format(count, str(agt[0]).zfill(3)))
 
