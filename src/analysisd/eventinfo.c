@@ -756,6 +756,9 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->diff) {
         free(lf->diff);
     }
+    if (lf->previous) {
+        free(lf->previous);
+    }
 
     if(lf->is_a_copy){
         if(lf->generated_rule->group){

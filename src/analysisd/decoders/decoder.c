@@ -146,7 +146,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
         while (child_node) {
             /* If we have an external decoder, execute it */
             if (nnode->plugindecoder) {
-                nnode->plugindecoder(lf);
+                nnode->plugindecoder(lf, decoder_match);
             } else if (nnode->regex) {
                 int i;
 
@@ -199,7 +199,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
                         nnode->order[i](lf, decoder_match->sub_strings[i], nnode->fields[i]);
                     else
                         /* We do not free any memory used above */
-                        os_free(decoder_match->sub_strings[i]);
+                        free(decoder_match->sub_strings[i]);
 
                     decoder_match->sub_strings[i] = NULL;
                 }

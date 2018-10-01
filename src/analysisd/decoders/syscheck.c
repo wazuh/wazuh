@@ -161,8 +161,6 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     if (lf->data) {
         *(lf->data++) = '\0';
         os_strdup(lf->data, lf->data);
-    } else {
-        lf->data = NULL;
     }
 
     // Check if file is supposed to be ignored
@@ -171,7 +169,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
 
         while (*ff_ig) {
             if (strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0) {
-                lf->data = NULL;
+                os_free(lf->data);
                 mdebug1("Ignoring file '%s'", f_name);;
                 return (0);
             }
@@ -701,7 +699,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     );
 
     if(!changes) {
-        lf->data = NULL;
+        os_free(lf->data);
         sk_sum_clean(newsum);
     } else {
         wm_strcat(&lf->fields[SK_CHFIELDS].value, ",", '\0');
