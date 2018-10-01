@@ -292,7 +292,7 @@ cJSON *getClusterConfig(void) {
 			merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
 		}
 	} else {
-		if (OS_SendSecureTCPCluster(sock, req, NULL) != 0) {
+		if (OS_SendSecureTCPCluster(sock, req, "") != 0) {
 			merror("send(): %s", strerror(errno));
             close(sock);
             return NULL;
@@ -330,7 +330,7 @@ cJSON *getClusterConfig(void) {
         free(buffer);
         return NULL;
     }
-    
+
     free(buffer);
     return cluster_config_cJSON;
 #else
