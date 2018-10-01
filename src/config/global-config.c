@@ -644,10 +644,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return OS_INVALID;
                 }
 
-                if (*end) {
-                    merror("Invalid value for option '<%s>'", xml_queue_size);
-                    return OS_INVALID;
-                }
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
