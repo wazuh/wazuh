@@ -911,6 +911,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 char path[PATH_MAX];
 
                 if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+                    w_mutex_unlock(&mutex_keys);
                     merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
                     OS_RemoveAgent(keys.keyentries[index]->id);
                     merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
