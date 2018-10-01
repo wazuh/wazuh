@@ -215,3 +215,14 @@ CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS scan_info (
+    module TEXT PRIMARY KEY,
+    first_start INTEGER,
+    first_end INTEGER,
+    start_scan INTEGER,
+    end_scan INTEGER,
+    fim_first_check INTEGER,
+    fim_second_check INTEGER,
+    fim_third_check INTEGER
+);

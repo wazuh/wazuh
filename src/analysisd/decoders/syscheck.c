@@ -808,20 +808,35 @@ int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf) {
 int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
     char *wazuhdb_query = NULL;
     char *response = NULL;
+    char *msg = NULL;
     int db_result;
     time_t *ts_end;
 
+    os_calloc(OS_SIZE_128, sizeof(char), msg);
+
     // If we don't have a valid syscheck message, it may be a scan control message
+    if(strcmp(key, HC_FIM_DB_SFS) == 0) {
+        snprintf(msg, OS_SIZE_128, "first_start");
+    }
+    if(strcmp(key, HC_FIM_DB_EFS) == 0) {
+        snprintf(msg, OS_SIZE_128, "first_end");
+    }
+    if(strcmp(key, HC_FIM_DB_SS) == 0) {
+        snprintf(msg, OS_SIZE_128, "start_scan");
+    }
+    if(strcmp(key, HC_FIM_DB_ES) == 0) {
+        snprintf(msg, OS_SIZE_128, "end_scan");
+    }
+    if(strcmp(key, HC_SK_DB_COMPLETED) == 0) {
+        snprintf(msg, OS_SIZE_128, "end_scan");
+    }
 
-    if (strcmp(key, HC_FIM_DB_SFS) == 0 || strcmp(key, HC_FIM_DB_EFS) == 0 ||
-            strcmp(key, HC_FIM_DB_SS) == 0 || strcmp(key, HC_FIM_DB_ES) == 0 ||
-            strcmp(key, HC_SK_DB_COMPLETED) == 0) {
-
+    if (msg) {
         os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
-        snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck metadata %s %ld",
+        snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_update %s %ld",
                 lf->agent_id,
-                key,
+                msg,
                 (long int)value
         );
 
@@ -829,7 +844,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         switch (db_result) {
         case -2:
-            merror("FIM decoder: Bad result from metadata query.");
+            merror("FIM decoder: Bad result from scan_info query.");
             // Fallthrough
         case -1:
             os_free(wazuhdb_query);
@@ -846,7 +861,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
                 if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, ts_end) <= 0) {
                     os_free(ts_end);
-                    merror("Unable to add metadata to hash table for agent: %s",
+                    merror("Unable to add scan_info to hash table for agent: %s",
                             lf->agent_id);
                 }
             }
@@ -857,9 +872,8 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         // Start scan 3rd_check=2nd_check 2nd_check=1st_check 1st_check=value
         if (strcmp(key, HC_FIM_DB_SFS) == 0) {
-            snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck control %s %ld",
+            snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck control %ld",
                     lf->agent_id,
-                    key,
                     (long int)value
             );
 
@@ -867,11 +881,12 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
             switch (db_result) {
             case -2:
-                merror("FIM decoder: Bad result from control query.");
+                merror("FIM decoder: Bad result from checks control query.");
                 // Fallthrough
             case -1:
                 os_free(wazuhdb_query);
                 os_free(response);
+                os_free(msg);
                 return db_result;
             }
         }
@@ -883,9 +898,11 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         os_free(wazuhdb_query);
         os_free(response);
+        os_free(msg);
         return (1);
     }
 
+    os_free(msg);
     return (0);
 }
 

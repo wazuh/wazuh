@@ -74,6 +74,22 @@ typedef enum wdb_stmt {
     WDB_STMT_METADATA_INSERT,
     WDB_STMT_METADATA_UPDATE,
     WDB_STMT_METADATA_FIND,
+    WDB_STMT_SCAN_INFO_FIND,
+    WDB_STMT_SCAN_INFO_INSERT,
+    WDB_STMT_SCAN_INFO_UPDATEFS,
+    WDB_STMT_SCAN_INFO_UPDATEFE,
+    WDB_STMT_SCAN_INFO_UPDATESS,
+    WDB_STMT_SCAN_INFO_UPDATEES,
+    WDB_STMT_SCAN_INFO_UPDATE1C,
+    WDB_STMT_SCAN_INFO_UPDATE2C,
+    WDB_STMT_SCAN_INFO_UPDATE3C,
+    WDB_STMT_SCAN_INFO_GETFS,
+    WDB_STMT_SCAN_INFO_GETFE,
+    WDB_STMT_SCAN_INFO_GETSS,
+    WDB_STMT_SCAN_INFO_GETES,
+    WDB_STMT_SCAN_INFO_GET1C,
+    WDB_STMT_SCAN_INFO_GET2C,
+    WDB_STMT_SCAN_INFO_GET3C,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -223,9 +239,6 @@ int wdb_metadata_fill_version(sqlite3 *db);
 
 /* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
-
-/* Change value for. Returns 0 if doesn't found, 1 on success or -1 on error. */
-int wdb_metadata_fim_check_control (wdb_t * wdb, const char *last_check);
 
 /* Update field date for specific fim_entry. */
 int wdb_fim_update_date_entry(wdb_t * wdb, const char *path, const char *date);
@@ -415,5 +428,14 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
 int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
+
+// Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
+
+int wdb_scan_info_init (wdb_t *wdb, char *path);
+int wdb_scan_info_find(wdb_t * wdb, const char * module);
+int wdb_scan_info_insert (wdb_t * wdb, const char *module);
+int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value);
+int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output);
+int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 
 #endif

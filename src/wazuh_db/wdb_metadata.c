@@ -46,41 +46,6 @@ int wdb_metadata_initialize (wdb_t *wdb, char *path) {
         }
     }
 
-    if (wdb_metadata_insert_entry(wdb, "fim-db-1stcheck-scan", "000") < 0) {
-        merror("Couldn't fill metadata into database '%s'", path);
-        result = -1;
-    }
-
-    if (wdb_metadata_insert_entry(wdb, "fim-db-2ndcheck-scan", "000") < 0) {
-        merror("Couldn't fill metadata into database '%s'", path);
-        result = -1;
-    }
-
-    if (wdb_metadata_insert_entry(wdb, "fim-db-3rdcheck-scan", "000") < 0) {
-        merror("Couldn't fill metadata into database '%s'", path);
-        result = -1;
-    }
-
-    if (wdb_metadata_insert_entry(wdb, "fim-db-start-first-scan", "000") < 0) {
-        merror("Couldn't fill metadata into database '%s'", path);
-        result = -1;
-    }
-
-    if (wdb_metadata_insert_entry(wdb, "fim-db-end-first-scan", "000") < 0) {
-        merror("Couldn't fill metadata into database '%s'", path);
-        result = -1;
-    }
-
-    if (wdb_metadata_insert_entry(wdb, "fim-db-start-scan", "000") < 0) {
-        merror("Couldn't fill metadata into database '%s'", path);
-        result = -1;
-    }
-
-    if (wdb_metadata_insert_entry(wdb, "fim-db-end-scan", "000") < 0) {
-        merror("Couldn't fill metadata into database '%s'", path);
-        result = -1;
-    }
-
     return result;
 }
 
@@ -195,7 +160,7 @@ int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_METADATA_FIND) < 0) {
-        merror("at wdb_fim_update_entry(): cannot cache statement");
+        merror("at wdb_metadata_get_entry(): cannot cache statement");
         return -1;
     }
 
@@ -215,32 +180,4 @@ int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output) {
             mdebug1("at wdb_metadata_get_entry(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
     }
-}
-
-int wdb_metadata_fim_check_control (wdb_t * wdb, const char *last_check) {
-    char *value;
-    int result;
-
-    os_calloc(OS_SIZE_256 + 1, sizeof(char), value);
-
-    if(result = wdb_metadata_get_entry(wdb, "fim-db-2ndcheck-scan", value), result < 0) {
-        mdebug1("at wdb_metadata_fim_check_control(): Cannot get metadata entry");
-    } else {
-        if(result = wdb_metadata_update_entry(wdb, "fim-db-3rdcheck-scan", value), result < 0) {
-            mdebug1("at wdb_metadata_fim_check_control(): Cannot update metadata entry");
-        }
-        if(result = wdb_metadata_get_entry(wdb, "fim-db-1stcheck-scan", value), result < 0) {
-            mdebug1("at wdb_metadata_fim_check_control(): Cannot get metadata entry");
-        }
-        if(result = wdb_metadata_update_entry(wdb, "fim-db-2ndcheck-scan", value), result < 0) {
-            mdebug1("at wdb_metadata_fim_check_control(): Cannot update metadata entry");
-        }
-        if(result = wdb_metadata_update_entry(wdb, "fim-db-1stcheck-scan", last_check), result < 0) {
-            mdebug1("at wdb_metadata_fim_check_control(): Cannot update metadata entry");
-        }
-        
-    }
-    free(value);
-
-    return 0;
 }
