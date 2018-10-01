@@ -554,6 +554,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                         storage->container = container = NULL;
                     }
                     continue;
+                    OS_ClearNode(children);
                 }
             } else {
                 minfo("At module '%s': Container name not found. Skipping container...", WM_AZURE_CONTEXT.name);
@@ -565,6 +566,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                     storage->container = container = NULL;
                 }
                 continue;
+                OS_ClearNode(children);
             }
 
             if (wm_azure_container_read(children, container) < 0) {
