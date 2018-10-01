@@ -46,14 +46,11 @@ class DockerListener:
             if not first_time:
                 self.thread1 = threading.Thread(target=self.listen)
             self.thread1.start()
-            print("Docker service was started.")  # delete
             self.send_msg(json.dumps({self.field_debug_name: "Connected to Docker service"}))
         else:
             if first_time:
-                print("Docker service is not running.")  # delete
                 self.send_msg(json.dumps({self.field_debug_name: "Docker service is not running"}))
             while not self.check_docker_service():
-                print("Reconnecting...")  # delete
                 time.sleep(self.wait_time)
             self.connect()
 
@@ -79,7 +76,6 @@ class DockerListener:
                 self.process(event)
         except Exception:
             raise Exception
-        print("Docker service was stopped.")  # delete
         self.send_msg(json.dumps({self.field_debug_name: "Disconnected to Docker service"}))
         self.connect()
 
