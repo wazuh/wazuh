@@ -506,7 +506,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
     int result, del_result;
     long tscheck3 = 0;
 
-    if(result = wdb_scan_info_get (wdb, "fim", "third_scan", &tscheck3), result < 0) {
+    if(result = wdb_scan_info_get (wdb, "fim", "fim_third_check", &tscheck3), result < 0) {
         mdebug1("at wdb_fim_clean_old_entries(): Cannot get scan_info entry");
     }
 

@@ -808,20 +808,35 @@ int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf) {
 int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
     char *wazuhdb_query = NULL;
     char *response = NULL;
+    char *msg = NULL;
     int db_result;
     time_t *ts_end;
 
+    os_calloc(OS_SIZE_128, sizeof(char), msg);
+
     // If we don't have a valid syscheck message, it may be a scan control message
+    if(strcmp(key, HC_FIM_DB_SFS) == 0) {
+        snprintf(msg, OS_SIZE_128, "first_start");
+    }
+    if(strcmp(key, HC_FIM_DB_EFS) == 0) {
+        snprintf(msg, OS_SIZE_128, "first_end");
+    }
+    if(strcmp(key, HC_FIM_DB_SS) == 0) {
+        snprintf(msg, OS_SIZE_128, "start_scan");
+    }
+    if(strcmp(key, HC_FIM_DB_ES) == 0) {
+        snprintf(msg, OS_SIZE_128, "end_scan");
+    }
+    if(strcmp(key, HC_SK_DB_COMPLETED) == 0) {
+        snprintf(msg, OS_SIZE_128, "end_scan");
+    }
 
-    if (strcmp(key, HC_FIM_DB_SFS) == 0 || strcmp(key, HC_FIM_DB_EFS) == 0 ||
-            strcmp(key, HC_FIM_DB_SS) == 0 || strcmp(key, HC_FIM_DB_ES) == 0 ||
-            strcmp(key, HC_SK_DB_COMPLETED) == 0) {
-
+    if (msg) {
         os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
         snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_update %s %ld",
                 lf->agent_id,
-                key,
+                msg,
                 (long int)value
         );
 
@@ -871,6 +886,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
             case -1:
                 os_free(wazuhdb_query);
                 os_free(response);
+                os_free(msg);
                 return db_result;
             }
         }
@@ -882,9 +898,11 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         os_free(wazuhdb_query);
         os_free(response);
+        os_free(msg);
         return (1);
     }
 
+    os_free(msg);
     return (0);
 }
 

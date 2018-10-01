@@ -83,16 +83,58 @@ int wdb_scan_info_insert (wdb_t * wdb, const char *module) {
 int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE) < 0) {
-        merror("at wdb_scan_info_update(): cannot cache statement");
-        return -1;
+    if(strcmp(field, "first_start") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATEFS) < 0) {
+            merror("at wdb_scan_info_update(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATEFS];
+    }
+    if(strcmp(field, "first_end") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATEFE) < 0) {
+            merror("at wdb_scan_info_update(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATEFE];
+    }
+    if(strcmp(field, "start_scan") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATESS) < 0) {
+            merror("at wdb_scan_info_update(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATESS];
+    }
+    if(strcmp(field, "end_scan") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATEES) < 0) {
+            merror("at wdb_scan_info_update(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATEES];
+    }
+    if(strcmp(field, "fim_first_check") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE1C) < 0) {
+            merror("at wdb_scan_info_update(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE1C];
+    }
+    if(strcmp(field, "fim_second_check") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE2C) < 0) {
+            merror("at wdb_scan_info_update(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE2C];
+    }
+    if(strcmp(field, "fim_third_check") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE3C) < 0) {
+            merror("at wdb_scan_info_update(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE3C];
     }
 
-    stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE];
-
-    sqlite3_bind_text(stmt, 1, field, -1, NULL);
-    sqlite3_bind_int64(stmt, 2, value);
-    sqlite3_bind_text(stmt, 3, module, -1, NULL);
+    sqlite3_bind_int64(stmt, 1, value);
+    sqlite3_bind_text(stmt, 2, module, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
@@ -102,18 +144,60 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
     }
 }
 
-// Get time (first/last/start/end) in output of scan "module": return -1 on error 1 success and 0 if not find
+// Get time (first/last-start/end) in output of scan "module": return -1 on error 1 success and 0 if not find
 int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GET) < 0) {
-        merror("at wdb_scan_info_get(): cannot cache statement");
-        return -1;
+    if(strcmp(field, "first_start") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GETFS) < 0) {
+            merror("at wdb_scan_info_get(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GETFS];
+    }
+    if(strcmp(field, "first_end") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GETFE) < 0) {
+            merror("at wdb_scan_info_get(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GETFE];
+    }
+    if(strcmp(field, "start_scan") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GETSS) < 0) {
+            merror("at wdb_scan_info_get(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GETSS];
+    }
+    if(strcmp(field, "end_scan") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GETES) < 0) {
+            merror("at wdb_scan_info_get(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GETES];
+    }
+    if(strcmp(field, "fim_first_check") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GET1C) < 0) {
+            merror("at wdb_scan_info_get(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GET1C];
+    }
+    if(strcmp(field, "fim_second_check") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GET2C) < 0) {
+            merror("at wdb_scan_info_get(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GET2C];
+    }
+    if(strcmp(field, "fim_third_check") == 0) {
+        if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GET3C) < 0) {
+            merror("at wdb_scan_info_get(): cannot cache statement");
+            return -1;
+        }
+        stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GET3C];
     }
 
-    stmt = wdb->stmt[WDB_STMT_SCAN_INFO_FIND];
-
-    sqlite3_bind_text(stmt, 1, field, -1, NULL);
     sqlite3_bind_text(stmt, 1, module, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
@@ -138,20 +222,18 @@ int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check) {
 
     if(result = wdb_scan_info_get(wdb, "fim", "fim_second_check", &value), result < 0) {
         mdebug1("at wdb_scan_info_fim_checks_control(): Cannot get scan_info entry");
-    } else {
-        if(result = wdb_scan_info_update(wdb, "fim", "fim_third_check", value), result < 0) {
-            mdebug1("at wdb_scan_info_fim_checks_control(): Cannot update scan_info entry");
-        }
-        if(result = wdb_scan_info_get(wdb, "fim", "fim_first_check", &value), result < 0) {
-            mdebug1("at wdb_scan_info_fim_checks_control(): Cannot get scan_info entry");
-        }
-        if(result = wdb_scan_info_update(wdb, "fim", "fim_second_check", value), result < 0) {
-            mdebug1("at wdb_scan_info_fim_checks_control(): Cannot update scan_info entry");
-        }
-        if(result = wdb_scan_info_update(wdb, "fim", "fim_first_check", last), result < 0) {
-            mdebug1("at wdb_scan_info_fim_checks_control(): Cannot update scan_info entry");
-        }
-        
+    }
+    if(result = wdb_scan_info_update(wdb, "fim", "fim_third_check", value), result < 0) {
+        mdebug1("at wdb_scan_info_fim_checks_control(): Cannot update scan_info entry");
+    }
+    if(result = wdb_scan_info_get(wdb, "fim", "fim_first_check", &value), result < 0) {
+        mdebug1("at wdb_scan_info_fim_checks_control(): Cannot get scan_info entry");
+    }
+    if(result = wdb_scan_info_update(wdb, "fim", "fim_second_check", value), result < 0) {
+        mdebug1("at wdb_scan_info_fim_checks_control(): Cannot update scan_info entry");
+    }
+    if(result = wdb_scan_info_update(wdb, "fim", "fim_first_check", last), result < 0) {
+        mdebug1("at wdb_scan_info_fim_checks_control(): Cannot update scan_info entry");
     }
 
     return 0;
