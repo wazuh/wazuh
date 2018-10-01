@@ -417,8 +417,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 #ifndef WIN32
 
             const char *ip_address_regex =
-                "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
-                "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
+                "^!?\\d{1,3}(\\.\\d{1,3}){3}"
+                "(/\\d{1,2}(\\d(\\.\\d{1,3}){3})?)?$";
 
             if (Config && OS_PRegex(node[i]->content, ip_address_regex)) {
                 white_size++;
