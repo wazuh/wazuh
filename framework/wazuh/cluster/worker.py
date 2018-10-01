@@ -563,6 +563,7 @@ class WorkerThread(ClusterThread):
 
             logger.info("{0}: End. Sleeping: {1}s.".format(self.thread_tag, self.interval))
             self.sleep(self.interval)
+        logger.info("{0}: Stopped.".format(self.thread_tag))
 
 
     def ask_for_permission(self):
@@ -611,6 +612,7 @@ class KeepAliveThread(WorkerThread):
             logger.error("{} Error sending keep alive to master ({}): {}".format(self.thread_tag, self.failed_attempts, e))
             if self.failed_attempts >= self.max_failed_attempts:
                 logger.critical("{} Maximum failed attempts exceeded. Disconnecting worker.".format(self.thread_tag))
+                self.worker_handler.handle_close()
                 self.stopper.set()
             else:
                 raise e
