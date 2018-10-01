@@ -242,6 +242,7 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
             Mail->gran_group[granto_size] == NULL &&
             Mail->gran_id[granto_size] == NULL &&
             Mail->gran_format[granto_size] == FULL_FORMAT) ||
+            Mail->gran_to == NULL ||
             Mail->gran_to[granto_size] == NULL) {
         merror(XML_INV_GRAN_MAIL);
         return (OS_INVALID);
