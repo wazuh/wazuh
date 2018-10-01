@@ -123,7 +123,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
 
             free(rk_agent_ips[i]);
             rk_agent_ips[i] = NULL;
-            w_mutex_lock(&rootcheck_mutex[i]);
+            w_mutex_unlock(&rootcheck_mutex[i]);
             return (NULL);
         }
 
@@ -133,7 +133,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
         return (rk_agent_fps[i]);
     } else {
         merror(MEM_ERROR, errno, strerror(errno));
-        w_mutex_lock(&rootcheck_mutex[i]);
+        w_mutex_unlock(&rootcheck_mutex[i]);
         return (NULL);
     }
 }
