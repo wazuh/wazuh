@@ -82,18 +82,17 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    start_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select={'value'},
-                                                               filters={'key': 'fim-db-start-scan'})[0]['value']
-    if start_timestamp == "000":
+    fim_scan_info = Agent(agent_id)._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
+                                                             filters={'module': 'fim'})[0]
+
+    if fim_scan_info['start_scan'] == 0:
         return {'start': 'ND', 'end': 'ND'}
     else:
-        start = datetime.fromtimestamp(float(start_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
-        end_timestamp = Agent(agent_id)._load_info_from_agent_db(table='metadata', select={'value'},
-                                                                 filters={'key': 'fim-db-end-scan'})[0]['value']
-        if end_timestamp == "000":
+        start = datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        if fim_scan_info['end_scan'] == 0:
             return {'start': start, 'end': 'ND'}
         else:
-            end = datetime.fromtimestamp(float(end_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+            end = datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
             return {'start': start, 'end': end}
 
 
