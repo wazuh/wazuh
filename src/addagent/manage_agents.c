@@ -97,6 +97,7 @@ int add_agent(int json_output, int no_limit)
     char *id_exist = NULL;
     int force_antiquity = INT_MAX;
     int sock;
+    int authd_running;
 
     const char *env_remove_dup = getenv("OSSEC_REMOVE_DUPLICATED");
 
@@ -107,6 +108,7 @@ int add_agent(int json_output, int no_limit)
     // Create socket
 
     if (sock = auth_connect(), sock < 0) {
+        authd_running = 0;
         /* Check if we can open the auth_file */
         fp = fopen(AUTH_FILE, "a");
         if (!fp) {
@@ -127,7 +129,9 @@ int add_agent(int json_output, int no_limit)
         time2 = time(0);
         rand1 = os_random();
     } else {
+        authd_running = 1;
         close(sock);
+        sock = -1;
     }
 
     if (!json_output)
@@ -172,10 +176,10 @@ int add_agent(int json_output, int no_limit)
         }
 
         /* Search for name  -- no duplicates (only if Authd is not running) */
-        if (sock < 0 && (!strcmp(name, shost) || NameExist(name))) {
+        if (!authd_running && (!strcmp(name, shost) || NameExist(name))) {
             printf(ADD_ERROR_NAME, name);
         }
-    } while ((sock < 0 && (!strcmp(name, shost) || NameExist(name))) || !OS_IsValidName(name));
+    } while ((!authd_running && (!strcmp(name, shost) || NameExist(name))) || !OS_IsValidName(name));
 
     /* Get IP */
     memset(ip, '\0', FILE_SIZE + 1);
@@ -213,7 +217,7 @@ int add_agent(int json_output, int no_limit)
             _ip = NULL;
             free(c_ip.ip);
             c_ip.ip = NULL;
-        } else if (sock < 0 && (id_exist = IPExist(ip))) {
+        } else if (!authd_running && (id_exist = IPExist(ip))) {
             double antiquity = OS_AgentAntiquity_ID(id_exist);
 
             if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
@@ -242,7 +246,7 @@ int add_agent(int json_output, int no_limit)
         }
     } while (!_ip);
 
-    if (sock < 0 && !*id) {
+    if (!authd_running && !*id) {
         do {
             /* Default ID */
             for (i = 1; snprintf(id, sizeof(id), "%03d", i), IDExist(id, 0); i++);
@@ -279,13 +283,13 @@ int add_agent(int json_output, int no_limit)
                 printf(INVALID_ID, id);
 
             /* Search for ID KEY  -- no duplicates */
-            if (sock < 0 && IDExist(id, 0)) {
+            if (!authd_running && IDExist(id, 0)) {
                 printf(ADD_ERROR_ID, id);
             }
         } while (IDExist(id, 0) || !OS_IsValidID(id));
     }
 
-    if (sock < 0 && !json_output) {
+    if (!authd_running && !json_output) {
         printf(AGENT_INFO, id, name, ip);
         fflush(stdout);
     }
@@ -308,7 +312,7 @@ int add_agent(int json_output, int no_limit)
 
         /* If user accepts to add */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
-            if (sock < 0) {
+            if (!authd_running) {
                 if ( !no_limit && limitReached() ) {
                     merror(AG_MAX_ERROR, MAX_AGENTS - 2);
                     merror_exit(CONFIG_ERROR, KEYS_FILE);
@@ -367,7 +371,7 @@ int add_agent(int json_output, int no_limit)
                 free(file.name);
                 OS_AddAgentTimestamp(id, name, ip, time3);
             } else {
-                if (sock = auth_connect(), sock < 0) {
+                if (sock = auth_connect(), !authd_running) {
                     if (json_output) {
                         cJSON *json_root = cJSON_CreateObject();
                         cJSON_AddNumberToObject(json_root, "error", 80);
@@ -412,6 +416,7 @@ int remove_agent(int json_output)
     char u_id[FILE_SIZE + 1];
     int id_exist;
     int sock;
+    int authd_running;
 
     u_id[FILE_SIZE] = '\0';
 
@@ -422,8 +427,14 @@ int remove_agent(int json_output)
 
     // Create socket
 
-    sock = auth_connect();
-    auth_close(sock);
+    if (sock = auth_connect(), sock < 0) {
+        authd_running = 0;
+    } else {
+        auth_close(sock);
+        authd_running = 1;
+        sock = -1;
+    }
+
 
     do {
         if (!json_output) {
@@ -445,7 +456,7 @@ int remove_agent(int json_output)
         FormatID(user_input);
         strncpy(u_id, user_input, FILE_SIZE);
 
-        if (sock < 0) {
+        if (!authd_running) {
             if (id_exist = IDExist(user_input, 0), !id_exist) {
                 if (json_output) {
                     char buffer[1024];
@@ -466,7 +477,7 @@ int remove_agent(int json_output)
                 }
             }
         }
-    } while (sock < 0 && !id_exist);
+    } while (!authd_running && !id_exist);
 
     do {
         if (!json_output) {
@@ -483,7 +494,7 @@ int remove_agent(int json_output)
 
         /* If user confirms */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
-            if (sock < 0) {
+            if (!authd_running) {
                 /* Get full agent name */
                 char *full_name = getFullnameById(u_id);
                 if (!full_name) {
@@ -519,7 +530,7 @@ int remove_agent(int json_output)
                 free(full_name);
                 full_name = NULL;
             } else {
-                if (sock = auth_connect(), sock < 0) {
+                if (sock = auth_connect(), !authd_running) {
                     if (json_output) {
                         cJSON *json_root = cJSON_CreateObject();
                         cJSON_AddNumberToObject(json_root, "error", 80);
