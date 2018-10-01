@@ -371,7 +371,7 @@ int add_agent(int json_output, int no_limit)
                 free(file.name);
                 OS_AddAgentTimestamp(id, name, ip, time3);
             } else {
-                if (sock = auth_connect(), !authd_running) {
+                if (sock = auth_connect(), sock < 0) {
                     if (json_output) {
                         cJSON *json_root = cJSON_CreateObject();
                         cJSON_AddNumberToObject(json_root, "error", 80);
@@ -530,7 +530,7 @@ int remove_agent(int json_output)
                 free(full_name);
                 full_name = NULL;
             } else {
-                if (sock = auth_connect(), !authd_running) {
+                if (sock = auth_connect(), sock < 0) {
                     if (json_output) {
                         cJSON *json_root = cJSON_CreateObject();
                         cJSON_AddNumberToObject(json_root, "error", 80);
