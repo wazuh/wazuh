@@ -59,16 +59,11 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip, int for
     cJSON_Delete(request);
     free(output);
 
-    switch (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length) {
-    case -1:
+    if (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length < 0) {
         merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
-        break;
-
-    case 0:
+    } else if (length == 0) {
         merror_exit("Empty message from local server.");
-        break;
-
-    default:
+    } else {
         buffer[length] = '\0';
 
         // Decode response
@@ -135,16 +130,11 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
     cJSON_Delete(request);
     free(output);
 
-    switch (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length) {
-    case -1:
+    if (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length < 0) {
         merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
-        break;
-
-    case 0:
+    } else if (length == 0) {
         merror_exit("Empty message from local server.");
-        break;
-
-    default:
+    } else {
         buffer[length] = '\0';
 
         // Decode response
@@ -172,7 +162,6 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
 
         cJSON_Delete(response);
     }
-
 
     return result;
 }
