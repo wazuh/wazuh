@@ -78,7 +78,11 @@ def _fim_decode(fline):
 def check_file_entry(agent, cfile, wdb_socket):
     # Send message
     msg = "agent {0} syscheck load {1}".format(str(agent).zfill(3), cfile)
-    msg = msg.encode()
+    try:
+        msg = msg.encode().decode('utf-8')
+    except UnicodeDecodeError:
+        msg = msg.decode('utf-8')
+    msg = msg.encode('utf-8')
     msg = struct.pack('<I', len(msg)) + msg
     wdb_socket.send(msg)
 
@@ -100,9 +104,13 @@ def check_file_entry(agent, cfile, wdb_socket):
 def insert_fim(agent, fim_array, stype, wdb_socket):
     # Send message
     msg = "agent {0} syscheck save {1} {2}!0:{3} {4}".format(str(agent).zfill(3), stype, fim_array[0], fim_array[1], fim_array[2])
+    try:
+        msg = msg.encode().decode('utf-8')
+    except UnicodeDecodeError:
+        msg = msg.decode('utf-8')
     if _debug:
         print(msg)
-    msg = msg.encode()
+    msg = msg.encode('utf-8')
     msg = struct.pack('<I', len(msg)) + msg
     wdb_socket.send(msg)
 
