@@ -183,6 +183,7 @@ if __name__ == '__main__':
 
     # Manager DB
     count = 0
+    error = 0
     mandbfile = "{0}/syscheck".format(_syscheck_dir)
     if isfile(mandbfile):
         if _verbose:
@@ -197,17 +198,19 @@ if __name__ == '__main__':
                             if res[0]:
                                 count = count + 1
                             else:
-                                logging.error("{0}".format(res[1]))
+                                error = error + 1
                     else:
                         res = insert_fim(0, decoded, 'file', s)
                         if res[0]:
                             count = count + 1
                         else:
-                            logging.error("{0}".format(res[1]))
+                            error = error + 1
                 if not count == 0  and count % 10000 == 0:
                     logging.info("{0} file entries processed...".format(count))
         if _verbose:
             logging.info("Added {0} file entries in manager database.".format(count))
+            if error > 0:
+                logging.info("[{0}/{1}] {2} file entries were not added.".format(pos, total_agents, error))
 
     agents = _get_agents()
     total_agents = len(agents)
@@ -215,6 +218,7 @@ if __name__ == '__main__':
     for agt in agents:
         # Monitorized files
         count = 0
+        error = 0
         dbfile = "{0}/({1}) {2}->syscheck".format(_syscheck_dir, agt[1], agt[2])
         if isfile(dbfile):
             if _verbose:
@@ -229,21 +233,24 @@ if __name__ == '__main__':
                                 if res[0]:
                                     count = count + 1
                                 else:
-                                    logging.error("{0}".format(res[1]))
+                                    error = error + 1
                         else:
                             res = insert_fim(agt[0], decoded, 'file', s)
                             if res[0]:
                                 count = count + 1
                             else:
-                                logging.error("{0}".format(res[1]))
+                                error = error + 1
                     if not count == 0  and count % 10000 == 0:
                         logging.info("[{0}/{1}] {2} file entries processed...".format(pos, total_agents, count))
             if _verbose:
                 logging.info("[{0}/{1}] Added {2} file entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
+                if error > 0:
+                    logging.info("[{0}/{1}] {2} file entries were not added.".format(pos, total_agents, error))
         else:
             logging.warn("[{0}/{1}] Cannot find agent '{2}' FIM database.".format(pos, total_agents, str(agt[0]).zfill(3)))
         # Registry files
         count = 0
+        error = 0
         regfile = "{0}/({1}) {2}->syscheck-registry".format(_syscheck_dir, agt[1], agt[2])
         if isfile(regfile):
             if _verbose:
@@ -258,18 +265,19 @@ if __name__ == '__main__':
                                 if res[0]:
                                     count = count + 1
                                 else:
-                                    logging.error("{0}".format(res[1]))
+                                    error = error + 1
                         else:
                             res = insert_fim(agt[0], decoded, 'registry', s)
                             if res[0]:
                                 count = count + 1
                             else:
-                                logging.error("{0}".format(res[1]))
+                                error = error + 1
                     if not count == 0  and count % 10000 == 0:
                         logging.info("[{0}/{1}] {2} registry entries processed...".format(pos, total_agents, count))
             if _verbose:
                 logging.info("[{0}/{1}] Added {2} registry entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
-
+                if error > 0:
+                    logging.info("[{0}/{1}] {2} registry entries were not added.".format(pos, total_agents, error))
         pos = pos + 1
 
     s.close()
