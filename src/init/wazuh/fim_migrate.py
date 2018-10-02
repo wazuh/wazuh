@@ -13,6 +13,7 @@ from os.path import isfile
 import socket
 import struct
 import logging
+from json import loads
 
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', \
                     level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
@@ -82,9 +83,9 @@ def _fim_decode(fline):
 
 def check_file_entry(agent, cfile, wdb_socket):
     # Send message
-    msg = "agent {0} syscheck load ".format(str(agent).zfill(3)).encode()
-    msg = msg + cfile
-    # logging.debug(msg)
+    msg = "agent {0} sql select count(*) from fim_entry where file='".format(str(agent).zfill(3)).encode()
+    msg = msg + cfile + b"';"
+    logging.debug(msg)
     msg = struct.pack('<I', len(msg)) + msg
     wdb_socket.send(msg)
 
@@ -94,11 +95,15 @@ def check_file_entry(agent, cfile, wdb_socket):
         data_size = wdb_socket.recv(4)
         data_size = struct.unpack('<I', data_size[0:4])[0]
         data = wdb_socket.recv(data_size, socket.MSG_WAITALL).decode()
+        json_data = loads(data.split(' ')[1])
     except IndexError:
         raise Exception("Data could not be received")
 
     if data.startswith('ok'):
-        return True
+        if json_data[0]['count(*)'] == 0:
+            return False
+        else:
+            return True
     else:
         return False
 
@@ -189,12 +194,18 @@ if __name__ == '__main__':
                     if not _force:
                         if not check_file_entry(0, decoded[2], s):
                             res = insert_fim(0, decoded, 'file', s)
+                            if res[0]:
+                                count = count + 1
+                            else:
+                                logging.error("{0}".format(res[1]))
                     else:
                         res = insert_fim(0, decoded, 'file', s)
                         if res[0]:
                             count = count + 1
                         else:
                             logging.error("{0}".format(res[1]))
+                if not count == 0  and count % 10000 == 0:
+                    logging.info("{0} file entries processed...".format(count))
         if _verbose:
             logging.info("Added {0} file entries in manager database.".format(count))
 
@@ -215,15 +226,22 @@ if __name__ == '__main__':
                         if not _force:
                             if not check_file_entry(agt[0], decoded[2], s):
                                 res = insert_fim(agt[0], decoded, 'file', s)
+                                if res[0]:
+                                    count = count + 1
+                                else:
+                                    logging.error("{0}".format(res[1]))
                         else:
                             res = insert_fim(agt[0], decoded, 'file', s)
                             if res[0]:
                                 count = count + 1
                             else:
                                 logging.error("{0}".format(res[1]))
+                    if not count == 0  and count % 10000 == 0:
+                        logging.info("[{0}/{1}] {2} file entries processed...".format(pos, total_agents, count))
             if _verbose:
                 logging.info("[{0}/{1}] Added {2} file entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
-
+        else:
+            logging.warn("[{0}/{1}] Cannot find agent '{2}' FIM database.".format(pos, total_agents, str(agt[0]).zfill(3)))
         # Registry files
         count = 0
         regfile = "{0}/({1}) {2}->syscheck-registry".format(_syscheck_dir, agt[1], agt[2])
@@ -237,14 +255,21 @@ if __name__ == '__main__':
                         if not _force:
                             if not check_file_entry(agt[0], decoded[2], s):
                                 res = insert_fim(agt[0], decoded, 'registry', s)
+                                if res[0]:
+                                    count = count + 1
+                                else:
+                                    logging.error("{0}".format(res[1]))
                         else:
                             res = insert_fim(agt[0], decoded, 'registry', s)
                             if res[0]:
                                 count = count + 1
                             else:
                                 logging.error("{0}".format(res[1]))
+                    if not count == 0  and count % 10000 == 0:
+                        logging.info("[{0}/{1}] {2} registry entries processed...".format(pos, total_agents, count))
             if _verbose:
                 logging.info("[{0}/{1}] Added {2} registry entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
+
         pos = pos + 1
 
     s.close()
