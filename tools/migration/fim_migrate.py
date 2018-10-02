@@ -208,9 +208,10 @@ if __name__ == '__main__':
                 if not count == 0  and count % 10000 == 0:
                     logging.info("{0} file entries processed...".format(count))
         if _verbose:
-            logging.info("Added {0} file entries in manager database.".format(count))
+            if error == 0 or count > 0:
+                logging.info("Added {0} file entries in manager database.".format(count))
             if error > 0:
-                logging.info("[{0}/{1}] {2} file entries were not added.".format(pos, total_agents, error))
+                logging.warn("[{0}/{1}] {2} file entries were not added.".format(pos, total_agents, error))
 
     agents = _get_agents()
     total_agents = len(agents)
@@ -243,9 +244,10 @@ if __name__ == '__main__':
                     if not count == 0  and count % 10000 == 0:
                         logging.info("[{0}/{1}] {2} file entries processed...".format(pos, total_agents, count))
             if _verbose:
-                logging.info("[{0}/{1}] Added {2} file entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
+                if error == 0 or count > 0:
+                    logging.info("[{0}/{1}] Added {2} file entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
                 if error > 0:
-                    logging.info("[{0}/{1}] {2} file entries were not added.".format(pos, total_agents, error))
+                    logging.warn("[{0}/{1}] {2} file entries were not added.".format(pos, total_agents, error))
         else:
             logging.warn("[{0}/{1}] Cannot find agent '{2}' FIM database.".format(pos, total_agents, str(agt[0]).zfill(3)))
         # Registry files
@@ -275,9 +277,10 @@ if __name__ == '__main__':
                     if not count == 0  and count % 10000 == 0:
                         logging.info("[{0}/{1}] {2} registry entries processed...".format(pos, total_agents, count))
             if _verbose:
-                logging.info("[{0}/{1}] Added {2} registry entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
+                if error == 0 or count > 0:
+                    logging.info("[{0}/{1}] Added {2} registry entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
                 if error > 0:
-                    logging.info("[{0}/{1}] {2} registry entries were not added.".format(pos, total_agents, error))
+                    logging.warn("[{0}/{1}] {2} registry entries were not added.".format(pos, total_agents, error))
         pos = pos + 1
 
     s.close()
