@@ -55,7 +55,7 @@ void * req_main(__attribute__((unused)) void * arg) {
 
     // Get values from internal options
 
-    request_pool = getDefine_Int("remoted", "request_pool", 1, 64);
+    request_pool = getDefine_Int("remoted", "request_pool", 1, 4096);
     request_timeout = getDefine_Int("remoted", "request_timeout", 1, 600);
     response_timeout = getDefine_Int("remoted", "response_timeout", 1, 3600);
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
@@ -120,10 +120,12 @@ void * req_main(__attribute__((unused)) void * arg) {
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case -1:
             merror("OS_RecvSecureTCP(): %s", strerror(errno));
+            free(buffer);
             break;
 
         case 0:
             mdebug1("Empty message from local client.");
+            free(buffer);
             break;
 
         default:
@@ -134,6 +136,7 @@ void * req_main(__attribute__((unused)) void * arg) {
 
             snprintf(counter_s, COUNTER_LENGTH, "%x", counter++);
             node = req_create(peer, counter_s, target, buffer, length);
+            free(buffer);
 
             w_mutex_lock(&mutex_table);
             error = OSHash_Add(req_table, counter_s, node);

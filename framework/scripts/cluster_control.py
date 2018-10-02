@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from sys import argv, exit, path, stdout, version_info
+from sys import argv, exit, path, version_info
 
 if version_info[0] == 2 and version_info[1] < 7:
     print("Error: Minimal Python version required is 2.7. Found version is {0}.{1}.".format(version_info[0], version_info[1]))
@@ -41,11 +41,12 @@ except Exception as e:
 
 logging.basicConfig(level=logging.ERROR, format='%(levelname)s: %(message)s')
 
-def get_parser(type):
-    if type == "master":
-        class WazuhHelpFormatter(argparse.ArgumentParser):
-            def format_help(self):
-                msg = """Wazuh cluster control - Master node
+
+def get_parser():
+
+    class WazuhHelpFormatter(argparse.ArgumentParser):
+        def format_help(self):
+            msg = """Wazuh cluster control - Master node
 
 Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
@@ -63,74 +64,25 @@ Others:
 \t-d, --debug                                # Show debug information
 
 """.format(basename(argv[0]))
-                #\t-s, --sync                                 # Force the nodes to initiate the synchronization process
-                #\t-l, --list-files                           # List the file status for every node
-                #\t-f, --filter-file                          # Filter by file
-                return msg
-            def error(self, message):
-                print("Wrong arguments: {0}".format(message))
-                self.print_help()
-                exit(1)
+            return msg
+        def error(self, message):
+            print("Wrong arguments: {0}".format(message))
+            self.print_help()
+            exit(1)
 
-        parser=WazuhHelpFormatter(usage='custom usage')
-        parser._positionals.title = 'Wazuh Cluster control interface'
+    parser = WazuhHelpFormatter(usage='custom usage')
+    parser._positionals.title = 'Wazuh Cluster control interface'
 
-        parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
-        #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
-        parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
+    parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
+    parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str, help="Agents status")
+    parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
 
-        exclusive = parser.add_mutually_exclusive_group()
-        #exclusive.add_argument('-s', '--sync', const='sync', action='store_const', help="Force the nodes to initiate the synchronization process")
-        #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
-        exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
-        exclusive.add_argument('-l', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
-        exclusive.add_argument('-i', '--health', const='health', action='store', nargs='?', help="Show cluster health")
+    exclusive = parser.add_mutually_exclusive_group()
+    exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
+    exclusive.add_argument('-l', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
+    exclusive.add_argument('-i', '--health', const='health', action='store', nargs='?', help="Show cluster health")
 
-        return parser
-    else:
-        class WazuhHelpFormatter(argparse.ArgumentParser):
-            def format_help(self):
-                msg = """Wazuh cluster control - Worker node
-
-Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
-
-Usage:
-\t-h, --help                                  # Show this help message
-\t-i, --health [more]                         # Show cluster health
-\t-l, --list-nodes                            # List nodes
-
-Filters:
-\t-fn, --filter-node                          # Filter by node
-
-Others:
-\t-d, --debug                                # Show debug information
-
-""".format(basename(argv[0]))
-                #\t-l, --list-files                            # List the status of his own files
-                #\t -f, --filter-file                          # Filter by file
-                return msg
-            def error(self, message):
-                print("Wrong arguments: {0}".format(message))
-                self.print_help()
-                exit(1)
-
-        parser=WazuhHelpFormatter(usage='custom usage')
-        parser._positionals.title = 'Wazuh Cluster control interface'
-
-        parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Node")
-        #parser.add_argument('-f', '--filter-file', dest='filter_file', nargs='*', type=str, help="File")
-        parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', action = 'store', type=str, help="Agents status")
-        parser.add_argument('-d', '--debug', action='store_const', const='debug', help="Enable debug mode")
-
-        exclusive = parser.add_mutually_exclusive_group()
-        #exclusive.add_argument('-l', '--list-files', const='list_files', action='store_const', help="List the file status for every node")
-        exclusive.add_argument('-a', '--list-agents', const='list_agents', action='store_const', help="List agents")
-        exclusive.add_argument('-l', '--list-nodes', const='list_nodes', action='store_const', help="List nodes")
-        exclusive.add_argument('-i', '--health', const='health', action='store', nargs='?', help="Show cluster health")
-        return parser
-
-
+    return parser
 
 
 def __execute(my_function, my_args=()):
@@ -141,7 +93,7 @@ def __execute(my_function, my_args=()):
             print("Error: {}".format(response['err']))
             exit(1)
     except Exception as e:
-        print ("{}".format(e))
+        print("ERROR: {}".format(e))
         exit(1)
 
     return response
@@ -342,7 +294,7 @@ if __name__ == '__main__':
     # Get cluster config
     is_master = cluster_config['node_type'] == "master"
     # get arguments
-    parser = get_parser(cluster_config['node_type'])
+    parser = get_parser()
     args = parser.parse_args()
 
     if args.debug:

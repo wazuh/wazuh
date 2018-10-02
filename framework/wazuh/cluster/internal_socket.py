@@ -136,13 +136,8 @@ class InternalSocketClient(communication.AbstractClient):
             self.final_response.write(data)
             return False
         elif command == 'err':
-            try:
-                data = json.loads(data)
-                self.final_response.write(data['err'])
-                return True
-            except ValueError:
-                self.final_response.write(data)
-                return True
+            self.final_response.write(data)
+            return True
 
 
     def process_request(self, command, data):
@@ -238,7 +233,7 @@ def execute(request):
         isocket_worker_thread.manager.final_response.write("ok")
         isocket_worker_thread.manager.handle_close()
         isocket_worker_thread.stop()
-        response = json.loads(response) if not is_error else response
+        response = json.loads(response)
         return response
     except WazuhException as e:
         raise e

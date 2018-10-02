@@ -42,7 +42,7 @@ static OSHash * allowed_sockets;
 void req_init() {
     // Get values from internal options
 
-    request_pool = getDefine_Int("remoted", "request_pool", 1, 64);
+    request_pool = getDefine_Int("remoted", "request_pool", 1, 4096);
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
     rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
