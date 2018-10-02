@@ -351,7 +351,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             }
 
             snprintf(file, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, files[i]);
-       
+
             if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
                 merror("Accessing file '%s'", file);
                 continue;
@@ -438,7 +438,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
             if (files[i][0] == '.' || !strncmp(files[i], SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
                 continue;
             }
-            
+
             char destination_path[PATH_MAX + 1] = {0};
             char source_path[PATH_MAX + 1] = {0};
             char agent_conf_chunck_message[PATH_MAX + 1]= {0};
@@ -454,12 +454,12 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
             else {
                 w_copy_file(source_path,destination_path,'c',NULL);
             }
-            
+
         }
         group = strtok(NULL, delim);
         free_strarray(files);
         closedir(dp);
-        
+
     }
 
     /* Open de multi-group files and generate merged */
@@ -487,7 +487,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
     c_group(hash_multigroup, subdir, _f_sum,MULTIGROUPS_DIR);
     free_strarray(subdir);
-    
+
     closedir(dp);
 }
 
@@ -514,7 +514,7 @@ static void c_files()
         if (groups) {
             for (i = 0; groups[i]; i++) {
                 f_sum = groups[i]->f_sum;
-                
+
                 if(f_sum){
                     for (j = 0; f_sum[j]; j++) {
                         free(f_sum[j]->name);
@@ -525,7 +525,7 @@ static void c_files()
                     free(f_sum);
                     f_sum = NULL;
                 }
-                
+
                 free(groups[i]->group);
             }
 
@@ -594,7 +594,7 @@ static void c_files()
     char metadata_path[PATH_MAX + 1] = {0};
     char multi_group[OS_SIZE_65536 + 1] = {0};
     snprintf(metadata_path,PATH_MAX,"%s/%s",MULTIGROUPS_DIR,".metadata");
-    
+
     fp = fopen(metadata_path,"r");
 
     if(!fp){
@@ -609,7 +609,7 @@ static void c_files()
         if (endl) {
             *endl = '\0';
         }
-        
+
         os_sha256 multi_group_hash;
         char *multi_group_hash_pt = NULL;
 
@@ -627,14 +627,14 @@ static void c_files()
             /* We only want the 8 first bytes of the hash */
             multi_group_hash[8] = '\0';
 
-            OSHash_Add(m_hash,multi_group,multi_group_hash);
+            OSHash_Add(m_hash,multi_group,strdup(multi_group_hash));
 
             if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", multi_group_hash) > PATH_MAX) {
                 merror("At c_files(): path '%s' too long.",path);
                 break;
             }
         }
-       
+
 
         // Try to open directory, avoid TOCTOU hazard
         if (subdir = wreaddir(path), !subdir) {
@@ -718,7 +718,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
 
             /* We only want the 8 first bytes of the hash */
             multi_group_hash[8] = '\0';
-            OSHash_Add(m_hash,group,multi_group_hash);
+            OSHash_Add(m_hash,group,strdup(multi_group_hash));
 
             snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash, name);
         }
@@ -727,7 +727,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
         snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
     }
 
-   
+
     fp = fopen(file, "r");
     if (!fp) {
         merror(FOPEN_ERROR, file, errno, strerror(errno));
@@ -835,13 +835,19 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
         }else{
             /* Check if the multigroup is in .metadata */
-            char buffer[OS_SIZE_65536] = {0};
+            char buffer[OS_SIZE_65536 + 1] = {0};
             int found = 0;
-            while (fgets(buffer, OS_SIZE_65536 - 1, fp_metadata) != NULL) {
+            while (fgets(buffer, sizeof(buffer), fp_metadata) != NULL) {
                 char *endl = strchr(buffer, '\n');
 
                 if (endl) {
                     *endl = '\0';
+                } else {
+                    static int reported = 0;
+                    if (!reported) {
+                        mwarn("File '%s' is corrupted: line too long.", metadata_path);
+                        reported = 1;
+                    }
                 }
 
                 if(strncmp(buffer,group,OS_SIZE_65536) == 0){
@@ -868,7 +874,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 OS_SHA256_String(group,multi_group_hash);
                 multi_group_hash[8] = '\0';
 
-                OSHash_Add(m_hash,group,multi_group_hash);
+                OSHash_Add(m_hash,group,strdup(multi_group_hash));
                 snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,multi_group_hash);
             }
 
@@ -898,7 +904,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
         }
     }
-   
+
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
 
@@ -994,7 +1000,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum,sharedcfg_dir) < 0) {
                     merror(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
                 }
-               
+
                 mdebug2("End sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
             }
 
