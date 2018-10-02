@@ -811,7 +811,7 @@ void Free_Eventinfo(Eventinfo *lf)
 
 /* Parse rule comment with dynamic fields */
 char* ParseRuleComment(Eventinfo *lf) {
-    static char final[OS_COMMENT_MAX + 1] = { '\0' };
+    char final[OS_COMMENT_MAX + 1] = { '\0' };
     char orig[OS_COMMENT_MAX + 1] = { '\0' };
     const char *field;
     char *str;
