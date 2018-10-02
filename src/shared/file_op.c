@@ -2055,7 +2055,7 @@ int OS_MoveFile(const char *src, const char *dst) {
     return status ? status : unlink(src);
 }
 
-int w_copy_file(const char *src, const char *dst,char mode) {
+int w_copy_file(const char *src, const char *dst,char mode,char * message) {
     FILE *fp_src;
     FILE *fp_dst;
     size_t count_r;
@@ -2083,6 +2083,20 @@ int w_copy_file(const char *src, const char *dst,char mode) {
         merror("Couldn't open file '%s'", dst);
         fclose(fp_src);
         return -1;
+    }
+
+    /* Write message to the destination file */
+    if(message){
+        count_r = strlen(message);
+        count_w = fwrite(message, 1, count_r, fp_dst);
+
+        if (count_w != count_r || ferror(fp_dst)) {
+            merror("Couldn't write file '%s'", dst);
+            status = -1;
+            fclose(fp_src);
+            fclose(fp_dst);
+            return status;
+        }
     }
 
     while (!feof(fp_src)) {
@@ -2427,4 +2441,50 @@ FILE * wfopen(const char * pathname, const char * mode) {
 #else
     return fopen(pathname, mode);
 #endif
+}
+
+int w_remove_line_from_file(char *file,int line){
+    FILE *fp_src;
+    FILE *fp_dst;
+    size_t count_w;
+    char buffer[OS_SIZE_65536 + 1];
+    char destination[PATH_MAX] = {0};
+
+    fp_src = fopen(file, "r");
+
+    if (!fp_src) {
+        merror("At remove_line_from_file(): Couldn't open file '%s'", file);
+        return -1;
+    }
+
+    snprintf(destination,PATH_MAX,"%s.back",file);
+
+    /* Write to file */
+    fp_dst = fopen(destination, "w");
+
+    if (!fp_dst) {
+        mdebug1("At remove_line_from_file(): Couldn't open file '%s'", destination);
+        fclose(fp_src);
+        return -1;
+    }
+
+    /* Write message to the destination file */
+    int i = 0;
+    while (fgets(buffer, OS_SIZE_65536 + 1, fp_src) != NULL) {
+
+        if(i != line){
+            count_w = fwrite(buffer, 1, strlen(buffer) , fp_dst);
+           
+            if (count_w != strlen(buffer) || ferror(fp_dst)) {
+                merror("At remove_line_from_file(): Couldn't write file '%s'", destination);
+                break;
+            }
+        }
+        i++;
+    }
+
+    fclose(fp_src);
+    fclose(fp_dst);
+
+    return w_copy_file(destination,file,'w',NULL);
 }

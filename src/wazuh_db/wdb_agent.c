@@ -575,11 +575,11 @@ int wdb_update_agent_multi_group(int id, char *group) {
     }
 
     /* Update the belongs table if multi group */
-    const char delim[2] = "-";
+    const char delim[2] = ",";
     if (group) {
         char *multi_group;
 
-        multi_group = strchr(group, '-');
+        multi_group = strchr(group, MULTIGROUP_SEPARATOR);
 
         if (multi_group) {
 

@@ -18,6 +18,7 @@ except ImportError:
     from io import StringIO
 
 import logging
+import hashlib
 logger = logging.getLogger(__name__)
 
 # Aux functions
@@ -452,6 +453,40 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
             raise WazuhException(1710, group_id)
 
         agent_conf = "{0}/{1}".format(common.shared_path, group_id)
+
+    if filename:
+        agent_conf_name = filename
+    else:
+        agent_conf_name = 'agent.conf'
+
+    agent_conf += "/{0}".format(agent_conf_name)
+
+    if not os_path.exists(agent_conf):
+        raise WazuhException(1006, agent_conf)
+
+    try:
+        # Read XML
+        xml_data = load_wazuh_xml(agent_conf)
+
+        # Parse XML to JSON
+        data = _agentconf2json(xml_data)
+    except Exception as e:
+        raise WazuhException(1101, str(e))
+
+
+    return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
+
+def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_limit, filename=None):
+    """
+    Returns agent.conf as dictionary.
+
+    :return: agent.conf as dictionary.
+    """
+    if group_id:
+        #if not Agent.multi_group_exists(group_id):
+            #raise WazuhException(1710, group_id)
+
+        agent_conf = "{0}/{1}".format(common.multi_groups_path, group_id)
 
     if filename:
         agent_conf_name = filename
