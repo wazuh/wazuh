@@ -6,9 +6,7 @@
 # This program is a free software, you can redistribute it
 # and/or modify it under the terms of GPLv2.
 
-import os
 import sys
-import pwd
 import sqlite3
 from getopt import getopt, GetoptError
 from os.path import isfile
@@ -39,31 +37,31 @@ def _get_agents():
 
     for agent in agents:
         try:
-            id, name, ip, key = agent.split()
+            agent_id, name, ip, key = agent.split()
         except ValueError:
             sys.stderr.write("ERROR: Corrupt line at 'client.keys'.\n")
             continue
 
-        if id[0] in '# ' or name[0] == '!':
+        if agent_id[0] in '# ' or name[0] == '!':
             continue
 
         try:
-            int(id)
+            int(agent_id)
         except ValueError:
             continue
 
-        yield (int(id), name, ip)
+        yield (int(agent_id), name, ip)
 
     agents.close()
 
 
-def _fim_decode(line):
-    '''Decode a line from syscheck into a tuple'''
-    readed = line
-    line = line[3:-1].split('!')
-    if len(line) == 2:
-        fim = line[0][:-1]
-        parsed = line[1].split(' ', 1)
+def _fim_decode(fline):
+    # Decode a line from syscheck into a tuple
+    readed = fline
+    fline = fline[3:-1].split('!')
+    if len(fline) == 2:
+        fim = fline[0][:-1]
+        parsed = fline[1].split(' ', 1)
         if len(parsed) == 2:
             timestamp = parsed[0]
             path = parsed[1]
@@ -77,19 +75,19 @@ def _fim_decode(line):
     return fim, timestamp, path
 
 
-def check_file_entry(agent, file, wdb_socket):
+def check_file_entry(agent, cfile, wdb_socket):
     # Send message
-    msg = "agent {0} syscheck load {1}".format(str(agent).zfill(3), file)
-    msg = struct.pack('<I', len(msg)) + msg.encode()
-    s.send(msg)
+    msg = "agent {0} syscheck load {1}".format(str(agent).zfill(3), cfile)
+    msg = msg.encode()
+    msg = struct.pack('<I', len(msg)) + msg
+    wdb_socket.send(msg)
 
     # Receive response
     try:
         # Receive data length
-        data_size = s.recv(4)
-        data_size = struct.unpack('<I',data_size[0:4])[0]
-        data = s.recv(data_size,socket.MSG_WAITALL).decode()
-
+        data_size = wdb_socket.recv(4)
+        data_size = struct.unpack('<I', data_size[0:4])[0]
+        data = wdb_socket.recv(data_size, socket.MSG_WAITALL).decode()
     except IndexError:
         raise Exception("Data could not be received")
 
@@ -99,22 +97,21 @@ def check_file_entry(agent, file, wdb_socket):
         return False
 
 
-def insert_fim(agent, fim_array, type, wdb_socket):
-
+def insert_fim(agent, fim_array, stype, wdb_socket):
     # Send message
-    msg = "agent {0} syscheck save {1} {2}!{3}:0 {4}".format(str(agent).zfill(3), type, fim_array[0], fim_array[1], fim_array[2])
+    msg = "agent {0} syscheck save {1} {2}!0:{3} {4}".format(str(agent).zfill(3), stype, fim_array[0], fim_array[1], fim_array[2])
     if _debug:
         print(msg)
-    msg = struct.pack('<I', len(msg)) + msg.encode()
-    s.send(msg)
+    msg = msg.encode()
+    msg = struct.pack('<I', len(msg)) + msg
+    wdb_socket.send(msg)
 
     # Receive response
     try:
         # Receive data length
-        data_size = s.recv(4)
-        data_size = struct.unpack('<I',data_size[0:4])[0]
-        data = s.recv(data_size,socket.MSG_WAITALL).decode()
-
+        data_size = wdb_socket.recv(4)
+        data_size = struct.unpack('<I', data_size[0:4])[0]
+        data = wdb_socket.recv(data_size, socket.MSG_WAITALL).decode()
     except IndexError:
         raise Exception("Data could not be received")
 
@@ -137,6 +134,7 @@ def _print_help():
 
     Copyright 2018 Wazuh, Inc. <info@wazuh.com>
     ''')
+
 
 if __name__ == '__main__':
 
@@ -176,7 +174,7 @@ if __name__ == '__main__':
     # Manager DB
     count = 0
     mandbfile = "{0}/syscheck".format(_syscheck_dir)
-    if os.path.isfile(mandbfile):
+    if isfile(mandbfile):
         if _verbose:
             print("Reading manager syscheck DB.")
         with open(mandbfile, 'r') as syscheck:
@@ -184,10 +182,10 @@ if __name__ == '__main__':
                 if not line.startswith('#'):
                     decoded = _fim_decode(line)
                     if not _force:
-                        if not check_file_entry('000', decoded[2], s):
-                            res = insert_fim('000', decoded, 'file', s)
+                        if not check_file_entry(0, decoded[2], s):
+                            res = insert_fim(0, decoded, 'file', s)
                     else:
-                        res = insert_fim('000', decoded, 'file', s)
+                        res = insert_fim(0, decoded, 'file', s)
                         if res[0]:
                             count = count + 1
                         else:
@@ -198,8 +196,8 @@ if __name__ == '__main__':
     for agt in _get_agents():
         # Monitorized files
         count = 0
-        dbfile = "{0}/({1}) {2}->syscheck".format(_syscheck_dir,agt[1],agt[2])
-        if os.path.isfile(dbfile):
+        dbfile = "{0}/({1}) {2}->syscheck".format(_syscheck_dir, agt[1], agt[2])
+        if isfile(dbfile):
             if _verbose:
                 print("Reading agent ({0}) syscheck DB.".format(str(agt[0]).zfill(3)))
             with open(dbfile, 'r') as syscheck:
@@ -220,8 +218,8 @@ if __name__ == '__main__':
 
         # Registry files
         count = 0
-        regfile = "{0}/({1}) {2}->syscheck-registry".format(_syscheck_dir,agt[1],agt[2])
-        if os.path.isfile(regfile):
+        regfile = "{0}/({1}) {2}->syscheck-registry".format(_syscheck_dir, agt[1], agt[2])
+        if isfile(regfile):
             if _verbose:
                 print("Reading agent ({0}) syscheck-registry DB.".format(str(agt[0]).zfill(3)))
             with open(regfile, 'r') as syscheck:
@@ -237,8 +235,9 @@ if __name__ == '__main__':
                                 count = count + 1
                             else:
                                 print("ERR: {0}".format(res[1]))
-                                exit()
             if _verbose:
                 print("Added {0} registry entries for agent {1}.".format(count, str(agt[0]).zfill(3)))
 
     s.close()
+    if _verbose:
+        print("Finished.")
