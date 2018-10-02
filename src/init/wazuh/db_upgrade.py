@@ -12,10 +12,13 @@ from getopt import getopt, GetoptError
 from os.path import isfile
 import socket
 import struct
+import logging
+
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', \
+                    level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
 _ossec_path = '/var/ossec'
-_verbose = False
-_debug = False
+_verbose = True
 _force = False
 
 # Check minimum version of SQLite module: 2.6.0
@@ -35,6 +38,7 @@ def _get_agents():
     except IOError:
         return
 
+    agents_list = []
     for agent in agents:
         try:
             agent_id, name, ip, key = agent.split()
@@ -50,9 +54,11 @@ def _get_agents():
         except ValueError:
             continue
 
-        yield (int(agent_id), name, ip)
+        agents_list.append([int(agent_id), name, ip])
 
     agents.close()
+
+    return agents_list
 
 
 def _fim_decode(fline):
@@ -66,11 +72,10 @@ def _fim_decode(fline):
             timestamp = parsed[0]
             path = parsed[1]
         else:
-            if _debug:
-                print("Error parsing line: {0}".format(readed))
-            raise Exception("Couldn't decode line at syscheck database.")
+            logging.debug("Error parsing line: {0}".format(readed))
+            logging.error("Couldn't decode line at syscheck database.")
     else:
-        raise Exception("Couldn't decode line at syscheck database.")
+        logging.error("Couldn't decode line at syscheck database.")
 
     return fim, timestamp, path
 
@@ -82,6 +87,8 @@ def check_file_entry(agent, cfile, wdb_socket):
         msg = msg.encode().decode('utf-8')
     except UnicodeDecodeError:
         msg = msg.decode('utf-8')
+
+    logging.debug(msg)
     msg = msg.encode('utf-8')
     msg = struct.pack('<I', len(msg)) + msg
     wdb_socket.send(msg)
@@ -108,8 +115,8 @@ def insert_fim(agent, fim_array, stype, wdb_socket):
         msg = msg.encode().decode('utf-8')
     except UnicodeDecodeError:
         msg = msg.decode('utf-8')
-    if _debug:
-        print(msg)
+
+    logging.debug(msg)
     msg = msg.encode('utf-8')
     msg = struct.pack('<I', len(msg)) + msg
     wdb_socket.send(msg)
@@ -131,14 +138,14 @@ def insert_fim(agent, fim_array, stype, wdb_socket):
 
 def _print_help():
     print('''
-    FIM database upgrade utility for Wazuh
+    FIM database upgrade tool for Wazuh
 
     Options:
-        -p <path>   Changes the default installation path.
-        -f          Force file insertion if it already exists.
-        -h, --help  Prints this help.
-        -v          Verbose mode.
+        -p <path>   Change the default installation path.
+        -f          Force insertion.
+        -q          Quiet mode.
         -d          Debug mode.
+        -h          Prints this help.
 
     Copyright 2018 Wazuh, Inc. <info@wazuh.com>
     ''')
@@ -147,19 +154,18 @@ def _print_help():
 if __name__ == '__main__':
 
     try:
-        for opt in getopt(sys.argv[1:], 'p:dfh:v', '')[0]:
+        for opt in getopt(sys.argv[1:], 'p:dfqh', '')[0]:
             if opt[0] == '-f':
                 _force = True
             elif opt[0] == '-d':
-                _debug = True
-                _verbose = True
+                logging.getLogger().setLevel(logging.DEBUG)
             elif opt[0] == '-p':
                 _ossec_path = opt[1]
-            elif opt[0] in ('-h', '--help'):
+            elif opt[0] == '-h':
                 _print_help()
                 sys.exit(0)
-            elif opt[0] == '-v':
-                _verbose = True
+            elif opt[0] == '-q':
+                _verbose = False
 
     except GetoptError as error:
         sys.stderr.write("ERROR: {0}.\n".format(error.msg))
@@ -174,17 +180,18 @@ if __name__ == '__main__':
     try:
         s.connect(_wdb_socket)
     except Exception as e:
-        raise Exception("Cannot connect to socket: {0}".format(str(e)))
+        logging.error("Cannot connect to socket: {0}".format(str(e)))
+        sys.exit(1)
 
     if _verbose:
-        print("Connected to WazuhDB socket ({0})".format(_wdb_socket))
+        logging.info("Connected to WazuhDB socket ({0})".format(_wdb_socket))
 
     # Manager DB
     count = 0
     mandbfile = "{0}/syscheck".format(_syscheck_dir)
     if isfile(mandbfile):
         if _verbose:
-            print("Reading manager syscheck DB.")
+            logging.info("Upgrading FIM database for manager...")
         with open(mandbfile, 'r') as syscheck:
             for line in syscheck:
                 if not line.startswith('#'):
@@ -197,17 +204,20 @@ if __name__ == '__main__':
                         if res[0]:
                             count = count + 1
                         else:
-                            print("ERR: {0}".format(res[1]))
+                            logging.error("{0}".format(res[1]))
         if _verbose:
-            print("Added {0} file entries manager.".format(count))
+            logging.info("Added {0} file entries in manager database.".format(count))
 
-    for agt in _get_agents():
+    agents = _get_agents()
+    total_agents = len(agents)
+    pos = 1
+    for agt in agents:
         # Monitorized files
         count = 0
         dbfile = "{0}/({1}) {2}->syscheck".format(_syscheck_dir, agt[1], agt[2])
         if isfile(dbfile):
             if _verbose:
-                print("Reading agent ({0}) syscheck DB.".format(str(agt[0]).zfill(3)))
+                logging.info("[{0}/{1}] Upgrading FIM dabase for agent '{2}'...".format(pos, total_agents, str(agt[0]).zfill(3)))
             with open(dbfile, 'r') as syscheck:
                 for line in syscheck:
                     if not line.startswith('#'):
@@ -220,16 +230,16 @@ if __name__ == '__main__':
                             if res[0]:
                                 count = count + 1
                             else:
-                                print("ERR: {0}".format(res[1]))
+                                logging.error("{0}".format(res[1]))
             if _verbose:
-                print("Added {0} file entries for agent {1}.".format(count, str(agt[0]).zfill(3)))
+                logging.info("[{0}/{1}] Added {2} file entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
 
         # Registry files
         count = 0
         regfile = "{0}/({1}) {2}->syscheck-registry".format(_syscheck_dir, agt[1], agt[2])
         if isfile(regfile):
             if _verbose:
-                print("Reading agent ({0}) syscheck-registry DB.".format(str(agt[0]).zfill(3)))
+                logging.info("[{0}/{1}] Upgrading FIM dabase (syscheck-registry) for agent '{2}'...".format(pos, total_agents, str(agt[0]).zfill(3)))
             with open(regfile, 'r') as syscheck:
                 for line in syscheck:
                     if not line.startswith('#'):
@@ -242,10 +252,11 @@ if __name__ == '__main__':
                             if res[0]:
                                 count = count + 1
                             else:
-                                print("ERR: {0}".format(res[1]))
+                                logging.error("{0}".format(res[1]))
             if _verbose:
-                print("Added {0} registry entries for agent {1}.".format(count, str(agt[0]).zfill(3)))
+                logging.info("[{0}/{1}] Added {2} registry entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
+        pos = pos + 1
 
     s.close()
     if _verbose:
-        print("Finished.")
+        logging.info("Finished.")
