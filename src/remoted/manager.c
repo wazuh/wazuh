@@ -398,9 +398,9 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     char ** files;
     char ** subdir;
     char agent_conf_multi_path[PATH_MAX + 1] = {0};
-    char multi_group_cpy[PATH_MAX+1] = {0};
+    char multi_group_cpy[OS_SIZE_65536] = {0};
 
-    snprintf(multi_group_cpy,PATH_MAX + 1,"%s",multi_group);
+    snprintf(multi_group_cpy,OS_SIZE_65536,"%s",multi_group);
     /* Get each group of the multi-group */
     group = strtok(multi_group, delim);
 
@@ -472,6 +472,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
     if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", hash_multigroup) > PATH_MAX) {
         merror("At c_multi_group(): path too long.");
+        closedir(dp);
         return;
     }
 
@@ -480,7 +481,8 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
         if (errno != ENOTDIR) {
             mdebug1("At c_multi_group() 2: Could not open directory '%s'", path);
         }
-       return;
+        closedir(dp);
+        return;
     }
 
     c_group(hash_multigroup, subdir, _f_sum,MULTIGROUPS_DIR);
