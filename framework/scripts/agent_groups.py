@@ -119,7 +119,7 @@ def set_group(agent_id, group_id, quiet=False, replace=False):
     ans = 'n'
     agent_id = "{}".format(int(agent_id)).zfill(3)
     if not quiet:
-         ans = get_stdin("Do you want to set the group '{0}' to the agent '{1}'? [y/N]: ".format(group_id, agent_id))
+         ans = get_stdin("Do you want to add the group '{0}' to the agent '{1}'? [y/N]: ".format(group_id, agent_id))
     else:
         ans = 'y'
 
@@ -155,7 +155,7 @@ def usage():
     \t-l -g group_id                        # List agents in group
     \t-c -g group_id                        # List configuration files in group
     \t
-    \t-a -i agent_id -g group_id [-q] [-e]  # Set agent group
+    \t-a -i agent_id -g group_id [-q] [-e]  # Add agent group
     \t-r -i agent_id [-q]                   # Unset agent group
     \t-s -i agent_id                        # Show group of agent
     \t

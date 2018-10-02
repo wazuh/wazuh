@@ -2055,7 +2055,7 @@ int OS_MoveFile(const char *src, const char *dst) {
     return status ? status : unlink(src);
 }
 
-int w_copy_file(const char *src, const char *dst,char mode) {
+int w_copy_file(const char *src, const char *dst,char mode,char * message) {
     FILE *fp_src;
     FILE *fp_dst;
     size_t count_r;
@@ -2083,6 +2083,20 @@ int w_copy_file(const char *src, const char *dst,char mode) {
         merror("Couldn't open file '%s'", dst);
         fclose(fp_src);
         return -1;
+    }
+
+    /* Write message to the destination file */
+    if(message){
+        count_r = strlen(message);
+        count_w = fwrite(message, 1, count_r, fp_dst);
+
+        if (count_w != count_r || ferror(fp_dst)) {
+            merror("Couldn't write file '%s'", dst);
+            status = -1;
+            fclose(fp_src);
+            fclose(fp_dst);
+            return status;
+        }
     }
 
     while (!feof(fp_src)) {

@@ -52,6 +52,9 @@ int get_agent_group(const char *id, char *group, size_t size);
 /* Set agent group. Returns 0 on success or -1 on failure. */
 int set_agent_group(const char * id, const char * group);
 
+/* Create multigroup dir. Returns 0 on success or -1 on failure. */
+int create_multigroup_dir(const char * multigroup);
+
 /*
  * Parse manager hostname from agent-info file.
  * If no such file, returns NULL.

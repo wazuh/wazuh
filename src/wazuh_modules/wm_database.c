@@ -339,7 +339,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char path[PATH_MAX] = "";
-    char group[KEYSIZE];
+    char group[PATH_MAX + 1] = {0};
     char cidr[20];
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
@@ -369,7 +369,7 @@ void wm_sync_agents() {
         }
 
         group[0] = '\0';
-        get_agent_group(entry->id, group, KEYSIZE);
+        get_agent_group(entry->id, group, PATH_MAX);
 
         if (!(wdb_insert_agent(id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL) || module->full_sync)) {
 
@@ -676,10 +676,10 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
 int wm_sync_agent_group(int id_agent, const char *fname) {
     int result = 0;
-    char group[KEYSIZE] = "";
+    char group[PATH_MAX + 1] = "";
     clock_t clock0 = clock();
 
-    get_agent_group(fname, group, KEYSIZE);
+    get_agent_group(fname, group, PATH_MAX);
 
     switch (wdb_update_agent_group(id_agent, *group ? group : NULL)) {
     case -1:

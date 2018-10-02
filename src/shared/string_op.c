@@ -345,3 +345,71 @@ void free_strarray(char ** array) {
         free(array);
     }
 }
+
+/* Returns 0 if str is found */
+int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
+    DIR *dp;
+    FILE *fp = NULL;
+    char ** files;
+    int i;
+    int status = -1;
+
+    dp = opendir(path);
+    if (!dp) {
+        mdebug1("At wstr_find_in_folder(): Opening directory: '%s': %s", path, strerror(errno));
+        return status;
+    }
+
+    // Try to open directory, avoid TOCTOU hazard
+    if (files = wreaddir(path), !files) {
+        if (errno != ENOTDIR) {
+            mdebug1("Could not open directory '%s'", path);
+        }
+        closedir(dp);
+        return status;
+    }
+
+    /* Read directory */
+    for (i = 0; files[i]; ++i) {
+        char buffer[OS_SIZE_4096 + 1] = {0};
+        char file[PATH_MAX + 1] = {0};
+
+        snprintf(file, PATH_MAX + 1, "%s/%s", path, files[i]);
+        if (files[i][0] == '.') {
+            continue;
+        }
+
+        fp = fopen(file,"r");
+
+        if(!fp){
+            closedir(dp);
+            dp = NULL;
+            continue;
+        }
+
+        if( fgets (buffer, OS_SIZE_4096, fp)!=NULL ) {
+            /* Found */
+            if(strip_new_line){
+                buffer[strlen(buffer) - 1] = '\0';
+            }
+
+            if(strncmp(str,buffer,OS_SIZE_4096) == 0){
+                status = 0;
+                goto end;
+            }
+        }
+        fclose(fp);
+        fp = NULL;
+    }
+
+end:
+    free_strarray(files);
+    if(fp){
+        fclose(fp);
+    }
+
+    if(dp){
+        closedir(dp);
+    }
+    return status;
+}

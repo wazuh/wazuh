@@ -833,7 +833,43 @@ void OS_RemoveAgentGroup(const char *id)
 {
     char group_file[OS_FLSIZE + 1];
     snprintf(group_file, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
-    unlink(group_file);
+
+    FILE *fp;
+    char group[OS_SIZE_4096 + 1] = {0};
+    fp = fopen(group_file,"r");
+
+    if(!fp){
+        mdebug1("At OS_RemoveAgentGroup(): Could not open file '%s'",group_file);
+    }
+
+    if(fgets(group, OS_SIZE_4096, fp)!=NULL ) {
+        fclose(fp);
+        fp = NULL;
+        unlink(group_file);
+        group[strlen(group)-1] = '\0';
+        /* Remove multigroup if it's not used on any other agent */
+        w_remove_multigroup(group);
+    }
+  
+    if(fp){
+        fclose(fp);
+    }
+}
+
+void w_remove_multigroup(const char *group){
+    char *multigroup = strchr(group,'-');
+    char path[PATH_MAX + 1] = {0};
+
+    if(multigroup){
+        sprintf(path,"%s",isChroot() ?  GROUPS_DIR :  DEFAULTDIR GROUPS_DIR);
+
+        if(wstr_find_in_folder(path,group,1) < 0){
+            sprintf(path,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,group);
+            if (rmdir_ex(path) != 0) {
+                mwarn("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
+            }
+        }
+    }
 }
 
 void FormatID(char *id) {

@@ -348,7 +348,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             }
 
             snprintf(file, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, files[i]);
-
+       
             if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
                 merror("Accessing file '%s'", file);
                 continue;
@@ -396,7 +396,6 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum) {
     char ** subdir;
     char agent_conf_multi_path[PATH_MAX + 1] = {0};
     char multi_group_cpy[PATH_MAX+1] = {0};
-    struct dirent *entry;
 
     snprintf(multi_group_cpy,PATH_MAX + 1,"%s",multi_group);
     /* Get each group of the multi-group */
@@ -421,7 +420,9 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum) {
 
         if (files = wreaddir(dir), !files) {
             if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", dir);
+                merror("At c_multi_group() 1: Could not open directory '%s'", dir);
+                closedir(dp);
+                return;
             }
             continue;
         }
@@ -437,16 +438,18 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum) {
             
             char destination_path[PATH_MAX + 1] = {0};
             char source_path[PATH_MAX + 1] = {0};
+            char agent_conf_chunck_message[PATH_MAX + 1]= {0};
 
             snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
             snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, multi_group_cpy, files[i]);
 
             /* If the file is agent.conf, append */
             if(strcmp(files[i],"agent.conf") == 0){
-                w_copy_file(source_path,destination_path,'a');
+                snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
+                w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message);
             }
             else {
-                w_copy_file(source_path,destination_path,'c');
+                w_copy_file(source_path,destination_path,'c',NULL);
             }
             
         }
@@ -464,29 +467,21 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum) {
         return;
     }
 
-    while (entry = readdir(dp), entry) {
-        // Skip "." and ".."
-        if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
-            continue;
-        }
-
-        if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
-            merror("At c_files(): path too long.");
-            break;
-        }
-
-        // Try to open directory, avoid TOCTOU hazard
-
-        if (subdir = wreaddir(path), !subdir) {
-            if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", path);
-            }
-            continue;
-        }
-
-        c_group(entry->d_name, subdir, _f_sum,MULTIGROUPS_DIR);
-        free_strarray(subdir);
+    if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", multi_group_cpy) > PATH_MAX) {
+        merror("At c_multi_group(): path too long.");
+        return;
     }
+
+    // Try to open directory, avoid TOCTOU hazard
+    if (subdir = wreaddir(path), !subdir) {
+        if (errno != ENOTDIR) {
+            mdebug1("At c_multi_group() 2: Could not open directory '%s'", path);
+        }
+       return;
+    }
+
+    c_group(multi_group_cpy, subdir, _f_sum,MULTIGROUPS_DIR);
+    free_strarray(subdir);
     
     closedir(dp);
 }
@@ -516,12 +511,17 @@ static void c_files()
             for (i = 0; groups[i]; i++) {
                 f_sum = groups[i]->f_sum;
                 
-                for (j = 0; f_sum[j]; j++) {
-                    free(f_sum[j]->name);
-                    free(f_sum[j]);
-                }
+                if(f_sum){
+                    for (j = 0; f_sum[j]; j++) {
+                        free(f_sum[j]->name);
+                        free(f_sum[j]);
+                        f_sum[j] = NULL;
+                    }
 
-                free(f_sum);
+                    free(f_sum);
+                    f_sum = NULL;
+                }
+                
                 free(groups[i]->group);
             }
 
@@ -560,9 +560,8 @@ static void c_files()
 
         if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", path);
+                mdebug1("At c_files() 1: Could not open directory '%s'", path);
             }
-
             continue;
         }
 
@@ -602,7 +601,7 @@ static void c_files()
 
         if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", path);
+                mdebug1("At c_files() 2: Could not open directory '%s'", path);
             }
 
             continue;
@@ -616,7 +615,7 @@ static void c_files()
         free_strarray(subdir);
         p_size++;
     }
-    
+
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
 
@@ -727,6 +726,8 @@ static void read_controlmsg(const char *agent_id, char *msg)
     os_md5 tmp_sum;
     char *end;
     agent_group *agt_group;
+    char path[PATH_MAX + 1] = {0};
+    DIR *dp = NULL;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -754,6 +755,35 @@ static void read_controlmsg(const char *agent_id, char *msg)
     } else if (get_agent_group(agent_id, group, KEYSIZE) < 0) {
         group[0] = '\0';
     }
+    mdebug2("Agent '%s' group is '%s'",agent_id,group);
+
+    /* Check if the multigroup dir is created */
+    snprintf(path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,group);
+    dp = opendir(path);
+
+    if(!dp){
+        if (errno == ENOENT) {
+            if (mkdir(path, 0770) == -1) {
+                mdebug1("At read_controlmsg(): couldn't create directory '%s'", path);
+                return;
+            }
+
+            if(chmod(path,0770) < 0){
+                mdebug1("At read_controlmsg(): Error in chmod setting permissions for path: %s",path);
+            }
+
+            uid_t uid = Privsep_GetUser(USER);
+            gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+
+            if (chown(path, uid, gid) == -1) {
+                merror(CHOWN_ERROR, path, errno, strerror(errno));
+                return;
+            }
+        }
+    }
+    else{
+        closedir(dp);
+    }
 
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
@@ -765,7 +795,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
 
-            merror("No such group '%s' for agent '%s'", group, agent_id);
+            mdebug1("No such group '%s' for agent '%s'", group, agent_id);
             return;
         }
     }
@@ -804,6 +834,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         // If group was not got, guess it by matching sum
 
+        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'",agent_id,group,file,md5);
         if (!f_sum) {
             if (f_sum = find_group(file, md5, group), !f_sum) {
                 // If the group could not be guessed, set to "default"

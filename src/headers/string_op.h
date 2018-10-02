@@ -63,4 +63,7 @@ char * wstr_chr(char * str, int character);
 // Free string array
 void free_strarray(char ** array);
 
+/* Returns 0 if str is found */
+int wstr_find_in_folder(char *path,const char *str,int strip_new_line);
+
 #endif
