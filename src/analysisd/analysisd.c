@@ -1534,7 +1534,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_syscheck_input)){
                     if(!reported_syscheck){
                         reported_syscheck = 1;
-                        mwarn("Could not decode syscheck event, queue is full");
+                        mwarn("Syscheck decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1546,7 +1546,7 @@ void * ad_input_main(void * args) {
                 if(result < 0){
                     if(!reported_syscheck){
                         reported_syscheck = 1;
-                        mwarn("Could not decode syscheck event, queue is full");
+                        mwarn("Syscheck decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1562,7 +1562,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_rootcheck_input)){
                     if(!reported_rootcheck){
                         reported_rootcheck = 1;
-                        mwarn("Could not decode rootcheck event, queue is full");
+                        mwarn("Rootcheck decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1574,7 +1574,7 @@ void * ad_input_main(void * args) {
                 if(result < 0){
                     if(!reported_rootcheck){
                         reported_rootcheck = 1;
-                        mwarn("Could not decode rootcheck event, queue is full");
+                        mwarn("Rootcheck decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1591,7 +1591,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_syscollector_input)){
                     if(!reported_syscollector){
                         reported_syscollector = 1;
-                        mwarn("Could not decode syscollector event, queue is full");
+                        mwarn("Syscollector decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1604,7 +1604,7 @@ void * ad_input_main(void * args) {
 
                     if(!reported_syscollector){
                         reported_syscollector = 1;
-                        mwarn("Could not decode syscollector event, queue is full");
+                        mwarn("Syscollector decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1620,7 +1620,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_hostinfo_input)){
                     if(!reported_hostinfo){
                         reported_hostinfo = 1;
-                        mwarn("Could not decode hostinfo event, queue is full");
+                        mwarn("Hostinfo decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1632,7 +1632,7 @@ void * ad_input_main(void * args) {
                 if(result < 0){
                     if(!reported_hostinfo){
                         reported_hostinfo = 1;
-                        mwarn("Could not decode hostinfo event, queue is full");
+                        mwarn("Hostinfo decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1648,7 +1648,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_event_input)){
                     if(!reported_event){
                         reported_event = 1;
-                        mwarn("Could not push to input decode event, queue is full");
+                        mwarn("Input queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1661,7 +1661,7 @@ void * ad_input_main(void * args) {
 
                     if(!reported_event){
                         reported_event = 1;
-                        mwarn("Could not push to input decode event, queue is full");
+                        mwarn("Input queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -2233,7 +2233,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             if (result < 0) {
                 if(!reported_writer){
                     reported_writer = 1;
-                    mwarn("Could not push to archives writer thread, Queue is full");
+                    mwarn("Archive writer queue is full.");
                 }
                 w_free_event_info(lf);
             }
