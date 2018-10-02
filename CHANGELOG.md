@@ -5,20 +5,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Now agents can belong to multiple groups. ([#1135](https://github.com/wazuh/wazuh/pull/1135))
-- Added support for API calls `GET/manager/stats/analysisd` and `GET/manager/stats/remoted`. ([#1297](https://github.com/wazuh/wazuh/pull/1297))
-- FIM database is cleaned after restart agent 3 times, deleting all entries not monitorized. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
+- Adding feature to **remotely query agent configuration on demand.** ([#548](https://github.com/wazuh/wazuh/pull/548))
+- **Boost Analysisd performance with multithreading.** ([#1039](https://github.com/wazuh/wazuh/pull/1039))
+- Adding feature to **let agents belong to multiple groups.** ([#1135](https://github.com/wazuh/wazuh/pull/1135))
+  - API support for multiple groups. ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135))
+- Added statistical data for Analysisd. ([#1297](https://github.com/wazuh/wazuh/pull/1297))
+  - Added API call `GET/manager/stats/analysisd` to query Analysisd statistics.
+  - Added API call `GET/manager/stats/remoted` to query Remoted statistics.
+- **Boost FIM decoding performance** by storing data into Wazuh DB using SQLite databases. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
+  - FIM database is cleaned after restarting agent 3 times, deleting all entries that left being monitored.
+  - Added script to migrate older Syscheck databases to WazuhDB. ([#1504](https://github.com/wazuh/wazuh/pull/1504)) ([#1333](https://github.com/wazuh/wazuh/pull/1333))
 - Added rule testing output when restarting manager. ([#1196](https://github.com/wazuh/wazuh/pull/1196))
-- Added script to migrate older Syscheck databases to WazuhDB. ([#1504](https://github.com/wazuh/wazuh/pull/1504))
+- New wodle for **Azure environment log and process collection.** ([#1306](https://github.com/wazuh/wazuh/pull/1306))
+- New wodle for **Docker container monitoring.** ([#1368](https://github.com/wazuh/wazuh/pull/1368))
 
 ### Changed
 
 - Refactor Python framework code to standardize database requests and support API queries. ([#921](https://github.com/wazuh/wazuh/pull/921))
-- Add support for multigroups. ([#1300](https://github.com/wazuh/wazuh/pull/1300) [#1135](https://github.com/wazuh/wazuh/pull/1135))
+
 - Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
 - Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315))
-- Fim data is stored in SQLite using Wazuh-DB. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
-- Make Syscheck case insensitive. ([#1349](https://github.com/wazuh/wazuh/pull/1349))
+- Make Syscheck case insensitive on Windows agent. ([#1349](https://github.com/wazuh/wazuh/pull/1349))
 - Avoid conflicts with the size of time_t variable in wazuh-db. ([#1366](https://github.com/wazuh/wazuh/pull/1366))
 - Osquery integration updated: ([#1369](https://github.com/wazuh/wazuh/pull/1369))
   - Nest the result data into a "osquery" object.
@@ -48,6 +55,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the reading of the destination address and type for PPP interfaces. ([#1405](https://github.com/wazuh/wazuh/pull/1405))
 - Fixed a memory bug in regex when getting empty strings. ([#1430](https://github.com/wazuh/wazuh/pull/1430))
 - Fixed report_changes with a big ammount of files. ([#1465](https://github.com/wazuh/wazuh/pull/1465))
+- Prevent Logcollector from null-terminating socket output messages. (#1465)
 
 
 ## [v3.6.1] 2018-09-07
