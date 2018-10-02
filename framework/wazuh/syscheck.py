@@ -3,11 +3,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from glob import glob
 from operator import itemgetter
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh.ossec_queue import OssecQueue
-from wazuh import common
+from wazuh import common, Connection
 from datetime import datetime
 from wazuh.wdb import WazuhDBConnection
 
@@ -82,18 +83,26 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
-    fim_scan_info = Agent(agent_id)._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
-                                                             filters={'module': 'fim'})[0]
+    my_agent = Agent(agent_id)
+    agent_version = my_agent.get_basic_information(select={'fields': ['version']})['version']
 
-    if fim_scan_info['start_scan'] == 0:
-        return {'start': 'ND', 'end': 'ND'}
-    else:
-        start = datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        if fim_scan_info['end_scan'] == 0:
-            return {'start': start, 'end': 'ND'}
+    if agent_version < 'Wazuh v3.7.0':
+        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
+        if not db_agent:
+            raise WazuhException(1600)
         else:
-            end = datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-            return {'start': start, 'end': end}
+            db_agent = db_agent[0]
+        conn = Connection(db_agent)
+        # end time
+        query = "SELECT date_last, log FROM pm_event WHERE log LIKE '% syscheck scan.'"
+        conn.execute(query)
+        return {'end' if log.startswith('End') else 'start': date_last for date_last, log in conn}
+    else:
+        fim_scan_info = my_agent._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
+                                                          filters={'module': 'fim'})[0]
+        end = 'ND' if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        start = 'ND' if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        return {'start': start, 'end': 'ND' if start == 'ND' else end}
 
 
 def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
