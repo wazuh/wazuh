@@ -80,7 +80,7 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
                     os_calloc(reg->d_size.prts_str_size[i], sizeof(char *), (*prts_str)[i]);
                     str_sizes->prts_str_size[i] = reg->d_size.prts_str_size[i];
                 } else if (str_sizes->prts_str_size[i] < reg->d_size.prts_str_size[i]) {
-                    os_realloc(*prts_str[i], reg->d_size.prts_str_size[i], (*prts_str)[i]);
+                    os_realloc((*prts_str)[i], reg->d_size.prts_str_size[i], (*prts_str)[i]);
                     memset((void*)(*prts_str)[i] + str_sizes->prts_str_size[i], 0, reg->d_size.prts_str_size[i] - str_sizes->prts_str_size[i]);
                     str_sizes->prts_str_size[i] = reg->d_size.prts_str_size[i];
                 }
