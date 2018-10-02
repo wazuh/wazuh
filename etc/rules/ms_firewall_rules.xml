@@ -4,168 +4,168 @@
 
 	<rule id="186001" level="3">
 		<if_sid>18104</if_sid>
-		<id>^5024</id>
+		<id>^5024$</id>
 		<description>Windows Firewall Service has started successfully</description>
 		<group>windows_firewall</group>
 	</rule>
 
 	<rule id="186002" level="8">
 		<if_sid>18104</if_sid>
-                <id>^5025</id>
+                <id>^5025$</id>
                 <description>Windows Firewall Service has been stopped</description>
                 <group>windows_firewall</group>
         </rule>
 	
 	<rule id="186003" level="4">
                 <if_sid>18104</if_sid>
-                <id>^5027</id>
+                <id>^5027$</id>
                 <description>Windows Firewall Service was unable to retrieve the security policy from the local storage. Windows Firewall will continue to enforce the current policy</description>
                 <group>windows_firewall</group>
         </rule>
 	
 	<rule id="186004" level="4">
                 <if_sid>18104</if_sid>
-                <id>^5028</id>
+                <id>^5028$</id>
                 <description>Windows Firewall was unable to parse the new security policy. Windows Firewall will continue to enforce the current policy</description>
                 <group>windows_firewall</group>
         </rule>
 
 	<rule id="186005" level="4">
                 <if_sid>18104</if_sid>
-                <id>^5029</id>
+                <id>^5029$</id>
                 <description>The Windows Firewall service failed to initialize the driver. Windows Firewall will continue to enforce the current policy</description>
                 <group>windows_firewall</group>
         </rule>
 
 	<rule id="186006" level="8">
                 <if_sid>18104</if_sid>
-                <id>^5030</id>
+                <id>^5030$</id>
                 <description>Windows Firewall Service failed to start</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186007" level="2">
                 <if_sid>18105</if_sid>
-                 <id>^5031</id>
+                 <id>^5031$</id>
                 <description>Windows Firewall Service blocked an application from accepting incoming connections on the network</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186008" level="2">
                 <if_sid>18105</if_sid>
-		 <id>^5032</id>
+		 <id>^5032$</id>
         	<description>Windows Firewall was unable to notify the user that it blocked an application from accepting incoming connections on the network</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186009" level="3">
                 <if_sid>18104</if_sid>
-                <id>^5033</id>
+                <id>^5033$</id>
                 <description>Windows Firewall Driver started successfully</description>
                 <group>windows_firewall</group>
         </rule>
 
 	<rule id="186010" level="8">
                 <if_sid>18104</if_sid>
-                <id>^5034</id>
+                <id>^5034$</id>
                 <description>Windows Firewall Driver was stopped</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186011" level="8">
                 <if_sid>18105</if_sid>
-                <id>^5035</id>
+                <id>^5035$</id>
                 <description>Windows Firewall Driver failed to start</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186012" level="8">
                 <if_sid>18105</if_sid>
-                <id>^5037</id>
+                <id>^5037$</id>
                 <description>Windows Firewall Driver detected a critical runtime error, terminating</description>
                 <group>windows_firewall</group>
         </rule>
 
 	<rule id="186013" level="8">
                 <if_sid>18104</if_sid>
-                <id>^4946</id>
+                <id>^4946$</id>
                 <description>A rule was added to Windows Firewall exception list</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186014" level="8">
                 <if_sid>18104</if_sid>
-                <id>^4947</id>
+                <id>^4947$</id>
                 <description>A rule was modified from Windows Firewall exception list</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186015" level="8">
                 <if_sid>18104</if_sid>
-                <id>^4948</id>
+                <id>^4948$</id>
                 <description>A rule was deleted from Windows Firewall exception list</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186016" level="8">
                 <if_sid>18104</if_sid>
-                <id>^4949</id>
+                <id>^4949$</id>
                 <description>Windows Firewall settings were restored to the default values</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186017" level="8">
                 <if_sid>18104</if_sid>
-                <id>^4950</id>
+                <id>^4950$</id>
                 <description>A Windows Firewall setting was changed</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186018" level="8">
                 <if_sid>18105</if_sid>
-                <id>^4951</id>
+                <id>^4951$</id>
                 <description>Windows Firewall ignored a rule because its major version number is not recognized.</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186019" level="8">
                 <if_sid>18105</if_sid>
-                <id>^4952</id>
+                <id>^4952$</id>
                 <description>Windows Firewall ignored parts of a rule because its minor version number is not recognized. Other parts of the rule will be enforced</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186020" level="8">
                 <if_sid>18105</if_sid> 
-                <id>^4953</id>
+                <id>^4953$</id>
                 <description>Windows Firewall ignored a rule because it could not be parsed</description> 
                 <group>windows_firewall</group> 
         </rule>
  
         <rule id="186021" level="8"> 
                 <if_sid>18104</if_sid> 
-                <id>^4954</id>
+                <id>^4954$</id>
                 <description>Group Policy settings for Windows Firewall were changed, and the new settings were applied</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186022" level="8">
                 <if_sid>18104</if_sid>
-                <id>^4956</id>
+                <id>^4956$</id>
                 <description>Windows Firewall changed the active profile</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186023" level="8">
                 <if_sid>18105</if_sid>
-                <id>^4957</id>
+                <id>^4957$</id>
                 <description>Windows Firewall did not apply some rules</description>
                 <group>windows_firewall</group>
         </rule>
 
         <rule id="186024" level="8">
                 <if_sid>18105</if_sid>
-                <id>^4958</id>
+                <id>^4958$</id>
                 <description>Windows Firewall did not apply some rules because the rule referred to items not configured on this computer</description>
                 <group>windows_firewall</group>
         </rule>
