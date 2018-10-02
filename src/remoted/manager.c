@@ -590,7 +590,7 @@ static void c_files()
     /* Read multigroups from .metatada file */
     FILE *fp;
     char metadata_path[PATH_MAX + 1] = {0};
-    char multi_group[PATH_MAX + 1] = {0};
+    char multi_group[OS_SIZE_65536 + 1] = {0};
     snprintf(metadata_path,PATH_MAX,"%s/%s",MULTIGROUPS_DIR,".metadata");
     
     fp = fopen(metadata_path,"r");
@@ -601,7 +601,7 @@ static void c_files()
         return;
     }
 
-    while (fgets(multi_group, PATH_MAX, fp) != NULL) {
+    while (fgets(multi_group, OS_SIZE_65536, fp) != NULL) {
         char *endl = strchr(multi_group, '\n');
 
         if (endl) {
