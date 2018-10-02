@@ -22,7 +22,7 @@ class InputValidator:
         else: 
             return False
 
-    def check_length(self, name, length=254, func=operator.lt):
+    def check_length(self, name, length=255, func=operator.lt):
         return func(len(name), length)
 
     def group(self, group_name):

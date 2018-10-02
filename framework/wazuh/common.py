@@ -111,3 +111,6 @@ ossec_gid = getgrnam("ossec").gr_gid
 
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()
+
+# Multigroup variables
+max_groups_per_multigroup = 256

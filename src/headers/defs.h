@@ -307,8 +307,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define MULTIGROUPS_DIR   "/var/multigroups"
 #define METADATA_FILE MULTIGROUPS_DIR "/.metadata"
-#define MAX_GROUP_NAME 254
+#define MAX_GROUP_NAME 255
 #define MULTIGROUP_SEPARATOR ','
+#define MAX_GROUPS_PER_MULTIGROUP 256
 #endif
 
 // Incoming directory

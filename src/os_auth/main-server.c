@@ -815,12 +815,24 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
                     char *group = strtok(multi_group_cpy, delim);
                     int error = 0;
+                    int max_multigroups = 0;
 
                     mdebug1("Multigroup: '%s'",centralized_group);
 
                     while( group != NULL) {
                         DIR * dp;
                         char dir[PATH_MAX + 1] = {0};
+
+                        /* Check limit */
+                        if(max_multigroups > MAX_GROUPS_PER_MULTIGROUP){
+                            merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
+                            snprintf(response, 2048, "Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP);
+                            SSL_write(ssl, response, strlen(response));
+                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                            SSL_write(ssl, response, strlen(response));
+                            SSL_free(ssl);
+                            close(client.socket);
+                        }
 
                         /* Validate the group name */
                         int valid = 0;
@@ -864,6 +876,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                             break;
                         }
                         group = strtok(NULL, delim);
+                        max_multigroups++;
                         closedir(dp);
                     }
 

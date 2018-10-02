@@ -423,7 +423,7 @@ int w_validate_group_name(const char *group){
         return -3;
     }
 
-    /* Checkk if the group is only composed by ',' */
+    /* Check if the group is only composed by ',' */
     unsigned int comas = 0;
     for(i = 0; i < strlen(group); i++){
         if(group[i] == MULTIGROUP_SEPARATOR){

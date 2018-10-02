@@ -182,7 +182,7 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
 
     def _get_data(self):
         if self.group_id != "null":
-            self.fields['multi_group'] = "CASE WHEN COUNT(*) > 1 THEN '*' ELSE '' END as num_groups"
+            self.fields['multi_group'] = "CASE WHEN COUNT(*) > 1 THEN '' ELSE '' END as num_groups"
             self.select['fields'].update(['multi_group'])
         WazuhDBQueryAgents._get_data(self)
 
@@ -1108,6 +1108,10 @@ class Agent:
         agent_group = (group_name + ',' if group_name else '') + group_id
         old_agent_group = group_name
 
+        # Check multigroup limit
+        if Agent().check_multigroup_limit(agent_id):
+            raise WazuhException(1737)
+
         # Check if the group exists
         if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
@@ -1503,6 +1507,9 @@ class Agent:
     @staticmethod
     def remove_multi_group(group_id):
 
+        if group_id.lower() == "default":
+                raise WazuhException(1712)
+
         for filename in listdir("{0}".format(common.groups_path)):
             file = open("{0}/{1}".format(common.groups_path,filename),"r")
             agent_id = filename
@@ -1741,6 +1748,24 @@ class Agent:
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
+
+    @staticmethod
+    def check_multigroup_limit(agent_id):
+        # Check if multigroup limit is reached
+        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
+        limit_reached = False
+
+        try:
+            f_group = open(agent_group_path, 'r')
+            group_readed = f_group.read()
+            f_group.close()
+            
+            if (len(group_readed.split(',')) + 1) > common.max_groups_per_multigroup:
+                limit_reached = True
+        except Exception:
+            pass       
+
+        return limit_reached
 
     @staticmethod
     def unset_group(agent_id, group_id=None, force=False):
@@ -2557,31 +2582,3 @@ class Agent:
         with open(common.multi_groups_path + "/.metadata", 'a') as f:
             f.write('{0}\n'.format(multi_group))
             f.close()
-
-    @staticmethod
-    def get_all_multigroups():
-        """
-        Gets the existing muligroups.
-
-        :return: Dictionary: {'items': array of multigroups}
-        """
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-
-        # Get all multigroups
-        query = "SELECT COUNT(*) as num_agents,`group` FROM agent GROUP BY `group` having `group` LIKE '%,%'"
-        conn.execute(query)
-
-        result = []
-        data = conn.fetch()
-
-        while data:
-            if data:
-                result.append(data)
-            data = conn.fetch()
-
-        return {'items': result}

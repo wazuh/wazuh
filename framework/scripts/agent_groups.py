@@ -54,14 +54,6 @@ def show_group(agent_id):
     str_group = agent_info['group'] if 'group' in agent_info else "Null"
     print("The agent '{0}' with ID '{1}' has the group: '{2}'.".format(agent_info['name'], agent_info['id'], str_group))
 
-def show_multi_groups():
-    multi_groups_data = Agent().get_all_multigroups()
-
-    print("Multi-groups ({0}):".format(len(multi_groups_data['items'])))
-    for g in multi_groups_data['items']:
-        print("  {0} ({1})".format(g[1],g[0]))
-
-
 def show_agents_with_group(group_id):
     agents_data = Agent.get_agent_group(group_id, limit=None)
 
@@ -159,7 +151,6 @@ def usage():
 
     Usage:
     \t-l                                    # List all groups
-    \t-m                                    # List all multi-groups
     \t-l -g group_id                        # List agents in group
     \t-c -g group_id                        # List configuration files in group
     \t
@@ -205,7 +196,7 @@ def main():
     # Parse arguments
     arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'replace-group': False, 'show-group': False, 'remove-group': False, 'quiet': False }
     try:
-        opts, args = getopt(argv[1:], "lcaesri:g:qfdhm", ["list", "list-files", "add-group","replace-group", "show-group", "remove-group" ,"agent-id=", "group=", "quiet", "debug", "help","multi-groups"])
+        opts, args = getopt(argv[1:], "lcaesri:g:qfdh", ["list", "list-files", "add-group","replace-group", "show-group", "remove-group" ,"agent-id=", "group=", "quiet", "debug", "help"])
         arguments['n_args'] = len(opts)
     except GetoptError as err:
         print(str(err) + "\n" + "Try '--help' for more information.")
@@ -238,9 +229,6 @@ def main():
         elif o in ("-d", "--debug"):
             global debug
             debug = True
-        elif o in ("-m", "--multi-groups"):
-            show_multi_groups()
-            exit(0)
         elif o in ("-h", "--help"):
             usage()
             exit(0)
