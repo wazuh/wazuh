@@ -282,10 +282,6 @@ int set_agent_group(const char * id, const char * group) {
     FILE *fp;
     mode_t oldmask;
 
-    if(create_multigroup_dir(group)){
-        return -1;
-    }
-
     if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
         merror("At set_agent_group(): file path too large for agent '%s'.", id);
         return -1;
@@ -309,7 +305,7 @@ int set_agent_group(const char * id, const char * group) {
 int create_multigroup_dir(const char * multigroup) {
     char path[PATH_MAX];
     DIR *dp;
-    char *has_multigroup =  strchr(multigroup,'-');
+    char *has_multigroup =  strchr(multigroup,MULTIGROUP_SEPARATOR);
 
     if(!has_multigroup){
         return 0;
@@ -331,7 +327,7 @@ int create_multigroup_dir(const char * multigroup) {
         }
 
         if(chmod(path,0770) < 0){
-            merror("Error in chmod setting permissions for path: %s",path);
+            merror("At create_multigroup_dir(): Error in chmod setting permissions for path: %s",path);
         }
 
         uid_t uid = Privsep_GetUser(USER);
@@ -405,4 +401,51 @@ char* hostname_parse(const char *path) {
 
     fclose(fp);
     return manager_hostname;
+}
+
+int w_validate_group_name(const char *group){
+
+    unsigned int i = 0;
+    int j = 0;
+    char valid_chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:;_-=+!@(),";
+    int offset = 0;
+    int valid = 0;
+    int valid_chars_length = strlen(valid_chars);
+    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
+
+    if(!multigroup && (strlen(group) > MAX_GROUP_NAME)){
+        offset = 1;
+        mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
+        return -2;
+    }
+    else if(strlen(group) > OS_SIZE_65536 -1 ){
+        mdebug1("At w_validate_group_name(): Multigroup length is over %d characters",OS_SIZE_65536);
+        return -3;
+    }
+
+    /* Checkk if the group is only composed by ',' */
+    unsigned int comas = 0;
+    for(i = 0; i < strlen(group); i++){
+        if(group[i] == MULTIGROUP_SEPARATOR){
+            comas++;
+        }
+    }
+
+    if(comas == strlen(group)){
+        return -1;
+    }
+
+    for(i = 0; i < strlen(group); i++){
+        valid = 0;
+        for(j = 0; j < valid_chars_length - offset; j++){
+            if(group[i] == valid_chars[j]){
+                valid = 1;
+            }
+        }
+        if(!valid){
+            return -1;
+        }
+    }
+
+    return 0;
 }

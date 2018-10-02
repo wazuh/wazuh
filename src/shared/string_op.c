@@ -413,3 +413,39 @@ end:
     }
     return status;
 }
+
+/* Returns 0 if str is found */
+int wstr_find_line_in_file(char *file,const char *str,int strip_new_line){
+    FILE *fp = NULL;
+    int i = -1;
+    char buffer[OS_SIZE_65536 + 1] = {0};
+
+    fp = fopen(file,"r");
+
+    if(!fp){
+        return -1;
+    }
+
+    while(fgets (buffer, OS_SIZE_65536, fp) != NULL) {
+
+        char *endl = strchr(buffer, '\n');
+
+        if (endl) {
+            i++;
+        }
+
+        /* Found */
+        if(strip_new_line && endl){
+            *endl = '\0';
+        }
+
+        if(strncmp(str,buffer,OS_SIZE_65536) == 0){
+            fclose(fp);
+            return i;
+            break;
+        }
+    }
+    fclose(fp);
+
+    return -1;
+}

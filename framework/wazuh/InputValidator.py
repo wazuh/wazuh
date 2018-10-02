@@ -14,7 +14,7 @@ class InputValidator:
     Class to do Input Validation
     """
 
-    def check_name(self, name, regex_str="\w+"):
+    def check_name(self, name, regex_str="[A-Za-z0-9\.;:-_=\+!@\(\)][A-Za-z0-9;:-_=\+!@\(\)]{0,254}"):
         regex = re.compile(regex_str)
         matching = regex.match(name)
         if matching:
@@ -22,7 +22,7 @@ class InputValidator:
         else: 
             return False
 
-    def check_length(self, name, length=100, func=operator.lt):
+    def check_length(self, name, length=254, func=operator.lt):
         return func(len(name), length)
 
     def group(self, group_name):

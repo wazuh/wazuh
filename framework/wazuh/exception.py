@@ -106,7 +106,7 @@ class WazuhException(Exception):
         1719: 'Remote upgrade is not available for this agent version',
         1720: 'Agent disconnected',
         1721: 'Remote upgrade is not available for this agent OS version',
-        1722: 'Incorrect format for group_id. It can only have letters and numbers. Max length is 256',
+        1722: 'Incorrect format for group_id. Characters supported [A-Za-z0-9\.;:-_=\+!@\(\)][A-Za-z0-9;:-_=\+!@\(\)]. Max length is 256',
         1723: 'Hash algorithm not available',
         1724: 'Not a valid select field',
         1725: 'Error registering a new agent',

@@ -122,4 +122,7 @@ char ** wreaddir(const char * name);
 // Open file normally in Linux, allow read/write/delete in Windows
 FILE * wfopen(const char * pathname, const char * mode);
 
+/* Delete a line from a file */
+int w_remove_line_from_file(char *file, int line);
+
 #endif /* __FILE_H */

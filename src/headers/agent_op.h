@@ -62,4 +62,9 @@ int create_multigroup_dir(const char * multigroup);
 
 char* hostname_parse(const char *path);
 
+/* Validates the group name 
+ * Returns 0 on success or  -1 on failure 
+ */
+int w_validate_group_name(const char *group);
+
 #endif /* __AGENT_OP_H */
