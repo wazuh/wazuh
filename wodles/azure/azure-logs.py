@@ -93,7 +93,8 @@ parser.add_argument("--storage_time_offset", metavar = "time", type = str, requi
 args = parser.parse_args()
 
 if args.la_query:
-	la_format_query = args.la_query.replace("'","")
+	la_format_query = args.la_query.replace('"','')
+	la_format_query = la_format_query.replace("'","")
 if args.graph_query:
 	graph_format_query = args.graph_query.replace("'","")
 if args.container:
@@ -257,7 +258,7 @@ def get_analytic(date, last_time_list, url, log_headers):
 
 	analytics_url = "{}/workspaces/{}/query".format(url, args.workspace)	
 	logging.info("Log Analytics: Sending a request to the Log Analytics API.")	
-	
+
 	try:
 		query_md5 = hashlib.md5(la_format_query).hexdigest()
 		# Differentiates the first execution of the script from the rest of the executions.
