@@ -11,11 +11,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "os_regex.h"
+#include "shared.h"
 #include "os_regex_internal.h"
-#include "debug_op.h"
-#include "mem_op.h"
-#include "pthreads_op.h"
 
 /* Internal prototypes */
 static const char *_OS_Regex(const char *pattern, const char *str, const char **prts_closure,
@@ -51,9 +48,13 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
     }
 
     if (regex_match && sub_strings) {
-        if (str_sizes->sub_strings_size < reg->d_size.sub_strings_size &&
-            (*sub_strings = (char **) realloc(*sub_strings, reg->d_size.sub_strings_size))) {
-            memset((void*)*sub_strings + str_sizes->sub_strings_size, 0, reg->d_size.sub_strings_size - str_sizes->sub_strings_size);
+        if (str_sizes->sub_strings_size < reg->d_size.sub_strings_size) {
+            if (!*sub_strings) {
+                os_calloc(1, reg->d_size.sub_strings_size, *sub_strings);
+            } else {
+                os_realloc(*sub_strings, reg->d_size.sub_strings_size, *sub_strings);
+                memset((void*)*sub_strings + str_sizes->sub_strings_size, 0, reg->d_size.sub_strings_size - str_sizes->sub_strings_size);
+            }
             str_sizes->sub_strings_size = reg->d_size.sub_strings_size;
         }
 
@@ -62,13 +63,13 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
 
     if (regex_match && prts_str) {
         if (str_sizes->prts_str_alloc_size < reg->d_size.prts_str_alloc_size) {
-            *prts_str = (const char ***) realloc(*prts_str, reg->d_size.prts_str_alloc_size);
+            os_realloc(*prts_str, reg->d_size.prts_str_alloc_size, *prts_str);
             memset((void*)*prts_str + str_sizes->prts_str_alloc_size, 0, reg->d_size.prts_str_alloc_size - str_sizes->prts_str_alloc_size);
             str_sizes->prts_str_alloc_size = reg->d_size.prts_str_alloc_size;
             if (!str_sizes->prts_str_size) {
-                str_sizes->prts_str_size = (int *) calloc(str_sizes->prts_str_alloc_size, sizeof(int));
+                os_calloc(str_sizes->prts_str_alloc_size, sizeof(int), str_sizes->prts_str_size);
             } else {
-                str_sizes->prts_str_size = (int *) realloc(str_sizes->prts_str_size, str_sizes->prts_str_alloc_size * sizeof(int));
+                os_realloc(str_sizes->prts_str_size, str_sizes->prts_str_alloc_size * sizeof(int), str_sizes->prts_str_size);
             }
         }
 
@@ -76,10 +77,10 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
             // It is a pattern from which to extract substrings
             for (i = 0; reg->d_size.prts_str_size[i]; i++) {
                 if (!str_sizes->prts_str_size[i]) {
-                    (*prts_str)[i] = (const char **) calloc(reg->d_size.prts_str_size[i], sizeof(char *));
+                    os_calloc(reg->d_size.prts_str_size[i], sizeof(char *), (*prts_str)[i]);
                     str_sizes->prts_str_size[i] = reg->d_size.prts_str_size[i];
                 } else if (str_sizes->prts_str_size[i] < reg->d_size.prts_str_size[i]) {
-                    (*prts_str)[i] = (const char **) realloc(*prts_str[i], reg->d_size.prts_str_size[i]);
+                    os_realloc(*prts_str[i], reg->d_size.prts_str_size[i], (*prts_str)[i]);
                     memset((void*)(*prts_str)[i] + str_sizes->prts_str_size[i], 0, reg->d_size.prts_str_size[i] - str_sizes->prts_str_size[i]);
                     str_sizes->prts_str_size[i] = reg->d_size.prts_str_size[i];
                 }

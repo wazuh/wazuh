@@ -174,8 +174,8 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
     /* Allocate the memory for the sub patterns */
     count++;
-    reg->patterns = (char **) calloc(count + 1, sizeof(char *));
-    reg->flags = (int *) calloc(count + 1, sizeof(int));
+    os_calloc(count + 1, sizeof(char *), reg->patterns);
+    os_calloc(count + 1, sizeof(int), reg->flags);
 
     /* Memory allocation error check */
     if (!reg->patterns || !reg->flags) {
@@ -185,9 +185,9 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
     /* For the substrings */
     if ((prts_size > 0) && (flags & OS_RETURN_SUBSTRING)) {
-        reg->prts_closure = (const char ** *) calloc(count + 1, sizeof(const char **));
+        os_calloc(count + 1, sizeof(const char **), reg->prts_closure);
         reg->d_size.prts_str_alloc_size = (count + 1) * sizeof(const char **);
-        reg->d_prts_str = (const char ** *) calloc(1, reg->d_size.prts_str_alloc_size);
+        os_calloc(1, reg->d_size.prts_str_alloc_size, reg->d_prts_str);
         if (!reg->prts_closure || !reg->d_prts_str) {
             reg->error = OS_REGEX_OUTOFMEMORY;
             goto compile_error;
@@ -269,15 +269,15 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
                 }
 
                 /* Allocate the memory */
-                reg->prts_closure[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
+                os_calloc(prts_size + 1, sizeof(const char *), reg->prts_closure[i]);
                 if (!reg->d_size.prts_str_size) {
-                    reg->d_size.prts_str_size = calloc(2, sizeof(int));
+                    os_calloc(2, sizeof(int), reg->d_size.prts_str_size);
                 } else {
-                    reg->d_size.prts_str_size = realloc(reg->d_size.prts_str_size, (i + 2) * sizeof(int));
+                    os_realloc(reg->d_size.prts_str_size, (i + 2) * sizeof(int), reg->d_size.prts_str_size);
                     reg->d_size.prts_str_size[i + 1] = 0;
                 }
                 reg->d_size.prts_str_size[i] = (prts_size + 1) * sizeof(const char *);
-                reg->d_prts_str[i] = (const char **) calloc(1, reg->d_size.prts_str_size[i]);
+                os_calloc(1, reg->d_size.prts_str_size[i], reg->d_prts_str[i]);
                 if ((reg->prts_closure[i] == NULL) || (reg->d_prts_str[i] == NULL)) {
                     reg->error = OS_REGEX_OUTOFMEMORY;
                     goto compile_error;
@@ -318,7 +318,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
     /* Allocate sub string for the maximum number of parenthesis */
     reg->d_size.sub_strings_size = (max_prts_size + 1) * sizeof(char *);
-    reg->d_sub_strings = (char **) calloc(1, reg->d_size.sub_strings_size);
+    os_calloc(1, reg->d_size.sub_strings_size, reg->d_sub_strings);
     if (reg->d_sub_strings == NULL) {
         reg->error = OS_REGEX_OUTOFMEMORY;
         goto compile_error;
