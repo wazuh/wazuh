@@ -348,7 +348,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
     }
 
     if (RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &oshkey) != ERROR_SUCCESS) {
-        merror(SK_REG_OPEN, subkey);
+        mwarn(SK_REG_OPEN, subkey);
         return;
     }
 
