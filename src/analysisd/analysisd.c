@@ -210,7 +210,6 @@ static int reported_writer = 0;
 
 /* Mutexes */
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t process_event_ignore_rule_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -220,9 +219,6 @@ static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Stats */
 static RuleInfo *stats_rule = NULL;
-
-/* Ignore rules Files Pointers */
-FILE **fp_ignore;
 
 /* To translate between month (int) to month (char) */
 static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -706,6 +702,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 #endif
 {
     Eventinfo *lf = NULL;
+    int i;
 
     /* Initialize the logs */
     OS_InitLog();
@@ -727,11 +724,6 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Create the event list */
     OS_CreateEventList(Config.memorysize);
-
-    /* Initiate the FTS list */
-    if (!FTS_Init()) {
-        merror_exit(FTS_LIST_ERROR);
-    }
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init()) {
@@ -846,15 +838,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
     int num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
 
-    /* Init the Files Ignore pointers*/
-    fp_ignore = (FILE **)calloc(num_rule_matching_threads, sizeof(FILE*));
-    int i;
-
-    for(i = 0; i < num_rule_matching_threads;i++){
-        fp_ignore[i] = w_get_fp_ignore();
-    }
-
-
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_information->cpu_cores;
     }
@@ -877,6 +860,11 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     if(num_rule_matching_threads == 0){
         num_rule_matching_threads = cpu_information->cpu_cores;
+    }
+
+    /* Initiate the FTS list */
+    if (!FTS_Init(num_rule_matching_threads)) {
+        merror_exit(FTS_LIST_ERROR);
     }
 
     /* Create message handler thread */
@@ -2128,7 +2116,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             lf->generated_rule = currently_rule;
 
             /* Check if we should ignore it */
-            if (currently_rule->ckignore && IGnore(lf,fp_ignore[t_id])) {
+            if (currently_rule->ckignore && IGnore(lf, t_id)) {
                 /* Ignore rule */
                 lf->generated_rule = NULL;
                 break;
@@ -2136,9 +2124,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
             /* Check if we need to add to ignore list */
             if (currently_rule->ignore) {
-                w_mutex_lock(&process_event_ignore_rule_mutex);
-                AddtoIGnore(lf);
-                w_mutex_unlock(&process_event_ignore_rule_mutex);
+                AddtoIGnore(lf, t_id);
             }
 
             /* Log the alert if configured to */

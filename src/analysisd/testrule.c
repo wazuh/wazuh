@@ -389,7 +389,7 @@ void OS_ReadMSG(char *ut_str)
     OS_CreateEventList(Config.memorysize);
 
     /* Initiate the FTS list */
-    if (!FTS_Init()) {
+    if (!FTS_Init(1)) {
         merror_exit(FTS_LIST_ERROR);
     }
 
@@ -542,14 +542,14 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check if we should ignore it */
-                if (currently_rule->ckignore && IGnore(lf,NULL)) {
+                if (currently_rule->ckignore && IGnore(lf, 0)) {
                     lf->generated_rule = NULL;
                     break;
                 }
 
                 /* Check if we need to add to ignore list */
                 if (currently_rule->ignore) {
-                    AddtoIGnore(lf);
+                    AddtoIGnore(lf, 0);
                 }
 
                 /* Log the alert if configured to */

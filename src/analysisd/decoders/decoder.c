@@ -228,7 +228,7 @@ void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match)
 #endif
 }
 
-/* Find index of a dynamic field. Returns -1 if not found. */
+/* Find index of a dynamic field. Returns NULL if not found. */
 
 const char* FindField(const Eventinfo *lf, const char *key) {
     int i;
