@@ -64,10 +64,10 @@ def _get_agents():
 def _fim_decode(fline):
     # Decode a line from syscheck into a tuple
     readed = fline
-    fline = fline[3:-1].split('!')
+    fline = fline[3:-1].split(b'!')
     if len(fline) == 2:
         fim = fline[0][:-1]
-        parsed = fline[1].split(' ', 1)
+        parsed = fline[1].split(b' ', 1)
         if len(parsed) == 2:
             timestamp = parsed[0]
             path = parsed[1]
@@ -82,14 +82,9 @@ def _fim_decode(fline):
 
 def check_file_entry(agent, cfile, wdb_socket):
     # Send message
-    msg = "agent {0} syscheck load {1}".format(str(agent).zfill(3), cfile)
-    try:
-        msg = msg.encode().decode('utf-8')
-    except UnicodeDecodeError:
-        msg = msg.decode('utf-8')
-
-    logging.debug(msg)
-    msg = msg.encode('utf-8')
+    msg = "agent {0} syscheck load ".format(str(agent).zfill(3)).encode()
+    msg = msg + cfile
+    # logging.debug(msg)
     msg = struct.pack('<I', len(msg)) + msg
     wdb_socket.send(msg)
 
@@ -110,14 +105,9 @@ def check_file_entry(agent, cfile, wdb_socket):
 
 def insert_fim(agent, fim_array, stype, wdb_socket):
     # Send message
-    msg = "agent {0} syscheck save {1} {2}!0:{3} {4}".format(str(agent).zfill(3), stype, fim_array[0], fim_array[1], fim_array[2])
-    try:
-        msg = msg.encode().decode('utf-8')
-    except UnicodeDecodeError:
-        msg = msg.decode('utf-8')
-
+    msg = "agent {0} syscheck save {1} {2}!0:{3} ".format(str(agent).zfill(3), stype, fim_array[0], fim_array[1]).encode()
+    msg = msg + fim_array[2]
     logging.debug(msg)
-    msg = msg.encode('utf-8')
     msg = struct.pack('<I', len(msg)) + msg
     wdb_socket.send(msg)
 
@@ -192,9 +182,9 @@ if __name__ == '__main__':
     if isfile(mandbfile):
         if _verbose:
             logging.info("Upgrading FIM database for manager...")
-        with open(mandbfile, 'r') as syscheck:
+        with open(mandbfile, 'rb') as syscheck:
             for line in syscheck:
-                if not line.startswith('#'):
+                if not line[0] == b'#':
                     decoded = _fim_decode(line)
                     if not _force:
                         if not check_file_entry(0, decoded[2], s):
@@ -217,10 +207,10 @@ if __name__ == '__main__':
         dbfile = "{0}/({1}) {2}->syscheck".format(_syscheck_dir, agt[1], agt[2])
         if isfile(dbfile):
             if _verbose:
-                logging.info("[{0}/{1}] Upgrading FIM dabase for agent '{2}'...".format(pos, total_agents, str(agt[0]).zfill(3)))
-            with open(dbfile, 'r') as syscheck:
+                logging.info("[{0}/{1}] Upgrading FIM database for agent '{2}'...".format(pos, total_agents, str(agt[0]).zfill(3)))
+            with open(dbfile, 'rb') as syscheck:
                 for line in syscheck:
-                    if not line.startswith('#'):
+                    if not line[0] == b'#':
                         decoded = _fim_decode(line)
                         if not _force:
                             if not check_file_entry(agt[0], decoded[2], s):
@@ -239,10 +229,10 @@ if __name__ == '__main__':
         regfile = "{0}/({1}) {2}->syscheck-registry".format(_syscheck_dir, agt[1], agt[2])
         if isfile(regfile):
             if _verbose:
-                logging.info("[{0}/{1}] Upgrading FIM dabase (syscheck-registry) for agent '{2}'...".format(pos, total_agents, str(agt[0]).zfill(3)))
-            with open(regfile, 'r') as syscheck:
+                logging.info("[{0}/{1}] Upgrading FIM database (syscheck-registry) for agent '{2}'...".format(pos, total_agents, str(agt[0]).zfill(3)))
+            with open(regfile, 'rb') as syscheck:
                 for line in syscheck:
-                    if not line.startswith('#'):
+                    if not line[0] == b'#':
                         decoded = _fim_decode(line)
                         if not _force:
                             if not check_file_entry(agt[0], decoded[2], s):
