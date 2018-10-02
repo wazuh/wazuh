@@ -29,7 +29,7 @@ void *SymantecWS_Decoder_Init()
  * 20070717,73613,1=5,11=10.1.1.3,10=userc,3=1,2=1
  * 20070717,73614,1=5,11=1.2.3.4,1106=News,60=http://news.bbc.co.uk/,10=userX,1000=212.58.240.42,2=27
  */
-void *SymantecWS_Decoder_Exec(Eventinfo *lf)
+void *SymantecWS_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
 {
     int count = 0;
     char buf_str[OS_SIZE_1024 + 1];

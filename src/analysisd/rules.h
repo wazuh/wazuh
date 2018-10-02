@@ -128,7 +128,7 @@ typedef struct _RuleInfo {
     OSList *group_search;
 
     /* Function pointer to the event_search */
-    void *(*event_search)(void *lf, void *rule);
+    void *(*event_search)(void *lf, void *rule, void *rule_match);
 
     char *group;
     OSMatch *match;
@@ -171,7 +171,7 @@ typedef struct _RuleInfo {
 
     void *(*compiled_rule)(void *lf);
     active_response **ar;
-    
+
     pthread_mutex_t mutex;
 
     char *file;

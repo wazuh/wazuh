@@ -29,7 +29,7 @@ void *OSSECAlert_Decoder_Init()
  * Examples:
  *
  */
-void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
+void *OSSECAlert_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
 {
     char *oa_id = 0;
     char *oa_location;

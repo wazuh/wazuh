@@ -17,23 +17,23 @@ int DecodeCiscat(Eventinfo *lf);
 
 /* Plugin decoder for OpenBSD PF */
 void *PF_Decoder_Init(void);
-void *PF_Decoder_Exec(Eventinfo *lf);
+void *PF_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
 
 /* Plugin for Symantec Web Security */
 void *SymantecWS_Decoder_Init(void);
-void *SymantecWS_Decoder_Exec(Eventinfo *lf);
+void *SymantecWS_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
 
 /* Plugin for Sonicwall */
 void *SonicWall_Decoder_Init(void);
-void *SonicWall_Decoder_Exec(Eventinfo *lf);
+void *SonicWall_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
 
 /* Plugin for OSSEC alert */
 void *OSSECAlert_Decoder_Init(void);
-void *OSSECAlert_Decoder_Exec(Eventinfo *lf);
+void *OSSECAlert_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
 
 /* Plugin for JSON */
 void *JSON_Decoder_Init(void);
-void *JSON_Decoder_Exec(Eventinfo *lf);
+void *JSON_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
 
 /* List of plugins. All three lists must be in the same order */
 extern const char *(plugin_decoders[]);

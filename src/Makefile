@@ -1106,7 +1106,7 @@ manage_agents: ${addagent_o}
 
 #### Util ##########
 
-util_programs = syscheck_update clear_stats agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex
+util_programs = syscheck_update clear_stats agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex parallel-regex
 
 $(util_programs): $(BUILD_LIBS)
 
@@ -1138,6 +1138,9 @@ rootcheck_control: util/rootcheck_control.o addagent/validate.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ossec-regex: util/ossec-regex.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+parallel-regex: util/parallel-regex.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### rootcheck #####

@@ -21,11 +21,11 @@
 #define IG_QUEUE  "/queue/fts/ig-queue"
 #endif
 
-int FTS_Init(void);
-void AddtoIGnore(Eventinfo *lf);
-int IGnore(Eventinfo *lf,FILE *fp_ig);
+int FTS_Init(int threads);
+void AddtoIGnore(Eventinfo *lf, int pos);
+int IGnore(Eventinfo *lf, int pos);
 char * FTS(Eventinfo *lf);
-FILE * w_get_fp_ignore();
+FILE **w_get_fp_ignore();
 void FTS_Fprintf(char * _line);
 void FTS_Flush();
 

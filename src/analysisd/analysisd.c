@@ -50,11 +50,11 @@
 
 /** Prototypes **/
 void OS_ReadMSG(int m_queue);
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
 static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
-void DecodeEvent(Eventinfo *lf);
+void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
 int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
@@ -210,7 +210,6 @@ static int reported_writer = 0;
 
 /* Mutexes */
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t process_event_ignore_rule_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -220,9 +219,6 @@ static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Stats */
 static RuleInfo *stats_rule = NULL;
-
-/* Ignore rules Files Pointers */
-FILE **fp_ignore;
 
 /* To translate between month (int) to month (char) */
 static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -706,6 +702,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 #endif
 {
     Eventinfo *lf = NULL;
+    int i;
 
     /* Initialize the logs */
     OS_InitLog();
@@ -727,11 +724,6 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Create the event list */
     OS_CreateEventList(Config.memorysize);
-
-    /* Initiate the FTS list */
-    if (!FTS_Init()) {
-        merror_exit(FTS_LIST_ERROR);
-    }
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init()) {
@@ -846,15 +838,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
     int num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
 
-    /* Init the Files Ignore pointers*/
-    fp_ignore = (FILE **)calloc(num_rule_matching_threads, sizeof(FILE*));
-    int i;
-
-    for(i = 0; i < num_rule_matching_threads;i++){
-        fp_ignore[i] = w_get_fp_ignore();
-    }
-
-
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_information->cpu_cores;
     }
@@ -877,6 +860,11 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     if(num_rule_matching_threads == 0){
         num_rule_matching_threads = cpu_information->cpu_cores;
+    }
+
+    /* Initiate the FTS list */
+    if (!FTS_Init(num_rule_matching_threads)) {
+        merror_exit(FTS_LIST_ERROR);
     }
 
     /* Create message handler thread */
@@ -941,7 +929,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 }
 
 /* Checks if the current_rule matches the event information */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match)
 {
     /* We check for:
      * decoded_as,
@@ -1023,7 +1011,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 
     /* Check if exist any regex for this rule */
     if (rule->regex) {
-        if (!OSRegex_Execute(lf->log, rule->regex)) {
+        if (!OSRegex_Execute_ex(lf->log, rule->regex, rule_match)) {
             return (NULL);
         }
     }
@@ -1066,8 +1054,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {
         field = FindField(lf, rule->fields[i]->name);
 
-        if (!(field && OSRegex_Execute(field, rule->fields[i]->regex)))
+        if (!(field && OSRegex_Execute_ex(field, rule->fields[i]->regex, rule_match))) {
             return NULL;
+        }
     }
 
     /* Get TCP/IP packet information */
@@ -1383,7 +1372,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     if (rule->context == 1) {
         if (!(rule->context_opts & SAME_DODIFF)) {
             if (rule->event_search) {
-                if (!rule->event_search(lf, rule)) {
+                if (!rule->event_search(lf, rule, rule_match)) {
                     return (NULL);
                 }
             }
@@ -1408,7 +1397,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 #endif
 
         while (child_node) {
-            child_rule = OS_CheckIfRuleMatch(lf, child_node);
+            child_rule = OS_CheckIfRuleMatch(lf, child_node, rule_match);
             if (child_rule != NULL) {
                 return (child_rule);
             }
@@ -1545,7 +1534,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_syscheck_input)){
                     if(!reported_syscheck){
                         reported_syscheck = 1;
-                        mwarn("Could not decode syscheck event, queue is full");
+                        mwarn("Syscheck decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1557,7 +1546,7 @@ void * ad_input_main(void * args) {
                 if(result < 0){
                     if(!reported_syscheck){
                         reported_syscheck = 1;
-                        mwarn("Could not decode syscheck event, queue is full");
+                        mwarn("Syscheck decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1573,7 +1562,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_rootcheck_input)){
                     if(!reported_rootcheck){
                         reported_rootcheck = 1;
-                        mwarn("Could not decode rootcheck event, queue is full");
+                        mwarn("Rootcheck decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1585,7 +1574,7 @@ void * ad_input_main(void * args) {
                 if(result < 0){
                     if(!reported_rootcheck){
                         reported_rootcheck = 1;
-                        mwarn("Could not decode rootcheck event, queue is full");
+                        mwarn("Rootcheck decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1602,7 +1591,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_syscollector_input)){
                     if(!reported_syscollector){
                         reported_syscollector = 1;
-                        mwarn("Could not decode syscollector event, queue is full");
+                        mwarn("Syscollector decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1615,7 +1604,7 @@ void * ad_input_main(void * args) {
 
                     if(!reported_syscollector){
                         reported_syscollector = 1;
-                        mwarn("Could not decode syscollector event, queue is full");
+                        mwarn("Syscollector decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1631,7 +1620,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_hostinfo_input)){
                     if(!reported_hostinfo){
                         reported_hostinfo = 1;
-                        mwarn("Could not decode hostinfo event, queue is full");
+                        mwarn("Hostinfo decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1643,7 +1632,7 @@ void * ad_input_main(void * args) {
                 if(result < 0){
                     if(!reported_hostinfo){
                         reported_hostinfo = 1;
-                        mwarn("Could not decode hostinfo event, queue is full");
+                        mwarn("Hostinfo decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1659,7 +1648,7 @@ void * ad_input_main(void * args) {
                 if(queue_full(decode_queue_event_input)){
                     if(!reported_event){
                         reported_event = 1;
-                        mwarn("Could not push to input decode event, queue is full");
+                        mwarn("Input queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1672,7 +1661,7 @@ void * ad_input_main(void * args) {
 
                     if(!reported_event){
                         reported_event = 1;
-                        mwarn("Could not push to input decode event, queue is full");
+                        mwarn("Input queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1954,6 +1943,8 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 void * w_decode_event_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char * msg = NULL;
+    regex_matching decoder_match;
+    memset(&decoder_match, 0, sizeof(regex_matching));
 
     while(1){
 
@@ -1976,7 +1967,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            DecodeEvent(lf);
+            DecodeEvent(lf, &decoder_match);
 
             queue_push_ex_block(decode_queue_event_output,lf);
 
@@ -1991,6 +1982,8 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     RuleInfo *currently_rule = NULL;
     int result;
     int t_id = (intptr_t)id;
+    regex_matching rule_match;
+    memset(&rule_match, 0, sizeof(regex_matching));
 
     while(1){
 
@@ -2093,7 +2086,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 continue;
             }
             /* Check each rule */
-            else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt))
+            else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
                         == NULL) {
                 continue;
             }
@@ -2123,7 +2116,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             lf->generated_rule = currently_rule;
 
             /* Check if we should ignore it */
-            if (currently_rule->ckignore && IGnore(lf,fp_ignore[t_id])) {
+            if (currently_rule->ckignore && IGnore(lf, t_id)) {
                 /* Ignore rule */
                 lf->generated_rule = NULL;
                 break;
@@ -2131,9 +2124,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
             /* Check if we need to add to ignore list */
             if (currently_rule->ignore) {
-                w_mutex_lock(&process_event_ignore_rule_mutex);
-                AddtoIGnore(lf);
-                w_mutex_unlock(&process_event_ignore_rule_mutex);
+                AddtoIGnore(lf, t_id);
             }
 
             /* Log the alert if configured to */
@@ -2242,7 +2233,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             if (result < 0) {
                 if(!reported_writer){
                     reported_writer = 1;
-                    mwarn("Could not push to archives writer thread, Queue is full");
+                    mwarn("Archive writer queue is full.");
                 }
                 w_free_event_info(lf);
             }

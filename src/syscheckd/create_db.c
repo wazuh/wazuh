@@ -234,8 +234,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             free(wd_sum);
             return (-1);
         }
-
-        free(alert_msg);
     }
 
     if (S_ISDIR(statbuf.st_mode)) {

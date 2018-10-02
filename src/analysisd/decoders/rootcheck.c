@@ -70,13 +70,13 @@ static FILE *RK_File(const char *agent, int *agent_id)
     int found = 0;
     char rk_buf[OS_SIZE_1024 + 1];
 
-    for (i = 0; rk_agent_ips[i]; i++) {
+    for (i = 0; i < MAX_AGENTS && rk_agent_ips[i]; i++) {
         if (strcmp(rk_agent_ips[i], agent) == 0) {
             snprintf(rk_buf, OS_SIZE_1024, "%s/%s", ROOTCHECK_DIR, agent);
 
             found = 1;
             w_mutex_lock(&rootcheck_mutex[i]);
-           
+
             if (!IsFile(rk_buf)) {
                 /* Pointing to the beginning of the file */
                 fseek(rk_agent_fps[i], 0, SEEK_SET);
@@ -95,6 +95,11 @@ static FILE *RK_File(const char *agent, int *agent_id)
 
     /* If here, our agent wasn't found */
     if(!found){
+        if (i == MAX_AGENTS) {
+            merror("Rootcheck decoder: exceeding agent limit (%d)", MAX_AGENTS);
+            return NULL;
+        }
+
         w_mutex_lock(&rootcheck_mutex[i]);
     }
 
@@ -118,6 +123,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
 
             free(rk_agent_ips[i]);
             rk_agent_ips[i] = NULL;
+            w_mutex_unlock(&rootcheck_mutex[i]);
             return (NULL);
         }
 
@@ -125,14 +131,11 @@ static FILE *RK_File(const char *agent, int *agent_id)
         fseek(rk_agent_fps[i], 0, SEEK_SET);
         *agent_id = i;
         return (rk_agent_fps[i]);
-    }
-
-    else {
+    } else {
         merror(MEM_ERROR, errno, strerror(errno));
+        w_mutex_unlock(&rootcheck_mutex[i]);
         return (NULL);
     }
-
-    return (NULL);
 }
 
 /* Special decoder for rootcheck
@@ -141,7 +144,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
  */
 int DecodeRootcheck(Eventinfo *lf)
 {
-    int agent_id;
+    int agent_id = 0;
 
     char *tmpstr;
     char rk_buf[OS_SIZE_2048 + 1];
@@ -159,7 +162,6 @@ int DecodeRootcheck(Eventinfo *lf)
     if (!fp) {
         merror("Error handling rootcheck database.");
         rk_err++;
-        w_mutex_unlock(&rootcheck_mutex[agent_id]);
 
         return (0);
     }

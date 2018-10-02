@@ -25,7 +25,7 @@ static pthread_mutex_t eventinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Search last times a signature fired
  * Will look for only that specific signature.
  */
-Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
+Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
     Eventinfo *lf;
     Eventinfo *first_lf;
@@ -182,7 +182,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 /* Search last times a group fired
  * Will look for only that specific group on that rule.
  */
-Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
+Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
     Eventinfo *lf;
     OSListNode *lf_node;
@@ -346,7 +346,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
 /* Look if any of the last events (inside the timeframe)
  * match the specified rule
  */
-Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
+Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *rule_match)
 {
     EventNode *eventnode_pt;
     Eventinfo *lf;
@@ -377,7 +377,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
 
         /* If regex does not match, go to next */
         if (rule->if_matched_regex) {
-            if (!OSRegex_Execute(lf->log, rule->if_matched_regex)) {
+            if (!OSRegex_Execute_ex(lf->log, rule->if_matched_regex, rule_match)) {
                 /* Didn't match */
                 continue;
             }
@@ -651,6 +651,7 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->data) {
         free(lf->data);
     }
+
     if (lf->systemname) {
         free(lf->systemname);
     }
@@ -755,6 +756,9 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->diff) {
         free(lf->diff);
     }
+    if (lf->previous) {
+        free(lf->previous);
+    }
 
     if(lf->is_a_copy){
         if(lf->generated_rule->group){
@@ -807,7 +811,7 @@ void Free_Eventinfo(Eventinfo *lf)
 
 /* Parse rule comment with dynamic fields */
 char* ParseRuleComment(Eventinfo *lf) {
-    static char final[OS_COMMENT_MAX + 1] = { '\0' };
+    char final[OS_COMMENT_MAX + 1] = { '\0' };
     char orig[OS_COMMENT_MAX + 1] = { '\0' };
     const char *field;
     char *str;
