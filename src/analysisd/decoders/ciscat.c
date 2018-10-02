@@ -39,7 +39,7 @@ int DecodeCiscat(Eventinfo *lf)
     char *msg_type = NULL;
 
     // Decode JSON
-    JSON_Decoder_Exec(lf);
+    JSON_Decoder_Exec(lf, NULL);
 
     lf->decoder_info = ciscat_decoder;
 

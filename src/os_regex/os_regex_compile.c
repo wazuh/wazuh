@@ -13,7 +13,7 @@
 #include <ctype.h>
 
 #include <pthread.h>
-#include "os_regex.h"
+#include "shared.h"
 #include "os_regex_internal.h"
 
 
@@ -32,7 +32,6 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     int parenthesis = 0;
     unsigned prts_size = 0;
     unsigned max_prts_size = 0;
-
     char *pt;
     char *new_str;
     char *new_str_free = NULL;
@@ -46,10 +45,11 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     reg->error = 0;
     reg->patterns = NULL;
     reg->flags = NULL;
+    reg->d_prts_str = NULL;
+    reg->d_sub_strings = NULL;
     reg->prts_closure = NULL;
-    reg->prts_str = NULL;
-    reg->sub_strings = NULL;
     reg->raw = NULL;
+    memset(&reg->d_size, 0, sizeof(regex_dynamic_size));
     reg->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
     /* The pattern can't be null */
@@ -186,8 +186,9 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     /* For the substrings */
     if ((prts_size > 0) && (flags & OS_RETURN_SUBSTRING)) {
         reg->prts_closure = (const char ** *) calloc(count + 1, sizeof(const char **));
-        reg->prts_str = (const char ** *) calloc(count + 1, sizeof(const char **));
-        if (!reg->prts_closure || !reg->prts_str) {
+        reg->d_size.prts_str_alloc_size = (count + 1) * sizeof(const char **);
+        reg->d_prts_str = (const char ** *) calloc(1, reg->d_size.prts_str_alloc_size);
+        if (!reg->prts_closure || !reg->d_prts_str) {
             reg->error = OS_REGEX_OUTOFMEMORY;
             goto compile_error;
         }
@@ -201,7 +202,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
         /* The parenthesis closure if set */
         if (reg->prts_closure) {
             reg->prts_closure[i] = NULL;
-            reg->prts_str[i] = NULL;
+            reg->d_prts_str[i] = NULL;
         }
     }
     i = 0;
@@ -269,8 +270,15 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
                 /* Allocate the memory */
                 reg->prts_closure[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
-                reg->prts_str[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
-                if ((reg->prts_closure[i] == NULL) || (reg->prts_str[i] == NULL)) {
+                if (!reg->d_size.prts_str_size) {
+                    reg->d_size.prts_str_size = calloc(2, sizeof(int));
+                } else {
+                    reg->d_size.prts_str_size = realloc(reg->d_size.prts_str_size, (i + 2) * sizeof(int));
+                    reg->d_size.prts_str_size[i + 1] = 0;
+                }
+                reg->d_size.prts_str_size[i] = (prts_size + 1) * sizeof(const char *);
+                reg->d_prts_str[i] = (const char **) calloc(1, reg->d_size.prts_str_size[i]);
+                if ((reg->prts_closure[i] == NULL) || (reg->d_prts_str[i] == NULL)) {
                     reg->error = OS_REGEX_OUTOFMEMORY;
                     goto compile_error;
                 }
@@ -286,7 +294,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
                         /* Sett the pointer to the string */
                         reg->prts_closure[i][tmp_int] = tmp_str;
-                        reg->prts_str[i][tmp_int] = NULL;
+                        reg->d_prts_str[i][tmp_int] = NULL;
 
                         tmp_int++;
                     }
@@ -307,9 +315,11 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
     } while (!end_of_string);
 
+
     /* Allocate sub string for the maximum number of parenthesis */
-    reg->sub_strings = (char **) calloc(max_prts_size + 1, sizeof(char *));
-    if (reg->sub_strings == NULL) {
+    reg->d_size.sub_strings_size = (max_prts_size + 1) * sizeof(char *);
+    reg->d_sub_strings = (char **) calloc(1, reg->d_size.sub_strings_size);
+    if (reg->d_sub_strings == NULL) {
         reg->error = OS_REGEX_OUTOFMEMORY;
         goto compile_error;
     }

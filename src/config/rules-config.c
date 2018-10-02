@@ -108,8 +108,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     memset(&regex, 0, sizeof(OSRegex));
     regex.patterns = NULL;
     regex.prts_closure = NULL;
-    regex.prts_str = NULL;
-    regex.sub_strings = NULL;
+    regex.d_prts_str = NULL;
+    regex.d_sub_strings = NULL;
     regex.mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
     while (node[i]) {
@@ -245,6 +245,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         mdebug1("Reading decoders folder: %s", decoder_dirs[i]);
         snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, decoder_dirs[i]);
 
+        OSRegex_FreePattern(&regex);
         if (!OSRegex_Compile(decoder_dirs_pattern[i], &regex, 0)) {
             merror(CONFIG_ERROR, "pattern in decoder_dir does not compile");
             merror("Regex would not compile");
@@ -297,6 +298,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         mdebug1("Reading rules folder: %s", rules_dirs[i]);
         snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, rules_dirs[i]);
 
+        OSRegex_FreePattern(&regex);
         if (!OSRegex_Compile(rules_dirs_pattern[i], &regex, 0)) {
             merror(CONFIG_ERROR, "pattern in rules_dir does not compile");
             merror("Regex would not compile");
