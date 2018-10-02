@@ -53,7 +53,23 @@ static const char *SQL_STMT[] = {
     "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);",
     "INSERT INTO metadata (key, value) VALUES (?, ?);",
     "UPDATE metadata SET value = ? WHERE key = ?;",
-    "SELECT value FROM metadata WHERE key = ?;"
+    "SELECT value FROM metadata WHERE key = ?;",
+    "SELECT first_start, first_end, start_scan, end_scan, first_check, second_check, third_check FROM scan_info WHERE module = ?;",
+    "INSERT INTO scan_info (module, first_start, first_end, start_scan, end_scan, fim_first_check, fim_second_check, fim_third_check) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE scan_info SET first_start = ?, start_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET first_end = ?, end_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET start_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET end_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET fim_first_check = ? WHERE module = ?;",
+    "UPDATE scan_info SET fim_second_check = ? WHERE module = ?;",
+    "UPDATE scan_info SET fim_third_check = ? WHERE module = ?;",
+    "SELECT first_start FROM scan_info WHERE module = ?;",
+    "SELECT first_end FROM scan_info WHERE module = ?;",
+    "SELECT start_scan FROM scan_info WHERE module = ?;",
+    "SELECT end_scan FROM scan_info WHERE module = ?;",
+    "SELECT fim_first_check FROM scan_info WHERE module = ?;",
+    "SELECT fim_second_check FROM scan_info WHERE module = ?;",
+    "SELECT fim_third_check FROM scan_info WHERE module = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
@@ -178,6 +194,9 @@ wdb_t * wdb_open_agent2(int agent_id) {
 
         if (wdb_metadata_initialize(wdb, path) < 0) {
             mwarn("Couldn't initialize metadata table in '%s'", path);
+        }
+        if (wdb_scan_info_init(wdb, path) < 0) {
+            mwarn("Couldn't initialize scan_info table in '%s'", path);
         }
     }
     else {
