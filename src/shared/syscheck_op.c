@@ -25,8 +25,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *tag;
     int retval = 0;
 
-    memset(sum, 0, sizeof(sk_sum_t));
-
     if (c_sum[0] == '-' && c_sum[1] == '1') {
         retval = 1;
     } else {

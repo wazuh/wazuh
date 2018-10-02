@@ -208,6 +208,9 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     sk_sum_t newsum = { .size = NULL };
     time_t *end_first_scan;
 
+    memset(&oldsum, 0, sizeof(sk_sum_t));
+    memset(&newsum, 0, sizeof(sk_sum_t));
+
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
     os_strdup(c_sum, new_check_sum);
 
@@ -290,8 +293,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             if (*old_check_sum) {
                 // File modified
                 lf->event_type = FIM_MODIFIED;
-                sk_decode_sum(&oldsum, old_check_sum, NULL);
                 changes = fim_check_changes(oldsum.changes, oldsum.date_alert, lf);
+                sk_decode_sum(&oldsum, old_check_sum, NULL);
 
                 // Alert discarded, frequency exceeded
                 if (changes == -1) {
