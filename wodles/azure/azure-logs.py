@@ -94,7 +94,6 @@ args = parser.parse_args()
 
 if args.la_query:
 	la_format_query = args.la_query.replace('"','')
-	la_format_query = la_format_query.replace("'","")
 if args.graph_query:
 	graph_format_query = args.graph_query.replace("'","")
 if args.container:

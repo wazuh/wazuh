@@ -217,7 +217,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         wm_strcat(&command, curr_request->tag, ' ');
 
         wm_strcat(&command, "--la_query", ' ');
-        snprintf(query, OS_SIZE_1024 - 1, "\'%s\'", curr_request->query);
+        snprintf(query, OS_SIZE_1024 - 1, "\"%s\"", curr_request->query);
         wm_strcat(&command, query, ' ');
 
         wm_strcat(&command, "--workspace", ' ');
