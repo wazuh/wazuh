@@ -11,7 +11,7 @@ from struct import pack, unpack
 
 class OssecSocket:
 
-    MAX_SIZE = 2048
+    MAX_SIZE = 65536
 
     def __init__(self, path):
         self.path = path
@@ -29,8 +29,7 @@ class OssecSocket:
 
     def send(self, msg):
         try:
-            payload = dumps(msg)
-            sent = self.s.send(pack("<I", len(payload)) + payload.encode())
+            sent = self.s.send(pack("<I", len(msg)) + msg)
             if sent == 0:
                 raise WazuhException(1014, self.path)
             return sent
@@ -40,13 +39,29 @@ class OssecSocket:
     def receive(self):
 
         try:
-            size = unpack("<I", self.s.recv(4))[0]
+            size = unpack("<I", self.s.recv(4, socket.MSG_WAITALL))[0]
 
             if size > OssecSocket.MAX_SIZE:
                 raise WazuhException(1014, self.path)
 
-            chunk = self.s.recv(size, socket.MSG_WAITALL)
-            response = loads(chunk)
+            return self.s.recv(size, socket.MSG_WAITALL)
+        except:
+            raise WazuhException(1014, self.path)
+
+class OssecSocketJSON(OssecSocket):
+
+    MAX_SIZE = 65536
+
+    def __init__(self, path):
+        super().__init__(path)
+
+    def send(self, msg):
+        return super().send(dumps(msg).encode())
+
+    def receive(self):
+        try:
+            chunk = super().receive().decode()
+            response = loads(super().receive().decode())
         except:
             raise WazuhException(1014, self.path)
 

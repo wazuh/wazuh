@@ -7,7 +7,7 @@ from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, W
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
-from wazuh.ossec_socket import OssecSocket
+from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
 from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
@@ -423,7 +423,7 @@ class Agent:
 
         msg = { "function": "remove", "arguments": { "id": str(self.id).zfill(3), "purge": purge } }
 
-        authd_socket = OssecSocket(common.AUTHD_SOCKET)
+        authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
         authd_socket.send(msg)
         data = authd_socket.receive()
         authd_socket.close()
@@ -587,7 +587,7 @@ class Agent:
             else:
                 msg = { "function": "add", "arguments": { "name": name, "ip": ip, "id": id, "key": key, "force": force } }
 
-        authd_socket = OssecSocket(common.AUTHD_SOCKET)
+        authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
         authd_socket.send(msg)
         data = authd_socket.receive()
         authd_socket.close()
@@ -1976,13 +1976,12 @@ class Agent:
         if debug:
             print("Upgrade PKG: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
         # Open file on agent
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -1990,13 +1989,12 @@ class Agent:
         while data.startswith('err') and counter < timeout:
             sleep(common.open_sleep)
             counter = counter + 1
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.connect(common.ossec_path + "/queue/ossec/request")
+            s = OssecSocket(common.REQUEST_SOCKET)
             msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
             s.send(msg.encode())
             if debug:
                 print("MSG SENT: {0}".format(str(msg)))
-            data = s.recv(1024).decode()
+            data = s.receive().decode()
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
@@ -2004,13 +2002,12 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2031,11 +2028,10 @@ class Agent:
             bytes_read = file.read(chunk_size)
             bytes_read_acum = 0
             while bytes_read:
-                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                s.connect(common.ossec_path + "/queue/ossec/request")
+                s = OssecSocket(common.REQUEST_SOCKET)
                 msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
                 s.send(msg.encode() + bytes_read)
-                data = s.recv(1024).decode()
+                data = s.receive().decode()
                 s.close()
                 if data != 'ok':
                     raise WazuhException(1715, data.replace("err ",""))
@@ -2048,13 +2044,12 @@ class Agent:
             file.close()
 
         # Close file on agent
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com close {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2062,13 +2057,12 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com sha1 {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2114,8 +2108,7 @@ class Agent:
             print(sending_result[0])
 
         # Send upgrading command
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         if self.os['platform']=="windows":
             msg = "{0} com upgrade {1} upgrade.bat".format(str(self.id).zfill(3), sending_result[1])
         else:
@@ -2123,7 +2116,7 @@ class Agent:
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2156,13 +2149,12 @@ class Agent:
         """
         sleep(1)
         self._load_info_from_DB()
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com upgrade_result".format(str(self.id).zfill(3))
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2170,13 +2162,12 @@ class Agent:
         while data.startswith('err') and counter < timeout:
             sleep(common.upgrade_result_sleep)
             counter = counter + 1
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.connect(common.ossec_path + "/queue/ossec/request")
+            s = OssecSocket(common.REQUEST_SOCKET)
             msg = str(self.id).zfill(3) + " com upgrade_result"
             s.send(msg.encode())
             if debug:
                 print("MSG SENT: {0}".format(str(msg)))
-            data = s.recv(1024).decode()
+            data = s.receive().decode()
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
@@ -2224,13 +2215,12 @@ class Agent:
             print("Custom WPK file: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
 
         # Open file on agent
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2238,13 +2228,12 @@ class Agent:
         while data.startswith('err') and counter < timeout:
             sleep(common.open_sleep)
             counter = counter + 1
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.connect(common.ossec_path + "/queue/ossec/request")
+            s = OssecSocket(common.REQUEST_SOCKET)
             msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
             s.send(msg.encode())
             if debug:
                 print("MSG SENT: {0}".format(str(msg)))
-            data = s.recv(1024).decode()
+            data = s.receive().decode()
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
@@ -2252,13 +2241,12 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2277,11 +2265,10 @@ class Agent:
             file_sha1=hashlib.sha1(bytes_read)
             bytes_read_acum = 0
             while bytes_read:
-                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                s.connect(common.ossec_path + "/queue/ossec/request")
+                s = OssecSocket(common.REQUEST_SOCKET)
                 msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
                 s.send(msg.encode() + bytes_read)
-                data = s.recv(1024).decode()
+                data = s.receive().decode()
                 s.close()
                 bytes_read = file.read(chunk_size)
                 file_sha1.update(bytes_read)
@@ -2296,13 +2283,12 @@ class Agent:
             file.close()
 
         # Close file on agent
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com close {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2310,13 +2296,12 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com sha1 {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2345,13 +2330,12 @@ class Agent:
             print(sending_result[0])
 
         # Send installing command
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com upgrade {1} {2}".format(str(self.id).zfill(3), sending_result[1], installer)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2411,9 +2395,8 @@ class Agent:
             command = str(self.id).zfill(3) + " " + component + " getconfig " + configuration
 
         # Socket connection
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
-            s.connect(dest_socket)
+            s = OssecSocket(dest_socket)
         except Exception as e:
             if int(self.id) == 0:
                 raise WazuhException(1013,"The component might be disabled")
@@ -2423,17 +2406,13 @@ class Agent:
         # Generate message
         msg = "{0}".format(command)
 
-        msg = struct.pack('<I', len(msg)) + msg.encode()
-
         # Send message
         s.send(msg)
 
         # Receive response
         try:
             # Receive data length
-            data_size = s.recv(4)
-            data_size = struct.unpack('<I',data_size[0:4])[0]
-            data = s.recv(data_size,socket.MSG_WAITALL).decode().split(" ", 1)
+            data = s.receive().decode().split(" ", 1)
             rec_msg_ok = data[0]
             rec_msg = data[1]
         except IndexError:
