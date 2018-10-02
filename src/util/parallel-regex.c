@@ -93,6 +93,7 @@ int main(int argc, char **argv)
     char *pattern = "This (\\w+) a test (\\w*) for testing the (\\w+) regex|pattern (\\w).";
     char *second_pattern = "This is the (\\w*) pattern.";
     char *third_pattern = "Without substrings.";
+    char *n_threads;
 
     OS_SetName(ARGV0);
 
@@ -108,8 +109,10 @@ int main(int argc, char **argv)
         return (-1);
     }
 
-    threads = strtol(argv[1], NULL, 10);
-
+    n_threads = strdup((strlen(argv[1]) < 4 && strlen(argv[1]) > 0) ? argv[1] : "1");
+    threads = strtol(n_threads, NULL, 10);
+    threads = (threads < 1) ? 1 : ((threads > 40) ? 40 : threads);
+    free(n_threads);
 
     if (!OSRegex_Compile(pattern, &regex, OS_RETURN_SUBSTRING)) {
         printf("Pattern '%s' does not compile with OSRegex_Compile\n", pattern);
