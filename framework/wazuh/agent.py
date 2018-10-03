@@ -1084,6 +1084,9 @@ class Agent:
         :param force: Remove old agent with same IP if disconnected since <force> seconds.
         :return: Agent ID.
         """
+        # check length of agent name
+        if len(name) > 128:
+            raise WazuhException(1738)
 
         new_agent = Agent(name=name, ip=ip, force=force)
         return {'id': new_agent.id, 'key': new_agent.key}
