@@ -5,7 +5,8 @@
 
 from operator import itemgetter
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode
+                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
+                        md5
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
@@ -2592,7 +2593,7 @@ class Agent:
                 agent_group_merged_path = "{0}/{1}/merged.mg".format(common.shared_path, agent_info['group'][0])
             
             try:
-                md5sum = Agent().md5_checksum(agent_group_merged_path)
+                md5sum = md5(agent_group_merged_path)
                 
                 if md5sum == agent_info['mergedSum']:
                     synced = True 
@@ -2600,15 +2601,3 @@ class Agent:
                 pass
 
         return {'synced': synced}
-
-    @staticmethod
-    def md5_checksum(file_path):
-
-        with open(file_path, 'rb') as f:
-            m = hashlib.md5()
-            while True:
-                data = f.read(8192)
-                if not data:
-                    break
-                m.update(data)
-            return m.hexdigest()
