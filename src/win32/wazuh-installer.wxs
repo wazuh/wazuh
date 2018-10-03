@@ -90,16 +90,16 @@
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
 
-                    <!-- Mark these files as permanent, so they are not deleted on uninstall. -->
+                    <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
-                    <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
+
+                    <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes">
                         <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
                     </Component>
-
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
                         <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" />
                     </Component>
