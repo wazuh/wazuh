@@ -58,7 +58,7 @@ def show_synced_agent(agent_id):
 
     result = Agent(agent_id).get_sync_group(agent_id)
 
-    print("The agent '{0}' sync status is: {1} ".format(agent_id,result['synced']))
+    print("Agent '{}' is{} synchronized. ".format(agent_id,'' if result['synced'] else ' not'))
 
 def show_agents_with_group(group_id):
     agents_data = Agent.get_agent_group(group_id, limit=None)
