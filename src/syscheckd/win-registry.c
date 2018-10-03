@@ -407,7 +407,6 @@ void os_winreg_check()
     /* Notify of db completed */
     if (run_count > 1) {
         sleep(syscheck.tsleep * 5);
-        notify_registry(HC_SK_DB_COMPLETED, 1);
     }
 
     run_count++;
