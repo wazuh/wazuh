@@ -66,6 +66,10 @@ functions = {
         'function': Agent.get_upgrade_result,
         'type': 'distributed_master'
     },
+    '/agents/:agent_id/group/is_sync': {
+        'function': Agent.get_sync_group,
+        'type': 'local_master'
+    },
     '/agents/:agent_id/config/:component/:configuration': {
         'function': Agent.get_config,
         'type': 'distributed_master'

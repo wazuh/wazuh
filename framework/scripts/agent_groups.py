@@ -54,6 +54,12 @@ def show_group(agent_id):
     str_group = agent_info['group'] if 'group' in agent_info else "Null"
     print("The agent '{0}' with ID '{1}' has the group: '{2}'.".format(agent_info['name'], agent_info['id'], str_group))
 
+def show_synced_agent(agent_id):
+
+    result = Agent(agent_id).get_sync_group(agent_id)
+
+    print("The agent '{0}' sync status is: {1} ".format(agent_id,result['synced']))
+
 def show_agents_with_group(group_id):
     agents_data = Agent.get_agent_group(group_id, limit=None)
 
@@ -147,16 +153,17 @@ def create_group(group_id, quiet=False):
 
 def usage():
     msg = """
-    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] [-e] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] | -ap -i agent_id -g group_id [-q] ]
+    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] [-f] | -s -i agent_id | -S -i agent_id | -r (-g group_id | -i agent_id) [-q] | -ap -i agent_id -g group_id [-q] ]
 
     Usage:
     \t-l                                    # List all groups
     \t-l -g group_id                        # List agents in group
     \t-c -g group_id                        # List configuration files in group
     \t
-    \t-a -i agent_id -g group_id [-q] [-e]  # Add agent group
-    \t-r -i agent_id [-q]                   # Unset agent group
+    \t-a -i agent_id -g group_id [-q] [-f]  # Add group to agent
+    \t-r -i agent_id [-q]                   # Remove group from agent
     \t-s -i agent_id                        # Show group of agent
+    \t-S -i agent_id                        # Show sync status of agent
     \t
     \t-a -g group_id [-q]                   # Create group
     \t-r -g group_id [-q]                   # Remove group
@@ -166,8 +173,9 @@ def usage():
     \t-l, --list
     \t-c, --list-files
     \t-a, --add-group
-    \t-e, --replace-group
+    \t-f, --force-single-group
     \t-s, --show-group
+    \t-S, --show-sync
     \t-r, --remove-group
 
     \t-i, --agent-id
@@ -196,7 +204,7 @@ def main():
     # Parse arguments
     arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'replace-group': False, 'show-group': False, 'remove-group': False, 'quiet': False }
     try:
-        opts, args = getopt(argv[1:], "lcaesri:g:qfdh", ["list", "list-files", "add-group","replace-group", "show-group", "remove-group" ,"agent-id=", "group=", "quiet", "debug", "help"])
+        opts, args = getopt(argv[1:], "lcafsSri:g:qdh", ["list", "list-files", "add-group","replace-group", "show-group","show-sync", "remove-group" ,"agent-id=", "group=", "quiet", "debug", "help"])
         arguments['n_args'] = len(opts)
     except GetoptError as err:
         print(str(err) + "\n" + "Try '--help' for more information.")
@@ -212,10 +220,13 @@ def main():
         elif o in ("-a", "--add-group"):
             arguments['add-group'] = True
             arguments['n_actions'] += 1
-        elif o in ("-e", "--replace-group"):
+        elif o in ("-f", "--replace-group"):
             arguments['replace-group'] = True
         elif o in ("-s", "--show-group"):
             arguments['show-group'] = True
+            arguments['n_actions'] += 1
+        elif o in ("-S", "--show-sync"):
+            arguments['show-sync'] = True
             arguments['n_actions'] += 1
         elif o in ("-r", "--remove-group"):
             arguments['remove-group'] = True
@@ -265,6 +276,9 @@ def main():
     # -s -i agent_id
     elif arguments['show-group']:
         show_group(arguments['agent-id']) if arguments['agent-id'] else invalid_option("Missing agent ID.")
+    # -S -i agent_id
+    elif arguments['show-sync']:
+        show_synced_agent(arguments['agent-id']) if arguments['agent-id'] else invalid_option("Missing agent ID.")
     # -r (-g group_id | -i agent_id) [-q]
     elif arguments['remove-group']:
         if arguments['agent-id']:

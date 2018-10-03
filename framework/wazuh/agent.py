@@ -2570,3 +2570,49 @@ class Agent:
         with open(common.multi_groups_path + "/.metadata", 'a') as f:
             f.write('{0}\n'.format(multi_group))
             f.close()
+
+    @staticmethod
+    def get_sync_group(agent_id):
+
+        synced = False
+
+        if agent_id == "000":
+            raise WazuhException(1703)
+        else:
+            # Check if agent exists and it is active
+            agent_info = Agent(agent_id).get_basic_information()
+
+            # Check if it has a multigroup
+            if (len(agent_info['group']) > 1):
+                multi_group = ','.join(agent_info['group'])
+                multi_group = hashlib.sha256(multi_group).hexdigest()[:8]
+                agent_group_merged_path = "{0}/{1}/merged.mg".format(common.multi_groups_path, multi_group)
+            else:
+                agent_group_merged_path = "{0}/{1}/merged.mg".format(common.shared_path, agent_info['group'][0])
+            
+            try:
+                md5sum = Agent().md5_checksum(agent_group_merged_path)
+                
+                if md5sum == agent_info['mergedSum']:
+                    synced = True 
+            except Exception:
+                pass
+
+        if synced:
+            message = "Agent configuration is synced."
+        else:
+            message = "Agent configuration is not synced."
+
+        return {'synced': message}
+
+    @staticmethod
+    def md5_checksum(file_path):
+
+        with open(file_path, 'rb') as f:
+            m = hashlib.md5()
+            while True:
+                data = f.read(8192)
+                if not data:
+                    break
+                m.update(data)
+            return m.hexdigest()
