@@ -2584,7 +2584,7 @@ class Agent:
             agent_info = Agent(agent_id).get_basic_information()
 
             # Check if it has a multigroup
-            if (len(agent_info['group']) > 1):
+            if len(agent_info['group']) > 1:
                 multi_group = ','.join(agent_info['group'])
                 multi_group = hashlib.sha256(multi_group).hexdigest()[:8]
                 agent_group_merged_path = "{0}/{1}/merged.mg".format(common.multi_groups_path, multi_group)
