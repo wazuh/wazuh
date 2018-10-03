@@ -600,6 +600,7 @@ static void c_files()
     if(!fp){
         mdebug1("At c_files(): Could not open '%s' file",metadata_path);
         w_mutex_unlock(&files_mutex);
+        closedir(dp);
         return;
     }
 
