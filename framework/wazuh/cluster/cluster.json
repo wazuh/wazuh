@@ -117,11 +117,14 @@
             "sync_files": 60,
             "keep_alive": 60,
             "connection_retry": 10,
-            "ask_for_permission": 5
+            "ask_for_permission": 5,
+            "max_failed_keepalive_attempts": 2
         },
 
         "master": {
-            "recalculate_integrity": 15
+            "recalculate_integrity": 15,
+            "check_worker_lastkeepalive": 60,
+            "max_allowed_time_without_keepalive": 120
         },
 
         "communication":{

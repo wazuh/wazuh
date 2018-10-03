@@ -744,7 +744,8 @@ class Server(AbstractServer):
                         'date_start_master':'n/a',
                         'date_end_master':'n/a',
                         'total_agentgroups':0
-                    }
+                    },
+                    'last_keep_alive': 0
                 }
             }
         return node_id

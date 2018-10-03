@@ -240,15 +240,22 @@ def print_healthcheck(conf, more=False, filter_node=None):
         if node_info['info']['type'] != "master":
 
             if not more:
-                msg1 += "    {} ({}): Integrity: {} | Agents-info: {} | Agent-groups: {}.\n".format(node, node_info['info']['ip'], node_info['status']['last_sync_integrity']['date_end_master'], node_info['status']['last_sync_agentinfo']['date_end_master'], node_info['status']['last_sync_agentgroups']['date_end_master']
+                msg1 += "    {} ({}): Integrity: {} | Agents-info: {} | Agent-groups: {} | Last keep alive: {}.\n".format(
+                            node, node_info['info']['ip'], node_info['status']['last_sync_integrity']['date_end_master'],
+                            node_info['status']['last_sync_agentinfo']['date_end_master'],
+                            node_info['status']['last_sync_agentgroups']['date_end_master'],
+                            node_info['status']['last_keep_alive']
                     )
 
             msg2 += "        Status:\n"
 
+            # Last Keep Alive
+            msg2 += "            Last keep Alive:\n"
+            msg2 += "                Last received: {0}.\n".format(node_info['status']['last_keep_alive'])
+
             # Integrity
             msg2 += "            Integrity\n"
             msg2 += "                Last synchronization: {0} - {1}.\n".format(node_info['status']['last_sync_integrity']['date_start_master'], node_info['status']['last_sync_integrity']['date_end_master'])
-
 
             n_shared = str(node_info['status']['last_sync_integrity']['total_files']["shared"])
             n_missing = str(node_info['status']['last_sync_integrity']['total_files']["missing"])

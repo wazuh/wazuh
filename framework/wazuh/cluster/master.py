@@ -42,8 +42,8 @@ class MasterManagerHandler(ServerHandler):
     def process_request(self, command, data):
         logger.debug("[Master] [{0}] [Request-R]: '{1}'.".format(self.name, command))
 
-
         if command == 'echo-c':  # Echo
+            self.process_keep_alive_from_worker()
             return 'ok-c ', data.decode()
         elif command == 'sync_i_c_m_p':
             result = self.manager.get_worker_status(worker_id=self.name, key='sync_integrity_free')
@@ -216,6 +216,10 @@ class MasterManagerHandler(ServerHandler):
 
 
     # New methods
+    def process_keep_alive_from_worker(self):
+        self.manager.set_worker_status(worker_id=self.name, key='last_keep_alive', status=time.time())
+
+
     def process_files_from_worker(self, worker_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
         sync_result = False
 
@@ -530,6 +534,7 @@ class ProcessExtraValidFiles(ProcessWorker):
 class MasterManager(Server):
     Integrity_T = "Integrity_Thread"
     APIRequests_T = "API_Requests_Thread"
+    ClientStatus_T = "ClientStatusCheck_Thread"
 
     def __init__(self, cluster_config):
         Server.__init__(self, cluster_config['bind_addr'], cluster_config['port'], MasterManagerHandler)
@@ -566,6 +571,7 @@ class MasterManager(Server):
 
         self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=self.interval_recalculate_integrity, stopper=self.stopper)
         self.threads[MasterManager.APIRequests_T] = dapi.APIRequestQueue(server=self, stopper=self.stopper)
+        self.threads[MasterManager.ClientStatus_T] = ClientStatusCheckThread(master=self, stopper=self.stopper)
 
         for thread in self.threads.values():
             thread.start()
@@ -626,7 +632,7 @@ class MasterManager(Server):
 
     def get_healthcheck(self, filter_nodes=None):
         workers_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_workers().items() if not filter_nodes or name in filter_nodes}
-        n_connected_nodes = len(self.get_connected_workers().items()) + 1 # workers + master
+        n_connected_nodes = len(workers_info) + 1 # workers + master
 
         cluster_config = read_config()
         if  not filter_nodes or cluster_config['node_name'] in filter_nodes:
@@ -634,9 +640,11 @@ class MasterManager(Server):
                                                                   "ip": cluster_config['nodes'][0], "version": __version__,
                                                                   "type": "master"}}})
 
-        # Get active agents by node
+        # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             workers_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
+            if workers_info[node_name]['info']['type'] != 'master' and isinstance(workers_info[node_name]['status']['last_keep_alive'], float):
+                workers_info[node_name]['status']['last_keep_alive'] = str(datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
 
         health_info = {"n_connected_nodes":n_connected_nodes, "nodes": workers_info}
         return health_info
@@ -694,6 +702,26 @@ class FileStatusUpdateThread(ClusterThread):
                 logger.error("[Master] [IntegrityControl] Error: {}".format(str(e)))
 
             logger.debug("[Master] [IntegrityControl] Calculated.")
+
+            self.sleep(self.interval)
+
+
+class ClientStatusCheckThread(ClusterThread):
+    def __init__(self, master, stopper):
+        ClusterThread.__init__(self, stopper)
+        self.master = master
+        self.interval = get_cluster_items_master_intervals()['check_worker_lastkeepalive']
+        self.thread_tag = "WorkerChecks"
+
+
+    def run(self):
+        while not self.stopper.is_set() and self.running:
+            logger.debug("[Master] [{}] Checking workers statuses.".format(self.thread_tag))
+
+            for worker, worker_info in self.master.get_connected_workers().items():
+                if time.time() - worker_info['status']['last_keep_alive'] > get_cluster_items_master_intervals()['max_allowed_time_without_keepalive']:
+                    logger.critical("[Master] [{}] Last keep alive from worker {} is higher than allowed maximum. Disconnecting.".format(worker, self.thread_tag))
+                    self.master.remove_worker(worker)
 
             self.sleep(self.interval)
 

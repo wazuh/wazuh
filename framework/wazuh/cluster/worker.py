@@ -563,6 +563,7 @@ class WorkerThread(ClusterThread):
 
             logger.info("{0}: End. Sleeping: {1}s.".format(self.thread_tag, self.interval))
             self.sleep(self.interval)
+        logger.debug("{0}: Stopped.".format(self.thread_tag))
 
 
     def ask_for_permission(self):
@@ -589,7 +590,8 @@ class KeepAliveThread(WorkerThread):
         # Intervals
         self.init_interval = get_cluster_items_worker_intervals()['keep_alive']
         self.interval = self.init_interval
-
+        self.failed_attempts = 0
+        self.max_failed_attempts = get_cluster_items_worker_intervals()['max_failed_keepalive_attempts']
 
 
     def ask_for_permission(self):
@@ -601,7 +603,18 @@ class KeepAliveThread(WorkerThread):
 
 
     def job(self):
-        return self.worker_handler.send_request('echo-c', 'Keep-alive from worker!')
+        try:
+            message = self.worker_handler.send_request('echo-c', 'Keep-alive from worker!')
+            self.failed_attempts = 0
+            return message
+        except Exception as e:
+            self.failed_attempts += 1
+            logger.error("{} Error sending keep alive to master ({}): {}".format(self.thread_tag, self.failed_attempts, e))
+            if self.failed_attempts >= self.max_failed_attempts:
+                logger.critical("{} Maximum failed attempts exceeded. Disconnecting worker.".format(self.thread_tag))
+                self.worker_handler.handle_close()  # this stops asyncore loop and closes connection with master
+                self.stopper.set()  # This stops all threads the worker node is running
+            return None
 
 
     def process_result(self):
