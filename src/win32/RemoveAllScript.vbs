@@ -34,7 +34,7 @@ public function removeAll()
  
       ' Everything in the application's root folder will be deleted.
       ' *BUT*, the files specified here *will not* be deleted
-       Dim filesToKeep: filesToKeep = Array("ossec.conf", _
+       Dim filesToKeep: filesToKeep = Array("ossec.log", _
                                             "local_internal_options.conf")
  
       ' Construct a simple dictionary to check out later whether a file is in
