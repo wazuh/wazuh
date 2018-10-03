@@ -86,8 +86,8 @@ class DockerListener:
         try:
             for event in self.client.events():
                 self.process(event)
-        except Exception:
-            raise Exception
+        except Exception as e:
+            raise e
         print("Docker service was stopped.")
         self.send_msg(json.dumps({self.field_debug_name: "Disconnected from the Docker service"}))
         self.connect()
