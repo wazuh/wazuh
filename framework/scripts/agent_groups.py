@@ -202,7 +202,7 @@ def main():
     signal(SIGINT, signal_handler)
 
     # Parse arguments
-    arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'replace-group': False, 'show-group': False, 'remove-group': False, 'quiet': False }
+    arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'replace-group': False, 'show-group': False, 'show-sync': False , 'remove-group': False, 'quiet': False }
     try:
         opts, args = getopt(argv[1:], "lcafsSri:g:qdh", ["list", "list-files", "add-group","replace-group", "show-group","show-sync", "remove-group" ,"agent-id=", "group=", "quiet", "debug", "help"])
         arguments['n_args'] = len(opts)

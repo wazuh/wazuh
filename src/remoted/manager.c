@@ -639,7 +639,7 @@ static void c_files()
         // Try to open directory, avoid TOCTOU hazard
         if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
-                mdebug1("At c_files() 2: Could not open directory '%s'", path);
+                mdebug1("At c_files(): Could not open directory '%s'", path);
             }
             continue;
         }
