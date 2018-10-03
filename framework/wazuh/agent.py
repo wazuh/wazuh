@@ -5,7 +5,7 @@
 
 from operator import itemgetter
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy
+                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
@@ -1469,9 +1469,10 @@ class Agent:
             raise WazuhException(1711, group_id)
 
         # Create group in /etc/shared
-        group_def_path = "{0}/default".format(common.shared_path)
+        group_def_path = "{0}/default/agent.conf".format(common.shared_path)
         try:
-            copytree(group_def_path, group_path)
+            mkdir_with_mode(group_path)
+            copyfile(group_def_path, group_path + "/agent.conf")
             chown_r(group_path, common.ossec_uid, common.ossec_gid)
             chmod_r(group_path, 0o660)
             chmod(group_path, 0o770)
