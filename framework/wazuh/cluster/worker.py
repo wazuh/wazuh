@@ -563,7 +563,7 @@ class WorkerThread(ClusterThread):
 
             logger.info("{0}: End. Sleeping: {1}s.".format(self.thread_tag, self.interval))
             self.sleep(self.interval)
-        logger.info("{0}: Stopped.".format(self.thread_tag))
+        logger.debug("{0}: Stopped.".format(self.thread_tag))
 
 
     def ask_for_permission(self):
