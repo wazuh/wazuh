@@ -200,13 +200,11 @@ int main(int argc, char **argv)
 static void OS_Run(MailConfig *mail)
 {
     MailMsg *msg;
-    MailMsg *s_msg = NULL;
     MailMsg *msg_sms = NULL;
 
     time_t tm;
     struct tm *p;
 
-    int i = 0;
     int mailtosend = 0;
     int childcount = 0;
     int thishour = 0;
@@ -283,15 +281,7 @@ static void OS_Run(MailConfig *mail)
             childcount++;
         }
 
-        /* If mail_timeout == NEXTMAIL_TIMEOUT, we will try to get
-         * more messages, before sending anything
-         */
-        if ((mail_timeout == NEXTMAIL_TIMEOUT) && (p->tm_hour == thishour)) {
-            /* Get more messages */
-        }
-
-        /* Hour changed: send all suppressed mails */
-        else if (((mailtosend < mail->maxperhour) && (mailtosend != 0)) ||
+        if (((mailtosend < mail->maxperhour) && (mailtosend != 0)) ||
                  ((p->tm_hour != thishour) && (childcount < MAXCHILDPROCESS))) {
             MailNode *mailmsg;
             pid_t pid;
@@ -309,7 +299,7 @@ static void OS_Run(MailConfig *mail)
                 sleep(30);
                 continue;
             } else if (pid == 0) {
-                if (OS_Sendmail(mail, p) < 0) {
+                if (w_sendmail(mail, p)) {
                     merror(SNDMAIL_ERROR, mail->smtpserver);
                 }
 
@@ -331,19 +321,6 @@ static void OS_Run(MailConfig *mail)
             _g_subject[SUBJECT_SIZE - 1] = '\0';
             _g_subject_level = 0;
 
-            /* Clean up set values */
-            if (mail->gran_to) {
-                i = 0;
-                while (mail->gran_to[i] != NULL) {
-                    if (s_msg && mail->gran_set[i] == DONOTGROUP) {
-                        mail->gran_set[i] = FULL_FORMAT;
-                    } else {
-                        mail->gran_set[i] = 0;
-                    }
-                    i++;
-                }
-            }
-
 snd_check_hour:
             /* If we sent everything */
             if (p->tm_hour != thishour) {
@@ -353,60 +330,16 @@ snd_check_hour:
             }
         }
 
-        /* Saved message for the do_not_group option */
-        if (s_msg) {
-            /* Set the remaining do no group to full format */
-            if (mail->gran_to) {
-                i = 0;
-                while (mail->gran_to[i] != NULL) {
-                    if (mail->gran_set[i] == DONOTGROUP) {
-                        mail->gran_set[i] = FULL_FORMAT;
-                    }
-                    i++;
-                }
-            }
-
-            OS_AddMailtoList(s_msg);
-
-            s_msg = NULL;
-            mailtosend++;
-            continue;
-        }
-
         /* Receive message from queue */
         if (msg = mail->source == MAIL_SOURCE_LOGS ? OS_RecvMailQ(fileq, p, mail, &msg_sms) : OS_RecvMailQ_JSON(fileq, mail, &msg_sms), msg) {
-            /* If the e-mail priority is do_not_group,
-             * flush all previous entries and then send it.
-             * Use s_msg to hold the pointer to the message while we flush it.
-             */
-            if (mail->priority == DONOTGROUP) {
-                s_msg = msg;
-            } else {
-                OS_AddMailtoList(msg);
-            }
+            OS_AddMailtoList(msg);
 
             /* Change timeout to see if any new message is coming shortly */
-            if (mail->grouping) {
-                /* If priority is set, send email now */
-                if (mail->priority) {
-                    mail_timeout = DEFAULT_TIMEOUT;
-
-                    /* If do_not_group is set, we do not increase the list count */
-                    if (mail->priority != DONOTGROUP) {
-                        mailtosend++;
-                    }
-                } else {
-                    /* 5 seconds only */
-                    mail_timeout = NEXTMAIL_TIMEOUT;
-                }
-            } else {
-                /* Send message by itself */
-                mailtosend++;
-            }
+            mail_timeout = NEXTMAIL_TIMEOUT;
+            mailtosend++;
         } else {
             if (mail_timeout == NEXTMAIL_TIMEOUT) {
                 mailtosend++;
-
                 /* Default timeout */
                 mail_timeout = DEFAULT_TIMEOUT;
             }

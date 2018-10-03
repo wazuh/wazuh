@@ -152,7 +152,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
         if (mail->gran_to) {
             int i = 0;
             while (mail->gran_to[i] != NULL) {
-                if (mail->gran_set[i] != SMS_FORMAT) {
+                if (mail->gran_format[i] != SMS_FORMAT) {
                     i++;
                     continue;
                 }
@@ -291,7 +291,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     return (0);
 }
 
-int OS_Sendmail(MailConfig *mail, struct tm *p)
+int OS_Sendmail(MailConfig *mail, struct tm *p, MailNode *first, char group)
 {
     FILE *sendmail = NULL;
     int socket = -1;
@@ -302,7 +302,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     MailNode *mailmsg;
 
     /* If there is no sms message, attempt to get from the email list */
-    mailmsg = OS_PopLastMail();
+    mailmsg = first;
 
     if (mailmsg == NULL) {
         merror("No email to be sent. Inconsistent state.");
@@ -427,7 +427,9 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         if (mail->gran_to) {
             i = 0;
             while (mail->gran_to[i] != NULL) {
-                if (mail->gran_set[i] != FULL_FORMAT) {
+                if ((group && mail->gran_format[i] == DONOTGROUP)  ||
+                    (!group && mail->gran_format[i] != DONOTGROUP) ||
+                    mail->gran_format[i] == SMS_FORMAT) {
                     i++;
                     continue;
                 }
@@ -523,7 +525,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if (mail->gran_to) {
         i = 0;
         while (mail->gran_to[i] != NULL) {
-            if (mail->gran_set[i] != FULL_FORMAT) {
+            if (mail->gran_format[i] != SMS_FORMAT) {
                 i++;
                 continue;
             }
@@ -601,8 +603,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         } else {
             OS_SendTCP(socket, mailmsg->mail->body);
         }
-        mailmsg = OS_PopLastMail();
-    } while (mailmsg);
+        mailmsg = mailmsg->prev;
+    } while (group && mailmsg);
 
     if (sendmail) {
         if (pclose(sendmail) == -1) {
@@ -639,4 +641,22 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     memset_secure(snd_msg, '\0', 128);
     return (0);
+}
+
+int w_sendmail(MailConfig *mail, struct tm *p) {
+    int retval;
+    MailNode *node = OS_PopLastMail();
+
+    if (retval = OS_Sendmail(mail, p, node, 1), retval >= 0) {
+        do {
+            if (retval = OS_Sendmail(mail, p, node, 0), retval < 0) {
+                break;
+            }
+        } while(node = OS_PopLastMail(), node);
+    }
+
+    while (node) {
+        node = OS_PopLastMail();
+    }
+    return retval;
 }

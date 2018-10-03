@@ -31,8 +31,6 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
     MailMsg *mail;
     alert_data *al_data;
 
-    Mail->priority = 0;
-
     /* Get message if available */
     al_data = Read_FileMon(fileq, p, mail_timeout);
     if (!al_data) {
@@ -224,15 +222,12 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
     if (Mail->gran_to) {
         i = 0;
         while (Mail->gran_to[i] != NULL) {
-            int gr_set = 0;
 
             /* Look if location is set */
             if (Mail->gran_location[i]) {
-                if (OSMatch_Execute(al_data->location,
+                if (!OSMatch_Execute(al_data->location,
                                     strlen(al_data->location),
                                     Mail->gran_location[i])) {
-                    gr_set = 1;
-                } else {
                     i++;
                     continue;
                 }
@@ -240,9 +235,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
 
             /* Look for the level */
             if (Mail->gran_level[i]) {
-                if (al_data->level >= Mail->gran_level[i]) {
-                    gr_set = 1;
-                } else {
+                if (al_data->level < Mail->gran_level[i]) {
                     i++;
                     continue;
                 }
@@ -259,9 +252,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
                 }
 
                 /* If we found, id is going to be a valid rule */
-                if (Mail->gran_id[i][id_i]) {
-                    gr_set = 1;
-                } else {
+                if (!Mail->gran_id[i][id_i]) {
                     i++;
                     continue;
                 }
@@ -269,35 +260,11 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
 
             /* Look for the group */
             if (Mail->gran_group[i]) {
-                if (al_data->group && OSMatch_Execute(al_data->group,
+                if (!(al_data->group && OSMatch_Execute(al_data->group,
                                     strlen(al_data->group),
-                                    Mail->gran_group[i])) {
-                    gr_set = 1;
-                } else {
+                                    Mail->gran_group[i]))) {
                     i++;
                     continue;
-                }
-            }
-
-            /* If we got here, everything matched. Set this e-mail to be used. */
-            if (gr_set) {
-                if (Mail->gran_format[i] == SMS_FORMAT) {
-                    Mail->gran_set[i] = SMS_FORMAT;
-
-                    /* Set the SMS flag */
-                    sms_set = 1;
-                } else {
-                    /* Options */
-                    if (Mail->gran_format[i] == FORWARD_NOW) {
-                        Mail->priority = 1;
-                        Mail->gran_set[i] = FULL_FORMAT;
-                    } else if (Mail->gran_format[i] == DONOTGROUP) {
-                        Mail->priority = DONOTGROUP;
-                        Mail->gran_set[i] = DONOTGROUP;
-                        donotgroup = 1;
-                    } else {
-                        Mail->gran_set[i] = FULL_FORMAT;
-                    }
                 }
             }
             i++;
@@ -368,8 +335,6 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     cJSON *agent_ip;
     cJSON *rule;
     cJSON *mail_flag;
-
-    Mail->priority = 0;
 
     /* Get message if available */
     if (al_json = jqueue_next(fileq), !al_json) {
@@ -531,15 +496,13 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     if (Mail->gran_to) {
         i = 0;
         while (Mail->gran_to[i] != NULL) {
-            int gr_set = 0;
+            Mail->gran_send[i] = 0;
 
             /* Look if location is set */
             if (Mail->gran_location[i]) {
-                if (OSMatch_Execute(subject_host,
+                if (!OSMatch_Execute(subject_host,
                                     strlen(subject_host),
                                     Mail->gran_location[i])) {
-                    gr_set = 1;
-                } else {
                     i++;
                     continue;
                 }
@@ -547,9 +510,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
             /* Look for the level */
             if (Mail->gran_level[i]) {
-                if (alert_level >= Mail->gran_level[i]) {
-                    gr_set = 1;
-                } else {
+                if (alert_level < Mail->gran_level[i]) {
                     i++;
                     continue;
                 }
@@ -566,9 +527,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
                 }
 
                 /* If we found, id is going to be a valid rule */
-                if (Mail->gran_id[i][id_i]) {
-                    gr_set = 1;
-                } else {
+                if (!Mail->gran_id[i][id_i]) {
                     i++;
                     continue;
                 }
@@ -588,33 +547,12 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
                     if (!found) {
                         i++;
                         continue;
-                    }else{
-                        gr_set = 1;
                     }
                 }
             }
 
             /* If we got here, everything matched. Set this e-mail to be used. */
-            if (gr_set) {
-                if (Mail->gran_format[i] == SMS_FORMAT) {
-                    Mail->gran_set[i] = SMS_FORMAT;
-
-                    /* Set the SMS flag */
-                    sms_set = 1;
-                } else {
-                    /* Options */
-                    if (Mail->gran_format[i] == FORWARD_NOW) {
-                        Mail->priority = 1;
-                        Mail->gran_set[i] = FULL_FORMAT;
-                    } else if (Mail->gran_format[i] == DONOTGROUP) {
-                        Mail->priority = DONOTGROUP;
-                        Mail->gran_set[i] = DONOTGROUP;
-                        donotgroup = 1;
-                    } else {
-                        Mail->gran_set[i] = FULL_FORMAT;
-                    }
-                }
-            }
+            Mail->gran_send[i] = 1;
             i++;
         }
     }

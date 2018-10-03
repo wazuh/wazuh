@@ -51,8 +51,8 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
                    sizeof(unsigned int *) * (granto_size + 2), Mail->gran_id);
         os_realloc(Mail->gran_level,
                    sizeof(unsigned int) * (granto_size + 2), Mail->gran_level);
-        os_realloc(Mail->gran_set,
-                   sizeof(int) * (granto_size + 2), Mail->gran_set);
+        os_realloc(Mail->gran_send,
+                   sizeof(int) * (granto_size + 2), Mail->gran_send);
         os_realloc(Mail->gran_format,
                    sizeof(int) * (granto_size + 2), Mail->gran_format);
         os_realloc(Mail->gran_location,
@@ -75,8 +75,8 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
         Mail->gran_format[granto_size] = FULL_FORMAT;
         Mail->gran_format[granto_size + 1] = FULL_FORMAT;
 
-        Mail->gran_set[granto_size] = 0;
-        Mail->gran_set[granto_size + 1] = 0;
+        Mail->gran_send[granto_size] = 0;
+        Mail->gran_send[granto_size + 1] = 0;
     }
 
     while (node[i]) {
@@ -218,10 +218,10 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
         os_realloc(Mail->gran_level, sizeof(unsigned int) * (granto_size + 2), Mail->gran_level);
         Mail->gran_level[granto_size] = Mail->gran_level[granto_size - 1];
         Mail->gran_level[granto_size + 1] = 0;
-        // Clone set attr
-        os_realloc(Mail->gran_set, sizeof(int) * (granto_size + 2), Mail->gran_set);
-        Mail->gran_set[granto_size] = Mail->gran_set[granto_size - 1];
-        Mail->gran_set[granto_size + 1] = 0;
+        // Clone send indicator
+        os_realloc(Mail->gran_send, sizeof(int) * (granto_size + 2), Mail->gran_send);
+        Mail->gran_send[granto_size] = Mail->gran_send[granto_size - 1];
+        Mail->gran_send[granto_size + 1] = 0;
         // Clone mail format
         os_realloc(Mail->gran_format, sizeof(int) * (granto_size + 2), Mail->gran_format);
         Mail->gran_format[granto_size] = Mail->gran_format[granto_size - 1];

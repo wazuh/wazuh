@@ -58,6 +58,7 @@ typedef struct _MailMsg {
 
 #include "shared.h"
 #include "config/mail-config.h"
+#include "mail_list.h"
 
 /* Config function */
 int MailConf(int test_config, const char *cfgfile, MailConfig *Mail) __attribute__((nonnull));
@@ -77,7 +78,8 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail, MailMsg
 MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *mail, MailMsg **msg_sms) __attribute__((nonnull));
 
 /* Send an email */
-int OS_Sendmail(MailConfig *mail, struct tm *p) __attribute__((nonnull));
+int w_sendmail(MailConfig *mail, struct tm *p) __attribute__((nonnull));
+int OS_Sendmail(MailConfig *mail, struct tm *p, MailNode *first, char group) __attribute__((nonnull(1,2)));
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg) __attribute__((nonnull));
 int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *replyto, char *idsname, FILE *fp, const struct tm *p);
 

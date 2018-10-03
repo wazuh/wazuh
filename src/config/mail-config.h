@@ -22,7 +22,6 @@ typedef struct _MailConfig {
     int strict_checking;
     int grouping;
     int subject_full;
-    int priority;
     char **to;
     char *reply_to;
     char *from;
@@ -34,8 +33,8 @@ typedef struct _MailConfig {
     /* Granular e-mail options */
     unsigned int *gran_level;
     unsigned int **gran_id;
-    int *gran_set;
     int *gran_format;
+    int *gran_send;
     char **gran_to;
 
 #ifdef LIBGEOIP_ENABLED
