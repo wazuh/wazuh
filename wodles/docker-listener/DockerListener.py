@@ -36,6 +36,7 @@ class DockerListener:
         self.client = docker.from_env()
         self.send_msg(json.dumps({self.field_debug_name: "Started"}))
         self.thread1 = threading.Thread(target=self.listen)
+        self.thread2 = threading.Thread(target=self.listen)
         self.connect(first_time=True)
 
     def connect(self, first_time=False):
@@ -45,8 +46,15 @@ class DockerListener:
         """
         if self.check_docker_service():
             if not first_time:
-                self.thread1 = threading.Thread(target=self.listen)
-            self.thread1.start()
+                # this is for having a thread assigned to a variable ever
+                if self.thread1.is_alive():
+                    self.thread2 = threading.Thread(target=self.listen)
+                    self.thread2.start()
+                else:
+                    self.thread1 = threading.Thread(target=self.listen)
+                    self.thread1.start()
+            else:
+                self.thread1.start()
             print("Docker service was started.")
             self.send_msg(json.dumps({self.field_debug_name: "Connected to Docker service"}))
         else:
