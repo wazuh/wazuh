@@ -3,11 +3,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from operator import itemgetter
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
-from wazuh.ossec_socket import OssecSocket
+from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
 from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
@@ -110,7 +111,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             elif field_name == 'status':
                 return Agent.calculate_status(lastKeepAlive, version is None, today)
             elif field_name == 'group':
-                return value.split('-')
+                return value.split(',')
             else:
                 return value
 
@@ -143,9 +144,9 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         if field_name == 'group' and q_filter['value'] is not None:
             field_filter_1, field_filter_2, field_filter_3 = field_filter+'_1', field_filter+'_2', field_filter+'_3'
             self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} LIKE :{3} OR {0} = :{4}'.format(self.fields[field_name], field_filter_1, field_filter_2, field_filter_3, field_filter)
-            self.request[field_filter_1] = '%-'+q_filter['value']
-            self.request[field_filter_2] = q_filter['value']+'-%'
-            self.request[field_filter_3] = '%-{}-%'.format(q_filter['value'])
+            self.request[field_filter_1] = '%,'+q_filter['value']
+            self.request[field_filter_2] = q_filter['value']+',%'
+            self.request[field_filter_3] = '%,{},%'.format(q_filter['value'])
             self.request[field_filter] = q_filter['value']
         else:
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
@@ -182,7 +183,7 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
 
     def _get_data(self):
         if self.group_id != "null":
-            self.fields['multi_group'] = "CASE WHEN COUNT(*) > 1 THEN '*' ELSE '' END as num_groups"
+            self.fields['multi_group'] = "CASE WHEN COUNT(*) > 1 THEN '' ELSE '' END as num_groups"
             self.select['fields'].update(['multi_group'])
         WazuhDBQueryAgents._get_data(self)
 
@@ -429,7 +430,7 @@ class Agent:
 
         msg = { "function": "remove", "arguments": { "id": str(self.id).zfill(3), "purge": purge } }
 
-        authd_socket = OssecSocket(common.AUTHD_SOCKET)
+        authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
         authd_socket.send(msg)
         data = authd_socket.receive()
         authd_socket.close()
@@ -593,7 +594,7 @@ class Agent:
             else:
                 msg = { "function": "add", "arguments": { "name": name, "ip": ip, "id": id, "key": key, "force": force } }
 
-        authd_socket = OssecSocket(common.AUTHD_SOCKET)
+        authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
         authd_socket.send(msg)
         data = authd_socket.receive()
         authd_socket.close()
@@ -759,7 +760,6 @@ class Agent:
         # Remove agent group
         agents = self.get_agent_group(group_id=group_id, limit=None)
         for agent in agents['items']:
-            self.unset_group(agent['id'])
             ids.append(agent['id'])
 
         # Remove group directory
@@ -1032,9 +1032,7 @@ class Agent:
         :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary (agents that cannot been removed), and a message.
         """
 
-
-        agents = Agent.get_agents_overview(filters={'older_than':older_than,'status':status}, limit = None)
-        id_purgeable_agents = [agent['id'] for agent in agents['items']]
+        id_purgeable_agents = list(map(itemgetter('id'), Agent.get_agents_overview(filters={'older_than':older_than,'status':status}, limit = None)['items']))
 
         failed_ids = []
         affected_agents = []
@@ -1042,16 +1040,20 @@ class Agent:
         if list_agent_ids != "all":
             for id in list_agent_ids:
                 try:
+                    my_agent = Agent(id)
+                    my_agent._load_info_from_DB()
                     if id not in id_purgeable_agents:
                         raise WazuhException(1731, "The agent has a status different to '{}' or the specified time frame 'older_than {}' does not apply.".format(status, older_than))
-                    Agent(id).remove(backup, purge)
+                    my_agent.remove(backup, purge)
                     affected_agents.append(id)
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
         else:
             for id in id_purgeable_agents:
                 try:
-                    Agent(id).remove(backup, purge)
+                    my_agent = Agent(id)
+                    my_agent._load_info_from_DB()
+                    my_agent.remove(backup, purge)
                     affected_agents.append(id)
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
@@ -1107,12 +1109,17 @@ class Agent:
                 group_name = f.read().replace('\n', '')
 
             # Check if the group already belongs to the agent
-            if group_id in group_name.split('-'):
+            if group_id in group_name.split(','):
                 return "Group '{0}' already belongs to agent'{1}'.".format(group_id, agent_id)
         else:
             group_name = ""
 
-        agent_group = (group_name + '-' if group_name else '') + group_id
+        agent_group = (group_name + ',' if group_name else '') + group_id
+        old_agent_group = group_name
+
+        # Check multigroup limit
+        if Agent().check_multigroup_limit(agent_id):
+            raise WazuhException(1737)
 
         # Check if the group exists
         if not Agent.group_exists(group_id):
@@ -1123,6 +1130,37 @@ class Agent:
             Agent.create_multi_group(agent_group)
 
         Agent().set_multi_group(str(agent_id),agent_group)
+
+        multi_group_metadata = Agent().get_multigroups_metadata()
+
+        # Check if the multigroup still exists in other agents
+        multi_group_list = []
+        for filename in listdir("{0}".format(common.groups_path)):
+            file = open("{0}/{1}".format(common.groups_path,filename),"r")
+            group_readed = file.read()
+            group_readed = group_readed.strip()
+            multi_group_list.append(group_readed)
+            file.close()
+
+        if old_agent_group:
+            try:
+                index = multi_group_list.index(old_agent_group)
+            except Exception:
+                group_list = old_agent_group.split(',')
+
+                # remove the multigroup
+                if len(group_list) > 1:
+                    try:
+                        multi_group_metadata.remove(old_agent_group)
+
+                        if len(multi_group_metadata) == 0:
+                            multi_group_metadata.append(agent_group)
+
+                        Agent().write_multigroups_metadata(multi_group_metadata)
+                        folder = hashlib.sha256(old_agent_group).hexdigest()[:8]
+                        rmtree("{}/{}".format(common.multi_groups_path,folder))
+                    except Exception:
+                        pass
 
         return "Group '{0}' added to agent '{1}'.".format(group_id, agent_id)
 
@@ -1311,9 +1349,12 @@ class Agent:
         #if not InputValidator().group(group_id):
         #    raise WazuhException(1722)
 
-        if path.exists("{0}/{1}".format(common.multi_groups_path, group_id)):
+        multi_group_metadata = Agent().get_multigroups_metadata()
+
+        try:
+            multi_group_metadata.index(group_id)
             return True
-        else:
+        except Exception:
             return False
 
     @staticmethod
@@ -1452,19 +1493,19 @@ class Agent:
         #if not InputValidator().group(group_id):
         #    raise WazuhException(1722)
 
-        group_path = "{0}/{1}".format(common.multi_groups_path, group_id)
-
-        if group_id.lower() == "default" or path.exists(group_path):
-            raise WazuhException(1711, group_id)
+        group_list = group_id.split(',')
+        # remove the group
+        try:
+            group_list.remove(group_id)
+        except Exception:
+            pass
+        
+        if len(group_list) == 0:
+            return
 
         # Create group in /var/multigroups
-        group_def_path = "{0}/default".format(common.shared_path)
-
         try:
-            copytree(group_def_path, group_path)
-            chown_r(group_path, common.ossec_uid, common.ossec_gid)
-            chmod_r(group_path, 0o660)
-            chmod(group_path, 0o770)
+            Agent().append_multigroups_metadata(group_id)
             msg = "Group '{0}' created.".format(group_id)
         except Exception as e:
             raise WazuhException(1005, str(e))
@@ -1474,40 +1515,53 @@ class Agent:
 
     @staticmethod
     def remove_multi_group(group_id):
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
 
-        conn = Connection(db_global[0])
+        if group_id.lower() == "default":
+                raise WazuhException(1712)
 
-        # Query
-        query = "SELECT id, `group` FROM agent WHERE `group` LIKE :group_1 OR `group` LIKE :group_2 OR `group` LIKE :group_3 OR `group` = :group_4"
-        conn.execute(query, {'group_1': group_id+'-%', 'group_2': '%-{}-%'.format(group_id), 'group_3': '%-'+group_id, 'group_4': group_id})
+        for filename in listdir("{0}".format(common.groups_path)):
+            file = open("{0}/{1}".format(common.groups_path,filename),"r")
+            agent_id = filename
+            agent_group = file.read()
+            agent_group = agent_group.strip()
+            file.close()
 
-        for agent_id, agent_group in conn:
-            # get all groups this agent belongs to
-            group_list = agent_group.split('-')
-            # remove the group
-            group_list.remove(group_id)
-            if len(group_list) > 1:
-                # create new multigroup
-                new_group = '-'.join(group_list)
+            if agent_group.find(group_id) >= 0:
 
-                if not Agent.multi_group_exists(new_group):
-                    Agent.create_multi_group(new_group)
-            else:
-                new_group = 'default' if not group_list else group_list[0]
+                group_list = agent_group.split(',')
+                # remove the group
+                group_list.remove(group_id)
+                if len(group_list) > 1:
+                    # create new multigroup
+                    new_group = ','.join(group_list)
+                    if not Agent.multi_group_exists(new_group):
+                        Agent.create_multi_group(new_group)
+                else:
+                    new_group = 'default' if not group_list else group_list[0]
+                
+                # Add multigroup
+                agent_file = open("{0}/{1}".format(common.groups_path,agent_id),"w")
+                agent_file.write("{0}\n".format(new_group))
+                agent_file.close()
 
-            Agent.set_group(str(agent_id).zfill(3), new_group, replace=True)
+        multi_group_metadata = Agent().get_multigroups_metadata()
+        multi_group_metadata_copy = multi_group_metadata[:]
 
-        # Delete from multi groups folder
-        _, multi_group_dirs, _ = walk(common.multi_groups_path).next()
+        try:
+            for multi_group in multi_group_metadata:
+                if group_id in multi_group.split(','):
+                    try:
+                        multi_group_metadata_copy.remove(multi_group)
+                        folder = hashlib.sha256(multi_group).hexdigest()[:8]
+                        rmtree("{}/{}".format(common.multi_groups_path,folder))
+                    except Exception:
+                        pass
 
-        for multi_dir in multi_group_dirs:
-            if group_id in multi_dir.split('-'):
-                rmtree("{}/{}".format(common.multi_groups_path,multi_dir))
+        except Exception:
+            pass
 
+        multi_group_metadata = multi_group_metadata_copy[:]
+        Agent().write_multigroups_metadata(multi_group_metadata)
 
     @staticmethod
     def remove_group(group_id):
@@ -1606,32 +1660,41 @@ class Agent:
         if not force:
             Agent(agent_id).get_basic_information()
 
-        # Connect DB
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
+        multi_group_metadata = Agent().get_multigroups_metadata()
 
         # get agent's group
         group_path = "{}/{}".format(common.groups_path, agent_id)
         if path.exists(group_path):
             with open(group_path) as f:
                 group_name = f.read().replace('\n', '')
+        else:
+            group_name = ""
 
-            # Check if multi group still exists in other agents
-            query = "SELECT COUNT(*) FROM agent WHERE `group` = :group_1 OR `group` LIKE :group_2 OR `group` LIKE :group_3 OR `group` LIKE :group_4"
-            conn.execute(query,{'group_1': group_id, 'group_2': group_id+'-%', 'group_3': '%-{}-%'.format(group_id), 'group_4': '%-'+group_id})
+        # Check if multi group still exists in other agents
+        multi_group_list = []
+        for filename in listdir("{0}".format(common.groups_path)):
+            file = open("{0}/{1}".format(common.groups_path,filename),"r")
+            group_readed = file.read()
+            group_readed = group_readed.strip()
+            if filename != agent_id:
+                multi_group_list.append(group_readed)
+            file.close()
 
-            # Check if it is a multi group
-            if group_name and group_name.find("-") > -1:
-                multi_group = conn.fetch()[0]
-
+        # Check if it is a multi group
+        if group_name and group_name.find(",") > -1:
+            try:
+                multi_group = multi_group_list.index(group_name)
+            except Exception:
                 # The multi group is not being used in other agents, delete it from multi groups
-                if multi_group <= 1:
-                    if Agent().multi_group_exists(group_name):
-                        agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, group_name)
-                        rmtree(agent_multi_group_path)
+                if Agent().multi_group_exists(group_name):
+                    multi_group_metadata.remove(group_name)
+                    Agent().write_multigroups_metadata(multi_group_metadata)
+
+                    try:
+                        folder = hashlib.sha256(group_name).hexdigest()[:8]
+                        rmtree("{}/{}".format(common.multi_groups_path,folder))
+                    except Exception:
+                        pass
 
         # Assign group in /queue/agent-groups
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
@@ -1696,6 +1759,24 @@ class Agent:
 
 
     @staticmethod
+    def check_multigroup_limit(agent_id):
+        # Check if multigroup limit is reached
+        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
+        limit_reached = False
+
+        try:
+            f_group = open(agent_group_path, 'r')
+            group_readed = f_group.read()
+            f_group.close()
+            
+            if (len(group_readed.split(',')) + 1) > common.max_groups_per_multigroup:
+                limit_reached = True
+        except Exception:
+            pass       
+
+        return limit_reached
+
+    @staticmethod
     def unset_group(agent_id, group_id=None, force=False):
         """
         Unset the agent group.
@@ -1731,14 +1812,14 @@ class Agent:
             with open(group_path) as f:
                 group_name = f.read().replace('\n','')
 
-            group_list = group_name.split('-')
+            group_list = group_name.split(',')
             # check agent belongs to group group_id
             if group_id not in group_list:
                 raise WazuhException(1734, "Agent {} doesn't belong to group {}".format(agent_id, group_id))
             # remove group from group_list
             group_list.remove(group_id)
             if len(group_list) > 1:
-                multigroup_name = '-'.join(group_list)
+                multigroup_name = ','.join(group_list)
                 if not Agent.multi_group_exists(multigroup_name):
                     Agent.create_multi_group(multigroup_name)
             else:
@@ -1761,6 +1842,8 @@ class Agent:
         # Check if agent exists
         if not force:
             Agent(agent_id).get_basic_information()
+        
+        multi_group_metadata = Agent().get_multigroups_metadata()
 
         # Check if multi group still exists in other agents
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
@@ -1769,7 +1852,7 @@ class Agent:
                 group_name = f.read().replace('\n','')
 
             # Check if it is a multi group
-            if group_name.find("-") > -1:
+            if group_name.find(",") > -1:
                 # Connect DB
                 db_global = glob(common.database_path_global)
                 if not db_global:
@@ -1782,11 +1865,11 @@ class Agent:
                 # The multi group is not being used in other agents, delete it from multi groups
                 if multi_group <= 1:
                     if Agent.multi_group_exists(group_name):
-                        agent_multi_group_path = "{0}/{1}".format(common.multi_groups_path, group_name)
-                        rmtree(agent_multi_group_path)
+                        multi_group_metadata.remove(group_name)
+                        Agent().write_multigroups_metadata(multi_group_metadata)
 
             with open(agent_group_path, "w+") as fo:
-                fo.write(group_id)
+                fo.write("{0}\n".format(group_id))
 
             return "Group unset for agent '{0}'.".format(agent_id)
         else:
@@ -1982,13 +2065,12 @@ class Agent:
         if debug:
             print("Upgrade PKG: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
         # Open file on agent
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -1996,13 +2078,12 @@ class Agent:
         while data.startswith('err') and counter < timeout:
             sleep(common.open_sleep)
             counter = counter + 1
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.connect(common.ossec_path + "/queue/ossec/request")
+            s = OssecSocket(common.REQUEST_SOCKET)
             msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
             s.send(msg.encode())
             if debug:
                 print("MSG SENT: {0}".format(str(msg)))
-            data = s.recv(1024).decode()
+            data = s.receive().decode()
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
@@ -2010,13 +2091,12 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2037,11 +2117,10 @@ class Agent:
             bytes_read = file.read(chunk_size)
             bytes_read_acum = 0
             while bytes_read:
-                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                s.connect(common.ossec_path + "/queue/ossec/request")
+                s = OssecSocket(common.REQUEST_SOCKET)
                 msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
                 s.send(msg.encode() + bytes_read)
-                data = s.recv(1024).decode()
+                data = s.receive().decode()
                 s.close()
                 if data != 'ok':
                     raise WazuhException(1715, data.replace("err ",""))
@@ -2054,13 +2133,12 @@ class Agent:
             file.close()
 
         # Close file on agent
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com close {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2068,13 +2146,12 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com sha1 {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2120,8 +2197,7 @@ class Agent:
             print(sending_result[0])
 
         # Send upgrading command
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         if self.os['platform']=="windows":
             msg = "{0} com upgrade {1} upgrade.bat".format(str(self.id).zfill(3), sending_result[1])
         else:
@@ -2129,7 +2205,7 @@ class Agent:
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2162,13 +2238,12 @@ class Agent:
         """
         sleep(1)
         self._load_info_from_DB()
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com upgrade_result".format(str(self.id).zfill(3))
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2176,13 +2251,12 @@ class Agent:
         while data.startswith('err') and counter < timeout:
             sleep(common.upgrade_result_sleep)
             counter = counter + 1
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.connect(common.ossec_path + "/queue/ossec/request")
+            s = OssecSocket(common.REQUEST_SOCKET)
             msg = str(self.id).zfill(3) + " com upgrade_result"
             s.send(msg.encode())
             if debug:
                 print("MSG SENT: {0}".format(str(msg)))
-            data = s.recv(1024).decode()
+            data = s.receive().decode()
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
@@ -2230,13 +2304,12 @@ class Agent:
             print("Custom WPK file: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
 
         # Open file on agent
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2244,13 +2317,12 @@ class Agent:
         while data.startswith('err') and counter < timeout:
             sleep(common.open_sleep)
             counter = counter + 1
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.connect(common.ossec_path + "/queue/ossec/request")
+            s = OssecSocket(common.REQUEST_SOCKET)
             msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
             s.send(msg.encode())
             if debug:
                 print("MSG SENT: {0}".format(str(msg)))
-            data = s.recv(1024).decode()
+            data = s.receive().decode()
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
@@ -2258,13 +2330,12 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2283,11 +2354,10 @@ class Agent:
             file_sha1=hashlib.sha1(bytes_read)
             bytes_read_acum = 0
             while bytes_read:
-                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                s.connect(common.ossec_path + "/queue/ossec/request")
+                s = OssecSocket(common.REQUEST_SOCKET)
                 msg = "{0} com write {1} {2} ".format(str(self.id).zfill(3), str(len(bytes_read)), wpk_file)
                 s.send(msg.encode() + bytes_read)
-                data = s.recv(1024).decode()
+                data = s.receive().decode()
                 s.close()
                 bytes_read = file.read(chunk_size)
                 file_sha1.update(bytes_read)
@@ -2302,13 +2372,12 @@ class Agent:
             file.close()
 
         # Close file on agent
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com close {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2316,13 +2385,12 @@ class Agent:
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com sha1 {1}".format(str(self.id).zfill(3), wpk_file)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2351,13 +2419,12 @@ class Agent:
             print(sending_result[0])
 
         # Send installing command
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.connect(common.ossec_path + "/queue/ossec/request")
+        s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com upgrade {1} {2}".format(str(self.id).zfill(3), sending_result[1], installer)
         s.send(msg.encode())
         if debug:
             print("MSG SENT: {0}".format(str(msg)))
-        data = s.recv(1024).decode()
+        data = s.receive().decode()
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
@@ -2417,9 +2484,8 @@ class Agent:
             command = str(self.id).zfill(3) + " " + component + " getconfig " + configuration
 
         # Socket connection
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
-            s.connect(dest_socket)
+            s = OssecSocket(dest_socket)
         except Exception as e:
             if int(self.id) == 0:
                 raise WazuhException(1013,"The component might be disabled")
@@ -2429,17 +2495,13 @@ class Agent:
         # Generate message
         msg = "{0}".format(command)
 
-        msg = struct.pack('<I', len(msg)) + msg.encode()
-
         # Send message
         s.send(msg)
 
         # Receive response
         try:
             # Receive data length
-            data_size = s.recv(4)
-            data_size = struct.unpack('<I',data_size[0:4])[0]
-            data = s.recv(data_size,socket.MSG_WAITALL).decode().split(" ", 1)
+            data = s.receive().decode().split(" ", 1)
             rec_msg_ok = data[0]
             rec_msg = data[1]
         except IndexError:
@@ -2468,3 +2530,43 @@ class Agent:
             raise WazuhException(1307)
 
         return Agent(agent_id).getconfig(component=component, configuration=configuration)
+
+    @staticmethod
+    def get_multigroups_metadata():
+        """
+        Read the '.metadata' file for multigroups.
+
+        :return: readed multigroups list.
+        """
+        multi_groups_list = []
+        try:
+            with open(common.multi_groups_path + "/.metadata") as f:
+                for line in f:
+                    multi_groups_list.append(line.strip())
+        except Exception:
+            pass
+        
+        return multi_groups_list
+
+    @staticmethod
+    def write_multigroups_metadata(multi_groups_list):
+        """
+        Write multigroups list into '.metadata'.
+
+        :param multi_groups_list: Multigroups list.
+        """
+        with open(common.multi_groups_path + "/.metadata", 'w') as f:
+            for item in multi_groups_list:
+                f.write('{0}\n'.format(item))
+            f.close()
+
+    @staticmethod
+    def append_multigroups_metadata(multi_group):
+        """
+        Append multigroups list into '.metadata'.
+
+        :param multi_groups_list: Multigroup.
+        """
+        with open(common.multi_groups_path + "/.metadata", 'a') as f:
+            f.write('{0}\n'.format(multi_group))
+            f.close()

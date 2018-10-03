@@ -89,6 +89,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global AUTHD_SOCKET
     AUTHD_SOCKET = "{0}/queue/ossec/auth".format(ossec_path)
 
+    global REQUEST_SOCKET
+    REQUEST_SOCKET = "{0}/queue/ossec/request".format(ossec_path)
+
 # Agent upgrading variables
 wpk_repo_url = "packages.wazuh.com/wpk/"
 
@@ -114,3 +117,6 @@ ossec_gid = getgrnam("ossec").gr_gid
 
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()
+
+# Multigroup variables
+max_groups_per_multigroup = 256

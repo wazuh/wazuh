@@ -18,7 +18,7 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\n%s %s: ossec-regex pattern\n", __ossec_name, ARGV0);
+    printf("\n%s %s: ossec-regex <pattern>\n", __ossec_name, ARGV0);
     exit(1);
 }
 
@@ -26,8 +26,9 @@ int main(int argc, char **argv)
 {
     const char *pattern;
     char * string;
-
+    int i;
     char msg[OS_MAXSTR + 1];
+
     memset(msg, '\0', OS_MAXSTR + 1);
     OSRegex regex;
     OSMatch matcher;
@@ -48,12 +49,12 @@ int main(int argc, char **argv)
 
     pattern = argv[1];
 
-    if (!OSRegex_Compile(pattern, &regex, 0)) {
-        printf("pattern does not compile with OSRegex_Compile\n");
+    if (!OSRegex_Compile(pattern, &regex, OS_RETURN_SUBSTRING)) {
+        printf("Pattern '%s' does not compile with OSRegex_Compile\n", pattern);
         return (-1);
     }
     if (!OSMatch_Compile(pattern, &matcher, 0)) {
-        printf("pattern does not compile with OSMatch_Compile\n");
+        printf("Pattern '%s' does not compile with OSMatch_Compile\n", pattern);
         return (-1);
     }
 
@@ -64,22 +65,16 @@ int main(int argc, char **argv)
         }
 
         string = strdup(msg);
-
         if (OSRegex_Execute(string, &regex)) {
             printf("+OSRegex_Execute: %s\n", string);
+            for (i = 0; regex.d_sub_strings[i]; i++) {
+                printf(" -Substring: %s\n", regex.d_sub_strings[i]);
+            }
         }
-        /*
-        else
-            printf("-OSRegex_Execute: \n");
-         */
 
         if (OS_Regex(pattern, string)) {
             printf("+OS_Regex       : %s\n", string);
         }
-        /*
-        else
-            printf("-OS_Regex: \n");
-         */
 
         if (OSMatch_Execute(string, strlen(string), &matcher)) {
             printf("+OSMatch_Compile: %s\n", string);
@@ -89,6 +84,7 @@ int main(int argc, char **argv)
             printf("+OS_Match2      : %s\n", string);
         }
 
+        w_FreeArray(regex.d_sub_strings);
         free(string);
     }
     return (0);

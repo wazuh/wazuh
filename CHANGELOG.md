@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Added support for API calls `GET/manager/stats/analysisd` and `GET/manager/stats/remoted`. ([#1297](https://github.com/wazuh/wazuh/pull/1297))
 - FIM database is cleaned after restart agent 3 times, deleting all entries not monitorized. ([#1333](https://github.com/wazuh/wazuh/pull/1333))
 - Added rule testing output when restarting manager. ([#1196](https://github.com/wazuh/wazuh/pull/1196))
+- Added script to migrate older Syscheck databases to WazuhDB. ([#1504](https://github.com/wazuh/wazuh/pull/1504))
 
 ### Changed
 
@@ -24,7 +25,8 @@ All notable changes to this project will be documented in this file.
   - Extract the pack name into a new field.
   - Include the query name in the alert description.
   - Minor fixes.
-- Increased AWS S3 database entry limit to 5000 to prevent reprocessing repeated events ([#1391](https://github.com/wazuh/wazuh/pull/1391)).
+- Increased AWS S3 database entry limit to 5000 to prevent reprocessing repeated events. ([#1391](https://github.com/wazuh/wazuh/pull/1391))
+- Increased the limit of concurrent agent requests: 1024 by default, configurable up to 4096. ([#1473](https://github.com/wazuh/wazuh/pull/1473))
 
 ### Fixed
 

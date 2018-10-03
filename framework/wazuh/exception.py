@@ -82,6 +82,7 @@ class WazuhException(Exception):
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
         1653: 'Active response - Agent not available',
+        1654: 'Unable to clear rootcheck database',
 
         # Agents:
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -106,7 +107,7 @@ class WazuhException(Exception):
         1719: 'Remote upgrade is not available for this agent version',
         1720: 'Agent disconnected',
         1721: 'Remote upgrade is not available for this agent OS version',
-        1722: 'Incorrect format for group_id. It can only have letters and numbers. Max length is 256',
+        1722: 'Incorrect format for group_id. Characters supported  a-z, A-Z, 0-9, -.=!() Max length is 255',
         1723: 'Hash algorithm not available',
         1724: 'Not a valid select field',
         1725: 'Error registering a new agent',
@@ -121,6 +122,7 @@ class WazuhException(Exception):
         1734: 'Error unsetting agent group',
         1735: 'Agent version is not compatible with this feature',
         1736: 'Error getting all groups',
+        1737: 'Maximum number of groups per multigroup is 256',
 
         # Manager:
 

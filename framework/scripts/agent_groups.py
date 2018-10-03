@@ -54,7 +54,6 @@ def show_group(agent_id):
     str_group = agent_info['group'] if 'group' in agent_info else "Null"
     print("The agent '{0}' with ID '{1}' has the group: '{2}'.".format(agent_info['name'], agent_info['id'], str_group))
 
-
 def show_agents_with_group(group_id):
     agents_data = Agent.get_agent_group(group_id, limit=None)
 
@@ -119,7 +118,7 @@ def set_group(agent_id, group_id, quiet=False, replace=False):
     ans = 'n'
     agent_id = "{}".format(int(agent_id)).zfill(3)
     if not quiet:
-         ans = get_stdin("Do you want to set the group '{0}' to the agent '{1}'? [y/N]: ".format(group_id, agent_id))
+         ans = get_stdin("Do you want to add the group '{0}' to the agent '{1}'? [y/N]: ".format(group_id, agent_id))
     else:
         ans = 'y'
 
@@ -155,7 +154,7 @@ def usage():
     \t-l -g group_id                        # List agents in group
     \t-c -g group_id                        # List configuration files in group
     \t
-    \t-a -i agent_id -g group_id [-q] [-e]  # Set agent group
+    \t-a -i agent_id -g group_id [-q] [-e]  # Add agent group
     \t-r -i agent_id [-q]                   # Unset agent group
     \t-s -i agent_id                        # Show group of agent
     \t
@@ -197,7 +196,7 @@ def main():
     # Parse arguments
     arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False, 'add-group': False, 'replace-group': False, 'show-group': False, 'remove-group': False, 'quiet': False }
     try:
-        opts, args = getopt(argv[1:], "lcaesri:g:qfdh", ["list", "list-files", "add-group","replace-group", "show-group", "remove-group", "agent-id=", "group=", "quiet", "debug", "help"])
+        opts, args = getopt(argv[1:], "lcaesri:g:qfdh", ["list", "list-files", "add-group","replace-group", "show-group", "remove-group" ,"agent-id=", "group=", "quiet", "debug", "help"])
         arguments['n_args'] = len(opts)
     except GetoptError as err:
         print(str(err) + "\n" + "Try '--help' for more information.")

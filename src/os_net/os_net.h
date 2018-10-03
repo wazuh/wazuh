@@ -96,12 +96,12 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
 /* Send secure TCP Cluster message
  * Return 0 on success or OS_SOCKTERR on error.
  */
-int OS_SendSecureTCPCluster(int sock, const void * command,const void * payload);
+int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload, size_t length);
 
 /* Receive secure TCP message
  * Return recvval on success or OS_SOCKTERR on error.
  */
-int OS_RecvSecureClusterTCP(int sock, char * ret);
+int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length);
 
 
 // Receive dynamic size message. Use with OS_SendSecureTCP function.

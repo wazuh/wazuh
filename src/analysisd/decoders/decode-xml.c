@@ -404,7 +404,7 @@ int ReadDecodeXML(const char *file)
                         /* Initialize plugin */
                         void (*dec_init)(void) = (void (*)(void)) plugin_decoders_init[ed_c];
                         dec_init();
-                        pi->plugindecoder = (void (*)(void *)) plugin_decoders_exec[ed_c];
+                        pi->plugindecoder = (void (*)(void *, void *)) plugin_decoders_exec[ed_c];
                         break;
                     }
                 }
@@ -725,7 +725,7 @@ int ReadDecodeXML(const char *file)
             }
 
             /* We must have the sub_strings to retrieve the nodes */
-            if (!pi->regex->sub_strings) {
+            if (!pi->regex->d_sub_strings) {
                 merror(REGEX_SUBS, regex);
                 goto cleanup;
             }

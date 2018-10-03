@@ -553,6 +553,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                     } else {
                         storage->container = container = NULL;
                     }
+                    OS_ClearNode(children);
                     continue;
                 }
             } else {
@@ -564,6 +565,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
                 } else {
                     storage->container = container = NULL;
                 }
+                OS_ClearNode(children);
                 continue;
             }
 

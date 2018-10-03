@@ -76,12 +76,7 @@ void os_FreeArray(char *ch1, char **ch2)
     /* Clean chat ** */
     if (ch2) {
         char **nch2 = ch2;
-
-        while (*ch2 != NULL) {
-            free(*ch2);
-            ch2++;
-        }
-
+        w_FreeArray(ch2);
         free(nch2);
         nch2 = NULL;
     }
@@ -137,4 +132,3 @@ void *memset_secure(void *v, int c, size_t n)
 
     return v;
 }
-

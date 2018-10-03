@@ -69,7 +69,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
     time_t date_of_change;
     char *htpt = NULL;
     char flastfile[OS_SIZE_2048 + 1];
-    static char flastcontent[OS_SIZE_8192 + 1];
+    char flastcontent[OS_SIZE_8192 + 1];
 
     /* Clean up global */
     flastcontent[0] = '\0';
@@ -147,9 +147,10 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
 
     w_mutex_lock(&rule->mutex);
     rule->last_events[0] = "Previous output:";
-    rule->last_events[1] = flastcontent;
+    free(rule->last_events[1]);
+    os_strdup(flastcontent, rule->last_events[1]);
     w_mutex_unlock(&rule->mutex);
-    lf->previous = flastcontent;
+    os_strdup(flastcontent, lf->previous);
 
     return (1);
 }

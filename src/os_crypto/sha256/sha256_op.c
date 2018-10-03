@@ -49,3 +49,21 @@ int OS_SHA256_File(const char *fname, os_sha256 output, int mode)
 
     return (0);
 }
+
+int OS_SHA256_String(const char *str, os_sha256 output)
+{
+    SHA256_CTX c;
+    unsigned char md[SHA256_DIGEST_LENGTH];
+    size_t n;
+
+    SHA256_Init(&c);
+    SHA256_Update(&c, str, strlen(str));
+    SHA256_Final(&(md[0]), &c);
+
+    for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", md[n]);
+        output += 2;
+    }
+
+    return (0);
+}

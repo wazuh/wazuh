@@ -162,7 +162,7 @@ static void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "data") == 0){
-        lf->data = strdup(value);
+        os_strdup(value, lf->data);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       data: '%s'", lf->data);
@@ -360,7 +360,7 @@ void *JSON_Decoder_Init()
     return (NULL);
 }
 
-void *JSON_Decoder_Exec(Eventinfo *lf)
+void *JSON_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
 {
     cJSON *logJSON;
     const char * input;
