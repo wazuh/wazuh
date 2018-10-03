@@ -427,4 +427,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define xml_ar      "active-response"
 #endif
 
+#define CLOCK_LENGTH 256
+
 #endif /* __OS_HEADERS */
