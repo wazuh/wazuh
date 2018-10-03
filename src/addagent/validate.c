@@ -841,19 +841,19 @@ void OS_RemoveAgentGroup(const char *id)
 
     if(!fp){
         mdebug1("At OS_RemoveAgentGroup(): Could not open file '%s'",group_file);
-    }
+    } else {
+        if(fgets(group, OS_SIZE_4096, fp)!=NULL ) {
+            fclose(fp);
+            fp = NULL;
+            unlink(group_file);
+            group[strlen(group)-1] = '\0';
+            /* Remove multigroup if it's not used on any other agent */
+            w_remove_multigroup(group);
+        }
 
-    if(fgets(group, OS_SIZE_4096, fp)!=NULL ) {
-        fclose(fp);
-        fp = NULL;
-        unlink(group_file);
-        group[strlen(group)-1] = '\0';
-        /* Remove multigroup if it's not used on any other agent */
-        w_remove_multigroup(group);
-    }
-  
-    if(fp){
-        fclose(fp);
+        if(fp){
+            fclose(fp);
+        }
     }
 }
 

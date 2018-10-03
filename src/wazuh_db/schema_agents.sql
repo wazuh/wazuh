@@ -5,12 +5,6 @@
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
  */
-
-
-CREATE TABLE IF NOT EXISTS info_agent (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    first_fim_scan INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-);
  
 CREATE TABLE IF NOT EXISTS fim_entry (
     file TEXT PRIMARY KEY,

@@ -124,7 +124,7 @@ ID: 80200 - 80499
 
     <rule id="80351" level="3">
         <if_sid>80350</if_sid>
-        <field name="aws.severity">INFORMATIONAL</field>
+        <field name="aws.severity">INFO</field>
         <description>Macie informational alert: $(aws.name) - $(aws.summary.description)</description>
     </rule>
     <rule id="80352" level="4">

@@ -517,13 +517,13 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     if (mtime == 0){
         *str_mtime = '\0';
     } else {
-        sprintf(str_mtime, "%ld", (long)statbuf.st_gid);
+        sprintf(str_mtime, "%ld", (long)statbuf.st_mtime);
     }
 
     if (inode == 0){
         *str_inode = '\0';
     } else {
-        sprintf(str_inode, "%ld", (long)statbuf.st_gid);
+        sprintf(str_inode, "%ld", (long)statbuf.st_ino);
     }
 
     snprintf(newsum, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s",
