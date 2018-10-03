@@ -279,30 +279,36 @@ class Agent:
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
 
-    def _load_info_from_agent_db(self, table, select, filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
+    def _load_info_from_agent_db(self, table, select, filters={}, or_filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
         """
         Make a request to agent's database using Wazuh DB
 
         :param table: DB table to retrieve data from
         :param select: DB fields to retrieve
         :param filters: filter conditions
+        :param or_filters: filter conditions using or operator.
         :param sort: Dictionary of form {'fields':[], 'order':'asc'}/{'fields':[], 'order':'desc'}
         :param search: Dictionary of form {'value': '', 'negation':false, 'fields': []}
         """
+        self.get_basic_information()  # check if the agent exists
+
         wdb_conn = WazuhDBConnection()
 
         query = "agent {} sql select {} from {}".format(self.id, ','.join(select), table)
 
         if filters:
-            for key, value in filters.items():
-                query += " and {} = '{}'".format(key, value)
+            query += " and (" + " and ".join(["{} = '{}'".format(key, value) for key, value in filters.items()]) + ")"
+        if or_filters:
+            query += " or (" + " or ".join(["{} = '{}'".format(key, value) for key, value in or_filters.items()]) + ")"
 
         if search:
-            query += " and not" if bool(search['negation']) else " and"
-            query += '(' + " or ".join("{} like '%{}%'".format(x, search['value']) for x in search['fields']) + ')'
+            query += " and not" if bool(search['negation']) else " and "
+            query += '(' + " or ".join("{} like '%{}%'".format(x, search['value']) for x in select) + ')'
 
         if "from {} and".format(table) in query:
             query = query.replace("from {} and".format(table), "from {} where".format(table))
+        elif "from {} or".format(table) in query:
+            query = query.replace("from {} or".format(table), "from {} where".format(table))
 
         if limit:
             if limit > common.maximum_database_limit:

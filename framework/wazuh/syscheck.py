@@ -3,14 +3,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException
-from wazuh.utils import filemode, WazuhDBQuery
-from wazuh.agent import Agent
-from wazuh.database import Connection
-from wazuh.ossec_queue import OssecQueue
-from wazuh import common
 from glob import glob
-from os import remove, path
+from operator import itemgetter
+from wazuh.exception import WazuhException
+from wazuh.agent import Agent
+from wazuh.ossec_queue import OssecQueue
+from wazuh import common, Connection
+from datetime import datetime
+from wazuh.wdb import WazuhDBConnection
 
 
 def run(agent_id=None, all_agents=False):
@@ -63,41 +63,15 @@ def clear(agent_id=None, all_agents=False):
     :param all_agents: For all agents.
     :return: Message.
     """
+    agents = [agent_id] if not all_agents else map(itemgetter('id'), Agent.get_agents_overview(select={'fields': ['id']})['items'])
 
-    # Clear DB
-    if int(all_agents):
-        db_agents = glob('{0}/*-*.db'.format(common.database_path_agents))
-    else:
-        db_agents = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-
-    if not db_agents:
-        raise WazuhException(1600)
-
-    for db_agent in db_agents:
-        conn = Connection(db_agent)
-        conn.begin()
-        try:
-            conn.execute('DELETE FROM fim_event')
-            conn.execute('DELETE FROM fim_file')
-        except Exception as exception:
-            raise exception
-        finally:
-            conn.commit()
-            conn.vacuum()
-
-    # Clear OSSEC info
-    if int(all_agents):
-        syscheck_files = glob('{0}/queue/syscheck/*'.format(common.ossec_path))
-    else:
-        if agent_id == "000":
-            syscheck_files = ['{0}/queue/syscheck/syscheck'.format(common.ossec_path)]
-        else:
-            agent_info = Agent(agent_id).get_basic_information()
-            syscheck_files = glob('{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, agent_info['name'], agent_info['ip']))
-
-    for syscheck_file in syscheck_files:
-        if path.exists(syscheck_file):
-            remove(syscheck_file)
+    wdb_conn = WazuhDBConnection()
+    for agent in agents:
+        Agent(agent).get_basic_information()  # check if the agent exists
+        wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)
+        # update key fields which contains keys to value 000
+        wdb_conn.execute("agent {} sql update metadata set value = '000' where key like 'fim_db%'".format(agent), update=True)
+        wdb_conn.execute("agent {} sql update metadata set value = '000' where key = 'syscheck-db-completed'".format(agent), update=True)
 
     return "Syscheck database deleted"
 
@@ -109,33 +83,29 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
+    my_agent = Agent(agent_id)
+    agent_version = my_agent.get_basic_information(select={'fields': ['version']})['version']
 
-    # Connection
-    db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-    if not db_agent:
-        raise WazuhException(1600)
+    if agent_version < 'Wazuh v3.7.0':
+        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
+        if not db_agent:
+            raise WazuhException(1600)
+        else:
+            db_agent = db_agent[0]
+        conn = Connection(db_agent)
+        # end time
+        query = "SELECT date_last, log FROM pm_event WHERE log LIKE '% syscheck scan.'"
+        conn.execute(query)
+        return {'end' if log.startswith('End') else 'start': date_last for date_last, log in conn}
     else:
-        db_agent = db_agent[0]
-
-    conn = Connection(db_agent)
-
-    data = {}
-    # end time
-    query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending syscheck scan.'"
-    conn.execute(query)
-    for tuple in conn:
-        data['end'] = tuple[0]
-
-    # start time
-    query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting syscheck scan.'"
-    conn.execute(query)
-    for tuple in conn:
-        data['start'] = tuple[0]
-
-    return data
+        fim_scan_info = my_agent._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
+                                                          filters={'module': 'fim'})[0]
+        end = 'ND' if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        start = 'ND' if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        return {'start': start, 'end': 'ND' if start == 'ND' else end}
 
 
-def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="", filters={}):
+def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
     """
     Return a list of files from the database that match the filters
 
@@ -148,64 +118,31 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    if 'filetype' not in q:
-        q = 'filetype=file' + ('' if not q else ';'+q)
+    parameters = {"date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
+                  "uid", "type"}
+    summary_parameters = {"date", "mtime", "file"}
 
-    db_query = WazuhDBQuerySyscheck(offset=offset, limit=limit, sort=sort, search=search, count=True, get_data=True,
-                                    query=q, agent_id=agent_id, summary=summary, select=select, filters=filters)
-    data = db_query.run()
-    if not summary:
-        data['items'] = [dict(x, permissions=filemode(int(x['octalMode']))) for x in data['items']]
-    return data
+    if select is None:
+        select = summary_parameters if summary else parameters
+    else:
+        select = set(select['fields'])
+        if not select.issubset(parameters):
+            raise WazuhException(1724, "Allowed select fields: {0}. Fields: {1}.".format(', '.join(parameters),
+                                                                                         ','.join(select - parameters)))
 
+    if 'hash' in filters:
+        or_filters = {'md5': filters['hash'], 'sha1': filters['hash'], 'sha256': filters['hash']}
+        del filters['hash']
+    else:
+        or_filters = {}
 
-class WazuhDBQuerySyscheck(WazuhDBQuery):
+    items, totalItems = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
+                                                        sort=sort, search=search, filters=filters, count=True,
+                                                        or_filters=or_filters)
+    for date_field in select & {'mtime', 'date'}:
+        for item in items:
+            # date fields with value 0 are returned as ND
+            item[date_field] = "ND" if item[date_field] == 0 \
+                                    else datetime.fromtimestamp(float(item[date_field])).strftime('%Y-%m-%d %H:%M:%S')
 
-    def __init__(self, agent_id, summary, offset, limit, sort, search, select, query, count, get_data, default_sort_order='ASC', filters={}, min_select_fields=set()):
-
-        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-        if not db_agent:
-            raise WazuhException(1600)
-        else:
-            db_agent = db_agent[0]
-
-        self.summary = False if summary == 'no' or not summary else True
-        if self.summary:
-            select = {'fields':["modificationDate", "event", "file", "scanDate"]} if not select else select
-        else:
-            select = {'fields':["scanDate", "modificationDate", "event", "file", "size", "octalMode", "user", "group", "md5", "sha1",
-                                "group", "inode", "gid", "uid"]} if not select else select
-
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select, default_sort_field='date',
-                              query=query, db_path=db_agent, count=count, get_data=get_data, default_sort_order=default_sort_order,
-                              min_select_fields=min_select_fields, table='fim_event, fim_file', date_fields={'scanDate','modificationDate'},
-                              fields={'scanDate': 'date', 'modificationDate': 'mtime', 'file': 'path', 'size': 'size', 'user': 'uname',
-                                      'group': 'gname', 'event':'fim_event.type', 'md5':'md5', 'sha1':'sha1',
-                                      'inode':'inode','uid':'uid','gid':'gid', 'octalMode':'perm', 'filetype':'fim_file.type'},
-                              filters=filters)
-
-
-    def _default_query(self):
-        return "SELECT {0} FROM " + self.table + " WHERE fim_event.id_file = fim_file.id"
-
-
-    def _get_total_items(self):
-        if self.summary:
-            self.query += ' group by path'
-            self.conn.execute("SELECT COUNT(*) FROM ({0}) AS TEMP".format(self.query.format("max(date)")), self.request)
-            self.total_items = self.conn.fetch()[0]
-        else:
-            WazuhDBQuery._get_total_items(self)
-
-
-    def _get_data(self):
-        if self.summary:
-            self.fields['scanDate'] = 'max(date)'
-        WazuhDBQuery._get_data(self)
-
-
-    def _parse_legacy_filters(self):
-        if 'hash' in self.legacy_filters:
-            self.q += (';' if self.q else '') + '(md5={0},sha1={0})'.format(self.legacy_filters['hash'])
-            del self.legacy_filters['hash']
-        WazuhDBQuery._parse_legacy_filters(self)
+    return {'totalItems': totalItems, 'items': items}

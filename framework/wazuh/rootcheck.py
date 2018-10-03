@@ -17,6 +17,7 @@ fields = {'status': 'status', 'event': 'log', 'oldDay': 'date_first', 'readDay':
 class WazuhDBQueryRootcheck(WazuhDBQuery):
 
     def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, default_sort_field='date_last', filters={}, fields=fields):
+        Agent(agent_id).get_basic_information()  # check if the agent exists
         db_path = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_path:
             raise WazuhException(1600)
@@ -119,6 +120,7 @@ def clear(agent_id=None, all_agents=False):
     if int(all_agents):
         db_agents = glob('{0}/*-*.db'.format(common.database_path_agents))
     else:
+        Agent(agent_id).get_basic_information()  # check if the agent exists
         db_agents = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
 
     if not db_agents:
@@ -228,6 +230,7 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
+    Agent(agent_id).get_basic_information()  # check if the agent exists
     # Connection
     db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
     if not db_agent:
