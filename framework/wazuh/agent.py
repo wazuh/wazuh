@@ -2575,29 +2575,21 @@ class Agent:
 
     @staticmethod
     def get_sync_group(agent_id):
-
-        synced = False
-
         if agent_id == "000":
             raise WazuhException(1703)
         else:
-            # Check if agent exists and it is active
-            agent_info = Agent(agent_id).get_basic_information()
-
-            # Check if it has a multigroup
-            if len(agent_info['group']) > 1:
-                multi_group = ','.join(agent_info['group'])
-                multi_group = hashlib.sha256(multi_group).hexdigest()[:8]
-                agent_group_merged_path = "{0}/{1}/merged.mg".format(common.multi_groups_path, multi_group)
-            else:
-                agent_group_merged_path = "{0}/{1}/merged.mg".format(common.shared_path, agent_info['group'][0])
-            
             try:
-                md5sum = md5(agent_group_merged_path)
-                
-                if md5sum == agent_info['mergedSum']:
-                    synced = True 
-            except Exception:
-                pass
+                # Check if agent exists and it is active
+                agent_info = Agent(agent_id).get_basic_information()
 
-        return {'synced': synced}
+                # Check if it has a multigroup
+                if len(agent_info['group']) > 1:
+                    multi_group = ','.join(agent_info['group'])
+                    multi_group = hashlib.sha256(multi_group).hexdigest()[:8]
+                    agent_group_merged_path = "{0}/{1}/merged.mg".format(common.multi_groups_path, multi_group)
+                else:
+                    agent_group_merged_path = "{0}/{1}/merged.mg".format(common.shared_path, agent_info['group'][0])
+
+                return {'synced': md5(agent_group_merged_path) == agent_info['mergedSum']}
+            except Exception as e:
+                raise WazuhException(1738, str(e))

@@ -123,6 +123,7 @@ class WazuhException(Exception):
         1735: 'Agent version is not compatible with this feature',
         1736: 'Error getting all groups',
         1737: 'Maximum number of groups per multigroup is 256',
+        1738: "Error getting agent's group sync",
 
         # Manager:
 
