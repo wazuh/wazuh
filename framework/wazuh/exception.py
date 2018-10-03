@@ -82,6 +82,7 @@ class WazuhException(Exception):
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
         1653: 'Active response - Agent not available',
+        1654: 'Unable to clear rootcheck database',
 
         # Agents:
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
