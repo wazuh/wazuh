@@ -711,15 +711,16 @@ class ClientStatusCheckThread(ClusterThread):
         ClusterThread.__init__(self, stopper)
         self.master = master
         self.interval = get_cluster_items_master_intervals()['check_worker_lastkeepalive']
+        self.thread_tag = "WorkerChecks"
 
 
     def run(self):
         while not self.stopper.is_set() and self.running:
-            logger.debug("[Master] [ClientStatus] Checking clients statuses.")
+            logger.debug("[Master] [{}] Checking clients statuses.".format(self.thread_tag))
 
             for worker, worker_info in self.master.get_connected_workers().items():
                 if time.time() - worker_info['status']['last_keep_alive'] > get_cluster_items_master_intervals()['max_allowed_time_without_keepalive']:
-                    logger.critical("[Master] [ClientStatus] Last keep alive from worker {} is higher than allowed maximum. Disconnecting.".format(worker))
+                    logger.critical("[Master] [{}] Last keep alive from worker {} is higher than allowed maximum. Disconnecting.".format(worker, self.thread_tag))
                     self.master.remove_worker(worker)
 
             self.sleep(self.interval)
