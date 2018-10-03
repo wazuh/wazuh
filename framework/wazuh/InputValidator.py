@@ -14,7 +14,7 @@ class InputValidator:
     Class to do Input Validation
     """
 
-    def check_name(self, name, regex_str="[A-Za-z0-9\.;:-_=\+!@\(\)][A-Za-z0-9;:-_=\+!@\(\)]{0,254}"):
+    def check_name(self, name, regex_str="[A-Za-z0-9\.;:\-_=\+!@\(\)][A-Za-z0-9;:\-_=\+!@\(\)]{0,254}"):
         regex = re.compile(regex_str)
         matching = regex.match(name)
         if matching:
