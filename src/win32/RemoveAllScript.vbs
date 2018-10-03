@@ -29,7 +29,7 @@ public function removeAll()
    home_dir = Replace(args(0), Chr(34), "") 'APPLICATIONFOLDER
  
    Set objSFO = CreateObject("Scripting.FileSystemObject")
-   If objSFO.fileExists(home_dir & "ossec.conf") Then
+   If objSFO.folderExists(home_dir) Then
       Set folder = objSFO.GetFolder(home_dir)
  
       ' Everything in the application's root folder will be deleted.
