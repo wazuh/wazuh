@@ -88,7 +88,10 @@ def show_group_files(group_id):
 def unset_group(agent_id, group_id=None, quiet=False):
     ans = 'n'
     if not quiet:
-         ans = get_stdin("Do you want to unset the current group of agent '{0}'? [y/N]: ".format(agent_id))
+        if group_id:
+            ans = get_stdin("Do you want to delete the group '{0}' of agent '{1}'? [y/N]: ".format(group_id,agent_id))
+        else:
+            ans = get_stdin("Do you want to delete all groups of agent '{0}'? [y/N]: ".format(agent_id))
     else:
         ans = 'y'
 
@@ -161,7 +164,7 @@ def usage():
     \t-c -g group_id                        # List configuration files in group
     \t
     \t-a -i agent_id -g group_id [-q] [-f]  # Add group to agent
-    \t-r -i agent_id [-q]                   # Remove group from agent
+    \t-r -i agent_id [-q] [-g]              # Remove all groups from agent
     \t-s -i agent_id                        # Show group of agent
     \t-S -i agent_id                        # Show sync status of agent
     \t
