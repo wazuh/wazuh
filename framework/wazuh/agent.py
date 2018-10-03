@@ -2598,12 +2598,7 @@ class Agent:
             except Exception:
                 pass
 
-        if synced:
-            message = "Agent configuration is synced."
-        else:
-            message = "Agent configuration is not synced."
-
-        return {'synced': message}
+        return {'synced': synced}
 
     @staticmethod
     def md5_checksum(file_path):
