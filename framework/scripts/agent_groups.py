@@ -51,8 +51,8 @@ def show_groups():
 def show_group(agent_id):
     agent_info = Agent(id=agent_id).get_basic_information()
 
-    str_group = agent_info['group'] if 'group' in agent_info else "Null"
-    print("The agent '{0}' with ID '{1}' has the group: '{2}'.".format(agent_info['name'], agent_info['id'], str_group))
+    str_group = ', '.join(agent_info['group']) if 'group' in agent_info else "Null"
+    print("The agent '{0}' with ID '{1}' belongs to groups: {2}.".format(agent_info['name'], agent_info['id'], str_group))
 
 def show_synced_agent(agent_id):
 
