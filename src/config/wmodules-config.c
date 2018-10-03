@@ -102,7 +102,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #else
         mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->values[0]);
 #endif
-    } else if (!strcmp(node->values[0], WM_DOCKER_CONTEXT.name)) {
+    } else if (!strcmp(node->values[0], "docker-listener")) {
 #ifndef WIN32
         if (wm_docker_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
