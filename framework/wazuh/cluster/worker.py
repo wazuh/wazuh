@@ -612,9 +612,10 @@ class KeepAliveThread(WorkerThread):
             logger.error("{} Error sending keep alive to master ({}): {}".format(self.thread_tag, self.failed_attempts, e))
             if self.failed_attempts >= self.max_failed_attempts:
                 logger.critical("{} Maximum failed attempts exceeded. Disconnecting worker.".format(self.thread_tag))
-                self.worker_handler.handle_close()
-                self.stopper.set()
+                self.worker_handler.handle_close()  # this stops asyncore loop and closes connection with master
+                self.stopper.set()  # This stops all threads the worker node is running
             else:
+                # this exception is handled by WorkerThread's run function. It cleans and prints an error message.
                 raise e
 
 
