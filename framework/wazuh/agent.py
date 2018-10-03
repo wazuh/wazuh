@@ -3,6 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from operator import itemgetter
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy
 from wazuh.exception import WazuhException
@@ -1025,9 +1026,7 @@ class Agent:
         :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary (agents that cannot been removed), and a message.
         """
 
-
-        agents = Agent.get_agents_overview(filters={'older_than':older_than,'status':status}, limit = None)
-        id_purgeable_agents = [agent['id'] for agent in agents['items']]
+        id_purgeable_agents = list(map(itemgetter('id'), Agent.get_agents_overview(filters={'older_than':older_than,'status':status}, limit = None)['items']))
 
         failed_ids = []
         affected_agents = []
@@ -1035,16 +1034,20 @@ class Agent:
         if list_agent_ids != "all":
             for id in list_agent_ids:
                 try:
+                    my_agent = Agent(id)
+                    my_agent._load_info_from_DB()
                     if id not in id_purgeable_agents:
                         raise WazuhException(1731, "The agent has a status different to '{}' or the specified time frame 'older_than {}' does not apply.".format(status, older_than))
-                    Agent(id).remove(backup, purge)
+                    my_agent.remove(backup, purge)
                     affected_agents.append(id)
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
         else:
             for id in id_purgeable_agents:
                 try:
-                    Agent(id).remove(backup, purge)
+                    my_agent = Agent(id)
+                    my_agent._load_info_from_DB()
+                    my_agent.remove(backup, purge)
                     affected_agents.append(id)
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
