@@ -733,6 +733,9 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         *s_name = '\0';
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
 
+#ifdef WIN32
+        str_lowercase(f_name);
+#endif
         /* Check integrity of the file */
         read_file(f_name, dir_position, NULL, max_depth);
     }

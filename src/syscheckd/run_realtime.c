@@ -139,10 +139,6 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
         snprintf(buf, strlen(filename) + 1, "%s", filename);
     }
 
-#ifdef WIN32
-    str_lowercase(buf);
-#endif
-
     while (c = strrchr(buf, PATH_SEP), c && c != buf) {
         *c = '\0';
 
@@ -383,6 +379,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
 
             /* Check the change */
+            str_lowercase(final_path);
             realtime_checksumfile(final_path, NULL);
         } while (pinfo->NextEntryOffset != 0);
     }

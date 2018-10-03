@@ -562,6 +562,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
                 // Check if it is a known file
+                str_lowercase(path);
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     // Check if it is not a directory
                     if (strchr(path, ':') && check_path_type(path) == 1) {
@@ -642,7 +643,7 @@ add_whodata_evt:
                 if (mask) {
                     if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                         w_evt->mask |= mask;
-
+                        str_lowercase(path);
                         if (w_evt->scan_directory && (mask & FILE_WRITE_DATA)) {
                             if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, path), w_dir) {
                                 // Get the event time
