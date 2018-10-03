@@ -854,6 +854,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
         case -1:
             os_free(wazuhdb_query);
             os_free(response);
+            os_free(msg);
             return db_result;
         }
 
