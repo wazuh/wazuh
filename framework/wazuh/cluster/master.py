@@ -19,8 +19,7 @@ from wazuh.agent import Agent
 from wazuh.cluster import __version__
 from wazuh.cluster.cluster import get_cluster_items, _update_file, \
     decompress_files, get_files_status, \
-    compress_files, compare_files, read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals, \
-    get_cluster_items_communication_intervals
+    compress_files, compare_files, read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
 from wazuh.cluster.communication import FragmentedStringReceiver, FragmentedFileReceiver, Server, ServerHandler, ClusterThread
 from wazuh.cluster.internal_socket import InternalSocketHandler
 from wazuh.cluster.dapi import dapi
@@ -719,7 +718,7 @@ class ClientStatusCheckThread(ClusterThread):
             logger.debug("[Master] [ClientStatus] Checking clients statuses.")
 
             for worker, worker_info in self.master.get_connected_workers().items():
-                if time.time() - worker_info['status']['last_keep_alive'] > get_cluster_items_communication_intervals()['max_allowed_lastkeepalive']:
+                if time.time() - worker_info['status']['last_keep_alive'] > get_cluster_items_master_intervals()['max_allowed_time_without_keepalive']:
                     logger.critical("[Master] [ClientStatus] Last keep alive from worker {} is higher than allowed maximum. Disconnecting.".format(worker))
                     self.master.remove_worker(worker)
 
