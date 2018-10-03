@@ -1616,12 +1616,12 @@ int get_info_attributes(char **attributes, char **values)
     }
 
     while (attributes[k]) {
-        if (!values[k]) {
-            merror("rules_op: Entry info type \"%s\" does not have a value",
-                   attributes[k]);
-            return (-1);
-        } else if (strcasecmp(attributes[k], xml_type) == 0) {
-            if (strcmp(values[k], "text") == 0) {
+        if (strcasecmp(attributes[k], xml_type) == 0) {
+            if (!values[k]) {
+                merror("rules_op: Element info attribute \"%s\" does not have a value",
+                       attributes[k]);
+                return (-1);
+            } else if (strcmp(values[k], "text") == 0) {
                 return (RULEINFODETAIL_TEXT);
             } else if (strcmp(values[k], "link") == 0) {
                 return (RULEINFODETAIL_LINK);
@@ -1629,7 +1629,15 @@ int get_info_attributes(char **attributes, char **values)
                 return (RULEINFODETAIL_CVE);
             } else if (strcmp(values[k], "osvdb") == 0) {
                 return (RULEINFODETAIL_OSVDB);
+            } else {
+                merror("rules_op: Element info attribute \"%s\" has invalid value \"%s\",
+                       attributes[k], values[k]);
+                return (-1);
             }
+        } else {
+            merror("rules_op: Element info has invalid attribute \"%s\"",
+                   attributes[k]);
+            return (-1);
         }
     }
     return (RULEINFODETAIL_TEXT);
