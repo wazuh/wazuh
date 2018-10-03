@@ -5,7 +5,8 @@
 
 from operator import itemgetter
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy
+                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
+                        md5
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
@@ -1472,9 +1473,10 @@ class Agent:
             raise WazuhException(1711, group_id)
 
         # Create group in /etc/shared
-        group_def_path = "{0}/default".format(common.shared_path)
+        group_def_path = "{0}/default/agent.conf".format(common.shared_path)
         try:
-            copytree(group_def_path, group_path)
+            mkdir_with_mode(group_path)
+            copyfile(group_def_path, group_path + "/agent.conf")
             chown_r(group_path, common.ossec_uid, common.ossec_gid)
             chmod_r(group_path, 0o660)
             chmod(group_path, 0o770)
@@ -2573,3 +2575,24 @@ class Agent:
         with open(common.multi_groups_path + "/.metadata", 'a') as f:
             f.write('{0}\n'.format(multi_group))
             f.close()
+
+    @staticmethod
+    def get_sync_group(agent_id):
+        if agent_id == "000":
+            raise WazuhException(1703)
+        else:
+            try:
+                # Check if agent exists and it is active
+                agent_info = Agent(agent_id).get_basic_information()
+
+                # Check if it has a multigroup
+                if len(agent_info['group']) > 1:
+                    multi_group = ','.join(agent_info['group'])
+                    multi_group = hashlib.sha256(multi_group).hexdigest()[:8]
+                    agent_group_merged_path = "{0}/{1}/merged.mg".format(common.multi_groups_path, multi_group)
+                else:
+                    agent_group_merged_path = "{0}/{1}/merged.mg".format(common.shared_path, agent_info['group'][0])
+
+                return {'synced': md5(agent_group_merged_path) == agent_info['mergedSum']}
+            except Exception as e:
+                raise WazuhException(1739, str(e))

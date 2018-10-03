@@ -124,6 +124,7 @@ class WazuhException(Exception):
         1736: 'Error getting all groups',
         1737: 'Maximum number of groups per multigroup is 256',
         1738: 'Agent name is too long. Max length allowed for agent name is 128',
+        1739: "Error getting agent's group sync",
 
         # Manager:
 
