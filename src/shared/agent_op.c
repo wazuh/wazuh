@@ -301,6 +301,7 @@ int set_agent_group(const char * id, const char * group) {
     return 0;
 }
 
+#ifndef WIN32
 /* Create multigroup dir. Returns 0 on success or -1 on failure. */
 int create_multigroup_dir(const char * multigroup) {
     char path[PATH_MAX];
@@ -311,7 +312,7 @@ int create_multigroup_dir(const char * multigroup) {
         return 0;
     }
     mdebug1("Attempting to create multigroup dir: '%s'",multigroup);
-    
+
     if (snprintf(path, PATH_MAX, isChroot() ? MULTIGROUPS_DIR "/%s" : DEFAULTDIR MULTIGROUPS_DIR "/%s", multigroup) >= PATH_MAX) {
         merror("At create_multigroup_dir(): path too large for multigroup '%s'.", multigroup);
         return -1;
@@ -342,9 +343,10 @@ int create_multigroup_dir(const char * multigroup) {
     else{
         closedir(dp);
     }
- 
+
     return 0;
 }
+#endif
 
 /*
  * Parse manager hostname from agent-info file.
