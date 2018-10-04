@@ -12,7 +12,7 @@ about: Test suite for installation.
 
 ## RPM (Linux)
 
-- [ ] Sucessful installation
+- [ ] Successful installation
 - [ ] Check version
 - [ ] Check ruleset version
 - [ ] Service is running after installation
@@ -25,7 +25,7 @@ about: Test suite for installation.
 
 ## DEB (Linux)
 
-- [ ] Sucessful installation
+- [ ] Successful installation
 - [ ] Check version
 - [ ] Check ruleset version
 - [ ] Service is running after installation
@@ -36,45 +36,35 @@ about: Test suite for installation.
 - [ ] Check uninstall (services / files / users)
 - [ ] No errors in ossec.log
 
-## MSI (Windows)
-
-- [ ] Sucessful instalation
-- [ ] Install using the package parameters
-- [ ] WUI doesn't show any strange information
-- [ ] ossec.conf show correct information
-
-## EXE (Windows)
-
-- [ ] Same behavior as installing by MSI
 
 ## Mac OS X
 
-- [ ] Sucessful installation
+- [ ] Successful installation
 - [ ] Check version
 
 ## Solaris (Intel)
 
-- [ ] Sucessful installation
+- [ ] Successful installation
 - [ ] Check version
 
 ## Solaris (SPARC)
 
-- [ ] Sucessful installation
+- [ ] Successful installation
 - [ ] Check version
 
 ## (HP-UX)
 
-- [ ] Sucessful installation
+- [ ] Successful installation
 - [ ] Check version
 
 ## AIX
 
-- [ ] Sucessful installation
+- [ ] Successful installation
 - [ ] Check version
 
 ## Sources
 
-- [ ] Sucessful installation
+- [ ] Successful installation
 - [ ] Check version
 - [ ] Check ruleset version
 - [ ] Service is running after installation

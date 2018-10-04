@@ -24,13 +24,6 @@ about: Test suite for upgrade.
 - [ ] Check that the databases are purged.
 - [ ] Check that the service are restarted.
 
-## (MSI)
-
-- [ ] Install new version.
-- [ ] Check_files.
-- [ ] Check that the service are restarted.
-- [ ] Install from new version at the same version.
-
 ## macOS
 
 - [ ] Install new version.
