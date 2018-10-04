@@ -495,8 +495,8 @@ int wdb_fim_update_date_entry(wdb_t * wdb, const char *path) {
 
     switch (sqlite3_step(stmt)) {
     case SQLITE_DONE:
+        mdebug2("Updated date field for file '%s' to '%ld'", path, (long)time(NULL));
         return 0;
-        break;
     default:
         mdebug1("at wdb_fim_update_date_entry(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
@@ -529,9 +529,10 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
                 file = (char *)sqlite3_column_text(stmt, 0);
                 date = sqlite3_column_int64(stmt, 13);
                 mdebug1("Cleaning DDBB. Deleting entry '%s' date<tscheck3 '%ld'<'%ld'.", file, date, tscheck3);
-
-                if (del_result = wdb_fim_delete(wdb, file), del_result < 0) {
-                    mdebug1("at wdb_fim_clean_old_entries(): Cannot delete Syscheck entry '%s'.", file);
+                if(strcmp(file, "internal_options.conf") != 0 && strcmp(file, "ossec.conf") != 0) {
+                    if (del_result = wdb_fim_delete(wdb, file), del_result < 0) {
+                        mdebug1("at wdb_fim_clean_old_entries(): Cannot delete Syscheck entry '%s'.", file);
+                    }
                 }
                 break;
             default:

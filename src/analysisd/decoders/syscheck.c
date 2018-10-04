@@ -960,7 +960,7 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
-    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck cleandb",
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck cleandb ",
             lf->agent_id
     );
 

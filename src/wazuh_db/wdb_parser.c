@@ -300,7 +300,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         return result;
     } else if (strcmp(curr, "updatedate") == 0) {
-        if (result = wdb_fim_update_date_entry(wdb, curr), result < 0) {
+        if (result = wdb_fim_update_date_entry(wdb, next), result < 0) {
             mdebug1("Cannot update fim date field.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot update fim date field.");
         } else {
