@@ -185,6 +185,9 @@ void sys_os_unix(int queue_fd, const char* LOCATION);
 // OS inventory for Windows
 void sys_os_windows(const char* LOCATION);
 
+//Get the Default network interface for the machine
+int getDefaultNetworkIface();
+
 // Network inventory for BSD based systems
 void sys_network_bsd(int queue_fd, const char* LOCATION);
 

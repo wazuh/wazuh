@@ -474,13 +474,12 @@ char * parse_environment_labels(const wlabel_t label) {
             field = var;
         }
 
-            strncpy(&final[n], field, z);
-            n += z;
+        strncpy(&final[n], field, z);
+        n += z;
 
     }
 
     if (n + (z = strlen(str)) >= OS_COMMENT_MAX) {
-
 
         return strdup(field);
     }
