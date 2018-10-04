@@ -241,7 +241,7 @@ int wdb_metadata_fill_version(sqlite3 *db);
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
 
 /* Update field date for specific fim_entry. */
-int wdb_fim_update_date_entry(wdb_t * wdb, const char *path, const char *date);
+int wdb_fim_update_date_entry(wdb_t * wdb, const char *path);
 
 /* Clear entries prior to the first scan. */
 int wdb_fim_clean_old_entries(wdb_t * wdb);

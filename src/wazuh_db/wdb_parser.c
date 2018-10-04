@@ -300,17 +300,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         return result;
     } else if (strcmp(curr, "updatedate") == 0) {
-        curr = next;
-
-        if (next = strchr(curr, ' '), !next) {
-            mdebug1("Invalid Syscheck query syntax.");
-            mdebug2("Syscheck query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        *next++ = '\0';
-        if (result = wdb_fim_update_date_entry(wdb, curr, next), result < 0) {
+        if (result = wdb_fim_update_date_entry(wdb, curr), result < 0) {
             mdebug1("Cannot update fim date field.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot update fim date field.");
         } else {

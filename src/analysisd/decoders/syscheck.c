@@ -131,7 +131,8 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      * 'checksum'!'extradata' 'filename'
      * or
-     * 'checksum'!'extradata' 'filename'\n'diff-file'
+     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tag filename\nreportdiff"
+     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^ filename\n^^^diff^^^'
      */
     sdb_clean(sdb);
     f_name = wstr_chr(lf->log, ' ');
@@ -927,10 +928,9 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
-    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck updatedate %s %ld",
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck updatedate %s",
             lf->agent_id,
-            file,
-            (long int)lf->time.tv_sec
+            file
     );
 
     db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
@@ -960,9 +960,8 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
-    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck cleandb %ld",
-            lf->agent_id,
-            (unsigned long)lf->time.tv_sec
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck cleandb",
+            lf->agent_id
     );
 
     db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);

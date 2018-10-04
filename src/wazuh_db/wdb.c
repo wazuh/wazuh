@@ -29,7 +29,7 @@ static const char *SQL_STMT[] = {
     "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ? WHERE file = ?;",
     "DELETE FROM fim_entry WHERE file = ?;",
-    "UPDATE fim_entry SET date = ? WHERE file = ?;",
+    "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
     "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date FROM fim_entry WHERE date < ?;",
     "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
