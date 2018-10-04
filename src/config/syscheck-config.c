@@ -541,6 +541,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     restrictfile = NULL;
                 }
                 os_strdup(*values, restrictfile);
+#ifdef WIN32
+                str_lowercase(restrictfile);
+#endif
             }
             /* Check recursion limit */
             else if (strcmp(*attrs, xml_recursion_level) == 0) {
@@ -920,6 +923,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             ExpandEnvironmentStrings(node[i]->content, new_ig, 2047);
 
             free(node[i]->content);
+            str_lowercase(new_ig);
             node[i]->content = new_ig;
 #endif
             /* Add if regex */
