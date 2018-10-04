@@ -959,6 +959,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
     FILE *fp;
 
     sk_sum_t sum;
+    memset(&sum, 0, sizeof(sk_sum_t));
 
     if (!(fp = fopen(path, "r"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
