@@ -4,7 +4,7 @@ PWD=$(pwd)
 API_KEY=""
 REPORT_URL="https://www.abuseipdb.com/report/json?"
 # If you want to change the message, you have to encode it
-COMMENT="Automatic%20report%20generated%20by%20OSSEC"
+COMMENT="Automatic%20report%20generated%20by%20Wazuh"
 IP="$3"
 # Web Attack
 CATEGORY="21"
