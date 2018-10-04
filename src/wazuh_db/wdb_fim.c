@@ -249,6 +249,8 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
     sqlite3_stmt * stmt;
     sk_sum_t sum;
 
+    memset(&sum, 0, sizeof(sk_sum_t));
+
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_LOAD) < 0) {
         merror("at wdb_syscheck_load(): cannot cache statement");
         return -1;
@@ -298,6 +300,8 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
 
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file) {
     sk_sum_t sum;
+
+    memset(&sum, 0, sizeof(sk_sum_t));
 
     if (sk_decode_extradata(&sum, checksum) < 0) {
         mdebug1("At wdb_syscheck_save(): at sk_decode_extradata(): cannot decode checksum");
