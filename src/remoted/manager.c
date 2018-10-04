@@ -417,13 +417,13 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
         dp = opendir(SHAREDCFG_DIR);
 
         if (!dp) {
-            merror("Opening directory: '%s': %s", dir, strerror(errno));
+            mdebug2("Opening directory: '%s': %s", dir, strerror(errno));
             return;
         }
 
         if (files = wreaddir(dir), !files) {
             if (errno != ENOTDIR) {
-                merror("At c_multi_group() 1: Could not open directory '%s'", dir);
+                mdebug2("At c_multi_group(): Could not open directory '%s'", dir);
                 closedir(dp);
                 return;
             }
@@ -466,12 +466,12 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     dp = opendir(MULTIGROUPS_DIR);
 
     if (!dp) {
-        merror("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
+        mdebug2("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
         return;
     }
 
     if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", hash_multigroup) > PATH_MAX) {
-        merror("At c_multi_group(): path too long.");
+        mdebug2("At c_multi_group(): path too long.");
         closedir(dp);
         return;
     }
@@ -479,7 +479,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     // Try to open directory, avoid TOCTOU hazard
     if (subdir = wreaddir(path), !subdir) {
         if (errno != ENOTDIR) {
-            mdebug1("At c_multi_group() 2: Could not open directory '%s'", path);
+            mdebug2("At c_multi_group(): Could not open directory '%s'", path);
         }
         closedir(dp);
         return;
@@ -545,7 +545,7 @@ static void c_files()
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
 
-        merror("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
+        mdebug1("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
         return;
     }
 
