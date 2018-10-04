@@ -833,6 +833,19 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 snprintf(metadata_multigroup,OS_SIZE_65536 - 1,"%s\n",group);
                 fwrite(metadata_multigroup,1,strlen(metadata_multigroup),fp_metadata);
                 fclose(fp_metadata);
+
+                uid_t uid = Privsep_GetUser(USER);
+                gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+
+                if (chown(metadata_path, uid, gid) == -1) {
+                    merror(CHOWN_ERROR, metadata_path, errno, strerror(errno));
+                    return;
+                }
+
+                if(chmod(metadata_path,0660) < 0){
+                    mdebug2("At read_controlmsg(): Error in chmod setting permissions for path: %s",metadata_path);
+                    return;
+                }
             }
         }else{
             /* Check if the multigroup is in .metadata */
