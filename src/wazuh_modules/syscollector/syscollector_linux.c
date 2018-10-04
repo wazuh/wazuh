@@ -1195,7 +1195,21 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             } else {
                 cJSON_Delete(ipv4_broadcast);
             }
+
+            /* Get Default Gateway */
+            char *gateway;
+            gateway = get_default_gateway(ifaces_list[i]);
+            cJSON_AddStringToObject(ipv4, "gateway", gateway);
+            free(gateway);
+
+            /* Get DHCP status for IPv4 */
+            char *dhcp_v4;
+            dhcp_v4 = check_dhcp(ifaces_list[i], AF_INET);
+            cJSON_AddStringToObject(ipv4, "DHCP", dhcp_v4);
+            free(dhcp_v4);
+
             cJSON_AddItemToObject(interface, "IPv4", ipv4);
+
         } else {
             cJSON_Delete(ipv4_addr);
             cJSON_Delete(ipv4_netmask);
@@ -1215,6 +1229,13 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             } else {
                 cJSON_Delete(ipv6_broadcast);
             }
+
+            /* Get DHCP status for IPv6 */
+            char *dhcp_v6;
+            dhcp_v6 = check_dhcp(ifaces_list[i], AF_INET6);
+            cJSON_AddStringToObject(ipv6, "DHCP", dhcp_v6);
+            free(dhcp_v6);
+
             cJSON_AddItemToObject(interface, "IPv6", ipv6);
         } else {
             cJSON_Delete(ipv6_addr);
@@ -1222,23 +1243,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             cJSON_Delete(ipv6_broadcast);
             cJSON_Delete(ipv6);
         }
-
-        /* Get Default Gateway */
-        char *gateway;
-        gateway = get_default_gateway(ifaces_list[i]);
-        cJSON_AddStringToObject(ipv4, "gateway", gateway);
-        free(gateway);
-
-        /* Get DHCP status for IPv4 */
-        char *dhcp_status;
-        dhcp_status = check_dhcp(ifaces_list[i], AF_INET);
-        cJSON_AddStringToObject(ipv4, "DHCP", dhcp_status);
-        free(dhcp_status);
-
-        /* Get DHCP status for IPv6 */
-        dhcp_status = check_dhcp(ifaces_list[i], AF_INET6);
-        cJSON_AddStringToObject(ipv6, "DHCP", dhcp_status);
-        free(dhcp_status);
 
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
