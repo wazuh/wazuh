@@ -481,7 +481,7 @@ int wdb_fim_delete(wdb_t * wdb, const char * path) {
     }
 }
 
-int wdb_fim_update_date_entry(wdb_t * wdb, const char *path, const char *date) {
+int wdb_fim_update_date_entry(wdb_t * wdb, const char *path) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_FIM_UPDATE_DATE) < 0) {
@@ -491,13 +491,12 @@ int wdb_fim_update_date_entry(wdb_t * wdb, const char *path, const char *date) {
 
     stmt = wdb->stmt[WDB_STMT_FIM_UPDATE_DATE];
 
-    sqlite3_bind_text(stmt, 1, date, -1, NULL);
-    sqlite3_bind_text(stmt, 2, path, -1, NULL);
+    sqlite3_bind_text(stmt, 1, path, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
     case SQLITE_DONE:
+        mdebug2("Updated date field for file '%s' to '%ld'", path, (long)time(NULL));
         return 0;
-        break;
     default:
         mdebug1("at wdb_fim_update_date_entry(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
@@ -509,6 +508,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
     char *file;
     int result, del_result;
     long tscheck3 = 0;
+    long date;
 
     if(result = wdb_scan_info_get (wdb, "fim", "fim_third_check", &tscheck3), result < 0) {
         mdebug1("at wdb_fim_clean_old_entries(): Cannot get scan_info entry");
@@ -527,10 +527,12 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
             case SQLITE_ROW:
                 //call to delete
                 file = (char *)sqlite3_column_text(stmt, 0);
-                mdebug1("Cleaning DDBB. Deleting entry '%s'.", file);
-
-                if (del_result = wdb_fim_delete(wdb, file), del_result < 0) {
-                    mdebug1("at wdb_fim_clean_old_entries(): Cannot delete Syscheck entry '%s'.", file);
+                date = sqlite3_column_int64(stmt, 13);
+                mdebug1("Cleaning DDBB. Deleting entry '%s' date<tscheck3 '%ld'<'%ld'.", file, date, tscheck3);
+                if(strcmp(file, "internal_options.conf") != 0 && strcmp(file, "ossec.conf") != 0) {
+                    if (del_result = wdb_fim_delete(wdb, file), del_result < 0) {
+                        mdebug1("at wdb_fim_clean_old_entries(): Cannot delete Syscheck entry '%s'.", file);
+                    }
                 }
                 break;
             default:
