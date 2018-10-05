@@ -7,9 +7,9 @@
 # and/or modify it under the terms of GPLv2.
 
 import sys
-import sqlite3
 from getopt import getopt, GetoptError
 from os.path import isfile
+import os
 import socket
 import struct
 import logging
@@ -18,20 +18,20 @@ from json import loads
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', \
                     level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
+if os.environ['TERM'] == "xterm-256color":
+    logging.addLevelName(logging.ERROR, '[\033[31mERROR\033[0m]')
+    logging.addLevelName(logging.WARNING, '[\033[33mWARNING\033[0m]')
+    logging.addLevelName(logging.INFO, '[\033[32mINFO\033[0m]')
+    logging.addLevelName(logging.DEBUG, '[\033[34mDEBUG\033[0m]')
+else:
+    logging.addLevelName(logging.ERROR, '[ERROR]')
+    logging.addLevelName(logging.WARNING, '[WARNING]')
+    logging.addLevelName(logging.INFO, '[INFO]')
+    logging.addLevelName(logging.DEBUG, '[DEBUG]')
+
 _ossec_path = '/var/ossec'
 _verbose = True
 _force = False
-
-# Check minimum version of SQLite module: 2.6.0
-
-if sqlite3.version < '2.6.0':
-    if __name__ == '__main__':
-        sys.stderr.write("ERROR: Required minimal version of SQLite module 2.6.0\n" + \
-                         "Please update the module version or get Python 2.7\n")
-        sys.exit(1)
-    else:
-        raise ImportError("Minimal version of SQLite module 2.6.0 required")
-
 
 def _get_agents():
     try:
@@ -131,6 +131,37 @@ def insert_fim(agent, fim_array, stype, wdb_socket):
         return 0, data
 
 
+def check_db_completed(agent, wdb_socket):
+    msg = 'agent {0:03d} syscheck scan_info_get end_scan'.format(agent)
+    logging.debug(msg)
+    wdb_socket.send(struct.pack('<I', len(msg)) + msg)
+
+    try:
+        size = struct.unpack('<I', wdb_socket.recv(4, socket.MSG_WAITALL))[0]
+        data = wdb_socket.recv(size, socket.MSG_WAITALL).decode()
+    except IndexError:
+        raise Exception("Data could not be received")
+
+    parts = data.split()
+    logging.debug("Received: " + data)
+    return len(parts) == 2 and parts[0] == 'ok' and int(parts[1]) != 0
+
+
+def set_db_completed(agent, mtime, wdb_socket):
+    msg = 'agent {0:03d} syscheck scan_info_update first_end {1}'.format(agent, int(mtime))
+    logging.debug(msg)
+    wdb_socket.send(struct.pack('<I', len(msg)) + msg)
+
+    try:
+        size = struct.unpack('<I', wdb_socket.recv(4, socket.MSG_WAITALL))[0]
+        data = wdb_socket.recv(size, socket.MSG_WAITALL).decode()
+    except IndexError:
+        raise Exception("Data could not be received")
+
+    logging.debug("Received: " + data)
+    return data.startswith('ok')
+
+
 def _print_help():
     print('''
     FIM database upgrade tool for Wazuh
@@ -179,7 +210,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if _verbose:
-        logging.info("Connected to WazuhDB socket ({0})".format(_wdb_socket))
+        logging.debug("Connected to WazuhDB socket ({0})".format(_wdb_socket))
 
     # Manager DB
     count = 0
@@ -212,6 +243,22 @@ if __name__ == '__main__':
                 logging.info("Added {0} file entries in manager database.".format(count))
             if error > 0:
                 logging.warn("[{0}/{1}] {2} file entries were not added.".format(pos, total_agents, error))
+
+    mancptfile = '{0}/.syscheck.cpt'.format(_syscheck_dir)
+
+    try:
+        mtime = os.stat(mancptfile).st_mtime
+        if _verbose:
+            logging.info("Setting FIM database for manager as completed...")
+
+        if (_force or not check_db_completed(0, s)):
+            if not set_db_completed(0, mtime, s):
+                logging.warn("Cannot set manager database as completed.")
+        else:
+            logging.debug("Scan end mark already set.")
+
+    except NameError:
+        pass
 
     agents = _get_agents()
     total_agents = len(agents)
@@ -281,6 +328,25 @@ if __name__ == '__main__':
                     logging.info("[{0}/{1}] Added {2} registry entries in agent '{3}' database.".format(pos, total_agents, count, str(agt[0]).zfill(3)))
                 if error > 0:
                     logging.warn("[{0}/{1}] {2} registry entries were not added.".format(pos, total_agents, error))
+
+        # DB complete file
+        cptfile = "{0}/.({1}) {2}->syscheck.cpt".format(_syscheck_dir, agt[1], agt[2])
+
+        try:
+            mtime = os.stat(cptfile).st_mtime
+
+            if _verbose:
+                logging.info("Setting FIM database for agent '{0:03d}' as completed...".format(agt[0]))
+
+            if (_force or not check_db_completed(agt[0], s)):
+                if not set_db_completed(agt[0], mtime, s):
+                    logging.warn("Cannot set agent '{0:03d}' database as completed.".format(agt[0]))
+            else:
+                logging.debug("Scan end mark already set.")
+
+        except NameError:
+            pass
+
         pos = pos + 1
 
     s.close()
