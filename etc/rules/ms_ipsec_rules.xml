@@ -3,7 +3,7 @@
 
 <group name="windows, ipsec,">
 
-  <rule id="18651" level="3">
+  <rule id="18651" level="8">
     <if_sid>18104</if_sid>
     <id>^4646$</id>
     <description>IKE DoS-prevention mode started</description>
@@ -11,7 +11,7 @@
   </rule>
 
 
-  <rule id="18652" level="2">
+  <rule id="18652" level="8">
     <if_sid>18105</if_sid>
     <id>^4652$|^4653$</id>
     <description>An IPsec Main Mode negotiation failed</description>
@@ -19,7 +19,7 @@
    </rule>
 
 
-  <rule id="18653" level="2">
+  <rule id="18653" level="8">
     <if_sid>18105</if_sid>
     <id>^4654$</id>
     <description>An IPsec Quick Mode negotiation failed</description>
@@ -27,7 +27,7 @@
   </rule>
 
 	
-  <rule id="18654" level="2">
+  <rule id="18654" level="8">
     <if_sid>18104</if_sid>
     <id>^4983$|^4984$</id>
     <description>An IPsec Extended Mode negotiation failed</description>
@@ -35,7 +35,7 @@
   </rule>
 
   
-  <rule id="18655" level="2">
+  <rule id="18655" level="4">
     <if_sid>18104</if_sid>
     <id>^4960$</id>
     <description>IPsec dropped an inbound packet that failed an integrity check</description>
@@ -43,7 +43,7 @@
   </rule>
 
 
-  <rule id="18656" level="2">
+  <rule id="18656" level="8">
     <if_sid>18104</if_sid>
     <id>^4961$|^4962$</id>
     <description>IPsec dropped an inbound packet that failed a replay check</description>
@@ -59,7 +59,7 @@
   </rule>
 
 
-  <rule id="18658" level="7">
+  <rule id="18658" level="4">
     <if_sid>18104</if_sid>
     <id>^4965$</id>
     <description>IPsec received a packet from a remote computer with an incorrect Security Parameter Index (SPI)</description>
