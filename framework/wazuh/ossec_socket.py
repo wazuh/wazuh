@@ -53,17 +53,13 @@ class OssecSocketJSON(OssecSocket):
     MAX_SIZE = 65536
 
     def __init__(self, path):
-        super().__init__(path)
+        OssecSocket.__init__(self, path)
 
     def send(self, msg):
-        return super().send(dumps(msg).encode())
+        return OssecSocket.send(self, dumps(msg).encode())
 
     def receive(self):
-        try:
-            chunk = super().receive().decode()
-            response = loads(super().receive().decode())
-        except:
-            raise WazuhException(1014, self.path)
+        response = loads(OssecSocket.receive(self).decode())
 
         if 'error' in response.keys():
             if response['error'] != 0:

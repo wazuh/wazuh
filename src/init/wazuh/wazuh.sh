@@ -57,10 +57,16 @@ WazuhUpgrade()
     rm -f $DIRECTORY/var/db/.template.db*
     rm -f $DIRECTORY/var/db/agents/*
 
-    # Remove existing SQLite databases for Wazuh DB
+    # Remove existing SQLite databases for Wazuh DB, only if upgrading from 3.2..3.6
 
-    rm -f $DIRECTORY/queue/db/*.db*
-    rm -f $DIRECTORY/queue/db/.template.db
+    MAJOR=$(echo $USER_OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+    MINOR=$(echo $USER_OLD_VERSION | cut -d. -f2)
+
+    if [ $MAJOR = 3 ] && [ $MINOR -lt 7 ]
+    then
+        rm -f $DIRECTORY/queue/db/*.db*
+        rm -f $DIRECTORY/queue/db/.template.db
+    fi
 
     # Remove existing SQLite databases for vulnerability-detector
 

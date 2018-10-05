@@ -417,13 +417,13 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
         dp = opendir(SHAREDCFG_DIR);
 
         if (!dp) {
-            merror("Opening directory: '%s': %s", dir, strerror(errno));
+            mdebug2("Opening directory: '%s': %s", dir, strerror(errno));
             return;
         }
 
         if (files = wreaddir(dir), !files) {
             if (errno != ENOTDIR) {
-                merror("At c_multi_group() 1: Could not open directory '%s'", dir);
+                mdebug2("At c_multi_group(): Could not open directory '%s'", dir);
                 closedir(dp);
                 return;
             }
@@ -466,12 +466,12 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     dp = opendir(MULTIGROUPS_DIR);
 
     if (!dp) {
-        merror("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
+        mdebug2("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
         return;
     }
 
     if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", hash_multigroup) > PATH_MAX) {
-        merror("At c_multi_group(): path too long.");
+        mdebug2("At c_multi_group(): path too long.");
         closedir(dp);
         return;
     }
@@ -479,7 +479,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     // Try to open directory, avoid TOCTOU hazard
     if (subdir = wreaddir(path), !subdir) {
         if (errno != ENOTDIR) {
-            mdebug1("At c_multi_group() 2: Could not open directory '%s'", path);
+            mdebug2("At c_multi_group(): Could not open directory '%s'", path);
         }
         closedir(dp);
         return;
@@ -545,7 +545,7 @@ static void c_files()
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
 
-        merror("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
+        mdebug1("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
         return;
     }
 
@@ -833,6 +833,19 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 snprintf(metadata_multigroup,OS_SIZE_65536 - 1,"%s\n",group);
                 fwrite(metadata_multigroup,1,strlen(metadata_multigroup),fp_metadata);
                 fclose(fp_metadata);
+
+                uid_t uid = Privsep_GetUser(USER);
+                gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+
+                if (chown(metadata_path, uid, gid) == -1) {
+                    merror(CHOWN_ERROR, metadata_path, errno, strerror(errno));
+                    return;
+                }
+
+                if(chmod(metadata_path,0660) < 0){
+                    mdebug2("At read_controlmsg(): Error in chmod setting permissions for path: %s",metadata_path);
+                    return;
+                }
             }
         }else{
             /* Check if the multigroup is in .metadata */
