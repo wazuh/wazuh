@@ -241,6 +241,7 @@ cJSON *getARConfig(void) {
         }
         cJSON_AddItemToObject(ar,"repeated_offenders",rot);
     }
+    if (enable_ca_verification) cJSON_AddStringToObject(ar,"ca_verification","yes"); else cJSON_AddStringToObject(ar,"ca_verification","no");
 
     cJSON_AddItemToObject(root,"active-response",ar);
 
