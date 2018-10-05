@@ -30,6 +30,7 @@ To check in every test:
 - [ ] Windows Vista
 - [ ] Windows Server 2008
 - [ ] Windows 7
+- [ ] Windows Server 2012
 - [ ] Windows 8/8.1
 - [ ] Windows Server 2016
 - [ ] Windows 10
@@ -51,6 +52,7 @@ To check in every test:
 - [ ] Windows Vista
 - [ ] Windows Server 2008
 - [ ] Windows 7
+- [ ] Windows Server 2012
 - [ ] Windows 8/8.1
 - [ ] Windows Server 2016
 - [ ] Windows 10
@@ -77,6 +79,7 @@ To check in every test:
 - [ ] Windows Vista
 - [ ] Windows Server 2008
 - [ ] Windows 7
+- [ ] Windows Server 2012
 - [ ] Windows 8/8.1
 - [ ] Windows Server 2016
 - [ ] Windows 10
