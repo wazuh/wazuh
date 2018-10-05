@@ -86,12 +86,12 @@ int main(int argc, char **argv)
     const char *sender_ip = NULL;
     int use_src_ip = 0;
     char lhostname[512 + 1];
-    char buf[4096 + 1];
+    char buf[OS_SIZE_65536 + OS_SIZE_4096  + 1];
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
     bio_err = 0;
-    buf[4096] = '\0';
+    buf[OS_SIZE_65536 + OS_SIZE_4096 ] = '\0';
     int debug_level = 0;
 
 #ifdef WIN32
@@ -354,9 +354,9 @@ int main(int argc, char **argv)
     }
 
     if(centralized_group){
-        char opt_buf[256] = {0};
-        snprintf(opt_buf,254," G:'%s'",centralized_group);
-        strncat(buf,opt_buf,254);
+        char opt_buf[OS_SIZE_65536] = {0};
+        snprintf(opt_buf,OS_SIZE_65536," G:'%s'",centralized_group);
+        strncat(buf,opt_buf,OS_SIZE_65536);
     }
 
     if(sender_ip){
