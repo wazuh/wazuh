@@ -38,6 +38,8 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb);
 int fim_database_clean (Eventinfo *lf, _sdb *sdb);
 // Clean sdb memory
 void sdb_clean(_sdb *localsdb);
+// Get timestamp for last scan from wazuhdb
+int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
 
 
 // Initialize the necessary information to process the syscheck information
@@ -205,6 +207,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     sk_sum_t oldsum = { .size = NULL };
     sk_sum_t newsum = { .size = NULL };
     time_t *end_first_scan;
+    time_t end_scan;
 
     memset(&oldsum, 0, sizeof(sk_sum_t));
     memset(&newsum, 0, sizeof(sk_sum_t));
@@ -318,7 +321,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     *ttype,
                     new_check_sum,
                     changes,
-                    lf->time.tv_nsec,
+                    lf->time.tv_sec,
                     f_name
             );
             os_free(response);
@@ -341,23 +344,41 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             mdebug2("File %s saved/updated in FIM DDBB", f_name);
 
             if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), !end_first_scan) {
-                mdebug2("Alert discarded, first scan. File '%s'", f_name);
-                sk_sum_clean(&newsum);
-                os_free(wazuhdb_query);
-                os_free(new_check_sum);
-                os_free(old_check_sum);
-                os_free(response);
-                return (0);
+                fim_get_scantime (&end_scan, lf, sdb);
+                os_calloc(1, sizeof(time_t), end_first_scan);
+                *end_first_scan = end_scan;
+
+                if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan) <= 0) {
+                    os_free(end_first_scan);
+                    merror("Unable to add scan_info to hash table for agent: %s",
+                            lf->agent_id);
+                }
+
+                if(end_scan == 0) {
+                    mdebug2("Alert discarded, first scan. File '%s'", f_name);
+                    sk_sum_clean(&newsum);
+                    os_free(wazuhdb_query);
+                    os_free(new_check_sum);
+                    os_free(old_check_sum);
+                    os_free(response);
+                    return (0);
+                } else {
+                    mdebug2("End end_scan is '%ld' (lf->time: '%ld')", end_scan, lf->time.tv_sec);
+                }
+            } else {
+                mdebug2("End end_first_scan is '%ld' (lf->time: '%ld')", *end_first_scan, lf->time.tv_sec);
             }
 
-            if(lf->time.tv_sec < *end_first_scan) {
-                mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
-                sk_sum_clean(&newsum);
-                os_free(wazuhdb_query);
-                os_free(new_check_sum);
-                os_free(old_check_sum);
-                os_free(response);
-                return (0);
+            if(end_first_scan) {
+                if(lf->time.tv_sec < *end_first_scan) {
+                    mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
+                    sk_sum_clean(&newsum);
+                    os_free(wazuhdb_query);
+                    os_free(new_check_sum);
+                    os_free(old_check_sum);
+                    os_free(response);
+                    return (0);
+                }
             }
 
             if(Config.syscheck_alert_new == 0) {
@@ -931,7 +952,6 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 }
 
 int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
-    // If any entry has a date less than last_check it should be deleted.
     char *wazuhdb_query = NULL;
     char *response = NULL;
     int db_result;
@@ -992,4 +1012,40 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
     os_free(response);
     return (1);
 
+}
+
+int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
+    char *wazuhdb_query = NULL;
+    char *response = NULL;
+    char *output;
+    int db_result;
+
+    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_get end_scan",
+            lf->agent_id
+    );
+
+    db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
+
+    switch (db_result) {
+    case -2:
+        merror("FIM decoder: Bad result getting scan date.");
+        // Fallthrough
+    case -1:
+        os_free(wazuhdb_query);
+        os_free(response);
+        return (-1);
+    }
+
+    output = strchr(response, ' ');
+    *(output++) = '\0';
+
+    *ts = atol(output);
+
+    mdebug2("FIM end_scan '%ld'", *ts);
+
+    os_free(wazuhdb_query);
+    os_free(response);
+    return (1);
 }
