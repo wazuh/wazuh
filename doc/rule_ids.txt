@@ -61,6 +61,8 @@
 17100 - 17399 Policy
 
 18100 - 18499 Windows system
+18500 - 18650 Sysmon rules
+18651 - 18750 MS IPSec rules
 
 20100 - 20299 IDS
 20300 - 20499 IDS (Snort specific)
