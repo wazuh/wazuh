@@ -28,7 +28,7 @@
     <id>^5028$</id>
     <description>Windows Firewall was unable to parse the new security policy. Windows Firewall will continue to enforce the current policy</description>
     <group>windows_firewall</group>
-   </rule>
+  </rule>
 
   <rule id="53635" level="4">
     <if_sid>18104</if_sid>
@@ -114,7 +114,7 @@
     <group>windows_firewall</group>
   </rule>
 
-   <rule id="53647" level="8">
+  <rule id="53647" level="8">
     <if_sid>18104</if_sid>
     <id>^4950$</id>
     <description>A Windows Firewall setting was changed</description>
