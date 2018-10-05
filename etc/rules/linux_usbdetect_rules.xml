@@ -18,26 +18,26 @@
 
 	
 	<rule id="110303" level="8">
-                <if_sid>110301</if_sid>
-                <match>new low-speed USB device</match>
-        	<description>New Low-Speed USB Device was connected.</description>
-                <group>linux,</group>
-        </rule>
+		<if_sid>110301</if_sid>
+		<match>new low-speed USB device</match>
+		<description>New Low-Speed USB Device was connected.</description>
+		<group>linux,</group>
+	</rule>
 
 
 	<rule id="110304" level="8">
-                <if_sid>110301</if_sid>
-                <match>new high-speed USB device</match>
-        	<description>New High-Speed USB Device was connected</description>
-                <group>linux,</group>
-        </rule>
+		<if_sid>110301</if_sid>
+		<match>new high-speed USB device</match>
+		<description>New High-Speed USB Device was connected</description>
+		<group>linux,</group>
+	</rule>
 
 	
 	<rule id="110305" level="3">
 		<if_sid>110301</if_sid>
-                <match>USB disconnect</match>
-                <description>USB device was disconnected</description>
+		<match>USB disconnect</match>
+		<description>USB device was disconnected</description>
 		<group>linux,</group>
-        </rule>
+	</rule>
 
 </group>
