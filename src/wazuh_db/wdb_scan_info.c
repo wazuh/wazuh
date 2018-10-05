@@ -214,6 +214,7 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
             return 1;
             break;
         case SQLITE_DONE:
+           *output = 0;
             return 0;
             break;
         default:
