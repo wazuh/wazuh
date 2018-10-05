@@ -1,6 +1,6 @@
 <!-- OSSEC USB-detection Rule for Windows 2016 / Windows 10 (previous versions does not log usb connection) - https://docs.microsoft.com/en-us/windows/security/threat-protection/auditing/event-6416 -->
 
-<group name ="windows,usb,">
+<group name="windows,usb,">
   <rule id="53626" level="8">
     <if_sid>18104</if_sid>
     <id>^6416$</id>
