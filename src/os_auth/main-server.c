@@ -604,7 +604,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char response[2048];
     SSL *ssl;
     char *id_exist = NULL;
-    char buf[4096 + 1];
+    char buf[OS_SIZE_65536 + OS_SIZE_4096 + 1] = {0};
     int index;
 
     authd_sigblock();
@@ -742,7 +742,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             {
                 
                 char group_path[PATH_MAX] = {0};
-                sscanf(tmpstr," G:\'%255[^\']\"",centralized_group);
+                sscanf(tmpstr," G:\'%65535[^\']\"",centralized_group);
 
                 const char delim[2] = ",";
                 char *multigroup = strchr(centralized_group,MULTIGROUP_SEPARATOR);
@@ -841,8 +841,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     }
                     closedir(group_dir);
                 }else{
-                    char multi_group_cpy[OS_SIZE_65536 + 1] = {0};
-                    snprintf(multi_group_cpy,OS_SIZE_65536,"%s",centralized_group);
+                    char *multi_group_cpy = NULL;
+                    os_strdup(centralized_group, multi_group_cpy);
                     
                     char *group = strtok(centralized_group, delim);
                     int error = 0;
@@ -850,7 +850,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
                    
                     mdebug1("Multigroup: '%s'",multi_group_cpy);
-                    while( group != NULL) {
+                    while( group != NULL ) {
                         DIR * dp;
                         char dir[PATH_MAX + 1] = {0};
                         error = 0;
@@ -864,12 +864,13 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                             SSL_write(ssl, response, strlen(response));
                             SSL_free(ssl);
                             close(client.socket);
-                            continue;
+                            error = 1;
+                            break;
                         }
 
                         /* Validate the group name */
                         int valid = 0;
-                        valid = w_validate_group_name(centralized_group);
+                        valid = w_validate_group_name(group);
 
                         switch(valid){
                             case -2:
@@ -880,7 +881,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                                 SSL_write(ssl, response, strlen(response));
                                 SSL_free(ssl);
                                 close(client.socket);
-                                continue;
+                                error = 1;
+                                break;
+                                
                             
                             case -1:
                                 merror("Invalid group name: %.255s... ,",centralized_group);
@@ -890,7 +893,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                                 SSL_write(ssl, response, strlen(response));
                                 SSL_free(ssl);
                                 close(client.socket);
-                                continue;
+                                error = 1;
+                                break;
+                                
                         }
 
                         snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : DEFAULTDIR SHAREDCFG_DIR"/%s", group);
@@ -915,6 +920,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     }
 
                     snprintf(centralized_group,OS_SIZE_65536,"%s",multi_group_cpy);
+                    free(multi_group_cpy);
+
                     if(error){
                         continue;
                     }

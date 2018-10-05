@@ -416,7 +416,7 @@ int w_validate_group_name(const char *group){
 
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
-
+ 
     if(!multigroup && (strlen(group) > MAX_GROUP_NAME)){
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
