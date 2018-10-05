@@ -334,18 +334,29 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     int r;
+    char s_perm[16];
+    char s_mtime[16];
+    char s_inode[16];
 
-    r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld:%s!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
+    if(sum->perm) {
+        snprintf(s_perm, sizeof(s_perm), "%d", sum->perm);
+    } else {
+        *s_perm = '\0';
+    }
+    snprintf(s_mtime, sizeof(s_mtime), "%ld", sum->mtime);
+    snprintf(s_inode, sizeof(s_inode), "%ld", sum->inode);
+
+    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
             sum->size,
-            sum->perm,
+            s_perm,
             sum->uid,
             sum->gid,
             sum->md5,
             sum->sha1,
             sum->uname? sum->uname : "",
             sum->gname? sum->gname : "",
-            sum->mtime? sum->mtime : 0,
-            sum->inode? sum->inode : 0,
+            sum->mtime? s_mtime : "",
+            sum->inode? s_inode : "",
             sum->sha256? sum->sha256 : "",
             sum->changes,
             sum->date_alert

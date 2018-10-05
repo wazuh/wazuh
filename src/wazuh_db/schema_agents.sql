@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     uname TEXT,
     gname TEXT,
     mtime INTEGER,
-    inode TEXT,
+    inode INTEGER,
     sha256 TEXT
 );
 

@@ -170,7 +170,6 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
 
         while (*ff_ig) {
             if (strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0) {
-                os_free(lf->data);
                 mdebug1("Ignoring file '%s'", f_name);;
                 return (0);
             }
@@ -225,7 +224,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         // Fallthrough
     case -1:
         lf->data = NULL;
-        os_free(lf->data);
         os_free(new_check_sum);
         os_free(wazuhdb_query);
         os_free(response);
@@ -247,7 +245,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     // Checksum match, we can just return and keep going
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
         mdebug1("Alert discarded '%s' same check_sum", f_name);
-        os_free(lf->data);
         fim_update_date (f_name, lf, sdb);
         os_free(wazuhdb_query);
         os_free(new_check_sum);
@@ -299,7 +296,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 // Alert discarded, frequency exceeded
                 if (changes == -1) {
                     mdebug1("Alert discarded '%s' frequency exceeded", f_name);
-                    os_free(lf->data);
                     os_free(wazuhdb_query);
                     os_free(new_check_sum);
                     os_free(old_check_sum);
@@ -346,7 +342,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), !end_first_scan) {
                 mdebug2("Alert discarded, first scan. File '%s'", f_name);
-                os_free(lf->data);
                 sk_sum_clean(&newsum);
                 os_free(wazuhdb_query);
                 os_free(new_check_sum);
@@ -357,7 +352,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             if(lf->time.tv_sec < *end_first_scan) {
                 mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
-                os_free(lf->data);
                 sk_sum_clean(&newsum);
                 os_free(wazuhdb_query);
                 os_free(new_check_sum);
@@ -368,7 +362,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             if(Config.syscheck_alert_new == 0) {
                 mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
-                os_free(lf->data);
                 sk_sum_clean(&newsum);
                 os_free(wazuhdb_query);
                 os_free(new_check_sum);
@@ -382,7 +375,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         default: // Error in fim check sum
             merror("at fim_db_search: Couldn't decode fim sum '%s' from file '%s'.",
                     new_check_sum, f_name);
-            os_free(lf->data);
             sk_sum_clean(&newsum);
             os_free(wazuhdb_query);
             os_free(new_check_sum);
@@ -399,7 +391,15 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         os_strdup(fim_decoder->fields[i], lf->fields[i].key);
     }
 
-    fim_alert(f_name, &oldsum, &newsum, lf, sdb);
+    if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
+        //No changes in checksum
+        sk_sum_clean(&newsum);
+        os_free(response);
+        os_free(new_check_sum);
+        os_free(old_check_sum);
+        os_free(wazuhdb_query);
+        return (0);
+    }
 
     sk_sum_clean(&newsum);
     os_free(response);
@@ -703,8 +703,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     );
 
     if(!changes) {
-        os_free(lf->data);
-        sk_sum_clean(newsum);
+        lf->data = NULL;
+        return(-1);
     } else {
         wm_strcat(&lf->fields[SK_CHFIELDS].value, ",", '\0');
     }
@@ -775,6 +775,16 @@ void InsertWhodata(const sk_sum_t * sum, _sdb *sdb) {
 
 // Compare the first common fields between sum strings
 int SumCompare(const char *s1, const char *s2) {
+    unsigned int longs1;
+    unsigned int longs2;
+
+    longs1 = strlen(s1);
+    longs2 = strlen(s2);
+
+    if(longs1 != longs2) {
+        return 1;
+    }
+
     const char *ptr1 = strchr(s1, ':');
     const char *ptr2 = strchr(s2, ':');
     size_t size1;
@@ -785,8 +795,8 @@ int SumCompare(const char *s1, const char *s2) {
         ptr2 = strchr(ptr2 + 1, ':');
     }
 
-    size1 = ptr1 ? (size_t)(ptr1 - s1) : strlen(s1);
-    size2 = ptr2 ? (size_t)(ptr2 - s2) : strlen(s2);
+    size1 = ptr1 ? (size_t)(ptr1 - s1) : longs1;
+    size2 = ptr2 ? (size_t)(ptr2 - s2) : longs2;
 
     return size1 == size2 ? strncmp(s1, s2, size1) : 1;
 }
