@@ -89,10 +89,9 @@ fi
 IPKEY=$(grep -w "${IP}" /etc/hosts.deny)
 if [ ! -z "$IPKEY" ]
 then
-    echo "`date` Duplicate ip/hostname entry: ${IP}" >> ${PWD}/../logs/active-responses.log
-	IPKEY="1"
+    IPKEY="1"
 else
-	IPKEY="0"
+    IPKEY="0"
 fi
 
 # Checking for invalid entries (lacking "." or ":", etc)
