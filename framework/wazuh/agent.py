@@ -1525,39 +1525,29 @@ class Agent:
 
         :param groups_id: list with Groups ID.
         """
+        if "default" in groups_id:
+            raise WazuhException(1712)
 
-        if not isinstance(groups_id, list):
-            raise WazuhException(1104, "Input must be a list")
+        for agent_id in listdir("{0}".format(common.groups_path)):
+            with open("{0}/{1}".format(common.groups_path, agent_id)) as f:
+                agent_group = f.read().strip()
 
-        for group in groups_id:
-            if group.lower() == "default":
-                raise WazuhException(1712)
+            new_group = ''
+            group_list = agent_group.split(',')
+            for group_to_remove in groups_id & set(group_list):
+                # remove the group
+                group_list.remove(group_to_remove)
+                if len(group_list) > 1:
+                    # create new multigroup
+                    new_group = ','.join(group_list)
+                    if not Agent.multi_group_exists(new_group):
+                        Agent.create_multi_group(new_group)
+                else:
+                    new_group = 'default' if not group_list else group_list[0]
 
-        for filename in listdir("{0}".format(common.groups_path)):
-            for group in groups_id:
-                file = open("{0}/{1}".format(common.groups_path, filename), "r")
-                agent_id = filename
-                agent_group = file.read()
-                agent_group = agent_group.strip()
-                file.close()
-
-                if agent_group.find(group) >= 0:
-
-                    group_list = agent_group.split(',')
-                    # remove the group
-                    group_list.remove(group)
-                    if len(group_list) > 1:
-                        # create new multigroup
-                        new_group = ','.join(group_list)
-                        if not Agent.multi_group_exists(new_group):
-                            Agent.create_multi_group(new_group)
-                    else:
-                        new_group = 'default' if not group_list else group_list[0]
-
-                    # Add multigroup
-                    agent_file = open("{0}/{1}".format(common.groups_path, agent_id), "w")
-                    agent_file.write("{0}\n".format(new_group))
-                    agent_file.close()
+            # Add multigroup
+            with open("{0}/{1}".format(common.groups_path, agent_id), "w") as agent_file:
+                agent_file.write("{0}\n".format(new_group))
 
         multi_group_metadata = Agent().get_multigroups_metadata()
         multi_group_metadata_copy = multi_group_metadata[:]
@@ -1572,7 +1562,6 @@ class Agent:
                             rmtree("{}/{}".format(common.multi_groups_path, folder))
                         except Exception:
                             pass
-
         except Exception:
             pass
 
@@ -1597,12 +1586,11 @@ class Agent:
         if not db_global:
             raise WazuhException(1600)
 
-        Agent().remove_multi_group(group_id)
-
         failed_ids = []
         ids = []
         affected_agents = []
         if isinstance(group_id, list):
+            Agent().remove_multi_group(set(map(lambda x: x.lower(), group_id)))
             for id in group_id:
 
                 if id.lower() == "default":
@@ -1615,6 +1603,7 @@ class Agent:
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
         else:
+            Agent().remove_multi_group({group_id.lower()})
             if group_id.lower() == "default":
                 raise WazuhException(1712)
 
@@ -1625,7 +1614,6 @@ class Agent:
             except Exception as e:
                 failed_ids.append(create_exception_dic(group_id, e))
 
-        final_dict = {}
         if not failed_ids:
             message = 'All selected groups were removed'
             final_dict = {'msg': message, 'ids': ids, 'affected_agents': affected_agents}
