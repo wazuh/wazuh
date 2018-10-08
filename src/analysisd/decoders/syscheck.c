@@ -226,7 +226,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         merror("FIM decoder: Bad load query.");
         // Fallthrough
     case -1:
-        lf->data = NULL;
+        os_free(lf->data);
         os_free(new_check_sum);
         os_free(wazuhdb_query);
         os_free(response);
@@ -348,7 +348,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 os_calloc(1, sizeof(time_t), end_first_scan);
                 *end_first_scan = end_scan;
 
-                if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan) <= 0) {
+                if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan) != 2) {
                     os_free(end_first_scan);
                     merror("Unable to add scan_info to hash table for agent: %s",
                             lf->agent_id);

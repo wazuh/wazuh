@@ -14,6 +14,7 @@
 #include "decoders/decoder.h"
 
 typedef enum syscheck_event_t { FIM_ADDED, FIM_MODIFIED, FIM_READDED, FIM_DELETED } syscheck_event_t;
+typedef struct _EventNode EventNode;
 
 typedef struct _DynamicField {
     char *key;
@@ -121,14 +122,18 @@ typedef struct _Eventinfo {
     int rootcheck_fts;
     int is_a_copy;
     char **last_events;
+    // Node reference
+    EventNode *node;
 } Eventinfo;
 
 /* Events List structure */
-typedef struct _EventNode {
+struct _EventNode {
     Eventinfo *event;
-    struct _EventNode *next;
-    struct _EventNode *prev;
-} EventNode;
+    pthread_mutex_t mutex;
+    int count;
+    EventNode *next;
+    EventNode *prev;
+};
 
 #ifdef TESTRULE
 extern int full_output;
@@ -177,7 +182,7 @@ void Free_Eventinfo(Eventinfo *lf);
 void OS_AddEvent(Eventinfo *lf);
 
 /* Return the last event from the Event list */
-EventNode *OS_GetLastEvent(void);
+EventNode *OS_GetFirstEvent(void);
 
 /* Create the event list. Maxsize must be specified */
 void OS_CreateEventList(int maxsize);

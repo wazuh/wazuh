@@ -94,7 +94,7 @@ static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
-void w_free_event_info(Eventinfo *lf);
+void w_free_event_info(Eventinfo *lf, int force_remove);
 
 /* Output threads */
 void * w_main_output_thread(__attribute__((unused)) void * args);
@@ -1248,7 +1248,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             if(_line){
                 os_strdup(_line,_line_cpy);
                 free(_line);
-                queue_push_ex_block(writer_queue_log_fts,_line_cpy);
+                if (queue_push_ex_block(writer_queue_log_fts,_line_cpy) < 0) {
+                    free(_line_cpy);
+                }
             }
         } else {
             return (NULL);
@@ -1676,7 +1678,7 @@ void * ad_input_main(void * args) {
     return NULL;
 }
 
-void w_free_event_info(Eventinfo *lf){
+void w_free_event_info(Eventinfo *lf, int force_remove){
     /** Cleaning the memory **/
 
     /* Only clear the memory if the eventinfo was not
@@ -1685,20 +1687,26 @@ void w_free_event_info(Eventinfo *lf){
     */
     if (lf->generated_rule == NULL) {
         Free_Eventinfo(lf);
+        force_remove = 0;
     } else if (lf->last_events) {
         /* Free last_events struct */
         char **last_event = lf->last_events;
         char **lasts = lf->last_events;
 
-        while (*lasts) {
-            free(*lasts);
-            lasts++;
+        if (last_event) {
+            while (*lasts) {
+                free(*lasts);
+                lasts++;
+            }
+            free(last_event);
         }
-        free(last_event);
 
         w_mutex_lock(&lf->generated_rule->mutex);
         lf->generated_rule->last_events[0] = NULL;
         w_mutex_unlock(&lf->generated_rule->mutex);
+    }
+    if (force_remove) {
+        Free_Eventinfo(lf);
     }
 }
 
@@ -1720,7 +1728,7 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
                 jsonout_output_archive(lf);
             }
 
-            w_free_event_info(lf);
+            w_free_event_info(lf, 1);
             w_mutex_unlock(&writer_threads_mutex);
         } else {
             free(lf->fields);
@@ -1807,13 +1815,15 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
             w_inc_syscheck_decoded_events();
 
-            if (!DecodeSyscheck(lf, &sdb)) {
+            if (DecodeSyscheck(lf, &sdb) != 1) {
                 /* We don't process syscheck events further */
-                w_free_event_info(lf);
+                w_free_event_info(lf, 0);
                 continue;
             }
             else{
-                queue_push_ex_block(decode_queue_event_output,lf);
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf, 0);
+                }
             }
         }
     }
@@ -1850,10 +1860,12 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
 
             if (!DecodeSyscollector(lf,&socket)) {
                 /* We don't process syscheck events further */
-                w_free_event_info(lf);
+                w_free_event_info(lf, 0);
             }
             else{
-                queue_push_ex_block(decode_queue_event_output,lf);
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf, 0);
+                }
             }
 
             w_inc_syscollector_decoded_events();
@@ -1890,10 +1902,12 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
 
             if (!DecodeRootcheck(lf)) {
                 /* We don't process rootcheck events further */
-                w_free_event_info(lf);
+                w_free_event_info(lf, 0);
             }
             else{
-                queue_push_ex_block(decode_queue_event_output,lf);
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf, 0);
+                }
             }
 
             w_inc_rootcheck_decoded_events();
@@ -1928,10 +1942,12 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 
             if (!DecodeHostinfo(lf)) {
                 /* We don't process syscheck events further */
-                w_free_event_info(lf);
+                w_free_event_info(lf, 0);
             }
             else{
-                queue_push_ex_block(decode_queue_event_output,lf);
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf, 0);
+                }
             }
 
             w_inc_hostinfo_decoded_events();
@@ -1969,7 +1985,9 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 
             DecodeEvent(lf, &decoder_match);
 
-            queue_push_ex_block(decode_queue_event_output,lf);
+            if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                Free_Eventinfo(lf);
+            }
 
             w_inc_decoded_events();
         }
@@ -1984,6 +2002,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     int t_id = (intptr_t)id;
     regex_matching rule_match;
     memset(&rule_match, 0, sizeof(regex_matching));
+    Eventinfo *lf_cpy = NULL;
+
+    minfo("~~~~ Thread %d w_process_event_thread     %lu     ", getpid(), pthread_self());
 
     while(1){
 
@@ -2013,16 +2034,16 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
                 if (!lf->action || !lf->srcip || !lf->dstip || !lf->srcport ||
                         !lf->dstport || !lf->protocol) {
-                    w_free_event_info(lf);
+                    w_free_event_info(lf, 0);
                     continue;
                 }
-
-                Eventinfo *lf_cpy = NULL;
 
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
                 w_copy_event_for_log(lf,lf_cpy);
 
-                queue_push_ex_block(writer_queue_log_firewall, lf_cpy);
+                if (queue_push_ex_block(writer_queue_log_firewall, lf_cpy) < 0) {
+                    Free_Eventinfo(lf_cpy);
+                }
             }
         }
 
@@ -2041,12 +2062,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
                 /* Alert for statistical analysis */
                 if (stats_rule->alert_opts & DO_LOGALERT) {
-                    Eventinfo *lf_cpy = NULL;
-
                     os_calloc(1, sizeof(Eventinfo), lf_cpy);
                     w_copy_event_for_log(lf,lf_cpy);
 
-                    queue_push_ex_block(writer_queue_log_statistical, lf_cpy);
+                    if (queue_push_ex_block(writer_queue_log_statistical, lf_cpy) < 0) {
+                        Free_Eventinfo(lf_cpy);
+                    }
                 }
 
                 /* Set lf to the old values */
@@ -2073,7 +2094,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         do {
             if (lf->decoder_info->type == OSSEC_ALERT) {
                 if (!lf->generated_rule) {
-                    w_free_event_info(lf);
+                    w_free_event_info(lf, 0);
                     continue;
                 }
 
@@ -2130,12 +2151,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             /* Log the alert if configured to */
             if (currently_rule->alert_opts & DO_LOGALERT) {
                 lf->comment = ParseRuleComment(lf);
-                Eventinfo *lf_cpy = NULL;
 
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
                 w_copy_event_for_log(lf,lf_cpy);
-
-                queue_push_ex_block(writer_queue_log, lf_cpy);
+                if (queue_push_ex_block(writer_queue_log, lf_cpy) < 0) {
+                    Free_Eventinfo(lf_cpy);
+                }
             }
 
             /* Execute an active response */
@@ -2200,14 +2221,16 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     j++;
                 }
             }
-            OS_AddEvent(lf);
 
+            os_calloc(1, sizeof(Eventinfo), lf_cpy);
+            w_copy_event_for_log(lf,lf_cpy);
+            OS_AddEvent(lf_cpy);
             break;
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
         /* Copy last_events structure if we have matched a rule */
-        if(lf->generated_rule){
+        if(lf->generated_rule) {
             if (lf->generated_rule->last_events){
                 w_mutex_lock(&lf->generated_rule->mutex);
                 os_calloc(1,sizeof(char *),lf->last_events);
@@ -2233,14 +2256,14 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             if (result < 0) {
                 if(!reported_writer){
                     reported_writer = 1;
-                    mwarn("Archive writer queue is full.");
+                    mwarn("Archive writer queue is full. %d", t_id);
                 }
-                w_free_event_info(lf);
+                w_free_event_info(lf, 1);
             }
             continue;
         }
 
-        w_free_event_info(lf);
+        w_free_event_info(lf, 1);
     }
 }
 

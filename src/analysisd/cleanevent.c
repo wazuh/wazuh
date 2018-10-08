@@ -547,7 +547,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         free(orig);
     } else {
         os_strdup(lf->hostname ? lf->hostname : __shost, lf->hostname);
-        lf->agent_id = strdup("000");
+        os_strdup("000", lf->agent_id);
     }
 
     /* Set up the event data */
