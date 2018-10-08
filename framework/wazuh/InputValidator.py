@@ -47,8 +47,7 @@ class InputValidator:
         group_name: name of the group to be validated
         """
         def check_single_group_name(group_name):
-            return self.check_length(group_name) and \
-                   self.check_name(group_name, regex_str=r'[A-Za-z0-9\.;:\-_=\+!@\(\)][A-Za-z0-9;:\-_=\+!@\(\)]{0,254}')
+            return self.check_length(group_name) and self.check_name(group_name, regex_str=r'[A-Za-z0-9.\-_]+')
 
         if isinstance(group_name, list):
             return reduce(operator.mul, map(lambda x: check_single_group_name(x), group_name))
