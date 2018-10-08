@@ -2594,5 +2594,8 @@ class Agent:
                     agent_group_merged_path = "{0}/{1}/merged.mg".format(common.shared_path, agent_info['group'][0])
 
                 return {'synced': md5(agent_group_merged_path) == agent_info['mergedSum']}
+            except IOError:
+                # the file can't be opened and therefore the group has not been synced
+                return {'synced': False}
             except Exception as e:
                 raise WazuhException(1739, str(e))
