@@ -156,6 +156,14 @@ int main(int argc, char **argv)
     /* Start signal handler */
     StartSIG(ARGV0);
 
+    // Set max open files limit
+    int max_limit = maximum_files + 100;
+    struct rlimit rlimit = { max_limit, max_limit};
+
+    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
+        merror("Could not set resource limit for file descriptors to %d: %s (%d)", max_limit, strerror(errno), errno);
+    }
+
     if (!run_foreground) {
         /* Going on daemon mode */
         nowDaemon();
