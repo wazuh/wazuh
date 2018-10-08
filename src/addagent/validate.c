@@ -652,23 +652,6 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
     status += link(path_src, path_dst);
 
-    /* syscheck */
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
-    status += link(path_src, path_dst);
-
     /* rootcheck */
     snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
     snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
