@@ -70,7 +70,7 @@ lock()
 # Unlock function
 unlock()
 {
-   rm -rf ${LOCK}
+    rm -rf ${LOCK}
 }
 
 
@@ -80,8 +80,8 @@ echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/../logs/active-responses.log
 
 # IP Address must be provided
 if [ "x${IP}" = "x" ]; then
-   echo "$0: Missing argument <action> <user> (ip)"
-   exit 1;
+    echo "$0: Missing argument <action> <user> (ip)"
+    exit 1;
 fi
 
 
@@ -105,51 +105,51 @@ fi
 
 # Adding the ip to hosts.deny
 if [ "x${ACTION}" = "xadd" ]; then
-   if [ "$IPKEY" -eq "1" ]; then
-      echo "IP ${IP} already exists on host.deny..." >> ${PWD}/../logs/active-responses.log
-      exit 1
-   fi
-   lock;
-   echo "${IP}" | grep "\:" > /dev/null 2>&1
-   if [ $? = 0 ]; then
-    IP="[${IP}]"
-   fi
-   if [ "X$UNAME" = "XFreeBSD" ]; then
-    echo "ALL : ${IP} : deny" >> /etc/hosts.allow
-   else
-    echo "ALL:${IP}" >> /etc/hosts.deny
-   fi
-   unlock;
-   exit 0;
+    if [ "$IPKEY" -eq "1" ]; then
+        echo "IP ${IP} already exists on host.deny..." >> ${PWD}/../logs/active-responses.log
+        exit 1
+    fi
+    lock;
+    echo "${IP}" | grep "\:" > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        IP="[${IP}]"
+    fi
+    if [ "X$UNAME" = "XFreeBSD" ]; then
+        echo "ALL : ${IP} : deny" >> /etc/hosts.allow
+    else
+        echo "ALL:${IP}" >> /etc/hosts.deny
+    fi
+    unlock;
+    exit 0;
 
 
 # Deleting from hosts.deny
 elif [ "x${ACTION}" = "xdelete" ]; then
-   lock;
-   TMP_FILE=`mktemp ${PWD}/ossec-hosts.XXXXXXXXXX`
-   if [ "X${TMP_FILE}" = "X" ]; then
-     # Cheap fake tmpfile, but should be harder then no random data
-     TMP_FILE="${PWD}/ossec-hosts.`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -1 `"
-   fi
-   echo "${IP}" | grep "\:" > /dev/null 2>&1
-   if [ $? = 0 ]; then
-    IP="\[${IP}\]"
-   fi
-   if [ "X$UNAME" = "XFreeBSD" ]; then
-    cat /etc/hosts.allow | grep -v "ALL : ${IP} : deny$"> ${TMP_FILE}
-    mv ${TMP_FILE} /etc/hosts.allow
-   else
-    cat /etc/hosts.deny | grep -v "ALL:${IP}$"> ${TMP_FILE}
-    cat ${TMP_FILE} > /etc/hosts.deny
-    rm ${TMP_FILE}
-   fi
-   unlock;
-   exit 0;
+    lock;
+    TMP_FILE=`mktemp ${PWD}/ossec-hosts.XXXXXXXXXX`
+    if [ "X${TMP_FILE}" = "X" ]; then
+        # Cheap fake tmpfile, but should be harder then no random data
+        TMP_FILE="${PWD}/ossec-hosts.`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -1 `"
+    fi
+    echo "${IP}" | grep "\:" > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        IP="\[${IP}\]"
+    fi
+    if [ "X$UNAME" = "XFreeBSD" ]; then
+        cat /etc/hosts.allow | grep -v "ALL : ${IP} : deny$"> ${TMP_FILE}
+        mv ${TMP_FILE} /etc/hosts.allow
+    else
+        cat /etc/hosts.deny | grep -v "ALL:${IP}$"> ${TMP_FILE}
+        cat ${TMP_FILE} > /etc/hosts.deny
+        rm ${TMP_FILE}
+    fi
+    unlock;
+    exit 0;
 
 
 # Invalid action
 else
-   echo "$0: invalid action: ${ACTION}"
+    echo "$0: invalid action: ${ACTION}"
 fi
 
 exit 1;
