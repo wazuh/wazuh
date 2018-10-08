@@ -53,6 +53,7 @@ int main(int argc, char **argv)
     gid_t gid;
     const char *group = GROUPGLOBAL;
     lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
+    rlim_t nofile;
 
     /* Setup random */
     srandom_init();
@@ -157,11 +158,11 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
     // Set max open files limit
-    int max_limit = maximum_files + 100;
-    struct rlimit rlimit = { max_limit, max_limit};
+    nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, INT_MAX);
+    struct rlimit rlimit = { nofile, nofile };
 
     if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", max_limit, strerror(errno), errno);
+        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
     }
 
     if (!run_foreground) {
