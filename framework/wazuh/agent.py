@@ -1519,48 +1519,56 @@ class Agent:
 
 
     @staticmethod
-    def remove_multi_group(group_id):
+    def remove_multi_group(groups_id):
+        """
+        Removes groups by IDs.
 
-        if group_id.lower() == "default":
+        :param groups_id: list with Groups ID.
+        """
+
+        for group in groups_id:
+            if group.lower() == "default":
                 raise WazuhException(1712)
 
         for filename in listdir("{0}".format(common.groups_path)):
-            file = open("{0}/{1}".format(common.groups_path,filename),"r")
-            agent_id = filename
-            agent_group = file.read()
-            agent_group = agent_group.strip()
-            file.close()
+            for group in groups_id:
+                file = open("{0}/{1}".format(common.groups_path, filename), "r")
+                agent_id = filename
+                agent_group = file.read()
+                agent_group = agent_group.strip()
+                file.close()
 
-            if agent_group.find(group_id) >= 0:
+                if agent_group.find(group) >= 0:
 
-                group_list = agent_group.split(',')
-                # remove the group
-                group_list.remove(group_id)
-                if len(group_list) > 1:
-                    # create new multigroup
-                    new_group = ','.join(group_list)
-                    if not Agent.multi_group_exists(new_group):
-                        Agent.create_multi_group(new_group)
-                else:
-                    new_group = 'default' if not group_list else group_list[0]
-                
-                # Add multigroup
-                agent_file = open("{0}/{1}".format(common.groups_path,agent_id),"w")
-                agent_file.write("{0}\n".format(new_group))
-                agent_file.close()
+                    group_list = agent_group.split(',')
+                    # remove the group
+                    group_list.remove(group)
+                    if len(group_list) > 1:
+                        # create new multigroup
+                        new_group = ','.join(group_list)
+                        if not Agent.multi_group_exists(new_group):
+                            Agent.create_multi_group(new_group)
+                    else:
+                        new_group = 'default' if not group_list else group_list[0]
+
+                    # Add multigroup
+                    agent_file = open("{0}/{1}".format(common.groups_path, agent_id), "w")
+                    agent_file.write("{0}\n".format(new_group))
+                    agent_file.close()
 
         multi_group_metadata = Agent().get_multigroups_metadata()
         multi_group_metadata_copy = multi_group_metadata[:]
 
         try:
             for multi_group in multi_group_metadata:
-                if group_id in multi_group.split(','):
-                    try:
-                        multi_group_metadata_copy.remove(multi_group)
-                        folder = hashlib.sha256(multi_group).hexdigest()[:8]
-                        rmtree("{}/{}".format(common.multi_groups_path,folder))
-                    except Exception:
-                        pass
+                for group in groups_id:
+                    if group in multi_group.split(','):
+                        try:
+                            multi_group_metadata_copy.remove(multi_group)
+                            folder = hashlib.sha256(multi_group).hexdigest()[:8]
+                            rmtree("{}/{}".format(common.multi_groups_path, folder))
+                        except Exception:
+                            pass
 
         except Exception:
             pass
