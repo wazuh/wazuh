@@ -93,19 +93,11 @@ if [ ! $? = 0 ]; then
 fi
 
 
-# Looking for duplication
-IPKEY=$(grep -w "${IP}" /etc/hosts.deny)
-if [ ! -z "$IPKEY" ]
-then
-    IPKEY="1"
-else
-    IPKEY="0"
-fi
-
-
 # Adding the ip to hosts.deny
 if [ "x${ACTION}" = "xadd" ]; then
-    if [ "$IPKEY" -eq "1" ]; then
+    # Looking for duplication
+    IPKEY=$(grep -w "${IP}" /etc/hosts.deny)
+    if [ ! -z "$IPKEY" ]; then
         echo "IP ${IP} already exists on host.deny..." >> ${PWD}/../logs/active-responses.log
         exit 1
     fi
