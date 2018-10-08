@@ -334,8 +334,9 @@ class Agent:
         Gets public attributes of existing agent.
         """
         self._load_info_from_DB(select)
-        fields = set(self.fields.keys()) & set(select['fields']) if select is not None else self.fields.keys()
-        return {field:getattr(self,field) for field in map(lambda x: x.split('.')[0], fields)}
+        fields = set(self.fields.keys()) & set(select['fields']) if select is not None \
+                                                                 else set(self.fields.keys()) - {'internal_key'}
+        return {field:getattr(self,field) for field in map(lambda x: x.split('.')[0], fields) if getattr(self,field)}
 
 
     def compute_key(self):
