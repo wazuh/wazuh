@@ -1526,6 +1526,9 @@ class Agent:
         :param groups_id: list with Groups ID.
         """
 
+        if not isinstance(groups_id, list):
+            raise WazuhException(1104, "Input must be a list")
+
         for group in groups_id:
             if group.lower() == "default":
                 raise WazuhException(1712)
