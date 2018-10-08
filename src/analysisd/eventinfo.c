@@ -638,6 +638,9 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->dstuser) {
         free(lf->dstuser);
     }
+    if (lf->labels && lf->labels != Config.labels) {
+        labels_free(lf->labels);
+    }
     if (lf->id) {
         free(lf->id);
     }
@@ -1143,7 +1146,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->previous,lf_cpy->previous);
     }
 
-    lf_cpy->labels = lf->labels;
+    lf_cpy->labels = labels_dup(lf->labels);
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
     lf_cpy->rootcheck_fts = lf->rootcheck_fts;
     lf_cpy->is_a_copy = 1;

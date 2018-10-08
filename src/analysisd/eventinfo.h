@@ -104,7 +104,7 @@ typedef struct _Eventinfo {
     long inode_after;
     char *diff;
     char *previous;
-    const wlabel_t *labels;
+    wlabel_t *labels;
     // Whodata fields
     char *user_id;
     char *user_name;
