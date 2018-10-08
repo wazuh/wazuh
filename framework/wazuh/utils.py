@@ -293,12 +293,12 @@ def tail(filename, n=20):
         if (block_end_byte - BLOCK_SIZE > 0):
             # read the last block we haven't yet read
             f.seek(block_number*BLOCK_SIZE, 2)
-            blocks.append(f.read(BLOCK_SIZE).decode('utf-8'))
+            blocks.append(f.read(BLOCK_SIZE).decode('utf-8', errors='replace'))
         else:
             # file too small, start from beginning
             f.seek(0,0)
             # only read what was not read
-            blocks.append(f.read(block_end_byte).decode('utf-8'))
+            blocks.append(f.read(block_end_byte).decode('utf-8', errors='replace'))
         lines_found = blocks[-1].count('\n')
         lines_to_go -= lines_found
         block_end_byte -= BLOCK_SIZE
