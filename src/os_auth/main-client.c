@@ -86,12 +86,11 @@ int main(int argc, char **argv)
     const char *sender_ip = NULL;
     int use_src_ip = 0;
     char lhostname[512 + 1];
-    char buf[OS_SIZE_65536 + OS_SIZE_4096  + 1];
+    char * buf;
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
     bio_err = 0;
-    buf[OS_SIZE_65536 + OS_SIZE_4096 ] = '\0';
     int debug_level = 0;
 
 #ifdef WIN32
@@ -285,6 +284,9 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
+    buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
+
     /* Checking if there is a custom password file */
     if (authpass == NULL) {
         FILE *fp;
@@ -315,6 +317,7 @@ int main(int argc, char **argv)
     sock = OS_ConnectTCP(port, ipaddress, 0);
     if (sock <= 0) {
         merror("Unable to connect to %s:%d", ipaddress, port);
+        free(buf);
         exit(1);
     }
 
@@ -327,6 +330,7 @@ int main(int argc, char **argv)
     if (ret <= 0) {
         ERR_print_errors_fp(stderr);
         merror("SSL error (%d). Exiting.", ret);
+        free(buf);
         exit(1);
     }
 
@@ -340,6 +344,7 @@ int main(int argc, char **argv)
         printf("INFO: Verifying manager's certificate\n");
         if (check_x509_cert(ssl, manager) != VERIFY_TRUE) {
             mdebug1("Unable to verify server certificate.");
+            free(buf);
             exit(1);
         }
     }
@@ -354,9 +359,11 @@ int main(int argc, char **argv)
     }
 
     if(centralized_group){
-        char opt_buf[OS_SIZE_65536] = {0};
+        char * opt_buf = NULL;
+        os_calloc(OS_SIZE_65536, sizeof(char), opt_buf);
         snprintf(opt_buf,OS_SIZE_65536," G:'%s'",centralized_group);
         strncat(buf,opt_buf,OS_SIZE_65536);
+        free(opt_buf);
     }
 
     if(sender_ip){
@@ -374,18 +381,19 @@ int main(int argc, char **argv)
 
     /* Append new line character */
     strncat(buf,"\n",1);
-
+    printf("sending: buf: %s", buf);
     ret = SSL_write(ssl, buf, strlen(buf));
     if (ret < 0) {
         printf("SSL write error (unable to send message.)\n");
         ERR_print_errors_fp(stderr);
+        free(buf);
         exit(1);
     }
 
     printf("INFO: Send request to manager. Waiting for reply.\n");
 
     while (1) {
-        ret = SSL_read(ssl, buf, sizeof(buf) - 1);
+        ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
         switch (SSL_get_error(ssl, ret)) {
             case SSL_ERROR_NONE:
                 buf[ret] = '\0';
@@ -407,6 +415,7 @@ int main(int argc, char **argv)
                     tmpstr = strchr(key, '\'');
                     if (!tmpstr) {
                         printf("ERROR: Invalid key received. Closing connection.\n");
+                        free(buf);
                         exit(1);
                     }
                     *tmpstr = '\0';
@@ -414,6 +423,7 @@ int main(int argc, char **argv)
                     if (!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
                             !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3])) {
                         printf("ERROR: Invalid key received (2). Closing connection.\n");
+                        free(buf);
                         exit(1);
                     }
 
@@ -425,6 +435,7 @@ int main(int argc, char **argv)
 
                         if (!fp) {
                             printf("ERROR: Unable to open key file: %s", KEYSFILE_PATH);
+                            free(buf);
                             exit(1);
                         }
                         fprintf(fp, "%s\n", key);
@@ -440,10 +451,12 @@ int main(int argc, char **argv)
                     printf("ERROR: Unable to create key. Either wrong password or connection not accepted by the manager.\n");
                 }
                 printf("INFO: Connection closed.\n");
+                free(buf);
                 exit(!key_added);
                 break;
             default:
                 printf("ERROR: SSL read (unable to receive message)\n");
+                free(buf);
                 exit(1);
                 break;
         }
@@ -456,6 +469,7 @@ int main(int argc, char **argv)
     }
     SSL_CTX_free(ctx);
     close(sock);
+    free(buf);
 
     exit(0);
 }
