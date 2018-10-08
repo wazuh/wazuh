@@ -1495,18 +1495,8 @@ class Agent:
         :param group_id: Group ID.
         :return: Confirmation message.
         """
-        # Input Validation of group_id
-        #if not InputValidator().group(group_id):
-        #    raise WazuhException(1722)
-
-        group_list = group_id.split(',')
-        # remove the group
-        try:
-            group_list.remove(group_id)
-        except Exception:
-            pass
-        
-        if len(group_list) == 0:
+        if ',' not in group_id:
+            # if there's not , in the group_id, then it isn't a multigroup and therefore the function does nothing
             return
 
         # Create group in /var/multigroups
@@ -1520,23 +1510,24 @@ class Agent:
 
 
     @staticmethod
-    def remove_multi_group(group_id):
+    def remove_multi_group(groups_id):
+        """
+        Removes groups by IDs.
 
-        if group_id.lower() == "default":
-                raise WazuhException(1712)
+        :param groups_id: list with Groups ID.
+        """
+        if "default" in groups_id:
+            raise WazuhException(1712)
 
-        for filename in listdir("{0}".format(common.groups_path)):
-            file = open("{0}/{1}".format(common.groups_path,filename),"r")
-            agent_id = filename
-            agent_group = file.read()
-            agent_group = agent_group.strip()
-            file.close()
+        for agent_id in listdir("{0}".format(common.groups_path)):
+            with open("{0}/{1}".format(common.groups_path, agent_id)) as f:
+                agent_group = f.read().strip()
 
-            if agent_group.find(group_id) >= 0:
-
-                group_list = agent_group.split(',')
+            new_group = ''
+            group_list = agent_group.split(',')
+            for group_to_remove in groups_id & set(group_list):
                 # remove the group
-                group_list.remove(group_id)
+                group_list.remove(group_to_remove)
                 if len(group_list) > 1:
                     # create new multigroup
                     new_group = ','.join(group_list)
@@ -1544,30 +1535,23 @@ class Agent:
                         Agent.create_multi_group(new_group)
                 else:
                     new_group = 'default' if not group_list else group_list[0]
-                
-                # Add multigroup
-                agent_file = open("{0}/{1}".format(common.groups_path,agent_id),"w")
+
+            # Add multigroup
+            with open("{0}/{1}".format(common.groups_path, agent_id), "w") as agent_file:
                 agent_file.write("{0}\n".format(new_group))
-                agent_file.close()
 
-        multi_group_metadata = Agent().get_multigroups_metadata()
-        multi_group_metadata_copy = multi_group_metadata[:]
+        multigroups_to_remove = list(filter(lambda mg: groups_id & set(mg.split(',')) != set(),
+                                       Agent().get_multigroups_metadata()))
 
-        try:
-            for multi_group in multi_group_metadata:
-                if group_id in multi_group.split(','):
-                    try:
-                        multi_group_metadata_copy.remove(multi_group)
-                        folder = hashlib.sha256(multi_group).hexdigest()[:8]
-                        rmtree("{}/{}".format(common.multi_groups_path,folder))
-                    except Exception:
-                        pass
+        for multi_group in multigroups_to_remove:
+            try:
+                folder = hashlib.sha256(multi_group).hexdigest()[:8]
+                rmtree("{}/{}".format(common.multi_groups_path, folder))
+            except Exception:
+                pass
 
-        except Exception:
-            pass
+        Agent().write_multigroups_metadata(multigroups_to_remove)
 
-        multi_group_metadata = multi_group_metadata_copy[:]
-        Agent().write_multigroups_metadata(multi_group_metadata)
 
     @staticmethod
     def remove_group(group_id):
@@ -1587,12 +1571,11 @@ class Agent:
         if not db_global:
             raise WazuhException(1600)
 
-        Agent().remove_multi_group(group_id)
-
         failed_ids = []
         ids = []
         affected_agents = []
         if isinstance(group_id, list):
+            Agent().remove_multi_group(set(map(lambda x: x.lower(), group_id)))
             for id in group_id:
 
                 if id.lower() == "default":
@@ -1605,6 +1588,7 @@ class Agent:
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
         else:
+            Agent().remove_multi_group({group_id.lower()})
             if group_id.lower() == "default":
                 raise WazuhException(1712)
 
@@ -1615,7 +1599,6 @@ class Agent:
             except Exception as e:
                 failed_ids.append(create_exception_dic(group_id, e))
 
-        final_dict = {}
         if not failed_ids:
             message = 'All selected groups were removed'
             final_dict = {'msg': message, 'ids': ids, 'affected_agents': affected_agents}
@@ -1768,19 +1751,11 @@ class Agent:
     def check_multigroup_limit(agent_id):
         # Check if multigroup limit is reached
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-        limit_reached = False
 
-        try:
-            f_group = open(agent_group_path, 'r')
-            group_readed = f_group.read()
-            f_group.close()
-            
-            if (len(group_readed.split(',')) + 1) > common.max_groups_per_multigroup:
-                limit_reached = True
-        except Exception:
-            pass       
+        with open(agent_group_path) as f_group:
+            group_read = f_group.read()
 
-        return limit_reached
+        return len(group_read.split(',')) >= common.max_groups_per_multigroup
 
     @staticmethod
     def unset_group(agent_id, group_id=None, force=False):
@@ -2544,13 +2519,8 @@ class Agent:
 
         :return: readed multigroups list.
         """
-        multi_groups_list = []
-        try:
-            with open(common.multi_groups_path + "/.metadata") as f:
-                for line in f:
-                    multi_groups_list.append(line.strip())
-        except Exception:
-            pass
+        with open(common.multi_groups_path + "/.metadata") as f:
+            multi_groups_list = [line.strip() for line in f.readlines()]
         
         return multi_groups_list
 
