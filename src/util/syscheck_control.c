@@ -20,25 +20,24 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\n%s %s: Manages the integrity checking database.\n",
+    printf("\n%s %s: This binary it's deprecated, use API calls related below instead\n",
            __ossec_name, ARGV0);
     printf("Available options:\n\n");
     printf("\t-h          This help message.\n");
     printf("\t-V          Print version.\n");
     printf("\t-D          Debug mode.\n\n");
-    printf("\t-l          List available (active or not) agents.\n");
-    printf("\t-lc         List only active agents.\n");
-    printf("\t-ln         List only disconnected agents.\n");
-    printf("\t-u <id>     Updates (clear) the database for the agent.\n");
-    printf("\t-u all      Updates (clear) the database for all agents.\n");
-    printf("\t-i <id>     List modified files for the agent.\n");
-    printf("\t-r -i <id>  List modified registry entries for the agent "
-           "(Windows only).\n");
-    printf("\t-f <file>   Prints information about a modified file.\n");
-    printf("\t-z          Used with the -f, zeroes the auto-ignore counter.\n");
-    printf("\t-d          Used with the -f, ignores that file.\n");
-    printf("\t-s          Changes the output to CSV (comma delimited).\n");
-    printf("\t-j          Changes the output to JSON.\n");
+    printf("\t-l          List available (active or not) agents. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#get-all-agents filtering by status.\n");
+    printf("\t-lc         List only active agents. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#get-all-agents filtering by status.\n");
+    printf("\t-ln         List only disconnected agents. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#get-all-agents filtering by status.\n");
+    printf("\t-u <id>     Updates (clear) the database for the agent. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#clear-syscheck-database-of-an-agent.\n");
+    printf("\t-u all      Updates (clear) the database for all agents. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#clear-syscheck-database.\n");
+    printf("\t-i <id>     List modified files for the agent. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#get-syscheck-files to print last modified of all files.\n");
+    printf("\t-r -i <id>  List modified registry entries (Windows) for the agent. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#get-syscheck-files filtering by event.\n");
+    printf("\t-f <file>   Prints information about a modified file. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#get-syscheck-files filtering by event.\n");
+    printf("\t-z          Used with the -f, zeroes the auto-ignore counter. Deprecated since 3.4 version.\n");
+    printf("\t-d          Used with the -f, ignores that file. Deprecated since version 3.4.\n");
+    printf("\t-s          Changes the output to CSV (comma delimited).Deprecated.\n");
+    printf("\t-j          Changes the output to JSON. Using API calls all data comes in Json.\n");
     exit(1);
 }
 
@@ -63,6 +62,9 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    //This binary its deprecated, use RestFull API instead
+    helpmsg();
 
     /* User arguments */
     if (argc < 2) {
