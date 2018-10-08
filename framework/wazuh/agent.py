@@ -1114,7 +1114,7 @@ class Agent:
 
             # Check if the group already belongs to the agent
             if group_id in group_name.split(','):
-                return "Group '{0}' already belongs to agent'{1}'.".format(group_id, agent_id)
+                return "Agent '{0}' already belongs to group '{1}'.".format(agent_id, group_id)
         else:
             group_name = ""
 
@@ -1504,7 +1504,7 @@ class Agent:
             group_list.remove(group_id)
         except Exception:
             pass
-        
+
         if len(group_list) == 0:
             return
 
@@ -1543,7 +1543,7 @@ class Agent:
                         Agent.create_multi_group(new_group)
                 else:
                     new_group = 'default' if not group_list else group_list[0]
-                
+
                 # Add multigroup
                 agent_file = open("{0}/{1}".format(common.groups_path,agent_id),"w")
                 agent_file.write("{0}\n".format(new_group))
@@ -1773,11 +1773,11 @@ class Agent:
             f_group = open(agent_group_path, 'r')
             group_readed = f_group.read()
             f_group.close()
-            
+
             if (len(group_readed.split(',')) + 1) > common.max_groups_per_multigroup:
                 limit_reached = True
         except Exception:
-            pass       
+            pass
 
         return limit_reached
 
@@ -1847,7 +1847,7 @@ class Agent:
         # Check if agent exists
         if not force:
             Agent(agent_id).get_basic_information()
-        
+
         multi_group_metadata = Agent().get_multigroups_metadata()
 
         # Check if multi group still exists in other agents
@@ -2550,7 +2550,7 @@ class Agent:
                     multi_groups_list.append(line.strip())
         except Exception:
             pass
-        
+
         return multi_groups_list
 
     @staticmethod
@@ -2561,6 +2561,8 @@ class Agent:
         :param multi_groups_list: Multigroups list.
         """
         with open(common.multi_groups_path + "/.metadata", 'w') as f:
+            chown(common.multi_groups_path + "./metadata", common.ossec_uid, common.ossec_gid)
+            chmod(common.multi_groups_path + "./metadata", 0o660)
             for item in multi_groups_list:
                 f.write('{0}\n'.format(item))
             f.close()
@@ -2573,6 +2575,8 @@ class Agent:
         :param multi_groups_list: Multigroup.
         """
         with open(common.multi_groups_path + "/.metadata", 'a') as f:
+            chown(common.multi_groups_path + "./metadata", common.ossec_uid, common.ossec_gid)
+            chmod(common.multi_groups_path + "./metadata", 0o660)
             f.write('{0}\n'.format(multi_group))
             f.close()
 
