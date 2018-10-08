@@ -82,6 +82,11 @@ conf_sections = {
     'vulnerability-detector': {
         'type': 'merge',
         'list_options': ['feed']
+    },
+
+    'osquery': {
+        'type': 'merge',
+        'list_options': []
     }
 }
 
