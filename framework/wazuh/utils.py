@@ -630,7 +630,19 @@ class WazuhDBQuery(object):
         self.min_select_fields = min_select_fields
         self.query_operators = {"=":"=", "!=":"!=", "<":"<", ">":">", "~":'LIKE'}
         self.query_separators = {',':'OR',';':'AND','':''}
-        self.query_regex = re.compile(r"(\()?([\w\.]+)(["+''.join(self.query_operators.keys())+"]{1,2})([\w _\-.:/]+)(\))?(["+''.join(self.query_separators.keys())+"])?")
+        # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
+        # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
+        #   (name != wazuh ;
+        #    id   > 5      ),
+        #    group=webserver
+        self.query_regex = re.compile(
+            r'(\()?' +                                                     # A ( character.
+            '([\w.]+)' +                                                   # Field name: name of the field to look on DB
+            '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +      # Operator: looks for =, !=, <, > or ~.
+            "([\w _\-.:/]+)" +                                             # Value: A string.
+            "(\))?" +                                                      # A ) character
+            "([" + ''.join(self.query_separators.keys())+"])?"             # Separator: looks for ;, , or nothing.
+        )
         self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.date_fields = date_fields
         self.extra_fields = extra_fields
