@@ -1749,13 +1749,25 @@ class Agent:
 
     @staticmethod
     def check_multigroup_limit(agent_id):
+        """
+        An agent can belong to <common.max_groups_per_multigroup> groups as maximum. This function checks that limit is
+        not yet reached.
+
+        :param agent_id: Agent ID to check
+        :return: True if the limit is reached, False otherwise
+        """
         # Check if multigroup limit is reached
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
 
-        with open(agent_group_path) as f_group:
-            group_read = f_group.read()
+        if path.exists(agent_group_path):
+            with open(agent_group_path) as f_group:
+                group_read = f_group.read()
 
-        return len(group_read.split(',')) >= common.max_groups_per_multigroup
+            return len(group_read.split(',')) >= common.max_groups_per_multigroup
+        else:
+            # when the agent is never connected it isn't assigned to any group and
+            # therefore, no agent-group file is present. The limit is ok
+            return False
 
     @staticmethod
     def unset_group(agent_id, group_id=None, force=False):
