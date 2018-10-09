@@ -49,6 +49,11 @@ int LogCollectorConfig(const char *cfgfile)
         return OS_INVALID;
     }
 
+    if (maximum_files > (int)nofile - 100) {
+        merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
+        return OS_SIZELIM;
+    }
+
     if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
         return (OS_INVALID);
     }
