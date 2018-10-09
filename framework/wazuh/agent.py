@@ -536,6 +536,15 @@ class Agent:
                 if path.exists(agent_file) and not path.exists(backup_file):
                     rename(agent_file, backup_file)
 
+        # remove agent from groups
+        db_global = glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
+
+        conn = Connection(db_global[0])
+        conn.execute('delete from belongs where id_agent = :id_agent', {'id_agent': int(self.id)})
+        conn.commit()
+
         return 'Agent deleted successfully.'
 
 
