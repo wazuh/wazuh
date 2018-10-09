@@ -502,18 +502,7 @@ class Agent:
 
             # Remove agent from group
             if Agent.get_number_of_agents_in_multigroup(','.join(self.group)) <= 1:
-                multigroups = set(Agent.get_multigroups_metadata())
-                multigroups_to_remove = set(
-                    filter(lambda mg: set(self.group) & set(mg.split(',')) != set(), multigroups))
-
-                for multi_group in multigroups_to_remove:
-                    try:
-                        folder = hashlib.sha256(multi_group).hexdigest()[:8]
-                        rmtree("{}/{}".format(common.multi_groups_path, folder))
-                    except Exception:
-                        pass
-
-                Agent().write_multigroups_metadata(multigroups - multigroups_to_remove)
+                Agent.remove_multi_group_directory(set(self.group))
         else:
             # Create backup directory
             # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
@@ -1526,6 +1515,20 @@ class Agent:
 
 
     @staticmethod
+    def remove_multi_group_directory(groups_id):
+        multigroups = set(Agent.get_multigroups_metadata())
+        multigroups_to_remove = set(filter(lambda mg: groups_id & set(mg.split(',')) != set(), multigroups))
+
+        for multi_group in multigroups_to_remove:
+            try:
+                folder = hashlib.sha256(multi_group).hexdigest()[:8]
+                rmtree("{}/{}".format(common.multi_groups_path, folder))
+            except Exception:
+                pass
+
+        Agent.write_multigroups_metadata(multigroups - multigroups_to_remove)
+
+    @staticmethod
     def remove_multi_group(groups_id):
         """
         Removes groups by IDs.
@@ -1553,17 +1556,7 @@ class Agent:
             with open("{0}/{1}".format(common.groups_path, agent_id), "w") as agent_file:
                 agent_file.write("{0}\n".format(new_group))
 
-        multigroups = set(Agent.get_multigroups_metadata())
-        multigroups_to_remove = set(filter(lambda mg: groups_id & set(mg.split(',')) != set(), multigroups))
-
-        for multi_group in multigroups_to_remove:
-            try:
-                folder = hashlib.sha256(multi_group).hexdigest()[:8]
-                rmtree("{}/{}".format(common.multi_groups_path, folder))
-            except Exception:
-                pass
-
-        Agent().write_multigroups_metadata(multigroups - multigroups_to_remove)
+        Agent.remove_multi_group_directory(groups_id)
 
 
     @staticmethod
