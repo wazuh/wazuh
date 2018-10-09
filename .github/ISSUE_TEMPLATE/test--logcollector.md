@@ -15,6 +15,7 @@ about: Test suite for Logcollector.
 - [ ] Add log.
 - [ ] Delete all localfile entries and start Logcollector.
 - [ ] Test Logcollector internal options.
+- [ ] Increase both `logcollector.max_files` and `logcollector.rlimit_nofile` and check if everything works with the maximum number of files allowed.
 
 ## Logs
 
