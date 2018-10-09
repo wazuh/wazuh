@@ -26,6 +26,7 @@
 static void help_logcollector(void) __attribute__((noreturn));
 
 int lc_debug_level;
+rlim_t nofile;
 
 /* Print help statement */
 static void help_logcollector()
@@ -53,7 +54,6 @@ int main(int argc, char **argv)
     gid_t gid;
     const char *group = GROUPGLOBAL;
     lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
-    rlim_t nofile;
 
     /* Setup random */
     srandom_init();
@@ -158,7 +158,6 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
     // Set max open files limit
-    nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, INT_MAX);
     struct rlimit rlimit = { nofile, nofile };
 
     if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
