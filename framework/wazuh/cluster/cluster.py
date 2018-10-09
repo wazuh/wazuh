@@ -3,33 +3,35 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.utils import md5, mkdir_with_mode
-from wazuh.exception import WazuhException
-from wazuh.agent import Agent
-from wazuh.manager import status
-from wazuh.configuration import get_ossec_conf
-from wazuh.InputValidator import InputValidator
-from wazuh import common
-from datetime import datetime, timedelta
-from time import time
-from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
-from subprocess import check_output, check_call, CalledProcessError
-from shutil import rmtree, copyfileobj
-from operator import eq, setitem, add
-import json
-from stat import S_IRWXG, S_IRWXU
-from difflib import unified_diff
-import errno
-import logging
-import logging.handlers
-import re
-import os
 import ast
-from calendar import timegm, month_abbr
-from random import random
+import errno
 import glob
 import gzip
+import json
+import logging
+import logging.handlers
+import os
+import re
+from calendar import timegm, month_abbr
+from datetime import datetime, timedelta
+from difflib import unified_diff
 from functools import reduce
+from operator import eq, setitem, add
+from os import environ, path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
+from random import random
+from shutil import rmtree, copyfileobj
+from socket import gethostname
+from stat import S_IRWXG, S_IRWXU
+from subprocess import check_output, check_call, CalledProcessError
+from time import time
+
+from wazuh import common
+from wazuh.InputValidator import InputValidator
+from wazuh.agent import Agent
+from wazuh.configuration import get_ossec_conf
+from wazuh.exception import WazuhException
+from wazuh.manager import status
+from wazuh.utils import md5, mkdir_with_mode
 
 # import the C accelerated API of ElementTree
 try:
@@ -118,9 +120,25 @@ def read_config():
     if 'port' in config_cluster:
         config_cluster['port'] = int(config_cluster['port'])
 
-    if 'node_type' in config_cluster and config_cluster['node_type'] == 'client':
-        logger.warning("Deprecated node type 'client'. Using 'worker' instead.")
-        config_cluster['node_type'] = 'worker'
+    if 'node_name' in config_cluster and config_cluster['node_name'].upper() == '$HOSTNAME':
+        # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
+        config_cluster['node_name'] = gethostname()
+
+    if 'node_type' in config_cluster:
+        node_type = config_cluster['node_type']
+
+        if node_type.upper() == '$NODE_TYPE':
+            if 'NODE_TYPE' in environ:
+                node_type = environ['NODE_TYPE']
+            else:
+                raise WazuhException(3006, 'Unable to get the $NODE_TYPE environment variable')
+
+        if node_type == 'client':
+            logger.warning("Deprecated node type 'client'. Using 'worker' instead.")
+
+            node_type = 'worker'
+
+        config_cluster['node_type'] = node_type
 
     return config_cluster
 
