@@ -2561,8 +2561,8 @@ class Agent:
         :param multi_groups_list: Multigroups list.
         """
         with open(common.multi_groups_path + "/.metadata", 'w') as f:
-            chown(common.multi_groups_path + "./metadata", common.ossec_uid, common.ossec_gid)
-            chmod(common.multi_groups_path + "./metadata", 0o660)
+            chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
+            chmod(common.multi_groups_path + "/.metadata", 0o660)
             for item in multi_groups_list:
                 f.write('{0}\n'.format(item))
             f.close()
@@ -2575,8 +2575,8 @@ class Agent:
         :param multi_groups_list: Multigroup.
         """
         with open(common.multi_groups_path + "/.metadata", 'a') as f:
-            chown(common.multi_groups_path + "./metadata", common.ossec_uid, common.ossec_gid)
-            chmod(common.multi_groups_path + "./metadata", 0o660)
+            chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
+            chmod(common.multi_groups_path + "/.metadata", 0o660)
             f.write('{0}\n'.format(multi_group))
             f.close()
 
