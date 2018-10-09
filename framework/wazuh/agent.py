@@ -1749,13 +1749,25 @@ class Agent:
 
     @staticmethod
     def check_multigroup_limit(agent_id):
+        """
+        An agent can belong to <common.max_groups_per_multigroup> groups as maximum. This function checks that limit is
+        not yet reached.
+
+        :param agent_id: Agent ID to check
+        :return: True if the limit is reached, False otherwise
+        """
         # Check if multigroup limit is reached
         agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
 
-        with open(agent_group_path) as f_group:
-            group_read = f_group.read()
+        if path.exists(agent_group_path):
+            with open(agent_group_path) as f_group:
+                group_read = f_group.read()
 
-        return len(group_read.split(',')) >= common.max_groups_per_multigroup
+            return len(group_read.split(',')) >= common.max_groups_per_multigroup
+        else:
+            # In case that the agent is not connected and has no assigned group, the file is not created.
+            # So, the limit is not reached.
+            return False
 
     @staticmethod
     def unset_group(agent_id, group_id=None, force=False):
@@ -2519,10 +2531,15 @@ class Agent:
 
         :return: readed multigroups list.
         """
-        with open(common.multi_groups_path + "/.metadata") as f:
-            multi_groups_list = [line.strip() for line in f.readlines()]
-        
-        return multi_groups_list
+        metadata_path = common.multi_groups_path + "/.metadata"
+        if path.exists(metadata_path):
+            with open(common.multi_groups_path + "/.metadata") as f:
+                multi_groups_list = [line.strip() for line in f.readlines()]
+
+            return multi_groups_list
+        else:
+            # if the metadata file doesn't exists, there is no multigroups metadata.
+            return []
 
     @staticmethod
     def write_multigroups_metadata(multi_groups_list):
@@ -2531,10 +2548,11 @@ class Agent:
 
         :param multi_groups_list: Multigroups list.
         """
-        with open(common.multi_groups_path + "/.metadata", 'w') as f:
-            for item in multi_groups_list:
-                f.write('{0}\n'.format(item))
-            f.close()
+        if multi_groups_list:
+            # it's not worth it to open/create the file if there's nothing to write
+            with open(common.multi_groups_path + "/.metadata", 'w') as f:
+                for item in multi_groups_list:
+                    f.write('{0}\n'.format(item))
 
     @staticmethod
     def append_multigroups_metadata(multi_group):
@@ -2543,9 +2561,10 @@ class Agent:
 
         :param multi_groups_list: Multigroup.
         """
-        with open(common.multi_groups_path + "/.metadata", 'a') as f:
-            f.write('{0}\n'.format(multi_group))
-            f.close()
+        metadata_path = common.multi_groups_path + "/.metadata"
+        if path.exists(metadata_path):
+            with open(metadata_path, 'a') as f:
+                f.write('{0}\n'.format(multi_group))
 
     @staticmethod
     def get_sync_group(agent_id):
