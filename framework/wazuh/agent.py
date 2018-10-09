@@ -1765,8 +1765,8 @@ class Agent:
 
             return len(group_read.split(',')) >= common.max_groups_per_multigroup
         else:
-            # when the agent is never connected it isn't assigned to any group and
-            # therefore, no agent-group file is present. The limit is ok
+            # In case that the agent is not connected and has no assigned group, the file is not created.
+            # So, the limit is not reached.
             return False
 
     @staticmethod
