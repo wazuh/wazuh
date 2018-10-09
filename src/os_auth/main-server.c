@@ -985,6 +985,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
                         minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
+                        OS_RemoveAgentGroup(id_exist);
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist, 0);
                     } else {
