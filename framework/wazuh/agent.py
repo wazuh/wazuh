@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta
 from base64 import b64encode
 from shutil import copyfile, move, copytree, rmtree
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk
+from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk, geteuid
 from time import time, sleep
 import socket
 import hashlib
@@ -2561,8 +2561,9 @@ class Agent:
         :param multi_groups_list: Multigroups list.
         """
         with open(common.multi_groups_path + "/.metadata", 'w') as f:
-            chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
-            chmod(common.multi_groups_path + "/.metadata", 0o660)
+            if geteuid() == 0:
+                chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
+                chmod(common.multi_groups_path + "/.metadata", 0o660)
             for item in multi_groups_list:
                 f.write('{0}\n'.format(item))
             f.close()
@@ -2575,8 +2576,9 @@ class Agent:
         :param multi_groups_list: Multigroup.
         """
         with open(common.multi_groups_path + "/.metadata", 'a') as f:
-            chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
-            chmod(common.multi_groups_path + "/.metadata", 0o660)
+            if geteuid() == 0:
+                chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
+                chmod(common.multi_groups_path + "/.metadata", 0o660)
             f.write('{0}\n'.format(multi_group))
             f.close()
 
