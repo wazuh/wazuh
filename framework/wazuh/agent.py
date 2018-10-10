@@ -3,6 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import operator
 from operator import itemgetter
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
@@ -1501,6 +1502,7 @@ class Agent:
 
         return msg
 
+
     @staticmethod
     def create_multi_group(group_id):
         """
@@ -1538,6 +1540,7 @@ class Agent:
 
         Agent.write_multigroups_metadata(multigroups - multigroups_to_remove)
 
+
     @staticmethod
     def remove_multi_group(groups_id):
         """
@@ -1546,8 +1549,7 @@ class Agent:
         :param groups_id: list with Groups ID.
         """
         for agent_id in listdir("{0}".format(common.groups_path)):
-            with open("{0}/{1}".format(common.groups_path, agent_id)) as f:
-                agent_group = f.read().strip()
+            agent_group = Agent.get_agents_group_file(agent_id)
 
             new_group = ''
             group_list = agent_group.split(',')
@@ -1563,8 +1565,7 @@ class Agent:
                     new_group = 'default' if not group_list else group_list[0]
 
             # Add multigroup
-            with open("{0}/{1}".format(common.groups_path, agent_id), "w") as agent_file:
-                agent_file.write("{0}\n".format(new_group))
+            Agent.set_agent_group_file(agent_id, new_group)
 
         Agent.remove_multi_group_directory(groups_id)
 
@@ -1643,6 +1644,32 @@ class Agent:
 
 
     @staticmethod
+    def get_agents_group_file(agent_id):
+        group_path, group_name = "{}/{}".format(common.groups_path, agent_id), ""
+        if path.exists(group_path):
+            with open(group_path) as f:
+                group_name = f.read().strip()
+
+        return group_name
+
+
+    @staticmethod
+    def set_agent_group_file(agent_id, group_id):
+        try:
+            agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
+            new_file = not path.exists(agent_group_path)
+
+            with open(agent_group_path, 'w') as f_group:
+                f_group.write(group_id)
+
+            if new_file:
+                chown(agent_group_path, common.ossec_uid, common.ossec_gid)
+                chmod(agent_group_path, 0o660)
+        except Exception as e:
+            raise WazuhException(1005, str(e))
+
+
+    @staticmethod
     def replace_group(agent_id, group_id, force=False):
         """
         Replaces a group to an agent.
@@ -1650,7 +1677,6 @@ class Agent:
         :param agent_id: Agent ID.
         :param group_id: Group ID.
         :param force: No check if agent exists
-        :param replace: Replace agent group instead of appending.
         :return: Confirmation message.
         """
         # Input Validation of group_id
@@ -1665,15 +1691,6 @@ class Agent:
         if not force:
             Agent(agent_id).get_basic_information()
 
-        multi_group_metadata = Agent().get_multigroups_metadata()
-
-        # get agent's group
-        group_path = "{}/{}".format(common.groups_path, agent_id)
-        if path.exists(group_path):
-            with open(group_path) as f:
-                group_name = f.read().replace('\n', '')
-        else:
-            group_name = ""
 
         # Check if multi group still exists in other agents
         multi_group_list = []
@@ -1684,6 +1701,7 @@ class Agent:
             if filename != agent_id:
                 multi_group_list.append(group_readed)
             file.close()
+        group_name = Agent.get_agents_group_file(agent_id)
 
         # Check if it is a multi group
         if group_name and group_name.find(",") > -1:
@@ -1702,19 +1720,7 @@ class Agent:
                         pass
 
         # Assign group in /queue/agent-groups
-        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-        try:
-            new_file = False if path.exists(agent_group_path) else True
-
-            f_group = open(agent_group_path, 'w')
-            f_group.write("{0}\n".format(group_id))
-            f_group.close()
-
-            if new_file:
-                chown(agent_group_path, common.ossec_uid, common.ossec_gid)
-                chmod(agent_group_path, 0o660)
-        except Exception as e:
-            raise WazuhException(1005, str(e))
+        Agent.set_agent_group_file(agent_id, group_id)
 
         # Create group in /etc/shared
         if not Agent.group_exists(group_id):
@@ -1746,19 +1752,7 @@ class Agent:
             Agent(agent_id).get_basic_information()
 
         # Assign group in /queue/agent-groups
-        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-        try:
-            new_file = False if path.exists(agent_group_path) else True
-
-            f_group = open(agent_group_path, 'w')
-            f_group.write("{0}\n".format(group_id))
-            f_group.close()
-
-            if new_file:
-                chown(agent_group_path, common.ossec_uid, common.ossec_gid)
-                chmod(agent_group_path, 0o660)
-        except Exception as e:
-            raise WazuhException(1005, str(e))
+        Agent.set_agent_group_file(agent_id, group_id)
 
         return "Group '{0}' set to agent '{1}'.".format(group_id, agent_id)
 
@@ -1772,12 +1766,8 @@ class Agent:
         :param agent_id: Agent ID to check
         :return: True if the limit is reached, False otherwise
         """
-        # Check if multigroup limit is reached
-        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-
-        if path.exists(agent_group_path):
-            with open(agent_group_path) as f_group:
-                group_read = f_group.read()
+        group_read = Agent.get_agents_group_file(agent_id)
+        if group_read:
             return len(group_read.split(',')) >= common.max_groups_per_multigroup
         else:
             # In case that the agent is not connected and has no assigned group, the file is not created.
@@ -1815,11 +1805,8 @@ class Agent:
             Agent(agent_id).get_basic_information()
 
         # get agent's group
-        group_path = "{}/{}".format(common.groups_path, agent_id)
-        if path.exists(group_path):
-            with open(group_path) as f:
-                group_name = f.read().replace('\n','')
-
+        group_name = Agent.get_agents_group_file(agent_id)
+        if group_name:
             group_list = group_name.split(',')
             # check agent belongs to group group_id
             if group_id not in group_list:
@@ -1862,6 +1849,7 @@ class Agent:
 
         :param agent_id: Agent ID.
         :param force: No check if agent exists
+        :param group_id: New group to set.
         :return: Confirmation message.
         """
         # Check if agent exists
@@ -1869,21 +1857,15 @@ class Agent:
             Agent(agent_id).get_basic_information()
 
         # Check if multi group still exists in other agents
-        agent_group_path = "{0}/{1}".format(common.groups_path, agent_id)
-        if path.exists(agent_group_path):
-            with open(agent_group_path) as f:
-                group_name = f.read().replace('\n','')
-
+        group_name = Agent.get_agents_group_file(agent_id)
+        if group_name:
             # Check if it is a multi group
             if group_name.find(",") > -1:
                 # The multi group is not being used in other agents, delete it from multi groups
                 if Agent.get_number_of_agents_in_multigroup(group_name) <= 1:
                     Agent.remove_multi_group(set(group_name.split(',')))
 
-            with open(agent_group_path, "w+") as fo:
-                fo.write("{0}\n".format(group_id))
-
-
+            Agent.set_agent_group_file(agent_id, group_id)
 
             return "Group unset for agent '{0}'.".format(agent_id)
         else:
