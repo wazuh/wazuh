@@ -758,7 +758,8 @@ class Agent:
         self.key = self.compute_key()
 
 
-    def _remove_single_group(self, group_id):
+    @staticmethod
+    def _remove_single_group(group_id):
         """
         Remove the group in every agent.
 
@@ -769,15 +770,10 @@ class Agent:
         if group_id.lower() == "default":
             raise WazuhException(1712)
 
-        if not self.group_exists(group_id):
+        if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
 
-        ids = []
-
-        # Remove agent group
-        agents = self.get_agent_group(group_id=group_id, limit=None)
-        for agent in agents['items']:
-            ids.append(agent['id'])
+        ids = list(map(operator.itemgetter('id'), Agent.get_agent_group(group_id=group_id, limit=None)['items']))
 
         # Remove group directory
         group_path = "{0}/{1}".format(common.shared_path, group_id)
@@ -1594,27 +1590,27 @@ class Agent:
         ids = []
         affected_agents = []
         if isinstance(group_id, list):
-            Agent.remove_multi_group(set(map(lambda x: x.lower(), group_id)))
             for id in group_id:
 
                 if id.lower() == "default":
                     raise WazuhException(1712)
 
                 try:
-                    removed = Agent()._remove_single_group(id)
+                    removed = Agent._remove_single_group(id)
                     ids.append(id)
                     affected_agents += removed['affected_agents']
+                    Agent.remove_multi_group(set(map(lambda x: x.lower(), group_id)))
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
         else:
-            Agent.remove_multi_group({group_id.lower()})
             if group_id.lower() == "default":
                 raise WazuhException(1712)
 
             try:
-                removed = Agent()._remove_single_group(group_id)
+                removed = Agent._remove_single_group(group_id)
                 ids.append(group_id)
                 affected_agents += removed['affected_agents']
+                Agent.remove_multi_group({group_id.lower()})
             except Exception as e:
                 failed_ids.append(create_exception_dic(group_id, e))
 
