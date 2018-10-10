@@ -501,9 +501,6 @@ class Agent:
             for agent_file in filter(path.exists, agent_files):
                 remove(agent_file)
 
-            # Remove agent from group
-            if Agent.get_number_of_agents_in_multigroup(','.join(self.group)) <= 1:
-                Agent.remove_multi_group_directory(','.join(self.group))
         else:
             # Create backup directory
             # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
