@@ -1979,7 +1979,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 void * w_process_event_thread(__attribute__((unused)) void * id){
 
     Eventinfo *lf = NULL;
-    RuleInfo *currently_rule = NULL;
+    RuleInfo *t_currently_rule = NULL;
     int result;
     int t_id = (intptr_t)id;
     regex_matching rule_match;
@@ -2013,7 +2013,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         /* Extract decoded event from the queue */
         lf = queue_pop_ex(decode_queue_event_output);
 
-        currently_rule = NULL;
+        t_currently_rule = NULL;
 
         lf->size = strlen(lf->log);
 
@@ -2099,7 +2099,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
 
                 /* Process the alert */
-                currently_rule = lf->generated_rule;
+                t_currently_rule = lf->generated_rule;
             }
             /* Categories must match */
             else if (rulenode_pt->ruleinfo->category !=
@@ -2107,49 +2107,49 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 continue;
             }
             /* Check each rule */
-            else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
+            else if ((t_currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
                         == NULL) {
                 continue;
             }
             /* Ignore level 0 */
-            if (currently_rule->level == 0) {
+            if (t_currently_rule->level == 0) {
                 break;
             }
 
             /* Check ignore time */
-            if (currently_rule->ignore_time) {
-                if (currently_rule->time_ignored == 0) {
-                    currently_rule->time_ignored = lf->time.tv_sec;
+            if (t_currently_rule->ignore_time) {
+                if (t_currently_rule->time_ignored == 0) {
+                    t_currently_rule->time_ignored = lf->time.tv_sec;
                 }
                 /* If the current time - the time the rule was ignored
                     * is less than the time it should be ignored,
                     * leave (do not alert again)
                     */
-                else if ((lf->time.tv_sec - currently_rule->time_ignored)
-                            < currently_rule->ignore_time) {
+                else if ((lf->time.tv_sec - t_currently_rule->time_ignored)
+                            < t_currently_rule->ignore_time) {
                     break;
                 } else {
-                    currently_rule->time_ignored = lf->time.tv_sec;
+                    t_currently_rule->time_ignored = lf->time.tv_sec;
                 }
             }
 
             /* Pointer to the rule that generated it */
-            lf->generated_rule = currently_rule;
+            lf->generated_rule = t_currently_rule;
 
             /* Check if we should ignore it */
-            if (currently_rule->ckignore && IGnore(lf, t_id)) {
+            if (t_currently_rule->ckignore && IGnore(lf, t_id)) {
                 /* Ignore rule */
                 lf->generated_rule = NULL;
                 break;
             }
 
             /* Check if we need to add to ignore list */
-            if (currently_rule->ignore) {
+            if (t_currently_rule->ignore) {
                 AddtoIGnore(lf, t_id);
             }
 
             /* Log the alert if configured to */
-            if (currently_rule->alert_opts & DO_LOGALERT) {
+            if (t_currently_rule->alert_opts & DO_LOGALERT) {
                 lf->comment = ParseRuleComment(lf);
 
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
@@ -2160,11 +2160,11 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Execute an active response */
-            if (currently_rule->ar) {
+            if (t_currently_rule->ar) {
                 int do_ar;
                 active_response **rule_ar;
 
-                rule_ar = currently_rule->ar;
+                rule_ar = t_currently_rule->ar;
 
                 while (*rule_ar) {
                     do_ar = 1;
@@ -2200,21 +2200,21 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Copy the structure to the state memory of if_matched_sid */
-            if (currently_rule->sid_prev_matched) {
-                if (!OSList_AddData(currently_rule->sid_prev_matched, lf)) {
+            if (t_currently_rule->sid_prev_matched) {
+                if (!OSList_AddData(t_currently_rule->sid_prev_matched, lf)) {
                     merror("Unable to add data to sig list.");
                 } else {
                     lf->sid_node_to_delete =
-                        currently_rule->sid_prev_matched->last_node;
+                        t_currently_rule->sid_prev_matched->last_node;
                 }
             }
             /* Group list */
-            else if (currently_rule->group_prev_matched) {
+            else if (t_currently_rule->group_prev_matched) {
                 unsigned int j = 0;
 
-                while (j < currently_rule->group_prev_matched_sz) {
+                while (j < t_currently_rule->group_prev_matched_sz) {
                     if (!OSList_AddData(
-                                currently_rule->group_prev_matched[j],
+                                t_currently_rule->group_prev_matched[j],
                                 lf)) {
                         merror("Unable to add data to grp list.");
                     }
@@ -2258,12 +2258,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     reported_writer = 1;
                     mwarn("Archive writer queue is full. %d", t_id);
                 }
-                w_free_event_info(lf, 0);
+                w_free_event_info(lf, 1);
             }
             continue;
         }
 
-        w_free_event_info(lf, 0);
+        w_free_event_info(lf, 1);
     }
 }
 

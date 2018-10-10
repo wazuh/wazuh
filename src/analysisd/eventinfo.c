@@ -606,7 +606,6 @@ void Free_Eventinfo(Eventinfo *lf)
         EventNode *prev = lf->node->prev;
         w_mutex_lock(&prev->mutex);
         prev->next = NULL;
-        unsigned int x = 0;
         while (lf->node->count > 0);
         w_mutex_unlock(&prev->mutex);
     }
