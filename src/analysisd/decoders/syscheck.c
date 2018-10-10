@@ -41,6 +41,9 @@ void sdb_clean(_sdb *localsdb);
 // Get timestamp for last scan from wazuhdb
 int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
 
+// Mutexes
+static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 // Initialize the necessary information to process the syscheck information
 void fim_init(void) {
@@ -172,6 +175,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
 
         while (*ff_ig) {
             if (strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0) {
+                os_free(lf->data);
                 mdebug1("Ignoring file '%s'", f_name);;
                 return (0);
             }
@@ -249,6 +253,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
         mdebug1("Alert discarded '%s' same check_sum", f_name);
         fim_update_date (f_name, lf, sdb);
+        os_free(lf->data);
         os_free(wazuhdb_query);
         os_free(new_check_sum);
         os_free(old_check_sum);
@@ -299,6 +304,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 // Alert discarded, frequency exceeded
                 if (changes == -1) {
                     mdebug1("Alert discarded '%s' frequency exceeded", f_name);
+                    os_free(lf->data);
                     os_free(wazuhdb_query);
                     os_free(new_check_sum);
                     os_free(old_check_sum);
@@ -343,6 +349,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             mdebug2("File %s saved/updated in FIM DDBB", f_name);
 
+            w_mutex_lock(&control_msg_mutex);
             if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), !end_first_scan) {
                 fim_get_scantime (&end_scan, lf, sdb);
                 os_calloc(1, sizeof(time_t), end_first_scan);
@@ -357,10 +364,12 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 if(end_scan == 0) {
                     mdebug2("Alert discarded, first scan. File '%s'", f_name);
                     sk_sum_clean(&newsum);
+                    os_free(lf->data);
                     os_free(wazuhdb_query);
                     os_free(new_check_sum);
                     os_free(old_check_sum);
                     os_free(response);
+                    w_mutex_unlock(&control_msg_mutex);
                     return (0);
                 } else {
                     mdebug2("End end_scan is '%ld' (lf->time: '%ld')", end_scan, lf->time.tv_sec);
@@ -368,11 +377,13 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             } else {
                 mdebug2("End end_first_scan is '%ld' (lf->time: '%ld')", *end_first_scan, lf->time.tv_sec);
             }
+            w_mutex_unlock(&control_msg_mutex);
 
             if(end_first_scan) {
                 if(lf->time.tv_sec < *end_first_scan) {
                     mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
                     sk_sum_clean(&newsum);
+                    os_free(lf->data);
                     os_free(wazuhdb_query);
                     os_free(new_check_sum);
                     os_free(old_check_sum);
@@ -384,6 +395,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             if(Config.syscheck_alert_new == 0) {
                 mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
                 sk_sum_clean(&newsum);
+                os_free(lf->data);
                 os_free(wazuhdb_query);
                 os_free(new_check_sum);
                 os_free(old_check_sum);
@@ -397,6 +409,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             merror("at fim_db_search: Couldn't decode fim sum '%s' from file '%s'.",
                     new_check_sum, f_name);
             sk_sum_clean(&newsum);
+            os_free(lf->data);
             os_free(wazuhdb_query);
             os_free(new_check_sum);
             os_free(old_check_sum);
@@ -415,6 +428,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
         //No changes in checksum
         sk_sum_clean(&newsum);
+        os_free(lf->data);
         os_free(response);
         os_free(new_check_sum);
         os_free(old_check_sum);
@@ -724,7 +738,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     );
 
     if(!changes) {
-        lf->data = NULL;
+        os_free(lf->data);
         return(-1);
     } else {
         wm_strcat(&lf->fields[SK_CHFIELDS].value, ",", '\0');
@@ -847,6 +861,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
     char *response = NULL;
     char *msg = NULL;
     int db_result;
+    int result;
     time_t *ts_end;
 
     os_calloc(OS_SIZE_128, sizeof(char), msg);
@@ -891,6 +906,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
         }
 
         // If end first scan store timestamp in a hash table
+        w_mutex_lock(&control_msg_mutex);
         if(strcmp(key, HC_FIM_DB_EFS) == 0 || strcmp(key, HC_FIM_DB_ES) == 0 ||
                 strcmp(key, HC_SK_DB_COMPLETED) == 0) {
             if (ts_end = (time_t *) OSHash_Get_ex(fim_agentinfo, lf->agent_id),
@@ -898,21 +914,22 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
                 os_calloc(1, sizeof(time_t), ts_end);
                 *ts_end = value + 2;
 
-                if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, ts_end) <= 0) {
+                if (result = OSHash_Add_ex(fim_agentinfo, lf->agent_id, ts_end), result != 2) {
                     os_free(ts_end);
-                    merror("Unable to add scan_info to hash table for agent: %s",
-                            lf->agent_id);
+                    merror("Unable to add last scan_info to hash table for agent: %s. Error: %d.",
+                            lf->agent_id, result);
                 }
             }
             else {
                 *ts_end = value;
-                if (OSHash_Update_ex(fim_agentinfo, lf->agent_id, ts_end) <= 0) {
+                if (!OSHash_Update_ex(fim_agentinfo, lf->agent_id, ts_end)) {
                     os_free(ts_end);
                     merror("Unable to update metadata to hash table for agent: %s",
                             lf->agent_id);
                 }
             }
         }
+        w_mutex_unlock(&control_msg_mutex);
 
         // Start scan 3rd_check=2nd_check 2nd_check=1st_check 1st_check=value
         if (strcmp(key, HC_FIM_DB_SFS) == 0) {

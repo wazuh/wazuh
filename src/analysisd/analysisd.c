@@ -2004,8 +2004,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     memset(&rule_match, 0, sizeof(regex_matching));
     Eventinfo *lf_cpy = NULL;
 
-    minfo("~~~~ Thread %d w_process_event_thread     %lu     ", getpid(), pthread_self());
-
     while(1){
 
         RuleNode *rulenode_pt;

@@ -58,15 +58,12 @@ void OS_AddEvent(Eventinfo *lf)
         }
 
         // Always add after the first node, which must be empty
-
         new_node->next = last_added_node;
         new_node->prev = first_node;
         last_added_node->prev = new_node;
+        first_node->next = new_node;
 
         last_added_node = new_node;
-
-        /* Add the event to the node */
-        new_node->event = lf;
 
         _memoryused++;
 
@@ -79,22 +76,16 @@ void OS_AddEvent(Eventinfo *lf)
              * or the events that will not match anymore
              * (higher than max frequency)
              */
-            while (last_node && ((i < 10) || ((lf->time.tv_sec - last_node->event->time.tv_sec) > _max_freq))) {
+            while (last_node != last_added_node && ((i < 10) || ((lf->time.tv_sec - last_node->event->time.tv_sec) > _max_freq))) {
                 oldlast = last_node;
                 last_node = last_node->prev;
+                last_node->next = NULL;
+
                 /* Free event info */
                 Free_Eventinfo(oldlast->event);
                 free(oldlast);
 
                 _memoryused--;
-
-                if (last_node == first_node) {
-                    first_node->next = NULL;
-                    last_added_node = NULL;
-                    last_node = NULL;
-                    break;
-                }
-
                 i++;
             }
         }
@@ -110,6 +101,7 @@ void OS_AddEvent(Eventinfo *lf)
             first_node->event = NULL;
             first_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
         }
+        _memoryused++;
         first_node->next = second_node;
 
         second_node->prev = first_node;
@@ -119,6 +111,7 @@ void OS_AddEvent(Eventinfo *lf)
         last_added_node = second_node;
     }
 
+    last_added_node->event = lf;
     lf->node = last_added_node;
     last_added_node->count = 0;
     last_added_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
