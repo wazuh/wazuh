@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta
 from base64 import b64encode
 from shutil import copyfile, move, copytree, rmtree
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk
+from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk, geteuid
 from time import time, sleep
 import socket
 import hashlib
@@ -1129,7 +1129,7 @@ class Agent:
 
             # Check if the group already belongs to the agent
             if group_id in group_name.split(','):
-                return "Group '{0}' already belongs to agent'{1}'.".format(group_id, agent_id)
+                return "Agent '{0}' already belongs to group '{1}'.".format(agent_id, group_id)
         else:
             group_name = ""
 
@@ -1509,6 +1509,7 @@ class Agent:
         :param group_id: Group ID.
         :return: Confirmation message.
         """
+
         if ',' not in group_id:
             # if there's not , in the group_id, then it isn't a multigroup and therefore the function does nothing
             return
@@ -1777,7 +1778,6 @@ class Agent:
         if path.exists(agent_group_path):
             with open(agent_group_path) as f_group:
                 group_read = f_group.read()
-
             return len(group_read.split(',')) >= common.max_groups_per_multigroup
         else:
             # In case that the agent is not connected and has no assigned group, the file is not created.
@@ -2556,7 +2556,6 @@ class Agent:
         if path.exists(metadata_path):
             with open(common.multi_groups_path + "/.metadata") as f:
                 multi_groups_list = [line.strip() for line in f.readlines()]
-
             return multi_groups_list
         else:
             # if the metadata file doesn't exists, there is no multigroups metadata.
@@ -2573,6 +2572,10 @@ class Agent:
             for item in multi_groups_list:
                 f.write('{0}\n'.format(item))
 
+        if geteuid() == 0:
+            chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
+            chmod(common.multi_groups_path + "/.metadata", 0o660)
+
     @staticmethod
     def append_multigroups_metadata(multi_group):
         """
@@ -2580,8 +2583,12 @@ class Agent:
 
         :param multi_groups_list: Multigroup.
         """
+
         metadata_path = common.multi_groups_path + "/.metadata"
         if path.exists(metadata_path):
+            if geteuid() == 0:
+                chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
+                chmod(common.multi_groups_path + "/.metadata", 0o660)
             with open(metadata_path, 'a') as f:
                 f.write('{0}\n'.format(multi_group))
 
