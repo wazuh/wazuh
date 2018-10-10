@@ -4,7 +4,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import operator
-from operator import itemgetter
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
                         md5
@@ -1042,7 +1041,9 @@ class Agent:
         :return: Dictionary with affected_agents (agents removed), timeframe applied, failed_ids if it necessary (agents that cannot been removed), and a message.
         """
 
-        id_purgeable_agents = list(map(itemgetter('id'), Agent.get_agents_overview(filters={'older_than':older_than,'status':status}, limit = None)['items']))
+        id_purgeable_agents = list(map(operator.itemgetter('id'),
+                                       Agent.get_agents_overview(filters={'older_than':older_than,'status':status},
+                                                                 limit = None)['items']))
 
         failed_ids = []
         affected_agents = []
