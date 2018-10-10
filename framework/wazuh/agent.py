@@ -1717,9 +1717,9 @@ class Agent:
         :param force: No check if agent exists
         :return: Confirmation message.
         """
-        # Input Validation of group_id
-        #if not InputValidator().group(group_id):
-        #    raise WazuhException(1722)
+        # Input Validation of all groups_id
+        if not reduce(operator.iand, map(InputValidator().group, group_id.split(','))):
+            raise WazuhException(1722, group_id)
 
         agent_id = agent_id.zfill(3)
         if agent_id == "000":
