@@ -1691,33 +1691,11 @@ class Agent:
         if not force:
             Agent(agent_id).get_basic_information()
 
-
-        # Check if multi group still exists in other agents
-        multi_group_list = []
-        for filename in listdir("{0}".format(common.groups_path)):
-            file = open("{0}/{1}".format(common.groups_path,filename),"r")
-            group_readed = file.read()
-            group_readed = group_readed.strip()
-            if filename != agent_id:
-                multi_group_list.append(group_readed)
-            file.close()
         group_name = Agent.get_agents_group_file(agent_id)
 
         # Check if it is a multi group
-        if group_name and group_name.find(",") > -1:
-            try:
-                multi_group = multi_group_list.index(group_name)
-            except Exception:
-                # The multi group is not being used in other agents, delete it from multi groups
-                if Agent().multi_group_exists(group_name):
-                    multi_group_metadata.remove(group_name)
-                    Agent().write_multigroups_metadata(multi_group_metadata)
-
-                    try:
-                        folder = hashlib.sha256(group_name).hexdigest()[:8]
-                        rmtree("{}/{}".format(common.multi_groups_path,folder))
-                    except Exception:
-                        pass
+        if group_name and group_name.find(",") > -1 and Agent.get_number_of_agents_in_multigroup(group_name) <= 1:
+            Agent.remove_multi_group_directory(group_name)
 
         # Assign group in /queue/agent-groups
         Agent.set_agent_group_file(agent_id, group_id)
