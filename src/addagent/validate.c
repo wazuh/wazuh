@@ -833,10 +833,9 @@ void OS_RemoveAgentGroup(const char *id)
             fp = NULL;
             unlink(group_file);
             group[strlen(group)-1] = '\0';
-            /* Remove multigroup if it's not used on any other agent */
-            w_remove_multigroup(group);
         }
 #ifndef CLIENT
+        /* Remove from the 'belongs' table groups which the agent belongs to*/
         wdb_delete_agent_belongs(atoi(id));
 #endif
 
