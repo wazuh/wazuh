@@ -88,7 +88,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
     def _sort_query(self, field):
         if field == 'status':
             # Order by status ASC is the same that order by last_keepalive DESC.
-            return '{} {}'.format('last_keepAlive', 'asc' if self.sort['order'] == 'desc' else 'desc')
+            return '{} {}'.format('last_keepAlive', self.sort['order'])
         elif field == 'os.version':
             return "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(self.sort['order'])
         else:
