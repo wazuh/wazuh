@@ -203,7 +203,7 @@ void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode)
     }
 
     /* Free the node memory */
-    free(thisnode);
+    os_free(thisnode);
 
     /* Set the currently node to the next one */
     list->cur_node = next;
@@ -331,4 +331,3 @@ int OSList_AddData(OSList *list, void *data)
 
     return (1);
 }
-

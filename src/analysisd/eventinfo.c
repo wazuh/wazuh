@@ -359,7 +359,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     }
 
     w_mutex_lock(&first_pt->mutex);
-    ;
+
     if (eventnode_pt = first_pt->next, eventnode_pt) {
         eventnode_pt->count++;
     }
