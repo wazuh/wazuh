@@ -1142,7 +1142,7 @@ class Agent:
             raise WazuhException(1710, group_id)
 
         # If the new multi group doesnt exists, create it
-        if not Agent().multi_group_exists(agent_group):
+        if not Agent.multi_group_exists(agent_group):
             Agent.create_multi_group(agent_group)
 
         Agent().set_multi_group(str(agent_id),agent_group)
@@ -1361,17 +1361,8 @@ class Agent:
         :param group_id: Group ID.
         :return: True if group exists, False otherwise
         """
-        # Input Validation of group_id
-        #if not InputValidator().group(group_id):
-        #    raise WazuhException(1722)
+        return group_id in Agent.get_multigroups_metadata()
 
-        multi_group_metadata = Agent().get_multigroups_metadata()
-
-        try:
-            multi_group_metadata.index(group_id)
-            return True
-        except Exception:
-            return False
 
     @staticmethod
     def get_agent_group(group_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}, q=""):
