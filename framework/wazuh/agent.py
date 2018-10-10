@@ -503,7 +503,7 @@ class Agent:
 
             # Remove agent from group
             if Agent.get_number_of_agents_in_multigroup(','.join(self.group)) <= 1:
-                Agent.remove_multi_group_directory(set(self.group))
+                Agent.remove_multi_group_directory(','.join(self.group))
         else:
             # Create backup directory
             # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
@@ -1529,14 +1529,13 @@ class Agent:
     @staticmethod
     def remove_multi_group_directory(groups_id):
         multigroups = set(Agent.get_multigroups_metadata())
-        multigroups_to_remove = set(filter(lambda mg: groups_id & set(mg.split(',')) != set(), multigroups))
+        multigroups_to_remove = set(filter(lambda mg: mg == groups_id, multigroups))
 
         for multi_group in multigroups_to_remove:
-            try:
-                folder = hashlib.sha256(multi_group).hexdigest()[:8]
-                rmtree("{}/{}".format(common.multi_groups_path, folder))
-            except Exception:
-                pass
+            dirname = hashlib.sha256(multi_group).hexdigest()[:8]
+            dirpath = "{}/{}".format(common.multi_groups_path, dirname)
+            if path.exists(dirpath):
+                rmtree(dirpath)
 
         Agent.write_multigroups_metadata(multigroups - multigroups_to_remove)
 
@@ -1548,6 +1547,7 @@ class Agent:
 
         :param groups_id: list with Groups ID.
         """
+        groups_to_remove = []
         for agent_id in listdir("{0}".format(common.groups_path)):
             agent_group = Agent.get_agents_group_file(agent_id)
 
@@ -1555,6 +1555,7 @@ class Agent:
             group_list = agent_group.split(',')
             for group_to_remove in groups_id & set(group_list):
                 # remove the group
+                groups_to_remove.append(','.join(group_list))
                 group_list.remove(group_to_remove)
                 if len(group_list) > 1:
                     # create new multigroup
@@ -1567,7 +1568,8 @@ class Agent:
             # Add multigroup
             Agent.set_agent_group_file(agent_id, new_group)
 
-        Agent.remove_multi_group_directory(groups_id)
+        for multi_group in groups_to_remove:
+            Agent.remove_multi_group_directory(multi_group)
 
 
     @staticmethod
@@ -1841,7 +1843,7 @@ class Agent:
             if group_name.find(",") > -1:
                 # The multi group is not being used in other agents, delete it from multi groups
                 if Agent.get_number_of_agents_in_multigroup(group_name) <= 1:
-                    Agent.remove_multi_group(set(group_name.split(',')))
+                    Agent.remove_multi_group_directory(group_name)
 
             Agent.set_agent_group_file(agent_id, group_id)
 
