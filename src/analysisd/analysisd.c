@@ -82,6 +82,7 @@ OSDecoderInfo *NULL_Decoder;
 rlim_t nofile;
 int sys_debug_level;
 OSDecoderInfo *fim_decoder;
+int num_rule_matching_threads;
 
 /* execd queue */
 static int execdq = 0;
@@ -217,8 +218,6 @@ pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* Stats */
-static RuleInfo *stats_rule = NULL;
 
 /* To translate between month (int) to month (char) */
 static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -785,23 +784,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Get current time before starting */
     gettime(&c_timespec);
 
-    /* Start the hourly/weekly stats */
-    if (Start_Hour() < 0) {
-        Config.stats = 0;
-    } else {
-        /* Initialize stats rules */
-        stats_rule = zerorulemember(
-                         STATS_MODULE,
-                         Config.stats,
-                         0, 0, 0, 0, 0, 0);
-
-        if (!stats_rule) {
-            merror_exit(MEM_ERROR, errno, strerror(errno));
-        }
-        stats_rule->group = "stats,";
-        stats_rule->comment = "Excessive number of events (above normal).";
-    }
-
     /* Initialize the logs */
     {
         os_calloc(1, sizeof(Eventinfo), lf);
@@ -836,7 +818,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_syscollector_threads = getDefine_Int("analysisd", "syscollector_threads", 0, 32);
     int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
-    int num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
+    num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_information->cpu_cores;
@@ -2004,6 +1986,26 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     memset(&rule_match, 0, sizeof(regex_matching));
     Eventinfo *lf_cpy = NULL;
 
+    /* Stats */
+    RuleInfo *stats_rule = NULL;
+
+    /* Start the hourly/weekly stats */
+    if (Start_Hour(t_id, num_rule_matching_threads) < 0) {
+        Config.stats = 0;
+    } else {
+        /* Initialize stats rules */
+        stats_rule = zerorulemember(
+                         STATS_MODULE,
+                         Config.stats,
+                         0, 0, 0, 0, 0, 0);
+
+        if (!stats_rule) {
+            merror_exit(MEM_ERROR, errno, strerror(errno));
+        }
+        stats_rule->group = "stats,";
+        stats_rule->comment = "Excessive number of events (above normal).";
+    }
+
     while(1){
 
         RuleNode *rulenode_pt;
@@ -2256,12 +2258,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     reported_writer = 1;
                     mwarn("Archive writer queue is full. %d", t_id);
                 }
-                w_free_event_info(lf, 1);
+                w_free_event_info(lf, 0);
             }
             continue;
         }
 
-        w_free_event_info(lf, 1);
+        w_free_event_info(lf, 0);
     }
 }
 

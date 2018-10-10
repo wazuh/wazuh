@@ -606,16 +606,8 @@ void Free_Eventinfo(Eventinfo *lf)
         EventNode *prev = lf->node->prev;
         w_mutex_lock(&prev->mutex);
         prev->next = NULL;
-        if (lf->node->count < 0) {
-            minfo("~~~~~ NEGATIVE");
-        }
         unsigned int x = 0;
-        while (lf->node->count > 0) {
-            minfo("~~~BLOCK %u    %p", x, lf);
-            x++;
-            sleep(0.2);
-        }
-        //lf->node->event = NULL;
+        while (lf->node->count > 0);
         w_mutex_unlock(&prev->mutex);
     }
 
