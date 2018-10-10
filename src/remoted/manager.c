@@ -863,9 +863,11 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             if(!found){
+                fclose(fp_metadata);
+                fp_metadata = fopen(metadata_path,"a");
                 char metadata_multigroup[OS_SIZE_65536] = {0};
                 snprintf(metadata_multigroup,OS_SIZE_65536 - 1,"%s\n",group);
-                fwrite(metadata_multigroup,1,strlen(metadata_multigroup),fp_metadata);
+                fprintf(fp_metadata, "%s", metadata_multigroup);
             }
             fclose(fp_metadata);
 
