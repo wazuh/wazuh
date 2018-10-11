@@ -139,11 +139,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id);
 /* Do log rotation thread */
 void * w_log_rotate_thread(__attribute__((unused)) void * args);
 
-/* CPU info */
-cpu_info *get_cpu_info();
-cpu_info *get_cpu_info_bsd();
-cpu_info *get_cpu_info_linux();
-
 typedef struct _clean_msg {
     Eventinfo *lf;
     char *msg;
@@ -423,6 +418,17 @@ int main_analysisd(int argc, char **argv)
         }
     }
 
+    /* Check the CPU INFO */
+    /* If we have the threads set to 0 on internal_options.conf, then */
+    /* we assign them automatically based on the number of cores */
+    cpu_information = get_cpu_info();
+
+    num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
+
+    if(num_rule_matching_threads == 0){
+        num_rule_matching_threads = cpu_information->cpu_cores;
+    }
+
     /* Continuing in Daemon mode */
     if (!test_config && !run_foreground) {
         nowDaemon();
@@ -451,12 +457,6 @@ int main_analysisd(int argc, char **argv)
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
-
-
-    /* Check the CPU INFO */
-    /* If we have the threads set to 0 on internal_options.conf, then */
-    /* we assign them automatically based on the number of cores */
-    cpu_information = get_cpu_info();
 
     /* Chroot */
     if (Privsep_Chroot(dir) < 0) {
@@ -818,7 +818,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_syscollector_threads = getDefine_Int("analysisd", "syscollector_threads", 0, 32);
     int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
-    num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_information->cpu_cores;
@@ -838,10 +837,6 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     if(num_decode_hostinfo_threads == 0){
         num_decode_hostinfo_threads = cpu_information->cpu_cores;
-    }
-
-    if(num_rule_matching_threads == 0){
-        num_rule_matching_threads = cpu_information->cpu_cores;
     }
 
     /* Initiate the FTS list */
@@ -2013,6 +2008,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         /* Extract decoded event from the queue */
         lf = queue_pop_ex(decode_queue_event_output);
 
+        lf->tid = t_id;
         t_currently_rule = NULL;
 
         lf->size = strlen(lf->log);
@@ -2094,7 +2090,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         do {
             if (lf->decoder_info->type == OSSEC_ALERT) {
                 if (!lf->generated_rule) {
-                    w_free_event_info(lf, 0);
+                    w_free_event_info(lf, 0); // <~~~~~~ WATCH OUT
                     continue;
                 }
 
@@ -2231,10 +2227,10 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         /* Copy last_events structure if we have matched a rule */
         if(lf->generated_rule) {
-            if (lf->generated_rule->last_events){
+            if (lf->generated_rule->last_events && lf->generated_rule->last_events[t_id]){
                 w_mutex_lock(&lf->generated_rule->mutex);
                 os_calloc(1,sizeof(char *),lf->last_events);
-                char **lasts = lf->generated_rule->last_events;
+                char **lasts = lf->generated_rule->last_events[t_id];
                 int index = 0;
 
                 while (*lasts) {

@@ -76,6 +76,7 @@ int main(int argc, char **argv)
     gid_t gid;
     struct sigaction action = { .sa_handler = onsignal };
     int quiet = 0;
+    num_rule_matching_threads = 1;
 
     /* Set the name */
     OS_SetName(ARGV0);

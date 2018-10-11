@@ -124,6 +124,8 @@ typedef struct _Eventinfo {
     char **last_events;
     // Node reference
     EventNode *node;
+    // Process thread id
+    int tid;
 } Eventinfo;
 
 /* Events List structure */

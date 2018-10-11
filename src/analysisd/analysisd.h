@@ -51,6 +51,11 @@ typedef struct cpu_info {
     double cpu_MHz;
 } cpu_info;
 
+/* CPU info */
+cpu_info *get_cpu_info();
+cpu_info *get_cpu_info_bsd();
+cpu_info *get_cpu_info_linux();
+
 void w_get_queues_size();
 void w_get_initial_queues_size();
 void w_init_queues();
@@ -59,5 +64,6 @@ void w_init_queues();
 #define MAX_DECODER_ORDER_SIZE  1024
 
 OSHash *fim_agentinfo;
+int num_rule_matching_threads;
 
 #endif /* _LOGAUDIT__H */

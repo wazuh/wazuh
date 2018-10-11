@@ -11,6 +11,7 @@
 #include "config.h"
 #include "eventinfo.h"
 #include "compiled_rules/compiled_rules.h"
+#include "analysisd.h"
 
 /* Global definition */
 RuleInfo *currently_rule;
@@ -1307,15 +1308,13 @@ int Rules_OP_ReadRules(const char *rulefile)
 
             /* Create the last_events if necessary */
             if (config_ruleinfo->context) {
-                int ii = 0;
-                os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *),
-                          config_ruleinfo->last_events);
+                int jj;
 
-                /* Zero each entry */
-                for (; ii <= MAX_LAST_EVENTS; ii++) {
-                    w_mutex_lock(&config_ruleinfo->mutex);
-                    config_ruleinfo->last_events[ii] = NULL;
-                    w_mutex_unlock(&config_ruleinfo->mutex);
+                os_calloc(num_rule_matching_threads, sizeof(char **),
+                          config_ruleinfo->last_events);
+                for (jj = 0; jj < num_rule_matching_threads; jj++) {
+                    os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *),
+                              config_ruleinfo->last_events[jj]);
                 }
             }
 

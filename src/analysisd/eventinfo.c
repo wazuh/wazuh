@@ -152,13 +152,12 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check if the number of matches worked */
+        w_mutex_lock(&rule->mutex);
         if (rule->__frequency <= 10) {
-            w_mutex_lock(&rule->mutex);
-            rule->last_events[rule->__frequency]
+            rule->last_events[lf->tid][rule->__frequency]
                 = lf->full_log;
             rule->last_events[rule->__frequency + 1]
                 = NULL;
-            w_mutex_unlock(&rule->mutex);
         }
 
         if (rule->__frequency < rule->frequency) {
@@ -166,6 +165,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             continue;
         }
         rule->__frequency++;
+        w_mutex_unlock(&rule->mutex);
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;
@@ -316,7 +316,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         if (rule->__frequency < rule->frequency) {
             if (rule->__frequency <= 10) {
                 w_mutex_lock(&rule->mutex);
-                rule->last_events[rule->__frequency]
+                rule->last_events[lf->tid][rule->__frequency]
                     = lf->full_log;
                 rule->last_events[rule->__frequency + 1]
                     = NULL;
@@ -456,7 +456,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         if (rule->__frequency < rule->frequency) {
             if (rule->__frequency <= 10) {
                 w_mutex_lock(&rule->mutex);
-                rule->last_events[rule->__frequency]
+                rule->last_events[lf->tid][rule->__frequency]
                     = lf->full_log;
                 rule->last_events[rule->__frequency + 1]
                     = NULL;
@@ -590,6 +590,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->last_events = NULL;
     lf->rootcheck_fts = 0;
     lf->decoder_syscheck_id = 0;
+    lf->tid = -1;
 
     return;
 }
@@ -1053,10 +1054,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         lf_cpy->generated_rule->sigid = lf->generated_rule->sigid;
         lf_cpy->generated_rule->level = lf->generated_rule->level;
 
-        if (lf->generated_rule->last_events){
+        if (lf->generated_rule->last_events && lf->generated_rule->last_events[lf->tid]){
             w_mutex_lock(&lf->generated_rule->mutex);
             os_calloc(1,sizeof(char *),lf_cpy->last_events);
-            char **lasts = lf->generated_rule->last_events;
+            char **lasts = lf->generated_rule->last_events[lf->tid];
             int index = 0;
 
             while (*lasts) {
