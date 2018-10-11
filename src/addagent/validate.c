@@ -10,6 +10,9 @@
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#ifndef CLIENT
+#include "wazuh_db/wdb.h"
+#endif
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
 #define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))
@@ -652,23 +655,6 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
     status += link(path_src, path_dst);
 
-    /* syscheck */
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
-    status += link(path_src, path_dst);
-
     /* rootcheck */
     snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
     snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
@@ -847,9 +833,11 @@ void OS_RemoveAgentGroup(const char *id)
             fp = NULL;
             unlink(group_file);
             group[strlen(group)-1] = '\0';
-            /* Remove multigroup if it's not used on any other agent */
-            w_remove_multigroup(group);
         }
+#ifndef CLIENT
+        /* Remove from the 'belongs' table groups which the agent belongs to*/
+        wdb_delete_agent_belongs(atoi(id));
+#endif
 
         if(fp){
             fclose(fp);

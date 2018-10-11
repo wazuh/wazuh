@@ -408,19 +408,22 @@ char* hostname_parse(const char *path) {
 int w_validate_group_name(const char *group){
 
     unsigned int i = 0;
-    int j = 0;
     char valid_chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:;_-=+!@(),";
     int offset = 0;
-    int valid = 0;
     int valid_chars_length = strlen(valid_chars);
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
+    char *multi_group_cpy = NULL;
 
+    os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
+    snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
+ 
     if(!multigroup && (strlen(group) > MAX_GROUP_NAME)){
-        offset = 1;
+        free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
         return -2;
     }
-    else if(strlen(group) > OS_SIZE_65536 -1 ){
+    else if(multigroup && strlen(group) > OS_SIZE_65536 -1 ){
+        free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Multigroup length is over %d characters",OS_SIZE_65536);
         return -3;
     }
@@ -433,21 +436,53 @@ int w_validate_group_name(const char *group){
         }
     }
 
+    if(!multigroup){
+        offset = 1;
+        valid_chars[valid_chars_length - offset] = '\0';
+    }
+
+    /* Check if the multigroups are empty or have consecutive ',' */
+    if(multigroup){
+
+        const char delim[2] = ",";
+        char *individual_group = strtok(multi_group_cpy, delim);
+            
+        while( individual_group != NULL ) {
+
+            /* Spaces are not allowed */
+            if(strchr(individual_group,' '))
+            {
+                free(multi_group_cpy);
+                return -4;
+            }
+
+            individual_group = strtok(NULL, delim);
+        }
+
+        /* Look for consecutive ',' */
+        if(strstr(group,",,")){
+            free(multi_group_cpy);
+            return -5;
+        }
+    }
+
+    /* Check if the group is only composed by ',' */
     if(comas == strlen(group)){
+        free(multi_group_cpy);
         return -1;
     }
 
-    for(i = 0; i < strlen(group); i++){
-        valid = 0;
-        for(j = 0; j < valid_chars_length - offset; j++){
-            if(group[i] == valid_chars[j]){
-                valid = 1;
-            }
-        }
-        if(!valid){
-            return -1;
-        }
+    /* Check if the group starts or ends with ',' */
+    if(group[0] == ',' || group[strlen(group) - 1] == ',' ){
+        free(multi_group_cpy);
+        return -6;
     }
 
+    if(strspn(group,valid_chars) != strlen(group)){
+        free(multi_group_cpy);
+        return -1;
+    }
+
+    free(multi_group_cpy);
     return 0;
 }

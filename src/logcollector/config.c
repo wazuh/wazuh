@@ -14,6 +14,9 @@ int accept_remote;
 int lc_debug_level;
 int N_INPUT_THREADS;
 int OUTPUT_QUEUE_SIZE;
+#ifndef WIN32
+rlim_t nofile;
+#endif
 
 void _getLocalfilesListJSON(logreader *list, cJSON *array);
 
@@ -41,11 +44,21 @@ int LogCollectorConfig(const char *cfgfile)
     maximum_files = getDefine_Int("logcollector", "max_files", 1, 100000);
     sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
     sample_log_length = getDefine_Int("logcollector", "sample_log_length", 1, 4096);
+#ifndef WIN32
+    nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, INT_MAX);
+#endif
 
     if (maximum_lines > 0 && maximum_lines < 100) {
         merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");
         return OS_INVALID;
     }
+
+#ifndef WIN32
+    if (maximum_files > (int)nofile - 100) {
+        merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
+        return OS_SIZELIM;
+    }
+#endif
 
     if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
         return (OS_INVALID);
@@ -189,6 +202,9 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"sample_log_length",sample_log_length);
     cJSON_AddNumberToObject(logcollector,"queue_size",OUTPUT_QUEUE_SIZE);
     cJSON_AddNumberToObject(logcollector,"input_threads",N_INPUT_THREADS);
+#ifndef WIN32
+    cJSON_AddNumberToObject(logcollector,"rlimit_nofile",nofile);
+#endif
 
     cJSON_AddItemToObject(internals,"logcollector",logcollector);
     cJSON_AddItemToObject(root,"internal",internals);

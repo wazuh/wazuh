@@ -280,33 +280,31 @@ def tail(filename, n=20):
     :param n: number of lines.
     :return: Array of last lines.
     """
-    f = open(filename, 'rb')
-    total_lines_wanted = n
+    with open(filename, 'rb') as f:
+        total_lines_wanted = n
 
-    BLOCK_SIZE = 1024
-    f.seek(0, 2)
-    block_end_byte = f.tell()
-    lines_to_go = total_lines_wanted
-    block_number = -1
-    blocks = [] # blocks of size BLOCK_SIZE, in reverse order starting from the end of the file
-    while lines_to_go > 0 and block_end_byte > 0:
-        if (block_end_byte - BLOCK_SIZE > 0):
-            # read the last block we haven't yet read
-            f.seek(block_number*BLOCK_SIZE, 2)
-            blocks.append(f.read(BLOCK_SIZE).decode('utf-8'))
-        else:
-            # file too small, start from beginning
-            f.seek(0,0)
-            # only read what was not read
-            blocks.append(f.read(block_end_byte).decode('utf-8'))
-        lines_found = blocks[-1].count('\n')
-        lines_to_go -= lines_found
-        block_end_byte -= BLOCK_SIZE
-        block_number -= 1
-    all_read_text = ''.join(reversed(blocks))
+        BLOCK_SIZE = 1024
+        f.seek(0, 2)
+        block_end_byte = f.tell()
+        lines_to_go = total_lines_wanted
+        block_number = -1
+        blocks = []  # blocks of size BLOCK_SIZE, in reverse order starting from the end of the file
+        while lines_to_go > 0 and block_end_byte > 0:
+            if (block_end_byte - BLOCK_SIZE > 0):
+                # read the last block we haven't yet read
+                f.seek(block_number * BLOCK_SIZE, 2)
+                blocks.append(f.read(BLOCK_SIZE).decode('utf-8', errors='replace'))
+            else:
+                # file too small, start from beginning
+                f.seek(0, 0)
+                # only read what was not read
+                blocks.append(f.read(block_end_byte).decode('utf-8', errors='replace'))
+            lines_found = blocks[-1].count('\n')
+            lines_to_go -= lines_found
+            block_end_byte -= BLOCK_SIZE
+            block_number -= 1
+        all_read_text = ''.join(reversed(blocks))
 
-    f.close()
-    #return '\n'.join(all_read_text.splitlines()[-total_lines_wanted:])
     return all_read_text.splitlines()[-total_lines_wanted:]
 
 
@@ -630,7 +628,19 @@ class WazuhDBQuery(object):
         self.min_select_fields = min_select_fields
         self.query_operators = {"=":"=", "!=":"!=", "<":"<", ">":">", "~":'LIKE'}
         self.query_separators = {',':'OR',';':'AND','':''}
-        self.query_regex = re.compile(r"(\()?([\w\.]+)(["+''.join(self.query_operators.keys())+"]{1,2})([\w _\-.:/]+)(\))?(["+''.join(self.query_separators.keys())+"])?")
+        # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
+        # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
+        #   (name != wazuh ;
+        #    id   > 5      ),
+        #    group=webserver
+        self.query_regex = re.compile(
+            r'(\()?' +                                                     # A ( character.
+            '([\w.]+)' +                                                   # Field name: name of the field to look on DB
+            '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +      # Operator: looks for =, !=, <, > or ~.
+            "([\w _\-.:/]+)" +                                             # Value: A string.
+            "(\))?" +                                                      # A ) character
+            "([" + ''.join(self.query_separators.keys())+"])?"             # Separator: looks for ;, , or nothing.
+        )
         self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.date_fields = date_fields
         self.extra_fields = extra_fields

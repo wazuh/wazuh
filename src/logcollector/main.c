@@ -26,6 +26,7 @@
 static void help_logcollector(void) __attribute__((noreturn));
 
 int lc_debug_level;
+rlim_t nofile;
 
 /* Print help statement */
 static void help_logcollector()
@@ -155,6 +156,13 @@ int main(int argc, char **argv)
 
     /* Start signal handler */
     StartSIG(ARGV0);
+
+    // Set max open files limit
+    struct rlimit rlimit = { nofile, nofile };
+
+    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
+        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+    }
 
     if (!run_foreground) {
         /* Going on daemon mode */
