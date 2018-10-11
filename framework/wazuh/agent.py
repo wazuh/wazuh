@@ -1194,7 +1194,7 @@ class Agent:
         """
 
         new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force)
-        return {'id': new_agent.id, 'key': key}
+        return {'id': new_agent.id, 'key': new_agent.compute_key()}
 
 
     @staticmethod
@@ -1550,8 +1550,9 @@ class Agent:
                 else:
                     new_group = 'default' if not group_list else group_list[0]
 
-            # Add multigroup
-            Agent.set_agent_group_file(agent_id, new_group)
+            if new_group:
+                # Add multigroup
+                Agent.set_agent_group_file(agent_id, new_group)
 
         for multi_group in groups_to_remove:
             Agent.remove_multi_group_directory(multi_group)
