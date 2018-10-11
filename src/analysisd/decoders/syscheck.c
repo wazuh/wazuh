@@ -381,7 +381,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 }
             }
 
-            if(Config.syscheck_alert_new == 0) {
+            if((Config.syscheck_alert_new == 0) && (lf->event_type == FIM_ADDED)) {
                 mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
                 sk_sum_clean(&newsum);
                 os_free(wazuhdb_query);
