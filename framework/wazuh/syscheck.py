@@ -84,9 +84,13 @@ def last_scan(agent_id):
     :return: Dictionary: end, start.
     """
     my_agent = Agent(agent_id)
-    agent_version = my_agent.get_basic_information(select={'fields': ['version']})['version']
+    # if agent status is never connected, a KeyError happens
+    try:
+        agent_version = my_agent.get_basic_information(select={'fields': ['version']})['version']
+    except KeyError:
+        agent_version = 'ND'
 
-    if agent_version < 'Wazuh v3.7.0':
+    if agent_version < 'Wazuh v3.7.0' and agent_version != 'ND':
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_agent:
             raise WazuhException(1600)
