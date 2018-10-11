@@ -403,7 +403,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             os_free(response);
             return (-1);
     }
-
     sk_fill_event(lf, f_name, &newsum);
 
     /* Dyanmic Fields */
@@ -421,7 +420,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         os_free(wazuhdb_query);
         return (0);
     }
-
     sk_sum_clean(&newsum);
     os_free(response);
     os_free(new_check_sum);
@@ -531,13 +529,14 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
 
     // Set decoder
     lf->decoder_info = fim_decoder;
-
     switch (lf->event_type) {
         case FIM_DELETED:
             snprintf(msg_type, sizeof(msg_type), "was deleted.");
+            changes=1;
             break;
         case FIM_ADDED:
             snprintf(msg_type, sizeof(msg_type), "was added.");
+            changes=1;
             break;
         case FIM_MODIFIED:
             snprintf(msg_type, sizeof(msg_type), "checksum changed.");
@@ -722,7 +721,6 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             localsdb->process_id,
             localsdb->process_name
     );
-
     if(!changes) {
         lf->data = NULL;
         return(-1);
