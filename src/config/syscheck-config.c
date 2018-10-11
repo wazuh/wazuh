@@ -776,7 +776,10 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             }
 
 #ifdef WIN32
-            ExpandEnvironmentStrings(node[i]->content, dirs, sizeof(dirs) - 1);
+            if(!ExpandEnvironmentStrings(node[i]->content, dirs, sizeof(dirs) - 1)){
+                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                continue;
+            }
             str_lowercase(dirs);
 #else
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
@@ -921,7 +924,10 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             char *new_ig = NULL;
             os_calloc(2048, sizeof(char), new_ig);
 
-            ExpandEnvironmentStrings(node[i]->content, new_ig, 2047);
+            if(!ExpandEnvironmentStrings(node[i]->content, new_ig, 2047)){
+                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                continue;
+            }
 
             free(node[i]->content);
             str_lowercase(new_ig);
@@ -1041,9 +1047,13 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             char *new_nodiff = NULL;
             os_calloc(2048, sizeof(char), new_nodiff);
 
-            ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047);
+            if(!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
+                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                continue;
+            }
 
             free(node[i]->content);
+            str_lowercase(new_nodiff);
             node[i]->content = new_nodiff;
 #endif
             /* Add if regex */
@@ -1111,7 +1121,11 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             struct stat statbuf;
 
 #ifdef WIN32
-            ExpandEnvironmentStrings(node[i]->content, cmd, sizeof(cmd) - 1);
+            if(!ExpandEnvironmentStrings(node[i]->content, cmd, sizeof(cmd) - 1)){
+                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                continue;
+            }
+            str_lowercase(cmd);
 #else
             strncpy(cmd, node[i]->content, sizeof(cmd) - 1);
 #endif
