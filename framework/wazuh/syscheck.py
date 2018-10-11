@@ -88,9 +88,10 @@ def last_scan(agent_id):
     try:
         agent_version = my_agent.get_basic_information(select={'fields': ['version']})['version']
     except KeyError:
-        agent_version = 'ND'
+        # if the agent is never connected, it won't have either version (key error) or last scan information.
+        return {'start': 'ND', 'end': 'ND'}
 
-    if agent_version < 'Wazuh v3.7.0' and agent_version != 'ND':
+    if agent_version < 'Wazuh v3.7.0':
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_agent:
             raise WazuhException(1600)
@@ -107,7 +108,7 @@ def last_scan(agent_id):
                                                           filters={'module': 'fim'})[0]
         end = 'ND' if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
         start = 'ND' if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        # returns 'end': ND' ever if start == 'ND'
+        # if start is 'ND', end will be as well.
         return {'start': start, 'end': 'ND' if start == 'ND' else end}
 
 
