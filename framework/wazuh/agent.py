@@ -1194,7 +1194,7 @@ class Agent:
         """
 
         new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force)
-        return {'id': new_agent.id, 'key': key}
+        return {'id': new_agent.id, 'key': new_agent.compute_key()}
 
 
     @staticmethod
