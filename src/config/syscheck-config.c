@@ -777,6 +777,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 
 #ifdef WIN32
             ExpandEnvironmentStrings(node[i]->content, dirs, sizeof(dirs) - 1);
+            str_lowercase(dirs);
 #else
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
 #endif
