@@ -245,12 +245,12 @@ def last_scan(agent_id):
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
     conn.execute(query)
     for tuple in conn:
-        data['end'] = tuple[0]
+        data['end'] = tuple[0] if tuple[0] is not None else "ND"
 
     # start time
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
     conn.execute(query)
     for tuple in conn:
-        data['start'] = tuple[0]
+        data['start'] = tuple[0] if tuple[0] is not None else "ND"
 
     return data
