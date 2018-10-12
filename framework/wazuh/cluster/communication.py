@@ -34,11 +34,10 @@ else:
         return base64.b64encode(msg.encode())
 
 
-if check_cluster_status():
-    try:
-        from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
-    except ImportError as e:
-        raise ImportError("Could not import cryptography module. Install it using one of the following commands:\n\
+try:
+    from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
+except ImportError as e:
+    raise ImportError("Could not import cryptography module. Install it using one of the following commands:\n\
  - pip install cryptography\n\
  - yum install python-cryptography python-setuptools\n\
  - apt install python-cryptography")
