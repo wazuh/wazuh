@@ -34,16 +34,6 @@ else:
         return base64.b64encode(msg.encode())
 
 
-if check_cluster_status():
-    try:
-        from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
-    except ImportError as e:
-        raise ImportError("Could not import cryptography module. Install it using one of the following commands:\n\
- - pip install cryptography\n\
- - yum install python-cryptography python-setuptools\n\
- - apt install python-cryptography")
-
-
 max_msg_size = 1000000
 cmd_size = 12
 logger = logging.getLogger(__name__)
@@ -163,8 +153,20 @@ class Handler(asyncore.dispatcher_with_send):
         self.worker_threads_lock = threading.Lock()
         self.worker_threads = {}
         self.stopper = threading.Event()
-        self.my_fernet = Fernet(base64_encoding(key)) if key else None
-
+        if key:
+            try:
+                self.my_fernet = Fernet(base64_encoding(key))
+            except NameError as e:
+                try:
+                    from cryptography.fernet import Fernet, InvalidToken, InvalidSignature
+                except ImportError as e:
+                    raise ImportError("Could not import cryptography module. Install it using one of the following commands:\n\
+ - pip install cryptography\n\
+ - yum install python-cryptography python-setuptools\n\
+ - apt install python-cryptography")
+                self.my_fernet = Fernet(base64_encoding(key))
+        else:
+            self.my_fernet = None
 
     def exit(self):
         logger.debug("[Transport-Handler] Cleaning handler threads. Start.")
