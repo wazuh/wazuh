@@ -1679,7 +1679,7 @@ void w_free_event_info(Eventinfo *lf, int force_remove){
         }
 
         w_mutex_lock(&lf->generated_rule->mutex);
-        lf->generated_rule->last_events[0] = NULL;
+        lf->generated_rule->last_events[lf->tid][0] = NULL;
         w_mutex_unlock(&lf->generated_rule->mutex);
     }
     if (force_remove) {
