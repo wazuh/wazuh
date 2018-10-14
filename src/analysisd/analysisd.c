@@ -1394,7 +1394,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     hourly_alerts++;
     w_mutex_unlock(&hourly_alert_mutex);
     rule->firedtimes++;
-
     return (rule); /* Matched */
 }
 
@@ -2095,18 +2094,22 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
 
                 /* Process the alert */
+                w_mutex_lock(&lf->generated_rule->mutex);
                 t_currently_rule = lf->generated_rule;
+                w_mutex_unlock(&lf->generated_rule->mutex);
             }
             /* Categories must match */
             else if (rulenode_pt->ruleinfo->category !=
                         lf->decoder_info->type) {
                 continue;
             }
+            
             /* Check each rule */
             else if ((t_currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
-                        == NULL) {
+                        == NULL) {   
                 continue;
             }
+              
             /* Ignore level 0 */
             if (t_currently_rule->level == 0) {
                 break;
@@ -2130,8 +2133,10 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Pointer to the rule that generated it */
+            w_mutex_lock(&lf->generated_rule->mutex);
             lf->generated_rule = t_currently_rule;
-
+            w_mutex_unlock(&lf->generated_rule->mutex);
+            
             /* Check if we should ignore it */
             if (t_currently_rule->ckignore && IGnore(lf, t_id)) {
                 /* Ignore rule */
@@ -2195,6 +2200,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
             }
 
+            
             /* Copy the structure to the state memory of if_matched_sid */
             if (t_currently_rule->sid_prev_matched) {
                 if (!OSList_AddData(t_currently_rule->sid_prev_matched, lf)) {
