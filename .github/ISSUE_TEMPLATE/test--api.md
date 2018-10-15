@@ -12,9 +12,8 @@ about: Test suite for the API.
 
 ## Installation
 
-- [ ] Install API.
-- [ ] Install in custom directory.
-- [ ] Check API status is running.
+- [ ] Install API in a cluster of two nodes. One of the nodes must be a custom directory install.
+- [ ] Check API status is running in both nodes.
 
 ## Configuration
 
@@ -41,39 +40,16 @@ Required tests:
 
 Checks:
 
-- [ ] Ubuntu 18 / Python 2.
-- [ ] Ubuntu 18 / Python 3.
-- [ ] CentOS 7 / Python 2.
-- [ ] CentOS 7 / Python 3.
-- [ ] CentOS 6 / Python27.
+- [ ] Master node:
+    - [ ] Ubuntu 18 / Python 2.
+    - [ ] Ubuntu 18 / Python 3.
+    - [ ] CentOS 7 / Python 2.
+    - [ ] CentOS 7 / Python 3.
+    - [ ] CentOS 6 / Python27.
 
-### Cluster calls (Ubuntu 18)
-
-- [ ] *GET /cluster/nodes*.
-- [ ] *GET /cluster/node*.
-- [ ] *GET /cluster/files*.
-- [ ] *GET /cluster/agents*.
-- [ ] *GET /cluster/status*.
-- [ ] *GET /cluster/config*.
-
-### Cluster calls (CentOS 7)
-
-- [ ] *GET /cluster/nodes*.
-- [ ] *GET /cluster/node*.
-- [ ] *GET /cluster/files*.
-- [ ] *GET /cluster/agents*.
-- [ ] *GET /cluster/status*.
-- [ ] *GET /cluster/config*.
-
-### Cluster calls (CentOS 6)
-
-- [ ] *GET /cluster/nodes*.
-- [ ] *GET /cluster/node*.
-- [ ] *GET /cluster/files*.
-- [ ] *GET /cluster/agents*.
-- [ ] *GET /cluster/status*.
-- [ ] *GET /cluster/config*.
-
-### Agent calls
-
-- [ ] Test agents config queries (https://github.com/wazuh/wazuh/issues/1248).
+- [ ] Worker node:
+    - [ ] Ubuntu 18 / Python 2.
+    - [ ] Ubuntu 18 / Python 3.
+    - [ ] CentOS 7 / Python 2.
+    - [ ] CentOS 7 / Python 3.
+    - [ ] CentOS 6 / Python27.
