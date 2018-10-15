@@ -206,7 +206,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     char *check_sum = NULL;
     sk_sum_t oldsum = { .size = NULL };
     sk_sum_t newsum = { .size = NULL };
-    time_t *end_first_scan;
+    time_t *end_first_scan = NULL;
     time_t end_scan;
 
     memset(&oldsum, 0, sizeof(sk_sum_t));
@@ -348,7 +348,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             mdebug2("File %s saved/updated in FIM DDBB", f_name);
 
-            if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), !end_first_scan) {
+            if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), end_first_scan == NULL) {
                 fim_get_scantime (&end_scan, lf, sdb);
                 os_calloc(1, sizeof(time_t), end_first_scan);
                 *end_first_scan = end_scan;
@@ -371,6 +371,15 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     mdebug2("End end_scan is '%ld' (lf->time: '%ld')", end_scan, lf->time.tv_sec);
                 }
             } else {
+                if(*end_first_scan == 0) {
+                    mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
+                    sk_sum_clean(&newsum);
+                    os_free(wazuhdb_query);
+                    os_free(new_check_sum);
+                    os_free(old_check_sum);
+                    os_free(response);
+                    return (0);
+                }
                 mdebug2("End end_first_scan is '%ld' (lf->time: '%ld')", *end_first_scan, lf->time.tv_sec);
             }
 
