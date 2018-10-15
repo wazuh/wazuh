@@ -2094,9 +2094,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
 
                 /* Process the alert */
-                w_mutex_lock(&lf->generated_rule->mutex);
                 t_currently_rule = lf->generated_rule;
-                w_mutex_unlock(&lf->generated_rule->mutex);
             }
             /* Categories must match */
             else if (rulenode_pt->ruleinfo->category !=
@@ -2133,9 +2131,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Pointer to the rule that generated it */
-            w_mutex_lock(&lf->generated_rule->mutex);
             lf->generated_rule = t_currently_rule;
-            w_mutex_unlock(&lf->generated_rule->mutex);
             
             /* Check if we should ignore it */
             if (t_currently_rule->ckignore && IGnore(lf, t_id)) {
