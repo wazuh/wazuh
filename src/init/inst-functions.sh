@@ -119,11 +119,6 @@ WriteSyscollector()
       fi
       cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
-    else
-      echo "  <syscollector>" >> $NEWCONFIG
-      echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-      echo "  </syscollector>" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
     fi
 }
 
