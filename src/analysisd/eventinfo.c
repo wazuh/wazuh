@@ -28,23 +28,24 @@ EventList *last_events_list;
  */
 Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
-    Eventinfo *lf;
+    Eventinfo *lf = NULL;
     Eventinfo *first_lf;
     OSListNode *lf_node;
 
+    w_mutex_lock(&rule->mutex);
     /* Set frequency to 0 */
     rule->__frequency = 0;
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
         merror("No sid search.");
-        return (NULL);
+        goto end;
     }
 
     /* Get last node */
     lf_node = OSList_GetLastNode(rule->sid_search);
     if (!lf_node) {
-        return (NULL);
+        goto end;
     }
 
     first_lf = (Eventinfo *)lf_node->data;
@@ -54,7 +55,8 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time.tv_sec) > rule->timeframe) {
-            return (NULL);
+            lf = NULL;
+            goto end;
         }
 
         /* Check for same ID */
@@ -150,11 +152,11 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
          * or rules with a lower level.
          */
         else if (lf->matched >= rule->level) {
-            return (NULL);
+            lf = NULL;
+            goto end;
         }
 
         /* Check if the number of matches worked */
-        w_mutex_lock(&rule->mutex);
         if (rule->__frequency <= 10) {
             rule->last_events[lf->tid][rule->__frequency]
                 = lf->full_log;
@@ -165,7 +167,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
         if (rule->__frequency < rule->frequency) {
             rule->__frequency++;
-            w_mutex_unlock(&rule->mutex);
             continue;
         }
         rule->__frequency++;
@@ -174,12 +175,13 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         my_lf->matched = rule->level;
         lf->matched = rule->level;
         first_lf->matched = rule->level;
-        w_mutex_unlock(&rule->mutex);
-        return (lf);
+        goto end;
 
     } while ((lf_node = lf_node->prev) != NULL);
 
-    return (NULL);
+end:
+    w_mutex_unlock(&rule->mutex);
+    return lf;
 }
 
 /* Search last times a group fired
@@ -187,15 +189,17 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
  */
 Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unused)) regex_matching *rule_match)
 {
-    Eventinfo *lf;
+    Eventinfo *lf = NULL;
     OSListNode *lf_node;
+
+    w_mutex_lock(&rule->mutex);
 
     /* Set frequency to 0 */
     rule->__frequency = 0;
     /* Check if sid search is valid */
     if (!rule->group_search) {
         merror("No group search!");
-        return (NULL);
+        goto end;
     }
 
     /* Get last node */
@@ -205,7 +209,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
     if (!lf_node) {
         w_mutex_unlock(&rule->group_search->mutex);
         w_mutex_unlock(&eventinfo_mutex);
-        return (NULL);
+        goto end;
     }
     do {
         lf = (Eventinfo *)lf_node->data;
@@ -214,7 +218,8 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         if ((c_time - lf->time.tv_sec) > rule->timeframe) {
             w_mutex_unlock(&rule->group_search->mutex);
             w_mutex_unlock(&eventinfo_mutex);
-            return (NULL);
+            lf = NULL;
+            goto end;
         }
 
         /* Check for same ID */
@@ -310,19 +315,18 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         else if (lf->matched >= rule->level) {
             w_mutex_unlock(&rule->group_search->mutex);
             w_mutex_unlock(&eventinfo_mutex);
-            return (NULL);
+            lf = NULL;
+            goto end;
         }
 
 
         /* Check if the number of matches worked */
         if (rule->__frequency < rule->frequency) {
             if (rule->__frequency <= 10) {
-                w_mutex_lock(&rule->mutex);
                 rule->last_events[lf->tid][rule->__frequency]
                     = lf->full_log;
                 rule->last_events[lf->tid][rule->__frequency + 1]
                     = NULL;
-                w_mutex_unlock(&rule->mutex);
             }
 
             rule->__frequency++;
@@ -335,13 +339,16 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
         w_mutex_unlock(&rule->group_search->mutex);
         w_mutex_unlock(&eventinfo_mutex);
-        return (lf);
+        goto end;
 
     } while ((lf_node = lf_node->prev) != NULL);
 
     w_mutex_unlock(&rule->group_search->mutex);
     w_mutex_unlock(&eventinfo_mutex);
-    return (NULL);
+
+end:
+    w_mutex_unlock(&rule->mutex);
+    return lf;
 }
 
 
@@ -350,18 +357,19 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
  */
 Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *rule_match)
 {
-    EventNode *eventnode_pt;
+    EventNode *eventnode_pt = NULL;
     EventNode *first_pt;
-    Eventinfo *lf;
+    Eventinfo *lf = NULL;
+
+    w_mutex_lock(&rule->mutex);
 
     /* Get the first event */
     if (first_pt = OS_GetFirstEvent(last_events_list), !first_pt) {
         /* Nothing found */
-        return NULL;
+        goto end;
     }
 
     w_mutex_lock(&first_pt->mutex);
-
     if (eventnode_pt = first_pt->next, eventnode_pt) {
         eventnode_pt->count++;
     }
@@ -375,7 +383,8 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 
         /* If time is outside the timeframe, return */
         if ((c_time - lf->time.tv_sec) > rule->timeframe) {
-            goto ret_null;
+            lf = NULL;
+            goto end;
         }
 
         /* The category must be the same */
@@ -450,18 +459,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
          * or rules with a lower level.
          */
         else if (lf->matched >= rule->level) {
-            goto ret_null;
+            lf = NULL;
+            goto end;
         }
 
         /* Check if the number of matches worked */
         if (rule->__frequency < rule->frequency) {
             if (rule->__frequency <= 10) {
-                w_mutex_lock(&rule->mutex);
                 rule->last_events[lf->tid][rule->__frequency]
                     = lf->full_log;
                 rule->last_events[lf->tid][rule->__frequency + 1]
                     = NULL;
-                w_mutex_unlock(&rule->mutex);
             }
 
             rule->__frequency++;
@@ -472,10 +480,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         my_lf->matched = rule->level;
         lf->matched = rule->level;
 
-        w_mutex_lock(&eventnode_pt->mutex);
-        eventnode_pt->count--;
-        w_mutex_unlock(&eventnode_pt->mutex);
-        return lf;
+        goto end;
 next_it:
         w_mutex_lock(&eventnode_pt->mutex);
         eventnode_pt->count--;
@@ -484,14 +489,15 @@ next_it:
         }
         w_mutex_unlock(&eventnode_pt->mutex);
         eventnode_pt = first_pt;
-    };
-ret_null:
+    } // while close
+end:
     if (eventnode_pt) {
         w_mutex_lock(&eventnode_pt->mutex);
         eventnode_pt->count--;
         w_mutex_unlock(&eventnode_pt->mutex);
     }
-    return NULL;
+    w_mutex_unlock(&rule->mutex);
+    return lf;
 }
 
 /* Zero the loginfo structure */

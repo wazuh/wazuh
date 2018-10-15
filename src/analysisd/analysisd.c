@@ -1666,7 +1666,7 @@ void w_free_event_info(Eventinfo *lf, int force_remove){
     */
     if (lf->generated_rule == NULL) {
         Free_Eventinfo(lf);
-        //force_remove = 0;
+        //force_remove = 0; ~~~~~~~~
     } else if (lf->last_events) {
         /* Free last_events struct */
         char **last_event = lf->last_events;
@@ -1685,7 +1685,7 @@ void w_free_event_info(Eventinfo *lf, int force_remove){
         w_mutex_unlock(&lf->generated_rule->mutex);
     }
     if (force_remove) {
-        //Free_Eventinfo(lf);
+        //Free_Eventinfo(lf); ~~~~~~~~
     }
 }
 
