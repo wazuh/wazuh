@@ -125,7 +125,7 @@ void sdb_clean(_sdb *localsdb) {
 int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
 {
     char *c_sum;
-    char *w_sum;
+    char *w_sum = NULL;
     char *f_name;
 
     /* Every syscheck message must be in the following format:
@@ -227,10 +227,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         // Fallthrough
     case -1:
         lf->data = NULL;
-        os_free(new_check_sum);
-        os_free(wazuhdb_query);
-        os_free(response);
-        return (-1);
+        goto exit_fail;
     }
     check_sum = strchr(response, ' ');
     *(check_sum++) = '\0';
@@ -249,11 +246,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
         mdebug1("Alert discarded '%s' same check_sum", f_name);
         fim_update_date (f_name, lf, sdb);
-        os_free(wazuhdb_query);
-        os_free(new_check_sum);
-        os_free(old_check_sum);
-        os_free(response);
-        return (0);
+        goto exit_ok;
     }
 
     if (decode_newsum = sk_decode_sum(&newsum, c_sum, w_sum), decode_newsum != -1) {
@@ -283,12 +276,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 merror("FIM decoder: Bad delete query.");
                 // Fallthrough
             case -1:
-                sk_sum_clean(&newsum);
-                os_free(wazuhdb_query);
-                os_free(new_check_sum);
-                os_free(old_check_sum);
-                os_free(response);
-                return (-1);
+                goto exit_fail;
             }
 
             mdebug2("File %s deleted from FIM DDBB", f_name);
@@ -304,11 +292,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 // Alert discarded, frequency exceeded
                 if (changes == -1) {
                     mdebug1("Alert discarded '%s' frequency exceeded", f_name);
-                    os_free(wazuhdb_query);
-                    os_free(new_check_sum);
-                    os_free(old_check_sum);
-                    os_free(response);
-                    return (0);
+                    goto exit_ok;
                 }
             } else {
                 // File added
@@ -338,71 +322,48 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 merror("FIM decoder: Bad save query.");
                 // Fallthrough
             case -1:
-                sk_sum_clean(&newsum);
-                os_free(wazuhdb_query);
-                os_free(new_check_sum);
-                os_free(old_check_sum);
-                os_free(response);
-                return (-1);
+                goto exit_fail;
             }
 
             mdebug2("File %s saved/updated in FIM DDBB", f_name);
 
-            if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), end_first_scan == NULL) {
-                fim_get_scantime (&end_scan, lf, sdb);
-                os_calloc(1, sizeof(time_t), end_first_scan);
-                *end_first_scan = end_scan;
+            if(!w_sum || !(*w_sum)) {
+                if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), end_first_scan == NULL) {
+                    fim_get_scantime (&end_scan, lf, sdb);
+                    os_calloc(1, sizeof(time_t), end_first_scan);
+                    *end_first_scan = end_scan;
 
-                if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan) <= 0) {
-                    os_free(end_first_scan);
-                    merror("Unable to add scan_info to hash table for agent: %s",
-                            lf->agent_id);
-                }
+                    if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan) <= 0) {
+                        os_free(end_first_scan);
+                        merror("Unable to add scan_info to hash table for agent: %s",
+                                lf->agent_id);
+                    }
 
-                if(end_scan == 0) {
-                    mdebug2("Alert discarded, first scan. File '%s'", f_name);
-                    sk_sum_clean(&newsum);
-                    os_free(wazuhdb_query);
-                    os_free(new_check_sum);
-                    os_free(old_check_sum);
-                    os_free(response);
-                    return (0);
+                    if(end_scan == 0) {
+                        mdebug2("Alert discarded, first scan. File '%s'", f_name);
+                        goto exit_ok;
+                    } else {
+                        mdebug2("End end_scan is '%ld' (lf->time: '%ld')", end_scan, lf->time.tv_sec);
+                    }
                 } else {
-                    mdebug2("End end_scan is '%ld' (lf->time: '%ld')", end_scan, lf->time.tv_sec);
+                    if(*end_first_scan == 0) {
+                        mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
+                        goto exit_ok;
+                    }
+                    mdebug2("End end_first_scan is '%ld' (lf->time: '%ld')", *end_first_scan, lf->time.tv_sec);
                 }
-            } else {
-                if(*end_first_scan == 0) {
-                    mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
-                    sk_sum_clean(&newsum);
-                    os_free(wazuhdb_query);
-                    os_free(new_check_sum);
-                    os_free(old_check_sum);
-                    os_free(response);
-                    return (0);
-                }
-                mdebug2("End end_first_scan is '%ld' (lf->time: '%ld')", *end_first_scan, lf->time.tv_sec);
-            }
 
-            if(end_first_scan) {
-                if(lf->time.tv_sec < *end_first_scan) {
-                    mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
-                    sk_sum_clean(&newsum);
-                    os_free(wazuhdb_query);
-                    os_free(new_check_sum);
-                    os_free(old_check_sum);
-                    os_free(response);
-                    return (0);
+                if(end_first_scan) {
+                    if(lf->time.tv_sec < *end_first_scan) {
+                        mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
+                        goto exit_ok;
+                    }
                 }
-            }
 
-            if((Config.syscheck_alert_new == 0) && (lf->event_type == FIM_ADDED)) {
-                mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
-                sk_sum_clean(&newsum);
-                os_free(wazuhdb_query);
-                os_free(new_check_sum);
-                os_free(old_check_sum);
-                os_free(response);
-                return (0);
+                if((Config.syscheck_alert_new == 0) && (lf->event_type == FIM_ADDED)) {
+                    mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
+                    goto exit_ok;
+                }
             }
 
             break;
@@ -410,13 +371,9 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         default: // Error in fim check sum
             merror("at fim_db_search: Couldn't decode fim sum '%s' from file '%s'.",
                     new_check_sum, f_name);
-            sk_sum_clean(&newsum);
-            os_free(wazuhdb_query);
-            os_free(new_check_sum);
-            os_free(old_check_sum);
-            os_free(response);
-            return (-1);
+            goto exit_fail;
     }
+
     sk_fill_event(lf, f_name, &newsum);
 
     /* Dyanmic Fields */
@@ -427,12 +384,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
     if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
         //No changes in checksum
-        sk_sum_clean(&newsum);
-        os_free(response);
-        os_free(new_check_sum);
-        os_free(old_check_sum);
-        os_free(wazuhdb_query);
-        return (0);
+        goto exit_ok;
     }
     sk_sum_clean(&newsum);
     os_free(response);
@@ -440,6 +392,22 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     os_free(old_check_sum);
     os_free(wazuhdb_query);
     return (1);
+
+exit_ok:
+    sk_sum_clean(&newsum);
+    os_free(response);
+    os_free(new_check_sum);
+    os_free(old_check_sum);
+    os_free(wazuhdb_query);
+    return (0);
+
+exit_fail:
+    sk_sum_clean(&newsum);
+    os_free(response);
+    os_free(new_check_sum);
+    os_free(old_check_sum);
+    os_free(wazuhdb_query);
+    return (-1);
 }
 
 

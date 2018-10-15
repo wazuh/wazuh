@@ -51,7 +51,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[0] = '\0';
         c_sum[OS_MAXSTR] = '\0';
 
-        /* If it returns < 0, we have already alerted */
+        // If it returns < 0, we've already alerted the deleted file
         if (c_read_file(file_name, buf, c_sum, evt) < 0) {
             return (0);
         }
@@ -97,7 +97,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             return (1);
         } else {
-            mdebug2("Discarding '%s': checksum already reported.", file_name);
+            mdebug2("Inotify event with same checksum for file: '%s'. Ignoring it.", file_name);
         }
 
         return (0);
