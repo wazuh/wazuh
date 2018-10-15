@@ -11,45 +11,32 @@
 #include "eventinfo.h"
 #include "rules.h"
 
-/* Local variables */
-static EventNode *first_node;
-static EventNode *last_node;
-static EventNode *last_added_node;
-
-static int _memoryused = 0;
-static int _memorymaxsize = 0;
-int _max_freq = 0;
-
-static pthread_mutex_t event_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-
 /* Create the Event List */
-void OS_CreateEventList(int maxsize)
+void OS_CreateEventList(int maxsize, EventList *list)
 {
-    first_node = NULL;
-    last_added_node = NULL;
-    _memorymaxsize = maxsize;
-    _memoryused = 0;
-
-    mdebug1("OS_CreateEventList completed.");
-    return;
+    list->first_node = NULL;
+    list->last_added_node = NULL;
+    list->_memorymaxsize = maxsize;
+    list->_memoryused = 0;
+    list->_max_freq = 0;
+    list->event_mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 }
 
 /* Get the first node */
-EventNode *OS_GetFirstEvent() {
+EventNode *OS_GetFirstEvent(EventList *list) {
     EventNode *node;
-    w_mutex_lock(&event_mutex);
-    node = first_node;
-    w_mutex_unlock(&event_mutex);
+    w_mutex_lock(&list->event_mutex);
+    node = list->first_node;
+    w_mutex_unlock(&list->event_mutex);
     return node;
 }
 
 /* Add an event to the list -- always to the beginning */
-void OS_AddEvent(Eventinfo *lf)
+void OS_AddEvent(Eventinfo *lf, EventList *list)
 {
-    w_mutex_lock(&event_mutex);
+    w_mutex_lock(&list->event_mutex);
 
-    if (last_added_node) {
+    if (list->last_added_node) {
         EventNode *new_node;
         new_node = (EventNode *)calloc(1, sizeof(EventNode));
 
@@ -58,17 +45,17 @@ void OS_AddEvent(Eventinfo *lf)
         }
 
         // Always add after the first node, which must be empty
-        new_node->next = last_added_node;
-        new_node->prev = first_node;
-        last_added_node->prev = new_node;
-        first_node->next = new_node;
+        new_node->next = list->last_added_node;
+        new_node->prev = list->first_node;
+        list->last_added_node->prev = new_node;
+        list->first_node->next = new_node;
 
-        last_added_node = new_node;
+        list->last_added_node = new_node;
 
-        _memoryused++;
+        list->_memoryused++;
 
         /* Need to remove the last nodes */
-        if (_memoryused > _memorymaxsize) {
+        if (list->_memoryused > list->_memorymaxsize) {
             int i = 0;
             EventNode *oldlast;
 
@@ -76,16 +63,17 @@ void OS_AddEvent(Eventinfo *lf)
              * or the events that will not match anymore
              * (higher than max frequency)
              */
-            while (last_node != last_added_node && ((i < 10) || ((lf->time.tv_sec - last_node->event->time.tv_sec) > _max_freq))) {
-                oldlast = last_node;
-                last_node = last_node->prev;
-                last_node->next = NULL;
+            while (list->last_node != list->last_added_node && ((i < 10) ||
+                   ((lf->time.tv_sec - list->last_node->event->time.tv_sec) > list->_max_freq))) {
+                oldlast = list->last_node;
+                list->last_node = list->last_node->prev;
+                list->last_node->next = NULL;
 
                 /* Free event info */
                 Free_Eventinfo(oldlast->event);
                 free(oldlast);
 
-                _memoryused--;
+                list->_memoryused--;
                 i++;
             }
         }
@@ -95,28 +83,28 @@ void OS_AddEvent(Eventinfo *lf)
         EventNode *second_node;
 
         os_calloc(1, sizeof(EventNode), second_node);
-        if (!first_node) {
-            os_calloc(1, sizeof(EventNode), first_node);
-            first_node->prev = NULL;
-            first_node->event = NULL;
-            first_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+        if (!list->first_node) {
+            os_calloc(1, sizeof(EventNode), list->first_node);
+            list->first_node->prev = NULL;
+            list->first_node->event = NULL;
+            list->first_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
         }
-        _memoryused++;
-        first_node->next = second_node;
+        list->_memoryused++;
+        list->first_node->next = second_node;
 
-        second_node->prev = first_node;
+        second_node->prev = list->first_node;
         second_node->next = NULL;
 
-        last_node = second_node;
-        last_added_node = second_node;
+        list->last_node = second_node;
+        list->last_added_node = second_node;
     }
 
-    last_added_node->event = lf;
-    lf->node = last_added_node;
-    last_added_node->count = 0;
-    last_added_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    list->last_added_node->event = lf;
+    lf->node = list->last_added_node;
+    list->last_added_node->count = 0;
+    list->last_added_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
-    w_mutex_unlock(&event_mutex);
+    w_mutex_unlock(&list->event_mutex);
 
     return;
 }

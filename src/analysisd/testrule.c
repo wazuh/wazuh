@@ -77,6 +77,7 @@ int main(int argc, char **argv)
     struct sigaction action = { .sa_handler = onsignal };
     int quiet = 0;
     num_rule_matching_threads = 1;
+    last_events_list = NULL;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -196,6 +197,11 @@ int main(int argc, char **argv)
     nowChroot();
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
+
+    if (!last_events_list) {
+        os_calloc(1, sizeof(EventList), last_events_list);
+        OS_CreateEventList(Config.memorysize, last_events_list);
+    }
 
     /*
      * Anonymous Section: Load rules, decoders, and lists
@@ -385,9 +391,6 @@ void OS_ReadMSG(char *ut_str)
     RuleInfo * currently_rule;
     /* Null global pointer to current rule */
     currently_rule = NULL;
-
-    /* Create the event list */
-    OS_CreateEventList(Config.memorysize);
 
     /* Initiate the FTS list */
     if (!FTS_Init(1)) {
@@ -588,7 +591,7 @@ void OS_ReadMSG(char *ut_str)
                     }
                 }
 
-                OS_AddEvent(lf);
+                OS_AddEvent(lf, last_events_list);
                 break;
 
             } while ((rulenode_pt = rulenode_pt->next) != NULL);

@@ -1527,8 +1527,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->firedtimes = 0;
     ruleinfo_pt->maxsize = maxsize;
     ruleinfo_pt->frequency = frequency;
-    if (ruleinfo_pt->frequency > _max_freq) {
-        _max_freq = ruleinfo_pt->frequency;
+    if (ruleinfo_pt->frequency > last_events_list->_max_freq) {
+        last_events_list->_max_freq = ruleinfo_pt->frequency;
     }
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;

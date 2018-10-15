@@ -83,6 +83,7 @@ rlim_t nofile;
 int sys_debug_level;
 OSDecoderInfo *fim_decoder;
 int num_rule_matching_threads;
+EventList *last_events_list;
 
 /* execd queue */
 static int execdq = 0;
@@ -466,6 +467,11 @@ int main_analysisd(int argc, char **argv)
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
+    if (!last_events_list) {
+        os_calloc(1, sizeof(EventList), last_events_list);
+        OS_CreateEventList(Config.memorysize, last_events_list);
+    }
+
     /*
      * Anonymous Section: Load rules, decoders, and lists
      *
@@ -720,9 +726,6 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize host info */
     HostinfoInit();
-
-    /* Create the event list */
-    OS_CreateEventList(Config.memorysize);
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init()) {
@@ -1663,7 +1666,7 @@ void w_free_event_info(Eventinfo *lf, int force_remove){
     */
     if (lf->generated_rule == NULL) {
         Free_Eventinfo(lf);
-        force_remove = 0;
+        //force_remove = 0;
     } else if (lf->last_events) {
         /* Free last_events struct */
         char **last_event = lf->last_events;
@@ -1682,7 +1685,7 @@ void w_free_event_info(Eventinfo *lf, int force_remove){
         w_mutex_unlock(&lf->generated_rule->mutex);
     }
     if (force_remove) {
-        Free_Eventinfo(lf);
+        //Free_Eventinfo(lf);
     }
 }
 
@@ -2101,13 +2104,13 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                         lf->decoder_info->type) {
                 continue;
             }
-            
+
             /* Check each rule */
             else if ((t_currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
-                        == NULL) {   
+                        == NULL) {
                 continue;
             }
-              
+
             /* Ignore level 0 */
             if (t_currently_rule->level == 0) {
                 break;
@@ -2132,7 +2135,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
             /* Pointer to the rule that generated it */
             lf->generated_rule = t_currently_rule;
-            
+
             /* Check if we should ignore it */
             if (t_currently_rule->ckignore && IGnore(lf, t_id)) {
                 /* Ignore rule */
@@ -2196,15 +2199,17 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
             }
 
-            
+
             /* Copy the structure to the state memory of if_matched_sid */
             if (t_currently_rule->sid_prev_matched) {
+                w_mutex_lock((pthread_mutex_t *)&t_currently_rule->sid_prev_matched->mutex);
                 if (!OSList_AddData(t_currently_rule->sid_prev_matched, lf)) {
                     merror("Unable to add data to sig list.");
                 } else {
                     lf->sid_node_to_delete =
                         t_currently_rule->sid_prev_matched->last_node;
                 }
+                w_mutex_unlock((pthread_mutex_t *)&t_currently_rule->sid_prev_matched->mutex);
             }
             /* Group list */
             else if (t_currently_rule->group_prev_matched) {
@@ -2222,7 +2227,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
             os_calloc(1, sizeof(Eventinfo), lf_cpy);
             w_copy_event_for_log(lf,lf_cpy);
-            OS_AddEvent(lf_cpy);
+            OS_AddEvent(lf_cpy, last_events_list);
             break;
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);

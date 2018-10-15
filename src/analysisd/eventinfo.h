@@ -137,6 +137,17 @@ struct _EventNode {
     EventNode *prev;
 };
 
+typedef struct EventList {
+    EventNode *first_node;
+    EventNode *last_node;
+    EventNode *last_added_node;
+
+    int _memoryused;
+    int _memorymaxsize;
+    int _max_freq;
+    pthread_mutex_t event_mutex;
+} EventList;
+
 #ifdef TESTRULE
 extern int full_output;
 extern int alert_only;
@@ -181,13 +192,13 @@ void Zero_Eventinfo(Eventinfo *lf);
 void Free_Eventinfo(Eventinfo *lf);
 
 /* Add and event to the list of previous events */
-void OS_AddEvent(Eventinfo *lf);
+void OS_AddEvent(Eventinfo *lf, EventList *list);
 
 /* Return the last event from the Event list */
-EventNode *OS_GetFirstEvent(void);
+EventNode *OS_GetFirstEvent(EventList *list);
 
 /* Create the event list. Maxsize must be specified */
-void OS_CreateEventList(int maxsize);
+void OS_CreateEventList(int maxsize, EventList *list);
 
 /* Find index of a dynamic field. Returns -1 if not found. */
 const char* FindField(const Eventinfo *lf, const char *name);

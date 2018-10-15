@@ -21,6 +21,7 @@ int alert_only;
 #define OS_COMMENT_MAX 1024
 
 static pthread_mutex_t eventinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
+EventList *last_events_list;
 
 /* Search last times a signature fired
  * Will look for only that specific signature.
@@ -354,7 +355,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     Eventinfo *lf;
 
     /* Get the first event */
-    if (first_pt = OS_GetFirstEvent(), !first_pt) {
+    if (first_pt = OS_GetFirstEvent(last_events_list), !first_pt) {
         /* Nothing found */
         return NULL;
     }
@@ -1063,11 +1064,13 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         lf_cpy->generated_rule->timeframe = lf->generated_rule->timeframe;
         lf_cpy->generated_rule->ignore = lf->generated_rule->ignore;
         lf_cpy->generated_rule->ignore_time = lf->generated_rule->ignore_time;
-        os_strdup(lf->generated_rule->info,lf_cpy->generated_rule->info);
+        if (lf->generated_rule->info) {
+            os_strdup(lf->generated_rule->info,lf_cpy->generated_rule->info);
+        }
 
         lf_cpy->generated_rule->sid_search = lf->generated_rule->sid_search;
 
-        lf_cpy->generated_rule->sid_prev_matched = lf->generated_rule->sid_prev_matched;
+        lf_cpy->generated_rule->sid_prev_matched = lf->generated_rule->sid_prev_matched; // ~~ OK
         lf_cpy->generated_rule->group_prev_matched = lf->generated_rule->group_prev_matched;
 
         if (lf->generated_rule->last_events && lf->generated_rule->last_events[lf->tid]){
