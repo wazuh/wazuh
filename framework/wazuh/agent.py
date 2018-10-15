@@ -1474,7 +1474,7 @@ class Agent:
             raise WazuhException(1711, group_id)
 
         # Create group in /etc/shared
-        group_def_path = "{0}/default/agent.conf".format(common.shared_path)
+        group_def_path = "{0}/agent-template.conf".format(common.shared_path)
         try:
             mkdir_with_mode(group_path)
             copyfile(group_def_path, group_path + "/agent.conf")
