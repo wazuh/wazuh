@@ -265,6 +265,11 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         case 1: // File deleted
             lf->event_type = FIM_DELETED;
 
+            if(!*old_check_sum){
+                merror("Alert already reported");
+                return(0);
+            }
+
             snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck delete %s",
                     lf->agent_id,
                     f_name
