@@ -915,6 +915,10 @@ InstallServer(){
         ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
     fi
 
+    if [ ! -f ${PREFIX}/etc/shared/agent-template.conf ]; then
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/agent-template.conf
+    fi
+
     GenerateAuthCert
 }
 

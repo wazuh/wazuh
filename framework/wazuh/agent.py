@@ -27,6 +27,7 @@ import hashlib
 import re
 import fcntl
 from json import loads, dumps
+from functools import reduce
 import struct
 
 try:
@@ -1194,7 +1195,7 @@ class Agent:
         """
 
         new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force)
-        return {'id': new_agent.id, 'key': key}
+        return {'id': new_agent.id, 'key': new_agent.compute_key()}
 
 
     @staticmethod
@@ -1474,7 +1475,7 @@ class Agent:
             raise WazuhException(1711, group_id)
 
         # Create group in /etc/shared
-        group_def_path = "{0}/default/agent.conf".format(common.shared_path)
+        group_def_path = "{0}/agent-template.conf".format(common.shared_path)
         try:
             mkdir_with_mode(group_path)
             copyfile(group_def_path, group_path + "/agent.conf")
@@ -1550,8 +1551,9 @@ class Agent:
                 else:
                     new_group = 'default' if not group_list else group_list[0]
 
-            # Add multigroup
-            Agent.set_agent_group_file(agent_id, new_group)
+            if new_group:
+                # Add multigroup
+                Agent.set_agent_group_file(agent_id, new_group)
 
         for multi_group in groups_to_remove:
             Agent.remove_multi_group_directory(multi_group)
