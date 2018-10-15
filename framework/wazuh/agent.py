@@ -27,6 +27,7 @@ import hashlib
 import re
 import fcntl
 from json import loads, dumps
+from functools import reduce
 import struct
 
 try:
