@@ -2202,14 +2202,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
             /* Copy the structure to the state memory of if_matched_sid */
             if (t_currently_rule->sid_prev_matched) {
-                w_mutex_lock((pthread_mutex_t *)&t_currently_rule->sid_prev_matched->mutex);
-                if (!OSList_AddData(t_currently_rule->sid_prev_matched, lf)) {
+                OSListNode *node;
+                if (node = OSList_AddData(t_currently_rule->sid_prev_matched, lf), !node) {
                     merror("Unable to add data to sig list.");
                 } else {
-                    lf->sid_node_to_delete =
-                        t_currently_rule->sid_prev_matched->last_node;
+                    lf->sid_node_to_delete = node;
                 }
-                w_mutex_unlock((pthread_mutex_t *)&t_currently_rule->sid_prev_matched->mutex);
             }
             /* Group list */
             else if (t_currently_rule->group_prev_matched) {
