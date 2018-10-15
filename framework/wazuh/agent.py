@@ -1518,7 +1518,7 @@ class Agent:
         multigroups_to_remove = set(filter(lambda mg: mg == groups_id, multigroups))
 
         for multi_group in multigroups_to_remove:
-            dirname = hashlib.sha256(multi_group).hexdigest()[:8]
+            dirname = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
             dirpath = "{}/{}".format(common.multi_groups_path, dirname)
             if path.exists(dirpath):
                 rmtree(dirpath)
