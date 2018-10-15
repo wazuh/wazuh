@@ -94,11 +94,6 @@ runauthd="認証サービスを実行しますか？"
 norunauthd="認証サービスを実行していない"
 yesrunauthd="実行中の認証サービス"
 
-# Part 3.10
-runsyscollector="Syscollector 検知エンジンを実行させますか??"
-nosyscollector="Syscollector は実行させません"
-yessyscollector="Syscollector を実行させます"
-
 # Part 4
 installing="システムをインストールします"
 startwazuh="インストール後にWazuhを開始しますか？"

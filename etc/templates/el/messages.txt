@@ -89,11 +89,6 @@ runauthd="Θέλετε να εκτελέσετε την υπηρεσία Auth;"
 norunauthd="Δεν εκτελείται υπηρεσία Auth"
 yesrunauthd="τρέχουσα υπηρεσία Auth"
 
-# Part 3.10
-runsyscollector="Do you want to run Syscollector?"
-nosyscollector="Not running Syscollector"
-yessyscollector="Running Syscollector"
-
 # Part 4
 installing="Το σύστημα εγκαθίσταται"
 startwazuh="Θέλετε να ξεκινήσετε το Wazuh μετά την εγκατάσταση;"

@@ -260,26 +260,22 @@ UseOpenSCAP()
 # UseSyscollector()
 ##########
 UseSyscollector()
-{
+ {
     # Syscollector config
-    echo ""
-    $ECHO "  3.5- ${runsyscollector} ($yes/$no) [$yes]: "
     if [ "X${USER_ENABLE_SYSCOLLECTOR}" = "X" ]; then
         read AS
     else
         AS=${USER_ENABLE_SYSCOLLECTOR}
     fi
-    echo ""
+
     case $AS in
         $nomatch)
-            echo "   - ${nosyscollector}."
             ;;
         *)
             SYSCOLLECTOR="yes"
-            echo "   - ${yessyscollector}."
             ;;
     esac
-}
+ }
 
 ##########
 # EnableAuthd()

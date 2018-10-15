@@ -92,11 +92,6 @@ runauthd="Do you want to run the Auth daemon?"
 norunauthd="Not running Auth daemon"
 yesrunauthd="Running Auth daemon"
 
-# Part 3.10
-runsyscollector="Do you want to run Syscollector?"
-nosyscollector="Not running Syscollector"
-yessyscollector="Running Syscollector"
-
 # Part 4
 installing="Installing the system"
 startwazuh="Do you want to start Wazuh after the installation?"
