@@ -89,6 +89,11 @@ runauthd="Вы хотите запустить службу Auth?"
 norunauthd="Не работает служба Auth"
 yesrunauthd="Запуск службы Auth"
 
+# Part 3.10
+runsyscollector="Хотите запустить Syscollector?"
+nosyscollector="Не работает Syscollector"
+yessyscollector="Запуск Syscollector"
+
 # Part 4
 installing="Производится установка"
 startwazuh="Вы хотите запустить Wazuh после установки?"

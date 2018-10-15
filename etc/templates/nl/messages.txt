@@ -89,6 +89,11 @@ runauthd="Wilt u de Auth-service uitvoeren?"
 norunauthd="Niet uitgevoerd Auth service"
 yesrunauthd="Starten Auth service"
 
+# Part 3.10
+runsyscollector="Wilt u Syscollector?"
+nosyscollector="Geen running Syscollector"
+yessyscollector="Starten Syscollector"
+
 # Part 4
 installing="Bezig met installeren van het systeem"
 startwazuh="Wilt u na de installatie Wazuh starten?"

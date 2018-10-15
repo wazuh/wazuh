@@ -88,6 +88,11 @@ runauthd="¿Desea habilitar el servicio de autenticación (Authd)?"
 norunauthd="No se ejecutará Authd"
 yesrunauthd="Ejecutando Authd"
 
+# Part 3.4
+runsyscollector="¿Desea activar Syscollector?"
+nosyscollector="No se activará Syscollector"
+yessyscollector="Activando Syscollector"
+
 # Part 4
 installing="Instalando el sistema"
 startwazuh="¿Desea iniciar Wazuh al finalizar la instalación?"

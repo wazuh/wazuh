@@ -89,6 +89,11 @@ runauthd="你要运行Auth守护进程吗？"
 norunauthd="不运行Auth守护进程"
 yesrunauthd="运行Auth守护进程"
 
+# Part 3.10
+runsyscollector="Do you want to run Syscollector?"
+nosyscollector="Not running Syscollector"
+yessyscollector="Running Syscollector"
+
 # Part 4
 installing="正在安装系统"
 startwazuh="你想在安装后启动Wazuh吗？"

@@ -257,6 +257,31 @@ UseOpenSCAP()
 }
 
 ##########
+# UseSyscollector()
+##########
+UseSyscollector()
+{
+    # Syscollector config
+    echo ""
+    $ECHO "  3.5- ${runsyscollector} ($yes/$no) [$yes]: "
+    if [ "X${USER_ENABLE_SYSCOLLECTOR}" = "X" ]; then
+        read AS
+    else
+        AS=${USER_ENABLE_SYSCOLLECTOR}
+    fi
+    echo ""
+    case $AS in
+        $nomatch)
+            echo "   - ${nosyscollector}."
+            ;;
+        *)
+            SYSCOLLECTOR="yes"
+            echo "   - ${yessyscollector}."
+            ;;
+    esac
+}
+
+##########
 # EnableAuthd()
 ##########
 EnableAuthd()
@@ -376,6 +401,9 @@ ConfigureClient()
 
     # OpenSCAP?
     UseOpenSCAP
+
+    # Syscollector?
+    UseSyscollector
 
     echo ""
     $ECHO "  3.5 - ${enable_ar} ($yes/$no) [$yes]: "
@@ -507,6 +535,9 @@ ConfigureServer()
 
     # Checking if OpenSCAP should run
     UseOpenSCAP
+
+    # Checking if Syscollector should run
+    UseSyscollector
 
     # Active response
     catMsg "0x107-ar"
@@ -1108,6 +1139,8 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

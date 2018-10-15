@@ -89,6 +89,11 @@ runauthd="Voulez-vous exécuter le service Auth?"
 norunauthd="Ne pas exécuter le service Auth"
 yesrunauthd="Exécution du service Auth"
 
+# Part 3.10
+runsyscollector="Voulez-vous démarrer Syscollector?"
+nosyscollector="Syscollector non lancé"
+yessyscollector="Lancement de Syscollector"
+
 # Part 4
 installing="Installation du système"
 startwazuh="Voulez-vous démarrer Wazuh après l'installation?"

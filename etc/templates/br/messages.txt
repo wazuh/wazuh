@@ -91,6 +91,11 @@ runauthd="Deseja habilitar Authd?"
 norunauthd="Auth desabilitado"
 yesrunauthd="Auth habilitado"
 
+# Part 3.10
+runsyscollector="Deseja habilitar Syscollector?"
+nosyscollector="Syscollector desabilitado"
+yessyscollector="Syscollector desabilitado"
+
 # Parte 4
 installing="Instalando o sistema"
 startwazuh="Deseja iniciar o Wazuh após a instalação?"

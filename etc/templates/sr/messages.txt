@@ -89,6 +89,11 @@ runauthd="Da li želite da pokrenete Auth uslugu?"
 norunauthd="Ne radi Auth servis"
 yesrunauthd="Pokretanje Auth usluge"
 
+# Part 3.10
+runsyscollector="Da li želiš da pustiš Syscollector?"
+nosyscollector="Ne obavlja Syscollector"
+yessyscollector="Obavlja Syscollector"
+
 # Part 4
 installing="Instalira sistem"
 startwazuh="Želite li pokrenuti Wazuh nakon instalacije?"

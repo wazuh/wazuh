@@ -89,6 +89,11 @@ runauthd="Auth servisini çalıştırmak istiyor musunuz?"
 norunauthd="Auth hizmeti çalışmıyor"
 yesrunauthd="Auth servisi çalıştırıyor"
 
+# Part 3.4
+runsyscollector="Güvenilirlik/bütünlük Syscollector çalıştırılmasını ister misiniz?"
+nosyscollector="Syscollector çalıştırılmıyor"
+yessyscollector="Syscollector çalıştırılıyor"
+
 # Part 4
 installing="Sistem kuruluyor"
 startwazuh="Kurulumdan sonra Wazuh'u başlatmak istiyor musunuz?"
