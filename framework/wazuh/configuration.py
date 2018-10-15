@@ -177,7 +177,7 @@ def _read_option(section_name, opt):
             opt_value = {}
             for a in opt.attrib:
                 opt_value[a] = opt.attrib[a]
-            if opt._children:
+            if list(opt):
                 for child in opt:
                     child_section, child_config = _read_option(child.tag.lower(),child)
                     opt_value[child_section] = child_config
