@@ -88,13 +88,13 @@ cJSON *getRemoteConfig(void) {
             else if (logr.conn[i] == SECURE_CONN) cJSON_AddStringToObject(conn,"connection","secure");
             if (logr.ipv6 && logr.ipv6[i]) cJSON_AddStringToObject(conn,"ipv6","yes"); else cJSON_AddStringToObject(conn,"ipv6","no");
             if (logr.lip && logr.lip[i]) cJSON_AddStringToObject(conn,"local_ip",logr.lip[i]);
-            if (logr.proto && logr.proto[logr.position] == UDP_PROTO) cJSON_AddStringToObject(conn,"protocol","udp");
-            else if (logr.proto && logr.proto[logr.position] == TCP_PROTO) cJSON_AddStringToObject(conn,"protocol","tcp");
-            if (logr.port && logr.port[logr.position]){
-                sprintf(port,"%d",logr.port[logr.position]);
+            if (logr.proto && logr.proto[i] == UDP_PROTO) cJSON_AddStringToObject(conn,"protocol","udp");
+            else if (logr.proto && logr.proto[i] == TCP_PROTO) cJSON_AddStringToObject(conn,"protocol","tcp");
+            if (logr.port && logr.port[i]){
+                sprintf(port,"%d",logr.port[i]);
                 cJSON_AddStringToObject(conn,"port",port);
             }
-            if (logr.queue_size) {
+            if (logr.queue_size && (logr.conn[i] == SECURE_CONN)) {
                 sprintf(queue_size,"%ld",logr.queue_size);
                 cJSON_AddStringToObject(conn,"queue_size",queue_size); };
             if (logr.allowips && (int)i!=logr.position) {
