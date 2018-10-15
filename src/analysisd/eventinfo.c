@@ -794,12 +794,16 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->previous);
     }
 
-    if(lf->is_a_copy){
-        if(lf->generated_rule->group){
+    if (lf->is_a_copy){
+        if (lf->generated_rule->group){
             free(lf->generated_rule->group);
         }
 
-        if(lf->dec_timestamp){
+        if (lf->generated_rule->info){
+            free(lf->generated_rule->info);
+        }
+
+        if (lf->dec_timestamp){
             free(lf->dec_timestamp);
         }
 
@@ -819,7 +823,7 @@ void Free_Eventinfo(Eventinfo *lf)
     }
 
 
-    /* Free node to delete **Watch out. Mem leaks.*
+    /* Free node to delete **Watch out. Mem leaks.
     if(!lf->is_a_copy){
         if (lf->sid_node_to_delete) {
             OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
@@ -833,7 +837,7 @@ void Free_Eventinfo(Eventinfo *lf)
             }
         }
     }
-*/
+    */
 
     /* We dont need to free:
      * fts

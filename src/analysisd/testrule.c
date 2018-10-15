@@ -444,6 +444,7 @@ void OS_ReadMSG(char *ut_str)
 
             /* Default values for the log info */
             Zero_Eventinfo(lf);
+            lf->tid = 0;
 
             /* Clean the msg appropriately */
             if (OS_CleanMSG(msg, lf) < 0) {
