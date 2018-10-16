@@ -142,7 +142,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     sdb_clean(sdb);
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
-        mdebug2("Scan's control message: '%s'", lf->log);
+        mdebug2("Scan's control message agent '%s': '%s'", lf->log, lf->agent_id);
         switch (fim_control_msg(lf->log, lf->time.tv_sec, lf, sdb)) {
         case -2:
         case -1:
@@ -227,7 +227,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
     switch (db_result) {
     case -2:
-        merror("FIM decoder: Bad load query.");
+        merror("FIM decoder: Bad load query: '%s'.", wazuhdb_query);
         // Fallthrough
     case -1:
         lf->data = NULL;
@@ -238,17 +238,17 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
     //extract changes and date_alert fields only available from wazuh_db
     if(sk_decode_extradata(&oldsum, check_sum) > 0) {
-        merror("at fim_db_search(): Error decoding extradata '%s' from '%s'", check_sum, f_name);
+        merror("at fim_db_search(): Error decoding agent: '%s' extradata '%s' from '%s'", lf->agent_id, check_sum, f_name);
     }
 
     os_strdup(check_sum, old_check_sum);
-    mdebug2("File '%s'", f_name);
-    mdebug2("Old checksum '%s'", old_check_sum);
-    mdebug2("New checksum '%s'", new_check_sum);
+    mdebug2("Agent '%s' File '%s'", lf->agent_id, f_name);
+    mdebug2("Agent '%s' Old checksum '%s'", lf->agent_id, old_check_sum);
+    mdebug2("Agent '%s' New checksum '%s'", lf->agent_id, new_check_sum);
 
     // Checksum match, we can just return and keep going
     if (SumCompare(old_check_sum, new_check_sum) == 0) {
-        mdebug1("Alert discarded '%s' same check_sum", f_name);
+        mdebug1("Agent '%s' Alert discarded '%s' same check_sum", lf->agent_id, f_name);
         fim_update_date (f_name, lf, sdb);
         goto exit_ok;
     }
@@ -263,7 +263,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             lf->event_type = FIM_DELETED;
 
             if(!*old_check_sum){
-                mdebug2("Alert already reported (double delete alert)");
+                mdebug2("Agent '%s' Alert already reported (double delete alert)", lf->agent_id);
                 goto exit_ok;
             }
 
@@ -277,13 +277,13 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             switch (db_result) {
             case -2:
-                merror("FIM decoder: Bad delete query.");
+                merror("FIM decoder: Bad delete query: '%s'.", wazuhdb_query);
                 // Fallthrough
             case -1:
                 goto exit_fail;
             }
 
-            mdebug2("File %s deleted from FIM DDBB", f_name);
+            mdebug2("Agent '%s' File %s deleted from FIM DDBB", lf->agent_id, f_name);
 
             break;
         case 0:
@@ -295,7 +295,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
                 // Alert discarded, frequency exceeded
                 if (changes == -1) {
-                    mdebug1("Alert discarded '%s' frequency exceeded", f_name);
+                    mdebug1("Agent '%s' Alert discarded '%s' frequency exceeded", lf->agent_id, f_name);
                     goto exit_ok;
                 }
             } else {
@@ -323,13 +323,13 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             switch (db_result) {
             case -2:
-                merror("FIM decoder: Bad save query.");
+                merror("FIM decoder: Bad save/update query: '%s'.", wazuhdb_query);
                 // Fallthrough
             case -1:
                 goto exit_fail;
             }
 
-            mdebug2("File %s saved/updated in FIM DDBB", f_name);
+            mdebug2("Agent '%s' File %s saved/updated in FIM DDBB", lf->agent_id, f_name);
 
             if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), end_first_scan == NULL) {
                 fim_get_scantime(&end_scan, lf, sdb);
@@ -344,26 +344,26 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             }
 
             if(*end_first_scan == 0) {
-                mdebug2("Alert discarded, first scan. File '%s'", f_name);
+                mdebug2("Agent '%s' Alert discarded, first scan. File '%s'", lf->agent_id, f_name);
                 goto exit_ok;
             }
 
             if(lf->time.tv_sec < *end_first_scan) {
-                mdebug2("Alert discarded, first scan (delayed event). File '%s'", f_name);
+                mdebug2("Agent '%s' Alert discarded, first scan (delayed event). File '%s'", lf->agent_id, f_name);
                 goto exit_ok;
             }
 
             if((Config.syscheck_alert_new == 0) && (lf->event_type == FIM_ADDED)) {
-                mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
+                mdebug2("Agent '%s' Alert discarded (alert_new_files = no). File '%s'", lf->agent_id, f_name);
                 goto exit_ok;
             }
 
-            mdebug2("End end_first_scan is '%ld' (lf->time: '%ld')", *end_first_scan, lf->time.tv_sec);
+            mdebug2("Agent '%s' End end_first_scan is '%ld' (lf->time: '%ld')", lf->agent_id, *end_first_scan, lf->time.tv_sec);
             break;
 
         default: // Error in fim check sum
-            merror("at fim_db_search: Couldn't decode fim sum '%s' from file '%s'.",
-                    new_check_sum, f_name);
+            merror("at fim_db_search: Agent '%s' Couldn't decode fim sum '%s' from file '%s'.",
+                    lf->agent_id, new_check_sum, f_name);
             goto exit_fail;
     }
 
@@ -855,7 +855,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
         switch (db_result) {
         case -2:
-            merror("FIM decoder: Bad result from scan_info query.");
+            merror("FIM decoder: Bad result from scan_info query: '%s'.", wazuhdb_query);
             // Fallthrough
         case -1:
             os_free(wazuhdb_query);
@@ -902,7 +902,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
             switch (db_result) {
             case -2:
-                merror("FIM decoder: Bad result from checks control query.");
+                merror("FIM decoder: Bad result from checks control query: '%s'.", wazuhdb_query);
                 // Fallthrough
             case -1:
                 os_free(wazuhdb_query);
@@ -943,7 +943,7 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
 
     switch (db_result) {
     case -2:
-        merror("FIM decoder: Bad result updating date field.");
+        merror("FIM decoder: Bad result updating date field: '%s'.", wazuhdb_query);
         // Fallthrough
     case -1:
         os_free(wazuhdb_query);
@@ -951,7 +951,7 @@ int fim_update_date (char *file, Eventinfo *lf, _sdb *sdb) {
         return (-1);
     }
 
-    mdebug2("FIM file %s update timestamp for last event", file);
+    mdebug2("FIM Agent '%s' file %s update timestamp for last event", lf->agent_id, file);
 
     os_free(wazuhdb_query);
     os_free(response);
@@ -974,7 +974,7 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
 
     switch (db_result) {
     case -2:
-        merror("FIM decoder: Bad result from cleandb query.");
+        merror("FIM decoder: Bad result from cleandb query: '%s'.", wazuhdb_query);
         // Fallthrough
     case -1:
         os_free(wazuhdb_query);
@@ -982,7 +982,7 @@ int fim_database_clean (Eventinfo *lf, _sdb *sdb) {
         return (-1);
     }
 
-    mdebug2("FIM database has been cleaned");
+    mdebug2("Agent '%s' FIM database has been cleaned", lf->agent_id);
 
     os_free(wazuhdb_query);
     os_free(response);
@@ -1006,7 +1006,7 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
 
     switch (db_result) {
     case -2:
-        merror("FIM decoder: Bad result getting scan date.");
+        merror("FIM decoder: Bad result getting scan date '%s'.", wazuhdb_query);
         // Fallthrough
     case -1:
         os_free(wazuhdb_query);
@@ -1019,7 +1019,7 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
 
     *ts = atol(output);
 
-    mdebug2("FIM end_scan '%ld'", *ts);
+    mdebug2("Agent '%s' FIM end_scan '%ld'", lf->agent_id, *ts);
 
     os_free(wazuhdb_query);
     os_free(response);
