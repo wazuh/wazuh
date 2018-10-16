@@ -1126,6 +1126,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     lf_cpy->perm_before = lf->perm_before;
     lf_cpy->perm_after = lf->perm_after;
 
+    if (lf->sk_tag){
+        os_strdup(lf->sk_tag, lf_cpy->sk_tag);
+    }
+
     if(lf->md5_before){
         os_strdup(lf->md5_before,lf_cpy->md5_before);
     }
@@ -1188,6 +1192,51 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->gname_after){
         os_strdup(lf->gname_after,lf_cpy->gname_after);
+    }
+
+    /* Whodata fields */
+    if (lf->user_id){
+        os_strdup(lf->user_id, lf_cpy->user_id);
+    }
+
+    if (lf->user_name){
+        os_strdup(lf->user_name, lf_cpy->user_name);
+    }
+
+    if (lf->group_id){
+        os_strdup(lf->group_id, lf_cpy->group_id);
+    }
+
+    if (lf->group_name){
+        os_strdup(lf->group_name, lf_cpy->group_name);
+    }
+
+    if (lf->process_name){
+        os_strdup(lf->process_name, lf_cpy->process_name);
+    }
+
+    if (lf->audit_uid){
+        os_strdup(lf->audit_uid, lf_cpy->audit_uid);
+    }
+
+    if (lf->audit_name){
+        os_strdup(lf->audit_name, lf_cpy->audit_name);
+    }
+
+    if (lf->effective_uid){
+        os_strdup(lf->effective_uid, lf_cpy->effective_uid);
+    }
+
+    if (lf->effective_name){
+        os_strdup(lf->effective_name, lf_cpy->effective_name);
+    }
+
+    if (lf->ppid){
+        os_strdup(lf->ppid, lf_cpy->ppid);
+    }
+
+    if (lf->process_id){
+        os_strdup(lf->process_id, lf_cpy->process_id);
     }
 
     lf_cpy->mtime_before = lf->mtime_before;
