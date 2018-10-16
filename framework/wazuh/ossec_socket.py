@@ -58,7 +58,7 @@ class OssecSocketJSON(OssecSocket):
         OssecSocket.__init__(self, path)
 
     def send(self, msg):
-        return OssecSocket.send(self, dumps(msg).encode())
+        return OssecSocket.send(self, dumps(msg))
 
     def receive(self):
         response = loads(OssecSocket.receive(self).decode())
