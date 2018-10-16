@@ -2459,7 +2459,7 @@ class Agent:
         msg = "{0}".format(command)
 
         # Send message
-        s.send(msg)
+        s.send(msg.encode())
 
         # Receive response
         try:
