@@ -39,12 +39,14 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
         merror("No sid search.");
+        lf = NULL;
         goto end;
     }
 
     /* Get last node */
     lf_node = OSList_GetLastNode(rule->sid_search);
     if (!lf_node) {
+        lf = NULL;
         goto end;
     }
 
@@ -162,7 +164,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
                 = lf->full_log;
             rule->last_events[lf->tid][rule->frequency_count + 1]
                 = NULL;
-
         }
 
         if (rule->frequency_count < rule->frequency) {
@@ -170,18 +171,18 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             continue;
         }
         rule->frequency_count++;
-
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
         first_lf->matched = rule->level;
-        goto end;
+        w_mutex_unlock(&rule->mutex);
+        return lf;
 
     } while ((lf_node = lf_node->prev) != NULL);
 
 end:
     w_mutex_unlock(&rule->mutex);
-    return lf;
+    return NULL;
 }
 
 /* Search last times a group fired
