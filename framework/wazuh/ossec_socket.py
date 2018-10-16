@@ -28,8 +28,10 @@ class OssecSocket:
         self.s.close()
 
     def send(self, msg):
+        if isinstance(msg, str):
+            msg = msg.encode()
         try:
-            sent = self.s.send(pack("<I", len(msg)) + msg.encode())
+            sent = self.s.send(pack("<I", len(msg)) + msg)
             if sent == 0:
                 raise WazuhException(1014, self.path)
             return sent
