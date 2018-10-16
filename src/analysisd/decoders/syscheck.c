@@ -263,8 +263,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             lf->event_type = FIM_DELETED;
 
             if(!*old_check_sum){
-                merror("Alert already reported");
-                return(0);
+                mdebug2("Alert already reported (double delete alert)");
+                goto exit_ok;
             }
 
             snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck delete %s",
@@ -331,47 +331,34 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             mdebug2("File %s saved/updated in FIM DDBB", f_name);
 
-            w_mutex_lock(&control_msg_mutex);
-            if(!w_sum || !(*w_sum)) {
-                if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), end_first_scan == NULL) {
-                    fim_get_scantime(&end_scan, lf, sdb);
-                    os_calloc(1, sizeof(time_t), end_first_scan);
-                    *end_first_scan = end_scan;
+            if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), end_first_scan == NULL) {
+                fim_get_scantime(&end_scan, lf, sdb);
+                os_calloc(1, sizeof(time_t), end_first_scan);
+                *end_first_scan = end_scan;
 
-                    if (OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan) != 2) {
-                        os_free(end_first_scan);
-                        merror("Unable to add scan_info to hash table for agent: %s",
-                                lf->agent_id);
-                    }
-
-                    if(end_scan == 0) {
-                        mdebug2("Alert discarded, first scan. File '%s'", f_name);
-                        w_mutex_unlock(&control_msg_mutex);
-                        goto exit_ok;
-                    } else {
-                        mdebug2("End end_scan is '%ld' (lf->time: '%ld')", end_scan, lf->time.tv_sec);
-                    }
-                } else {
-                    if(*end_first_scan == 0) {
-                        mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
-                        w_mutex_unlock(&control_msg_mutex);
-                        goto exit_ok;
-                    }
-                    mdebug2("End end_first_scan is '%ld' (lf->time: '%ld')", *end_first_scan, lf->time.tv_sec);
-                }
-
-                if(lf->time.tv_sec < *end_first_scan) {
-                    mdebug2("Alert discarded, first scan (rc). File '%s'", f_name);
-                    goto exit_ok;
-                }
-
-                if((Config.syscheck_alert_new == 0) && (lf->event_type == FIM_ADDED)) {
-                    mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
-                    goto exit_ok;
+                if(OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan) != 2) {
+                    os_free(end_first_scan);
+                    merror("Unable to add scan_info to hash table for agent: %s",
+                            lf->agent_id);
                 }
             }
-            w_mutex_unlock(&control_msg_mutex);
 
+            if(*end_first_scan == 0) {
+                mdebug2("Alert discarded, first scan. File '%s'", f_name);
+                goto exit_ok;
+            }
+
+            if(lf->time.tv_sec < *end_first_scan) {
+                mdebug2("Alert discarded, first scan (delayed event). File '%s'", f_name);
+                goto exit_ok;
+            }
+
+            if((Config.syscheck_alert_new == 0) && (lf->event_type == FIM_ADDED)) {
+                mdebug2("Alert discarded (alert_new_files = no). File '%s'", f_name);
+                goto exit_ok;
+            }
+
+            mdebug2("End end_first_scan is '%ld' (lf->time: '%ld')", *end_first_scan, lf->time.tv_sec);
             break;
 
         default: // Error in fim check sum
