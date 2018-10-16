@@ -57,3 +57,7 @@ about: Test suite for agent management.
 
 (9) https://documentation.wazuh.com/3.x/user-manual/reference/tools/agent_control.html
 (10) https://documentation.wazuh.com/3.x/user-manual/api/reference.html#get-all-agents
+
+ - [ ] Enable debug mode in the internal options file. (11)
+
+(11) https://documentation.wazuh.com/3.x/user-manual/reference/internal-options.html?highlight=debug%20mode
