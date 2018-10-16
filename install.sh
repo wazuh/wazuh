@@ -260,26 +260,6 @@ UseOpenSCAP()
     esac
 }
 
-##########
-# UseSyscollector()
-##########
-UseSyscollector()
- {
-    # Syscollector config
-    if [ "X${USER_ENABLE_SYSCOLLECTOR}" = "X" ]; then
-        read AS
-    else
-        AS=${USER_ENABLE_SYSCOLLECTOR}
-    fi
-
-    case $AS in
-        $nomatch)
-            ;;
-        *)
-            SYSCOLLECTOR="yes"
-            ;;
-    esac
- }
 
 ##########
 # EnableAuthd()
@@ -401,9 +381,6 @@ ConfigureClient()
 
     # OpenSCAP?
     UseOpenSCAP
-
-    # Syscollector?
-    UseSyscollector
 
     echo ""
     $ECHO "  3.5 - ${enable_ar} ($yes/$no) [$yes]: "
@@ -535,9 +512,6 @@ ConfigureServer()
 
     # Checking if OpenSCAP should run
     UseOpenSCAP
-
-    # Checking if Syscollector should run
-    UseSyscollector
 
     # Active response
     catMsg "0x107-ar"
