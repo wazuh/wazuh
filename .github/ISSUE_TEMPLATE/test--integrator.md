@@ -21,6 +21,7 @@ about: Test suite for integrations.
 ### Scan
 
 - [ ] Monitor a folder in real-time, getting "not found" alerts by VT. (1) 
+- [ ] Monitor a file  and scanning it. (1) 
 - [ ] Monitor a malicious file getting a "positive" alert found by VT. (1) 
 
 (1) https://documentation.wazuh.com/3.x/user-manual/capabilities/virustotal-scan/integration.html?highlight=integrator
