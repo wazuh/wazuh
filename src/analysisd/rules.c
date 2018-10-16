@@ -1592,7 +1592,7 @@ RuleInfo *zerorulemember(int id, int level,
     os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
 
     /* Zero last matched events */
-    ruleinfo_pt->__frequency = 0;
+    ruleinfo_pt->frequency_count = 0;
     ruleinfo_pt->last_events = NULL;
 
     /* Zeroing the list of previous matches */

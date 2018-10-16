@@ -34,7 +34,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
     w_mutex_lock(&rule->mutex);
     /* Set frequency to 0 */
-    rule->__frequency = 0;
+    rule->frequency_count = 0;
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
@@ -157,19 +157,19 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check if the number of matches worked */
-        if (rule->__frequency <= 10) {
-            rule->last_events[lf->tid][rule->__frequency]
+        if (rule->frequency_count <= 10) {
+            rule->last_events[lf->tid][rule->frequency_count]
                 = lf->full_log;
-            rule->last_events[lf->tid][rule->__frequency + 1]
+            rule->last_events[lf->tid][rule->frequency_count + 1]
                 = NULL;
 
         }
 
-        if (rule->__frequency < rule->frequency) {
-            rule->__frequency++;
+        if (rule->frequency_count < rule->frequency) {
+            rule->frequency_count++;
             continue;
         }
-        rule->__frequency++;
+        rule->frequency_count++;
 
         /* If reached here, we matched */
         my_lf->matched = rule->level;
@@ -195,7 +195,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
     w_mutex_lock(&rule->mutex);
 
     /* Set frequency to 0 */
-    rule->__frequency = 0;
+    rule->frequency_count = 0;
     /* Check if sid search is valid */
     if (!rule->group_search) {
         merror("No group search!");
@@ -321,15 +321,15 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
 
         /* Check if the number of matches worked */
-        if (rule->__frequency < rule->frequency) {
-            if (rule->__frequency <= 10) {
-                rule->last_events[lf->tid][rule->__frequency]
+        if (rule->frequency_count < rule->frequency) {
+            if (rule->frequency_count <= 10) {
+                rule->last_events[lf->tid][rule->frequency_count]
                     = lf->full_log;
-                rule->last_events[lf->tid][rule->__frequency + 1]
+                rule->last_events[lf->tid][rule->frequency_count + 1]
                     = NULL;
             }
 
-            rule->__frequency++;
+            rule->frequency_count++;
             continue;
         }
 
@@ -376,7 +376,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     w_mutex_unlock(&first_pt->mutex);
 
     /* Set frequency to 0 */
-    rule->__frequency = 0;
+    rule->frequency_count = 0;
     /* Search all previous events */
     while (eventnode_pt) {
         lf = eventnode_pt->event;
@@ -464,15 +464,15 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check if the number of matches worked */
-        if (rule->__frequency < rule->frequency) {
-            if (rule->__frequency <= 10) {
-                rule->last_events[lf->tid][rule->__frequency]
+        if (rule->frequency_count < rule->frequency) {
+            if (rule->frequency_count <= 10) {
+                rule->last_events[lf->tid][rule->frequency_count]
                     = lf->full_log;
-                rule->last_events[lf->tid][rule->__frequency + 1]
+                rule->last_events[lf->tid][rule->frequency_count + 1]
                     = NULL;
             }
 
-            rule->__frequency++;
+        rule->frequency_count++;
             goto next_it;
         }
 
@@ -801,6 +801,7 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->previous);
     }
 
+/*
     if (lf->is_a_copy){
         if (lf->generated_rule->group){
             free(lf->generated_rule->group);
@@ -814,19 +815,21 @@ void Free_Eventinfo(Eventinfo *lf)
             free(lf->dec_timestamp);
         }
 
-        if (lf->last_events){
-            char **lasts = lf->last_events;
-            char **last_event = lf->last_events;
 
-            if (last_event) {
-                while (*lasts) {
-                    free(*lasts);
-                    lasts++;
-                }
-                free(last_event);
-            }
-        }
         free(lf->generated_rule);
+    }
+*/
+    if (lf->last_events){
+        char **lasts = lf->last_events;
+        char **last_event = lf->last_events;
+
+        if (last_event) {
+            while (*lasts) {
+                free(*lasts);
+                lasts++;
+            }
+            free(last_event);
+        }
     }
 
 
@@ -1055,48 +1058,25 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     }
 
     /* Pointer to the rule that generated it */
-
-    os_calloc(1,sizeof(RuleInfo),lf_cpy->generated_rule);
-
-    if(lf->generated_rule) {
-        w_mutex_lock(&lf->generated_rule->mutex);
-        os_strdup(lf->generated_rule->group,lf_cpy->generated_rule->group);
-        lf_cpy->generated_rule->alert_opts = lf->generated_rule->alert_opts;
-        lf_cpy->generated_rule->sigid = lf->generated_rule->sigid;
-        lf_cpy->generated_rule->level = lf->generated_rule->level;
-        lf_cpy->generated_rule->firedtimes = lf->generated_rule->firedtimes;
-        lf_cpy->generated_rule->frequency = lf->generated_rule->frequency;
-        lf_cpy->generated_rule->__frequency = lf->generated_rule->__frequency;
-        lf_cpy->generated_rule->timeframe = lf->generated_rule->timeframe;
-        lf_cpy->generated_rule->ignore = lf->generated_rule->ignore;
-        lf_cpy->generated_rule->ignore_time = lf->generated_rule->ignore_time;
-        if (lf->generated_rule->info) {
-            os_strdup(lf->generated_rule->info,lf_cpy->generated_rule->info);
-        }
-
-        lf_cpy->generated_rule->sid_search = lf->generated_rule->sid_search;
-
-        lf_cpy->generated_rule->sid_prev_matched = lf->generated_rule->sid_prev_matched; // ~~ OK
-        lf_cpy->generated_rule->group_prev_matched = lf->generated_rule->group_prev_matched;
-
-        if (lf->generated_rule->last_events && lf->generated_rule->last_events[lf->tid]){
-
+    if(lf_cpy->generated_rule = lf->generated_rule, lf_cpy->generated_rule) {
+        w_mutex_lock(&lf_cpy->generated_rule->mutex);
+        if (lf_cpy->generated_rule->last_events && lf_cpy->generated_rule->last_events[lf_cpy->tid]){
             os_calloc(1,sizeof(char *),lf_cpy->last_events);
-            char **lasts = lf->generated_rule->last_events[lf->tid];
+            char **lasts = lf_cpy->generated_rule->last_events[lf_cpy->tid];
             int index = 0;
 
             while (*lasts) {
                 os_realloc(lf_cpy->last_events, sizeof(char *) * (index + 2), lf_cpy->last_events);
                 lf_cpy->last_events[index] = NULL;
 
-                os_strdup(*lasts,lf_cpy->last_events[index]);
+                os_strdup(*lasts, lf_cpy->last_events[index]);
                 lasts++;
                 index++;
             }
 
             lf_cpy->last_events[index] = NULL;
         }
-        w_mutex_unlock(&lf->generated_rule->mutex);
+        w_mutex_unlock(&lf_cpy->generated_rule->mutex);
     }
 
     lf_cpy->decoder_info = lf->decoder_info;
