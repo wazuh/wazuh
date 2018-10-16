@@ -823,7 +823,7 @@ class FragmentedRequestReceiver(ClusterThread):
         self.manager_handler = manager_handler  # handler object
         self.command_queue = Queue()            # queue to store received commands
         self.received_all_information = False   # flag to indicate whether all request has been received
-        self.received_error = False             # flag to indicate there has been an error in receiving process
+        self.received_error = ""                # flag to indicate there has been an error in receiving process
         self.id = None                          # id of the thread doing the receiving process
         self.n_get_timeouts = 0                 # number of times Empty exception is raised
 
@@ -869,7 +869,8 @@ class FragmentedRequestReceiver(ClusterThread):
 
             elif self.received_error:
                 logger.error("{0}: An error took place during request reception.".format(self.thread_tag))
-                self.unlock_and_stop(reason="error", send_err_request=str(e))
+                self.unlock_and_stop(reason="error", send_err_request=self.received_error)
+                self.received_error = ""
 
             else:  # receiving request
                 try:
@@ -948,7 +949,7 @@ class FragmentedRequestReceiver(ClusterThread):
 
         except Exception as e:
             logger.error("{0}: '{1}'.".format(self.thread_tag, e))
-            self.received_error = True
+            self.received_error = str(e)
 
 
     def start_reception(self):
@@ -1110,20 +1111,6 @@ class FragmentedStringReceiver(FragmentedRequestReceiver):
 
     def lock_status(self, status):
         pass # Receive string doesn't need lock the status
-
-
-    def get_response(self):
-        """
-        Return if the process is complete and the resulting string.
-        """
-        result = False, ""
-
-        if self.received_all_information:
-            result = True, self.sting_received
-        elif self.received_error:
-            result = True, "Unknown error processing string request."
-
-        return result
 
 
     def process_received_data(self):
