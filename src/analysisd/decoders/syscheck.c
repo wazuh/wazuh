@@ -335,20 +335,23 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 fim_get_scantime(&end_scan, lf, sdb);
                 os_calloc(1, sizeof(time_t), end_first_scan);
                 *end_first_scan = end_scan;
-
-                if(OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan) != 2) {
+                int res;
+                if(res = OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan), res != 2) {
                     os_free(end_first_scan);
-                    merror("Unable to add scan_info to hash table for agent: %s",
-                            lf->agent_id);
+                    if(res == 0) {
+                        merror("Unable to add scan_info to hash table for agent: %s", lf->agent_id);
+                    }
                 }
+            } else {
+                end_scan = *end_first_scan;
             }
 
-            if(*end_first_scan == 0) {
+            if(end_scan == 0) {
                 mdebug2("Agent '%s' Alert discarded, first scan. File '%s'", lf->agent_id, f_name);
                 goto exit_ok;
             }
 
-            if(lf->time.tv_sec < *end_first_scan) {
+            if(lf->time.tv_sec < end_scan) {
                 mdebug2("Agent '%s' Alert discarded, first scan (delayed event). File '%s'", lf->agent_id, f_name);
                 goto exit_ok;
             }
@@ -358,7 +361,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 goto exit_ok;
             }
 
-            mdebug2("Agent '%s' End end_first_scan is '%ld' (lf->time: '%ld')", lf->agent_id, *end_first_scan, lf->time.tv_sec);
+            mdebug2("Agent '%s' End end_scan is '%ld' (lf->time: '%ld')", lf->agent_id, end_scan, lf->time.tv_sec);
             break;
 
         default: // Error in fim check sum
