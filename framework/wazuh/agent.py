@@ -2429,6 +2429,9 @@ class Agent:
         if component not in components:
             raise WazuhException(1101, "Invalid target")
 
+        if component == "analysis" and (configuration == "rules" or configuration == "decoders"):
+            raise WazuhException(1101, "Could not get requested section")
+
         # checks if agent version is compatible with this feature
         self._load_info_from_DB()
         if self.version is None:
