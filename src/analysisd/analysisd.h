@@ -66,6 +66,6 @@ void w_init_queues();
 #define MAX_DECODER_ORDER_SIZE  1024
 
 OSHash *fim_agentinfo;
-int num_rule_matching_threads;
+extern int num_rule_matching_threads;
 
 #endif /* _LOGAUDIT__H */
