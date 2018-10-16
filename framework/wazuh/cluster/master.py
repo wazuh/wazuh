@@ -393,6 +393,8 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
     def process_cmd(self, command, data):
         requests = {'fwd_new':'new_f_r', 'fwd_upd':'update_f_r', 'fwd_end':'end_f_r'}
 
+        data = data.decode() if data is not None else data
+
         if command == 'fwd_new':
             self.start_time = time.time()
             return self.forward_msg(requests[command], data)

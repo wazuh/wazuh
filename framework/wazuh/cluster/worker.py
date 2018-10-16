@@ -396,6 +396,8 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverWorker):
     def process_cmd(self, command, data):
         requests = {'fwd_new':'new_f_r', 'fwd_upd':'update_f_r', 'fwd_end':'end_f_r'}
 
+        data = data.decode() if data is not None else data
+
         if command == 'fwd_new':
             self.start_time = time.time()
             return self.forward_msg(requests[command], data)
@@ -782,7 +784,7 @@ class WorkerInternalSocketHandler(InternalSocketHandler):
         logger.debug("[Transport-I] Forwarding request to cluster workers '{0}' - '{1}'".format(command, data))
 
         if command not in ['get_nodes','get_health','dapi']:  # ToDo: create a list of valid internal socket commands
-            response = InternalSocketHandler.process_request(self, command, data)
+            response = InternalSocketHandler.process_request(self, command, data.decode())
         else:
             node_response = self.server.manager.handler.send_request(command=command, data=data if data != 'None' else None).split(' ', 1)
             type_response = node_response[0]

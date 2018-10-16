@@ -332,11 +332,11 @@ class Handler(asyncore.dispatcher_with_send):
                 worker_id = data
 
             # Process worker id
-            base_msg = "{} ".format(worker_id).encode()
+            base_msg = "{} ".format(worker_id)
             chunk_size = max_msg_size - len(base_msg)
 
             # Start to send
-            res, data = self.execute(new_req, "{}".format(worker_id)).split(' ', 1)
+            res, data = self.execute(new_req, worker_id).split(' ', 1)
             if res == "err":
                 raise Exception(data)
 
@@ -349,7 +349,7 @@ class Handler(asyncore.dispatcher_with_send):
                 time.sleep(interval_string_transfer_send)
 
             # End
-            res, data = self.execute(end_req, "{} {}".format(worker_id, self.compute_string_md5(string_data))).split(' ', 1)
+            res, data = self.execute(end_req, "{} {}".format(worker_id, self.compute_string_md5(string_data.encode()))).split(' ', 1)
             if res == "err":
                 raise Exception(data)
             response = res + " " + data
@@ -1074,7 +1074,7 @@ class FragmentedStringReceiver(FragmentedRequestReceiver):
         """
         FragmentedRequestReceiver.__init__(self, manager_handler, stopper)
 
-        self.sting_received = ""
+        self.sting_received = b""
 
         #Debug
         self.thread_tag = "[StringThread]" # logger tag of the thread
