@@ -123,6 +123,7 @@ typedef struct _Eventinfo {
     int rootcheck_fts;
     int is_a_copy;
     char **last_events;
+    int queue_added;
     // Node reference
     EventNode *node;
     // Process thread id

@@ -1663,18 +1663,22 @@ void * ad_input_main(void * args) {
 
 void w_free_event_info(Eventinfo *lf, int force_remove){
     /** Cleaning the memory **/
-
+    force_remove = 1; // ~~~~~~~~~~~~~~~~
     /* Only clear the memory if the eventinfo was not
         * added to the stateful memory
         * -- message is free inside clean event --
     */
     if (lf->generated_rule == NULL) {
         Free_Eventinfo(lf);
-        //force_remove = 0; ~~~~~~~~
+        force_remove = 0; //~~~~~~~~
     } else if (lf->last_events) {
         /* Free last_events struct */
         char **last_event = lf->last_events;
         char **lasts = lf->last_events;
+
+        if (lf->queue_added) {
+            force_remove = 0;
+        }
 
         if (last_event) {
             while (*lasts) {
@@ -1687,9 +1691,12 @@ void w_free_event_info(Eventinfo *lf, int force_remove){
         w_mutex_lock(&lf->generated_rule->mutex);
         lf->generated_rule->last_events[lf->tid][0] = NULL;
         w_mutex_unlock(&lf->generated_rule->mutex);
+    } else if (lf->queue_added) {
+        force_remove = 0;
     }
+
     if (force_remove) {
-        //Free_Eventinfo(lf); ~~~~~~~~
+        Free_Eventinfo(lf); //~~~~~~~~
     }
 }
 
@@ -2214,6 +2221,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 } else {
                     lf->sid_node_to_delete = node;
                 }
+                lf->queue_added = 1;
                 w_mutex_unlock(&t_currently_rule->mutex);
             }
             /* Group list */
@@ -2229,6 +2237,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     }
                     j++;
                 }
+                lf->queue_added = 1;
                 w_mutex_unlock(&t_currently_rule->mutex);
             }
 
