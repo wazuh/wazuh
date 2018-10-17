@@ -102,6 +102,10 @@ Install()
         fi
     fi
 
+    if [ "X${OS_VERSION_FOR_SYSC}" = "XAIX" ]; then
+        SYSC_FLAG="DISABLE_SYSC=true"
+    fi
+
     # Build SQLite library for CentOS 6
     if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
         LIB_FLAG="USE_FRAMEWORK_LIB=yes"
@@ -255,6 +259,7 @@ UseOpenSCAP()
             ;;
     esac
 }
+
 
 ##########
 # EnableAuthd()
@@ -1108,6 +1113,8 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

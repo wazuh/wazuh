@@ -1518,7 +1518,7 @@ class Agent:
         multigroups_to_remove = set(filter(lambda mg: mg == groups_id, multigroups))
 
         for multi_group in multigroups_to_remove:
-            dirname = hashlib.sha256(multi_group).hexdigest()[:8]
+            dirname = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
             dirpath = "{}/{}".format(common.multi_groups_path, dirname)
             if path.exists(dirpath):
                 rmtree(dirpath)
@@ -2429,6 +2429,9 @@ class Agent:
         if component not in components:
             raise WazuhException(1101, "Invalid target")
 
+        if component == "analysis" and (configuration == "rules" or configuration == "decoders"):
+            raise WazuhException(1101, "Could not get requested section")
+
         # checks if agent version is compatible with this feature
         self._load_info_from_DB()
         if self.version is None:
@@ -2459,7 +2462,7 @@ class Agent:
         msg = "{0}".format(command)
 
         # Send message
-        s.send(msg)
+        s.send(msg.encode())
 
         # Receive response
         try:

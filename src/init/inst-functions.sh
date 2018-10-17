@@ -112,13 +112,16 @@ WriteOpenSCAP()
 WriteSyscollector()
 {
     # Adding to the config file
-    SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$SYSCOLLECTOR_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+    if [ "X$SYSCOLLECTOR" = "Xyes" ]; then
+      SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      if [ "$SYSCOLLECTOR_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      fi
+      cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
     fi
-    cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
 }
+
 ##########
 # Osquery()
 ##########

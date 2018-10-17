@@ -71,6 +71,7 @@ if [ "$1" = "conf" ]; then
   SYSCHECK="yes"
   ROOTCHECK="yes"
   OPENSCAP="yes"
+  SYSCOLLECTOR="yes"
   ACTIVERESPONSE="yes"
   RLOG="no" # syslog
   SLOG="yes" # remote
