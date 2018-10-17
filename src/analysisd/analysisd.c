@@ -1502,6 +1502,9 @@ void * ad_input_main(void * args) {
             buffer[recv] = '\0';
             msg = buffer;
 
+            /* Get the time we received the event */
+            gettime(&c_timespec);
+
             /* Check for a valid message */
             if (strlen(msg) < 4) {
                 merror(IMSG_ERROR, msg);
@@ -2253,10 +2256,10 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
 void * w_log_rotate_thread(__attribute__((unused)) void * args){
 
-    int day;
-    int year;
+    int day = 0;
+    int year = 0;
     struct tm *p;
-    char mon[4];
+    char mon[4] = {0};
 
     while(1){
         time(&current_time);
