@@ -57,6 +57,9 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
     do {
         lf = (Eventinfo *)lf_node->data;
 
+#ifdef TESTRULE
+        time(&current_time);
+ #endif
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
@@ -217,6 +220,9 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
     do {
         lf = (Eventinfo *)lf_node->data;
 
+#ifdef TESTRULE
+        time(&current_time);
+#endif
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {
             w_mutex_unlock(&rule->group_search->mutex);
@@ -385,6 +391,9 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     while (eventnode_pt) {
         lf = eventnode_pt->event;
 
+#ifdef TESTRULE
+        time(&current_time);
+#endif
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
