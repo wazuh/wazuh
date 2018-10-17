@@ -2066,7 +2066,7 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message) {
     fp_src = fopen(src, "r");
 
     if (!fp_src) {
-        merror("Couldn't open file '%s'", src);
+        merror("At w_copy_file(): Couldn't open file '%s'", src);
         return -1;
     }
 
@@ -2080,7 +2080,7 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message) {
     
 
     if (!fp_dst) {
-        merror("Couldn't open file '%s'", dst);
+        merror("At w_copy_file(): Couldn't open file '%s'", dst);
         fclose(fp_src);
         return -1;
     }
