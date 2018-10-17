@@ -616,7 +616,7 @@ class WazuhDBQuery(object):
         self.sort = sort
         self.search = search
         self.select = None if not select else select.copy()
-        self.fields = fields
+        self.fields = fields.copy()
         self.query = self._default_query()
         self.request = {}
         self.default_sort_field = default_sort_field
