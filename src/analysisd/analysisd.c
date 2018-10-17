@@ -84,6 +84,7 @@ int sys_debug_level;
 OSDecoderInfo *fim_decoder;
 int num_rule_matching_threads;
 EventList *last_events_list;
+time_t current_time;
 
 /* execd queue */
 static int execdq = 0;
@@ -2230,24 +2231,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
-        /* Copy last_events structure if we have matched a rule */
-        if(lf->generated_rule) {
-            if (lf->generated_rule->last_events && lf->generated_rule->last_events[t_id]){
-                w_mutex_lock(&lf->generated_rule->mutex);
-                os_calloc(1,sizeof(char *),lf->last_events);
-                char **lasts = lf->generated_rule->last_events[t_id];
-                int index = 0;
-
-                while (*lasts) {
-                    os_realloc(lf->last_events, sizeof(char *) * (index + 2),lf->last_events);
-                    os_strdup(*lasts,lf->last_events[index]);
-                    lasts++;
-                    index++;
-                }
-                w_mutex_unlock(&lf->generated_rule->mutex);
-                lf->last_events[index] = NULL;
-            }
-        }
         w_inc_processed_events();
 
         if (Config.logall || Config.logall_json){
@@ -2276,7 +2259,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
     char mon[4];
 
     while(1){
-
+        time(&current_time);
         p = localtime(&c_time);
         day = p->tm_mday;
         year = p->tm_year + 1900;

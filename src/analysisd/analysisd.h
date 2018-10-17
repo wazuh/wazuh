@@ -39,6 +39,7 @@ extern rlim_t nofile;
 extern int sys_debug_level;
 extern OSDecoderInfo *fim_decoder;
 extern EventList *last_events_list;
+extern time_t current_time;
 
 // Com request thread dispatcher
 void * syscom_main(__attribute__((unused)) void * arg) ;

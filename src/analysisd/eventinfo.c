@@ -23,6 +23,7 @@ int alert_only;
 static pthread_mutex_t eventinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
 EventList *last_events_list;
 int num_rule_matching_threads;
+time_t current_time = 0;
 
 /* Search last times a signature fired
  * Will look for only that specific signature.
@@ -57,7 +58,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
-        if ((c_time - lf->time.tv_sec) > rule->timeframe) {
+        if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
         }
@@ -217,7 +218,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
-        if ((c_time - lf->time.tv_sec) > rule->timeframe) {
+        if ((current_time - lf->generate_time) > rule->timeframe) {
             w_mutex_unlock(&rule->group_search->mutex);
             w_mutex_unlock(&eventinfo_mutex);
             lf = NULL;
@@ -385,7 +386,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         lf = eventnode_pt->event;
 
         /* If time is outside the timeframe, return */
-        if ((c_time - lf->time.tv_sec) > rule->timeframe) {
+        if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
             goto end;
         }
@@ -961,6 +962,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     lf_cpy->log_after_parent = lf->log_after_parent;
     lf_cpy->log_after_prematch = lf->log_after_prematch;
+    lf_cpy->generate_time = lf->generate_time;
 
     if(lf->agent_id){
         os_strdup(lf->agent_id,lf_cpy->agent_id);

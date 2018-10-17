@@ -553,6 +553,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Set up the event data */
     localtime(&c_time);
     gettime(&local_c_timespec);
+    time(&lf->generate_time);
     lf->time = local_c_timespec;
     localtime_r(&lf->time.tv_sec, &p);
 
