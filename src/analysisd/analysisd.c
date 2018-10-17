@@ -1714,6 +1714,7 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
             w_free_event_info(lf, 1);
             w_mutex_unlock(&writer_threads_mutex);
         } else {
+            minfo("~~~~~~~~~~~~~~~~~~~ ONLY DELETE FIELDS");
             free(lf->fields);
             free(lf);
         }
@@ -2207,16 +2208,19 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             /* Copy the structure to the state memory of if_matched_sid */
             if (t_currently_rule->sid_prev_matched) {
                 OSListNode *node;
+                w_mutex_lock(&t_currently_rule->mutex);
                 if (node = OSList_AddData(t_currently_rule->sid_prev_matched, lf), !node) {
                     merror("Unable to add data to sig list.");
                 } else {
                     lf->sid_node_to_delete = node;
                 }
+                w_mutex_unlock(&t_currently_rule->mutex);
             }
             /* Group list */
             else if (t_currently_rule->group_prev_matched) {
                 unsigned int j = 0;
 
+                w_mutex_lock(&t_currently_rule->mutex);
                 while (j < t_currently_rule->group_prev_matched_sz) {
                     if (!OSList_AddData(
                                 t_currently_rule->group_prev_matched[j],
@@ -2225,6 +2229,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     }
                     j++;
                 }
+                w_mutex_unlock(&t_currently_rule->mutex);
             }
 
             os_calloc(1, sizeof(Eventinfo), lf_cpy);

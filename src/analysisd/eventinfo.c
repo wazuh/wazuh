@@ -815,24 +815,12 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->previous);
     }
 
-/*
-    if (lf->is_a_copy){
-        if (lf->generated_rule->group){
-            free(lf->generated_rule->group);
-        }
-
-        if (lf->generated_rule->info){
-            free(lf->generated_rule->info);
-        }
-
+    if (lf->is_a_copy) {
         if (lf->dec_timestamp){
             free(lf->dec_timestamp);
         }
-
-
-        free(lf->generated_rule);
     }
-*/
+
     if (lf->last_events){
         char **lasts = lf->last_events;
         char **last_event = lf->last_events;
@@ -847,21 +835,33 @@ void Free_Eventinfo(Eventinfo *lf)
     }
 
 
-    /* Free node to delete **Watch out. Mem leaks.
+    // Free node to delete **Watch out. Mem leaks. ~~~~~~~~~~~~~~~~~~~~~~~~
     if(!lf->is_a_copy){
         if (lf->sid_node_to_delete) {
+            w_mutex_lock(&lf->generated_rule->mutex);
+            //minfo("~~~~~OSList_DeleteThisNode0");
             OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
                                     lf->sid_node_to_delete);
+            //minfo("~~~~~OSList_DeleteThisNode1");
+            w_mutex_unlock(&lf->generated_rule->mutex);
         } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
             unsigned int i = 0;
-
+            w_mutex_lock(&lf->generated_rule->mutex);
+            //minfo("~~~~~OSList_DeleteOldestNode0");
             while (i < lf->generated_rule->group_prev_matched_sz) {
                 OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);
                 i++;
             }
+            //minfo("~~~~~OSList_DeleteOldestNode1");
+            w_mutex_unlock(&lf->generated_rule->mutex);
+        }
+    } else {
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if (lf->sid_node_to_delete || (lf->generated_rule && lf->generated_rule->group_prev_matched)) {
+            //minfo("~~~~~~~~~~~~~~~~~~~~~======~............ ");
         }
     }
-    */
+
 
     /* We dont need to free:
      * fts
@@ -966,6 +966,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
 
     if(lf->full_log){
+        if (lf_cpy->full_log) minfo("~~~~~~~~~~~~~~=======+==== HAS FULL LOG: %s", lf_cpy->full_log);
         os_strdup(lf->full_log,lf_cpy->full_log);
     }
 

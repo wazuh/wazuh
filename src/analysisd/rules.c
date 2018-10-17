@@ -1358,6 +1358,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 if (!config_ruleinfo->group_search) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
+                OSList_SetFreeDataPointer(config_ruleinfo->group_search, (void (*)(void *)) Free_Eventinfo);
 
                 /* Mark rules that match this group */
                 OS_MarkGroup(NULL, config_ruleinfo);
