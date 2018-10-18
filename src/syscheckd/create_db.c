@@ -639,8 +639,11 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         return (-1);
     }
 
+    /* Open the directory given */
+    dp = opendir(dir_name);
+
     /* Should we check for NFS? */
-    if (syscheck.skip_nfs)
+    if (syscheck.skip_nfs && dp)
     {
         is_nfs = IsNFS(dir_name);
         if (is_nfs != 0)
@@ -651,8 +654,6 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         }
     }
 
-    /* Open the directory given */
-    dp = opendir(dir_name);
     if (!dp) {
         if (errno == ENOTDIR) {
             if (read_file(dir_name, dir_position, evt, max_depth) == 0) {

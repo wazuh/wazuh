@@ -47,7 +47,6 @@ void OSList_DeleteCurrentlyNode(OSList *list) __attribute__((nonnull));
 void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode) __attribute__((nonnull(1)));
 void OSList_DeleteOldestNode(OSList *list) __attribute__((nonnull));
 
-int OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
+void *OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
 
 #endif
-

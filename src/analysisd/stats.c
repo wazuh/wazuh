@@ -45,10 +45,12 @@ int mindiff = 0;
 int percent_diff = 20;
 
 /* Last msgs, to avoid floods */
-static char *_lastmsg;
-static char *_prevlast;
-static char *_pprevlast;
+static char **_lastmsg = NULL;
+static char **_prevlast = NULL;
+static char **_pprevlast = NULL;
 
+/* Msg mutex*/
+static pthread_mutex_t msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void print_totals(void)
 {
@@ -290,10 +292,18 @@ int Check_Hour()
 }
 
 /* Start hourly stats and other necessary variables */
-int Start_Hour()
+int Start_Hour(int t_id, int threads_number)
 {
     int i = 0, j = 0;
     struct tm *p;
+
+    w_mutex_lock(&msg_mutex);
+    if (!_lastmsg) {
+        os_calloc(threads_number, sizeof(char *), _lastmsg);
+        os_calloc(threads_number, sizeof(char *), _prevlast);
+        os_calloc(threads_number, sizeof(char *), _pprevlast);
+    }
+    w_mutex_unlock(&msg_mutex);
 
     /* Current time */
     p = localtime(&c_time);
@@ -328,14 +338,14 @@ int Start_Hour()
      * They are used to keep track of the last
      * messages received to avoid floods
      */
-    _lastmsg = NULL;
-    _prevlast = NULL;
-    _pprevlast = NULL;
+    _lastmsg[t_id] = NULL;
+    _prevlast[t_id] = NULL;
+    _pprevlast[t_id] = NULL;
 
     /* They should not be null */
-    os_strdup(" ", _lastmsg);
-    os_strdup(" ", _prevlast);
-    os_strdup(" ", _pprevlast);
+    os_strdup(" ", _lastmsg[t_id]);
+    os_strdup(" ", _prevlast[t_id]);
+    os_strdup(" ", _pprevlast[t_id]);
 
     /* Create the stat queue directories */
     if (IsDir(STATWQUEUE) == -1) {
@@ -427,17 +437,17 @@ int Start_Hour()
 /* Check if the message received is repeated to avoid
  * floods of the same message
  */
-int LastMsg_Stats(const char *log)
+int LastMsg_Stats(const char *log, int t_id)
 {
-    if (strcmp(log, _lastmsg) == 0) {
+    if (strcmp(log, _lastmsg[t_id]) == 0) {
         return (1);
     }
 
-    else if (strcmp(log, _prevlast) == 0) {
+    else if (strcmp(log, _prevlast[t_id]) == 0) {
         return (1);
     }
 
-    else if (strcmp(log, _pprevlast) == 0) {
+    else if (strcmp(log, _pprevlast[t_id]) == 0) {
         return (1);
     }
 
@@ -447,15 +457,15 @@ int LastMsg_Stats(const char *log)
 /* If the message is not repeated, rearrange the last
  * received messages
  */
-void LastMsg_Change(const char *log)
+void LastMsg_Change(const char *log, int t_id)
 {
     /* Remove the last one */
-    free(_pprevlast);
+    free(_pprevlast[t_id]);
 
     /* Move the second to third and the last to second */
-    _pprevlast = _prevlast;
-    _prevlast = _lastmsg;
+    _pprevlast[t_id] = _prevlast[t_id];
+    _prevlast[t_id] = _lastmsg[t_id];
 
-    os_strdup(log, _lastmsg);
+    os_strdup(log, _lastmsg[t_id]);
     return;
 }
