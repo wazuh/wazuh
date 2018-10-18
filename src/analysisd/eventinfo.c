@@ -609,6 +609,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->process_id = NULL;
     lf->is_a_copy = 0;
     lf->last_events = NULL;
+    lf->queue_added = 0;
     lf->rootcheck_fts = 0;
     lf->decoder_syscheck_id = 0;
     lf->tid = -1;
