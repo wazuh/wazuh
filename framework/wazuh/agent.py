@@ -355,7 +355,7 @@ class Agent:
         if self.id != "000":
             self.key = self.compute_key()
         else:
-            self.key = ""
+            raise WazuhException(1703)
 
         return self.key
 
