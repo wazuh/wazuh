@@ -843,7 +843,7 @@ void * audit_main(int * audit_sock) {
     w_cond_signal(&audit_thread_started);
     w_mutex_unlock(&audit_mutex);
 
-    mdebug1("Reading events from Audit socket...");
+    minfo("Starting FIM Whodata engine...");
 
     while (audit_thread_active) {
         FD_ZERO(&fdset);

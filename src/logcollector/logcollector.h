@@ -180,6 +180,8 @@ extern int lc_debug_level;
 extern int accept_remote;
 extern int N_INPUT_THREADS;
 extern int OUTPUT_QUEUE_SIZE;
+#ifndef WIN32
 extern rlim_t nofile;
+#endif
 
 #endif /* __LOGREADER_H */

@@ -51,7 +51,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[0] = '\0';
         c_sum[OS_MAXSTR] = '\0';
 
-        /* If it returns < 0, we have already alerted */
+        // If it returns < 0, we've already alerted the deleted file
         if (c_read_file(file_name, buf, c_sum, evt) < 0) {
             return (0);
         }
@@ -97,7 +97,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             return (1);
         } else {
-            mdebug2("Discarding '%s': checksum already reported.", file_name);
+            mdebug2("Inotify event with same checksum for file: '%s'. Ignoring it.", file_name);
         }
 
         return (0);
@@ -116,7 +116,12 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         if (pos >= 0) {
             mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
             int diff = fim_find_child_depth(syscheck.dir[pos], file_name);
-            read_dir(file_name, pos, evt, syscheck.recursion_level[pos] - diff+1);
+            int depth = syscheck.recursion_level[pos] - diff+1;
+
+            if(check_path_type(file_name) == 2){
+                depth = depth - 1;
+            }
+            read_dir(file_name, pos, evt, depth);
         }
 
     }

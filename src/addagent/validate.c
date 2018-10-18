@@ -10,6 +10,9 @@
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#ifndef CLIENT
+#include "wazuh_db/wdb.h"
+#endif
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
 #define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))
@@ -830,9 +833,11 @@ void OS_RemoveAgentGroup(const char *id)
             fp = NULL;
             unlink(group_file);
             group[strlen(group)-1] = '\0';
-            /* Remove multigroup if it's not used on any other agent */
-            w_remove_multigroup(group);
         }
+#ifndef CLIENT
+        /* Remove from the 'belongs' table groups which the agent belongs to*/
+        wdb_delete_agent_belongs(atoi(id));
+#endif
 
         if(fp){
             fclose(fp);

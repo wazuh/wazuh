@@ -100,7 +100,10 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_match
     snprintf(oa_newlocation, 255, "%s|%s", lf->location, oa_location);
     free(lf->location);
     os_strdup(oa_newlocation, lf->location);
-    lf->hostname = lf->location;
+    if (lf->hostname) {
+        free(lf->hostname);
+    }
+    os_strdup(lf->location, lf->hostname);
 
     /* Writting to the agent file */
     fp = fopen(agent_file, "w");

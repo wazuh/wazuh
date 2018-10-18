@@ -106,10 +106,6 @@ functions = {
         'function': Agent.insert_agent,
         'type': 'local_master'
     },
-    'DELETE/agents/groups': {
-        'function': Agent.remove_group,
-        'type': 'local_master'
-    },
     'DELETE/agents/:agent_id': {
         'function': Agent.remove_agent,
         'type': 'local_master'

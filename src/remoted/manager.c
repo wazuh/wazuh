@@ -400,6 +400,10 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     char agent_conf_multi_path[PATH_MAX + 1] = {0};
     char multi_group_cpy[OS_SIZE_65536] = {0};
 
+    if(!hash_multigroup){
+        return;
+    }
+
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",multi_group);
     /* Get each group of the multi-group */
     group = strtok(multi_group, delim);
@@ -612,12 +616,13 @@ static void c_files()
         }
 
         os_sha256 multi_group_hash;
+        char _hash[9];
         char *multi_group_hash_pt = NULL;
 
         if(multi_group_hash_pt = OSHash_Get(m_hash,multi_group),multi_group_hash_pt){
 
-            strncpy(multi_group_hash,multi_group_hash_pt,8);
-            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", multi_group_hash_pt) > PATH_MAX) {
+            strncpy(_hash,multi_group_hash_pt,8);
+            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
                 merror("At c_files(): path '%s' too long.",path);
                 break;
             }
@@ -625,12 +630,10 @@ static void c_files()
         } else {
 
             OS_SHA256_String(multi_group,multi_group_hash);
-            /* We only want the 8 first bytes of the hash */
-            multi_group_hash[8] = '\0';
+            strncpy(_hash,multi_group_hash,8);
+            OSHash_Add(m_hash,multi_group,strdup(_hash));
 
-            OSHash_Add(m_hash,multi_group,strdup(multi_group_hash));
-
-            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", multi_group_hash) > PATH_MAX) {
+            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
                 merror("At c_files(): path '%s' too long.",path);
                 break;
             }
@@ -649,7 +652,7 @@ static void c_files()
         os_calloc(1, sizeof(group_t), groups[p_size]);
         groups[p_size]->group = strdup(multi_group);
         groups[p_size + 1] = NULL;
-        c_multi_group(multi_group,&groups[p_size]->f_sum,multi_group_hash);
+        c_multi_group(multi_group,&groups[p_size]->f_sum,_hash);
         free_strarray(subdir);
         p_size++;
     }
@@ -712,16 +715,16 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     if(strchr(group,MULTIGROUP_SEPARATOR)){
 
         if(multi_group_hash_pt = OSHash_Get(m_hash,group),multi_group_hash_pt){
+            minfo("At send_file_toagent(): Hash is '%s'",multi_group_hash);
             snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash_pt, name);
         }
         else{
             OS_SHA256_String(group,multi_group_hash);
+            char _hash[9];
+            strncpy(_hash,multi_group_hash,8);
+            OSHash_Add(m_hash,group,strdup(_hash));
 
-            /* We only want the 8 first bytes of the hash */
-            multi_group_hash[8] = '\0';
-            OSHash_Add(m_hash,group,strdup(multi_group_hash));
-
-            snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash, name);
+            snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, _hash, name);
         }
     }
     else{
@@ -834,14 +837,6 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 fwrite(metadata_multigroup,1,strlen(metadata_multigroup),fp_metadata);
                 fclose(fp_metadata);
 
-                uid_t uid = Privsep_GetUser(USER);
-                gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
-
-                if (chown(metadata_path, uid, gid) == -1) {
-                    merror(CHOWN_ERROR, metadata_path, errno, strerror(errno));
-                    return;
-                }
-
                 if(chmod(metadata_path,0660) < 0){
                     mdebug2("At read_controlmsg(): Error in chmod setting permissions for path: %s",metadata_path);
                     return;
@@ -871,9 +866,11 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             if(!found){
+                fclose(fp_metadata);
+                fp_metadata = fopen(metadata_path,"a");
                 char metadata_multigroup[OS_SIZE_65536] = {0};
                 snprintf(metadata_multigroup,OS_SIZE_65536 - 1,"%s\n",group);
-                fwrite(metadata_multigroup,1,strlen(metadata_multigroup),fp_metadata);
+                fprintf(fp_metadata, "%s", metadata_multigroup);
             }
             fclose(fp_metadata);
 
@@ -886,10 +883,10 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,multi_group_hash_pt);
             } else {
                 OS_SHA256_String(group,multi_group_hash);
-                multi_group_hash[8] = '\0';
-
-                OSHash_Add(m_hash,group,strdup(multi_group_hash));
-                snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,multi_group_hash);
+                char _hash[9];
+                strncpy(_hash,multi_group_hash,8);
+                OSHash_Add(m_hash,group,strdup(_hash));
+                snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,_hash);
             }
 
             dp = opendir(multigroup_path);

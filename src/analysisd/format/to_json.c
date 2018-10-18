@@ -21,11 +21,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* rule = NULL;
     cJSON* file_diff = NULL;
     cJSON* manager;
-	cJSON* agent;
+    cJSON* agent;
     cJSON* predecoder;
     cJSON* data;
     cJSON* cluster;
-	char manager_name[512];
+    char manager_name[512];
     char* out;
     int i;
 
@@ -99,8 +99,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
         cJSON_AddItemToObject(rule, "mail", cJSON_CreateBool(lf->generated_rule->alert_opts & DO_MAILALERT));
 
-        if (lf->generated_rule->last_events && lf->generated_rule->last_events[0] && lf->generated_rule->last_events[1] && lf->generated_rule->last_events[1][0]) {
-            cJSON_AddStringToObject(root, "previous_output", lf->generated_rule->last_events[1]);
+        if (lf->generated_rule->last_events && lf->generated_rule->last_events[lf->tid] && lf->generated_rule->last_events[lf->tid][0] &&
+             lf->generated_rule->last_events[lf->tid][1] && lf->generated_rule->last_events[lf->tid][1][0]) {
+            cJSON_AddStringToObject(root, "previous_output", lf->generated_rule->last_events[lf->tid][1]);
         }
     }
 
