@@ -97,7 +97,7 @@ static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
-void w_free_event_info(Eventinfo *lf, int force_remove);
+void w_free_event_info(Eventinfo *lf);
 
 /* Output threads */
 void * w_main_output_thread(__attribute__((unused)) void * args);
@@ -1661,16 +1661,16 @@ void * ad_input_main(void * args) {
     return NULL;
 }
 
-void w_free_event_info(Eventinfo *lf, int force_remove){
+void w_free_event_info(Eventinfo *lf){
     /** Cleaning the memory **/
-    force_remove = 1; // ~~~~~~~~~~~~~~~~
+    int force_remove = 1;
     /* Only clear the memory if the eventinfo was not
         * added to the stateful memory
         * -- message is free inside clean event --
     */
     if (lf->generated_rule == NULL) {
         Free_Eventinfo(lf);
-        force_remove = 0; //~~~~~~~~
+        force_remove = 0;
     } else if (lf->last_events) {
         /* Free last_events struct */
         char **last_event = lf->last_events;
@@ -1696,7 +1696,7 @@ void w_free_event_info(Eventinfo *lf, int force_remove){
     }
 
     if (force_remove) {
-        Free_Eventinfo(lf); //~~~~~~~~
+        Free_Eventinfo(lf);
     }
 }
 
@@ -1718,10 +1718,9 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
                 jsonout_output_archive(lf);
             }
 
-            w_free_event_info(lf, 1);
+            w_free_event_info(lf);
             w_mutex_unlock(&writer_threads_mutex);
         } else {
-            minfo("~~~~~~~~~~~~~~~~~~~ ONLY DELETE FIELDS");
             free(lf->fields);
             free(lf);
         }
@@ -1808,12 +1807,12 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
             if (DecodeSyscheck(lf, &sdb) != 1) {
                 /* We don't process syscheck events further */
-                w_free_event_info(lf, 0);
+                w_free_event_info(lf);
                 continue;
             }
             else{
                 if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
-                    w_free_event_info(lf, 0);
+                    w_free_event_info(lf);
                 }
             }
         }
@@ -1851,11 +1850,11 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
 
             if (!DecodeSyscollector(lf,&socket)) {
                 /* We don't process syscheck events further */
-                w_free_event_info(lf, 0);
+                w_free_event_info(lf);
             }
             else{
                 if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
-                    w_free_event_info(lf, 0);
+                    w_free_event_info(lf);
                 }
             }
 
@@ -1893,11 +1892,11 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
 
             if (!DecodeRootcheck(lf)) {
                 /* We don't process rootcheck events further */
-                w_free_event_info(lf, 0);
+                w_free_event_info(lf);
             }
             else{
                 if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
-                    w_free_event_info(lf, 0);
+                    w_free_event_info(lf);
                 }
             }
 
@@ -1933,11 +1932,11 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 
             if (!DecodeHostinfo(lf)) {
                 /* We don't process syscheck events further */
-                w_free_event_info(lf, 0);
+                w_free_event_info(lf);
             }
             else{
                 if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
-                    w_free_event_info(lf, 0);
+                    w_free_event_info(lf);
                 }
             }
 
@@ -2044,7 +2043,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
                 if (!lf->action || !lf->srcip || !lf->dstip || !lf->srcport ||
                         !lf->dstport || !lf->protocol) {
-                    w_free_event_info(lf, 0);
+                    w_free_event_info(lf);
                     continue;
                 }
 
@@ -2104,7 +2103,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         do {
             if (lf->decoder_info->type == OSSEC_ALERT) {
                 if (!lf->generated_rule) {
-                    w_free_event_info(lf, 0); // <~~~~~~ WATCH OUT
+                    w_free_event_info(lf);
                     continue;
                 }
 
@@ -2259,12 +2258,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     reported_writer = 1;
                     mwarn("Archive writer queue is full. %d", t_id);
                 }
-                w_free_event_info(lf, 1);
+                w_free_event_info(lf);
             }
             continue;
         }
 
-        w_free_event_info(lf, 1);
+        w_free_event_info(lf);
     }
 }
 

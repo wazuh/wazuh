@@ -191,8 +191,6 @@ static void fillData(Eventinfo *lf, const char *key, const char *value)
         print_out("       %s: '%s'", key, value);
     }
 #endif
-    if ((lf->fields[lf->nfields].key) ||  (lf->fields[lf->nfields].value))
-        minfo("~~~~~============_== HAS %s , %s", (lf->fields[lf->nfields].key) ? lf->fields[lf->nfields].key : "", (lf->fields[lf->nfields].value) ? lf->fields[lf->nfields].value : "");
     lf->fields[lf->nfields].key = strdup(key);
     lf->fields[lf->nfields].value = strdup(value);
     lf->nfields++;
