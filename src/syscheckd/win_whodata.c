@@ -723,13 +723,11 @@ add_whodata_evt:
                         // Check that a new file has been added
                         if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             GetSystemTime(&w_dir->timestamp);
-                            int pos = w_evt->dir_position;
-                            if (pos >= 0) {
+                            int pos;
+                            if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
-                                int depth = syscheck.recursion_level[pos] - diff+1;
-                                if (depth >= 0) {
-                                    read_dir(w_evt->path, pos, w_evt, depth);
-                                }
+                                int depth = syscheck.recursion_level[pos] - diff;
+                                read_dir(w_evt->path, pos, w_evt, depth);
                             }
 
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
