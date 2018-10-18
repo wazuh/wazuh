@@ -45,7 +45,7 @@ class WorkerManagerHandler(ClientHandler):
 
 
     def process_request(self, command, data):
-        logger.debug("[Worker] [Request-R  ]: '{0}'.".format(command))
+        logger.debug("[Worker ] [Request-R    ]: '{0}'.".format(command))
 
         if command == 'echo-m':
             return 'ok-m ', data.decode()
@@ -54,11 +54,11 @@ class WorkerManagerHandler(ClientHandler):
             cmf_thread.start()
             return 'ack', self.set_worker_thread(command, cmf_thread, data)
         elif command == 'sync_m_c_ok':
-            logger.info("[Worker] [Integrity    ]: The master has verified that the integrity is right.")
+            logger.info("[Worker ] [Integrity    ]: The master has verified that the integrity is right.")
             self.integrity_received_and_processed.set()
             return 'ack', "Thanks2!"
         elif command == 'sync_m_c_err':
-            logger.info("[Worker] [Integrity    ]: The master was not able to verify the integrity.")
+            logger.info("[Worker ] [Integrity    ]: The master was not able to verify the integrity.")
             self.integrity_received_and_processed.set()
             return 'ack', "Thanks!"
         elif command == 'file_status':
@@ -89,7 +89,7 @@ class WorkerManagerHandler(ClientHandler):
     def process_response(self, response):
         # FixMe: Move this line to communications
         answer, payload = self.split_data(response)
-        logger.debug("[Worker] [Response-R ]: '{0}'.".format(answer))
+        logger.debug("[Worker ] [Response-R   ]: '{0}'.".format(answer))
 
         if answer == 'ok-c':  # test
             response_data = '[response_only_for_worker] Master answered: {}.'.format(payload)
@@ -123,7 +123,7 @@ class WorkerManagerHandler(ClientHandler):
                          umask_int=umask, w_mode=w_mode, tmp_dir=tmp_path, whoami='worker')
 
         if not tag:
-            tag = "[Worker] [Sync process]"
+            tag = "[Worker ] [Sync process ]"
 
         cluster_items = get_cluster_items()['files']
 
@@ -221,7 +221,7 @@ class WorkerManagerHandler(ClientHandler):
     # New methods
     def send_integrity_to_master(self, reason=None, tag=None):
         if not tag:
-            tag = "[Worker] [Integrity]"
+            tag = "[Worker ] [Integrity    ]"
 
         logger.info("{0}: Reason: '{1}'".format(tag, reason))
 
@@ -249,7 +249,7 @@ class WorkerManagerHandler(ClientHandler):
         data_for_master = None
 
         if not tag:
-            tag = "[Worker] [AgentInfo]"
+            tag = "[Worker ] [AgentInfo    ]"
 
         logger.info("{0}: Start. Reason: '{1}'".format(tag, reason))
 
@@ -285,7 +285,7 @@ class WorkerManagerHandler(ClientHandler):
 
     def send_extra_valid_files_to_master(self, files, reason=None, tag=None):
         if not tag:
-            tag = "[Worker] [ReqFiles   ]"
+            tag = "[Worker ] [ReqFiles     ]"
 
         logger.info("{}: Start. Reason: '{}'.".format(tag, reason))
 
@@ -315,7 +315,7 @@ class WorkerManagerHandler(ClientHandler):
     def process_files_from_master(self, data_received, tag=None):
 
         if not tag:
-            tag = "[Worker] [process_files_from_master]"
+            tag = "[Worker ] [process_files_from_master]"
 
 
         logger.info("{0}: Analyzing received files: Start.".format(tag))
@@ -366,7 +366,7 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverWorker):
 
     def __init__(self, manager_handler, stopper, worker_id):
         FragmentedStringReceiverWorker.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[APIResponseReceiverWorker]"
+        self.thread_tag = "[Worker ] [API-R        ]"
         self.worker_id = worker_id
         # send request to the worker
         self.worker_thread_id = self.manager_handler.process_response(self.manager_handler.isocket_handler.send_request(self.worker_id, "dapi_res"))
@@ -423,7 +423,7 @@ class WorkerProcessMasterFiles(FragmentedFileReceiver):
 
     def __init__(self, manager_handler, filename, stopper):
         FragmentedFileReceiver.__init__(self, manager_handler, filename, manager_handler.name, stopper)
-        self.thread_tag = "[Worker] [Integrity-R  ]"
+        self.thread_tag = "[Worker ] [Integrity-R  ]"
 
 
     def check_connection(self):
@@ -472,7 +472,7 @@ class WorkerManager:
 
     # Private methods
     def _initiate_worker_threads(self):
-        logger.debug("[Worker] Creating threads.")
+        logger.debug("[Worker ] Creating threads.")
         # Sync integrity
         self.threads[WorkerManager.SYNC_I_T] = SyncIntegrityThread(worker_handler=self.handler, stopper=self.stopper)
 
@@ -495,30 +495,30 @@ class WorkerManager:
 
 
     def exit(self):
-        logger.debug("[Worker] Cleaning threads. Start.")
+        logger.debug("[Worker ] Cleaning threads. Start.")
 
         # Cleaning worker threads
-        logger.debug("[Worker] Cleaning main threads")
+        logger.debug("[Worker ] Cleaning main threads")
         self.stopper.set()
 
         for thread in self.threads:
-            logger.debug2("[Worker] Cleaning threads '{0}'.".format(thread))
+            logger.debug2("[Worker ] Cleaning threads '{0}'.".format(thread))
 
             try:
                 self.threads[thread].join(timeout=2)
             except Exception as e:
-                logger.error("[Worker] Cleaning '{0}' thread. Error: '{1}'.".format(thread, str(e)))
+                logger.error("[Worker ] Cleaning '{0}' thread. Error: '{1}'.".format(thread, str(e)))
 
             if self.threads[thread].isAlive():
-                logger.warning("[Worker] Cleaning '{0}' thread. Timeout.".format(thread))
+                logger.warning("[Worker ] Cleaning '{0}' thread. Timeout.".format(thread))
             else:
-                logger.debug2("[Worker] Cleaning '{0}' thread. Terminated.".format(thread))
+                logger.debug2("[Worker ] Cleaning '{0}' thread. Terminated.".format(thread))
 
         # Cleaning handler threads
-        logger.debug("[Worker] Cleaning handler threads.")
+        logger.debug("[Worker ] Cleaning handler threads.")
         self.handler.exit()
 
-        logger.debug("[Worker] Cleaning threads. End.")
+        logger.debug("[Worker ] Cleaning threads. End.")
 
 
 #
@@ -588,7 +588,7 @@ class KeepAliveThread(WorkerThread):
 
     def __init__(self, worker_handler, stopper):
         WorkerThread.__init__(self, worker_handler, stopper)
-        self.thread_tag = "[Worker] [KeepAlive-S  ]"
+        self.thread_tag = "[Worker ] [KeepAlive-S  ]"
         # Intervals
         self.init_interval = get_cluster_items_worker_intervals()['keep_alive']
         self.interval = self.init_interval
@@ -693,7 +693,7 @@ class SyncIntegrityThread(SyncWorkerThread):
         self.request_type = "sync_i_c_m_p"
         self.reason = "sync_i_c_m"
         self.function = self.worker_handler.send_integrity_to_master
-        self.thread_tag = "[Worker] [Integrity-S  ]"
+        self.thread_tag = "[Worker ] [Integrity-S  ]"
 
 
     def job(self):
@@ -735,7 +735,7 @@ class SyncAgentInfoThread(SyncWorkerThread):
 
     def __init__(self, worker_handler, stopper):
         SyncWorkerThread.__init__(self, worker_handler, stopper)
-        self.thread_tag = "[Worker] [AgentInfo-S  ]"
+        self.thread_tag = "[Worker ] [AgentInfo-S  ]"
         self.request_type = "sync_ai_c_mp"
         self.reason = "sync_ai_c_m"
         self.function = self.worker_handler.send_worker_files_to_master
@@ -745,7 +745,7 @@ class SyncExtraValidFilesThread(SyncWorkerThread):
 
     def __init__(self, worker_handler, stopper, files):
         SyncWorkerThread.__init__(self, worker_handler, stopper)
-        self.thread_tag = "[Worker] [AgentGroup-S ]"
+        self.thread_tag = "[Worker ] [AgentGroup-S ]"
         self.request_type = "sync_ev_c_mp"
         self.reason = "sync_ev_c_m"
         self.function = self.worker_handler.send_extra_valid_files_to_master

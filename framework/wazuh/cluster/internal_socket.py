@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 class InternalSocketHandler(communication.ServerHandler):
 
     def __init__(self, sock, server, asyncore_map, addr):
-        communication.ServerHandler.__init__(self, server=server, sock=sock, asyncore_map=asyncore_map, addr=addr, tag="[InternalSocketServer]")
+        communication.ServerHandler.__init__(self, server=server, sock=sock, asyncore_map=asyncore_map, addr=addr,
+                                             tag="[Cluster] [LocalServer  ]")
 
 
     def process_request(self, command, data):
@@ -37,9 +38,9 @@ class InternalSocket(communication.AbstractServer):
     def __init__(self, socket_name, manager, handle_type, asyncore_map = {}):
         self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
 
-        communication.AbstractServer.__init__(self, addr=self.socket_addr, handle_type=handle_type, asyncore_map=asyncore_map,
-                                              socket_family=socket.AF_UNIX, socket_type=socket.SOCK_STREAM,
-                                              tag="[Transport-InternalSocket]")
+        communication.AbstractServer.__init__(self, addr=self.socket_addr, handle_type=handle_type,
+                                              asyncore_map=asyncore_map, socket_family=socket.AF_UNIX,
+                                              socket_type=socket.SOCK_STREAM, tag="[Cluster] [LocalServer  ]")
         self.manager = manager
         self.config = {'key': None}
 
@@ -73,7 +74,7 @@ class InternalSocket(communication.AbstractServer):
 # Internal Socket thread
 #
 class InternalSocketThread(threading.Thread):
-    def __init__(self, socket_name, tag="[InternalSocketThread]"):
+    def __init__(self, socket_name, tag="[LocalServer]"):
         threading.Thread.__init__(self)
         self.daemon = True
         self.manager = None
@@ -87,18 +88,18 @@ class InternalSocketThread(threading.Thread):
         try:
             self.internal_socket = InternalSocket(socket_name=self.socket_name, manager=manager, handle_type=handle_type)
         except Exception as e:
-            logger.error("{0} [Internal-COM ]: Error initializing: '{1}'.".format(self.thread_tag, e))
+            logger.error("{0} [LocalServer  ]: Error initializing: '{1}'.".format(self.thread_tag, e))
             self.internal_socket = None
 
 
     def run(self):
         while self.running:
             if self.internal_socket:
-                logger.info("{0} [Internal-COM ]: Ready.".format(self.thread_tag))
+                logger.info("{0} [LocalServer  ]: Ready.".format(self.thread_tag))
 
                 asyncore.loop(timeout=1, use_poll=False, map=self.internal_socket.map, count=None)
 
-                logger.info("{0} [Internal-COM ]: Disconnected. Trying to connect again in {1}s.".format(self.thread_tag, self.interval_connection_retry))
+                logger.info("{0} [LocalServer  ]: Disconnected. Trying to connect again in {1}s.".format(self.thread_tag, self.interval_connection_retry))
 
                 time.sleep(self.interval_connection_retry)
             time.sleep(2)
@@ -109,9 +110,9 @@ class InternalSocketClient(communication.AbstractClient):
     def __init__(self, socket_name, asyncore_map = {}):
         self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
         connect_query = str(random.randint(0, 2 ** 32 - 1))
-        logger.debug("[InternalSocketClient] Worker ID: {}".format(connect_query))
+        logger.debug("[ClusterClient] Worker ID: {}".format(connect_query))
         communication.AbstractClient.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM,
-                                              connect_query, "[InternalSocket-Worker] [{}]".format(connect_query), asyncore_map)
+                                              connect_query, "[ClusterClient] [{}]".format(connect_query), asyncore_map)
         self.final_response = communication.Response()
         self.string_receiver = None
 
@@ -174,7 +175,7 @@ class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverWorker
 
     def __init__(self, manager_handler, stopper):
         communication.FragmentedStringReceiverWorker.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[APIResponseReceiver]"
+        self.thread_tag = "[Cluster] [API-R        ]"
 
 
     def process_received_data(self):
