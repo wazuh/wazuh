@@ -282,7 +282,7 @@ char *OSX_ReleaseName(const int version) {
     if (version >= 10 && version <= 18)
         return r_names[version%10];
     else
-        return NULL;
+        return "Unknown";
 }
 
 os_info *get_unix_version()
