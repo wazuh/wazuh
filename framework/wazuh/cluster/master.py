@@ -820,8 +820,8 @@ class MasterInternalSocketHandler(InternalSocketHandler):
 
         elif command == 'dapi_forward':
             worker_id, node_name, input_json = data.split(' ', 2)
-            response = self.server.manager.send_request(worker_name=node_name, command='dapi', data=worker_id + ' ' + input_json)
-            return response.split(' ',1)
+            res_cmd, res = self.server.manager.send_request(worker_name=node_name, command='dapi', data=worker_id + ' ' + input_json).split(' ', 1)
+            return res_cmd, res if res_cmd != 'err' else json.dumps({'err': res})
 
         else:
             return InternalSocketHandler.process_request(self,command,data)
