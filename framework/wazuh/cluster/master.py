@@ -740,55 +740,13 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         serialized_response = ""
         data = data.decode()
 
-        if command == 'get_files':
-            split_data = data.split('%--%', 2)
-            node_list = ast.literal_eval(split_data[1]) if split_data[1] else None
-            get_my_files = False
-
-            response = {}
-
-            if node_list and len(node_list) > 0: #Selected nodes
-                for node in node_list:
-                    if node == read_config()['node_name']:
-                        get_my_files = True
-                        continue
-                    node_file = self.server.manager.send_request(worker_name=node, command='file_status', data='')
-
-                    if node_file.split(' ', 1)[0] == 'err': # Error response
-                        response.update({node:node_file.split(' ', 1)[1]})
-                    else:
-                        response.update({node:json.loads(node_file.split(' ',1)[1])})
-            else: # Broadcast
-                get_my_files = True
-
-                node_file = list(self.server.manager.send_request_broadcast(command = 'file_status'))
-
-                for node,data in node_file:
-                    try:
-                        response.update({node:json.loads(data.split(' ',1)[1])})
-                    except ValueError: # json.loads will raise a ValueError
-                        response.update({node:data.split(' ',1)[1]})
-
-            if get_my_files:
-                my_files = get_files_status('master', get_md5=True)
-                my_files.update(get_files_status('worker', get_md5=True))
-                response.update({read_config()['node_name']:my_files})
-
-            # Filter files
-            if node_list and len(response):
-                response = {node: response.get(node) for node in node_list}
-
-            serialized_response = ['json',  json.dumps(response)]
-            return serialized_response
-
-        elif command == 'get_nodes':
+        if command == 'get_nodes':
             response = {name:data['info'] for name,data in self.server.manager.get_connected_workers().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
 
             serialized_response = ['json', json.dumps(response)]
             return serialized_response
-
 
         elif command == 'get_health':
             _, data = data.split(' ', 1)
@@ -797,19 +755,6 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             serialized_response = ['json',  json.dumps(response)]
             return serialized_response
 
-        elif command == 'sync':
-            command = "req_sync_m_c"
-            split_data = data.split(' ', 1)
-            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-
-            if node_list:
-                for node in node_list:
-                    response = {node:self.server.manager.send_request(worker_name=node, command=command, data="")}
-                serialized_response = ['json', json.dumps(response)]
-            else:
-                response = list(self.server.manager.send_request_broadcast(command=command, data=data))
-                serialized_response = ['json', json.dumps({node:data for node,data in response})]
-            return serialized_response
         elif command == 'get_config':
             response = self.server.manager.get_configuration()
             serialized_response = ['ok', json.dumps(response)]
@@ -824,4 +769,4 @@ class MasterInternalSocketHandler(InternalSocketHandler):
             return response.split(' ',1)
 
         else:
-            return InternalSocketHandler.process_request(self,command,data)
+            return InternalSocketHandler.process_request(self, command, data)
