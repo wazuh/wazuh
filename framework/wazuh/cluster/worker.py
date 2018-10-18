@@ -781,7 +781,7 @@ class WorkerInternalSocketHandler(InternalSocketHandler):
         InternalSocketHandler.__init__(self, sock=sock, server=manager, asyncore_map=asyncore_map, addr=addr)
 
     def process_request(self, command, data):
-        logger.debug("[Transport-I] Forwarding request to cluster workers '{0}' - '{1}'".format(command, data))
+        logger.debug("[Worker ] [LocalServer  ] Request received in cluster local server: '{0}' - '{1}'".format(command, data))
 
         if command not in ['get_nodes','get_health','dapi']:  # ToDo: create a list of valid internal socket commands
             response = InternalSocketHandler.process_request(self, command, data.decode())

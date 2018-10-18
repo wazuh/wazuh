@@ -722,7 +722,7 @@ class ClientStatusCheckThread(ClusterThread):
 
             for worker, worker_info in self.master.get_connected_workers().items():
                 if time.time() - worker_info['status']['last_keep_alive'] > get_cluster_items_master_intervals()['max_allowed_time_without_keepalive']:
-                    logger.critical("[Master] [{}] Last keep alive from worker {} is higher than allowed maximum. Disconnecting.".format(worker, self.thread_tag))
+                    logger.critical("[Master ] [{}] [{}]: Last keep alive is higher than allowed maximum. Disconnecting.".format(self.thread_tag, worker))
                     self.master.remove_worker(worker)
 
             self.sleep(self.interval)
@@ -736,8 +736,7 @@ class MasterInternalSocketHandler(InternalSocketHandler):
         InternalSocketHandler.__init__(self, sock=sock, server=server, asyncore_map=asyncore_map, addr=addr)
 
     def process_request(self, command, data):
-        logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
-        serialized_response = ""
+        logger.debug("[Master ] [LocalServer  ] Request received in cluster local server: '{0}' - '{1}'".format(command, data))
         data = data.decode()
 
         if command == 'get_nodes':
