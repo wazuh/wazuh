@@ -2131,17 +2131,17 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             /* Check ignore time */
             if (t_currently_rule->ignore_time) {
                 if (t_currently_rule->time_ignored == 0) {
-                    t_currently_rule->time_ignored = lf->time.tv_sec;
+                    t_currently_rule->time_ignored = lf->generate_time;
                 }
                 /* If the current time - the time the rule was ignored
                     * is less than the time it should be ignored,
                     * leave (do not alert again)
                     */
-                else if ((lf->time.tv_sec - t_currently_rule->time_ignored)
+                else if ((lf->generate_time - t_currently_rule->time_ignored)
                             < t_currently_rule->ignore_time) {
                     break;
                 } else {
-                    t_currently_rule->time_ignored = lf->time.tv_sec;
+                    t_currently_rule->time_ignored = lf->generate_time;
                 }
             }
 
