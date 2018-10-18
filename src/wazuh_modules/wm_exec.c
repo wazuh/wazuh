@@ -486,6 +486,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                             *exitcode = WEXITSTATUS(status);
                 }
             }
+        } else {
+            retval = 0;
         }
 
         wm_remove_sid(pid);
