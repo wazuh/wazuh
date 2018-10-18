@@ -230,6 +230,8 @@ def execute(request):
         command, payload = request.split(' ',1)
         is_error = isocket_worker_thread.manager.process_response(isocket_worker_thread.manager.send_request(command = command, data = payload).split(' ',1))
         response = isocket_worker_thread.manager.final_response.read()
+        # this is for python 3.4 compatibility
+        response = response.decode() if isinstance(response, bytes) else response
         isocket_worker_thread.manager.final_response.write("ok")
         isocket_worker_thread.manager.handle_close()
         isocket_worker_thread.stop()
