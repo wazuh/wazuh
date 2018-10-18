@@ -368,5 +368,5 @@ class APIRequestQueue(communication.ClusterThread):
 
         :param request: Request to add
         """
-        logger.debug("{} Receiving request: {}".format(self.tag, request))
+        logger.info("{} Receiving request: {}".format(self.tag, request))
         self.request_queue.put(request)
