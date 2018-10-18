@@ -116,7 +116,12 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         if (pos >= 0) {
             mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
             int diff = fim_find_child_depth(syscheck.dir[pos], file_name);
-            read_dir(file_name, pos, evt, syscheck.recursion_level[pos] - diff+1);
+            int depth = syscheck.recursion_level[pos] - diff+1;
+
+            if(check_path_type(file_name) == 2){
+                depth = depth - 1;
+            }
+            read_dir(file_name, pos, evt, depth);
         }
 
     }
