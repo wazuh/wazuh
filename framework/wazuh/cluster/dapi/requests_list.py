@@ -267,11 +267,11 @@ functions = {
         'type': 'distributed_master'
     },
     '/cluster/:node_id/stats/analysisd': {
-        'function': stats.totals,
+        'function': stats.analysisd,
         'type': 'distributed_master'
     },
     '/cluster/:node_id/stats/remoted': {
-        'function': stats.totals,
+        'function': stats.remoted,
         'type': 'distributed_master'
     },
     '/cluster/:node_id/logs/summary': {
