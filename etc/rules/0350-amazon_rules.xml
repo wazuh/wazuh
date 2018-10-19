@@ -17,16 +17,11 @@ ID: 80200 - 80499
         <description>Amazon $(aws.source) alerts.</description>
     </rule>
 
-    <!-- Filter 2: Only eventSource in etc/lists/amazon/aws-sources -->
-    <rule id="80201" level="0">
-        <if_sid>80200</if_sid>
-        <list field="aws.eventSource" lookup="match_key">etc/lists/amazon/aws-sources</list>
-        <description>Amazon: $(aws.eventSource).</description>
-    </rule>
+    <!-- Rule 80201 - Deprecated usage of aws.eventSource to filter; redundant with usage of aws.eventName to filter -->
 
     <!-- Filter 3: Only eventName in etc/lists/amazon/aws-eventnames -->
     <rule id="80202" level="3">
-        <if_sid>80201</if_sid>
+        <if_sid>80200</if_sid>
         <list field="aws.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
         <description>Amazon: $(aws.eventSource) - $(aws.eventName).</description>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
@@ -53,7 +48,7 @@ ID: 80200 - 80499
 
     <!-- Events with no errors -->
     <rule id="80251" level="3">
-        <if_sid>80201</if_sid>
+        <if_sid>80202</if_sid>
         <field name="aws.eventName">DeleteObjects</field>
         <description>Amazon: $(aws.eventSource) - $(aws.eventName).</description>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
