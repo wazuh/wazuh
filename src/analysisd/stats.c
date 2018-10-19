@@ -294,7 +294,7 @@ int Check_Hour()
 int Init_Stats_Directories(){
     int i = 0;
     int j = 0;
-    
+
     /* Create the stat queue directories */
     if (IsDir(STATWQUEUE) == -1) {
         if (mkdir(STATWQUEUE, 0770) == -1) {
@@ -386,7 +386,6 @@ int Init_Stats_Directories(){
 /* Start hourly stats and other necessary variables */
 int Start_Hour(int t_id, int threads_number)
 {
-    int i = 0, j = 0;
     struct tm *p;
 
     w_mutex_lock(&msg_mutex);
