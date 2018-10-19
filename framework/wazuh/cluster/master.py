@@ -358,7 +358,7 @@ class FragmentedStringReceiverMaster(FragmentedStringReceiver):
 
     def __init__(self, manager_handler, stopper):
         FragmentedStringReceiver.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[Master] [{0}] [String-R     ]".format(self.manager_handler.name)
+        self.thread_tag = "[Master ] [{0}] [String-R     ]".format(self.manager_handler.name)
 
     def check_connection(self):
         return True
@@ -368,7 +368,7 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
 
     def __init__(self, manager_handler, stopper, worker_id):
         FragmentedStringReceiverMaster.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[Master] [{}] [API-R        ]".format(worker_id)
+        self.thread_tag = "[Master ] [{}] [API-R        ]".format(worker_id)
         self.worker_id = worker_id
         # send request to the worker
         self.worker_thread_id = self.manager_handler.process_response(self.manager_handler.isocket_handler.send_request(self.worker_id, "dapi_res"))
