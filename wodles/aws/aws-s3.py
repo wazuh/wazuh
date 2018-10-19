@@ -397,21 +397,37 @@ class AWSBucket:
         return filter_args
 
     def reformat_msg(self, event):
-        def single_element_list_to_dictionary(my_event):
+        def reformat_for_json_decoder(my_event):
             for name, value in my_event.items():
                 if isinstance(value, list) and len(value) == 1:
                     my_event[name] = value[0]
+                elif isinstance(value, list) and len(value) > 1:
+                    if isinstance(value[0], (list, dict)):
+                        # Cast array of lists/dict/objects to string
+                        try:
+                            # Try to pretty the string, assuming it is json
+                            my_event[name] = {'string': json.dumps(
+                                value,
+                                ensure_ascii=True,
+                                indent=2,
+                                sort_keys=True)}
+                        except:
+                            # Fallback; just print as string
+                            my_event[name] = {'string': str(value)}
+                    else:
+                        pass
+                        # If it's not an array of list/dict, then it's likely a string, so leave as is
                 elif isinstance(value, dict):
-                    single_element_list_to_dictionary(my_event[name])
-        
+                    reformat_for_json_decoder(my_event[name])
+
         # turn some list fields into dictionaries
-        single_element_list_to_dictionary(event)
+        reformat_for_json_decoder(event)
 
         # in order to support both old and new index pattern, change data.aws.sourceIPAddress fieldname and parse that one with type ip
         # Only add this field if the sourceIPAddress is an IP and not a DNS.
         if 'sourceIPAddress' in event['aws'] and re.match(r'\d+\.\d+.\d+.\d+', event['aws']['sourceIPAddress']):
             event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
-        
+
         return event
 
 
