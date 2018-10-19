@@ -224,7 +224,7 @@ functions = {
     },
     '/cluster/config': {
         'function': cluster.read_config,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/cluster/node': {
         'function': cluster.get_node,
