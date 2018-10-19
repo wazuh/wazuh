@@ -2495,7 +2495,13 @@ class Agent:
         if not component or not configuration:
             raise WazuhException(1307)
 
-        return Agent(agent_id).getconfig(component=component, configuration=configuration)
+        my_agent = Agent(agent_id)
+        my_agent._load_info_from_DB()
+
+        if my_agent.status != "Active":
+            raise WazuhException(1740)
+
+        return my_agent.getconfig(component=component, configuration=configuration)
 
     @staticmethod
     def get_multigroups_metadata():
