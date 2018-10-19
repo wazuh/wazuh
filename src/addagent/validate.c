@@ -822,17 +822,25 @@ void OS_RemoveAgentGroup(const char *id)
     snprintf(group_file, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
 
     FILE *fp;
-    char group[OS_SIZE_4096 + 1] = {0};
+    char group[OS_SIZE_65536 + 1] = {0};
     fp = fopen(group_file,"r");
 
     if(!fp){
         mdebug1("At OS_RemoveAgentGroup(): Could not open file '%s'",group_file);
     } else {
-        if(fgets(group, OS_SIZE_4096, fp)!=NULL ) {
+        if(fgets(group, OS_SIZE_65536, fp)!=NULL ) {
             fclose(fp);
             fp = NULL;
             unlink(group_file);
-            group[strlen(group)-1] = '\0';
+
+            char *endl = strchr(group, '\n');
+
+            if (endl) {
+                *endl = '\0';
+            }
+
+            /* Remove multigroup if it's not used on any other agent */
+            w_remove_multigroup(group);
         }
 #ifndef CLIENT
         /* Remove from the 'belongs' table groups which the agent belongs to*/
@@ -867,14 +875,17 @@ void w_remove_multigroup(const char *group){
             /* Remove the DIR */
             os_sha256 multi_group_hash;
             OS_SHA256_String(group,multi_group_hash);
+            char _hash[9];
 
             /* We only want the 8 first bytes of the hash */
             multi_group_hash[8] = '\0';
 
-            sprintf(path,"%s/%s",isChroot() ? MULTIGROUPS_DIR : DEFAULTDIR MULTIGROUPS_DIR,multi_group_hash);
+            strncpy(_hash,multi_group_hash,8);
+
+            sprintf(path,"%s/%s",isChroot() ? MULTIGROUPS_DIR : DEFAULTDIR MULTIGROUPS_DIR,_hash);
 
             if (rmdir_ex(path) != 0) {
-                mwarn("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
+                mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
             }
         }
     }

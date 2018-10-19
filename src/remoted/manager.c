@@ -715,7 +715,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     if(strchr(group,MULTIGROUP_SEPARATOR)){
 
         if(multi_group_hash_pt = OSHash_Get(m_hash,group),multi_group_hash_pt){
-            minfo("At send_file_toagent(): Hash is '%s'",multi_group_hash);
+            mdebug1("At send_file_toagent(): Hash is '%s'",multi_group_hash);
             snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash_pt, name);
         }
         else{
