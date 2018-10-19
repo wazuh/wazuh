@@ -224,7 +224,7 @@ functions = {
     },
     '/cluster/config': {
         'function': cluster.read_config,
-        'type': 'local_any'
+        'type': 'local_master'
     },
     '/cluster/node': {
         'function': cluster.get_node,
@@ -264,6 +264,14 @@ functions = {
     },
     '/cluster/:node_id/stats/weekly': {
         'function': stats.weekly,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/stats/analysisd': {
+        'function': stats.totals,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/stats/remoted': {
+        'function': stats.totals,
         'type': 'distributed_master'
     },
     '/cluster/:node_id/logs/summary': {
