@@ -230,7 +230,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         merror("FIM decoder: Bad load query: '%s'.", wazuhdb_query);
         // Fallthrough
     case -1:
-        lf->data = NULL;
+        os_free(lf->data);
         goto exit_fail;
     }
     check_sum = strchr(response, ' ');
