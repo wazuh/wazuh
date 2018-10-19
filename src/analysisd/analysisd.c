@@ -788,6 +788,11 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Get current time before starting */
     gettime(&c_timespec);
 
+    /* Start the hourly/weekly stats directories*/
+    if(Init_Stats_Directories() < 0) {
+        Config.stats = 0;
+    }
+
     /* Initialize the logs */
     {
         os_calloc(1, sizeof(Eventinfo), lf);

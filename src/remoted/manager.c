@@ -62,6 +62,9 @@ OSHash *m_hash;
 /* Interval polling */
 static int poll_interval_time = 0;
 
+/* Message reporting */
+static int reported_metadata_not_exists = 0;
+
 /* Save a control message received from an agent
  * read_controlmsg (other thread) is going to deal with it
  * (only if message changed)
@@ -602,7 +605,10 @@ static void c_files()
     fp = fopen(metadata_path,"r");
 
     if(!fp){
-        mdebug1("At c_files(): Could not open '%s' file",metadata_path);
+        if(!reported_metadata_not_exists){
+            mdebug1("At c_files(): Could not open '%s' file",metadata_path);
+            reported_metadata_not_exists = 1;
+        }
         w_mutex_unlock(&files_mutex);
         closedir(dp);
         return;
