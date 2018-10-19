@@ -291,62 +291,10 @@ int Check_Hour()
     return (0);
 }
 
-/* Start hourly stats and other necessary variables */
-int Start_Hour(int t_id, int threads_number)
-{
-    int i = 0, j = 0;
-    struct tm *p;
-
-    w_mutex_lock(&msg_mutex);
-    if (!_lastmsg) {
-        os_calloc(threads_number, sizeof(char *), _lastmsg);
-        os_calloc(threads_number, sizeof(char *), _prevlast);
-        os_calloc(threads_number, sizeof(char *), _pprevlast);
-    }
-    w_mutex_unlock(&msg_mutex);
-
-    /* Current time */
-    p = localtime(&c_time);
-
-    /* Other global variables */
-    _fired = 0;
-    _cignorehour = 0;
-
-    today = p->tm_mday;
-    thishour = p->tm_hour;
-    prev_year = p->tm_year + 1900;
-    strncpy(prev_month, l_month[p->tm_mon], 3);
-    prev_month[3] = '\0';
-
-    /* Clear some memory */
-    memset(__stats_comment, '\0', 192);
-
-    /* Get maximum/minimum diffs */
-    maxdiff = getDefine_Int("analysisd",
-                            "stats_maxdiff",
-                            10, 999999);
-
-    mindiff = getDefine_Int("analysisd",
-                            "stats_mindiff",
-                            10, 999999);
-
-    percent_diff = getDefine_Int("analysisd",
-                                 "stats_percent_diff",
-                                 5, 9999);
-
-    /* Last three messages
-     * They are used to keep track of the last
-     * messages received to avoid floods
-     */
-    _lastmsg[t_id] = NULL;
-    _prevlast[t_id] = NULL;
-    _pprevlast[t_id] = NULL;
-
-    /* They should not be null */
-    os_strdup(" ", _lastmsg[t_id]);
-    os_strdup(" ", _prevlast[t_id]);
-    os_strdup(" ", _pprevlast[t_id]);
-
+int Init_Stats_Directories(){
+    int i = 0;
+    int j = 0;
+    
     /* Create the stat queue directories */
     if (IsDir(STATWQUEUE) == -1) {
         if (mkdir(STATWQUEUE, 0770) == -1) {
@@ -431,6 +379,66 @@ int Start_Hour(int t_id, int threads_number)
             }
         }
     }
+    return 0;
+}
+
+
+/* Start hourly stats and other necessary variables */
+int Start_Hour(int t_id, int threads_number)
+{
+    int i = 0, j = 0;
+    struct tm *p;
+
+    w_mutex_lock(&msg_mutex);
+    if (!_lastmsg) {
+        os_calloc(threads_number, sizeof(char *), _lastmsg);
+        os_calloc(threads_number, sizeof(char *), _prevlast);
+        os_calloc(threads_number, sizeof(char *), _pprevlast);
+    }
+    w_mutex_unlock(&msg_mutex);
+
+    /* Current time */
+    p = localtime(&c_time);
+
+    /* Other global variables */
+    _fired = 0;
+    _cignorehour = 0;
+
+    today = p->tm_mday;
+    thishour = p->tm_hour;
+    prev_year = p->tm_year + 1900;
+    strncpy(prev_month, l_month[p->tm_mon], 3);
+    prev_month[3] = '\0';
+
+    /* Clear some memory */
+    memset(__stats_comment, '\0', 192);
+
+    /* Get maximum/minimum diffs */
+    maxdiff = getDefine_Int("analysisd",
+                            "stats_maxdiff",
+                            10, 999999);
+
+    mindiff = getDefine_Int("analysisd",
+                            "stats_mindiff",
+                            10, 999999);
+
+    percent_diff = getDefine_Int("analysisd",
+                                 "stats_percent_diff",
+                                 5, 9999);
+
+    /* Last three messages
+     * They are used to keep track of the last
+     * messages received to avoid floods
+     */
+    _lastmsg[t_id] = NULL;
+    _prevlast[t_id] = NULL;
+    _pprevlast[t_id] = NULL;
+
+    /* They should not be null */
+    os_strdup(" ", _lastmsg[t_id]);
+    os_strdup(" ", _prevlast[t_id]);
+    os_strdup(" ", _pprevlast[t_id]);
+
     return (0);
 }
 

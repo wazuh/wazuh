@@ -12,6 +12,7 @@
 
 void LastMsg_Change(const char *log, int t_id);
 int LastMsg_Stats(const char *log, int t_id);
+int Init_Stats_Directories();
 
 extern char __stats_comment[192];
 extern int maxdiff;
