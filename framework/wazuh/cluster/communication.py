@@ -175,7 +175,7 @@ class Handler(asyncore.dispatcher_with_send):
         self.worker_threads = {}
         self.stopper = threading.Event()
         self.my_fernet = Fernet(base64_encoding(key)) if key else None
-        self.tag = "[Transport-Handler]"
+        self.tag = "[Cluster]"
 
 
     def exit(self):
@@ -464,7 +464,7 @@ class Handler(asyncore.dispatcher_with_send):
             cmd = pair[0]
             payload = pair[1] if len(pair) > 1 else None
         except Exception as e:
-            logger.error("[Transport-Handler] Error splitting data: '{}'.".format(e))
+            logger.error("[Cluster] Error splitting data: '{}'.".format(e))
             cmd = "err"
             payload = "Error splitting data"
 
@@ -475,7 +475,7 @@ class Handler(asyncore.dispatcher_with_send):
         try:
             return self.process_request(command, payload)
         except WazuhException as e:
-            logger.error("{} {0}".format(self.tag, e.message))
+            logger.error("{} {}".format(self.tag, e.message))
             return 'err', str(e)
         except Exception as e:
             error_msg = "Error processing command '{0}': '{1}'.".format(command, e)
@@ -522,7 +522,7 @@ class Handler(asyncore.dispatcher_with_send):
 
 class ServerHandler(Handler):
 
-    def __init__(self, sock, server, asyncore_map, addr=None, tag="[Master]"):
+    def __init__(self, sock, server, asyncore_map, addr=None, tag="[Master ]"):
         Handler.__init__(self, server.config['key'], sock, asyncore_map)
         self.map = asyncore_map
         self.name = None
@@ -560,9 +560,9 @@ class ServerHandler(Handler):
             worker_id = self.server.add_worker(data, self.addr, self)
 
             self.name = worker_id  # TO DO: change self.name to self.worker_id
-            logger.info("[Master] [{0}]: Connected.".format(worker_id))
+            logger.info("[Master ] [{0}]: Connected.".format(worker_id))
         except Exception as e:
-            logger.error("[Transport-ServerHandler] Error accepting connection from {}: {}".format(self.addr, e))
+            logger.error("[Master ] Error accepting connection from {}: {}".format(self.addr, e))
             self.handle_close()
 
         return None
@@ -688,7 +688,7 @@ class AbstractServer(asyncore.dispatcher):
                                                                                 new_req, upd_req, end_req, extra_data)
         else:
             error_msg = "Trying to send and the worker '{0}' is not connected.".format(worker_name)
-            logger.error("[Transport-Server] {0}.".format(error_msg))
+            logger.error("[Cluster] {0}.".format(error_msg))
             response = "err " + error_msg
         return response
 
@@ -697,7 +697,7 @@ class Server(AbstractServer):
 
     def __init__(self, host, port, handle_type, asyncore_map = {}):
         AbstractServer.__init__(self, addr=(host,port), handle_type=handle_type, asyncore_map=asyncore_map,
-                                socket_family=socket.AF_INET, socket_type=socket.SOCK_STREAM, tag="[Transport-Server]")
+                                socket_family=socket.AF_INET, socket_type=socket.SOCK_STREAM, tag="[Cluster]")
 
 
     def add_worker(self, data, ip, handler):
@@ -800,7 +800,7 @@ class ClientHandler(AbstractClient):
     def __init__(self, key, host, port, name, cluster_name, asyncore_map = {}):
         connect_query = '{}*{} {} {}'.format(name, cluster_name, 'worker', __version__)
         AbstractClient.__init__(self, key, (host, port), name, socket.AF_INET, socket.SOCK_STREAM, connect_query,
-                                "[Transport-ClientHandler]", asyncore_map)
+                                "[Worker ]", asyncore_map)
         self.host = host
         self.cluster_name = cluster_name
         self.port = port
@@ -808,7 +808,7 @@ class ClientHandler(AbstractClient):
 
 
     def handle_connect(self):
-        logger.info("[Worker] Connecting to {0}:{1}.".format(self.host, self.port))
+        logger.info("[Worker ] Connecting to {0}:{1}.".format(self.host, self.port))
         AbstractClient.handle_connect(self)
 
 
@@ -852,8 +852,7 @@ class FragmentedRequestReceiver(ClusterThread):
                 continue
 
             if self.received_all_information:
-                logger.info("{0}: Reception completed: Time: {1:.2f}s.".format(self.thread_tag, self.total_time))
-                logger.debug("{0}: Reception completed: Size: {1}B.".format(self.thread_tag, self.size_received))
+                logger.debug("{0}: Reception completed: ({1:.2f}s / {1}B)".format(self.thread_tag, self.total_time, self.size_received))
 
                 try:
                     result = self.process_received_data()
@@ -1121,7 +1120,7 @@ class FragmentedStringReceiverWorker(FragmentedStringReceiver):
 
     def __init__(self, manager_handler, stopper):
         FragmentedStringReceiver.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[Worker] [{0}] [String-R     ]".format(self.manager_handler.name)
+        self.thread_tag = "[Worker ] [{0}] [String-R     ]".format(self.manager_handler.name)
 
 
     def check_connection(self):

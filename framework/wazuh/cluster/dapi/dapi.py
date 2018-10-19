@@ -37,7 +37,7 @@ def distribute_function(input_json, pretty=False, debug=False):
         node_info = cluster.get_node()
         request_type = rq.functions[input_json['function']]['type']
         is_dapi_enabled = cluster.get_cluster_items()['distributed_api']['enabled']
-        logger.debug("[DistributedAPI] Distributed API is {}.".format("enabled" if is_dapi_enabled else "disabled"))
+        logger.debug("[Cluster] [D API        ] Distributed API is {}.".format("enabled" if is_dapi_enabled else "disabled"))
 
         # First case: execute the request local.
         # If the distributed api is not enabled
@@ -100,7 +100,7 @@ def execute_local_request(input_json, pretty, debug):
             data = rq.functions[input_json['function']]['function']()
 
         after = time.time()
-        logger.debug("[DistributedAPI] Time calculating request result: {}s".format(after - before))
+        logger.debug("[Cluster] [D API        ] Time calculating request result: {}s".format(after - before))
         return print_json(data=data, pretty=pretty, error=0)
     except WazuhException as e:
         if debug:
@@ -328,7 +328,7 @@ class APIRequestQueue(communication.ClusterThread):
         communication.ClusterThread.__init__(self, stopper=stopper)
         self.server = server
         self.request_queue = Queue()
-        self.tag = "[DistributedAPI]"
+        self.tag = "[Cluster] [D API        ]"
 
 
     def run(self):
@@ -368,5 +368,5 @@ class APIRequestQueue(communication.ClusterThread):
 
         :param request: Request to add
         """
-        logger.debug("{} Receiving request: {}".format(self.tag, request))
+        logger.info("{} Receiving request: {}".format(self.tag, request))
         self.request_queue.put(request)
