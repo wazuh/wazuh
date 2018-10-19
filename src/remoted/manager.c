@@ -606,7 +606,7 @@ static void c_files()
 
     if(!fp){
         if(!reported_metadata_not_exists){
-            mdebug1("At c_files(): Could not open '%s' file",metadata_path);
+            mdebug1("At c_files(): Could not find '%s' file. It will be generated when an agent connects",metadata_path);
             reported_metadata_not_exists = 1;
         }
         w_mutex_unlock(&files_mutex);
