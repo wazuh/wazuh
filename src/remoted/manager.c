@@ -797,7 +797,6 @@ static void read_controlmsg(const char *agent_id, char *msg)
     os_md5 tmp_sum;
     char *end;
     agent_group *agt_group;
-    DIR *dp = NULL;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -825,102 +824,6 @@ static void read_controlmsg(const char *agent_id, char *msg)
         group[0] = '\0';
     }
     mdebug2("Agent '%s' group is '%s'",agent_id,group);
-
-    /* Check if the .metadata file is created */
-    if(strchr(group,MULTIGROUP_SEPARATOR)){
-
-        FILE *fp_metadata;
-        char metadata_path[PATH_MAX + 1] = {0};
-        snprintf(metadata_path,PATH_MAX,"%s",isChroot() ?  METADATA_FILE :  DEFAULTDIR METADATA_FILE);
-        fp_metadata = fopen(metadata_path,"r");
-
-        if(!fp_metadata){
-            fp_metadata = fopen(metadata_path,"a");
-
-            if(fp_metadata){
-                char metadata_multigroup[OS_SIZE_65536] = {0};
-                snprintf(metadata_multigroup,OS_SIZE_65536 - 1,"%s\n",group);
-                fwrite(metadata_multigroup,1,strlen(metadata_multigroup),fp_metadata);
-                fclose(fp_metadata);
-
-                if(chmod(metadata_path,0660) < 0){
-                    mdebug2("At read_controlmsg(): Error in chmod setting permissions for path: %s",metadata_path);
-                    return;
-                }
-            }
-        }else{
-            /* Check if the multigroup is in .metadata */
-            char buffer[OS_SIZE_65536 + 1] = {0};
-            int found = 0;
-            while (fgets(buffer, sizeof(buffer), fp_metadata) != NULL) {
-                char *endl = strchr(buffer, '\n');
-
-                if (endl) {
-                    *endl = '\0';
-                } else {
-                    static int reported = 0;
-                    if (!reported) {
-                        mwarn("File '%s' is corrupted: line too long.", metadata_path);
-                        reported = 1;
-                    }
-                }
-
-                if(strncmp(buffer,group,OS_SIZE_65536) == 0){
-                    found = 1;
-                    break;
-                }
-            }
-
-            if(!found){
-                fclose(fp_metadata);
-                fp_metadata = fopen(metadata_path,"a");
-                char metadata_multigroup[OS_SIZE_65536] = {0};
-                snprintf(metadata_multigroup,OS_SIZE_65536 - 1,"%s\n",group);
-                fprintf(fp_metadata, "%s", metadata_multigroup);
-            }
-            fclose(fp_metadata);
-
-            /* Check if the multigroup dir is created */
-            os_sha256 multi_group_hash;
-            char multigroup_path[PATH_MAX + 1] = {0};
-            char *multi_group_hash_pt = NULL;
-
-            if(multi_group_hash_pt = OSHash_Get(m_hash,group),multi_group_hash_pt){
-                snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,multi_group_hash_pt);
-            } else {
-                OS_SHA256_String(group,multi_group_hash);
-                char _hash[9];
-                strncpy(_hash,multi_group_hash,8);
-                OSHash_Add(m_hash,group,strdup(_hash));
-                snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,_hash);
-            }
-
-            dp = opendir(multigroup_path);
-
-            if(!dp){
-                if (errno == ENOENT) {
-                    if (mkdir(multigroup_path, 0770) == -1) {
-                        mdebug1("At read_controlmsg(): couldn't create directory '%s'", multigroup_path);
-                        return;
-                    }
-
-                    if(chmod(multigroup_path,0770) < 0){
-                        mdebug1("At read_controlmsg(): Error in chmod setting permissions for path: %s",multigroup_path);
-                    }
-
-                    uid_t uid = Privsep_GetUser(USER);
-                    gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
-
-                    if (chown(multigroup_path, uid, gid) == -1) {
-                        merror(CHOWN_ERROR, multigroup_path, errno, strerror(errno));
-                        return;
-                    }
-                }
-            }else{
-                closedir(dp);
-            }
-        }
-    }
 
     /* Lock mutex */
     w_mutex_lock(&files_mutex);

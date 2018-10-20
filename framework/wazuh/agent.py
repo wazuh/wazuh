@@ -1505,6 +1505,11 @@ class Agent:
         # Create group in /var/multigroups
         try:
             Agent().append_multigroups_metadata(group_id)
+            folder = hashlib.sha256(group_id).hexdigest()[:8]
+            multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
+            mkdir_with_mode(multi_group_path)
+            chown(multi_group_path, common.ossec_uid, common.ossec_gid)
+            chmod(multi_group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
         except Exception as e:
             raise WazuhException(1005, str(e))
@@ -2547,8 +2552,8 @@ class Agent:
             if geteuid() == 0:
                 chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
                 chmod(common.multi_groups_path + "/.metadata", 0o660)
-            with open(metadata_path, 'a') as f:
-                f.write('{0}\n'.format(multi_group))
+        with open(metadata_path, 'a+') as f:
+            f.write('{0}\n'.format(multi_group))
 
     @staticmethod
     def get_sync_group(agent_id):
