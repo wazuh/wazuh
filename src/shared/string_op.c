@@ -371,7 +371,7 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
 
     /* Read directory */
     for (i = 0; files[i]; ++i) {
-        char buffer[OS_SIZE_4096 + 1] = {0};
+        char buffer[OS_SIZE_65536 + 1] = {0};
         char file[PATH_MAX + 1] = {0};
 
         snprintf(file, PATH_MAX + 1, "%s/%s", path, files[i]);
@@ -387,13 +387,19 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
             continue;
         }
 
-        if( fgets (buffer, OS_SIZE_4096, fp)!=NULL ) {
-            /* Found */
+        if( fgets (buffer, OS_SIZE_65536, fp)!=NULL ) {
+            
             if(strip_new_line){
-                buffer[strlen(buffer) - 1] = '\0';
+
+                char *endl = strchr(buffer, '\n');
+
+                if (endl) {
+                    *endl = '\0';
+                }
             }
 
-            if(strncmp(str,buffer,OS_SIZE_4096) == 0){
+            /* Found */
+            if(strncmp(str,buffer,OS_SIZE_65536) == 0){
                 status = 0;
                 goto end;
             }
