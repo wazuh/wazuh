@@ -557,11 +557,14 @@ class Agent:
         # remove multigroup if not being used
         multi_group_list = []
         for filename in listdir("{0}".format(common.groups_path)):
-            file = open("{0}/{1}".format(common.groups_path,filename),"r")
-            group_readed = file.read()
-            group_readed = group_readed.strip()
-            multi_group_list.append(group_readed)
-            file.close()
+            try:
+                file = open("{0}/{1}".format(common.groups_path,filename),"r")
+                group_readed = file.read()
+                group_readed = group_readed.strip()
+                multi_group_list.append(group_readed)
+                file.close()
+            except Exception:
+                continue
 
         if group_name:
             try:
@@ -581,7 +584,7 @@ class Agent:
                         folder = hashlib.sha256(group_name).hexdigest()[:8]
                         rmtree("{}/{}".format(common.multi_groups_path,folder))
                     except Exception:
-                        pass
+                        raise WazuhException(1726,group_name)
 
         return 'Agent deleted successfully.'
 
