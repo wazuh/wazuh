@@ -787,7 +787,8 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Get current time before starting */
     gettime(&c_timespec);
-
+    Start_Time();
+    
     /* Start the hourly/weekly stats directories*/
     if(Init_Stats_Directories() < 0) {
         Config.stats = 0;
