@@ -386,7 +386,6 @@ int Init_Stats_Directories(){
 /* Start hourly stats and other necessary variables */
 int Start_Hour(int t_id, int threads_number)
 {
-    struct tm *p;
 
     w_mutex_lock(&msg_mutex);
     if (!_lastmsg) {
@@ -467,6 +466,8 @@ void LastMsg_Change(const char *log, int t_id)
 }
 
 void Start_Time(){
+    struct tm *p;
+    
     /* Current time */
     p = localtime(&c_time);
 
