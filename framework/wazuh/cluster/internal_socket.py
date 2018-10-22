@@ -143,9 +143,9 @@ class InternalSocketClient(communication.AbstractClient):
 
     def process_request(self, command, data):
         if command == 'dapi_res':
-            self.string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
-            self.string_receiver.start()
-            return 'ok', self.set_worker_thread(command, self.string_receiver)
+            data = data.decode()
+            self.final_response.write(data)
+            return 'ok', 'thanks2'
         elif command == 'err-is':
             data = data.decode()
             logger.debug("{} Cluster has reported an error receiving data: {}".format(self.tag, data))
