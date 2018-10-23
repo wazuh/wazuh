@@ -344,6 +344,12 @@ int add_audit_rules_syscheck(void) {
                     W_Vector_insert(audit_added_rules, syscheck.dir[i]);
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
+                } else if (abs(retval) == 17) {
+                    mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
+                    w_mutex_lock(&audit_rules_mutex);
+                    W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                    w_mutex_unlock(&audit_rules_mutex);
+                    rules_added++;
                 } else {
                     merror("Error adding Audit rule for directory (%i): %s .",retval, syscheck.dir[i]);
                 }

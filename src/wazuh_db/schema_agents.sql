@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     file TEXT PRIMARY KEY,
     type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
     date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-    changes INTEGER NOT NULL DEFAULT 0,
+    changes INTEGER NOT NULL DEFAULT 1,
     size INTEGER,
     perm TEXT,
     uid TEXT,

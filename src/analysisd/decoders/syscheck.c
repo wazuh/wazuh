@@ -799,10 +799,10 @@ int SumCompare(const char *s1, const char *s2) {
 }
 
 int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf) {
-    int freq = 0;
+    int freq = 1;
 
     if (!Config.syscheck_auto_ignore) {
-        freq = 0;
+        freq = 1;
     } else {
         if (lf->time.tv_sec - saved_time < Config.syscheck_ignore_time) {
             if (saved_frequency >= Config.syscheck_ignore_frequency) {

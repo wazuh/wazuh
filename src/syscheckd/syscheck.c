@@ -210,6 +210,9 @@ int Start_win32_Syscheck()
     sleep(syscheck.tsleep * 5);
     fim_initialize();
 
+    if(syscheck.enable_whodata && ! syscheck.scan_on_start)
+        create_db();
+
     /* Wait if agent started properly */
     os_wait();
 
