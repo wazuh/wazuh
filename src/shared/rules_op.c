@@ -973,7 +973,6 @@ static RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->location = NULL;
 
     /* Zero last matched events */
-    ruleinfo_pt->frequency_count = 0;
     ruleinfo_pt->last_events = NULL;
 
     /* Zero the list of previous matches */

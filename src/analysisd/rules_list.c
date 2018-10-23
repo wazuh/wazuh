@@ -353,7 +353,7 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
                 if (!r_node->ruleinfo->sid_prev_matched) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
-                OSList_SetFreeDataPointer(r_node->ruleinfo->sid_prev_matched, (void (*)(void *)) Free_Eventinfo);
+                //OSList_SetFreeDataPointer(r_node->ruleinfo->sid_prev_matched, (void (*)(void *)) Free_Eventinfo);
             }
 
             /* Assign the parent pointer to it */

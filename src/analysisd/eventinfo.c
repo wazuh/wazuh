@@ -33,10 +33,9 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
     Eventinfo *lf = NULL;
     Eventinfo *first_lf;
     OSListNode *lf_node;
+    int frequency_count = 0;
 
     w_mutex_lock(&rule->mutex);
-    /* Set frequency to 0 */
-    rule->frequency_count = 0;
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
@@ -164,18 +163,18 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         }
 
         /* Check if the number of matches worked */
-        if (rule->frequency_count <= 10) {
-            rule->last_events[lf->tid][rule->frequency_count]
+        if (frequency_count <= 10) {
+            rule->last_events[lf->tid][frequency_count]
                 = lf->full_log;
-            rule->last_events[lf->tid][rule->frequency_count + 1]
+            rule->last_events[lf->tid][frequency_count + 1]
                 = NULL;
         }
 
-        if (rule->frequency_count < rule->frequency) {
-            rule->frequency_count++;
+        if (frequency_count < rule->frequency) {
+            frequency_count++;
             continue;
         }
-        rule->frequency_count++;
+        frequency_count++;
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
@@ -197,11 +196,10 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 {
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
+    int frequency_count = 0;
 
     w_mutex_lock(&rule->mutex);
 
-    /* Set frequency to 0 */
-    rule->frequency_count = 0;
     /* Check if sid search is valid */
     if (!rule->group_search) {
         merror("No group search!");
@@ -330,15 +328,15 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
 
         /* Check if the number of matches worked */
-        if (rule->frequency_count < rule->frequency) {
-            if (rule->frequency_count <= 10) {
-                rule->last_events[lf->tid][rule->frequency_count]
+        if (frequency_count < rule->frequency) {
+            if (frequency_count <= 10) {
+                rule->last_events[lf->tid][frequency_count]
                     = lf->full_log;
-                rule->last_events[lf->tid][rule->frequency_count + 1]
+                rule->last_events[lf->tid][frequency_count + 1]
                     = NULL;
             }
 
-            rule->frequency_count++;
+            frequency_count++;
             continue;
         }
 
@@ -370,6 +368,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     EventNode *eventnode_pt = NULL;
     EventNode *first_pt;
     Eventinfo *lf = NULL;
+    int frequency_count = 0;
 
     w_mutex_lock(&rule->mutex);
 
@@ -385,8 +384,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     }
     w_mutex_unlock(&first_pt->mutex);
 
-    /* Set frequency to 0 */
-    rule->frequency_count = 0;
     /* Search all previous events */
     while (eventnode_pt) {
         lf = eventnode_pt->event;
@@ -477,15 +474,15 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         }
 
         /* Check if the number of matches worked */
-        if (rule->frequency_count < rule->frequency) {
-            if (rule->frequency_count <= 10) {
-                rule->last_events[lf->tid][rule->frequency_count]
+        if (frequency_count < rule->frequency) {
+            if (frequency_count <= 10) {
+                rule->last_events[lf->tid][frequency_count]
                     = lf->full_log;
-                rule->last_events[lf->tid][rule->frequency_count + 1]
+                rule->last_events[lf->tid][frequency_count + 1]
                     = NULL;
             }
 
-            rule->frequency_count++;
+            frequency_count++;
             goto next_it;
         }
 
@@ -625,12 +622,30 @@ void Free_Eventinfo(Eventinfo *lf)
         return;
     }
 
-    if (lf->node) {
+    if (lf->node && lf->node->prev) {
         EventNode *prev = lf->node->prev;
         w_mutex_lock(&prev->mutex);
         prev->next = NULL;
         while (lf->node->count > 0);
         w_mutex_unlock(&prev->mutex);
+    }
+
+    // Free node to delete
+    if(!lf->is_a_copy){
+        if (lf->sid_node_to_delete) {
+            w_mutex_lock(&lf->generated_rule->mutex);
+            OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
+                                    lf->sid_node_to_delete);
+            w_mutex_unlock(&lf->generated_rule->mutex);
+        } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
+            unsigned int i = 0;
+            w_mutex_lock(&lf->generated_rule->mutex);
+            while (i < lf->generated_rule->group_prev_matched_sz) {
+                OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);
+                i++;
+            }
+            w_mutex_unlock(&lf->generated_rule->mutex);
+        }
     }
 
     if (lf->comment)
@@ -832,25 +847,6 @@ void Free_Eventinfo(Eventinfo *lf)
                 lasts++;
             }
             free(last_event);
-        }
-    }
-
-
-    // Free node to delete
-    if(!lf->is_a_copy){
-        if (lf->sid_node_to_delete) {
-            w_mutex_lock(&lf->generated_rule->mutex);
-            OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
-                                    lf->sid_node_to_delete);
-            w_mutex_unlock(&lf->generated_rule->mutex);
-        } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
-            unsigned int i = 0;
-            w_mutex_lock(&lf->generated_rule->mutex);
-            while (i < lf->generated_rule->group_prev_matched_sz) {
-                OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);
-                i++;
-            }
-            w_mutex_unlock(&lf->generated_rule->mutex);
         }
     }
 

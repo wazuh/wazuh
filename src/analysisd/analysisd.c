@@ -1666,7 +1666,7 @@ void * ad_input_main(void * args) {
     return NULL;
 }
 
-void w_free_event_info(Eventinfo *lf){
+void w_free_event_info(Eventinfo *lf) {
     /** Cleaning the memory **/
     int force_remove = 1;
     /* Only clear the memory if the eventinfo was not
@@ -1998,6 +1998,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     regex_matching rule_match;
     memset(&rule_match, 0, sizeof(regex_matching));
     Eventinfo *lf_cpy = NULL;
+    Eventinfo *lf_logall = NULL;
 
     /* Stats */
     RuleInfo *stats_rule = NULL;
@@ -2108,8 +2109,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         do {
             if (lf->decoder_info->type == OSSEC_ALERT) {
                 if (!lf->generated_rule) {
-                    w_free_event_info(lf);
-                    continue;
+                    goto next_it;
                 }
 
                 /* Process the alert */
@@ -2225,7 +2225,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 } else {
                     lf->sid_node_to_delete = node;
                 }
-                lf->queue_added = 1;
                 w_mutex_unlock(&t_currently_rule->mutex);
             }
             /* Group list */
@@ -2241,33 +2240,30 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     }
                     j++;
                 }
-                lf->queue_added = 1;
                 w_mutex_unlock(&t_currently_rule->mutex);
             }
 
-            os_calloc(1, sizeof(Eventinfo), lf_cpy);
-            w_copy_event_for_log(lf,lf_cpy);
-            OS_AddEvent(lf_cpy, last_events_list);
+            lf->queue_added = 1;
+            os_calloc(1, sizeof(Eventinfo), lf_logall);
+            w_copy_event_for_log(lf, lf_logall);
+            OS_AddEvent(lf, last_events_list);
             break;
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
         w_inc_processed_events();
 
-        if (Config.logall || Config.logall_json){
-
-            result = queue_push_ex(writer_queue, lf);
-
+        if (lf_logall && (Config.logall || Config.logall_json)){
+            result = queue_push_ex(writer_queue, lf_logall);
             if (result < 0) {
                 if(!reported_writer){
                     reported_writer = 1;
                     mwarn("Archive writer queue is full. %d", t_id);
                 }
-                w_free_event_info(lf);
+                w_free_event_info(lf_logall);
             }
-            continue;
         }
-
+next_it:
         w_free_event_info(lf);
     }
 }

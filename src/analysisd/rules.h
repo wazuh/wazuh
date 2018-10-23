@@ -95,8 +95,6 @@ typedef struct _RuleInfo {
     char **ignore_fields;
     char **ckignore_fields;
     unsigned int group_prev_matched_sz;
-
-    int frequency_count;
     char ***last_events;
 
     /* Not an option in the rule */
