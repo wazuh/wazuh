@@ -1360,6 +1360,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     if (rule->context == 1) {
         if (!(rule->context_opts & SAME_DODIFF)) {
             if (rule->event_search) {
+                w_FreeArray(lf->last_events);
                 if (!rule->event_search(lf, rule, rule_match)) {
                     return (NULL);
                 }
@@ -1677,25 +1678,16 @@ void w_free_event_info(Eventinfo *lf) {
         Free_Eventinfo(lf);
         force_remove = 0;
     } else if (lf->last_events) {
-        /* Free last_events struct */
-        char **last_event = lf->last_events;
-        char **lasts = lf->last_events;
-
+        int i;
         if (lf->queue_added) {
             force_remove = 0;
         }
-
-        if (last_event) {
-            while (*lasts) {
-                free(*lasts);
-                lasts++;
+        if (lf->last_events) {
+            for (i = 0; lf->last_events[i]; i++) {
+                os_free(lf->last_events[i]);
             }
-            free(last_event);
+            os_free(lf->last_events);
         }
-
-        w_mutex_lock(&lf->generated_rule->mutex);
-        lf->generated_rule->last_events[lf->tid][0] = NULL;
-        w_mutex_unlock(&lf->generated_rule->mutex);
     } else if (lf->queue_added) {
         force_remove = 0;
     }
@@ -1709,7 +1701,6 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
     Eventinfo *lf = NULL;
 
     while(1){
-
         /* Receive message from queue */
         if (lf = queue_pop_ex(writer_queue), lf) {
 
@@ -1723,11 +1714,8 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
                 jsonout_output_archive(lf);
             }
 
-            w_free_event_info(lf);
+            Free_Eventinfo(lf);
             w_mutex_unlock(&writer_threads_mutex);
-        } else {
-            free(lf->fields);
-            free(lf);
         }
     }
 }
@@ -2020,12 +2008,14 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         stats_rule->comment = "Excessive number of events (above normal).";
     }
 
-    while(1){
-
+    while(1) {
         RuleNode *rulenode_pt;
+        lf_logall = NULL;
 
         /* Extract decoded event from the queue */
-        lf = queue_pop_ex(decode_queue_event_output);
+        if (lf = queue_pop_ex(decode_queue_event_output), !lf) {
+            continue;
+        }
 
         lf->tid = t_id;
         t_currently_rule = NULL;
@@ -2248,6 +2238,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             lf->queue_added = 1;
             os_calloc(1, sizeof(Eventinfo), lf_logall);
             w_copy_event_for_log(lf, lf_logall);
+            w_free_event_info(lf);
             OS_AddEvent(lf, last_events_list);
             break;
 
@@ -2262,11 +2253,15 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     reported_writer = 1;
                     mwarn("Archive writer queue is full. %d", t_id);
                 }
-                w_free_event_info(lf_logall);
+                Free_Eventinfo(lf_logall);
             }
+        } else if (lf_logall) {
+            Free_Eventinfo(lf_logall);
         }
 next_it:
-        w_free_event_info(lf);
+        if (!lf->queue_added) {
+            w_free_event_info(lf);
+        }
     }
 }
 
@@ -2404,7 +2399,7 @@ void * w_writer_log_fts_thread(__attribute__((unused)) void * args ){
     char * line;
 
     while(1){
-            /* Receive message from queue */
+        /* Receive message from queue */
         if (line = queue_pop_ex(writer_queue_log_fts), line) {
 
             w_mutex_lock(&writer_threads_mutex);

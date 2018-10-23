@@ -56,13 +56,6 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
                  */
                 read_rule->category = r_node->ruleinfo->category;
 
-                /* If no context for rule, check if the parent has context
-                 * and use that
-                 */
-                if (!read_rule->last_events && r_node->ruleinfo->last_events) {
-                    read_rule->last_events = r_node->ruleinfo->last_events;
-                }
-
                 r_node->child =
                     _OS_AddRule(r_node->child, read_rule);
                 return (1);
@@ -73,13 +66,6 @@ static int _AddtoRule(int sid, int level, int none, const char *group,
         else if (group) {
             if (OS_WordMatch(group, r_node->ruleinfo->group) &&
                     (r_node->ruleinfo->sigid != read_rule->sigid)) {
-                /* If no context for rule, check if the parent has context
-                 * and use that
-                 */
-                if (!read_rule->last_events && r_node->ruleinfo->last_events) {
-                    read_rule->last_events = r_node->ruleinfo->last_events;
-                }
-
                 /* Loop over all rules until we find it */
                 r_node->child =
                     _OS_AddRule(r_node->child, read_rule);
@@ -316,9 +302,6 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->decoded_as = newrule->decoded_as;
             r_node->ruleinfo->ar = newrule->ar;
             r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
-            if ((newrule->context_opts & SAME_DODIFF) && r_node->ruleinfo->last_events == NULL) {
-                r_node->ruleinfo->last_events = newrule->last_events;
-            }
 
             return (1);
         }

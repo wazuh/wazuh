@@ -80,7 +80,6 @@ typedef struct _RuleInfo {
     int ignore;
     int ckignore;
     int group_prev_matched_sz;
-    char **last_events;
 
     /* Not an option in the rule */
     u_int16_t alert_opts;

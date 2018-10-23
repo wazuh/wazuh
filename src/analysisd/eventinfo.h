@@ -231,4 +231,8 @@ void *None_FP(Eventinfo *lf, char *field, const char *order);
 /* Copy Eventinfo for writing log */
 void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
 
+/* Add an event to last_events array */
+#define add_lastevt(x, y, z) os_realloc(x, sizeof(char *) * (y + 2), x); \
+                             os_strdup(z, x[y]); \
+                             x[y + 1] = NULL;
 #endif /* _EVTINFO__H */
