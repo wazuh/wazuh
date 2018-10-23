@@ -63,6 +63,7 @@ void OS_AddEvent(Eventinfo *lf, EventList *list)
              * or the events that will not match anymore
              * (higher than max frequency)
              */
+             minfo("~~~~~~~~~REMOVING  LIST    %d/%d", list->_memoryused, list->_memorymaxsize);
             while (list->last_node != list->last_added_node && ((i < 10) ||
                    ((lf->time.tv_sec - list->last_node->event->time.tv_sec) > list->_max_freq))) {
                 oldlast = list->last_node;
@@ -70,12 +71,14 @@ void OS_AddEvent(Eventinfo *lf, EventList *list)
                 list->last_node->next = NULL;
 
                 /* Free event info */
+                minfo("~~~~~~~~~REMOVING EVENTINFO     %p", oldlast->event);
                 Free_Eventinfo(oldlast->event);
                 free(oldlast);
 
                 list->_memoryused--;
                 i++;
             }
+            minfo("~~~~~~~~~REMOVE END      %d/%d", list->_memoryused, list->_memorymaxsize);
         }
     } else {
         // Add the first and second node

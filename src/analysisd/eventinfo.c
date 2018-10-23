@@ -20,7 +20,6 @@ int alert_only;
 
 #define OS_COMMENT_MAX 1024
 
-static pthread_mutex_t eventinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
 EventList *last_events_list;
 int num_rule_matching_threads;
 time_t current_time = 0;
@@ -35,13 +34,22 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
     OSListNode *lf_node;
     int frequency_count = 0;
 
-    w_mutex_lock(&rule->mutex);
+    //w_mutex_lock(&rule->mutex); ~~~~~~~~~~
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
         merror("No sid search.");
-        lf = NULL;
-        goto end;
+        return NULL;
+    }
+
+    while (1) {
+        w_mutex_lock(&rule->sid_search->mutex);
+            if (!rule->sid_search->pending_remove) {
+                rule->sid_search->count++;
+                w_mutex_unlock(&rule->sid_search->mutex);
+                break;
+            }
+        w_mutex_unlock(&rule->sid_search->mutex);
     }
 
     /* Get last node */
@@ -179,14 +187,16 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         my_lf->matched = rule->level;
         lf->matched = rule->level;
         first_lf->matched = rule->level;
-        w_mutex_unlock(&rule->mutex);
-        return lf;
-
+        goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
+    lf = NULL;
 end:
-    w_mutex_unlock(&rule->mutex);
-    return NULL;
+    w_mutex_lock(&rule->sid_search->mutex);
+    rule->sid_search->count--;
+    w_mutex_unlock(&rule->sid_search->mutex);
+    //w_mutex_unlock(&rule->mutex); ~~~~~~~~~
+    return lf;
 }
 
 /* Search last times a group fired
@@ -197,22 +207,31 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
     int frequency_count = 0;
+    OSList *list = rule->group_search;
 
-    w_mutex_lock(&rule->mutex);
+    //w_mutex_lock(&rule->mutex);
 
     /* Check if sid search is valid */
-    if (!rule->group_search) {
+    if (!list) {
         merror("No group search!");
-        goto end;
+        return NULL;
+    }
+
+    while (1) {
+        w_mutex_lock(&list->mutex);
+            if (!list->pending_remove) {
+                list->count++;
+                w_mutex_unlock(&list->mutex);
+                break;
+            }
+        w_mutex_unlock(&list->mutex);
     }
 
     /* Get last node */
-    w_mutex_lock(&eventinfo_mutex);
-    lf_node = OSList_GetLastNode_group(rule->group_search);
+    lf_node = OSList_GetLastNode_group(list);
 
     if (!lf_node) {
-        w_mutex_unlock(&rule->group_search->mutex);
-        w_mutex_unlock(&eventinfo_mutex);
+        lf = NULL;
         goto end;
     }
     do {
@@ -223,8 +242,6 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 #endif
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {
-            w_mutex_unlock(&rule->group_search->mutex);
-            w_mutex_unlock(&eventinfo_mutex);
             lf = NULL;
             goto end;
         }
@@ -320,8 +337,6 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
          * or rules with a lower level.
          */
         else if (lf->matched >= rule->level) {
-            w_mutex_unlock(&rule->group_search->mutex);
-            w_mutex_unlock(&eventinfo_mutex);
             lf = NULL;
             goto end;
         }
@@ -343,19 +358,15 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
-
-        w_mutex_unlock(&rule->group_search->mutex);
-        w_mutex_unlock(&eventinfo_mutex);
         goto end;
-
     } while ((lf_node = lf_node->prev) != NULL);
-
-    w_mutex_unlock(&rule->group_search->mutex);
-    w_mutex_unlock(&eventinfo_mutex);
 
     lf = NULL;
 end:
-    w_mutex_unlock(&rule->mutex);
+    w_mutex_lock(&list->mutex);
+    list->count--;
+    w_mutex_unlock(&list->mutex);
+    //w_mutex_unlock(&rule->mutex);
     return lf;
 }
 
@@ -563,6 +574,7 @@ void Zero_Eventinfo(Eventinfo *lf)
 
     lf->generated_rule = NULL;
     lf->sid_node_to_delete = NULL;
+    lf->group_node_to_delete = NULL;
     lf->decoder_info = NULL_Decoder;
 
     lf->filename = NULL;
@@ -621,6 +633,7 @@ void Free_Eventinfo(Eventinfo *lf)
         merror("Trying to free NULL event. Inconsistent..");
         return;
     }
+    minfo("~~~~~~Free_Eventinfo   '%p'", lf);
 
     if (lf->node && lf->node->prev) {
         EventNode *prev = lf->node->prev;
@@ -633,24 +646,53 @@ void Free_Eventinfo(Eventinfo *lf)
     // Free node to delete
     if(!lf->is_a_copy){
         if (lf->sid_node_to_delete) {
-            w_mutex_lock(&lf->generated_rule->mutex);
+            w_mutex_lock(&lf->generated_rule->sid_prev_matched->mutex);
+            lf->generated_rule->sid_prev_matched->pending_remove = 1;
+            w_mutex_unlock(&lf->generated_rule->sid_prev_matched->mutex);
+            while (lf->generated_rule->sid_prev_matched->count);
+
+            //w_mutex_lock(&lf->generated_rule->mutex); ~~~~~~~~~~~
             OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
                                     lf->sid_node_to_delete);
-            w_mutex_unlock(&lf->generated_rule->mutex);
+            //w_mutex_unlock(&lf->generated_rule->mutex); ~~~~~~~~~~~
+
+            w_mutex_lock(&lf->generated_rule->sid_prev_matched->mutex);
+            lf->generated_rule->sid_prev_matched->pending_remove = 0;
+            w_mutex_unlock(&lf->generated_rule->sid_prev_matched->mutex);
         } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
             unsigned int i = 0;
-            w_mutex_lock(&lf->generated_rule->mutex);
+
+            // Block all lists
             while (i < lf->generated_rule->group_prev_matched_sz) {
-                OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);
+                w_mutex_lock(&lf->generated_rule->group_prev_matched[i]->mutex);
+                lf->generated_rule->group_prev_matched[i]->pending_remove = 1;
+                w_mutex_unlock(&lf->generated_rule->group_prev_matched[i]->mutex);
                 i++;
             }
-            w_mutex_unlock(&lf->generated_rule->mutex);
+
+            i = 0;
+            // Remove the node from all lists
+            while (i < lf->generated_rule->group_prev_matched_sz) {
+                while (lf->generated_rule->group_prev_matched[i]->count);
+                //w_mutex_lock(&lf->generated_rule->mutex); ~~~~~~~~~
+                OSList_DeleteThisNode(lf->generated_rule->group_prev_matched[i],
+                                        lf->group_node_to_delete[i]);
+                //w_mutex_unlock(&lf->generated_rule->mutex); ~~~~~~~~~
+                // Unblock the list
+                w_mutex_lock(&lf->generated_rule->group_prev_matched[i]->mutex);
+                lf->generated_rule->group_prev_matched[i]->pending_remove = 0;
+                w_mutex_unlock(&lf->generated_rule->group_prev_matched[i]->mutex);
+                i++;
+            }
+
+            free(lf->group_node_to_delete);
         }
     }
 
     if (lf->comment)
         free(lf->comment);
 
+    minfo("~~~~~~full_log   '%p'", lf->full_log);
     if (lf->full_log) {
         free(lf->full_log);
     }
@@ -1069,15 +1111,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
             int t_position = lf_cpy->tid;
 
             // The events generated by the current thread have priority
-            while (index <= 10 && index < lf_cpy->generated_rule->frequency) {
-                if (!*lasts) {
-                    if ((t_position = (t_position + 1) % num_rule_matching_threads), t_position == lf_cpy->tid) {
-                        break;
-                    }
-                    lasts = lf_cpy->generated_rule->last_events[lf_cpy->tid];
-                    continue;
-                }
-
+            while (index < 10 && index < lf_cpy->generated_rule->frequency) {
                 os_realloc(lf_cpy->last_events, sizeof(char *) * (index + 2), lf_cpy->last_events);
                 os_strdup(*lasts, lf_cpy->last_events[index]);
                 lasts++;

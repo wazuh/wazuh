@@ -2230,13 +2230,15 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             /* Group list */
             else if (t_currently_rule->group_prev_matched) {
                 unsigned int j = 0;
+                OSListNode *node;
 
                 w_mutex_lock(&t_currently_rule->mutex);
+                os_calloc(t_currently_rule->group_prev_matched_sz, sizeof(OSListNode *), lf->group_node_to_delete);
                 while (j < t_currently_rule->group_prev_matched_sz) {
-                    if (!OSList_AddData(
-                                t_currently_rule->group_prev_matched[j],
-                                lf)) {
+                    if (node = OSList_AddData(t_currently_rule->group_prev_matched[j], lf), !node) {
                         merror("Unable to add data to grp list.");
+                    } else {
+                        lf->group_node_to_delete[j] = node;
                     }
                     j++;
                 }
