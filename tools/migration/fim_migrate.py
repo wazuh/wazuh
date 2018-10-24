@@ -33,14 +33,15 @@ _ossec_path = '/var/ossec'
 _verbose = True
 _force = False
 
+
 def _get_agents():
     try:
-        agents = open(_keys_path)
+        agents_file = open(_keys_path)
     except IOError:
         return
 
     agents_list = []
-    for agent in agents:
+    for agent in agents_file:
         try:
             agent_id, name, ip, key = agent.split()
         except ValueError:
@@ -57,13 +58,16 @@ def _get_agents():
 
         agents_list.append([int(agent_id), name, ip])
 
-    agents.close()
+    agents_file.close()
 
     return agents_list
 
 
 def _fim_decode(fline):
     # Decode a line from syscheck into a tuple
+    fim = None
+    timestamp = None
+    path = None
     readed = fline
     fline = fline[3:-1].split(b'!')
     if len(fline) == 2:
@@ -95,7 +99,11 @@ def check_file_entry(agent, cfile, wdb_socket):
         data_size = wdb_socket.recv(4)
         data_size = struct.unpack('<I', data_size[0:4])[0]
         data = wdb_socket.recv(data_size, socket.MSG_WAITALL).decode()
-        json_data = loads(data.split(' ')[1])
+        response=data.split(' ')[1]
+        if not data.startswith('ok'):
+            logging.debug(response)
+            return True
+        json_data = loads(response)
     except IndexError:
         raise Exception("Data could not be received")
 
@@ -110,8 +118,8 @@ def check_file_entry(agent, cfile, wdb_socket):
 
 def insert_fim(agent, fim_array, stype, wdb_socket):
     # Send message
-    msg = "agent {0} syscheck save {1} {2}!0:{3} ".format(str(agent).zfill(3), stype, fim_array[0], fim_array[1]).encode()
-    msg = msg + fim_array[2]
+    msg = "agent {0} syscheck save {1} ".format(str(agent).zfill(3), stype).encode()
+    msg = msg + fim_array[0] + "!0:".encode() + fim_array[1] + " ".encode() + fim_array[2]
     logging.debug(msg)
     msg = struct.pack('<I', len(msg)) + msg
     wdb_socket.send(msg)
@@ -132,7 +140,7 @@ def insert_fim(agent, fim_array, stype, wdb_socket):
 
 
 def check_db_completed(agent, wdb_socket):
-    msg = 'agent {0:03d} syscheck scan_info_get end_scan'.format(agent)
+    msg = 'agent {0:03d} syscheck scan_info_get end_scan'.format(agent).encode()
     logging.debug(msg)
     wdb_socket.send(struct.pack('<I', len(msg)) + msg)
 
@@ -148,7 +156,7 @@ def check_db_completed(agent, wdb_socket):
 
 
 def set_db_completed(agent, mtime, wdb_socket):
-    msg = 'agent {0:03d} syscheck scan_info_update first_end {1}'.format(agent, int(mtime))
+    msg = 'agent {0:03d} syscheck scan_info_update first_end {1}'.format(agent, int(mtime)).encode()
     logging.debug(msg)
     wdb_socket.send(struct.pack('<I', len(msg)) + msg)
 
@@ -236,13 +244,13 @@ if __name__ == '__main__':
                             count = count + 1
                         else:
                             error = error + 1
-                if not count == 0  and count % 10000 == 0:
+                if not count == 0 and count % 10000 == 0:
                     logging.info("{0} file entries processed...".format(count))
         if _verbose:
             if error == 0 or count > 0:
                 logging.info("Added {0} file entries in manager database.".format(count))
             if error > 0:
-                logging.warn("[{0}/{1}] {2} file entries were not added.".format(pos, total_agents, error))
+                logging.warn("[{0} file entries were not added.".format(error))
 
     mancptfile = '{0}/.syscheck.cpt'.format(_syscheck_dir)
 
@@ -251,13 +259,13 @@ if __name__ == '__main__':
         if _verbose:
             logging.info("Setting FIM database for manager as completed...")
 
-        if (_force or not check_db_completed(0, s)):
+        if _force or not check_db_completed(0, s):
             if not set_db_completed(0, mtime, s):
                 logging.warn("Cannot set manager database as completed.")
         else:
             logging.debug("Scan end mark already set.")
 
-    except NameError:
+    except OSError:
         pass
 
     agents = _get_agents()
@@ -288,7 +296,7 @@ if __name__ == '__main__':
                                 count = count + 1
                             else:
                                 error = error + 1
-                    if not count == 0  and count % 10000 == 0:
+                    if not count == 0 and count % 10000 == 0:
                         logging.info("[{0}/{1}] {2} file entries processed...".format(pos, total_agents, count))
             if _verbose:
                 if error == 0 or count > 0:
@@ -321,7 +329,7 @@ if __name__ == '__main__':
                                 count = count + 1
                             else:
                                 error = error + 1
-                    if not count == 0  and count % 10000 == 0:
+                    if not count == 0 and count % 10000 == 0:
                         logging.info("[{0}/{1}] {2} registry entries processed...".format(pos, total_agents, count))
             if _verbose:
                 if error == 0 or count > 0:
@@ -338,13 +346,13 @@ if __name__ == '__main__':
             if _verbose:
                 logging.info("Setting FIM database for agent '{0:03d}' as completed...".format(agt[0]))
 
-            if (_force or not check_db_completed(agt[0], s)):
+            if _force or not check_db_completed(agt[0], s):
                 if not set_db_completed(agt[0], mtime, s):
                     logging.warn("Cannot set agent '{0:03d}' database as completed.".format(agt[0]))
             else:
                 logging.debug("Scan end mark already set.")
 
-        except NameError:
+        except OSError:
             pass
 
         pos = pos + 1
