@@ -386,7 +386,6 @@ int Init_Stats_Directories(){
 /* Start hourly stats and other necessary variables */
 int Start_Hour(int t_id, int threads_number)
 {
-    struct tm *p;
 
     w_mutex_lock(&msg_mutex);
     if (!_lastmsg) {
@@ -396,18 +395,7 @@ int Start_Hour(int t_id, int threads_number)
     }
     w_mutex_unlock(&msg_mutex);
 
-    /* Current time */
-    p = localtime(&c_time);
-
-    /* Other global variables */
-    _fired = 0;
-    _cignorehour = 0;
-
-    today = p->tm_mday;
-    thishour = p->tm_hour;
-    prev_year = p->tm_year + 1900;
-    strncpy(prev_month, l_month[p->tm_mon], 3);
-    prev_month[3] = '\0';
+    Start_Time();
 
     /* Clear some memory */
     memset(__stats_comment, '\0', 192);
@@ -475,4 +463,22 @@ void LastMsg_Change(const char *log, int t_id)
 
     os_strdup(log, _lastmsg[t_id]);
     return;
+}
+
+void Start_Time(){
+    struct tm *p;
+    
+    /* Current time */
+    p = localtime(&c_time);
+
+    /* Other global variables */
+    _fired = 0;
+    _cignorehour = 0;
+
+    today = p->tm_mday;
+    thishour = p->tm_hour;
+    prev_year = p->tm_year + 1900;
+    strncpy(prev_month, l_month[p->tm_mon], 3);
+    prev_month[3] = '\0';
+
 }
