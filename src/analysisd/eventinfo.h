@@ -64,6 +64,9 @@ typedef struct _Eventinfo {
     /* Sid node to delete */
     OSListNode *sid_node_to_delete;
 
+    /* Group node to delete */
+    OSListNode **group_node_to_delete;
+
     /* Extract when the event fires a rule */
     size_t size;
     size_t p_name_size;
@@ -228,4 +231,8 @@ void *None_FP(Eventinfo *lf, char *field, const char *order);
 /* Copy Eventinfo for writing log */
 void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
 
+/* Add an event to last_events array */
+#define add_lastevt(x, y, z) os_realloc(x, sizeof(char *) * (y + 2), x); \
+                             os_strdup(z, x[y]); \
+                             x[y + 1] = NULL;
 #endif /* _EVTINFO__H */

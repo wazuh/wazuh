@@ -74,9 +74,6 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
     /* Clean up global */
     flastcontent[0] = '\0';
     flastcontent[OS_SIZE_8192] = '\0';
-    w_mutex_lock(&rule->mutex);
-    rule->last_events[lf->tid][0] = NULL;
-    w_mutex_unlock(&rule->mutex);
 
     if (lf->hostname[0] == '(') {
         htpt = strchr(lf->hostname, ')');
@@ -145,11 +142,8 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
         merror("Unable to create last file: %s", flastfile);
     }
 
-    w_mutex_lock(&rule->mutex);
-    rule->last_events[lf->tid][0] = "Previous output:";
-    free(rule->last_events[lf->tid][1]);
-    os_strdup(flastcontent, rule->last_events[lf->tid][1]);
-    w_mutex_unlock(&rule->mutex);
+    add_lastevt(lf->last_events, 0, "Previous output:");
+    add_lastevt(lf->last_events, 1, flastcontent);
     os_strdup(flastcontent, lf->previous);
 
     return (1);

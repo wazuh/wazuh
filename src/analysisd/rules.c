@@ -1306,18 +1306,6 @@ int Rules_OP_ReadRules(const char *rulefile)
 
             j++; /* next rule */
 
-            /* Create the last_events if necessary */
-            if (config_ruleinfo->context) {
-                int jj;
-
-                os_calloc(num_rule_matching_threads, sizeof(char **),
-                          config_ruleinfo->last_events);
-                for (jj = 0; jj < num_rule_matching_threads; jj++) {
-                    os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *),
-                              config_ruleinfo->last_events[jj]);
-                }
-            }
-
             /* Add the rule to the rules list.
              * Only the template rules are supposed
              * to be at the top level. All others
@@ -1358,7 +1346,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 if (!config_ruleinfo->group_search) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
-                OSList_SetFreeDataPointer(config_ruleinfo->group_search, (void (*)(void *)) Free_Eventinfo);
+                //OSList_SetFreeDataPointer(config_ruleinfo->group_search, (void (*)(void *)) Free_Eventinfo);
 
                 /* Mark rules that match this group */
                 OS_MarkGroup(NULL, config_ruleinfo);
@@ -1591,10 +1579,6 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->action = NULL;
     ruleinfo_pt->location = NULL;
     os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
-
-    /* Zero last matched events */
-    ruleinfo_pt->frequency_count = 0;
-    ruleinfo_pt->last_events = NULL;
 
     /* Zeroing the list of previous matches */
     ruleinfo_pt->sid_prev_matched = NULL;

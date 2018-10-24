@@ -25,6 +25,8 @@ typedef struct _OSList {
 
     int currently_size;
     int max_size;
+    int count;
+    int pending_remove;
 
     void (*free_data_function)(void *data);
     pthread_rwlock_t wr_mutex;
