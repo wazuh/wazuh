@@ -486,6 +486,15 @@ class Agent:
         if path.exists(rids_file):
             remove(rids_file)
 
+        # get agent's group
+        group_name = ""
+        group_path = "{}/{}".format(common.groups_path, self.id)
+
+        if path.exists(group_path):
+            with open(group_path) as f:
+                group_name = f.read().replace('\n', '')
+                f.close()
+
         if not backup:
             # Remove agent files
             agent_files = [
@@ -542,6 +551,40 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute('delete from belongs where id_agent = :id_agent', {'id_agent': int(self.id)})
         conn.commit()
+
+        multi_group_metadata = Agent().get_multigroups_metadata()
+
+        # remove multigroup if not being used
+        multi_group_list = []
+        for filename in listdir("{0}".format(common.groups_path)):
+            try:
+                file = open("{0}/{1}".format(common.groups_path,filename),"r")
+                group_readed = file.read()
+                group_readed = group_readed.strip()
+                multi_group_list.append(group_readed)
+                file.close()
+            except Exception:
+                continue
+
+        if group_name:
+            try:
+                index = multi_group_list.index(group_name)
+            except Exception:
+                group_list = group_name.split(',')
+
+                # remove the multigroup
+                if len(group_list) > 1:
+                    try:
+                        multi_group_metadata.remove(group_name)
+
+                        if len(multi_group_metadata) == 0:
+                            multi_group_metadata.append(group_name)
+
+                        Agent().write_multigroups_metadata(multi_group_metadata)
+                        folder = hashlib.sha256(group_name).hexdigest()[:8]
+                        rmtree("{}/{}".format(common.multi_groups_path,folder))
+                    except Exception:
+                        raise WazuhException(1726,group_name)
 
         return 'Agent deleted successfully.'
 
