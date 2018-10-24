@@ -118,8 +118,8 @@ def check_file_entry(agent, cfile, wdb_socket):
 
 def insert_fim(agent, fim_array, stype, wdb_socket):
     # Send message
-    msg = "agent {0} syscheck save {1} {2}!0:{3} ".format(str(agent).zfill(3), stype, fim_array[0], fim_array[1]).encode()
-    msg = msg + fim_array[2]
+    msg = "agent {0} syscheck save {1} ".format(str(agent).zfill(3), stype).encode()
+    msg = msg + fim_array[0] + "!0:".encode() + fim_array[1] + " ".encode() + fim_array[2]
     logging.debug(msg)
     msg = struct.pack('<I', len(msg)) + msg
     wdb_socket.send(msg)
@@ -296,7 +296,7 @@ if __name__ == '__main__':
                                 count = count + 1
                             else:
                                 error = error + 1
-                    if not count == 0  and count % 10000 == 0:
+                    if not count == 0 and count % 10000 == 0:
                         logging.info("[{0}/{1}] {2} file entries processed...".format(pos, total_agents, count))
             if _verbose:
                 if error == 0 or count > 0:
