@@ -25,9 +25,11 @@ char* node_name;
 void HandleRemote(int uid)
 {
     int position = logr.position;
-    int timeout;    //timeout in seconds waiting for a client reply
+    int recv_timeout;    //timeout in seconds waiting for a client reply
+    int send_timeout;
 
-    timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
+    recv_timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
+    send_timeout = getDefine_Int("remoted", "send_timeout", 1, 60);
 
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
@@ -61,10 +63,10 @@ void HandleRemote(int uid)
         if ((logr.sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
             merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         } else if (logr.conn[position] == SECURE_CONN) {
-            if (OS_SetRecvTimeout(logr.sock, timeout) < 0){
+            if (OS_SetRecvTimeout(logr.sock, recv_timeout) < 0){
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
             }
-            if (OS_SetSendTimeout(logr.sock, timeout) < 0){
+            if (OS_SetSendTimeout(logr.sock, send_timeout) < 0){
                 merror("OS_SetSendTimeout failed with error '%s'", strerror(errno));
             }
         }
