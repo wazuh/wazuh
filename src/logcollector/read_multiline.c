@@ -60,7 +60,6 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
-        mdebug2("Reading message: '%.*s'%s", sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
 
         /* Add to buffer */
         buffer_size = strlen(buffer);
@@ -76,10 +75,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         }
         linesgot = 0;
 
-        linesgot = 0;
-
         /* Send message to queue */
         if (drop_it == 0) {
+            mdebug2("Reading message: '%.*s'%s", sample_log_length, buffer, strlen(buffer) > (size_t)sample_log_length ? "..." : "");
             w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
 
