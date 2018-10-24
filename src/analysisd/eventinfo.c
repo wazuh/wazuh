@@ -1238,6 +1238,24 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->previous,lf_cpy->previous);
     }
 
+    lf_cpy->last_events = NULL;
+
+    if (lf->last_events){
+        os_calloc(1,sizeof(char *),lf_cpy->last_events);
+        char **lasts = lf->last_events;
+        int index = 0;
+
+        while (*lasts) {
+            os_realloc(lf_cpy->last_events, sizeof(char *) * (index + 2), lf_cpy->last_events);
+            lf_cpy->last_events[index] = NULL;
+
+            os_strdup(*lasts,lf_cpy->last_events[index]);
+            lasts++;
+            index++;
+        }
+        lf_cpy->last_events[index] = NULL;
+    }
+    
     lf_cpy->labels = labels_dup(lf->labels);
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
     lf_cpy->rootcheck_fts = lf->rootcheck_fts;
