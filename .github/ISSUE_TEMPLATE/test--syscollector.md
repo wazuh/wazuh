@@ -37,4 +37,4 @@ Test on:
 
 - [ ] Check that Syscollector info has been stored in the DB of the agent (*queue/db/xxx.db*).
 - [ ] Check that a new scan deletes the previous scan from the DB. [Search by `scan_id`]
-- [ ] Delete the DB of an agent (file *001.db* for example) and send a new scan. Is the scan received? It is restored when the manager is restarted?
+- [ ] Delete the DB of an agent (file *001.db* for example) and send a new scan. Is the scan received? Is the DB restored when the manager is restarted?
