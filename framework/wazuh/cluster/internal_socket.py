@@ -137,11 +137,11 @@ class InternalSocketClient(communication.AbstractClient):
         if command == 'ok' or command == 'ack':
             return False
         if command == 'json':
-            self.final_data = data.decode()
+            self.final_data = data
             self.data_received.set()
             return True
         elif command == 'err':
-            self.final_data = data.decode()
+            self.final_data = data
             self.data_received.set()
             return True
 

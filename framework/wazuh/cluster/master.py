@@ -371,15 +371,10 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
         self.thread_tag = "[Master ] [{}] [API-R_{}]".format(manager_handler.name, worker_id)
         self.worker_id = worker_id
 
-
     def process_received_data(self):
-
-        # send request to the worker
-
         logger.debug("{}: Request received. Forwarding it to local client. ({})".format(self.thread_tag, self.worker_id))
-        command = "dapi_res"
-        data = self.sting_received
-        self.manager_handler.isocket_handler.send_request(self.worker_id, command, data)
+
+        self.manager_handler.isocket_handler.send_request(self.worker_id, "dapi_res", self.sting_received)
         return True
 
     def process_cmd(self, command, data):
@@ -389,12 +384,10 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
 
         return FragmentedStringReceiverMaster.process_cmd(self, requests[command], data)
 
-
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason == 'error':
             self.manager_handler.isocket_handler.send_request(self.worker_id, 'err-is', send_err_request)
         FragmentedStringReceiverMaster.unlock_and_stop(self, reason, None)
-
 
 
 class ProcessWorker(FragmentedFileReceiver):
