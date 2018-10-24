@@ -368,53 +368,27 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
 
     def __init__(self, manager_handler, stopper, worker_id):
         FragmentedStringReceiverMaster.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[Master ] [{}] [API-R        ]".format(worker_id)
+        self.thread_tag = "[Master ] [{}] [API-R_{}]".format(manager_handler.name, worker_id)
         self.worker_id = worker_id
-        # send request to the worker
-        self.worker_thread_id = self.manager_handler.process_response(self.manager_handler.isocket_handler.send_request(self.worker_id, "dapi_res"))
-
 
     def process_received_data(self):
+        logger.debug("{}: Data received. Forwarding it to local client. ({})".format(self.thread_tag, self.worker_id))
+
+        self.manager_handler.isocket_handler.send_string(self.worker_id, "dapi_res", self.sting_received.decode())
         return True
-
-
-    def close_reception(self, md5_sum):
-        self.received_all_information = True
-
-
-    def forward_msg(self, command, data):
-        return self.manager_handler.isocket_handler.send_request(self.worker_id, command,
-                                                                 self.worker_thread_id if not data else self.worker_thread_id + ' ' + data)
-
-    def update(self, chunk):
-        self.size_received += len(chunk)
-
 
     def process_cmd(self, command, data):
         requests = {'fwd_new':'new_f_r', 'fwd_upd':'update_f_r', 'fwd_end':'end_f_r'}
 
-        data = data.decode() if data is not None else data
+        if data is not None and not isinstance(data, bytes):
+            data = data.decode()
 
-        if command == 'fwd_new':
-            self.start_time = time.time()
-            return self.forward_msg(requests[command], data)
-        elif command == 'fwd_upd':
-            self.update(data)
-            return self.forward_msg(requests[command], data)
-        elif command == 'fwd_end':
-            self.close_reception(data)
-            self.end_time = time.time()
-            self.total_time = self.end_time - self.start_time
-            return self.forward_msg(requests[command], data)
-        else:
-            return FragmentedStringReceiverMaster.process_cmd(self, command, data)
-
+        return FragmentedStringReceiverMaster.process_cmd(self, requests[command], data)
 
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason == 'error':
             self.manager_handler.isocket_handler.send_request(self.worker_id, 'err-is', send_err_request)
         FragmentedStringReceiverMaster.unlock_and_stop(self, reason, None)
-
 
 
 class ProcessWorker(FragmentedFileReceiver):
@@ -572,8 +546,8 @@ class MasterManager(Server):
         logger.debug("[Master ] Creating threads.")
 
         self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=self.interval_recalculate_integrity, stopper=self.stopper)
-        self.threads[MasterManager.APIRequests_T] = dapi.APIRequestQueue(server=self, stopper=self.stopper)
         self.threads[MasterManager.ClientStatus_T] = ClientStatusCheckThread(master=self, stopper=self.stopper)
+        self.threads[MasterManager.APIRequests_T] = dapi.APIRequestQueue(server=self, stopper=self.stopper)
 
         for thread in self.threads.values():
             thread.start()

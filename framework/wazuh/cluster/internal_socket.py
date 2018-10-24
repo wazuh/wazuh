@@ -28,6 +28,7 @@ class InternalSocketHandler(communication.ServerHandler):
     def process_request(self, command, data):
         if command == 'hello':
             self.name = self.server.add_worker(data, '', self)
+            logger.info("{} [{}]: Connected.".format(self.tag, self.name))
             return None
         else:
             return 'err',"Received an unknown command '{}'".format(command)
@@ -107,14 +108,16 @@ class InternalSocketThread(threading.Thread):
 
 class InternalSocketClient(communication.AbstractClient):
 
-    def __init__(self, socket_name, asyncore_map = {}):
+    def __init__(self, socket_name, data_received, asyncore_map = {}):
         self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
-        connect_query = str(random.randint(0, 2 ** 32 - 1))
+        connect_query = str(random.SystemRandom().randint(0, 2 ** 32 - 1))
+        self.c_is_id = connect_query
         logger.debug("[ClusterClient] Worker ID: {}".format(connect_query))
-        communication.AbstractClient.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM,
+        communication.AbstractClient.__init__(self, None, self.socket_addr, self.c_is_id, socket.AF_UNIX, socket.SOCK_STREAM,
                                               connect_query, "[ClusterClient] [{}]".format(connect_query), asyncore_map)
-        self.final_response = communication.Response()
-        self.string_receiver = None
+
+        self.final_data = None
+        self.data_received = data_received
 
 
     def send_request(self, command, data=None):
@@ -134,24 +137,25 @@ class InternalSocketClient(communication.AbstractClient):
         if command == 'ok' or command == 'ack':
             return False
         if command == 'json':
-            self.final_response.write(data)
-            return False
+            self.final_data = data
+            self.data_received.set()
+            return True
         elif command == 'err':
-            self.final_response.write(data)
+            self.final_data = data
+            self.data_received.set()
             return True
 
 
     def process_request(self, command, data):
+
         if command == 'dapi_res':
             self.string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
             self.string_receiver.start()
             return 'ok', self.set_worker_thread(command, self.string_receiver)
         elif command == 'err-is':
             data = data.decode()
-            logger.debug("{} Cluster has reported an error receiving data: {}".format(self.tag, data))
-            self.final_response.write(json.dumps({"error":1000, "message":data}))
-            if self.string_receiver is not None:
-                self.string_receiver.stop()
+            self.final_data = json.dumps({"error":1000, "message":data})
+            self.data_received.set()
             return 'ack','thanks'
         else:
             return communication.AbstractClient.process_request(self, command, data)
@@ -165,7 +169,6 @@ class InternalSocketClient(communication.AbstractClient):
         except:
             self_repr = '<__repr__(self) failed for object at %0x>' % id(self)
 
-        self.final_response.write(str(v))
         logger.error("{} Error: '{}'.".format(self.tag, v))
         logger.debug("{} Error: '{}' - '{}'.".format(self.tag, t, tbinfo))
 
@@ -175,28 +178,30 @@ class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverWorker
 
     def __init__(self, manager_handler, stopper):
         communication.FragmentedStringReceiverWorker.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[Cluster] [API-R        ]"
+        self.thread_tag = "[Cluster] [API-R_{}]".format(self.manager_handler.c_is_id)
 
 
     def process_received_data(self):
-        self.manager_handler.final_response.write(self.sting_received)
+        logger.debug("{}: Data received.".format(self.thread_tag))
+        self.manager_handler.final_data = self.sting_received
+        self.manager_handler.data_received.set()
         return True
 
 
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason=='error':
-            self.manager_handler.final_response.write(json.dumps({"message": send_err_request, "error": 1000}))
-            # make sure the response is read before killing the thread
-            self.manager_handler.final_response.read()
+            self.final_data = json.dumps({"message": send_err_request, "error": 1000})
+            self.data_received.set()
+
         communication.FragmentedStringReceiverWorker.unlock_and_stop(self,reason,None)
 
 
 class InternalSocketWorkerThread(communication.ClusterThread):
 
-    def __init__(self, socket_name, stopper = threading.Event()):
+    def __init__(self, socket_name, data_received, stopper = threading.Event()):
         communication.ClusterThread.__init__(self, stopper)
         asyncore_map = {}
-        self.manager = InternalSocketClient(socket_name=socket_name, asyncore_map=asyncore_map)
+        self.manager = InternalSocketClient(socket_name=socket_name, asyncore_map=asyncore_map, data_received=data_received)
 
 
     def run(self):
@@ -226,17 +231,31 @@ def execute(request):
         # if no exception is raised from function check_cluster_status, the cluster is ok.
         check_cluster_status()
 
-        isocket_worker_thread = InternalSocketWorkerThread(socket_name=socket_name)
+        # This event will be set when the final response is received
+        data_received = threading.Event()
+
+        # Create socket client
+        isocket_worker_thread = InternalSocketWorkerThread(socket_name=socket_name, data_received=data_received)
         isocket_worker_thread.start()
+
+        # Send request
         command, payload = request.split(' ',1)
-        is_error = isocket_worker_thread.manager.process_response(isocket_worker_thread.manager.send_request(command = command, data = payload).split(' ',1))
-        response = isocket_worker_thread.manager.final_response.read()
-        # this is for python 3.4 compatibility
-        response = response.decode() if isinstance(response, bytes) else response
-        isocket_worker_thread.manager.final_response.write("ok")
-        isocket_worker_thread.manager.handle_close()
+        raw_response = isocket_worker_thread.manager.send_request(command = command, data = payload).split(' ',1)
+        isocket_worker_thread.manager.process_response(raw_response)
+
+        # Wait response
+        #  Data received will be free when dapi_forward request is received, or when a json/err response is processed.
+        logger.debug("Waiting response.")
+        timeout_not_expired = data_received.wait(25)
+
+        if timeout_not_expired:
+            response = json.loads(isocket_worker_thread.manager.final_data)
+        else:
+            response = {"error":1000, "message":"Timeout waiting local server."}
+
+        # Stop socket client
         isocket_worker_thread.stop()
-        response = json.loads(response)
+
         return response
     except WazuhException as e:
         raise e
