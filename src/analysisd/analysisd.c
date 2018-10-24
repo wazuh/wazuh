@@ -412,7 +412,7 @@ int main_analysisd(int argc, char **argv)
     // Set resource limit for file descriptors
 
     {
-        nofile = getDefine_Int("analysisd", "rlimit_nofile", 1024, INT_MAX);
+        nofile = getDefine_Int("analysisd", "rlimit_nofile", 1024, 1048576);
         struct rlimit rlimit = { nofile, nofile };
 
         if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
@@ -787,7 +787,8 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Get current time before starting */
     gettime(&c_timespec);
-
+    Start_Time();
+    
     /* Start the hourly/weekly stats directories*/
     if(Init_Stats_Directories() < 0) {
         Config.stats = 0;

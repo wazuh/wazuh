@@ -45,7 +45,7 @@ int LogCollectorConfig(const char *cfgfile)
     sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
     sample_log_length = getDefine_Int("logcollector", "sample_log_length", 1, 4096);
 #ifndef WIN32
-    nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, INT_MAX);
+    nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, 1048576);
 #endif
 
     if (maximum_lines > 0 && maximum_lines < 100) {

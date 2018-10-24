@@ -25,6 +25,7 @@ wnotify_t * notify_queue;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 //static pthread_cond_t sock_cond = PTHREAD_COND_INITIALIZER;
 static volatile int running = 1;
+rlim_t nofile;
 
 int main(int argc, char ** argv) {
     int test_config = 0;
@@ -77,6 +78,7 @@ int main(int argc, char ** argv) {
     config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
     config.commit_time = getDefine_Int("wazuh_db", "commit_time", 1, 3600);
     config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
+    nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
     if (!isDebug()) {
         int debug_level;
@@ -100,6 +102,13 @@ int main(int argc, char ** argv) {
     if (!run_foreground) {
         goDaemon();
         nowDaemon();
+    }
+
+    // Set max open files limit
+    struct rlimit rlimit = { nofile, nofile };
+
+    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
+        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
     }
 
     // Set user and group
