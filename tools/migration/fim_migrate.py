@@ -95,7 +95,11 @@ def check_file_entry(agent, cfile, wdb_socket):
         data_size = wdb_socket.recv(4)
         data_size = struct.unpack('<I', data_size[0:4])[0]
         data = wdb_socket.recv(data_size, socket.MSG_WAITALL).decode()
-        json_data = loads(data.split(' ')[1])
+        response=data.split(' ')[1]
+        if not data.startswith('ok'):
+            logging.debug(response)
+            return True
+        json_data = loads(response)
     except IndexError:
         raise Exception("Data could not be received")
 
