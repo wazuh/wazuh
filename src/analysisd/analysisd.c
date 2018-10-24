@@ -1361,6 +1361,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     if (rule->context == 1) {
         if (!(rule->context_opts & SAME_DODIFF)) {
             if (rule->event_search) {
+                w_FreeArray(lf->last_events);
                 if (!rule->event_search(lf, rule, rule_match)) {
                     return (NULL);
                 }
@@ -1667,7 +1668,7 @@ void * ad_input_main(void * args) {
     return NULL;
 }
 
-void w_free_event_info(Eventinfo *lf){
+void w_free_event_info(Eventinfo *lf) {
     /** Cleaning the memory **/
     int force_remove = 1;
     /* Only clear the memory if the eventinfo was not
@@ -1678,25 +1679,16 @@ void w_free_event_info(Eventinfo *lf){
         Free_Eventinfo(lf);
         force_remove = 0;
     } else if (lf->last_events) {
-        /* Free last_events struct */
-        char **last_event = lf->last_events;
-        char **lasts = lf->last_events;
-
+        int i;
         if (lf->queue_added) {
             force_remove = 0;
         }
-
-        if (last_event) {
-            while (*lasts) {
-                free(*lasts);
-                lasts++;
+        if (lf->last_events) {
+            for (i = 0; lf->last_events[i]; i++) {
+                os_free(lf->last_events[i]);
             }
-            free(last_event);
+            os_free(lf->last_events);
         }
-
-        w_mutex_lock(&lf->generated_rule->mutex);
-        lf->generated_rule->last_events[lf->tid][0] = NULL;
-        w_mutex_unlock(&lf->generated_rule->mutex);
     } else if (lf->queue_added) {
         force_remove = 0;
     }
@@ -1710,7 +1702,6 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
     Eventinfo *lf = NULL;
 
     while(1){
-
         /* Receive message from queue */
         if (lf = queue_pop_ex(writer_queue), lf) {
 
@@ -1724,11 +1715,8 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
                 jsonout_output_archive(lf);
             }
 
-            w_free_event_info(lf);
+            Free_Eventinfo(lf);
             w_mutex_unlock(&writer_threads_mutex);
-        } else {
-            free(lf->fields);
-            free(lf);
         }
     }
 }
@@ -1999,6 +1987,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     regex_matching rule_match;
     memset(&rule_match, 0, sizeof(regex_matching));
     Eventinfo *lf_cpy = NULL;
+    Eventinfo *lf_logall = NULL;
 
     /* Stats */
     RuleInfo *stats_rule = NULL;
@@ -2020,12 +2009,14 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         stats_rule->comment = "Excessive number of events (above normal).";
     }
 
-    while(1){
-
+    while(1) {
         RuleNode *rulenode_pt;
+        lf_logall = NULL;
 
         /* Extract decoded event from the queue */
-        lf = queue_pop_ex(decode_queue_event_output);
+        if (lf = queue_pop_ex(decode_queue_event_output), !lf) {
+            continue;
+        }
 
         lf->tid = t_id;
         t_currently_rule = NULL;
@@ -2109,8 +2100,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         do {
             if (lf->decoder_info->type == OSSEC_ALERT) {
                 if (!lf->generated_rule) {
-                    w_free_event_info(lf);
-                    continue;
+                    goto next_it;
                 }
 
                 /* Process the alert */
@@ -2226,50 +2216,53 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 } else {
                     lf->sid_node_to_delete = node;
                 }
-                lf->queue_added = 1;
                 w_mutex_unlock(&t_currently_rule->mutex);
             }
             /* Group list */
             else if (t_currently_rule->group_prev_matched) {
                 unsigned int j = 0;
+                OSListNode *node;
 
                 w_mutex_lock(&t_currently_rule->mutex);
+                os_calloc(t_currently_rule->group_prev_matched_sz, sizeof(OSListNode *), lf->group_node_to_delete);
                 while (j < t_currently_rule->group_prev_matched_sz) {
-                    if (!OSList_AddData(
-                                t_currently_rule->group_prev_matched[j],
-                                lf)) {
+                    if (node = OSList_AddData(t_currently_rule->group_prev_matched[j], lf), !node) {
                         merror("Unable to add data to grp list.");
+                    } else {
+                        lf->group_node_to_delete[j] = node;
                     }
                     j++;
                 }
-                lf->queue_added = 1;
                 w_mutex_unlock(&t_currently_rule->mutex);
             }
 
-            os_calloc(1, sizeof(Eventinfo), lf_cpy);
-            w_copy_event_for_log(lf,lf_cpy);
-            OS_AddEvent(lf_cpy, last_events_list);
+            lf->queue_added = 1;
+            os_calloc(1, sizeof(Eventinfo), lf_logall);
+            w_copy_event_for_log(lf, lf_logall);
+            w_free_event_info(lf);
+            OS_AddEvent(lf, last_events_list);
             break;
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
         w_inc_processed_events();
 
-        if (Config.logall || Config.logall_json){
-
-            result = queue_push_ex(writer_queue, lf);
-
+        if (lf_logall && (Config.logall || Config.logall_json)){
+            result = queue_push_ex(writer_queue, lf_logall);
             if (result < 0) {
                 if(!reported_writer){
                     reported_writer = 1;
                     mwarn("Archive writer queue is full. %d", t_id);
                 }
-                w_free_event_info(lf);
+                Free_Eventinfo(lf_logall);
             }
-            continue;
+        } else if (lf_logall) {
+            Free_Eventinfo(lf_logall);
         }
-
-        w_free_event_info(lf);
+next_it:
+        if (!lf->queue_added) {
+            w_free_event_info(lf);
+        }
     }
 }
 
@@ -2407,7 +2400,7 @@ void * w_writer_log_fts_thread(__attribute__((unused)) void * args ){
     char * line;
 
     while(1){
-            /* Receive message from queue */
+        /* Receive message from queue */
         if (line = queue_pop_ex(writer_queue_log_fts), line) {
 
             w_mutex_lock(&writer_threads_mutex);

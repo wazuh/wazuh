@@ -28,6 +28,8 @@ OSList *OSList_Create()
     my_list->cur_node = NULL;
     my_list->currently_size = 0;
     my_list->max_size = 0;
+    my_list->count = 0;
+    my_list->pending_remove = 0;
     my_list->free_data_function = NULL;
     my_list->wr_mutex = (pthread_rwlock_t)PTHREAD_RWLOCK_INITIALIZER;
     my_list->mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
@@ -93,7 +95,6 @@ OSListNode *OSList_GetLastNode(OSList *list)
 OSListNode *OSList_GetLastNode_group(OSList *list)
 {
     w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
-    w_mutex_lock((pthread_mutex_t *)&list->mutex);
     list->cur_node = list->last_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
     return (list->last_node);
