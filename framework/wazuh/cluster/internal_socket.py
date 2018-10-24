@@ -111,9 +111,9 @@ class InternalSocketClient(communication.AbstractClient):
     def __init__(self, socket_name, data_received, asyncore_map = {}):
         self.socket_addr = "{}{}/{}.sock".format(common.ossec_path, "/queue/cluster", socket_name)
         connect_query = str(random.SystemRandom().randint(0, 2 ** 32 - 1))
-
+        self.c_is_id = connect_query
         logger.debug("[ClusterClient] Worker ID: {}".format(connect_query))
-        communication.AbstractClient.__init__(self, None, self.socket_addr, connect_query, socket.AF_UNIX, socket.SOCK_STREAM,
+        communication.AbstractClient.__init__(self, None, self.socket_addr, self.c_is_id, socket.AF_UNIX, socket.SOCK_STREAM,
                                               connect_query, "[ClusterClient] [{}]".format(connect_query), asyncore_map)
 
         self.final_data = None
@@ -149,10 +149,9 @@ class InternalSocketClient(communication.AbstractClient):
     def process_request(self, command, data):
 
         if command == 'dapi_res':
-            data = data.decode()
-            self.final_data = data
-            self.data_received.set()
-            return 'ok', 'thanks'
+            self.string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper)
+            self.string_receiver.start()
+            return 'ok', self.set_worker_thread(command, self.string_receiver)
         elif command == 'err-is':
             data = data.decode()
             self.final_data = json.dumps({"error":1000, "message":data})
@@ -179,19 +178,21 @@ class FragmentedAPIResponseReceiver(communication.FragmentedStringReceiverWorker
 
     def __init__(self, manager_handler, stopper):
         communication.FragmentedStringReceiverWorker.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[Cluster] [API-R        ]"
+        self.thread_tag = "[Cluster] [API-R_{}]".format(self.manager_handler.c_is_id)
 
 
     def process_received_data(self):
-        self.manager_handler.final_response.write(self.sting_received)
+        logger.debug("{}: Data received.".format(self.thread_tag))
+        self.manager_handler.final_data = self.sting_received
+        self.manager_handler.data_received.set()
         return True
 
 
     def unlock_and_stop(self, reason, send_err_request=None):
         if reason=='error':
-            self.manager_handler.final_response.write(json.dumps({"message": send_err_request, "error": 1000}))
-            # make sure the response is read before killing the thread
-            self.manager_handler.final_response.read()
+            self.final_data = json.dumps({"message": send_err_request, "error": 1000})
+            self.data_received.set()
+
         communication.FragmentedStringReceiverWorker.unlock_and_stop(self,reason,None)
 
 

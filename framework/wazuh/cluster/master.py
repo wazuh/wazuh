@@ -372,15 +372,16 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
         self.worker_id = worker_id
 
     def process_received_data(self):
-        logger.debug("{}: Request received. Forwarding it to local client. ({})".format(self.thread_tag, self.worker_id))
+        logger.debug("{}: Data received. Forwarding it to local client. ({})".format(self.thread_tag, self.worker_id))
 
-        self.manager_handler.isocket_handler.send_request(self.worker_id, "dapi_res", self.sting_received)
+        self.manager_handler.isocket_handler.send_string(self.worker_id, "dapi_res", self.sting_received.decode())
         return True
 
     def process_cmd(self, command, data):
         requests = {'fwd_new':'new_f_r', 'fwd_upd':'update_f_r', 'fwd_end':'end_f_r'}
 
-        data = data.decode() if data is not None else data
+        if data is not None and not isinstance(data, bytes):
+            data = data.decode()
 
         return FragmentedStringReceiverMaster.process_cmd(self, requests[command], data)
 
