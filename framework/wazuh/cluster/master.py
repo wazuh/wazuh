@@ -368,7 +368,7 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
 
     def __init__(self, manager_handler, stopper, worker_id):
         FragmentedStringReceiverMaster.__init__(self, manager_handler, stopper)
-        self.thread_tag = "[Master ] [{}] [API-R        ]".format(worker_id)
+        self.thread_tag = "[Master ] [{}] [API-R_{}]".format(manager_handler.name, worker_id)
         self.worker_id = worker_id
 
 
@@ -376,7 +376,7 @@ class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
 
         # send request to the worker
 
-
+        logger.debug("{}: Request received. Forwarding it to local client. ({})".format(self.thread_tag, self.worker_id))
         command = "dapi_res"
         data = self.sting_received
         self.manager_handler.isocket_handler.send_request(self.worker_id, command, data)
@@ -552,8 +552,8 @@ class MasterManager(Server):
         logger.debug("[Master ] Creating threads.")
 
         self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=self.interval_recalculate_integrity, stopper=self.stopper)
-        self.threads[MasterManager.APIRequests_T] = dapi.APIRequestQueue(server=self, stopper=self.stopper)
         self.threads[MasterManager.ClientStatus_T] = ClientStatusCheckThread(master=self, stopper=self.stopper)
+        self.threads[MasterManager.APIRequests_T] = dapi.APIRequestQueue(server=self, stopper=self.stopper)
 
         for thread in self.threads.values():
             thread.start()

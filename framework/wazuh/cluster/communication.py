@@ -584,7 +584,7 @@ class AbstractServer(asyncore.dispatcher):
         self.create_socket(socket_family, socket_type)
         self.set_reuse_addr()
         self.bind(addr)
-        self.listen(5)
+        self.listen(128)  # number of pending connections the queue will hold
         self.interval_file_transfer_send = get_cluster_items_communication_intervals()['file_transfer_send']
         self.interval_string_transfer_send = get_cluster_items_communication_intervals()['string_transfer_send']
 
