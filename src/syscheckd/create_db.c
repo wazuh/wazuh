@@ -650,6 +650,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         {
             // Error will be -1, and 1 means skipped
             free(f_name);
+            closedir(dp);
             return (is_nfs);
         }
     }

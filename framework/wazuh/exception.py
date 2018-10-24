@@ -126,6 +126,7 @@ class WazuhException(Exception):
         1738: 'Agent name is too long. Max length allowed for agent name is 128',
         1739: "Error getting agent's group sync",
         1740: 'Action only available for active agents',
+        1741: 'Could not remove multigroup',
 
         # Manager:
 
