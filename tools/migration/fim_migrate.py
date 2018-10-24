@@ -33,14 +33,15 @@ _ossec_path = '/var/ossec'
 _verbose = True
 _force = False
 
+
 def _get_agents():
     try:
-        agents = open(_keys_path)
+        agents_file = open(_keys_path)
     except IOError:
         return
 
     agents_list = []
-    for agent in agents:
+    for agent in agents_file:
         try:
             agent_id, name, ip, key = agent.split()
         except ValueError:
@@ -57,13 +58,16 @@ def _get_agents():
 
         agents_list.append([int(agent_id), name, ip])
 
-    agents.close()
+    agents_file.close()
 
     return agents_list
 
 
 def _fim_decode(fline):
     # Decode a line from syscheck into a tuple
+    fim = None
+    timestamp = None
+    path = None
     readed = fline
     fline = fline[3:-1].split(b'!')
     if len(fline) == 2:
@@ -240,13 +244,13 @@ if __name__ == '__main__':
                             count = count + 1
                         else:
                             error = error + 1
-                if not count == 0  and count % 10000 == 0:
+                if not count == 0 and count % 10000 == 0:
                     logging.info("{0} file entries processed...".format(count))
         if _verbose:
             if error == 0 or count > 0:
                 logging.info("Added {0} file entries in manager database.".format(count))
             if error > 0:
-                logging.warn("[{0}/{1}] {2} file entries were not added.".format(pos, total_agents, error))
+                logging.warn("[{0} file entries were not added.".format(error))
 
     mancptfile = '{0}/.syscheck.cpt'.format(_syscheck_dir)
 
@@ -255,13 +259,13 @@ if __name__ == '__main__':
         if _verbose:
             logging.info("Setting FIM database for manager as completed...")
 
-        if (_force or not check_db_completed(0, s)):
+        if _force or not check_db_completed(0, s):
             if not set_db_completed(0, mtime, s):
                 logging.warn("Cannot set manager database as completed.")
         else:
             logging.debug("Scan end mark already set.")
 
-    except (OSError):
+    except OSError:
         pass
 
     agents = _get_agents()
@@ -325,7 +329,7 @@ if __name__ == '__main__':
                                 count = count + 1
                             else:
                                 error = error + 1
-                    if not count == 0  and count % 10000 == 0:
+                    if not count == 0 and count % 10000 == 0:
                         logging.info("[{0}/{1}] {2} registry entries processed...".format(pos, total_agents, count))
             if _verbose:
                 if error == 0 or count > 0:
@@ -342,13 +346,13 @@ if __name__ == '__main__':
             if _verbose:
                 logging.info("Setting FIM database for agent '{0:03d}' as completed...".format(agt[0]))
 
-            if (_force or not check_db_completed(agt[0], s)):
+            if _force or not check_db_completed(agt[0], s):
                 if not set_db_completed(agt[0], mtime, s):
                     logging.warn("Cannot set agent '{0:03d}' database as completed.".format(agt[0]))
             else:
                 logging.debug("Scan end mark already set.")
 
-        except (OSError):
+        except OSError:
             pass
 
         pos = pos + 1
