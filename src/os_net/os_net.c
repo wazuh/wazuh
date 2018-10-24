@@ -506,6 +506,12 @@ int OS_SetRecvTimeout(int socket, int seconds)
     return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
 }
 
+int OS_SetSendTimeout(int socket, int seconds)
+{
+    struct timeval tv = { seconds, 0 };
+    return setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, (const void *)&tv, sizeof(tv));
+}
+
 /* Send secure TCP message
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
  * Return 0 on success or OS_SOCKTERR on error.

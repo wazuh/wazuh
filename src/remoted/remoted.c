@@ -64,6 +64,9 @@ void HandleRemote(int uid)
             if (OS_SetRecvTimeout(logr.sock, timeout) < 0){
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
             }
+            if (OS_SetSendTimeout(logr.sock, timeout) < 0){
+                merror("OS_SetSendTimeout failed with error '%s'", strerror(errno));
+            }
         }
     } else {
         /* Using UDP. Fast, unreliable... perfect */

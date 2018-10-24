@@ -528,8 +528,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n",
              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
-    if (send_msg(agent_id, buf, -1) == -1) {
-        merror(SEC_ERROR);
+    if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
         return (-1);
     }
@@ -538,8 +537,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
 
-        if (send_msg(agent_id, buf, -1) == -1) {
-            merror(SEC_ERROR);
+        if (send_msg(agent_id, buf, -1) < 0) {
             fclose(fp);
             return (-1);
         }
@@ -557,8 +555,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     /* Send the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
 
-    if (send_msg(agent_id, buf, -1) == -1) {
-        merror(SEC_ERROR);
+    if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
         return (-1);
     }
