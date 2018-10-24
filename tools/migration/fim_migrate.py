@@ -257,7 +257,7 @@ if __name__ == '__main__':
         else:
             logging.debug("Scan end mark already set.")
 
-    except NameError:
+    except (OSError):
         pass
 
     agents = _get_agents()
@@ -344,7 +344,7 @@ if __name__ == '__main__':
             else:
                 logging.debug("Scan end mark already set.")
 
-        except NameError:
+        except (OSError):
             pass
 
         pos = pos + 1
