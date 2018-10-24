@@ -99,11 +99,11 @@ def get_agents(filter_status, filter_node, is_master):
 
     if is_master:
         return Agent.get_agents_overview(limit=None, filters={'status': ','.join(filter_status), 'node_name':','.join(filter_node)},
-                                         select={'fields':['id','ip','name','status','node_name']})
+                                         select={'fields':['id','ip','name','status','node']})
     else:
         input_json = {'function': '/agents', 'from_cluster': False,
                       'arguments': {'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)}, 'limit': None,
-                                    'select': {'fields': ['id', 'ip', 'name', 'status', 'node_name']}}}
+                                    'select': {'fields': ['id', 'ip', 'name', 'status', 'node']}}}
 
         request = "dapi {}".format(json.dumps(input_json))
         response = execute(request)

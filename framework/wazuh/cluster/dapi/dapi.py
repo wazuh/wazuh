@@ -216,13 +216,13 @@ def get_solver_node(input_json, master_name):
     :param master_name: name of the master node
     :return: node name and whether the result is list or not
     """
-    select_node = {'fields':['node_name']}
+    select_node = {'fields':['node']}
     if 'agent_id' in input_json['arguments']:
         # the request is for multiple agents
         if isinstance(input_json['arguments']['agent_id'], list):
             agents = Agent.get_agents_overview(select=select_node, limit=None, filters={'id':input_json['arguments']['agent_id']},
-                                                  sort={'fields':['node_name'], 'order':'desc'})['items']
-            node_name = {k:list(map(itemgetter('id'), g)) for k,g in groupby(agents, key=itemgetter('node_name'))}
+                                                  sort={'fields':['node'], 'order':'desc'})['items']
+            node_name = {k:list(map(itemgetter('id'), g)) for k,g in groupby(agents, key=itemgetter('node'))}
 
             # add non existing ids in the master's dictionary entry
             non_existent_ids = list(set(input_json['arguments']['agent_id']) - set(map(itemgetter('id'), agents)))
@@ -236,7 +236,7 @@ def get_solver_node(input_json, master_name):
         # if the request is only for one agent
         else:
             # Get the node where the agent 'agent_id' is reporting
-            node_name = Agent.get_agent(input_json['arguments']['agent_id'], select=select_node)['node_name']
+            node_name = Agent.get_agent(input_json['arguments']['agent_id'], select=select_node)['node']
             return node_name, False
 
     elif 'node_id' in input_json['arguments']:
@@ -246,8 +246,8 @@ def get_solver_node(input_json, master_name):
 
     else: # agents, syscheck, rootcheck and syscollector
         # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
-        agents = Agent.get_agents_overview(select=select_node, limit=None, sort={'fields': ['node_name'], 'order': 'desc'})['items']
-        node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node_name'))}
+        agents = Agent.get_agents_overview(select=select_node, limit=None, sort={'fields': ['node'], 'order': 'desc'})['items']
+        node_name = {k:[] for k, _ in groupby(agents, key=itemgetter('node'))}
         return node_name, True
 
 

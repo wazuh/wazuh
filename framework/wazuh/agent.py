@@ -206,7 +206,7 @@ class Agent:
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build':'os_build',
-              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key':'internal_key'}
+              'node': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key':'internal_key'}
 
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
