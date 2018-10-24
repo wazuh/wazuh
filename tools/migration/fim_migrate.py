@@ -132,7 +132,7 @@ def insert_fim(agent, fim_array, stype, wdb_socket):
 
 
 def check_db_completed(agent, wdb_socket):
-    msg = 'agent {0:03d} syscheck scan_info_get end_scan'.format(agent)
+    msg = 'agent {0:03d} syscheck scan_info_get end_scan'.format(agent).encode()
     logging.debug(msg)
     wdb_socket.send(struct.pack('<I', len(msg)) + msg)
 
@@ -148,7 +148,7 @@ def check_db_completed(agent, wdb_socket):
 
 
 def set_db_completed(agent, mtime, wdb_socket):
-    msg = 'agent {0:03d} syscheck scan_info_update first_end {1}'.format(agent, int(mtime))
+    msg = 'agent {0:03d} syscheck scan_info_update first_end {1}'.format(agent, int(mtime)).encode()
     logging.debug(msg)
     wdb_socket.send(struct.pack('<I', len(msg)) + msg)
 
