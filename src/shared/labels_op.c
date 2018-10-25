@@ -181,6 +181,7 @@ wlabel_t * labels_dup(const wlabel_t * labels) {
         os_realloc(copy, sizeof(wlabel_t) * (i + 2), copy);
         os_strdup(labels[i].key, copy[i].key);
         os_strdup(labels[i].value, copy[i].value);
+        copy[i].flags.hidden = labels[i].flags.hidden;
     }
 
     copy[i].key = copy[i].value = NULL;
@@ -188,7 +189,6 @@ wlabel_t * labels_dup(const wlabel_t * labels) {
 }
 
 #define OS_COMMENT_MAX 1024
-//
 
 char * parse_environment_labels(const wlabel_t label) {
     static char final[OS_COMMENT_MAX + 1] = { '\0' };
@@ -202,16 +202,11 @@ char * parse_environment_labels(const wlabel_t label) {
     size_t z;
     cJSON *os_info;
     cJSON *network_info;
-    cJSON *iface = cJSON_CreateArray();
-    cJSON *ipv4 = cJSON_CreateArray();
-    cJSON *ipv6 = cJSON_CreateArray();
-    cJSON *ipv4_addresses = cJSON_CreateArray();
-    cJSON *ipv6_addresses = cJSON_CreateArray();
-    cJSON *mac_addresses = cJSON_CreateArray();
+    cJSON *iface;
+    cJSON *ipv4;
+    cJSON *ipv6;
     int i;
-    char *ipv4_address;
-    char *ipv6_address;
-    char * mac;
+    int automatic_label ;
 
     #ifdef WIN32
     #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
@@ -230,6 +225,7 @@ char * parse_environment_labels(const wlabel_t label) {
     strncpy(orig, label.value, OS_COMMENT_MAX);
 
     for (str = orig; (tok = strstr(str, "$(")); str = end) {
+        automatic_label = 1;
         field = NULL;
         *tok = '\0';
         var = tok + 2;
@@ -271,9 +267,11 @@ char * parse_environment_labels(const wlabel_t label) {
               network_info = getNetworkIfaces_linux();
               iface = cJSON_GetArrayItem(network_info, default_network_iface);
             #endif
+
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
-            ipv4_address = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
-            field = ipv4_address;
+            field = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
+
+            cJSON_Delete(network_info);
 
         } else if (!strcmp(var,"ipv6.primary")) {
             #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
@@ -291,10 +289,14 @@ char * parse_environment_labels(const wlabel_t label) {
             #endif
 
             ipv6 = cJSON_GetObjectItem(iface,"ipv6");
-            ipv6_address = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
-            field = ipv6_address;
+            field = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
+
+            cJSON_Delete(network_info);
 
         }else if (!strcmp(var,"ipv4.others")) {
+
+            cJSON *ipv4_addresses = cJSON_CreateArray();
+          
           #if defined  WIN32
             dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
             if (currentAddress->Next) {
@@ -323,23 +325,28 @@ char * parse_environment_labels(const wlabel_t label) {
           #else
             network_info = getNetworkIfaces_linux();
           #endif
-          cJSON * ipv4_others = cJSON_CreateObject();
+
           for(i = 0; i < cJSON_GetArraySize(network_info);i++) {
             if (i!=default_network_iface) {
               iface = cJSON_GetArrayItem(network_info, i);
               ipv4 = cJSON_GetObjectItem(iface,"ipv4");
               if (ipv4) {
-                ipv4_others = cJSON_GetObjectItem(ipv4,"address");
-                cJSON_AddItemReferenceToArray(ipv4_addresses, ipv4_others);
+                cJSON_AddItemReferenceToArray(ipv4_addresses, cJSON_GetObjectItem(ipv4,"address"));
               }
             }
           }
         field = cJSON_Print(ipv4_addresses);
 
         #endif
+        
         cJSON_Delete(ipv4_addresses);
+        cJSON_Delete(network_info);
 
         }else if (!strcmp(var,"ipv6.others")) {
+
+          cJSON *ipv6_addresses = cJSON_CreateArray();
+
+
           #if defined  WIN32
           dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
           if (currentAddress->Next) {
@@ -381,6 +388,7 @@ char * parse_environment_labels(const wlabel_t label) {
 
           #endif
           cJSON_Delete(ipv6_addresses);
+          cJSON_Delete(network_info);
 
         }else if (!strcmp(var, "mac.primary")) {
           #ifdef WIN32
@@ -398,10 +406,12 @@ char * parse_environment_labels(const wlabel_t label) {
             iface = cJSON_GetArrayItem(network_info, default_network_iface);
           #endif
 
-            mac = cJSON_Print(cJSON_GetObjectItem(iface,"mac"));
-            field = mac;
-
+            field = cJSON_Print(cJSON_GetObjectItem(iface,"mac"));
+            cJSON_Delete(network_info);
         }else if (!strcmp(var,"mac.others")) {
+     
+          cJSON *mac_addresses = cJSON_CreateArray();
+
           #ifdef WIN32
           dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
           if (currentAddress->Next) {
@@ -434,8 +444,11 @@ char * parse_environment_labels(const wlabel_t label) {
             }
           }
           field = cJSON_PrintUnformatted(mac_addresses);
+          
           #endif
+
           cJSON_Delete(mac_addresses);
+          cJSON_Delete(network_info);
 
         }else  if (!strcmp(var,"timezone")) {
           int zone;
@@ -456,32 +469,39 @@ char * parse_environment_labels(const wlabel_t label) {
           #endif
 
           field = timezone_number;
+          automatic_label = 0;
 
         }else if (!strcmp(var,"hostname")) {
           os_info = getunameJSON();
           field = cJSON_Print(cJSON_GetObjectItem(os_info,"hostname"));
+          cJSON_Delete(os_info);
         }
 
 
         if (field) {
             if (n + (z = strlen(field)) >= OS_COMMENT_MAX) {
 
-                return strdup(field);
+                return field;
               }
         }
         else{
 
+            automatic_label = 0;
             field = var;
         }
 
         strncpy(&final[n], field, z);
         n += z;
 
+        if(automatic_label){
+            free(field);
+        }
+
     }
 
     if (n + (z = strlen(str)) >= OS_COMMENT_MAX) {
 
-        return strdup(field);
+        return field;
     }
 
     strncpy(&final[n], str, z);
