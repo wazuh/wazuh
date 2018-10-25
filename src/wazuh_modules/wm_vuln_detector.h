@@ -16,9 +16,9 @@
 
 #define VU_WM_NAME "vulnerability-detector"
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
-#define WM_VULNDETECTOR_DEFAULT_INTERVAL 60 // 1M
+#define WM_VULNDETECTOR_DEFAULT_INTERVAL 300 // 5 minutes
 #define WM_VULNDETECTOR_RETRY_UPDATE  300 // 5 minutes
-#define VU_DEF_IGNORE_TIME 21600 // 6H
+#define VU_DEF_IGNORE_TIME 21600 // 6 hours
 #define CVE_TEMP_FILE "tmp/cve"
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
 #define CANONICAL_REPO "https://people.canonical.com/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
