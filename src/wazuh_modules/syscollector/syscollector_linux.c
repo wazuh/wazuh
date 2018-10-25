@@ -983,10 +983,7 @@ cJSON * getNetworkIfaces_linux( ){
 
     for (i=0; i<j; i++){
 
-        cJSON *object = cJSON_CreateObject();
         cJSON *interface = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "network");
-        cJSON_AddItemToObject(object, "iface", interface);
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
         /* Interface type */
@@ -1217,22 +1214,6 @@ cJSON * getNetworkIfaces_linux( ){
             cJSON_Delete(ipv6);
         }
 
-        /* Get Default Gateway */
-        char *gateway;
-        gateway = get_default_gateway(ifaces_list[i]);
-        cJSON_AddStringToObject(ipv4, "gateway", gateway);
-        free(gateway);
-
-        /* Get DHCP status for IPv4 */
-        char *dhcp_status;
-        dhcp_status = check_dhcp(ifaces_list[i], AF_INET);
-        cJSON_AddStringToObject(ipv4, "DHCP", dhcp_status);
-
-        /* Get DHCP status for IPv6 */
-        dhcp_status = check_dhcp(ifaces_list[i], AF_INET6);
-        cJSON_AddStringToObject(ipv6, "DHCP", dhcp_status);
-        free(dhcp_status);
-
         cJSON_AddItemToArray(ifaces_list_json,interface);
 
     }
@@ -1276,6 +1257,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
      int i;
     for (i = 0; i < cJSON_GetArraySize(ifaces_list_json); ++i){
         cJSON* object = cJSON_GetArrayItem(ifaces_list_json,i);
+        cJSON_AddStringToObject(object, "type", "network");
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
         string = cJSON_PrintUnformatted(object);
