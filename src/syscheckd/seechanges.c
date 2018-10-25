@@ -324,7 +324,7 @@ char *seechanges_addfile(const char *filename)
     if (OS_MD5_File(old_location, md5sum_old, OS_BINARY) != 0) {
         seechanges_createpath(old_location);
         if (seechanges_dupfile(filename, old_location) != 1) {
-            merror(RENAME_ERROR, filename, old_location, errno, strerror(errno));
+            minfo(RENAME_ERROR, filename, old_location, errno, strerror(errno));
         }
         return (NULL);
     }
