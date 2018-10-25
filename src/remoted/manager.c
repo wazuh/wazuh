@@ -70,6 +70,16 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     FILE * fp;
     mode_t oldmask;
     int is_startup = 0;
+    char *agent_id;
+    char *agent_name;
+    char *agent_addr;
+    char *agent_ip;
+
+    os_strdup(keys.keyentries[agentid]->id, agent_id);
+    os_strdup(keys.keyentries[agentid]->name, agent_name);
+    agent_addr = w_inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr);
+    os_strdup(keys.keyentries[agentid]->ip->ip, agent_ip);
+    key_unlock();
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
@@ -78,21 +88,21 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
         if (payload = strchr(counter, ' '), !payload) {
             merror("Request control format error.");
             mdebug2("r_msg = \"%s\"", r_msg);
-            return;
+            goto end;
         }
 
         *(payload++) = '\0';
 
         req_save(counter, payload, msg_length - (payload - r_msg));
-        return;
+        goto end;
     }
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-    send_msg(keys.keyentries[agentid]->id, msg_ack, -1);
+    send_msg(agent_id, msg_ack, -1);
 
     if (strcmp(r_msg, HC_STARTUP) == 0) {
-        mdebug1("Agent %s sent HC_STARTUP from %s.", keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
+        mdebug1("Agent %s sent HC_STARTUP from %s.", agent_name, agent_addr);
         is_startup = 1;
     } else {
         /* Clean uname and shared files (remove random string) */
@@ -104,7 +114,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
             *r_msg = '\0';
         } else {
             mwarn("Invalid message from agent id: '%d'(uname)", agentid);
-            return;
+            goto end;
         }
     }
 
@@ -112,21 +122,21 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     w_mutex_lock(&lastmsg_mutex)
 
     /* Check if there is a keep alive already for this agent */
-    if (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
+    if (data = OSHash_Get(pending_data, agent_id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
         utimes(data->keep_alive, NULL);
     } else {
         if (!data) {
             os_calloc(1, sizeof(pending_data_t), data);
 
-            if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
+            if (OSHash_Add(pending_data, agent_id, data) != 2) {
                 merror("Couldn't add pending data into hash table.");
 
                 /* Unlock mutex */
                 w_mutex_unlock(&lastmsg_mutex);
 
                 free(data);
-                return;
+                goto end;
             }
         }
 
@@ -136,8 +146,8 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
             /* Write to the agent file */
             snprintf(agent_file, PATH_MAX, "%s/%s-%s",
                      AGENTINFO_DIR,
-                     keys.keyentries[agentid]->name,
-                     keys.keyentries[agentid]->ip->ip);
+                     agent_name,
+                     agent_ip);
 
             os_strdup(agent_file, data->keep_alive);
         }
@@ -165,7 +175,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
                 if (full(queue_i, queue_j)) {
                     merror("Pending message queue full.");
                 } else {
-                    strncpy(pending_queue[queue_i], keys.keyentries[agentid]->id, 8);
+                    strncpy(pending_queue[queue_i], agent_id, 8);
                     forward(queue_i);
 
                     /* Signal that new data is available */
@@ -210,6 +220,11 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
             }
         }
     }
+end:
+    free(agent_id);
+    free(agent_name);
+    free(agent_addr);
+    free(agent_ip);
 }
 
 void c_group(const char *group, char ** files, file_sum ***_f_sum) {

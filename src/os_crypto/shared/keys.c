@@ -521,7 +521,7 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
     if (keys->keyentries[i]->sock >= 0) {
         char strsock[16] = "";
         snprintf(strsock, sizeof(strsock), "%d", keys->keyentries[i]->sock);
-        OSHash_Delete(keys->keyhash_sock, strsock);
+        OSHash_Delete_ex(keys->keyhash_sock, strsock);
     }
 
     OS_FreeKey(keys->keyentries[i]);
@@ -625,7 +625,7 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock) {
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
     keys->keyentries[i]->sock = sock;
-    return OSHash_Add(keys->keyhash_sock, strsock, keys->keyentries[i]);
+    return OSHash_Add_ex(keys->keyhash_sock, strsock, keys->keyentries[i]);
 }
 
 // Delete socket number from keystore
@@ -635,9 +635,9 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
 
-    if (entry = OSHash_Get(keys->keyhash_sock, strsock), entry) {
+    if (entry = OSHash_Get_ex(keys->keyhash_sock, strsock), entry) {
         entry->sock = -1;
-        return OSHash_Delete(keys->keyhash_sock, strsock) ? 0 : -1;
+        return OSHash_Delete_ex(keys->keyhash_sock, strsock) ? 0 : -1;
     } else {
         return -1;
     }
