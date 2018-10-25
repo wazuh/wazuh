@@ -586,89 +586,91 @@ static void c_files()
     }
     closedir(dp);
 
-    dp = opendir(MULTIGROUPS_DIR);
+    if(!logr.nocmerged){
+        dp = opendir(MULTIGROUPS_DIR);
 
-    if (!dp) {
-        /* Unlock mutex */
-        w_mutex_unlock(&files_mutex);
+        if (!dp) {
+            /* Unlock mutex */
+            w_mutex_unlock(&files_mutex);
 
-        merror("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
-        return;
-    }
-
-    /* Read multigroups from .metatada file */
-    FILE *fp;
-    char metadata_path[PATH_MAX + 1] = {0};
-    char multi_group[OS_SIZE_65536 + 1] = {0};
-    snprintf(metadata_path,PATH_MAX,"%s/%s",MULTIGROUPS_DIR,".metadata");
-
-    fp = fopen(metadata_path,"r");
-
-    if(!fp){
-        if(!reported_metadata_not_exists){
-            mdebug1("At c_files(): Could not find '%s' file. It will be generated when an agent connects",metadata_path);
-            reported_metadata_not_exists = 1;
+            merror("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
+            return;
         }
-        w_mutex_unlock(&files_mutex);
+
+        /* Read multigroups from .metatada file */
+        FILE *fp;
+        char metadata_path[PATH_MAX + 1] = {0};
+        char multi_group[OS_SIZE_65536 + 1] = {0};
+        snprintf(metadata_path,PATH_MAX,"%s/%s",MULTIGROUPS_DIR,".metadata");
+
+        fp = fopen(metadata_path,"r");
+
+        if(!fp){
+            if(!reported_metadata_not_exists){
+                mdebug1("At c_files(): Could not find '%s' file. It will be generated when an agent connects",metadata_path);
+                reported_metadata_not_exists = 1;
+            }
+            w_mutex_unlock(&files_mutex);
+            closedir(dp);
+            return;
+        }
+
+        while (fgets(multi_group, OS_SIZE_65536, fp) != NULL) {
+            char *endl = strchr(multi_group, '\n');
+
+            if (endl) {
+                *endl = '\0';
+            }
+
+            os_sha256 multi_group_hash;
+            char _hash[9];
+            char *multi_group_hash_pt = NULL;
+
+            if(multi_group_hash_pt = OSHash_Get(m_hash,multi_group),multi_group_hash_pt){
+
+                strncpy(_hash,multi_group_hash_pt,8);
+                if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
+                    merror("At c_files(): path '%s' too long.",path);
+                    break;
+                }
+
+            } else {
+
+                OS_SHA256_String(multi_group,multi_group_hash);
+                strncpy(_hash,multi_group_hash,8);
+                OSHash_Add(m_hash,multi_group,strdup(_hash));
+
+                if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
+                    merror("At c_files(): path '%s' too long.",path);
+                    break;
+                }
+            }
+
+
+            // Try to open directory, avoid TOCTOU hazard
+            if (subdir = wreaddir(path), !subdir) {
+                if (errno != ENOTDIR) {
+                    mdebug1("At c_files(): Could not open directory '%s'", path);
+                }
+                continue;
+            }
+
+            os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
+            os_calloc(1, sizeof(group_t), groups[p_size]);
+            groups[p_size]->group = strdup(multi_group);
+            groups[p_size + 1] = NULL;
+            c_multi_group(multi_group,&groups[p_size]->f_sum,_hash);
+            free_strarray(subdir);
+            p_size++;
+        }
+
+        fclose(fp);
         closedir(dp);
-        return;
     }
-
-    while (fgets(multi_group, OS_SIZE_65536, fp) != NULL) {
-        char *endl = strchr(multi_group, '\n');
-
-        if (endl) {
-            *endl = '\0';
-        }
-
-        os_sha256 multi_group_hash;
-        char _hash[9];
-        char *multi_group_hash_pt = NULL;
-
-        if(multi_group_hash_pt = OSHash_Get(m_hash,multi_group),multi_group_hash_pt){
-
-            strncpy(_hash,multi_group_hash_pt,8);
-            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
-                merror("At c_files(): path '%s' too long.",path);
-                break;
-            }
-
-        } else {
-
-            OS_SHA256_String(multi_group,multi_group_hash);
-            strncpy(_hash,multi_group_hash,8);
-            OSHash_Add(m_hash,multi_group,strdup(_hash));
-
-            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
-                merror("At c_files(): path '%s' too long.",path);
-                break;
-            }
-        }
-
-
-        // Try to open directory, avoid TOCTOU hazard
-        if (subdir = wreaddir(path), !subdir) {
-            if (errno != ENOTDIR) {
-                mdebug1("At c_files(): Could not open directory '%s'", path);
-            }
-            continue;
-        }
-
-        os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
-        os_calloc(1, sizeof(group_t), groups[p_size]);
-        groups[p_size]->group = strdup(multi_group);
-        groups[p_size + 1] = NULL;
-        c_multi_group(multi_group,&groups[p_size]->f_sum,_hash);
-        free_strarray(subdir);
-        p_size++;
-    }
-
-    fclose(fp);
 
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
 
-    closedir(dp);
     mdebug2("End updating shared files sums.");
 }
 
