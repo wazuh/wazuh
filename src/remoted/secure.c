@@ -345,15 +345,11 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     if (IsValidHeader(tmp_msg)) {
         int r = 2;
 
-        key_unlock();
-        key_lock_write();
-
         /* We need to save the peerinfo if it is a control msg */
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
-        key_unlock();
 
         switch (r) {
         case 0:
@@ -366,6 +362,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             ;
         }
 
+        // The critical section for readers closes within this function
         save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
         rem_inc_ctrl_msg();
         return;
