@@ -50,6 +50,7 @@ static regex_t regexCompiled_path1;
 static regex_t regexCompiled_path2;
 static regex_t regexCompiled_path3;
 static regex_t regexCompiled_items;
+static regex_t regexCompiled_inode;
 static regex_t regexCompiled_dir;
 
 
@@ -396,6 +397,12 @@ int init_regex(void) {
         merror("Cannot compile ppid regular expression.");
         return -1;
     }
+    // static const char *pattern_inode = " inode=([0-9]*) ";
+    static const char *pattern_inode = " item=[1-9] name=.* inode=([0-9]*)";
+    if (regcomp(&regexCompiled_inode, pattern_inode, REG_EXTENDED)) {
+        merror("Cannot compile inode regular expression.");
+        return -1;
+    }
     static const char *pattern_pname = " exe=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
         merror("Cannot compile pname regular expression.");
@@ -590,6 +597,7 @@ void audit_parse(char *buffer) {
     char *path3 = NULL;
     char *cwd = NULL;
     char *file_path = NULL;
+    char *inode = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
 
@@ -727,6 +735,14 @@ void audit_parse(char *buffer) {
                 os_malloc(match_size + 1, path1);
                 snprintf (path1, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             }
+            // inode
+            if(regexec(&regexCompiled_inode, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, inode);
+                snprintf (inode, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                w_evt->inode = strdup(inode);
+                free(inode);
+            }
 
             switch(items) {
 
@@ -751,13 +767,14 @@ void audit_parse(char *buffer) {
                     if (cwd && path0 && path1) {
                         if (file_path = gen_audit_path(cwd, path0, path1), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
                             realtime_checksumfile(w_evt->path, w_evt);
@@ -963,6 +980,7 @@ void * audit_main(int * audit_sock) {
     regfree(&regexCompiled_path1);
     regfree(&regexCompiled_pname);
     regfree(&regexCompiled_items);
+    regfree(&regexCompiled_inode);
     // Change Audit monitored folders to Inotify.
     int i;
     w_mutex_lock(&audit_rules_mutex);
