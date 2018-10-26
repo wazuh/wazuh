@@ -581,31 +581,7 @@ keystore* OS_DupKeys(const keystore *keys) {
     copy->id_counter = keys->id_counter;
 
     for (i = 0; i <= keys->keysize; i++) {
-        os_calloc(1, sizeof(keyentry), copy->keyentries[i]);
-        copy->keyentries[i]->rcvd = keys->keyentries[i]->rcvd;
-        copy->keyentries[i]->local = keys->keyentries[i]->local;
-        copy->keyentries[i]->keyid = keys->keyentries[i]->keyid;
-        copy->keyentries[i]->global = keys->keyentries[i]->global;
-
-        if (keys->keyentries[i]->id)
-            copy->keyentries[i]->id = strdup(keys->keyentries[i]->id);
-
-        if (keys->keyentries[i]->key)
-            copy->keyentries[i]->key = strdup(keys->keyentries[i]->key);
-
-        if (keys->keyentries[i]->name)
-            copy->keyentries[i]->name = strdup(keys->keyentries[i]->name);
-
-        if (keys->keyentries[i]->ip) {
-            os_calloc(1, sizeof(os_ip), copy->keyentries[i]->ip);
-            copy->keyentries[i]->ip->ip = strdup(keys->keyentries[i]->ip->ip);
-            copy->keyentries[i]->ip->ip_address = keys->keyentries[i]->ip->ip_address;
-            copy->keyentries[i]->ip->netmask = keys->keyentries[i]->ip->netmask;
-        }
-
-        copy->keyentries[i]->sock = keys->keyentries[i]->sock;
-        copy->keyentries[i]->mutex = keys->keyentries[i]->mutex;
-        copy->keyentries[i]->peer_info = keys->keyentries[i]->peer_info;
+        copy->keyentries[i] = OS_DupKeyEntry(keys->keyentries[i]);
     }
 
     if (keys->removed_keys) {
@@ -615,6 +591,40 @@ keystore* OS_DupKeys(const keystore *keys) {
         for (i = 0; i < keys->removed_keys_size; i++)
             copy->removed_keys[i] = strdup(keys->removed_keys[i]);
     }
+
+    return copy;
+}
+
+/* Duplicate key entry except key hashes and file pointer */
+keyentry * OS_DupKeyEntry(const keyentry * key) {
+    keyentry * copy;
+
+    os_calloc(1, sizeof(keyentry), copy);
+
+    copy->rcvd = key->rcvd;
+    copy->local = key->local;
+    copy->keyid = key->keyid;
+    copy->global = key->global;
+
+    if (key->id)
+        copy->id = strdup(key->id);
+
+    if (key->key)
+        copy->key = strdup(key->key);
+
+    if (key->name)
+        copy->name = strdup(key->name);
+
+    if (key->ip) {
+        os_calloc(1, sizeof(os_ip), copy->ip);
+        copy->ip->ip = strdup(key->ip->ip);
+        copy->ip->ip_address = key->ip->ip_address;
+        copy->ip->netmask = key->ip->netmask;
+    }
+
+    copy->sock = key->sock;
+    copy->mutex = key->mutex;
+    copy->peer_info = key->peer_info;
 
     return copy;
 }
@@ -635,9 +645,9 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
 
-    if (entry = OSHash_Get_ex(keys->keyhash_sock, strsock), entry) {
+    if (entry = OSHash_Delete_ex(keys->keyhash_sock, strsock), entry) {
         entry->sock = -1;
-        return OSHash_Delete_ex(keys->keyhash_sock, strsock) ? 0 : -1;
+        return 0;
     } else {
         return -1;
     }

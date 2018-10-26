@@ -79,7 +79,7 @@ void *wait_for_msgs(void *none);
 void *update_shared_files(void *none);
 
 /* Save control messages */
-void save_controlmsg(unsigned int agentid, char *msg, size_t msg_length);
+void save_controlmsg(const keyentry * key, char *msg, size_t msg_length);
 
 // Request listener thread entry point
 void * req_main(void * arg);
