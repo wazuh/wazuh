@@ -13,6 +13,22 @@
 
 #include "syscollector.h"
 
+typedef struct RawSMBIOSData
+{
+    BYTE    Used20CallingMethod;
+    BYTE    SMBIOSMajorVersion;
+    BYTE    SMBIOSMinorVersion;
+    BYTE    DmiRevision;
+    DWORD    Length;
+    BYTE    SMBIOSTableData[];
+} RawSMBIOSData, *PRawSMBIOSData;
+
+typedef struct SMBIOSStructureHeader {
+	BYTE Type;
+	BYTE FormattedAreaLength;
+	WORD Handle;
+} SMBIOSStructureHeader;
+
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
 
@@ -24,49 +40,39 @@ hw_info *get_system_windows();
 /* From process ID get its name */
 
 char* get_process_name(DWORD pid){
-
-    char *string = NULL;
-    FILE *output;
-    char *command;
-    char *end;
     char read_buff[OS_MAXSTR];
-    int status;
-
-    memset(read_buff, 0, OS_MAXSTR);
-    os_calloc(COMMAND_LENGTH, sizeof(char), command);
-    snprintf(command, COMMAND_LENGTH - 1, "wmic process where processID=%lu get Name", pid);
-    output = popen(command, "r");
-    if (!output) {
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-    } else {
-        if (fgets(read_buff, OS_MAXSTR, output)) {
-            if (strncmp(read_buff,"Name", 4) == 0) {
-                if (!fgets(read_buff, OS_MAXSTR, output)){
-                    mtwarn(WM_SYS_LOGTAG, "Unable to get process name.");
-                    string = strdup("unknown");
-                }
-                else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
-                    }
-                    string = strdup(read_buff);
-                }else
-                    string = strdup("unknown");
-            }
-        } else {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to get process name (bad header).");
-            string = strdup("unknown");
-        }
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting process ID.", status);
-        }
-    }
-
-    return string;
+	char *string = NULL;
+	HMODULE hMod;
+	DWORD cbNeeded;
+    
+    /* Get process handle */
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProcess != NULL)
+    {
+	    /* Get module handles */
+		if (EnumProcessModules(hProcess, &hMod, sizeof(hMod), &cbNeeded))
+		{
+			/* Get process name */
+			if (GetModuleBaseName(hProcess, hMod, read_buff, OS_MAXSTR))
+			{
+				string = strdup(read_buff);
+			} else {
+				mtwarn(WM_SYS_LOGTAG, "Unable to retrieve name for process with PID '%lu'.", pid);
+				string = strdup("unknown");
+			}
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve module handles for process with PID '%lu'.", pid);
+			string = strdup("unknown");
+		}
+		
+		/* Close process handle */
+		CloseHandle(hProcess);
+	} else {
+		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve handle for process with PID '%lu'.", pid);
+		string = strdup("unknown");
+	}
+	
+	return string;
 }
 
 // Get port state
@@ -962,15 +968,84 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     RegCloseKey(program_key);
 }
 
+char* get_smbios_baseboard_serial(BYTE* rawData, DWORD rawDataSize){
+	DWORD pos = 0;
+	SMBIOSStructureHeader *header;
+	char *serialNumber = NULL, *tmp = NULL;
+	BYTE serialNumberStrNum = 0, curStrNum = 0;
+	
+	if (rawData == NULL || !rawDataSize) return NULL;
+	
+	while(pos < rawDataSize)
+	{
+		/* Get structure header */
+		header = (SMBIOSStructureHeader*)(rawData + pos);
+		
+		/* Check if this SMBIOS structure represents the Base Board Information */
+		if (header->Type == 2)
+		{
+			/* Check if the Base Board Serial Number string is actually available */
+			if ((BYTE)rawData[pos + 7] > 0)
+			{
+				serialNumberStrNum = (BYTE)rawData[pos + 7];
+			} else {
+				/* No need to keep looking for the serial number */
+				break;
+			}
+		}
+		
+		/* Skip formatted area length */
+		pos += header->FormattedAreaLength;
+		
+		/* Reset current string number */
+		curStrNum = 0;
+		
+		/* Read unformatted area */
+		/* This area is formed by NULL-terminated strings */
+		/* The area itself ends with an additional NULL terminator */
+		while(pos < rawDataSize)
+		{
+			tmp = (char*)(rawData + pos);
+			
+			/* Check if we found a NULL terminator */
+			if (tmp[0] == 0)
+			{
+				/* Check if there's another NULL terminator */
+				/* If so, we reached the end of this structure */
+				if (tmp[1] == 0)
+				{
+					/* Prepare position for the next structure */
+					pos += 2;
+					break;
+				} else {
+					/* Only found a single NULL terminator */
+					/* Increase both the position and the pointer */
+					pos++;
+					tmp++;
+				}
+			}
+			
+			/* Increase current string number */
+			curStrNum++;
+			
+			/* Check if we reached the Serial Number */
+			if (header->Type == 2 && curStrNum == serialNumberStrNum)
+			{
+				serialNumber = strdup(tmp);
+				break;
+			}
+			
+			/* Prepare position to access the next string */
+			pos += (DWORD)strlen(tmp);
+		}
+		
+		if (serialNumber) break;
+	}
+	
+	return serialNumber;
+}
+
 void sys_hw_windows(const char* LOCATION){
-
-    char *string;
-    char *command;
-    char *end;
-    FILE *output;
-    char read_buff[SERIAL_LENGTH];
-    int status;
-
     // Set timestamp
 
     char *timestamp;
@@ -1009,40 +1084,41 @@ void sys_hw_windows(const char* LOCATION){
 
     /* Get Serial number */
     char *serial = NULL;
-    memset(read_buff, 0, SERIAL_LENGTH);
-    command = "wmic baseboard get SerialNumber";
-    output = popen(command, "r");
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-    }else{
-        if (fgets(read_buff, SERIAL_LENGTH, output)) {
-            if (strncmp(read_buff ,"SerialNumber", 12) == 0) {
-                if (!fgets(read_buff, SERIAL_LENGTH, output)){
-                    mtwarn(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
-                    serial = strdup("unknown");
-                }
-                else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
-                    }
-                    serial = strdup(read_buff);
-                }else
-                    serial = strdup("unknown");
-            }
-        } else {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number (bad header).");
-            serial = strdup("unknown");
-        }
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting board serial.", status);
-        }
-    }
-
-    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+	DWORD smbios_size = 0;
+	PRawSMBIOSData smbios = NULL;
+	
+	/* Get raw SMBIOS firmware table size */
+	smbios_size = GetSystemFirmwareTable((DWORD)"RSMB", 0, NULL, 0);
+	if (smbios_size)
+	{
+		smbios = (PRawSMBIOSData)MALLOC(smbios_size);
+		if (smbios)
+		{
+			/* Get raw SMBIOS firmware table */
+			if (GetSystemFirmwareTable((DWORD)"RSMB", 0, smbios, smbios_size) == smbios_size)
+			{
+				/* Parse SMBIOS structures */
+				/* We need to look for a Type 2 SMBIOS structure (Base Board Information) */
+				serial = get_smbios_baseboard_serial(smbios->SMBIOSTableData, smbios_size);
+				if (!serial)
+				{
+					mtwarn(WM_SYS_LOGTAG, "Serial Number not available in SMBIOS firmware table.");
+					serial = strdup("unknown");
+				}
+			} else {
+				mtwarn(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
+				serial = strdup("unknown");
+			}
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "Unable to allocate %lu byte(s) for the SMBIOS firmware table.", smbios_size);
+			serial = strdup("unknown");
+		}
+	} else {
+		mtwarn(WM_SYS_LOGTAG, "Unable to get raw SMBIOS firmware table size.");
+		serial = strdup("unknown");
+	}
+	
+	cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     free(serial);
 
     /* Get CPU and memory information */
@@ -1066,7 +1142,7 @@ void sys_hw_windows(const char* LOCATION){
     }
 
     /* Send interface data in JSON format */
-    string = cJSON_PrintUnformatted(object);
+    char *string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
     SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
@@ -1358,10 +1434,7 @@ hw_info *get_system_windows(){
 }
 
 void sys_proc_windows(const char* LOCATION) {
-    char *command;
-    FILE *output;
     char read_buff[OS_MAXSTR];
-    int status;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -1397,69 +1470,159 @@ void sys_proc_windows(const char* LOCATION) {
     cJSON *proc_array = cJSON_CreateArray();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
-
-    memset(read_buff, 0, OS_MAXSTR);
-    command = "wmic process get ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize /format:csv";
-    output = popen(command, "r");
-
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
-    }else{
-
-        while(fgets(read_buff, OS_MAXSTR, output) && strncmp(read_buff, "Node,ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize", 132) != 0);
-
-        while(fgets(read_buff, OS_MAXSTR, output)){
-
-            cJSON *object = cJSON_CreateObject();
-            cJSON *process = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "process");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "process", process);
-
-            char ** parts = NULL;
-            parts = OS_StrBreak(',', read_buff, 12);
-
-            cJSON_AddStringToObject(process,"cmd",parts[1]); // CommandLine
-            cJSON_AddNumberToObject(process,"stime",atol(parts[2])); // KernelModeTime
-            cJSON_AddStringToObject(process,"name",parts[3]); // Name
-            cJSON_AddNumberToObject(process,"size",atoi(parts[4])); // PageFileUsage
-            cJSON_AddNumberToObject(process,"ppid",atoi(parts[5])); // ParentProcessId
-            cJSON_AddNumberToObject(process,"priority",atoi(parts[6])); // Priority
-            cJSON_AddNumberToObject(process,"pid",atoi(parts[7])); // ProcessId
-            cJSON_AddNumberToObject(process,"session",atoi(parts[8])); // SessionId
-            cJSON_AddNumberToObject(process,"nlwp",atoi(parts[9])); // ThreadCount
-            cJSON_AddNumberToObject(process,"stime",atol(parts[10])); // UserModeTime
-            cJSON_AddNumberToObject(process,"vm_size",atol(parts[11])); // VirtualSize
-
-            cJSON_AddItemToArray(proc_array, object);
-            free(parts);
-        }
-
-        cJSON_ArrayForEach(item, proc_array) {
-            char *string;
-            string = cJSON_PrintUnformatted(item);
-            mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-            free(string);
-        }
-
-        cJSON_Delete(proc_array);
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting process inventory.", status);
-        }
-    }
-
-    cJSON *object = cJSON_CreateObject();
+	
+	PROCESSENTRY32 pe = { 0 };
+	pe.dwSize = sizeof(PROCESSENTRY32);
+	
+	HANDLE hSnapshot, hProcess;
+	FILETIME lpCreationTime, lpExitTime, lpKernelTime, lpUserTime;
+	PROCESS_MEMORY_COUNTERS ppsmemCounters;
+	
+	LONG priority;
+	char *exec_path, *name;
+	ULARGE_INTEGER kernel_mode_time, user_mode_time;
+	DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
+	
+	/* Create a snapshot of all current processes */
+	hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (hSnapshot != INVALID_HANDLE_VALUE)
+	{
+		if (Process32First(hSnapshot, &pe))
+		{
+			do {
+				/* Get process ID */
+				pid = pe.th32ProcessID;
+				
+				/* Get thread count */
+				thread_count = pe.cntThreads;
+				
+				/* Get parent process ID */
+				parent_pid = pe.th32ParentProcessID;
+				
+				/* Get process base priority */
+				priority = pe.pcPriClassBase;
+				
+				/* Get process name */
+				name = strdup(pe.szExeFile);
+				
+				/* Initialize variables */
+				exec_path = NULL;
+				kernel_mode_time.QuadPart = user_mode_time.QuadPart = 0;
+				session_id = page_file_usage = virtual_size = 0;
+				
+				/* Get process handle */
+				hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+				if (hProcess != NULL)
+				{
+					/* Get executable path */
+					if (GetModuleFileNameEx(hProcess, NULL, read_buff, OS_MAXSTR))
+					{
+						exec_path = strdup(read_buff);
+					} else {
+						mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID '%lu'.", pid);
+						exec_path = strdup("unknown");
+					}
+					
+					/* Get kernel mode and user mode times */
+					if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
+					{
+						/* Copy the kernel mode filetime high and low parts */
+						kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
+						kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
+						
+						/* Copy the user mode filetime high and low parts */
+						user_mode_time.LowPart = lpUserTime.dwLowDateTime;
+						user_mode_time.HighPart = lpUserTime.dwHighDateTime;
+					} else {
+						mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID '%lu'.", pid);
+					}
+					
+					/* Get page file usage */
+					if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
+					{
+						page_file_usage = ppsmemCounters.PagefileUsage;
+					} else {
+						mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID '%lu'.", pid);
+					}
+					
+					/*
+					// Get priority
+					priority_class = GetPriorityClass(hProcess);
+					if (priority_class)
+					{
+						// Save the value as a string
+						sprintf(read_buff, "%u", priority_class);
+						priority = strdup(read_buff);
+					} else {
+						mtwarn(WM_SYS_LOGTAG, "Unable to retrieve priority from process with PID '%lu'.", pid);
+						priority = strdup("unknown");
+					}
+					*/
+					
+					/* Get session ID */
+					if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID '%lu'.", pid);
+					
+					// TODO: Get the virtual size
+					
+					/* Close process handle */
+					CloseHandle(hProcess);
+				} else {
+					mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process handle for PID '%lu'.", pid);
+					exec_path = strdup("unknown");
+				}
+				
+				/* Add process information to the JSON document */
+				cJSON *object = cJSON_CreateObject();
+				cJSON *process = cJSON_CreateObject();
+				cJSON_AddStringToObject(object, "type", "process");
+				cJSON_AddNumberToObject(object, "ID", ID);
+				cJSON_AddStringToObject(object, "timestamp", timestamp);
+				cJSON_AddItemToObject(object, "process", process);
+				
+				cJSON_AddStringToObject(process, "cmd", exec_path); // CommandLine
+				cJSON_AddNumberToObject(process, "stime", kernel_mode_time.QuadPart); // KernelModeTime
+				cJSON_AddStringToObject(process, "name", name); // Name
+				cJSON_AddNumberToObject(process, "size", page_file_usage); // PageFileUsage
+				cJSON_AddNumberToObject(process, "ppid", parent_pid); // ParentProcessId
+				cJSON_AddNumberToObject(process, "priority", priority); // Priority
+				cJSON_AddNumberToObject(process, "pid", pid); // ProcessId
+				cJSON_AddNumberToObject(process, "session", session_id); // SessionId
+				cJSON_AddNumberToObject(process, "nlwp", thread_count); // ThreadCount
+				cJSON_AddNumberToObject(process, "stime", user_mode_time.QuadPart); // UserModeTime
+				cJSON_AddNumberToObject(process, "vm_size", virtual_size); // VirtualSize
+				
+				cJSON_AddItemToArray(proc_array, object);
+				
+				free(exec_path);
+			} while(Process32Next(hSnapshot, &pe));
+			
+			cJSON_ArrayForEach(item, proc_array) {
+				char *string = cJSON_PrintUnformatted(item);
+				mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
+				wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+				free(string);
+			}
+			
+			cJSON_Delete(proc_array);
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process information from the snapshot.");
+		}
+		
+		/* Close snapshot handle */
+		CloseHandle(hSnapshot);
+	} else {
+		mtwarn(WM_SYS_LOGTAG, "Unable to create process snapshot.");
+	}
+	
+	cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
     cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
-    char *string;
-    string = cJSON_PrintUnformatted(object);
+    char *string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+	
     cJSON_Delete(object);
     free(string);
     free(timestamp);
