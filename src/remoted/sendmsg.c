@@ -106,7 +106,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
             break;
         case EPIPE:
         case EBADF:
-            mdebug1(SEND_ERROR, agent_id, "Agent might got disconnected.");
+            mdebug1(SEND_ERROR, agent_id, "Agent may have disconnected.");
             break;
         case EAGAIN:
 #if EAGAIN != EWOULDBLOCK
