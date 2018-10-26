@@ -109,7 +109,7 @@ int Start_win32_Syscheck()
         /* Disabled */
         if (!syscheck.dir) {
             minfo(SK_NO_DIR);
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
         } else if (!syscheck.dir[0]) {
             minfo(SK_NO_DIR);
         }
@@ -123,7 +123,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL, -1);
         }
         syscheck.registry[0].entry = NULL;
 
@@ -316,7 +316,7 @@ int main(int argc, char **argv)
             if (!test_config) {
                 minfo(SK_NO_DIR);
             }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
                 minfo(SK_NO_DIR);
@@ -401,7 +401,7 @@ int main(int argc, char **argv)
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-            if (syscheck.tag[r] != NULL)
+            if (syscheck.tag && syscheck.tag[r] != NULL)
                 mdebug1("Adding tag '%s' to directory '%s'.", syscheck.tag[r], syscheck.dir[r]);
             r++;
         }
