@@ -86,7 +86,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Notify the manager */
 #define NOTIFY_TIME     10      // ... every 10 seconds
-#define RECONNECT_TIME  60      // Time to reconnect
+#define RECONNECT_TIME  300      // Time to reconnect
 #define DISCON_TIME     1800    // Take agent as disconnected
 
 /* User Configuration */
