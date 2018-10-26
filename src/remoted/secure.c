@@ -135,7 +135,7 @@ void HandleSecure()
                     }
 
                     rem_inc_tcp();
-                    mdebug1("New TCP connection at %s.", inet_ntoa(peer_info.sin_addr));
+                    mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
 
                     if (wnotify_add(notify, sock_client) < 0) {
                         merror("wnotify_add(%d): %s (%d)", sock_client, strerror(errno), errno);
@@ -172,12 +172,12 @@ void HandleSecure()
                             break;
 
                         case 0:
-                            mdebug1("TCP peer at %s disconnected.", inet_ntoa(peer_info.sin_addr));
+                            mdebug1("TCP peer at %s disconnected [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
                             break;
 
                         default:
                             // length > OS_MAXSTR
-                            merror("Too big message size from %s.", inet_ntoa(peer_info.sin_addr));
+                            mwarn("Too big message size from %s.", inet_ntoa(peer_info.sin_addr));
                         }
 
                         if (wnotify_delete(notify, sock_client) < 0) {
@@ -191,7 +191,7 @@ void HandleSecure()
                     recv_b = recv(sock_client, buffer, length, MSG_WAITALL);
 
                     if (recv_b != (ssize_t)length) {
-                        merror("Incorrect message size from %s: expecting %u, got %zd", inet_ntoa(peer_info.sin_addr), length, recv_b);
+                        mwarn("Incorrect message size from %s: expecting %u, got %zd. Agent may have disconnected [%d]", inet_ntoa(peer_info.sin_addr), length, recv_b, sock_client);
 
                         if (wnotify_delete(notify, sock_client) < 0) {
                             merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
@@ -344,6 +344,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
         int r = 2;
+        keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
 
         /* We need to save the peerinfo if it is a control msg */
 
@@ -362,9 +363,13 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             ;
         }
 
+        key_unlock();
+
         // The critical section for readers closes within this function
-        save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
+        save_controlmsg(key, tmp_msg, msg_length - 3);
         rem_inc_ctrl_msg();
+
+        OS_FreeKey(key);
         return;
     }
 
@@ -394,7 +399,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 int _close_sock(keystore * keys, int sock) {
     int retval;
 
-    key_lock_write();
+    key_lock_read();
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 

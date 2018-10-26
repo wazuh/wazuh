@@ -57,6 +57,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     char crypt_msg[OS_MAXSTR + 1];
     int retval = 0;
     int error;
+    keyentry * key;
 
     key_lock_read();
     key_id = OS_IsAllowedID(&keys, agent_id);
@@ -67,59 +68,59 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         return (-1);
     }
 
+    key = OS_DupKeyEntry(keys.keyentries[key_id]);
+
     /* If we don't have the agent id, ignore it */
-    if (keys.keyentries[key_id]->rcvd < (time(0) - DISCON_TIME)) {
-        key_unlock();
-        mwarn(SEND_DISCON, keys.keyentries[key_id]->id);
+    if (key->rcvd < (time(0) - DISCON_TIME)) {
+        mwarn(SEND_DISCON, key->id);
         return (-1);
     }
 
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
+    key_unlock();
 
     if (msg_size <= 0) {
-        key_unlock();
         merror(SEC_ERROR);
         return (-1);
     }
 
     /* Send initial message */
     if (logr.proto[logr.position] == UDP_PROTO) {
-        retval = sendto(logr.sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
+        retval = sendto(logr.sock, crypt_msg, msg_size, 0, (struct sockaddr *)&key->peer_info, logr.peer_size) == msg_size ? 0 : -1;
         error = errno;
-    } else if (keys.keyentries[key_id]->sock >= 0) {
-        w_mutex_lock(&keys.keyentries[key_id]->mutex);
-        retval = OS_SendSecureTCP(keys.keyentries[key_id]->sock, msg_size, crypt_msg);
+    } else if (key->sock >= 0) {
+        w_mutex_lock(&key->mutex);
+        retval = OS_SendSecureTCP(key->sock, msg_size, crypt_msg);
         error = errno;
-        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
+        w_mutex_unlock(&key->mutex);
     } else {
-        key_unlock();
+        OS_FreeKey(key);
         mdebug1("Send operation cancelled due to closed socket.");
         return -1;
     }
 
-    key_unlock();
-
     if (retval < 0) {
         switch (error) {
         case 0:
-            mwarn(SEND_ERROR, agent_id, "Unknown error.");
+            mwarn(SEND_ERROR " [%d]", agent_id, "Unknown error.", key->sock);
             break;
         case EPIPE:
         case EBADF:
-            mdebug1(SEND_ERROR, agent_id, "Agent may have disconnected.");
+            mdebug1(SEND_ERROR " [%d]", agent_id, "Agent may have disconnected.", key->sock);
             break;
         case EAGAIN:
 #if EAGAIN != EWOULDBLOCK
         case EWOULDBLOCK:
 #endif
-            mwarn(SEND_ERROR, agent_id, "Agent is not responding.");
+            mwarn(SEND_ERROR " [%d]", agent_id, "Agent is not responding.", key->sock);
             break;
         default:
-            merror(SEND_ERROR, agent_id, strerror(error));
+            merror(SEND_ERROR " [%d]", agent_id, strerror(error), key->sock);
         }
     } else {
         rem_inc_msg_sent();
     }
 
+    OS_FreeKey(key);
     return retval;
 }
