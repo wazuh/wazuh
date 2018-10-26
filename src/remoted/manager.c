@@ -915,7 +915,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 }
 
                 if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum,sharedcfg_dir) < 0) {
-                    merror(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
+                    mwarn(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
                 }
 
                 mdebug2("End sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
@@ -958,7 +958,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum,sharedcfg_dir) < 0) {
-                merror(SHARED_ERROR, f_sum[i]->name, agent_id);
+                mwarn(SHARED_ERROR, f_sum[i]->name, agent_id);
             }
         }
 
