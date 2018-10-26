@@ -524,6 +524,7 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     os_malloc(bufsz, buffer);
     *(uint32_t *)buffer = wnet_order(size);
     memcpy(buffer + sizeof(uint32_t), msg, size);
+    minfo("~~~OS_SendSecureTCP: '%ld' '%ld' '%s'", sizeof(uint32_t), bufsz, (char *) msg);
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
 
     free(buffer);
