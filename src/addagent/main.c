@@ -189,6 +189,11 @@ int main(int argc, char **argv)
     srandom_init();
     getuname();
 
+        if(w_is_worker()){
+        merror("Worker nodes can't manage agents");
+        return 0;
+    }
+
 #ifndef WIN32
     if (gethostname(shost, sizeof(shost) - 1) < 0) {
         strncpy(shost, "localhost", sizeof(shost) - 1);

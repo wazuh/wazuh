@@ -226,5 +226,6 @@ extern const char *__local_name;
 #include "error_messages/debug_messages.h"
 #include "custom_output_search.h"
 #include "url.h"
+#include "cluster_utils.h"
 
 #endif /* __SHARED_H */

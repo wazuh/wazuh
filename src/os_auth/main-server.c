@@ -351,6 +351,11 @@ int main(int argc, char **argv)
         exit(0);
     }
 
+    if(w_is_worker()){
+        merror("Worker nodes can't run authd");
+        return 0;
+    }
+
     /* Exit here if disabled */
     if (config.flags.disabled) {
         minfo("Daemon is disabled. Closing.");
