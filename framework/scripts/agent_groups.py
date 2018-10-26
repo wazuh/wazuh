@@ -7,6 +7,7 @@ from sys import exit, path, argv
 from os.path import dirname, basename
 from getopt import GetoptError, getopt
 from signal import signal, SIGINT
+from wazuh.cluster.cluster import read_config
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -295,6 +296,9 @@ def main():
 
 
 if __name__ == "__main__":
+
+    if read_config()['node_type'] != 'master':
+        raise WazuhException(3019)
 
     try:
         main()
