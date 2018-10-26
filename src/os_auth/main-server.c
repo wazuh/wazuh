@@ -351,9 +351,17 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    if(w_is_worker()){
-        merror("Worker nodes can't run authd");
-        return 0;
+    int is_worker = w_is_worker();
+
+    switch (is_worker) {
+        case -1:
+            merror("Invalid option at cluster configuration");
+            return 0;
+            break;
+        case 1:
+            merror("Worker nodes can't run authd");
+            return 0;
+            break;
     }
 
     /* Exit here if disabled */
