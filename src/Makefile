@@ -1554,6 +1554,9 @@ clean-framework:
 	${MAKE} -C ../framework clean
 
 clean-windows:
+	rm -f libwazuh.a
+	rm -f libwazuhext.dll
+	rm -f wazuh_modules/syscollector/*.o
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt

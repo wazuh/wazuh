@@ -41,34 +41,42 @@ hw_info *get_system_windows();
 
 char* get_process_name(DWORD pid){
     char read_buff[OS_MAXSTR];
-	char *string = NULL;
-	HMODULE hMod;
-	DWORD cbNeeded;
-    
-    /* Get process handle */
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (hProcess != NULL)
-    {
-	    /* Get module handles */
-		if (EnumProcessModules(hProcess, &hMod, sizeof(hMod), &cbNeeded))
+	char *string = NULL, *ptr = NULL;
+	
+	/* Check if we are dealing with a system process */
+	if (pid == 0 || pid == 4)
+	{
+		string = strdup(pid == 0 ? "System Idle Process" : "System");
+		return string;
+	}
+	
+	/* Get process handle */
+	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+	if (hProcess != NULL)
+	{
+		/* Get full Windows kernel path for the process */
+		if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
 		{
-			/* Get process name */
-			if (GetModuleBaseName(hProcess, hMod, read_buff, OS_MAXSTR))
+			/* Get only the process name from the string */
+			ptr = strrchr(read_buff, '\\');
+			if (ptr)
 			{
-				string = strdup(read_buff);
-			} else {
-				mtwarn(WM_SYS_LOGTAG, "Unable to retrieve name for process with PID '%lu'.", pid);
-				string = strdup("unknown");
+				int len = (strlen(read_buff) - (ptr - read_buff + 1));
+				memcpy(read_buff, &(read_buff[ptr - read_buff + 1]), len);
+				read_buff[len] = '\0';
 			}
+			
+			/* Duplicate string */
+			string = strdup(read_buff);
 		} else {
-			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve module handles for process with PID '%lu'.", pid);
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve name for process with PID '%lu'. Error '%ld'.", pid, GetLastError());
 			string = strdup("unknown");
 		}
 		
 		/* Close process handle */
 		CloseHandle(hProcess);
 	} else {
-		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve handle for process with PID '%lu'.", pid);
+		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve handle for process with PID '%lu'. Error '%ld'.", pid, GetLastError());
 		string = strdup("unknown");
 	}
 	
@@ -1082,20 +1090,24 @@ void sys_hw_windows(const char* LOCATION){
     cJSON_AddStringToObject(object, "timestamp", timestamp);
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
-    /* Get Serial number */
+    /* Base Board Serial Number variables */
     char *serial = NULL;
 	DWORD smbios_size = 0;
 	PRawSMBIOSData smbios = NULL;
 	
+	DWORD Signature = 0;
+	const BYTE byteSignature[] = { 'B', 'M', 'S', 'R' }; // "RSMB" (little endian)
+	memcpy(&Signature, byteSignature, 4);
+	
 	/* Get raw SMBIOS firmware table size */
-	smbios_size = GetSystemFirmwareTable((DWORD)"RSMB", 0, NULL, 0);
+	smbios_size = GetSystemFirmwareTable(Signature, 0, NULL, 0);
 	if (smbios_size)
 	{
 		smbios = (PRawSMBIOSData)MALLOC(smbios_size);
 		if (smbios)
 		{
 			/* Get raw SMBIOS firmware table */
-			if (GetSystemFirmwareTable((DWORD)"RSMB", 0, smbios, smbios_size) == smbios_size)
+			if (GetSystemFirmwareTable(Signature, 0, smbios, smbios_size) == smbios_size)
 			{
 				/* Parse SMBIOS structures */
 				/* We need to look for a Type 2 SMBIOS structure (Base Board Information) */
@@ -1109,6 +1121,8 @@ void sys_hw_windows(const char* LOCATION){
 				mtwarn(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
 				serial = strdup("unknown");
 			}
+			
+			FREE(smbios);
 		} else {
 			mtwarn(WM_SYS_LOGTAG, "Unable to allocate %lu byte(s) for the SMBIOS firmware table.", smbios_size);
 			serial = strdup("unknown");
@@ -1433,6 +1447,67 @@ hw_info *get_system_windows(){
     return info;
 }
 
+int ntpath_to_win32path(char *ntpath, char **outbuf)
+{
+	int success = 0;
+	DWORD res = 0, len = 0;
+	char *SingleDrive = NULL;
+	char LogicalDrives[OS_MAXSTR] = {0}, read_buff[OS_MAXSTR] = {0}, msdos_drive[3] = { '\0', ':', '\0' };
+	
+	if (ntpath == NULL) return success;
+	
+	/* Get the total amount of available logical drives */
+	/* The input size must not include the NULL terminator */
+	res = GetLogicalDriveStrings(OS_MAXSTR - 1, LogicalDrives);
+	if (res <= 0 || res > OS_MAXSTR)
+	{
+		mtwarn(WM_SYS_LOGTAG, "Unable to parse logical drive strings. Error '%ld'.", GetLastError());
+		return success;
+	}
+	
+	/* Perform a loop of the retrieved drive list */
+	SingleDrive = LogicalDrives;
+	while(*SingleDrive)
+	{
+		/* Get the MS-DOS drive letter */
+		*msdos_drive = *SingleDrive;
+		
+		/* Retrieve the Windows kernel path for this drive */
+		res = QueryDosDevice(msdos_drive, read_buff, OS_MAXSTR);
+		if (res)
+		{
+			/* Check if this is the drive we're looking for */
+			if (!strncmp(ntpath, read_buff, strlen(read_buff)))
+			{
+				/* Calculate new string length (making sure there's space left for the NULL terminator) */
+				len = (strlen(ntpath) - strlen(read_buff) + 3);
+				
+				/* Allocate memory */
+				*outbuf = (char*)malloc(len);
+				if (*outbuf)
+				{
+					/* Copy the new filepath */
+					snprintf(*outbuf, len, "%s%s", msdos_drive, ntpath + strlen(read_buff));
+					success = 1;
+				} else {
+					mtwarn(WM_SYS_LOGTAG, "Unable to allocate '%lu' bytes to hold the full Win32 converted filepath.", len);
+				}
+				
+				break;
+			}
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve Windows kernel path for drive '%s\\'. Error '%ld'.", msdos_drive, GetLastError());
+		}
+		
+		/* Get the next drive */
+		SingleDrive += (strlen(SingleDrive) + 1);
+	}
+	
+	if (!success) mtwarn(WM_SYS_LOGTAG, "Unable to find a matching Windows kernel drive path for '%s'.", ntpath);
+	
+	return success;
+}
+
 void sys_proc_windows(const char* LOCATION) {
     char read_buff[OS_MAXSTR];
 
@@ -1502,73 +1577,75 @@ void sys_proc_windows(const char* LOCATION) {
 				/* Get process base priority */
 				priority = pe.pcPriClassBase;
 				
-				/* Get process name */
-				name = strdup(pe.szExeFile);
-				
 				/* Initialize variables */
-				exec_path = NULL;
+				name = exec_path = NULL;
 				kernel_mode_time.QuadPart = user_mode_time.QuadPart = 0;
 				session_id = page_file_usage = virtual_size = 0;
 				
-				/* Get process handle */
-				hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-				if (hProcess != NULL)
+				/* Check if we are dealing with a system process */
+				if (pid == 0 || pid == 4)
 				{
-					/* Get executable path */
-					if (GetModuleFileNameEx(hProcess, NULL, read_buff, OS_MAXSTR))
+					name = strdup(pid == 0 ? "System Idle Process" : "System");
+					exec_path = strdup("none");
+				} else {
+					/* Get process name */
+					name = strdup(pe.szExeFile);
+					
+					/* Get process handle */
+					hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+					if (hProcess != NULL)
 					{
-						exec_path = strdup(read_buff);
+						/* Get full Windows kernel path for the process */
+						if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
+						{
+							/* Convert Windows kernel path to a valid Win32 filepath */
+							/* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
+							if (!ntpath_to_win32path(read_buff, &exec_path))
+							{
+								/* If there were any errors, the read_buff array will remain intact */
+								/* In that case, let's just use the Windows kernel path. It's better than nothing */
+								exec_path = strdup(read_buff);
+							}
+						} else {
+							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID '%lu'. Error '%ld'.", pid, GetLastError());
+							exec_path = strdup("unknown");
+						}
+						
+						/* Get kernel mode and user mode times */
+						if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
+						{
+							/* Copy the kernel mode filetime high and low parts and convert it to seconds */
+							kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
+							kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
+							kernel_mode_time.QuadPart /= 10000000ULL;
+							
+							/* Copy the user mode filetime high and low parts and convert it to seconds */
+							user_mode_time.LowPart = lpUserTime.dwLowDateTime;
+							user_mode_time.HighPart = lpUserTime.dwHighDateTime;
+							user_mode_time.QuadPart /= 10000000ULL;
+						} else {
+							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID '%lu'. Error '%ld'.", pid, GetLastError());
+						}
+						
+						/* Get page file usage */
+						if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
+						{
+							page_file_usage = ppsmemCounters.PagefileUsage;
+						} else {
+							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID '%lu'. Error '%ld'.", pid, GetLastError());
+						}
+						
+						/* Get session ID */
+						if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID '%lu'. Error '%ld'.", pid, GetLastError());
+						
+						// TODO: Get the virtual size (but how??)
+						
+						/* Close process handle */
+						CloseHandle(hProcess);
 					} else {
-						mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID '%lu'.", pid);
+						mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process handle for PID '%lu'. Error '%ld'.", pid, GetLastError());
 						exec_path = strdup("unknown");
 					}
-					
-					/* Get kernel mode and user mode times */
-					if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
-					{
-						/* Copy the kernel mode filetime high and low parts */
-						kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
-						kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
-						
-						/* Copy the user mode filetime high and low parts */
-						user_mode_time.LowPart = lpUserTime.dwLowDateTime;
-						user_mode_time.HighPart = lpUserTime.dwHighDateTime;
-					} else {
-						mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID '%lu'.", pid);
-					}
-					
-					/* Get page file usage */
-					if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
-					{
-						page_file_usage = ppsmemCounters.PagefileUsage;
-					} else {
-						mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID '%lu'.", pid);
-					}
-					
-					/*
-					// Get priority
-					priority_class = GetPriorityClass(hProcess);
-					if (priority_class)
-					{
-						// Save the value as a string
-						sprintf(read_buff, "%u", priority_class);
-						priority = strdup(read_buff);
-					} else {
-						mtwarn(WM_SYS_LOGTAG, "Unable to retrieve priority from process with PID '%lu'.", pid);
-						priority = strdup("unknown");
-					}
-					*/
-					
-					/* Get session ID */
-					if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID '%lu'.", pid);
-					
-					// TODO: Get the virtual size
-					
-					/* Close process handle */
-					CloseHandle(hProcess);
-				} else {
-					mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process handle for PID '%lu'.", pid);
-					exec_path = strdup("unknown");
 				}
 				
 				/* Add process information to the JSON document */
@@ -1588,11 +1665,12 @@ void sys_proc_windows(const char* LOCATION) {
 				cJSON_AddNumberToObject(process, "pid", pid); // ProcessId
 				cJSON_AddNumberToObject(process, "session", session_id); // SessionId
 				cJSON_AddNumberToObject(process, "nlwp", thread_count); // ThreadCount
-				cJSON_AddNumberToObject(process, "stime", user_mode_time.QuadPart); // UserModeTime
+				cJSON_AddNumberToObject(process, "utime", user_mode_time.QuadPart); // UserModeTime
 				cJSON_AddNumberToObject(process, "vm_size", virtual_size); // VirtualSize
 				
 				cJSON_AddItemToArray(proc_array, object);
 				
+				free(name);
 				free(exec_path);
 			} while(Process32Next(hSnapshot, &pe));
 			
