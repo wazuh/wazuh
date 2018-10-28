@@ -401,72 +401,72 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     char ** files;
     char ** subdir;
     char agent_conf_multi_path[PATH_MAX + 1] = {0};
-    char multi_group_cpy[OS_SIZE_65536] = {0};
 
     if(!hash_multigroup){
         return;
     }
 
-    snprintf(multi_group_cpy,OS_SIZE_65536,"%s",multi_group);
-    /* Get each group of the multi-group */
-    group = strtok(multi_group, delim);
+    if (!logr.nocmerged) {
+        /* Get each group of the multi-group */
+        group = strtok(multi_group, delim);
 
-    /* Delete agent.conf from multi group before appending to it */
-    snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup,"agent.conf");
-    unlink(agent_conf_multi_path);
+        /* Delete agent.conf from multi group before appending to it */
+        snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup,"agent.conf");
+        unlink(agent_conf_multi_path);
 
-    while( group != NULL ) {
-        /* Now for each group copy the files to the multi-group folder */
-        char dir[PATH_MAX + 1] = {0};
+        while( group != NULL ) {
+            /* Now for each group copy the files to the multi-group folder */
+            char dir[PATH_MAX + 1] = {0};
 
-        snprintf(dir, PATH_MAX + 1, "%s/%s", SHAREDCFG_DIR, group);
+            snprintf(dir, PATH_MAX + 1, "%s/%s", SHAREDCFG_DIR, group);
 
-        dp = opendir(SHAREDCFG_DIR);
+            dp = opendir(SHAREDCFG_DIR);
 
-        if (!dp) {
-            mdebug2("Opening directory: '%s': %s", dir, strerror(errno));
-            return;
-        }
-
-        if (files = wreaddir(dir), !files) {
-            if (errno != ENOTDIR) {
-                mdebug2("At c_multi_group(): Could not open directory '%s'", dir);
-                closedir(dp);
+            if (!dp) {
+                mdebug2("Opening directory: '%s': %s", dir, strerror(errno));
                 return;
             }
-            continue;
-        }
 
-        unsigned int i;
-        for (i = 0; files[i]; ++i) {
-            /* Ignore hidden files  */
-            /* Leave the shared config file for later */
-            /* Also discard merged.mg.tmp */
-            if (files[i][0] == '.' || !strncmp(files[i], SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
+            if (files = wreaddir(dir), !files) {
+                if (errno != ENOTDIR) {
+                    mdebug2("At c_multi_group(): Could not open directory '%s'", dir);
+                    closedir(dp);
+                    return;
+                }
                 continue;
             }
 
-            char destination_path[PATH_MAX + 1] = {0};
-            char source_path[PATH_MAX + 1] = {0};
-            char agent_conf_chunck_message[PATH_MAX + 1]= {0};
+            unsigned int i;
+            for (i = 0; files[i]; ++i) {
+                /* Ignore hidden files  */
+                /* Leave the shared config file for later */
+                /* Also discard merged.mg.tmp */
+                if (files[i][0] == '.' || !strncmp(files[i], SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
+                    continue;
+                }
 
-            snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
-            snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, hash_multigroup, files[i]);
+                char destination_path[PATH_MAX + 1] = {0};
+                char source_path[PATH_MAX + 1] = {0};
+                char agent_conf_chunck_message[PATH_MAX + 1]= {0};
 
-            /* If the file is agent.conf, append */
-            if(strcmp(files[i],"agent.conf") == 0){
-                snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
-                w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message);
+                snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
+                snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, hash_multigroup, files[i]);
+
+                /* If the file is agent.conf, append */
+                if(strcmp(files[i],"agent.conf") == 0){
+                    snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
+                    w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message);
+                }
+                else {
+                    w_copy_file(source_path,destination_path,'c',NULL);
+                }
+
             }
-            else {
-                w_copy_file(source_path,destination_path,'c',NULL);
-            }
+            group = strtok(NULL, delim);
+            free_strarray(files);
+            closedir(dp);
 
         }
-        group = strtok(NULL, delim);
-        free_strarray(files);
-        closedir(dp);
-
     }
 
     /* Open de multi-group files and generate merged */
