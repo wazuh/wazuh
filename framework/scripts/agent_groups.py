@@ -297,10 +297,9 @@ def main():
 
 if __name__ == "__main__":
 
-    if read_config()['node_type'] != 'master':
-        raise WazuhException(3019)
-
     try:
+        if read_config()['node_type'] != 'master':
+            raise WazuhException(3019)
         main()
     except WazuhException as e:
         print("Error {0}: {1}".format(e.code, e.message))
