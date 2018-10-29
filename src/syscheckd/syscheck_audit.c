@@ -495,6 +495,7 @@ int audit_init(void) {
 
         // Start audit thread
         w_cond_init(&audit_thread_started, NULL);
+        w_cond_init(&audit_db_consistency, NULL);
         w_create_thread(audit_main, &audit_socket);
         w_mutex_lock(&audit_mutex);
         while (!audit_thread_active)
@@ -600,6 +601,7 @@ void audit_parse(char *buffer) {
     char *inode = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
+    char *inode_temp;
 
     if (pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) { // Parse only 'wazuh_fim' events.
 
@@ -750,16 +752,21 @@ void audit_parse(char *buffer) {
                     if (cwd && path0) {
                         if (file_path = gen_audit_path(cwd, path0, NULL), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                realtime_checksumfile(inode_temp, w_evt);
+                            } else {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            }
                         }
                     }
                     break;
@@ -777,7 +784,12 @@ void audit_parse(char *buffer) {
                                 (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                realtime_checksumfile(inode_temp, w_evt);
+                            } else {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            }
+
                         }
                     }
                     break;
@@ -799,17 +811,23 @@ void audit_parse(char *buffer) {
                         char *file_path1;
                         if (file_path1 = gen_audit_path(cwd, path0, path2), file_path1) {
                             w_evt->path = file_path1;
-                            mdebug2("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                realtime_checksumfile(inode_temp, w_evt);
+                            } else {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            }
+
                             free(file_path1);
                             w_evt->path = NULL;
                         }
@@ -818,17 +836,22 @@ void audit_parse(char *buffer) {
                         char *file_path2;
                         if (file_path2 = gen_audit_path(cwd, path1, path3), file_path2) {
                             w_evt->path = file_path2;
-                            mdebug2("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                realtime_checksumfile(inode_temp, w_evt);
+                            } else {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            }
                         }
                     }
                     free(path2);
@@ -864,6 +887,7 @@ void * audit_main(int * audit_sock) {
     w_mutex_lock(&audit_mutex);
     audit_thread_active = 1;
     w_cond_signal(&audit_thread_started);
+    w_cond_wait(&audit_db_consistency, &audit_mutex);
     w_mutex_unlock(&audit_mutex);
 
     minfo("Starting FIM Whodata engine...");

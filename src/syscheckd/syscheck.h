@@ -97,8 +97,10 @@ void *audit_main(int *audit_sock);
 void clean_rules(void);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
+extern volatile int whodata_alerts;
 extern pthread_mutex_t audit_mutex;
 extern pthread_cond_t audit_thread_started;
+extern pthread_cond_t audit_db_consistency;
 #elif WIN32
 int whodata_audit_start();
 int set_winsacl(const char *dir, int position);

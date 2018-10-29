@@ -430,6 +430,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 merror("Unable to add file to db: %s", file_name);
             }
 
+            if (OSHash_Add_ex(syscheck.inode_hash, str_inode, strdup(file_name)) <= 0) {
+                mwarn("Unable to add inode to db: %s (%s) ", file_name, str_inode);
+            }
+
             /* Send the new checksum to the analysis server */
             alert_msg[OS_MAXSTR] = '\0';
 
@@ -691,10 +695,13 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
             return 0;
         }
 #else
-        mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
+        mdebug2("Cannot open '%s': %s ", dir_name, strerror(errno));
 #endif /* WIN32 */
         free(f_name);
         return (-1);
+    }
+    else if (evt) {
+        return (0);
     }
 
     /* Check for real time flag */
@@ -834,6 +841,10 @@ int create_db()
         return (0);
     }
     if (!OSHash_setSize(syscheck.local_hash, 2048)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+    if (!OSHash_setSize(syscheck.inode_hash, 2048)) {
         merror(LIST_ERROR);
         return (0);
     }
