@@ -788,7 +788,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Get current time before starting */
     gettime(&c_timespec);
     Start_Time();
-    
+
     /* Start the hourly/weekly stats directories*/
     if(Init_Stats_Directories() < 0) {
         Config.stats = 0;
@@ -2246,8 +2246,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
         w_inc_processed_events();
-
-        if (lf_logall && (Config.logall || Config.logall_json)){
+        
+        if (Config.logall || Config.logall_json){
+            if (!lf_logall) {
+                os_calloc(1, sizeof(Eventinfo), lf_logall);
+                w_copy_event_for_log(lf, lf_logall);
+            }
             result = queue_push_ex(writer_queue, lf_logall);
             if (result < 0) {
                 if(!reported_writer){
