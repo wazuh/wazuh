@@ -70,6 +70,13 @@ def check_cluster_config(config):
     if 'nodes' not in config or len(config['nodes']) == 0:
         raise WazuhException(3004, 'No nodes defined in cluster configuration.')
 
+    if 'disabled' not in config:
+        config['disabled'] = 'yes'
+
+    if config['disabled'] != 'yes' and config['disabled'] != 'no':
+        raise WazuhException(3004, 'Invalid value for disabled option {}. Allowed values are yes and no'.
+                             format(config['disabled']))
+
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".format(
