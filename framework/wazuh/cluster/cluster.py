@@ -150,17 +150,7 @@ def check_cluster_status():
             directory = f.readline().split("=")[1][:-1].replace('"', "")
 
     try:
-        # wrap the data
-        with open("{0}/etc/ossec.conf".format(directory)) as f:
-            txt_data = f.read()
-
-        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
-        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
-        txt_data = '<root_tag>' + txt_data + '</root_tag>'
-
-        conf = ET.fromstring(txt_data)
-
-        return conf.find('ossec_config').find('cluster').find('disabled').text == 'no'
+        return read_config()['disabled'] == 'no'
     except:
         return False
 
