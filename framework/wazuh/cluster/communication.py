@@ -105,7 +105,7 @@ class Response:
     def __init__(self):
         self.cond = threading.Condition()
         self.data = None
-
+        self.response_timeout = get_cluster_items_communication_intervals()['timeout_cluster_request']
 
     def read(self):
         def frange(start, stop, step):
@@ -116,7 +116,7 @@ class Response:
 
         with self.cond:
             # wait for a response for common.cluster_timeout_msg seconds
-            for _ in frange(1,common.cluster_timeout_msg,0.5):
+            for _ in frange(1,self.response_timeout,0.5):
                 self.cond.wait(timeout=0.5)
                 if self.data is not None:
                     break

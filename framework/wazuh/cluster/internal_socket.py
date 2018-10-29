@@ -6,7 +6,8 @@
 from wazuh.cluster import communication
 from wazuh import common
 from wazuh.exception import WazuhException
-from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json
+from wazuh.cluster.cluster import read_config, check_cluster_config, get_status_json, \
+    get_cluster_items_communication_intervals
 import socket
 import random
 import json
@@ -246,7 +247,7 @@ def execute(request):
         # Wait response
         #  Data received will be free when dapi_forward request is received, or when a json/err response is processed.
         logger.debug("Waiting response.")
-        timeout_not_expired = data_received.wait(25)
+        timeout_not_expired = data_received.wait(get_cluster_items_communication_intervals()['timeout_api_request'])
 
         if timeout_not_expired:
             response = json.loads(isocket_worker_thread.manager.final_data)
