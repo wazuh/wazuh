@@ -138,7 +138,7 @@ void HandleSecure()
                     mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
 
                     if (wnotify_add(notify, sock_client) < 0) {
-                        merror("wnotify_add(%d): %s (%d)", sock_client, strerror(errno), errno);
+                        merror("wnotify_add(%d, %d): %s (%d)", notify->fd, sock_client, strerror(errno), errno);
                         _close_sock(&keys, sock_client);
                     }
                 } else {
@@ -149,7 +149,7 @@ void HandleSecure()
                     if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
                         switch (errno) {
                             case ENOTCONN:
-                                mdebug1("TCP peer was disconnected.");
+                                mdebug1("TCP peer was disconnected: cannot get peer name. [%d]", sock_client);
                                 break;
                             default:
                                 merror("Couldn't get the remote peer information: %s [%d]", strerror(errno), errno);
@@ -164,7 +164,7 @@ void HandleSecure()
                         switch (recv_b) {
                         case -1:
                             if (errno == ENOTCONN) {
-                                mdebug1("TCP peer at %s disconnected (ENOTCONN).", inet_ntoa(peer_info.sin_addr));
+                                mdebug1("TCP peer at %s disconnected (ENOTCONN) [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
                             } else {
                                 merror("TCP peer at %s: %s (%d)", inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                             }
@@ -406,6 +406,8 @@ int _close_sock(keystore * keys, int sock) {
     if (close(sock) == 0) {
         rem_dec_tcp();
     }
+
+    mdebug1("TCP peer disconnected [%d]", sock);
 
     return retval;
 }
