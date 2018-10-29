@@ -672,8 +672,13 @@ void Free_Eventinfo(Eventinfo *lf)
         }
     }
 
-    if (lf->comment)
+    if (lf->is_a_copy && lf->program_name) {
+        free(lf->program_name);
+    }
+
+    if (lf->comment) {
         free(lf->comment);
+    }
 
     if (lf->full_log) {
         free(lf->full_log);
@@ -994,6 +999,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->hostname,lf_cpy->hostname);
     }
 
+    if(lf->program_name){
+        os_strdup(lf->program_name,lf_cpy->program_name);
+    }
+
     if(lf->comment){
         os_strdup(lf->comment,lf_cpy->comment);
     }
@@ -1255,7 +1264,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         }
         lf_cpy->last_events[index] = NULL;
     }
-    
+
     lf_cpy->labels = labels_dup(lf->labels);
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
     lf_cpy->rootcheck_fts = lf->rootcheck_fts;
