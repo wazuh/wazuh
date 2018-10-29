@@ -7,10 +7,10 @@ from sys import exit, path, argv
 from os.path import dirname, basename
 from getopt import GetoptError, getopt
 from signal import signal, SIGINT
-from wazuh.cluster.cluster import read_config
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
+from wazuh.cluster.cluster import read_config
 
 # Import framework
 try:
