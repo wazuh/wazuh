@@ -159,6 +159,7 @@ class WazuhException(Exception):
         3016: 'Received an error response',
         3017: 'The agent is not reporting to any manager',
         3018: 'Error sending request',
+        3019: 'This tool is only available for master nodes',
 
         # > 9000: Authd
     }

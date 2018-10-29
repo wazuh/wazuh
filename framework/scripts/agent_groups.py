@@ -10,6 +10,7 @@ from signal import signal, SIGINT
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
+from wazuh.cluster.cluster import read_config
 
 # Import framework
 try:
@@ -297,6 +298,8 @@ def main():
 if __name__ == "__main__":
 
     try:
+        if read_config()['node_type'] != 'master':
+            raise WazuhException(3019)
         main()
     except WazuhException as e:
         print("Error {0}: {1}".format(e.code, e.message))
