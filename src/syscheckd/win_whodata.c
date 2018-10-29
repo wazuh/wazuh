@@ -962,6 +962,10 @@ void send_whodata_del(whodata_evt *w_evt) {
     if (s_node = OSHash_Delete_ex(syscheck.fp, w_evt->path), !s_node) {
         return;
     }
+    if (s_node = OSHash_Delete_ex(syscheck.inode_hash, w_evt->inode), !s_node) {
+        return;
+    }
+
     free(s_node->checksum);
     free(s_node);
 

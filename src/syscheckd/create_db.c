@@ -701,6 +701,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         return (-1);
     }
     else if (evt) {
+        free(f_name);
         return (0);
     }
 

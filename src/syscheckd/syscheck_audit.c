@@ -861,7 +861,6 @@ void audit_parse(char *buffer) {
             free(cwd);
             free(path0);
             free(path1);
-
             free_whodata_event(w_evt);
         }
     }
