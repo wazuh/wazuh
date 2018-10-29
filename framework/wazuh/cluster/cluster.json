@@ -134,7 +134,10 @@
 
             "max_time_receiving_string": 30,
             "string_transfer_receive": 0.1,
-            "string_transfer_send": 0.1
+            "string_transfer_send": 0.1,
+
+            "timeout_cluster_request": 20,
+            "timeout_api_request": 200
         }
     },
 
