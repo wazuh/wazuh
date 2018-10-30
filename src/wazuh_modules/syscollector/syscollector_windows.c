@@ -29,6 +29,9 @@ typedef struct SMBIOSStructureHeader {
 	WORD Handle;
 } SMBIOSStructureHeader;
 
+static LPCTSTR priv = "SeDebugPrivilege";
+int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
+
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
 
@@ -179,7 +182,23 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    char local_addr[NI_MAXHOST];
+	HANDLE hdle;
+	int privilege_enabled = 0;
+	
+	/* Enable debug privilege */
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle))
+	{
+		if (!set_token_privilege(hdle, priv, TRUE))
+		{
+			privilege_enabled = 1;
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process. Error '%ld'.", GetLastError());
+		}
+	} else {
+		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve current process token. Error '%ld'.", GetLastError());
+	}
+	
+	char local_addr[NI_MAXHOST];
     char rem_addr[NI_MAXHOST];
     struct in_addr ipaddress;
 
@@ -545,6 +564,14 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         FREE(pUdp6Table);
         pUdp6Table = NULL;
     }
+	
+	/* Disable debug privilege */
+	if (privilege_enabled)
+	{
+		if (set_token_privilege(hdle, priv, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process. Error '%ld'.", GetLastError());
+	}
+	
+	if (hdle) CloseHandle(hdle);
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "port_end");
@@ -976,6 +1003,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     RegCloseKey(program_key);
 }
 
+/* Reference: https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_2.6.0.pdf */
 char* get_smbios_baseboard_serial(BYTE* rawData, DWORD rawDataSize){
 	DWORD pos = 0;
 	SMBIOSStructureHeader *header;
@@ -1100,6 +1128,7 @@ void sys_hw_windows(const char* LOCATION){
 	memcpy(&Signature, byteSignature, 4);
 	
 	/* Get raw SMBIOS firmware table size */
+	/* Reference: https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/nf-sysinfoapi-getsystemfirmwaretable */
 	smbios_size = GetSystemFirmwareTable(Signature, 0, NULL, 0);
 	if (smbios_size)
 	{
@@ -1558,6 +1587,22 @@ void sys_proc_windows(const char* LOCATION) {
 	ULARGE_INTEGER kernel_mode_time, user_mode_time;
 	DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
 	
+	HANDLE hdle;
+	int privilege_enabled = 0;
+	
+	/* Enable debug privilege */
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle))
+	{
+		if (!set_token_privilege(hdle, priv, TRUE))
+		{
+			privilege_enabled = 1;
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "Unable to set debug privilege on current process. Error '%ld'.", GetLastError());
+		}
+	} else {
+		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve current process token. Error '%ld'.", GetLastError());
+	}
+	
 	/* Create a snapshot of all current processes */
 	hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (hSnapshot != INVALID_HANDLE_VALUE)
@@ -1627,18 +1672,18 @@ void sys_proc_windows(const char* LOCATION) {
 							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID '%lu'. Error '%ld'.", pid, GetLastError());
 						}
 						
-						/* Get page file usage */
+						/* Get page file usage and virtual size */
+						/* Reference: https://stackoverflow.com/a/1986486 */
 						if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
 						{
 							page_file_usage = ppsmemCounters.PagefileUsage;
+							virtual_size = (ppsmemCounters.WorkingSetSize + ppsmemCounters.PagefileUsage);
 						} else {
 							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID '%lu'. Error '%ld'.", pid, GetLastError());
 						}
 						
 						/* Get session ID */
 						if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID '%lu'. Error '%ld'.", pid, GetLastError());
-						
-						// TODO: Get the virtual size (but how??)
 						
 						/* Close process handle */
 						CloseHandle(hProcess);
@@ -1692,6 +1737,14 @@ void sys_proc_windows(const char* LOCATION) {
 		mtwarn(WM_SYS_LOGTAG, "Unable to create process snapshot.");
 	}
 	
+	/* Disable debug privilege */
+	if (privilege_enabled)
+	{
+		if (set_token_privilege(hdle, priv, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process. Error '%ld'.", GetLastError());
+	}
+	
+	if (hdle) CloseHandle(hdle);
+	
 	cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
     cJSON_AddNumberToObject(object, "ID", ID);
@@ -1704,6 +1757,40 @@ void sys_proc_windows(const char* LOCATION) {
     cJSON_Delete(object);
     free(string);
     free(timestamp);
+}
+
+int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
+	TOKEN_PRIVILEGES tp;
+	LUID pr_uid;
+
+	// Get the privilege UID
+	if (!LookupPrivilegeValue(NULL, privilege, &pr_uid)) {
+		merror("Could not find the '%s' privilege. Error: %lu", privilege, GetLastError());
+		return 1;
+	}
+
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Luid = pr_uid;
+
+	if (enable) {
+		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	} else {
+		tp.Privileges[0].Attributes = 0;
+	}
+
+    // Set the privilege to the process
+	if (!AdjustTokenPrivileges(hdle, 0, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
+		merror("AdjustTokenPrivileges() failed. Error: '%lu'", GetLastError());
+		return 1;
+	}
+
+    if (enable) {
+        mdebug2("The '%s' privilege has been added.", privilege);
+    } else {
+        mdebug2("The '%s' privilege has been removed.", privilege);
+    }
+
+	return 0;
 }
 
 #endif
