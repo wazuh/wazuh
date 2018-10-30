@@ -649,16 +649,8 @@
                           "doc_values": "true"
                         },
                         "geoLocation": {
-                          "properties": {
-                            "lat": {
-                              "type": "geo_point",
-                              "doc_values": "true"
-                            },
-                            "lon": {
-                              "type": "geo_point",
-                              "doc_values": "true"
-                            }
-                          }
+                            "type": "geo_point",
+                            "doc_values": "true"
                         }
                       }
                     }
