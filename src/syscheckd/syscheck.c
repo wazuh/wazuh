@@ -78,8 +78,9 @@ int fim_initialize() {
     /* Create store data */
     syscheck.fp = OSHash_Create();
     syscheck.local_hash = OSHash_Create();
+#ifndef WIN32
     syscheck.inode_hash = OSHash_Create();
-
+#endif
     // Duplicate hash table to check for deleted files
     syscheck.last_check = OSHash_Create();
 

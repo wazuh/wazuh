@@ -429,11 +429,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 free(s_node);
                 merror("Unable to add file to db: %s", file_name);
             }
-
+#ifndef WIN32
             if (OSHash_Add_ex(syscheck.inode_hash, str_inode, strdup(file_name)) <= 0) {
                 mwarn("Unable to add inode to db: %s (%s) ", file_name, str_inode);
             }
-
+#endif
             /* Send the new checksum to the analysis server */
             alert_msg[OS_MAXSTR] = '\0';
 
@@ -846,10 +846,12 @@ int create_db()
         merror(LIST_ERROR);
         return (0);
     }
+#ifndef WIN32
     if (!OSHash_setSize(syscheck.inode_hash, 2048)) {
         merror(LIST_ERROR);
         return (0);
     }
+#endif
 
     if ((syscheck.dir == NULL) || (syscheck.dir[0] == NULL)) {
         merror("No directories to check.");

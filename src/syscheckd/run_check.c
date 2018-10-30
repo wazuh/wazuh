@@ -89,7 +89,9 @@ static void send_sk_db(int first_start)
     /* Send end scan control message */
     if(first_start) {
         send_syscheck_msg(HC_FIM_DB_EFS);
+#ifndef WIN32
         w_cond_signal(&audit_db_consistency);
+#endif
     } else {
         send_syscheck_msg(HC_FIM_DB_ES);
     }
@@ -361,9 +363,11 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             free(s_node->checksum);
             free(s_node);
         }
+#ifndef WIN32
         if (s_node = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), s_node) {
             free(s_node);
         }
+#endif
         struct timeval timeout = {0, syscheck.rt_delay * 1000};
         select(0, NULL, NULL, NULL, &timeout);
 
