@@ -197,7 +197,7 @@ int main(int argc, char **argv)
             return 0;
             break;
         case 1:
-            merror("Worker nodes can't manage agents");
+            merror("manage_agents is not available in worker nodes. Please, try it in the master node.");
             return 0;
             break;
     }

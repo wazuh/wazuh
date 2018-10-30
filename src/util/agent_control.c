@@ -77,6 +77,19 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
+    int is_worker = w_is_worker();
+
+    switch (is_worker) {
+        case -1:
+            merror("Invalid option at cluster configuration");
+            return 0;
+            break;
+        case 1:
+            merror("agent_control is not available in worker nodes. Please, try it in the master node.");
+            return 0;
+            break;
+    }
+
     /* User arguments */
     if (argc < 2) {
         helpmsg();
