@@ -48,6 +48,7 @@ def distribute_function(input_json, pretty=False, debug=False):
                 (request_type == 'local_master' and node_info['type'] == 'master')   or\
                 (request_type == 'distributed_master' and input_json['from_cluster']):
 
+            del input_json['arguments']['wait_for']  # local requests don't use this parameter
             return execute_local_request(input_json, pretty, debug)
 
         # Second case: forward the request
@@ -135,7 +136,7 @@ def execute_remote_request(input_json, pretty):
     :param pretty: JSON pretty print
     :return: JSON response
     """
-    response = i_s.execute('dapi {}'.format(json.dumps(input_json)))
+    response = i_s.execute('dapi {}'.format(json.dumps(input_json)), input_json['arguments']['wait_for'])
     data, error = __split_response_data(response)
     return print_json(data=data, pretty=pretty, error=error)
 
@@ -170,7 +171,8 @@ def forward_request(input_json, master_name, pretty, debug):
                 response = json.loads(distribute_function(input_json, debug=debug))
             else:
                 # if it's a worker, forward it
-                response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+                response = i_s.execute('{} {}'.format(command, json.dumps(input_json)),
+                                       input_json['arguments']['wait_for'])
                 if not isinstance(response, dict):
                     # If there's an error and the flag return_none is not set, return a dictionary with the response.
                     response = {'error':3016, 'message':str(WazuhException(3016,response))} if not return_none else None
