@@ -26,6 +26,7 @@
 #include "check_cert.h"
 #include <openssl/ssl.h>
 #include "auth.h"
+#include "os_regex/os_regex.h"
 
 #undef ARGV0
 #define ARGV0 "agent-auth"
@@ -36,7 +37,7 @@ static void help_agent_auth(void) __attribute__((noreturn));
 static void help_agent_auth()
 {
     print_header();
-    print_out("  %s: -[VhdtI] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-i IP address]", ARGV0);
+    print_out("  %s: -[Vhdti] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-I IP address]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -367,9 +368,17 @@ int main(int argc, char **argv)
     }
 
     if(sender_ip){
-        char opt_buf[256] = {0};
-        snprintf(opt_buf,254," IP:'%s'",sender_ip);
-        strncat(buf,opt_buf,254);
+		/* Check if this is strictly an IP address using a regex */
+		if (OS_Regex("^\\d+.\\d+.\\d+.\\d+$", sender_ip))
+		{
+			char opt_buf[256] = {0};
+			snprintf(opt_buf,254," IP:'%s'",sender_ip);
+			strncat(buf,opt_buf,254);
+		} else {
+			merror("Invalid IP address provided with '-I' option.");
+			free(buf);
+			exit(1);
+		}
     }
 
     if(use_src_ip)
