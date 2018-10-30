@@ -398,7 +398,7 @@ int init_regex(void) {
         return -1;
     }
     // static const char *pattern_inode = " inode=([0-9]*) ";
-    static const char *pattern_inode = " item=[1-9] name=.* inode=([0-9]*)";
+    static const char *pattern_inode = " item=[0-9] name=.* inode=([0-9]*)";
     if (regcomp(&regexCompiled_inode, pattern_inode, REG_EXTENDED)) {
         merror("Cannot compile inode regular expression.");
         return -1;
@@ -762,10 +762,13 @@ void audit_parse(char *buffer) {
                                 (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
-                                realtime_checksumfile(inode_temp, w_evt);
-                            } else {
-                                realtime_checksumfile(w_evt->path, w_evt);
+
+                            if(w_evt->inode){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
                             }
                         }
                     }
@@ -784,12 +787,14 @@ void audit_parse(char *buffer) {
                                 (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
-                                realtime_checksumfile(inode_temp, w_evt);
-                            } else {
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            }
 
+                            if(w_evt->inode){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
                         }
                     }
                     break;
@@ -822,10 +827,12 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
-                                realtime_checksumfile(inode_temp, w_evt);
-                            } else {
-                                realtime_checksumfile(w_evt->path, w_evt);
+                            if(w_evt->inode){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
                             }
 
                             free(file_path1);
@@ -847,10 +854,12 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
-                                realtime_checksumfile(inode_temp, w_evt);
-                            } else {
-                                realtime_checksumfile(w_evt->path, w_evt);
+                            if(w_evt->inode){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
                             }
                         }
                     }
