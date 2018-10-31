@@ -14,7 +14,7 @@
 #include "../config/global-config.h"
 
 // Returns 1 if the node is a worker, 0 if it is not and -1 if error.
-int w_is_worker(){
+int w_is_worker(void) {
 
     OS_XML xml;
     const char * xmlf[] = {"ossec_config", "cluster", "disabled", NULL};
@@ -58,4 +58,35 @@ int w_is_worker(){
     OS_ClearXML(&xml);
 
     return is_worker;
+}
+
+
+char *get_master_node(void) {
+
+    OS_XML xml;
+    const char * xmlf[] = {"ossec_config", "cluster", "nodes", "node", NULL};
+    const char *cfgfile = DEFAULTCPATH;
+    _Config cfg;
+    int modules = 0;
+    char *master_node = NULL;
+
+    modules |= CCLUSTER;
+
+    if (ReadConfig(modules, cfgfile, &cfg, NULL) < 0) {
+        master_node = strdup("undefined");
+    }
+
+    if (OS_ReadXML(cfgfile, &xml) < 0) {
+        mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
+    } else {
+        master_node = OS_GetOneContentforElement(&xml, xmlf);
+    }
+
+    OS_ClearXML(&xml);
+
+    if (!master_node) {
+        master_node = strdup("undefined");
+    }
+
+    return master_node;
 }

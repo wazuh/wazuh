@@ -12,6 +12,10 @@
 #ifndef CLUSTER_UTILS_H_
 #define CLUSTER_UTILS_H_
 
-int w_is_worker();
+// Returns 1 if the node is a worker, 0 if it is not and -1 if error.
+int w_is_worker(void);
 
-#endif 
+// Returns the master node or "undefined" if any node is specified.
+char *get_master_node(void);
+
+#endif

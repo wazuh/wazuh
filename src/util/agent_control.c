@@ -78,16 +78,17 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     int is_worker = w_is_worker();
+    char *master;
 
     switch (is_worker) {
         case -1:
             merror("Invalid option at cluster configuration");
             return 0;
-            break;
         case 1:
-            merror("agent_control is not available in worker nodes. Please, try it in the master node.");
+            master = get_master_node();
+            merror("Wazuh is running in cluster mode: %s is not available in worker nodes. Please, try again in the master node: %s.", ARGV0, master);
+            free(master);
             return 0;
-            break;
     }
 
     /* User arguments */
