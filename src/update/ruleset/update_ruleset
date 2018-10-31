@@ -26,6 +26,10 @@ from filecmp import cmp
 from time import time
 from json import dumps
 
+# Set framework path
+sys.path.append(os.path.dirname(sys.argv[0]) + '/../framework')  # It is necessary to import Wazuh package
+from wazuh.cluster.cluster import read_config
+
 try:
     from urllib2 import urlopen, URLError, HTTPError
 except:
@@ -580,6 +584,15 @@ def usage():
 
 
 if __name__ == "__main__":
+
+    cluster_config = read_config()
+
+    if cluster_config['node_type'] != 'master' and cluster_config['disabled'] == 'no':
+        executable_name = "update_ruleset"
+        master_ip = cluster_config['nodes'][0]
+        print("Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. "
+            "Please, try again in the master node: {MASTER_IP}".format(EXECUTABLE_NAME=executable_name, MASTER_IP=master_ip))
+        sys.exit(1)
 
     if os.geteuid() != 0:
         print("You need root privileges to run this script. Please try again, using 'sudo'. Exiting.")
