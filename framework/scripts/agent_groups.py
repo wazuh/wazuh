@@ -301,8 +301,14 @@ if __name__ == "__main__":
         if read_config()['node_type'] != 'master':
             raise WazuhException(3019)
         main()
+
     except WazuhException as e:
-        print("Error {0}: {1}".format(e.code, e.message))
+        if e.code == 3019:
+            binary_name = argv[0].split('/')[-1]
+            master_ip = read_config()['bind_addr']
+            print("Error {0}: {1}".format(e.code, e.message.format(BINARY_NAME=binary_name, MASTER_IP=master_ip)))
+        else:
+            print("Error {0}: {1}".format(e.code, e.message))
         if debug:
             raise
     except Exception as e:
