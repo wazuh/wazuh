@@ -419,7 +419,15 @@ class Handler(asyncore.dispatcher_with_send):
     def handle_close(self):
         self.close()
 
-        for response in self.box.values():
+        # before closing all responses, wait to let the response be written.
+        n_retries = 0
+        while len(self.box) > 0 and n_retries < 5:
+            logger.debug("{}: There are {} pending responses. Waiting 0.1s.".format(self.tag, len(self.box)))
+            time.sleep(0.1)
+            n_retries += 1
+
+        for response_id, response in self.box.items():
+            logger.debug("{}: Closing pending response with id {}.".format(self.tag, response_id))
             response.write(None)
 
 
