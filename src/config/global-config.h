@@ -112,4 +112,7 @@ typedef struct __Config {
     long queue_size;
 } _Config;
 
+
+void config_free(_Config *config);
+
 #endif /* _CCONFIG__H */

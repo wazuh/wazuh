@@ -23,6 +23,7 @@ int w_is_worker(void) {
     int modules = 0;
     int is_worker = 0;
     _Config cfg;
+    memset(&cfg, 0, sizeof(_Config));
 
     modules |= CCLUSTER;
 
@@ -56,6 +57,7 @@ int w_is_worker(void) {
         }
     }
     OS_ClearXML(&xml);
+    config_free(&cfg);
 
     return is_worker;
 }
@@ -69,6 +71,7 @@ char *get_master_node(void) {
     _Config cfg;
     int modules = 0;
     char *master_node = NULL;
+    memset(&cfg, 0, sizeof(_Config));
 
     modules |= CCLUSTER;
 
@@ -87,6 +90,8 @@ char *get_master_node(void) {
     if (!master_node) {
         master_node = strdup("undefined");
     }
+
+    config_free(&cfg);
 
     return master_node;
 }
