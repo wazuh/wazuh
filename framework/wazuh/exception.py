@@ -159,7 +159,7 @@ class WazuhException(Exception):
         3016: 'Received an error response',
         3017: 'The agent is not reporting to any manager',
         3018: 'Error sending request',
-        3019: 'Wazuh is running in cluster mode: {BINARY_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
+        3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
 
         # > 9000: Authd
     }

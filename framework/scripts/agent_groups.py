@@ -298,17 +298,15 @@ def main():
 if __name__ == "__main__":
 
     try:
-        if read_config()['node_type'] != 'master' and read_config()['disabled'] == 'no':
-            raise WazuhException(3019)
+        cluster_config = read_config()
+        executable_name = "agent_groups"
+        master_ip = cluster_config['nodes'][0]
+        if cluster_config['node_type'] != 'master' and cluster_config['disabled'] == 'no':
+            raise WazuhException(3019, {"EXECUTABLE_NAME": executable_name, "MASTER_IP": master_ip})
         main()
 
     except WazuhException as e:
-        if e.code == 3019:
-            binary_name = "agent_groups.py"
-            master_ip = read_config()['nodes'][0]
-            print("Error {0}: {1}".format(e.code, e.message.format(BINARY_NAME=binary_name, MASTER_IP=master_ip)))
-        else:
-            print("Error {0}: {1}".format(e.code, e.message))
+        print("Error {0}: {1}".format(e.code, e.message))
         if debug:
             raise
     except Exception as e:
