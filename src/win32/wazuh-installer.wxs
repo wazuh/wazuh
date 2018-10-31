@@ -21,6 +21,10 @@
         </Property>
         <Property Id="CERTIFICATE" Secure="yes">
         </Property>
+        <Property Id="PEM" Secure="yes">
+        </Property>
+        <Property Id="KEY" Secure="yes">
+        </Property>
         <Property Id="AGENT_NAME" Secure="yes">
         </Property>
         <Property Id="MsiLogging" Value="v" />
@@ -51,7 +55,8 @@
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
         <CustomAction Id="CustomAction_RunAuthd" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT]" Directory="APPLICATIONFOLDER" Execute="immediate" />
         <CustomAction Id="CustomAction_RunAuthdPassword" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD]" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdCertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v [CERTIFICATE]" Execute="immediate" />
+        <CustomAction Id="CustomAction_RunAuthdCACertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v [CERTIFICATE]" Execute="immediate" />
+        <CustomAction Id="CustomAction_RunAuthdAgentCertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k [KEY] -x [PEM]" Execute="immediate" />
         <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
 
         <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
@@ -71,10 +76,10 @@
             <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
-
-            <Custom Action="CustomAction_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = ""</Custom>
+            <Custom Action="CustomAction_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
             <Custom Action="CustomAction_RunAuthdPassword" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PASSWORD &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_RunAuthdCertificate" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND CERTIFICATE &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_RunAuthdCACertificate" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND CERTIFICATE &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_RunAuthdAgentCertificate" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
             <Custom Action="StartWinService" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; ""</Custom>
         </InstallExecuteSequence>
         <Directory Id="TARGETDIR" Name="SourceDir">
