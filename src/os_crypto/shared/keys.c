@@ -30,6 +30,7 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
 {
     unsigned int i;
     int keyid;
+    char strsock[16];
 
     for (i = 0; i < old_keys->keysize; i++) {
         keyid = OS_IsAllowedID(keys, old_keys->keyentries[i]->id);
@@ -38,6 +39,9 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
             keys->keyentries[keyid]->rcvd = old_keys->keyentries[i]->rcvd;
             keys->keyentries[keyid]->sock = old_keys->keyentries[i]->sock;
             memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_in));
+
+            snprintf(strsock, sizeof(strsock), "%d", keys->keyentries[keyid]->sock);
+            OSHash_Add(keys->keyhash_sock, strsock, keys->keyentries[keyid]);
         }
     }
 }
