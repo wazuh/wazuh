@@ -175,9 +175,12 @@ class WazuhException(Exception):
         self.code = code
         if not cmd_error:
             if extra_message:
-                self.message = "{0}: {1}".format(self.ERRORS[code], extra_message)
+                if isinstance(extra_message, dict):
+                    self.message = self.ERRORS[code].format(**extra_message)
+                else:
+                    self.message = "{0}: {1}".format(self.ERRORS[code], extra_message)
             else:
-                self.message = "{0}.".format(self.ERRORS[code])
+                self.message = self.ERRORS[code]
         else:
             self.message = extra_message
 
