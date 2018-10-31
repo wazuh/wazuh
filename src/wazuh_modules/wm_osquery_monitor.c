@@ -127,7 +127,8 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
                                     *end = '\0';
                                     cJSON_AddStringToObject(osquery_json, "pack", begin);
                                     *end = '_';
-
+                                    end += 1;
+                                    cJSON_AddStringToObject(osquery_json, "subquery", end);
                                 }
                             }
                         }
