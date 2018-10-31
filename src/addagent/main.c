@@ -189,6 +189,7 @@ int main(int argc, char **argv)
     srandom_init();
     getuname();
 
+#ifndef CLIENT
     int is_worker = w_is_worker();
     char *master;
 
@@ -202,6 +203,7 @@ int main(int argc, char **argv)
             free(master);
             return 0;
     }
+#endif
 
 #ifndef WIN32
     if (gethostname(shost, sizeof(shost) - 1) < 0) {
