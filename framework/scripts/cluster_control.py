@@ -199,10 +199,6 @@ def sync_master(filter_node):
 
 ### Get agents
 def print_agents(filter_status, filter_node, is_master):
-    if not is_master:
-        print("This option is not available in worker nodes.")
-        exit(0)
-
     agents = get_agents(filter_status, filter_node, is_master)
     try:
         table = ["  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}".format(agent['id'], agent['name'], agent['ip'],
