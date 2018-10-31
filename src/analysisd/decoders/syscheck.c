@@ -346,19 +346,17 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 end_scan = *end_first_scan;
             }
 
-            if(end_scan == 0) {
-                mdebug2("Agent '%s' Alert discarded, first scan. File '%s'", lf->agent_id, f_name);
-                goto exit_ok;
-            }
-
-            if(lf->time.tv_sec < end_scan) {
-                mdebug2("Agent '%s' Alert discarded, first scan (delayed event). File '%s'", lf->agent_id, f_name);
-                goto exit_ok;
-            }
-
-            if((Config.syscheck_alert_new == 0) && (lf->event_type == FIM_ADDED)) {
-                mdebug2("Agent '%s' Alert discarded (alert_new_files = no). File '%s'", lf->agent_id, f_name);
-                goto exit_ok;
+            if(lf->event_type == FIM_ADDED) {
+                if(end_scan == 0) {
+                    mdebug2("Agent '%s' Alert discarded, first scan. File '%s'", lf->agent_id, f_name);
+                    goto exit_ok;
+                } else if(lf->time.tv_sec < end_scan) {
+                    mdebug2("Agent '%s' Alert discarded, first scan (delayed event). File '%s'", lf->agent_id, f_name);
+                    goto exit_ok;
+                } else if(Config.syscheck_alert_new == 0) {
+                    mdebug2("Agent '%s' Alert discarded (alert_new_files = no). File '%s'", lf->agent_id, f_name);
+                    goto exit_ok;
+                }
             }
 
             mdebug2("Agent '%s' End end_scan is '%ld' (lf->time: '%ld')", lf->agent_id, end_scan, lf->time.tv_sec);
