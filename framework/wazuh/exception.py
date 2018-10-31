@@ -159,7 +159,7 @@ class WazuhException(Exception):
         3016: 'Received an error response',
         3017: 'The agent is not reporting to any manager',
         3018: 'Error sending request',
-        3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
+        3019: 'This tool is only available for master nodes',
 
         # > 9000: Authd
     }
@@ -175,12 +175,9 @@ class WazuhException(Exception):
         self.code = code
         if not cmd_error:
             if extra_message:
-                if isinstance(extra_message, dict):
-                    self.message = self.ERRORS[code].format(**extra_message)
-                else:
-                    self.message = "{0}: {1}".format(self.ERRORS[code], extra_message)
+                self.message = "{0}: {1}".format(self.ERRORS[code], extra_message)
             else:
-                self.message = self.ERRORS[code]
+                self.message = "{0}.".format(self.ERRORS[code])
         else:
             self.message = extra_message
 
