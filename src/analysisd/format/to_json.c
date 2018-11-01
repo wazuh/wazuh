@@ -100,7 +100,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddItemToObject(rule, "mail", cJSON_CreateBool(lf->generated_rule->alert_opts & DO_MAILALERT));
 
         if (lf->last_events && lf->last_events[0] && lf->last_events[1] && *lf->last_events[1] != '\0') {
-            cJSON_AddStringToObject(root, "previous_output", lf->last_events[1]);
+            cJSON_AddStringToObject(root, "previous_output", lf->last_events[0]);
         }
     }
 
