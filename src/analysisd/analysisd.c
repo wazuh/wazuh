@@ -533,7 +533,7 @@ int main_analysisd(int argc, char **argv)
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
                     if (!test_config) {
-                        minfo("Reading loading the lists file: '%s'", *listfiles);
+                        minfo("Reading the lists file: '%s'", *listfiles);
                     }
                     if (Lists_OP_LoadList(*listfiles) < 0) {
                         merror_exit(LISTS_ERROR, *listfiles);
