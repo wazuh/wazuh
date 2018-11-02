@@ -676,10 +676,10 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
 int wm_sync_agent_group(int id_agent, const char *fname) {
     int result = 0;
-    char group[PATH_MAX + 1] = "";
+    char group[OS_SIZE_65536 + 1] = "";
     clock_t clock0 = clock();
 
-    get_agent_group(fname, group, PATH_MAX);
+    get_agent_group(fname, group, OS_SIZE_65536);
 
     switch (wdb_update_agent_group(id_agent, *group ? group : NULL)) {
     case -1:
