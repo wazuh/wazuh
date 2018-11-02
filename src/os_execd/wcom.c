@@ -515,7 +515,7 @@ size_t wcom_upgrade_result(char ** output){
         fclose(result_file);
     }
     *output = strdup("err Cannot read upgrade_result file.");
-    merror("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
+    mdebug1("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
     return strlen(*output);
 }
 
