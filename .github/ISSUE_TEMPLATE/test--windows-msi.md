@@ -22,6 +22,10 @@ To check in every test:
 - [ ] Successful installation by UI
 - [ ] Unattended installation
 - [ ] Unattended installation with registration parameters
+- [ ] Check the options "PEM" and "KEY" with absolute paths. (1)
+- [ ] Check the options "PEM" and "KEY" with relative paths.
+- [ ] Check the option "CERTIFICATE" with absolute paths. (1)
+- [ ] Check the option "CERTIFICATE" with relative paths.
 
 ### Versions
 
@@ -34,6 +38,7 @@ To check in every test:
 - [ ] Windows 8/8.1
 - [ ] Windows Server 2016
 - [ ] Windows 10
+- [ ] Windows Server 2019
 
 ## Uninstall
 
@@ -56,6 +61,7 @@ To check in every test:
 - [ ] Windows 8/8.1
 - [ ] Windows Server 2016
 - [ ] Windows 10
+- [ ] Windows Server 2019
 
 ## Upgrade
 
@@ -71,6 +77,8 @@ To check in every test:
 - [ ] Upgrade from the current MSI
 - [ ] Upgrade MSI from EXE installation 2.X.X
 - [ ] Upgrade MSI from EXE installation 3.X.X
+- [ ] Check an unattended installation with PEM and KEY from a previous version.
+- [ ] Check an unattended installation with CERTIFICATE from a previous version.
 
 ### Versions
 
@@ -83,3 +91,6 @@ To check in every test:
 - [ ] Windows 8/8.1
 - [ ] Windows Server 2016
 - [ ] Windows 10
+- [ ] Windows Server 2019
+
+(1) Use MS-DOS scaping form for paths with spaces. ( "C:\Program Files\sslagent.cert" would be "C:\Progra\~1\sslagent.cert" and "C:\Program Files x86\sslagent.cert" would be "C:\Progra\~2\sslagent.cert")
