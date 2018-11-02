@@ -6,7 +6,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-module wazuh 1.0;
+module wazuh 1.1;
 
 require {
 	type audisp_t;
