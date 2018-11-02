@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta
 from base64 import b64encode
 from shutil import copyfile, move, copytree, rmtree
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk, geteuid
+from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk, geteuid, errno
 from time import time, sleep
 import socket
 import hashlib
@@ -1554,9 +1554,10 @@ class Agent:
             chown(multi_group_path, common.ossec_uid, common.ossec_gid)
             chmod(multi_group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
-        except Exception as e:
-            raise WazuhException(1005, str(e))
-
+        except OSError as e:
+            if errno != errno.EEXIST:
+                raise WazuhException(1005, str(e))
+                
         return msg
 
 
