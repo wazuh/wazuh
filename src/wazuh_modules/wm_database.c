@@ -676,7 +676,8 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
 int wm_sync_agent_group(int id_agent, const char *fname) {
     int result = 0;
-    char group[OS_SIZE_65536 + 1] = "";
+    char *group;
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
     clock_t clock0 = clock();
 
     get_agent_group(fname, group, OS_SIZE_65536);
@@ -694,6 +695,8 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
     }
 
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agent_group(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+
+    free(group);
     return result;
 }
 
