@@ -339,7 +339,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char path[PATH_MAX] = "";
-    char group[PATH_MAX + 1] = {0};
+    char * group;
     char cidr[20];
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
@@ -355,6 +355,8 @@ void wm_sync_agents() {
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, 0, 0, 0);
 
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
+
     /* Insert new entries */
 
     for (i = 0; i < keys.keysize; i++) {
@@ -368,8 +370,7 @@ void wm_sync_agents() {
             continue;
         }
 
-        group[0] = '\0';
-        get_agent_group(entry->id, group, PATH_MAX);
+        get_agent_group(entry->id, group, OS_SIZE_65536 + 1);
 
         if (!(wdb_insert_agent(id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL) || module->full_sync)) {
 
@@ -413,6 +414,7 @@ void wm_sync_agents() {
         free(agents);
     }
 
+    free(group);
     OS_FreeKeys(&keys);
     mtdebug1(WM_DATABASE_LOGTAG, "Agent sync completed.");
     gettime(&spec1);
