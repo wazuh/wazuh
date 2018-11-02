@@ -622,7 +622,7 @@ static void c_files()
         }
 
         os_sha256 multi_group_hash;
-        char _hash[9];
+        char _hash[9] = {0};
         char *multi_group_hash_pt = NULL;
 
         if(multi_group_hash_pt = OSHash_Get(m_hash,multi_group),multi_group_hash_pt){
@@ -721,12 +721,12 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     if(strchr(group,MULTIGROUP_SEPARATOR)){
 
         if(multi_group_hash_pt = OSHash_Get(m_hash,group),multi_group_hash_pt){
-            mdebug1("At send_file_toagent(): Hash is '%s'",multi_group_hash);
+            mdebug1("At send_file_toagent(): Hash is '%s'",multi_group_hash_pt);
             snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash_pt, name);
         }
         else{
             OS_SHA256_String(group,multi_group_hash);
-            char _hash[9];
+            char _hash[9] = {0};
             strncpy(_hash,multi_group_hash,8);
             OSHash_Add(m_hash,group,strdup(_hash));
 
