@@ -301,6 +301,53 @@ int set_agent_group(const char * id, const char * group) {
     return 0;
 }
 
+#ifndef WIN32
+/* Create multigroup dir. Returns 0 on success or -1 on failure. */
+int create_multigroup_dir(const char * multigroup) {
+    char path[PATH_MAX];
+    DIR *dp;
+    char *has_multigroup =  strchr(multigroup,MULTIGROUP_SEPARATOR);
+
+    if(!has_multigroup){
+        return 0;
+    }
+    mdebug1("Attempting to create multigroup dir: '%s'",multigroup);
+
+    if (snprintf(path, PATH_MAX, isChroot() ? MULTIGROUPS_DIR "/%s" : DEFAULTDIR MULTIGROUPS_DIR "/%s", multigroup) >= PATH_MAX) {
+        merror("At create_multigroup_dir(): path too large for multigroup '%s'.", multigroup);
+        return -1;
+    }
+
+    dp = opendir(path);
+
+    /* Multigroup doesnt exists, create the directory */
+    if(!dp){
+       if (mkdir(path, 0770) == -1) {
+            merror("At create_multigroup_dir(): couldn't create directory '%s'", path);
+            return -1;
+        }
+
+        if(chmod(path,0770) < 0){
+            merror("At create_multigroup_dir(): Error in chmod setting permissions for path: %s",path);
+        }
+
+        uid_t uid = Privsep_GetUser(USER);
+        gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+
+        if (chown(path, uid, gid) == -1) {
+            merror(CHOWN_ERROR, path, errno, strerror(errno));
+            return -1;
+        }
+        mdebug1("Multigroup dir created: '%s'",multigroup);
+    }
+    else{
+        closedir(dp);
+    }
+
+    return 0;
+}
+#endif
+
 /*
  * Parse manager hostname from agent-info file.
  * If no such file, returns NULL.
@@ -356,4 +403,86 @@ char* hostname_parse(const char *path) {
 
     fclose(fp);
     return manager_hostname;
+}
+
+int w_validate_group_name(const char *group){
+
+    unsigned int i = 0;
+    char valid_chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:;_-=+!@(),";
+    int offset = 0;
+    int valid_chars_length = strlen(valid_chars);
+    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
+    char *multi_group_cpy = NULL;
+
+    os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
+    snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
+ 
+    if(!multigroup && (strlen(group) > MAX_GROUP_NAME)){
+        free(multi_group_cpy);
+        mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
+        return -2;
+    }
+    else if(multigroup && strlen(group) > OS_SIZE_65536 -1 ){
+        free(multi_group_cpy);
+        mdebug1("At w_validate_group_name(): Multigroup length is over %d characters",OS_SIZE_65536);
+        return -3;
+    }
+
+    /* Check if the group is only composed by ',' */
+    unsigned int comas = 0;
+    for(i = 0; i < strlen(group); i++){
+        if(group[i] == MULTIGROUP_SEPARATOR){
+            comas++;
+        }
+    }
+
+    if(!multigroup){
+        offset = 1;
+        valid_chars[valid_chars_length - offset] = '\0';
+    }
+
+    /* Check if the multigroups are empty or have consecutive ',' */
+    if(multigroup){
+
+        const char delim[2] = ",";
+        char *individual_group = strtok(multi_group_cpy, delim);
+            
+        while( individual_group != NULL ) {
+
+            /* Spaces are not allowed */
+            if(strchr(individual_group,' '))
+            {
+                free(multi_group_cpy);
+                return -4;
+            }
+
+            individual_group = strtok(NULL, delim);
+        }
+
+        /* Look for consecutive ',' */
+        if(strstr(group,",,")){
+            free(multi_group_cpy);
+            return -5;
+        }
+    }
+
+    /* Check if the group is only composed by ',' */
+    if(comas == strlen(group)){
+        free(multi_group_cpy);
+        return -1;
+    }
+
+    /* Check if the group starts or ends with ',' */
+    if(group[0] == ',' || group[strlen(group) - 1] == ',' ){
+        free(multi_group_cpy);
+        return -6;
+    }
+
+    if(strspn(group,valid_chars) != strlen(group)){
+        free(multi_group_cpy);
+        return -1;
+    }
+
+    free(multi_group_cpy);
+    return 0;
 }

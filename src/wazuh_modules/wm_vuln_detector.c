@@ -47,12 +47,14 @@ static int wm_vulnerability_detector_compare(char *version_it, char *cversion_it
 static const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vulnerability_set_oval);
 static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
 static int check_timestamp(const char *OS, char *timst, char *ret_timst);
+cJSON *wm_vulnerability_detector_dump(const wm_vulnerability_detector_t * vulnerability_detector);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
     "vulnerability-detector",
     (wm_routine)wm_vulnerability_detector_main,
-    (wm_routine)wm_vulnerability_detector_destroy
+    (wm_routine)wm_vulnerability_detector_destroy,
+    (cJSON * (*)(const void *))wm_vulnerability_detector_dump
 };
 
 const char *vu_dist_tag[] = {
@@ -2562,6 +2564,43 @@ void wm_vulnerability_detector_destroy(wm_vulnerability_detector_t * vulnerabili
         }
     }
     free(vulnerability_detector);
+}
+
+
+cJSON *wm_vulnerability_detector_dump(const wm_vulnerability_detector_t * vulnerability_detector){
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_vd = cJSON_CreateObject();
+    unsigned int i;
+
+    if (vulnerability_detector->flags.enabled) cJSON_AddStringToObject(wm_vd,"disabled","no"); else cJSON_AddStringToObject(wm_vd,"disabled","yes");
+    if (vulnerability_detector->flags.run_on_start) cJSON_AddStringToObject(wm_vd,"run_on_start","yes"); else cJSON_AddStringToObject(wm_vd,"run_on_start","no");
+    cJSON_AddNumberToObject(wm_vd,"interval",vulnerability_detector->detection_interval);
+    cJSON_AddNumberToObject(wm_vd,"ignore_time",vulnerability_detector->ignore_time);
+    cJSON *feeds = cJSON_CreateArray();
+    for (i = 0; i < OS_SUPP_SIZE; i++) {
+        if (vulnerability_detector->updates[i]) {
+            cJSON *feed = cJSON_CreateObject();
+            if (vulnerability_detector->updates[i]->dist) cJSON_AddStringToObject(feed,"name",vulnerability_detector->updates[i]->dist);
+            if (vulnerability_detector->updates[i]->version) cJSON_AddStringToObject(feed,"version",vulnerability_detector->updates[i]->version);
+            if (vulnerability_detector->updates[i]->url) {
+                cJSON *alt = cJSON_CreateObject();
+                cJSON_AddStringToObject(alt,"url",vulnerability_detector->updates[i]->url);
+                if (vulnerability_detector->updates[i]->port > 0)
+                    cJSON_AddNumberToObject(alt,"port",vulnerability_detector->updates[i]->port);
+
+                cJSON_AddItemToObject(feed,"alternative",alt);
+            }
+            cJSON_AddNumberToObject(feed,"interval",vulnerability_detector->updates[i]->interval);
+            cJSON_AddItemToArray(feeds,feed);
+        }
+    }
+    if (cJSON_GetArraySize(feeds) > 0) cJSON_AddItemToObject(wm_vd,"feeds",feeds);
+
+    cJSON_AddItemToObject(root,"vulnerability-detector",wm_vd);
+
+    return root;
+
 }
 
 #endif

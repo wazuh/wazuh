@@ -82,7 +82,6 @@ void *OSHash_Free(OSHash *self)
     return (NULL);
 }
 
-
 /* Generates hash for key */
 static unsigned int _os_genhash(const OSHash *self, const char *key)
 {
@@ -267,7 +266,7 @@ int OSHash_Numeric_Add_ex(OSHash *self, int key, void *data)
     return result;
 }
 
-/** int OSHash_Add(OSHash *self, char *key, void *data)
+/** int OSHash_Add_ex(OSHash *self, char *key, void *data)
  * Returns 0 on error.
  * Returns 1 on duplicated key (not added)
  * Returns 2 on success
@@ -280,6 +279,22 @@ int OSHash_Add_ex(OSHash *self, const char *key, void *data)
     result = OSHash_Add(self,key,data);
     w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
 
+    return result;
+}
+
+/** int OSHash_Add_ins(OSHash *self, char *key, void *data)
+ * Returns 0 on error.
+ * Returns 1 on duplicated key (not added)
+ * Returns 2 on success
+ * Key must not be NULL.
+ */
+int OSHash_Add_ins(OSHash *self, const char *key, void *data)
+{
+    int result;
+    char *key_cpy = strdup(key);
+    str_lowercase(key_cpy);
+    result = OSHash_Add_ex(self,key_cpy,data);
+    free(key_cpy);
     return result;
 }
 
@@ -335,7 +350,7 @@ void *OSHash_Numeric_Get_ex(const OSHash *self, int key)
     return result;
 }
 
-/** void *OSHash_Get(OSHash *self, char *key)
+/** void *OSHash_Get_ex(OSHash *self, char *key)
  * Returns NULL on error (key not found).
  * Returns the key otherwise.
  * Key must not be NULL.
@@ -347,6 +362,21 @@ void *OSHash_Get_ex(const OSHash *self, const char *key)
     result = OSHash_Get(self,key);
     w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
 
+    return result;
+}
+
+/** void *OSHash_Get_ins(OSHash *self, char *key)
+ * Returns NULL on error (key not found).
+ * Returns the key otherwise.
+ * Key must not be NULL.
+ */
+void *OSHash_Get_ins(const OSHash *self, const char *key)
+{
+    void *result;
+    char *key_cpy = strdup(key);
+    str_lowercase(key_cpy);
+    result = OSHash_Get_ex(self,key_cpy);
+    free(key_cpy);
     return result;
 }
 
@@ -404,6 +434,16 @@ void *OSHash_Delete_ex(OSHash *self, const char *key)
     result = OSHash_Delete(self,key);
     w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
 
+    return result;
+}
+
+void *OSHash_Delete_ins(OSHash *self, const char *key)
+{
+    void *result;
+    char *key_cpy = strdup(key);
+    str_lowercase(key_cpy);
+    result = OSHash_Delete_ex(self,key_cpy);
+    free(key_cpy);
     return result;
 }
 

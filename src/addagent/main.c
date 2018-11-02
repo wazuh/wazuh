@@ -189,6 +189,22 @@ int main(int argc, char **argv)
     srandom_init();
     getuname();
 
+#ifndef CLIENT
+    int is_worker = w_is_worker();
+    char *master;
+
+    switch (is_worker) {
+        case -1:
+            merror("Invalid option at cluster configuration");
+            return 0;
+        case 1:
+            master = get_master_node();
+            merror("Wazuh is running in cluster mode: %s is not available in worker nodes. Please, try again in the master node: %s.", ARGV0, master);
+            free(master);
+            return 0;
+    }
+#endif
+
 #ifndef WIN32
     if (gethostname(shost, sizeof(shost) - 1) < 0) {
         strncpy(shost, "localhost", sizeof(shost) - 1);

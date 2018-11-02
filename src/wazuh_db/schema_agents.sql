@@ -5,43 +5,12 @@
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
  */
-
-CREATE TABLE IF NOT EXISTS fim_file (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    path TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('file', 'registry'))
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS fim_file_path ON fim_file (type, path);
-
-CREATE TABLE IF NOT EXISTS fim_event (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_file INTEGER NOT NULL REFERENCES fim_file (id),
-    type TEXT NOT NULL CHECK (type IN ('added', 'modified', 'readded', 'deleted')),
-    date TEXT,
-    size INTEGER,
-    perm TEXT,
-    uid INTEGER,
-    gid INTEGER,
-    md5 TEXT,
-    sha1 TEXT,
-    uname TEXT,
-    gname TEXT,
-    mtime TEXT,
-    inode INTEGER
-);
-
-CREATE INDEX IF NOT EXISTS fim_event_type ON fim_event (type);
-CREATE INDEX IF NOT EXISTS fim_event_file ON fim_event (id_file);
-CREATE INDEX IF NOT EXISTS fim_event_date ON fim_event (date);
-CREATE INDEX IF NOT EXISTS fim_event_md5 ON fim_event (md5);
-CREATE INDEX IF NOT EXISTS fim_event_sha1 ON fim_event (sha1);
-
+ 
 CREATE TABLE IF NOT EXISTS fim_entry (
     file TEXT PRIMARY KEY,
     type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
     date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-    changes INTEGER NOT NULL DEFAULT 0,
+    changes INTEGER NOT NULL DEFAULT 1,
     size INTEGER,
     perm TEXT,
     uid TEXT,
@@ -51,7 +20,8 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     uname TEXT,
     gname TEXT,
     mtime INTEGER,
-    inode TEXT
+    inode INTEGER,
+    sha256 TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pm_event (
@@ -69,7 +39,6 @@ CREATE INDEX IF NOT EXISTS pm_event_date ON pm_event (date_last);
 PRAGMA journal_mode=WAL;
 
 CREATE TABLE IF NOT EXISTS sys_netiface (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
     scan_id INTEGER,
     scan_time TEXT,
     name TEXT,
@@ -85,31 +54,30 @@ CREATE TABLE IF NOT EXISTS sys_netiface (
     tx_errors INTEGER,
     rx_errors INTEGER,
     tx_dropped INTEGER,
-    rx_dropped INTEGER
+    rx_dropped INTEGER,
+    PRIMARY KEY (scan_id, name)
 );
 
 CREATE INDEX IF NOT EXISTS netiface_id ON sys_netiface (scan_id);
 
 CREATE TABLE IF NOT EXISTS sys_netproto (
-    id INTEGER REFERENCES sys_netiface (id),
-    scan_id INTEGER,
-    iface TEXT,
+    scan_id INTEGER REFERENCES sys_netiface (scan_id),
+    iface TEXT REFERENCES sys_netiface (name),
     type TEXT,
     gateway TEXT,
     dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
-    PRIMARY KEY (id, type)
+    PRIMARY KEY (scan_id, iface, type)
 );
 
 CREATE INDEX IF NOT EXISTS netproto_id ON sys_netproto (scan_id);
 
 CREATE TABLE IF NOT EXISTS sys_netaddr (
-    id INTEGER REFERENCES sys_netiface (id),
-    scan_id INTEGER,
-    proto TEXT,
+    scan_id INTEGER REFERENCES sys_netproto (scan_id),
+    proto TEXT REFERENCES sys_netproto (type),
     address TEXT,
     netmask TEXT,
     broadcast TEXT,
-    PRIMARY KEY (id, address)
+    PRIMARY KEY (scan_id, proto, address)
 );
 
 CREATE INDEX IF NOT EXISTS netaddr_id ON sys_netaddr (scan_id);
@@ -240,4 +208,15 @@ CREATE INDEX IF NOT EXISTS ciscat_id ON ciscat_results (scan_id);
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
     value TEXT
+);
+
+CREATE TABLE IF NOT EXISTS scan_info (
+    module TEXT PRIMARY KEY,
+    first_start INTEGER,
+    first_end INTEGER,
+    start_scan INTEGER,
+    end_scan INTEGER,
+    fim_first_check INTEGER,
+    fim_second_check INTEGER,
+    fim_third_check INTEGER
 );

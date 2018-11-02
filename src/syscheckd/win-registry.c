@@ -301,7 +301,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch, c
         /* Look for p_key on the reg db */
         if (os_winreg_changed(full_key_name, mf_sum, sf_sum, arch)) {
             char reg_changed[MAX_LINE + 1];
-            snprintf(reg_changed, MAX_LINE, "0:0:0:0:%s:%s!:::::::::::%s %s%s",
+            snprintf(reg_changed, MAX_LINE, "::::%s:%s:::::!:::::::::::%s %s%s",
                      mf_sum, sf_sum, tag ? tag : "", arch == ARCH_64BIT ? "[x64] " : "", full_key_name);
 
             /* Notify server */
@@ -329,6 +329,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
     if (fullkey_name && syscheck.registry_ignore) {
         while (syscheck.registry_ignore[i].entry != NULL) {
             if (syscheck.registry_ignore[i].arch == arch && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) {
+                mdebug1("Ignoring registry '%s' ignore '%s', continuing...", fullkey_name, syscheck.registry_ignore[i].entry);
                 return;
             }
             i++;
@@ -339,6 +340,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
             if (syscheck.registry_ignore[i].arch == arch &&
                 OSMatch_Execute(fullkey_name, strlen(fullkey_name),
                                 syscheck.registry_ignore_regex[i].regex)) {
+                mdebug1("Ignoring registry '%s' ignore '%s', continuing...", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
                 return;
             }
             i++;
@@ -346,7 +348,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
     }
 
     if (RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &oshkey) != ERROR_SUCCESS) {
-        merror(SK_REG_OPEN, subkey);
+        mwarn(SK_REG_OPEN, subkey);
         return;
     }
 
@@ -405,7 +407,6 @@ void os_winreg_check()
     /* Notify of db completed */
     if (run_count > 1) {
         sleep(syscheck.tsleep * 5);
-        notify_registry(HC_SK_DB_COMPLETED, 1);
     }
 
     run_count++;

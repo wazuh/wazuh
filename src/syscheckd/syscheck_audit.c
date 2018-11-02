@@ -344,6 +344,12 @@ int add_audit_rules_syscheck(void) {
                     W_Vector_insert(audit_added_rules, syscheck.dir[i]);
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
+                } else if (abs(retval) == 17) {
+                    mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
+                    w_mutex_lock(&audit_rules_mutex);
+                    W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                    w_mutex_unlock(&audit_rules_mutex);
+                    rules_added++;
                 } else {
                     merror("Error adding Audit rule for directory (%i): %s .",retval, syscheck.dir[i]);
                 }
@@ -843,7 +849,7 @@ void * audit_main(int * audit_sock) {
     w_cond_signal(&audit_thread_started);
     w_mutex_unlock(&audit_mutex);
 
-    mdebug1("Reading events from Audit socket...");
+    minfo("Starting FIM Whodata engine...");
 
     while (audit_thread_active) {
         FD_ZERO(&fdset);
@@ -942,7 +948,7 @@ void * audit_main(int * audit_sock) {
     }
 
     // Auditd is not runnig or socket closed.
-    merror("Audit thread finished.");
+    mdebug1("Audit thread finished.");
     free(buffer);
     close(*audit_sock);
 

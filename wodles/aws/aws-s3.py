@@ -197,7 +197,7 @@ class AWSBucket:
         self.db_table_name = 'trail_progress'
         self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
         self.db_connector = sqlite3.connect(self.db_path)
-        self.retain_db_records = 500
+        self.retain_db_records = 5000
         self.reparse = reparse
         self.bucket = bucket
         self.client = self.get_s3_client(access_key, secret_key, profile, iam_role_arn)

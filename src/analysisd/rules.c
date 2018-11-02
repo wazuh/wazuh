@@ -11,9 +11,11 @@
 #include "config.h"
 #include "eventinfo.h"
 #include "compiled_rules/compiled_rules.h"
+#include "analysisd.h"
 
 /* Global definition */
 RuleInfo *currently_rule;
+int default_timeframe;
 
 /* Change path for test rule */
 #ifdef TESTRULE
@@ -150,7 +152,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     char *location = NULL;
 
     size_t i;
-    int default_timeframe = 360;
+    default_timeframe = 360;
 
     /* If no directory in the rulefile, add the default */
     if ((strchr(rulefile, '/')) == NULL) {
@@ -321,6 +323,7 @@ int Rules_OP_ReadRules(const char *rulefile)
              * be fine
              */
             os_strdup(node[i]->values[0], config_ruleinfo->group);
+            os_strdup(rulefile,config_ruleinfo->file);
 
             /* Rule elements block */
             {
@@ -1303,18 +1306,6 @@ int Rules_OP_ReadRules(const char *rulefile)
 
             j++; /* next rule */
 
-            /* Create the last_events if necessary */
-            if (config_ruleinfo->context) {
-                int ii = 0;
-                os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *),
-                          config_ruleinfo->last_events);
-
-                /* Zero each entry */
-                for (; ii <= MAX_LAST_EVENTS; ii++) {
-                    config_ruleinfo->last_events[ii] = NULL;
-                }
-            }
-
             /* Add the rule to the rules list.
              * Only the template rules are supposed
              * to be at the top level. All others
@@ -1341,7 +1332,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
             /* Set the event_search pointer */
             if (config_ruleinfo->if_matched_sid) {
-                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                     Search_LastSids;
 
                 /* Mark rules that match this id */
@@ -1355,19 +1346,20 @@ int Rules_OP_ReadRules(const char *rulefile)
                 if (!config_ruleinfo->group_search) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
+                //OSList_SetFreeDataPointer(config_ruleinfo->group_search, (void (*)(void *)) Free_Eventinfo);
 
                 /* Mark rules that match this group */
                 OS_MarkGroup(NULL, config_ruleinfo);
 
                 /* Set function pointer */
-                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                     Search_LastGroups;
             } else if (config_ruleinfo->context) {
                 if ((config_ruleinfo->context == 1) &&
                         (config_ruleinfo->context_opts & SAME_DODIFF)) {
                     config_ruleinfo->context = 0;
                 } else {
-                    config_ruleinfo->event_search = (void *(*)(void *, void *))
+                    config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                         Search_LastEvents;
                 }
             }
@@ -1524,8 +1516,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->firedtimes = 0;
     ruleinfo_pt->maxsize = maxsize;
     ruleinfo_pt->frequency = frequency;
-    if (ruleinfo_pt->frequency > _max_freq) {
-        _max_freq = ruleinfo_pt->frequency;
+    if (ruleinfo_pt->frequency > last_events_list->_max_freq) {
+        last_events_list->_max_freq = ruleinfo_pt->frequency;
     }
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;
@@ -1587,10 +1579,6 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->action = NULL;
     ruleinfo_pt->location = NULL;
     os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
-
-    /* Zero last matched events */
-    ruleinfo_pt->__frequency = 0;
-    ruleinfo_pt->last_events = NULL;
 
     /* Zeroing the list of previous matches */
     ruleinfo_pt->sid_prev_matched = NULL;
@@ -1883,6 +1871,9 @@ static void Rule_AddAR(RuleInfo *rule_config)
             rule_config->ar = (active_response **) realloc(rule_config->ar,
                                       (rule_ar_size + 1)
                                       * sizeof(active_response *));
+            if(!rule_config->ar){
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
 
             /* Always set the last node to NULL */
             rule_config->ar[rule_ar_size - 1] = my_ar;

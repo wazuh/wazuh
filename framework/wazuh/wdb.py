@@ -41,7 +41,8 @@ class WazuhDBConnection:
             (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
             (query_elements[0] == 'agent' or query_elements[0] == 'global', "The {} database is not valid".format(query_elements[0])),
             (query_elements[1].isdigit() if query_elements[0] == 'agent' else True, "Incorrect agent ID {}".format(query_elements[1])),
-            (query_elements[sql_first_index+1] == 'select', "The API can only send select requests to WDB"),
+            (query_elements[sql_first_index+1] == 'select' or query_elements[sql_first_index+1] == 'delete' or
+             query_elements[sql_first_index+1] == 'update', "The API can only send select requests to WDB"),
             (not ';' in query, "Found a not valid symbol in database query: ;")
         ]
 
@@ -93,7 +94,7 @@ class WazuhDBConnection:
 
 
 
-    def execute(self, query, count=False):
+    def execute(self, query, count=False, delete=False, update=False):
         """
         Sends a sql query to wdb socket
         """
@@ -112,6 +113,22 @@ class WazuhDBConnection:
 
         self.__query_input_validation(query_lower)
 
+        # only for delete queries
+        if delete:
+            regex = re.compile(r"\w+ \d+? sql delete from ([a-z0-9,_ ]+)")
+            if regex.match(query_lower) is None:
+                raise WazuhException(2004, "Delete query is wrong")
+            return self.__send(query_lower)
+
+        # only for update queries
+        if update:
+            # regex = re.compile(r"\w+ \d+? sql update ([a-z0-9,*_ ]+) set value = '([a-z0-9,*_ ]+)' where key (=|like)?"
+            regex = re.compile(r"\w+ \d+? sql update ([\w\d,*_ ]+) set value = '([\w\d,*_ ]+)' where key (=|like)?"
+                               r" '([a-z0-9,*_%\- ]+)'")
+            if regex.match(query_lower) is None:
+                raise WazuhException(2004, "Update query is wrong")
+            return self.__send(query_lower)
+
         # if the query has already a parameter limit / offset, divide using it
         offset = 0
         if 'offset' in query_lower:
@@ -124,10 +141,10 @@ class WazuhDBConnection:
                 lim  = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
                 query_lower = query_lower.replace(" limit {}".format(lim), "")
 
-            regex  = re.compile(r"\w+ \d+? sql select ([a-z0-9,*_ ]+) from")
+            regex = re.compile(r"\w+ \d+? sql select ([a-z0-9,*_ ]+) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)", 1)
-            total  = list(self.__send(countq)[0].values())[0]
+            total = list(self.__send(countq)[0].values())[0]
 
             limit = lim if lim != 0 else total
 

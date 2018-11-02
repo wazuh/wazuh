@@ -29,7 +29,7 @@ void *OSSECAlert_Decoder_Init()
  * Examples:
  *
  */
-void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
+void *OSSECAlert_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
 {
     char *oa_id = 0;
     char *oa_location;
@@ -100,7 +100,10 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     snprintf(oa_newlocation, 255, "%s|%s", lf->location, oa_location);
     free(lf->location);
     os_strdup(oa_newlocation, lf->location);
-    lf->hostname = lf->location;
+    if (lf->hostname) {
+        free(lf->hostname);
+    }
+    os_strdup(lf->location, lf->hostname);
 
     /* Writting to the agent file */
     fp = fopen(agent_file, "w");

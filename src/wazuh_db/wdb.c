@@ -23,12 +23,14 @@ static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
-static const char *SQL_INSERT_METADATA = "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);";
-static const char * SQL_STMT[] = {
-    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode FROM fim_entry WHERE file = ?;",
+static const char *SQL_STMT[] = {
+    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date FROM fim_entry WHERE file = ?;",
     "SELECT 1 FROM fim_entry WHERE file = ?",
-    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;",
+    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ? WHERE file = ?;",
+    "DELETE FROM fim_entry WHERE file = ?;",
+    "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
+    "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date FROM fim_entry WHERE date < ?;",
     "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -41,13 +43,33 @@ static const char * SQL_STMT[] = {
     "INSERT INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     "DELETE FROM sys_processes WHERE scan_id != ?;",
     "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "INSERT INTO sys_netproto (id, scan_id, iface, type, gateway, dhcp) VALUES (?, ?, ?, ?, ?, ?);",
-    "INSERT INTO sys_netaddr (id, scan_id, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netproto (scan_id, iface, type, gateway, dhcp) VALUES (?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netaddr (scan_id, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?);",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
     "DELETE FROM sys_netproto WHERE scan_id != ?;",
     "DELETE FROM sys_netaddr WHERE scan_id != ?;",
     "INSERT INTO ciscat_results (scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "DELETE FROM ciscat_results WHERE scan_id != ?;"
+    "DELETE FROM ciscat_results WHERE scan_id != ?;",
+    "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);",
+    "INSERT INTO metadata (key, value) VALUES (?, ?);",
+    "UPDATE metadata SET value = ? WHERE key = ?;",
+    "SELECT value FROM metadata WHERE key = ?;",
+    "SELECT first_start, first_end, start_scan, end_scan, first_check, second_check, third_check FROM scan_info WHERE module = ?;",
+    "INSERT INTO scan_info (module, first_start, first_end, start_scan, end_scan, fim_first_check, fim_second_check, fim_third_check) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE scan_info SET first_start = ?, start_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET first_end = ?, end_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET start_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET end_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET fim_first_check = ? WHERE module = ?;",
+    "UPDATE scan_info SET fim_second_check = ? WHERE module = ?;",
+    "UPDATE scan_info SET fim_third_check = ? WHERE module = ?;",
+    "SELECT first_start FROM scan_info WHERE module = ?;",
+    "SELECT first_end FROM scan_info WHERE module = ?;",
+    "SELECT start_scan FROM scan_info WHERE module = ?;",
+    "SELECT end_scan FROM scan_info WHERE module = ?;",
+    "SELECT fim_first_check FROM scan_info WHERE module = ?;",
+    "SELECT fim_second_check FROM scan_info WHERE module = ?;",
+    "SELECT fim_third_check FROM scan_info WHERE module = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
@@ -168,13 +190,19 @@ wdb_t * wdb_open_agent2(int agent_id) {
             goto end;
         }
 
-        if (wdb_fill_metadata(db) < 0) {
-            merror("Couldn't fill metadata into database '%s'", path);
-            goto end;
+        wdb = wdb_init(db, sagent_id);
+
+        if (wdb_metadata_initialize(wdb, path) < 0) {
+            mwarn("Couldn't initialize metadata table in '%s'", path);
+        }
+        if (wdb_scan_info_init(wdb, path) < 0) {
+            mwarn("Couldn't initialize scan_info table in '%s'", path);
         }
     }
+    else {
+        wdb = wdb_init(db, sagent_id);
+    }
 
-    wdb = wdb_init(db, sagent_id);
     wdb_pool_append(wdb);
 
 success:
@@ -242,55 +270,6 @@ int wdb_create_agent_db2(const char * agent_id) {
     }
 
     return 0;
-}
-
-int wdb_fill_metadata(sqlite3 * db) {
-    sqlite3_stmt *stmt = NULL;
-    char version[] = __ossec_version;
-    char * strmajor;
-    char * strminor;
-    char * end;
-    int vmajor;
-    int vminor;
-    int result = 0;
-
-    // Extract version
-
-    strmajor = version + (*version == 'v');
-
-    if (end = strchr(strmajor, '.'), !end) {
-        merror("Couldn't parse internal version '%s'", strmajor);
-        return -1;
-    }
-
-    *end = '\0';
-    strminor = end + 1;
-
-    if (vmajor = (int)strtol(strmajor, &end, 10), end == strmajor) {
-        merror("Couldn't parse internal major version '%s'", strmajor);
-        return -1;
-    }
-
-    if (vminor = (int)strtol(strminor, &end, 10), end == strminor) {
-        merror("Couldn't parse internal minor version '%s'", strminor);
-        return -1;
-    }
-
-    if (sqlite3_prepare_v2(db, SQL_INSERT_METADATA, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("at wdb_fill_metadata(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, vmajor);
-    sqlite3_bind_int(stmt, 2, vminor);
-
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("at wdb_fill_metadata(): wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
 }
 
 /* Get agent name from location string */

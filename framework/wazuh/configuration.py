@@ -18,6 +18,7 @@ except ImportError:
     from io import StringIO
 
 import logging
+import hashlib
 logger = logging.getLogger(__name__)
 
 # Aux functions
@@ -76,6 +77,18 @@ conf_sections = {
     'cluster': {
         'type': 'last',
         'list_options': ['nodes']
+    },
+    'vulnerability-detector': {
+        'type': 'merge',
+        'list_options': ['feed']
+    },
+    'osquery': {
+        'type': 'merge',
+        'list_options': []
+    },
+    'labels': {
+        'type': 'duplicate',
+        'list_options': ['label']
     }
 }
 
@@ -161,12 +174,21 @@ def _read_option(section_name, opt):
             opt_value.append(json_path)
     elif section_name == 'cluster' and opt_name == 'nodes':
         opt_value = [child.text for child in opt]
+    elif section_name == 'labels' and opt_name == 'label':
+        opt_value = {'value': opt.text}
+        for a in opt.attrib:
+            opt_value[a] = opt.attrib[a]
     else:
         if opt.attrib:
             opt_value = {}
-            opt_value['item'] = opt.text
             for a in opt.attrib:
                 opt_value[a] = opt.attrib[a]
+            if list(opt):
+                for child in opt:
+                    child_section, child_config = _read_option(child.tag.lower(),child)
+                    opt_value[child_section] = child_config
+            else:
+                opt_value['item'] = opt.text
         else:
             opt_value = opt.text
 
@@ -442,6 +464,40 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
             raise WazuhException(1710, group_id)
 
         agent_conf = "{0}/{1}".format(common.shared_path, group_id)
+
+    if filename:
+        agent_conf_name = filename
+    else:
+        agent_conf_name = 'agent.conf'
+
+    agent_conf += "/{0}".format(agent_conf_name)
+
+    if not os_path.exists(agent_conf):
+        raise WazuhException(1006, agent_conf)
+
+    try:
+        # Read XML
+        xml_data = load_wazuh_xml(agent_conf)
+
+        # Parse XML to JSON
+        data = _agentconf2json(xml_data)
+    except Exception as e:
+        raise WazuhException(1101, str(e))
+
+
+    return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
+
+def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_limit, filename=None):
+    """
+    Returns agent.conf as dictionary.
+
+    :return: agent.conf as dictionary.
+    """
+    if group_id:
+        #if not Agent.multi_group_exists(group_id):
+            #raise WazuhException(1710, group_id)
+
+        agent_conf = "{0}/{1}".format(common.multi_groups_path, group_id)
 
     if filename:
         agent_conf_name = filename

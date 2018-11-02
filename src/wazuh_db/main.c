@@ -19,10 +19,13 @@ static void * run_dealer(void * args);
 static void * run_worker(void * args);
 static void * run_gc(void * args);
 
-static w_queue_t * sock_queue;
+//int wazuhdb_fdsock;
+wnotify_t * notify_queue;
+//static w_queue_t * sock_queue;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t sock_cond = PTHREAD_COND_INITIALIZER;
+//static pthread_cond_t sock_cond = PTHREAD_COND_INITIALIZER;
 static volatile int running = 1;
+rlim_t nofile;
 
 int main(int argc, char ** argv) {
     int test_config = 0;
@@ -75,6 +78,7 @@ int main(int argc, char ** argv) {
     config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
     config.commit_time = getDefine_Int("wazuh_db", "commit_time", 1, 3600);
     config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
+    nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
     if (!isDebug()) {
         int debug_level;
@@ -90,7 +94,7 @@ int main(int argc, char ** argv) {
 
     // Initialize variables
 
-    sock_queue = queue_init(config.sock_queue_size);
+    //sock_queue = queue_init(config.sock_queue_size);
     open_dbs = OSHash_Create();
 
     mdebug1(STARTED_MSG);
@@ -98,6 +102,13 @@ int main(int argc, char ** argv) {
     if (!run_foreground) {
         goDaemon();
         nowDaemon();
+    }
+
+    // Set max open files limit
+    struct rlimit rlimit = { nofile, nofile };
+
+    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
+        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
     }
 
     // Set user and group
@@ -147,6 +158,11 @@ int main(int argc, char ** argv) {
 
     minfo(STARTUP_MSG, (int)getpid());
 
+    if (notify_queue = wnotify_init(1), !notify_queue) {
+        merror_exit("at run_dealer(): wnotify_init(): %s (%d)",
+                strerror(errno), errno);
+    }
+
     // Start threads
 
     if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
@@ -176,6 +192,7 @@ int main(int argc, char ** argv) {
         pthread_join(worker_pool[i], NULL);
     }
 
+    wnotify_close(notify_queue);
     free(worker_pool);
     pthread_join(thread_gc, NULL);
     wdb_close_all();
@@ -190,7 +207,8 @@ void * run_dealer(__attribute__((unused)) void * args) {
     struct timeval timeout;
 
     if (sock = OS_BindUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror_exit("Unable to bind to socket '%s': '%s'. Closing local server.", WDB_LOCAL_SOCK, strerror(errno));
+        merror_exit("Unable to bind to socket '%s': '%s'. Closing local server.",
+                WDB_LOCAL_SOCK, strerror(errno));
     }
 
     while (running) {
@@ -226,152 +244,107 @@ void * run_dealer(__attribute__((unused)) void * args) {
 
             continue;
         }
-
-        // Enqueue peer
-
-        w_mutex_lock(&queue_mutex);
-
-        if (queue_full(sock_queue)) {
-            static const char * MESSAGE = "err Queue is full";
-
-            w_mutex_unlock(&queue_mutex);
-            merror("Couldn't accept new connection: sock queue is full.");
-            send(peer, MESSAGE, strlen(MESSAGE), 0);
-            close(peer);
-        } else {
-            int * peer_copy;
-
-            os_malloc(sizeof(int), peer_copy);
-            *peer_copy = peer;
-            queue_push(sock_queue, peer_copy);
-            w_cond_signal(&sock_cond);
-            w_mutex_unlock(&queue_mutex);
-            mdebug2("New client enqueued.");
+        if (wnotify_add(notify_queue, peer) < 0) {
+            merror("at run_dealer(): wnotify_add(%d): %s (%d)",
+                    peer, strerror(errno), errno);
+            goto error;
         }
+
+        mdebug1("New client connected (%d).", peer);
     }
 
+error:
     close(sock);
     unlink(WDB_LOCAL_SOCK);
     return NULL;
 }
 
 void * run_worker(__attribute__((unused)) void * args) {
-    struct timeval now;
     char buffer[OS_MAXSTR + 1];
     char response[OS_MAXSTR + 1];
     ssize_t length;
-    int * peer;
-    int status;
     int terminal;
-    wnotify_t * notify;
-
-    if (notify = wnotify_init(1), !notify) {
-        merror_exit("at run_worker(): wnotify_init(): %s (%d)", strerror(errno), errno);
-    }
+    int peer;
 
     while (running) {
         // Dequeue peer
         w_mutex_lock(&queue_mutex);
 
-        if (queue_empty(sock_queue)) {
-            gettimeofday(&now, NULL);
-            struct timespec timeout = { now.tv_sec + 1, now.tv_usec * 1000 };
-
-            switch (status = pthread_cond_timedwait(&sock_cond, &queue_mutex, &timeout), status) {
-            case 0:
-            case ETIMEDOUT:
-                w_mutex_unlock(&queue_mutex);
-                continue;
-            default:
-                merror_exit("at run_worker(): at pthread_cond_timedwait(): %s (%d)", strerror(status), status);
+        switch (wnotify_wait(notify_queue, 100)) {
+        case -1:
+            if (errno == EINTR) {
+                mdebug1("at run_worker(): wnotify_wait(): %s", strerror(EINTR));
+            } else {
+                merror("at run_worker(): wnotify_wait(): %s", strerror(errno));
             }
+
+            w_mutex_unlock(&queue_mutex);
+            continue;
+
+        case 0:
+            w_mutex_unlock(&queue_mutex);
+            continue;
         }
 
-        peer = queue_pop(sock_queue);
+        peer = wnotify_get(notify_queue, 0);
+        if (wnotify_delete(notify_queue, peer) < 0) {
+            merror("at run_worker(): wnotify_delete(%d): %s (%d)",
+                    peer, strerror(errno), errno);
+        }
+
         w_mutex_unlock(&queue_mutex);
 
-        mdebug1("Dispatching new client (%d)", *peer);
+        ssize_t count;
+        length = 0;
+        count = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR);
 
-        if (wnotify_add(notify, *peer) < 0) {
-            merror("at run_worker(): wnotify_add(%d): %s (%d)", *peer, strerror(errno), errno);
-            goto error;
+        if(count == OS_SOCKTERR){
+            mwarn("at run_worker(): received string size is bigger than %d bytes",
+                    OS_MAXSTR);
+            break;
         }
+        length+=count;
 
-        status = 0;
+        switch (length) {
+        case -1:
+            merror("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
+            close(peer);
+            continue;
 
-        while (running && !status) {
+        case 0:
+            mdebug1("Client %d disconnected.", peer);
+            close(peer);
+            continue;
 
-            // Wait for socket
-
-            switch (wnotify_wait(notify, 1000)) {
-            case -1:
-                if (errno == EINTR) {
-                    mdebug1("at run_worker(): wnotify_wait(): %s", strerror(EINTR));
-                } else {
-                    merror("at run_worker(): wnotify_wait(%d): %s", *peer, strerror(errno));
-                    status = 1;
-                }
-
-                continue;
-
-            case 0:
-                continue;
+        default:
+            if (length > 0 && buffer[length - 1] == '\n') {
+                buffer[length - 1] = '\0';
+                terminal = 1;
+            } else {
+                buffer[length] = '\0';
+                terminal = 0;
             }
 
-            ssize_t count;
-            length = 0;
-            count = OS_RecvSecureTCP(*peer,buffer,OS_MAXSTR);
-
-            if(count == OS_SOCKTERR){
-                mwarn("at run_worker(): received string size is bigger than %d bytes", OS_MAXSTR);
-                break;
-            }
-            length+=count;
-
-            switch (length) {
-            case -1:
-                merror("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
-                status = 1;
-                break;
-
-            case 0:
-                mdebug1("Client %d disconnected.", *peer);
-                status = 1;
-                break;
-
-            default:
-
-                if (length > 0 && buffer[length - 1] == '\n') {
-                    buffer[length - 1] = '\0';
-                    terminal = 1;
-                } else {
-                    buffer[length] = '\0';
-                    terminal = 0;
+            *response = '\0';
+            wdb_parse(buffer, response);
+            if (length = strlen(response), length > 0) {
+                if (terminal && length < OS_MAXSTR - 1) {
+                    response[length++] = '\n';
                 }
-
-                *response = '\0';
-                wdb_parse(buffer, response);
-                if (length = strlen(response), length > 0) {
-                    if (terminal && length < OS_MAXSTR - 1) {
-                        response[length++] = '\n';
-                    }
-                    if (OS_SendSecureTCP(*peer,length,response) < 0) {
-                        merror("at run_worker(): OS_SendSecureTCP(%d): %s (%d)", *peer, strerror(errno), errno);
-                    }
+                if (OS_SendSecureTCP(peer,length,response) < 0) {
+                    merror("at run_worker(): OS_SendSecureTCP(%d): %s (%d)",
+                            peer, strerror(errno), errno);
                 }
             }
+            break;
         }
 
-        if (wnotify_delete(notify, *peer) < 0) {
-            merror("at run_worker(): wnotify_delete(%d): %s (%d)", *peer, strerror(errno), errno);
+        if (wnotify_add(notify_queue, peer) < 0) {
+            merror("at run_worker(): wnotify_add(%d): %s (%d)",
+                    peer, strerror(errno), errno);
         }
-
-error:
-        close(*peer);
-        free(peer);
     }
 
-    wnotify_close(notify);
     return NULL;
 }
 

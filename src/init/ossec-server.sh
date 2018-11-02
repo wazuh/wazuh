@@ -36,13 +36,13 @@ USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
 DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
 
-# Reverse order of daemons
-SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-
 if ! is_rhel_le_5
 then
     DAEMONS="wazuh-clusterd $DAEMONS"
 fi
+
+# Reverse order of daemons
+SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
@@ -246,6 +246,9 @@ testconfig()
 {
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
+        if [ X"$i" = "Xwazuh-clusterd" ]; then
+            continue
+        fi
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
@@ -267,8 +270,9 @@ start()
     if [ $USE_JSON = false ]; then
         echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
     fi
-    ${DIR}/bin/ossec-logtest -t > /dev/null 2>&1;
-    if [ ! $? = 0 ]; then
+
+    TEST=$(${DIR}/bin/ossec-logtest -t  2>&1 | grep "ERROR")
+    if [ ! -z "$TEST" ]; then
         if [ $USE_JSON = true ]; then
             echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'
         else
@@ -290,7 +294,7 @@ start()
 
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp/*"
-    rm -f $TO_DELETE
+    rm -rf $TO_DELETE
 
     # We actually start them now.
     first=true

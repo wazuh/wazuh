@@ -70,6 +70,13 @@ def check_cluster_config(config):
     if 'nodes' not in config or len(config['nodes']) == 0:
         raise WazuhException(3004, 'No nodes defined in cluster configuration.')
 
+    if 'disabled' not in config:
+        config['disabled'] = 'yes'
+
+    if config['disabled'] != 'yes' and config['disabled'] != 'no':
+        raise WazuhException(3004, 'Invalid value for disabled option {}. Allowed values are yes and no'.
+                             format(config['disabled']))
+
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".format(
@@ -125,14 +132,13 @@ def read_config():
     return config_cluster
 
 
-def get_node(name=None):
+def get_node():
     data = {}
-    if not name:
-        config_cluster = read_config()
+    config_cluster = read_config()
 
-        data["node"]    = config_cluster["node_name"]
-        data["cluster"] = config_cluster["name"]
-        data["type"]    = config_cluster["node_type"]
+    data["node"]    = config_cluster["node_name"]
+    data["cluster"] = config_cluster["name"]
+    data["type"]    = config_cluster["node_type"]
 
     return data
 
@@ -141,22 +147,17 @@ def check_cluster_status():
     """
     Function to check if cluster is enabled
     """
-    with open("/etc/ossec-init.conf") as f:
-        # the osec directory is the first line of ossec-init.conf
-        directory = f.readline().split("=")[1][:-1].replace('"', "")
+    # for python 2/3 compatibility
+    # the osec directory is the first line of ossec-init.conf
+    try:
+        with open("/etc/ossec-init.conf") as f:
+            directory = f.readline().split("=")[1][:-1].replace('"', "")
+    except UnicodeDecodeError:
+        with open("/etc/ossec-init.conf", encoding='utf-8') as f:
+            directory = f.readline().split("=")[1][:-1].replace('"', "")
 
     try:
-        # wrap the data
-        with open("{0}/etc/ossec.conf".format(directory)) as f:
-            txt_data = f.read()
-
-        txt_data = re.sub("(<!--.*?-->)", "", txt_data, flags=re.MULTILINE | re.DOTALL)
-        txt_data = txt_data.replace(" -- ", " -INVALID_CHAR ")
-        txt_data = '<root_tag>' + txt_data + '</root_tag>'
-
-        conf = ET.fromstring(txt_data)
-
-        return conf.find('ossec_config').find('cluster').find('disabled').text == 'no'
+        return read_config()['disabled'] == 'no'
     except:
         return False
 

@@ -161,6 +161,15 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_mailmaxperhour = "email_maxperhour";
     const char * xml_queue_size = "queue_size";
 
+    /* Needed tags */
+    static char tags_present[MAX_NEEDED_TAGS] = {0};
+    char tag_list[MAX_NEEDED_TAGS][25] = {
+                                        "<jsonout_output>",
+                                        "<alerts_log>",
+                                        "<logall>",
+                                        "<logall_json>"
+                                        };
+
 #ifdef LIBGEOIP_ENABLED
     const char *xml_geoip_db_path = "geoip_db_path";
     const char *xml_geoip6_db_path = "geoip6_db_path";
@@ -301,6 +310,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         /* jsonout output */
         else if (strcmp(node[i]->element, xml_jsonout_output) == 0) {
+            tags_present[JSONOUT_OUTPUT] = 1;
             if (strcmp(node[i]->content, "yes") == 0) {
                 if (Config) {
                     Config->jsonout_output = 1;
@@ -316,6 +326,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         /* Standard alerts output */
         else if (strcmp(node[i]->element, xml_alerts_log) == 0) {
+            tags_present[ALERTS_LOG] = 1;
             if (strcmp(node[i]->content, "yes") == 0) {
                 if (Config) {
                     Config->alerts_log = 1;
@@ -331,6 +342,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         /* Log all */
         else if (strcmp(node[i]->element, xml_logall) == 0) {
+            tags_present[LOGALL] = 1;
             if (strcmp(node[i]->content, "yes") == 0) {
                 if (Config) {
                     Config->logall = 1;
@@ -346,6 +358,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         /* Log all JSON*/
         else if (strcmp(node[i]->element, xml_logall_json) == 0) {
+            tags_present[LOGALL_JSON] = 1;
             if (strcmp(node[i]->content, "yes") == 0) {
                 if (Config) {
                     Config->logall_json = 1;
@@ -656,5 +669,126 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         i++;
     }
 
+    /* Check if mandatory tags are present */
+    int k;
+    for(k = 0; k < MAX_NEEDED_TAGS;k++){
+        if(tags_present[k] == 0) {
+            merror_exit("Label %s not defined",tag_list[k]);
+        }
+    }
+
     return (0);
+}
+
+
+void config_free(_Config *config) {
+
+    if (!config) {
+        return;
+    }
+
+    if (config->prelude_profile) {
+        free(config->prelude_profile);
+    }
+
+    if (config->geoipdb_file) {
+        free(config->geoipdb_file);
+    }
+
+    if (config->zeromq_output_uri) {
+        free(config->zeromq_output_uri);
+    }
+
+    if (config->zeromq_output_server_cert) {
+        free(config->zeromq_output_server_cert);
+    }
+
+    if (config->zeromq_output_client_cert) {
+        free(config->zeromq_output_client_cert);
+    }
+
+    if (config->custom_alert_output_format) {
+        free(config->custom_alert_output_format);
+    }
+
+    if (config->syscheck_ignore) {
+        int i = 0;
+        while (config->syscheck_ignore[i]) {
+            free(config->syscheck_ignore[i]);
+            i++;
+        }
+        free(config->syscheck_ignore);
+    }
+
+    if (config->white_list) {
+        int i = 0;
+        while (config->white_list[i]) {
+            free(config->white_list[i]->ip);
+            i++;
+        }
+        free(config->white_list);
+    }
+
+    if (config->includes) {
+        int i = 0;
+        while (config->includes[i]) {
+            free(config->includes[i]);
+            i++;
+        }
+        free(config->includes);
+    }
+
+    if (config->lists) {
+        int i = 0;
+        while (config->lists[i]) {
+            free(config->lists[i]);
+            i++;
+        }
+        free(config->lists);
+    }
+
+    if (config->decoders) {
+        int i = 0;
+        while (config->decoders[i]) {
+            free(config->decoders[i]);
+            i++;
+        }
+        free(config->decoders);
+    }
+
+    if (config->g_rules_hash) {
+        OSHash_Free(config->g_rules_hash);
+    }
+
+    if (config->hostname_white_list) {
+        int i = 0;
+        while (config->hostname_white_list[i]) {
+            OSMatch_FreePattern(config->hostname_white_list[i]);
+            i++;
+        }
+        free(config->hostname_white_list);
+    }
+
+#ifdef LIBGEOIP_ENABLED
+    if (config->geoip_db_path) {
+        free(config->geoip_db_path);
+    }
+    if (config->geoip6_db_path) {
+        free(config->geoip_db_path);
+    }
+#endif
+
+    labels_free(config->labels); /* null-ended label set */
+
+    // Cluster configuration
+    if (config->cluster_name) {
+        free(config->cluster_name);
+    }
+    if (config->node_name) {
+        free(config->node_name);
+    }
+    if (config->node_type) {
+        free(config->node_type);
+    }
+
 }

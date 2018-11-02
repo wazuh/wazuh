@@ -26,6 +26,7 @@ class WazuhException(Exception):
         1012: 'Invalid message to queue',
         1013: 'Unable to connect with socket',
         1014: 'Error communicating with socket',
+        1015: 'Error agent version is null. Was the agent ever connected?',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
@@ -61,6 +62,12 @@ class WazuhException(Exception):
         1404: 'A field must be specified to order the data',
         1405: 'Specified limit exceeds maximum allowed (1000)',
         1406: '0 is not a valid limit',
+        1407: 'query does not match expected format',
+        1408: 'Field does not exist.',
+        1409: 'Invalid query operator.',
+        1410: 'Selecting more than one field in distinct mode',
+        1411: 'Timeframe is not valid',
+        1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
 
         # Decoders: 1500 - 1599
         1500: 'Error reading decoders from ossec.conf',
@@ -70,10 +77,12 @@ class WazuhException(Exception):
         1600: 'There is no database for selected agent',  # Also, agent
         1601: 'Unable to restart syscheck/rootcheck',
         1602: 'Impossible to run syscheck/run due to agent is not active',
+        1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1650: 'Active response - Bad arguments',
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
         1653: 'Active response - Agent not available',
+        1654: 'Unable to clear rootcheck database',
 
         # Agents:
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -98,7 +107,7 @@ class WazuhException(Exception):
         1719: 'Remote upgrade is not available for this agent version',
         1720: 'Agent disconnected',
         1721: 'Remote upgrade is not available for this agent OS version',
-        1722: 'Incorrect format for group_id. It can only have letters and numbers. Max length is 256',
+        1722: 'Incorrect format for group_id. Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255',
         1723: 'Hash algorithm not available',
         1724: 'Not a valid select field',
         1725: 'Error registering a new agent',
@@ -110,6 +119,15 @@ class WazuhException(Exception):
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
+        1734: 'Error unsetting agent group',
+        1735: 'Agent version is not compatible with this feature',
+        1736: 'Error getting all groups',
+        1737: 'Maximum number of groups per multigroup is 256',
+        1738: 'Agent name is too long. Max length allowed for agent name is 128',
+        1739: "Error getting agent's group sync",
+        1740: 'Action only available for active agents',
+        1741: 'Could not remove multigroup',
+
         # Manager:
 
         # Database:
@@ -138,7 +156,10 @@ class WazuhException(Exception):
         3012: 'Cluster is not running',
         3013: 'Cluster is disabled',
         3015: 'Cannot access directory',
-        3016: 'Received an error response'
+        3016: 'Received an error response',
+        3017: 'The agent is not reporting to any manager',
+        3018: 'Error sending request',
+        3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
 
         # > 9000: Authd
     }
@@ -154,9 +175,12 @@ class WazuhException(Exception):
         self.code = code
         if not cmd_error:
             if extra_message:
-                self.message = "{0}: {1}".format(self.ERRORS[code], extra_message)
+                if isinstance(extra_message, dict):
+                    self.message = self.ERRORS[code].format(**extra_message)
+                else:
+                    self.message = "{0}: {1}".format(self.ERRORS[code], extra_message)
             else:
-                self.message = "{0}.".format(self.ERRORS[code])
+                self.message = self.ERRORS[code]
         else:
             self.message = extra_message
 

@@ -972,10 +972,6 @@ static RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->action = NULL;
     ruleinfo_pt->location = NULL;
 
-    /* Zero last matched events */
-    ruleinfo_pt->__frequency = 0;
-    ruleinfo_pt->last_events = NULL;
-
     /* Zero the list of previous matches */
     ruleinfo_pt->sid_prev_matched = NULL;
     ruleinfo_pt->group_prev_matched = NULL;
@@ -984,6 +980,8 @@ static RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->group_search = NULL;
 
     ruleinfo_pt->event_search = NULL;
+
+    ruleinfo_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
     return (ruleinfo_pt);
 }

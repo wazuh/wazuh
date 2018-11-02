@@ -14,6 +14,7 @@
 #include "decoders/decoder.h"
 
 typedef enum syscheck_event_t { FIM_ADDED, FIM_MODIFIED, FIM_READDED, FIM_DELETED } syscheck_event_t;
+typedef struct _EventNode EventNode;
 
 typedef struct _DynamicField {
     char *key;
@@ -63,6 +64,9 @@ typedef struct _Eventinfo {
     /* Sid node to delete */
     OSListNode *sid_node_to_delete;
 
+    /* Group node to delete */
+    OSListNode **group_node_to_delete;
+
     /* Extract when the event fires a rule */
     size_t size;
     size_t p_name_size;
@@ -70,6 +74,7 @@ typedef struct _Eventinfo {
     /* Other internal variables */
     int matched;
 
+    time_t generate_time;
     struct timespec time;
     int day;
     int year;
@@ -103,8 +108,8 @@ typedef struct _Eventinfo {
     long inode_before;
     long inode_after;
     char *diff;
-    const char *previous;
-    const wlabel_t *labels;
+    char *previous;
+    wlabel_t *labels;
     // Whodata fields
     char *user_id;
     char *user_name;
@@ -117,14 +122,36 @@ typedef struct _Eventinfo {
     char *effective_name;
     char *ppid;
     char *process_id;
+    u_int16_t decoder_syscheck_id;
+    int rootcheck_fts;
+    int is_a_copy;
+    char **last_events;
+    int queue_added;
+    // Node reference
+    EventNode *node;
+    // Process thread id
+    int tid;
 } Eventinfo;
 
 /* Events List structure */
-typedef struct _EventNode {
+struct _EventNode {
     Eventinfo *event;
-    struct _EventNode *next;
-    struct _EventNode *prev;
-} EventNode;
+    pthread_mutex_t mutex;
+    int count;
+    EventNode *next;
+    EventNode *prev;
+};
+
+typedef struct EventList {
+    EventNode *first_node;
+    EventNode *last_node;
+    EventNode *last_added_node;
+
+    int _memoryused;
+    int _memorymaxsize;
+    int _max_freq;
+    pthread_mutex_t event_mutex;
+} EventList;
 
 #ifdef TESTRULE
 extern int full_output;
@@ -159,9 +186,9 @@ extern int alert_only;
 /** Functions for events **/
 
 /* Search for matches in the last events */
-Eventinfo *Search_LastEvents(Eventinfo *lf, RuleInfo *currently_rule);
-Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule);
-Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *currently_rule);
+Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule, regex_matching *rule_match);
+Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule, regex_matching *rule_match);
+Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *currently_rule, regex_matching *rule_match);
 
 /* Zero the eventinfo structure */
 void Zero_Eventinfo(Eventinfo *lf);
@@ -170,13 +197,13 @@ void Zero_Eventinfo(Eventinfo *lf);
 void Free_Eventinfo(Eventinfo *lf);
 
 /* Add and event to the list of previous events */
-void OS_AddEvent(Eventinfo *lf);
+void OS_AddEvent(Eventinfo *lf, EventList *list);
 
 /* Return the last event from the Event list */
-EventNode *OS_GetLastEvent(void);
+EventNode *OS_GetFirstEvent(EventList *list);
 
 /* Create the event list. Maxsize must be specified */
-void OS_CreateEventList(int maxsize);
+void OS_CreateEventList(int maxsize, EventList *list);
 
 /* Find index of a dynamic field. Returns -1 if not found. */
 const char* FindField(const Eventinfo *lf, const char *name);
@@ -201,4 +228,11 @@ void *SystemName_FP(Eventinfo *lf, char *field, const char *order);
 void *DynamicField_FP(Eventinfo *lf, char *field, const char *order);
 void *None_FP(Eventinfo *lf, char *field, const char *order);
 
+/* Copy Eventinfo for writing log */
+void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
+
+/* Add an event to last_events array */
+#define add_lastevt(x, y, z) os_realloc(x, sizeof(char *) * (y + 2), x); \
+                             os_strdup(z, x[y]); \
+                             x[y + 1] = NULL;
 #endif /* _EVTINFO__H */

@@ -24,6 +24,8 @@ char _g_subject[SUBJECT_SIZE + 2];
 static void OS_Run(MailConfig *mail) __attribute__((nonnull)) __attribute__((noreturn));
 static void help_maild(void) __attribute__((noreturn));
 
+/* Mail Structure */
+MailConfig mail;
 
 /* Print help statement */
 static void help_maild()
@@ -54,9 +56,6 @@ int main(int argc, char **argv)
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
-
-    /* Mail Structure */
-    MailConfig mail;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -150,6 +149,7 @@ int main(int argc, char **argv)
         exit(0);
     }
 
+
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
@@ -175,6 +175,9 @@ int main(int argc, char **argv)
     }
 
     mdebug1(PRIVSEP_MSG, dir, user);
+
+    // Start com request thread
+    w_create_thread(mailcom_main, NULL);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

@@ -14,6 +14,7 @@
 #include <errno.h>
 #include "shared.h"
 #include "os_net.h"
+#include "wazuh_modules/wmodules.h"
 
 /* Prototypes */
 static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6);
@@ -430,6 +431,8 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 int OS_RecvUnix(int socket, int sizet, char *ret)
 {
     ssize_t recvd;
+    ret[sizet] = '\0';
+
     if ((recvd = recvfrom(socket, ret, sizet - 1, 0,
                           (struct sockaddr *)&n_us, &us_l)) < 0) {
         return (0);
@@ -506,6 +509,12 @@ int OS_SetRecvTimeout(int socket, long seconds, long useconds)
     return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
 }
 
+int OS_SetSendTimeout(int socket, int seconds)
+{
+    struct timeval tv = { seconds, 0 };
+    return setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, (const void *)&tv, sizeof(tv));
+}
+
 /* Send secure TCP message
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
  * Return 0 on success or OS_SOCKTERR on error.
@@ -524,61 +533,123 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     return retval;
 }
 
+
 /* Receive secure TCP message
  * This function reads a header containing message size as 4-byte little-endian unsigned integer.
  * Return recvval on success or OS_SOCKTERR on error.
  */
 int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
-    int recvval;
-    char * buffer;
-    size_t bufsz = size + sizeof(uint32_t);
+    ssize_t recvval, recvb;
     uint32_t msgsize;
 
-    os_malloc(bufsz, buffer);
-    recvval = recv(sock, buffer, bufsz, 0);
+    recvval = recv(sock, (char *) &msgsize, sizeof(msgsize), MSG_WAITALL);
 
-    switch(recvval){
-
+    switch(recvval) {
         case -1:
-            free(buffer);
             return recvval;
             break;
 
         case 0:
-            free(buffer);
             return recvval;
             break;
     }
 
-    msgsize = wnet_order(*(uint32_t*)buffer);
+    msgsize = wnet_order(msgsize);
 
     if(msgsize > size){
-        free(buffer);
         return OS_SOCKTERR;
     }
 
-    if((uint32_t)recvval < msgsize){
-        int recvb = recv(sock, buffer + recvval, msgsize-recvval, MSG_WAITALL);
+    recvb = recv(sock, ret, msgsize, MSG_WAITALL);
 
-        switch(recvb){
-            case -1:
-                free(buffer);
-                return recvb;
-                break;
-
-            case 0:
-                free(buffer);
-                return recvb;
-                break;
-        }
-        recvval+=recvb;
+    if (recvb == (int32_t) msgsize && msgsize < size) {
+        ret[msgsize] = '\0';
     }
 
-    memcpy(ret, buffer + sizeof(uint32_t), recvval - sizeof(uint32_t));
-
-    free(buffer);
-    return recvval - sizeof(uint32_t);
+    return recvb;
 }
+
+
+ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
+    ssize_t recvval, recvmsg = 0;
+    char *dyn_buffer;
+    const size_t bufsz = 512;
+    char static_buf[bufsz+1];
+    uint64_t msgsize;
+
+    recvval = recv(sock, static_buf, bufsz, 0);
+
+    switch(recvval){
+
+        case -1:
+            return -1;
+
+        case 0:
+            return 0;
+    }
+
+    static_buf[recvval] = '\0';
+
+    if (static_buf[0] == '!') {
+        char * c;
+        char * data;
+
+        if (c = strchr(static_buf, ' '), c) {
+            *c = '\0';
+            data = c + 1;
+
+            if (msgsize = strtoul(static_buf + 1, &c, 10), *c) {
+                merror("At OS_RecvSecureTCP(): invalid message size");
+                return -1;
+            }
+
+            if(msgsize > MAX_DYN_STR) {
+                return OS_MAXLEN;
+            }
+        } else {
+            merror("At OS_RecvSecureTCP(): invalid message received");
+            return -1;
+        }
+
+        os_malloc(msgsize + 1, *ret);
+        memcpy(*ret, data, msgsize);
+        recvval = strlen(data);
+
+        if ((uint32_t)recvval < msgsize) {
+            recvmsg = recv(sock, *ret + recvval, msgsize - recvval, MSG_WAITALL);
+
+            switch(recvmsg){
+                case -1:
+                case 0:
+                    free(*ret);
+                    return 0;
+            }
+        }
+        *(*ret + msgsize) = '\0';
+        return msgsize;
+    }
+    else {
+        os_malloc(OS_MAXSTR + 2, dyn_buffer);
+
+        recvmsg = recv(sock, dyn_buffer + 1, OS_MAXSTR, 0);
+
+        switch(recvmsg){
+            case -1:
+                free(dyn_buffer);
+                return -1;
+
+            case 0:
+                free(dyn_buffer);
+                return 0;
+        }
+
+        dyn_buffer[recvmsg + 1] = '\0';
+        *ret = dyn_buffer;
+
+        return recvmsg;
+    }
+}
+
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value) {
@@ -587,6 +658,11 @@ uint32_t wnet_order(uint32_t value) {
 #else
     return value;
 #endif
+}
+
+
+uint32_t wnet_order_big(uint32_t value) {
+    return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
 }
 
 /* Set the maximum buffer size for the socket */
@@ -627,4 +703,90 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
     }
 
     return 0;
+}
+
+
+/* Send secure TCP to Cluster message
+ * Return 0 on success or OS_SOCKTERR on error.
+ */
+int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload, size_t length) {
+    const unsigned COMMAND_SIZE = 12;
+    const unsigned HEADER_SIZE =  8;
+    const unsigned MAX_PAYLOAD_SIZE = 1000000;
+    int retval;
+    char * buffer = NULL;
+    uint32_t counter = os_random() % 4294967295;
+    size_t cmd_length = 0;
+    size_t buffer_size = 0;
+
+    if(!command){
+        merror("Empty command, not sending message to cluster");
+        return -1;
+    }
+
+    if (length > MAX_PAYLOAD_SIZE) {
+        merror("Data of length %u exceeds maximum allowed %u", (unsigned)length, MAX_PAYLOAD_SIZE);
+        return -1;
+    }
+
+    cmd_length = strlen(command);
+
+    if(cmd_length > COMMAND_SIZE){
+        merror("Command of length %u exceeds maximum allowed %u", (unsigned)cmd_length, COMMAND_SIZE);
+        return -1;
+    }
+
+    // Cluster message: [counter:4][length:4][command:12][payload]
+    buffer_size = HEADER_SIZE + COMMAND_SIZE + length;
+    os_malloc(buffer_size, buffer);
+    *(uint32_t *)buffer = wnet_order_big(counter);
+    *(uint32_t *)(buffer + 4) = wnet_order_big(length);
+    memcpy(buffer + HEADER_SIZE, command, cmd_length);
+    buffer[HEADER_SIZE + cmd_length] = ' ';
+    memset(buffer + HEADER_SIZE + cmd_length + 1, '-', COMMAND_SIZE - cmd_length - 1);
+    memcpy(buffer + HEADER_SIZE + COMMAND_SIZE, payload, length);
+
+    retval = send(sock, buffer, buffer_size, 0) == (ssize_t)buffer_size ? 0 : OS_SOCKTERR;
+
+    free(buffer);
+    return retval;
+}
+
+
+/* Receive secure TCP message
+ * Return recvval on success or OS_SOCKTERR on error.
+ */
+int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
+    int recvval;
+    const unsigned CMD_SIZE = 12;
+    const uint32_t HEADER_SIZE = 8 + CMD_SIZE;
+    uint32_t size = 0;
+    char buffer[HEADER_SIZE];
+
+    recvval = recv(sock, buffer, HEADER_SIZE, MSG_WAITALL);
+
+    switch(recvval){
+        case -1:
+            return recvval;
+            break;
+
+        case 0:
+            return recvval;
+            break;
+
+        default:
+            if ((uint32_t)recvval != HEADER_SIZE) {
+                return -1;
+            }
+    }
+
+    size = wnet_order_big(*(uint32_t*)(buffer + 4));
+
+    if (size > length) {
+        mwarn("Cluster message size (%u) exceeds buffer length (%u)", (unsigned)size, (unsigned)length);
+        return -1;
+    }
+
+    /* Read the payload */
+    return recv(sock, ret, size, MSG_WAITALL);
 }

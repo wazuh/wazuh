@@ -69,12 +69,11 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
     time_t date_of_change;
     char *htpt = NULL;
     char flastfile[OS_SIZE_2048 + 1];
-    static char flastcontent[OS_SIZE_8192 + 1];
+    char flastcontent[OS_SIZE_8192 + 1];
 
     /* Clean up global */
     flastcontent[0] = '\0';
     flastcontent[OS_SIZE_8192] = '\0';
-    rule->last_events[0] = NULL;
 
     if (lf->hostname[0] == '(') {
         htpt = strchr(lf->hostname, ')');
@@ -143,9 +142,9 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
         merror("Unable to create last file: %s", flastfile);
     }
 
-    rule->last_events[0] = "Previous output:";
-    rule->last_events[1] = flastcontent;
-    lf->previous = flastcontent;
+    add_lastevt(lf->last_events, 0, "Previous output:");
+    add_lastevt(lf->last_events, 1, flastcontent);
+    os_strdup(flastcontent, lf->previous);
 
     return (1);
 }

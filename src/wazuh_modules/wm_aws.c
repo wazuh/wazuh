@@ -22,13 +22,15 @@ static void wm_aws_cleanup();                           // Cleanup function, doe
 static void wm_aws_check();                             // Check configuration, disable flag
 static void wm_aws_run_s3(wm_aws_bucket *bucket);       // Run a s3
 static void wm_aws_destroy(wm_aws *aws_config);         // Destroy data
+cJSON *wm_aws_dump(const wm_aws *aws_config);
 
 // Command module context definition
 
 const wm_context WM_AWS_CONTEXT = {
     "aws-s3",
     (wm_routine)wm_aws_main,
-    (wm_routine)wm_aws_destroy
+    (wm_routine)wm_aws_destroy,
+    (cJSON * (*)(const void *))wm_aws_dump
 };
 
 // Module module main function. It won't return.
@@ -95,6 +97,45 @@ void* wm_aws_main(wm_aws *aws_config) {
 
     return NULL;
 }
+
+
+// Get readed data
+
+cJSON *wm_aws_dump(const wm_aws *aws_config) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_aws = cJSON_CreateObject();
+
+    if (aws_config->enabled) cJSON_AddStringToObject(wm_aws,"disabled","no"); else cJSON_AddStringToObject(wm_aws,"disabled","yes");
+    if (aws_config->run_on_start) cJSON_AddStringToObject(wm_aws,"run_on_start","yes"); else cJSON_AddStringToObject(wm_aws,"run_on_start","no");
+    if (aws_config->skip_on_error) cJSON_AddStringToObject(wm_aws,"skip_on_error","yes"); else cJSON_AddStringToObject(wm_aws,"skip_on_error","no");
+    cJSON_AddNumberToObject(wm_aws,"interval",aws_config->interval);
+    if (aws_config->buckets) {
+        wm_aws_bucket *iter;
+        cJSON *arr_buckets = cJSON_CreateArray();
+        for (iter = aws_config->buckets; iter; iter = iter->next) {
+            cJSON *buck = cJSON_CreateObject();
+            if (iter->bucket) cJSON_AddStringToObject(buck,"name",iter->bucket);
+            if (iter->access_key) cJSON_AddStringToObject(buck,"access_key",iter->access_key);
+            if (iter->secret_key) cJSON_AddStringToObject(buck,"secret_key",iter->secret_key);
+            if (iter->aws_profile) cJSON_AddStringToObject(buck,"aws_profile",iter->aws_profile);
+            if (iter->iam_role_arn) cJSON_AddStringToObject(buck,"iam_role_arn",iter->iam_role_arn);
+            if (iter->aws_account_id) cJSON_AddStringToObject(buck,"aws_account_id",iter->aws_account_id);
+            if (iter->aws_account_alias) cJSON_AddStringToObject(buck,"aws_account_alias",iter->aws_account_alias);
+            if (iter->trail_prefix) cJSON_AddStringToObject(buck,"path",iter->trail_prefix);
+            if (iter->only_logs_after) cJSON_AddStringToObject(buck,"only_logs_after",iter->only_logs_after);
+            if (iter->regions) cJSON_AddStringToObject(buck,"regions",iter->regions);
+            if (iter->type) cJSON_AddStringToObject(buck,"type",iter->type);
+            if (iter->remove_from_bucket) cJSON_AddStringToObject(buck,"remove_from_bucket","yes"); else cJSON_AddStringToObject(buck,"remove_from_bucket","no");
+            cJSON_AddItemToArray(arr_buckets,buck);
+        }
+        if (cJSON_GetArraySize(arr_buckets) > 0) cJSON_AddItemToObject(wm_aws,"buckets",arr_buckets);
+    }
+    cJSON_AddItemToObject(root,"aws-s3",wm_aws);
+
+    return root;
+}
+
 
 // Destroy data
 
@@ -252,7 +293,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     wm_strcat(&trail_title, " - ", ' ');
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
-    switch (wm_exec(command, &output, &status, 0)) {
+    switch (wm_exec(command, &output, &status, 0, NULL)) {
     case 0:
         if (status > 0) {
             mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
@@ -263,10 +304,25 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
                 else
                     mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, unknown_error_msg);
             }
-            else if(status == 2)
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, strstr(output, "aws.py: error:")+14);
-            else
-                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, strstr(output, "ERROR: ")+7);
+            else if(status == 2) {
+                char * ptr;
+                if (ptr = strstr(output, "aws.py: error:"), ptr) {
+                    ptr += 14;
+                    mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, ptr);
+                } else {
+                    mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", trail_title);
+                }
+            }
+            else {
+                char * ptr;
+                if (ptr = strstr(output, "ERROR: "), ptr) {
+                    ptr += 7;
+                    mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, ptr);
+                } else {
+                    mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, output);
+                }
+            }
+
 
             mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
         } else {

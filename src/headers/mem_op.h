@@ -12,6 +12,7 @@
 
 #include <stdlib.h>
 
+#define w_FreeArray(x) if (x) {char **x_it = x; for (; *x_it; (x_it)++) {free(*x_it); *x_it = NULL;}}
 void **os_AddPtArray(void *pt, void **array);
 char **os_AddStrArray(const char *str, char **array);
 void   os_FreeArray(char *ch1, char **ch2);
@@ -20,4 +21,3 @@ char  *os_LoadString(char *at, const char *str) __attribute__((nonnull(2)));
 void  *memset_secure(void *v, int c, size_t n) __attribute__((nonnull));
 
 #endif
-

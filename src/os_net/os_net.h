@@ -80,6 +80,11 @@ int OS_CloseSocket(int socket);
  */
 int OS_SetRecvTimeout(int socket, long seconds, long useconds);
 
+/* Set the delivery timeout for a socket
+ * Returns 0 on success, else -1
+ */
+int OS_SetSendTimeout(int socket, int seconds);
+
 /* Send secure TCP message
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
  * Return 0 on success or OS_SOCKTERR on error.
@@ -91,6 +96,22 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
  * Return recvval on success or OS_SOCKTERR on error.
  */
 int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
+
+
+/* Send secure TCP Cluster message
+ * Return 0 on success or OS_SOCKTERR on error.
+ */
+int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload, size_t length);
+
+/* Receive secure TCP message
+ * Return recvval on success or OS_SOCKTERR on error.
+ */
+int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length);
+
+
+// Receive dynamic size message. Use with OS_SendSecureTCP function.
+ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret);
+
 
 // Byte ordering
 

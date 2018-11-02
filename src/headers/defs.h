@@ -54,10 +54,11 @@
 #define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
 #define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
 #define KEEPALIVE_SIZE  700             /* Random keepalive string size */
+#define MAX_DYN_STR     4194304         /* Max message size received 4MiB */
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.6.2"
+#define __ossec_version "v3.7.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -125,6 +126,16 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 // Local requests socket
 #define COM_LOCAL_SOCK  "/queue/ossec/com"
+#define LC_LOCAL_SOCK  "/queue/ossec/logcollector"
+#define SYS_LOCAL_SOCK  "/queue/ossec/syscheck"
+#define WM_LOCAL_SOCK  "/queue/ossec/wmodules"
+#define ANLSYS_LOCAL_SOCK  "/queue/ossec/analysis"
+#define MAIL_LOCAL_SOCK "/queue/ossec/mail"
+#define LESSD_LOCAL_SOCK "/queue/ossec/agentless"
+#define INTG_LOCAL_SOCK "/queue/ossec/integrator"
+#define CSYS_LOCAL_SOCK  "/queue/ossec/csyslog"
+#define MON_LOCAL_SOCK  "/queue/ossec/monitor"
+#define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"
@@ -292,6 +303,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SHAREDCFG_DIR   "shared"
 #endif
 
+/* Multi-groups directory */
+#define MULTIGROUPS_DIR   "/var/multigroups"
+#define METADATA_FILE MULTIGROUPS_DIR "/.metadata"
+#define MAX_GROUP_NAME 255
+#define MULTIGROUP_SEPARATOR ','
+#define MAX_GROUPS_PER_MULTIGROUP 256
+
 // Incoming directory
 #ifndef WIN32
 #define INCOMING_DIR   "/var/incoming"
@@ -408,5 +426,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef xml_ar
 #define xml_ar      "active-response"
 #endif
+
+#define CLOCK_LENGTH 256
 
 #endif /* __OS_HEADERS */

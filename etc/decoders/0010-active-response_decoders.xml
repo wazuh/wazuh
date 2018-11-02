@@ -27,7 +27,7 @@ Wed 12/07/2016 16:48:15.37 "active-response/bin/route-null.cmd" delete "-" "192.
 
 
 <decoder name="ar_log">
-  <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \w+ \d+ /\S+/active-response/bin/|^\w\w\w \d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\d\d/\d\d/\d\d\d\d \.+"active-response/bin/</prematch>
+  <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \p*\w+ \d+ /\S+/active-response/bin/|^\w\w\w \d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\d\d/\d\d/\d\d\d\d \.+"active-response/bin/</prematch>
 </decoder>
 
 <decoder name="ar_log_fields">

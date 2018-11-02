@@ -102,14 +102,13 @@ Install()
         fi
     fi
 
+    if [ "X${OS_VERSION_FOR_SYSC}" = "XAIX" ]; then
+        SYSC_FLAG="DISABLE_SYSC=true"
+    fi
+
     # Build SQLite library for CentOS 6
     if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
         LIB_FLAG="USE_FRAMEWORK_LIB=yes"
-    fi
-
-    # Do not use execvpe() in CentOS 5
-    if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 5 ]; then
-        EXEC_FLAG="USE_EXEC_ENVIRON=no"
     fi
 
     # Makefile
@@ -125,7 +124,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${EXEC_FLAG} -j${THREADS} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../
@@ -261,6 +260,17 @@ UseOpenSCAP()
     esac
 }
 
+UseSyscollector()
+{
+    # Syscollector config predefined (is overwritten by the preload-vars file)
+    if [ "X${USER_ENABLE_SYSCOLLECTOR}" = "Xn" ]; then
+        SYSCOLLECTOR="no"
+     else
+         SYSCOLLECTOR="yes"
+     fi
+}
+
+
 ##########
 # EnableAuthd()
 ##########
@@ -381,6 +391,8 @@ ConfigureClient()
 
     # OpenSCAP?
     UseOpenSCAP
+
+    UseSyscollector
 
     echo ""
     $ECHO "  3.5 - ${enable_ar} ($yes/$no) [$yes]: "
@@ -512,6 +524,8 @@ ConfigureServer()
 
     # Checking if OpenSCAP should run
     UseOpenSCAP
+
+    UseSyscollector
 
     # Active response
     catMsg "0x107-ar"
@@ -1113,6 +1127,8 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

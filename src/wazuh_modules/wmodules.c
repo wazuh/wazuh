@@ -18,6 +18,7 @@ wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
 int wm_max_eps;             // Maximum events per second sent by OpenScap and CIS-CAT Wazuh Module
 int wm_kill_timeout;        // Time for a process to quit before killing it
+int wm_debug_level;
 
 // Read XML configuration and internal options
 
@@ -181,6 +182,9 @@ char** wm_strtok(char *string) {
             *(c++) = '\0';
             output[n++] = c;
             output = (char**)realloc(output, (n + 1) * sizeof(char*));
+            if(!output){
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
             output[n] = NULL;
             break;
 
@@ -263,6 +267,7 @@ void wm_free(wmodule * config) {
     }
 }
 
+
 void wm_module_free(wmodule * config){
     if (config->context && config->context->destroy)
             config->context->destroy(config->data);
@@ -270,6 +275,42 @@ void wm_module_free(wmodule * config){
     free(config->tag);
     free(config);
 }
+
+
+// Get readed data
+cJSON *getModulesConfig(void) {
+
+    wmodule *cur_module;
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_mod = cJSON_CreateArray();
+
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (cur_module->context->dump(cur_module->data))
+            cJSON_AddItemToArray(wm_mod,cur_module->context->dump(cur_module->data));
+    }
+
+    cJSON_AddItemToObject(root,"wmodules",wm_mod);
+
+    return root;
+}
+
+
+cJSON *getModulesInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_task_nice);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_debug_level);
+
+    cJSON_AddItemToObject(root,"internal_options",internals);
+
+    return root;
+}
+
 
 // Send message to a queue waiting for a specific delay
 int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
@@ -566,4 +607,13 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
     }
 
     return match;
+}
+
+void wm_delay(unsigned int ms) {
+#ifdef WIN32
+    Sleep(ms);
+#else
+    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
 }

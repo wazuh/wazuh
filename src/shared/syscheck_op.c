@@ -14,9 +14,6 @@
 #include <sddl.h>
 #endif
 
-/* Local variables */
-_sdb sdb;
-
 static char *unescape_whodata_sum(char *sum);
 
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
@@ -27,8 +24,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_inode;
     char *tag;
     int retval = 0;
-
-    memset(sum, 0, sizeof(sk_sum_t));
 
     if (c_sum[0] == '-' && c_sum[1] == '1') {
         retval = 1;
@@ -83,19 +78,20 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
             sum->sha256 = NULL;
 
-            if ((sum->sha256 = strchr(c_inode, ':')))
+            if ((sum->sha256 = strchr(c_inode, ':'))) {
                 *(sum->sha256++) = '\0';
 
-            /* Look for a defined tag */
-            if (sum->sha256) {
-                if (tag = strchr(sum->sha256, ':'), tag) {
-                    *(tag++) = '\0';
-                    sum->tag = tag;
+                /* Look for a defined tag */
+                if (sum->sha256) {
+                    if (tag = strchr(sum->sha256, ':'), tag) {
+                        *(tag++) = '\0';
+                        sum->tag = tag;
+                    }
                 }
-            }
 
-            sum->mtime = atol(c_mtime);
-            sum->inode = atol(c_inode);
+                sum->mtime = atol(c_mtime);
+                sum->inode = atol(c_inode);
+            }
         }
     }
 
@@ -180,6 +176,26 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     return retval;
 }
 
+// Only decoded by manager
+int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
+    char *changes;
+    char *date_alert;
+
+    if (changes = strchr(c_sum, '!'), !changes) {
+        return -1;
+    }
+    *changes++ = '\0';
+
+    if (date_alert = strchr(changes, ':'), !date_alert) {
+        return -1;
+    }
+    *(date_alert++) = '\0';
+    sum->changes = atoi(changes);
+    sum->date_alert = atol(date_alert);
+
+    return 0;
+}
+
 char *unescape_whodata_sum(char *sum) {
     char *esc_it;
 
@@ -187,15 +203,13 @@ char *unescape_whodata_sum(char *sum) {
         // The parameter string is not released
         esc_it = wstr_replace(sum, "\\ ", " ");
         sum = wstr_replace(esc_it, "\\:", ":");
-        free(esc_it);
+        os_free(esc_it);
         return sum;
     }
     return NULL;
 }
 
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
-    int i;
-
     os_strdup(f_name, lf->filename);
     os_strdup(f_name, lf->fields[SK_FILE].value);
 
@@ -316,29 +330,45 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->tag, lf->sk_tag);
         os_strdup(sum->tag, lf->fields[SK_TAG].value);
     }
-
-    /* Fields */
-
-    lf->nfields = SK_NFIELDS;
-
-    for (i = 0; i < SK_NFIELDS; i++)
-        os_strdup(sdb.syscheck_dec->fields[i], lf->fields[i].key);
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     int r;
+    char s_perm[16];
+    char s_mtime[16];
+    char s_inode[16];
 
-    if (sum->uname || sum->gname || sum->mtime || sum->inode) {
-        r = snprintf(output, size, "%s:%d:%s:%s:%s:%s:%s:%s:%ld:%ld", sum->size, sum->perm, sum->uid, sum->gid, sum->md5, sum->sha1, sum->uname, sum->gname, sum->mtime, sum->inode);
+    if(sum->perm) {
+        snprintf(s_perm, sizeof(s_perm), "%d", sum->perm);
     } else {
-        r = snprintf(output, size, "%s:%d:%s:%s:%s:%s", sum->size, sum->perm, sum->uid, sum->gid, sum->md5, sum->sha1);
+        *s_perm = '\0';
     }
+    snprintf(s_mtime, sizeof(s_mtime), "%ld", sum->mtime);
+    snprintf(s_inode, sizeof(s_inode), "%ld", sum->inode);
+
+    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
+            sum->size,
+            s_perm,
+            sum->uid,
+            sum->gid,
+            sum->md5,
+            sum->sha1,
+            sum->uname? sum->uname : "",
+            sum->gname? sum->gname : "",
+            sum->mtime? s_mtime : "",
+            sum->inode? s_inode : "",
+            sum->sha256? sum->sha256 : "",
+            sum->changes,
+            sum->date_alert
+    );
 
     return r < (int)size ? 0 : -1;
 }
 
 int remove_empty_folders(const char *path) {
     const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
+    char DIFF_PATH[MAXPATHLEN] = DIFF_DIR_PATH;
+    strcat(DIFF_PATH, LOCALDIR);
     const char *c;
     char parent[PATH_MAX] = "\0";
     char ** subdir;
@@ -350,7 +380,7 @@ int remove_empty_folders(const char *path) {
         memcpy(parent, path, c - path);
         parent[c - path] = '\0';
         // Don't delete above /local
-        if (c = strrchr(parent, PATH_SEP), c && strcmp(c, LOCALDIR) != 0) {
+        if (strcmp(DIFF_PATH, parent) != 0) {
             subdir = wreaddir(parent);
             if (!(subdir && *subdir)) {
                 // Remove empty folder
@@ -390,8 +420,8 @@ int delete_target_file(const char *path) {
 }
 
 void sk_sum_clean(sk_sum_t * sum) {
-    free(sum->wdata.user_name);
-    free(sum->wdata.process_name);
+    os_free(sum->wdata.user_name);
+    os_free(sum->wdata.process_name);
 }
 
 int fim_find_child_depth(const char *parent, const char *child) {
@@ -412,17 +442,26 @@ int fim_find_child_depth(const char *parent, const char *child) {
         p_second[length_B - 1] = '\0';
     }
 
-    if(strncmp(parent, child, length_A) == 0){
+
+#ifndef WIN32
+    if(strncmp(parent, child, length_A) == 0) {
+#else
+    if(strncasecmp(parent, child, length_A) == 0) {
+#endif
         diff_str = p_second;
         diff_str += length_A;
     }
+#ifndef WIN32
     else if(strncmp(child, parent, length_B) == 0) {
+#else
+    else if(strncasecmp(child, parent, length_B) == 0) {
+#endif
         diff_str = p_first;
         diff_str += length_B;
     }
     else{
-        free(p_first);
-        free(p_second);
+        os_free(p_first);
+        os_free(p_second);
         return INT_MAX;
     }
 
@@ -434,8 +473,8 @@ int fim_find_child_depth(const char *parent, const char *child) {
         c = strchr(c + 1, PATH_SEP);
     }
 
-    free(p_first);
-    free(p_second);
+    os_free(p_first);
+    os_free(p_second);
     return child_depth;
 }
 

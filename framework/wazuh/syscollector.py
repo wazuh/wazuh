@@ -53,9 +53,6 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
     agent_obj = Agent(agent_id)
     agent_obj.get_basic_information()
 
-    offset = int(offset)
-    limit = int(limit)
-
     # The osinfo fields in database are different in Windows and Linux
     os_name = agent_obj.get_agent_attr('os_name')
     windows_fields = {'hostname', 'os_version', 'os_name',
@@ -76,9 +73,6 @@ def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's OS
     """
-    offset = int(offset)
-    limit = int(limit)
-
     valid_select_fields = {'board_serial', 'cpu_name', 'cpu_cores', 'cpu_mhz',
                            'ram_total', 'ram_free', 'ram_usage', 'scan_id', 'scan_time'}
 
@@ -91,8 +85,6 @@ def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's programs
     """
-    offset = int(offset)
-    limit = int(limit)
     valid_select_fields = {'scan_id', 'scan_time', 'format', 'name', 'priority',
                            'section', 'size', 'vendor', 'install_time', 'version',
                            'architecture', 'multiarch', 'source', 'description',
@@ -107,8 +99,6 @@ def get_processes_agent(agent_id, offset=0, limit=common.database_limit, select=
     """
     Get info about an agent's processes
     """
-    offset = int(offset)
-    limit = int(limit)
     valid_select_fields = {'scan_id', 'scan_time', 'pid', 'name',
                            'state', 'ppid', 'utime', 'stime', 'cmd', 'argvs',
                            'euser', 'ruser', 'suser', 'egroup', 'rgroup',
@@ -125,8 +115,6 @@ def get_ports_agent(agent_id, offset=0, limit=common.database_limit, select={}, 
     """
     Get info about an agent's ports
     """
-    offset = int(offset)
-    limit = int(limit)
     valid_select_fields = {'scan_id', 'scan_time', 'protocol', 'local_ip',
                            'local_port', 'remote_ip', 'remote_port', 'tx_queue', 'rx_queue', 'inode',
                            'state', 'pid', 'process'}
@@ -140,9 +128,7 @@ def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}
     """
     Get info about an agent's network address
     """
-    offset = int(offset)
-    limit = int(limit)
-    valid_select_fields = {'id', 'scan_id', 'proto', 'address',
+    valid_select_fields = {'scan_id', 'proto', 'address',
                            'netmask', 'broadcast'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select,
@@ -154,9 +140,7 @@ def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's network protocol
     """
-    offset = int(offset)
-    limit = int(limit)
-    valid_select_fields = {'id', 'scan_id', 'iface', 'type',
+    valid_select_fields = {'scan_id', 'iface', 'type',
                            'gateway', 'dhcp'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select,
@@ -168,9 +152,7 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
     """
     Get info about an agent's network interface
     """
-    offset = int(offset)
-    limit = int(limit)
-    valid_select_fields = {'id', 'scan_id', 'scan_time', 'name',
+    valid_select_fields = {'scan_id', 'scan_time', 'name',
                            'adapter', 'type', 'state', 'mtu', 'mac', 'tx_packets',
                             'rx_packets', 'tx_bytes', 'rx_bytes', 'tx_errors', 'rx_errors',
                            'tx_dropped', 'rx_dropped'}
@@ -183,8 +165,6 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
 def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False):
     agents, result = Agent.get_agents_overview(select={'fields': ['id']})['items'], []
 
-    limit = int(limit)
-    offset = int(offset)
     total = 0
 
     for agent in agents:
@@ -196,15 +176,16 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
         items = [items] if not array else items['items']
 
         for item in items:
-            if limit <= len(result):
+            if 0 < limit <= len(result):
                 break
             item['agent_id'] = agent['id']
             result.append(item)
 
-    if sort and sort['fields']:
-        result = sorted(result, key=itemgetter(sort['fields'][0]), reverse=True if sort['order'] == "desc" else False)
+    if result:
+        if sort and sort['fields']:
+            result = sorted(result, key=itemgetter(sort['fields'][0]), reverse=True if sort['order'] == "desc" else False)
 
-    fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '_')
+        fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '_')
     return {'items': list(map(lambda x: plain_dict_to_nested_dict(x, fields_to_nest, non_nested), result)), 'totalItems': total}
 
 

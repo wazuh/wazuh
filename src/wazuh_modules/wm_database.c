@@ -35,6 +35,7 @@ int inotify_fd;
 int wd_agents = -2;
 int wd_agentinfo = -2;
 int wd_groups = -2;
+int wd_shared_groups = -2;
 #endif // !LOCAL
 int wd_syscheck = -2;
 int wd_rootcheck = -2;
@@ -65,6 +66,8 @@ wm_database *module;
 static void* wm_database_main(wm_database *data);
 // Destroy data
 static void* wm_database_destroy(wm_database *data);
+// Read config
+cJSON *wm_database_dump(const wm_database *data);
 // Update manager information
 static void wm_sync_manager();
 // Get agent's architecture
@@ -84,8 +87,10 @@ static void wm_clean_dangling_db();
 
 static int wm_sync_agentinfo(int id_agent, const char *path);
 static int wm_sync_agent_group(int id_agent, const char *fname);
+static int wm_sync_shared_group(const char *fname);
 static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
+static void wm_sync_multi_groups(const char *dirname);
 // Fill syscheck database from an offset. Returns offset at last successful read event, or -1 on error.
 static long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry);
 // Fill complete rootcheck database.
@@ -96,11 +101,13 @@ static int wm_fill_rootcheck(sqlite3 *db, const char *path);
  */
 static int wm_extract_agent(const char *fname, char *name, char *addr, int *registry);
 
+
 // Database module context definition
 const wm_context WM_DATABASE_CONTEXT = {
     "database",
     (wm_routine)wm_database_main,
-    (wm_routine)wm_database_destroy
+    (wm_routine)wm_database_destroy,
+    (cJSON * (*)(const void *))wm_database_dump
 };
 
 // Module main function. It won't return
@@ -110,7 +117,6 @@ void* wm_database_main(wm_database *data) {
     mtinfo(WM_DATABASE_LOGTAG, "Module started.");
 
     // Manager name synchronization
-
     if (data->sync_agents) {
         wm_sync_manager();
     }
@@ -150,14 +156,14 @@ void* wm_database_main(wm_database *data) {
 
         // Systems that don't support inotify, or real-time disabled
 
-        time_t tsleep;
-        time_t tstart;
+        long long tsleep;
+        long long tstart;
         clock_t cstart;
         struct timespec spec0;
         struct timespec spec1;
 
         while (1) {
-            tstart = time(NULL);
+            tstart = (long long) time(NULL);
             cstart = clock();
             gettime(&spec0);
 
@@ -166,6 +172,7 @@ void* wm_database_main(wm_database *data) {
                 wm_check_agents();
                 wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
                 wm_scan_directory(DEFAULTDIR GROUPS_DIR);
+                wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
             }
 #endif
             if (data->sync_syscheck) {
@@ -180,10 +187,10 @@ void* wm_database_main(wm_database *data) {
             time_sub(&spec1, &spec0);
             mtdebug1(WM_DATABASE_LOGTAG, "Cycle completed: %.3lf ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - cstart) / CLOCKS_PER_SEC * 1000);
 
-            if (tsleep = tstart + data->interval - time(NULL), tsleep >= 0) {
+            if (tsleep = tstart + (long long) data->interval - (long long) time(NULL), tsleep >= 0) {
                 sleep(tsleep);
             } else {
-                mtwarn(WM_DATABASE_LOGTAG, "Time interval exceeded by %ld seconds.", -tsleep);
+                mtwarn(WM_DATABASE_LOGTAG, "Time interval exceeded by %lld seconds.", -tsleep);
             }
         }
 #ifdef INOTIFY_ENABLED
@@ -332,7 +339,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char path[PATH_MAX] = "";
-    char group[KEYSIZE];
+    char group[PATH_MAX + 1] = {0};
     char cidr[20];
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
@@ -362,7 +369,7 @@ void wm_sync_agents() {
         }
 
         group[0] = '\0';
-        get_agent_group(entry->id, group, KEYSIZE);
+        get_agent_group(entry->id, group, PATH_MAX);
 
         if (!(wdb_insert_agent(id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL) || module->full_sync)) {
 
@@ -669,10 +676,10 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
 int wm_sync_agent_group(int id_agent, const char *fname) {
     int result = 0;
-    char group[KEYSIZE] = "";
+    char group[PATH_MAX + 1] = "";
     clock_t clock0 = clock();
 
-    get_agent_group(fname, group, KEYSIZE);
+    get_agent_group(fname, group, PATH_MAX);
 
     switch (wdb_update_agent_group(id_agent, *group ? group : NULL)) {
     case -1:
@@ -687,6 +694,30 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
     }
 
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agent_group(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+    return result;
+}
+
+int wm_sync_shared_group(const char *fname) {
+    int result = 0;
+    char path[PATH_MAX];
+    DIR *dp;
+    clock_t clock0 = clock();
+
+    snprintf(path,PATH_MAX, "%s/%s",DEFAULTDIR SHAREDCFG_DIR,fname);
+
+    dp = opendir(path);
+
+    /* The group was deleted */
+    if (!dp) {
+        wdb_remove_group_db(fname);
+    }
+    else {
+        if( wdb_find_group(fname) <= 0){
+            wdb_insert_group(fname);
+        }
+    }
+    closedir(dp);
+    mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_shared_group(): %.3f ms.", (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
     return result;
 }
 
@@ -708,6 +739,11 @@ void wm_scan_directory(const char *dirname) {
             wm_sync_file(dirname, dirent->d_name);
 
     closedir(dir);
+}
+
+void wm_sync_multi_groups(const char *dirname) {
+
+    wdb_update_groups(dirname);
 }
 
 int wm_sync_file(const char *dirname, const char *fname) {
@@ -747,12 +783,15 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
     } else if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
         type = WDB_GROUPS;
+    } else if (!strcmp(dirname, DEFAULTDIR SHAREDCFG_DIR)) {
+        type = WDB_SHARED_GROUPS;
     } else {
         mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
         return -1;
     }
 
     switch (type) {
+
     case WDB_GROUPS:
         id_agent = atoi(fname);
 
@@ -761,6 +800,10 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
+        break;
+
+     case WDB_SHARED_GROUPS:
+        id_agent = 0;
         break;
 
     default:
@@ -892,6 +935,10 @@ int wm_sync_file(const char *dirname, const char *fname) {
     case WDB_GROUPS:
         result = wm_sync_agent_group(id_agent, fname);
         break;
+
+    case WDB_SHARED_GROUPS:
+        result = wm_sync_shared_group(fname);
+        break;
     }
 
     return result;
@@ -912,6 +959,7 @@ long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registr
     FILE *fp;
 
     sk_sum_t sum;
+    memset(&sum, 0, sizeof(sk_sum_t));
 
     if (!(fp = fopen(path, "r"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
@@ -1116,6 +1164,28 @@ int wm_extract_agent(const char *fname, char *name, char *addr, int *registry) {
     return 0;
 }
 
+
+// Get readed data
+
+cJSON *wm_database_dump(const wm_database *data) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_db = cJSON_CreateObject();
+
+    if (data->sync_agents) cJSON_AddStringToObject(wm_db,"sync_agents","yes"); else cJSON_AddStringToObject(wm_db,"sync_agents","no");
+    if (data->sync_syscheck) cJSON_AddStringToObject(wm_db,"sync_syscheck","yes"); else cJSON_AddStringToObject(wm_db,"sync_syscheck","no");
+    if (data->sync_rootcheck) cJSON_AddStringToObject(wm_db,"sync_rootcheck","yes"); else cJSON_AddStringToObject(wm_db,"sync_rootcheck","no");
+    if (data->full_sync) cJSON_AddStringToObject(wm_db,"full_sync","yes"); else cJSON_AddStringToObject(wm_db,"full_sync","no");
+    if (data->real_time) cJSON_AddStringToObject(wm_db,"real_time","yes"); else cJSON_AddStringToObject(wm_db,"real_time","no");
+    cJSON_AddNumberToObject(wm_db,"interval",data->interval);
+    cJSON_AddNumberToObject(wm_db,"max_queued_events",data->max_queued_events);
+
+    cJSON_AddItemToObject(root,"database",wm_db);
+
+    return root;
+}
+
+
 // Destroy data
 void* wm_database_destroy(wm_database *data) {
     free(data);
@@ -1132,7 +1202,7 @@ wmodule* wm_database_read() {
     wmodule *module = NULL;
 
     data.sync_agents = getDefine_Int("wazuh_database", "sync_agents", 0, 1);
-    data.sync_syscheck = getDefine_Int("wazuh_database", "sync_syscheck", 0, 1);
+    data.sync_syscheck = 0; //getDefine_Int("wazuh_database", "sync_syscheck", 0, 1);
     data.sync_rootcheck = getDefine_Int("wazuh_database", "sync_rootcheck", 0, 1);
     data.full_sync = getDefine_Int("wazuh_database", "full_sync", 0, 1);
     data.real_time = getDefine_Int("wazuh_database", "real_time", 0, 1);
@@ -1257,7 +1327,14 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
 
+        if ((wd_shared_groups = inotify_add_watch(inotify_fd, DEFAULTDIR SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
+            mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
+
+        mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
+
         wm_sync_agents();
+        wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
+        wdb_agent_belongs_first_time();
         wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
     }
 
@@ -1338,6 +1415,8 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                         dirname = DEFAULTDIR AGENTINFO_DIR;
                     } else if (event->wd == wd_groups) {
                         dirname = DEFAULTDIR GROUPS_DIR;
+                    } else if (event->wd == wd_shared_groups) {
+                        dirname = DEFAULTDIR SHAREDCFG_DIR;
                     } else
 #endif
                     if (event->wd == wd_syscheck) {

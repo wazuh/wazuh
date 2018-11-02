@@ -162,7 +162,6 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
     rule = cJSON_GetObjectItem(root, "rule");
 
     if (!rule) {
-        merror("at W_JSON_ParseGroups(): No rule object found.");
         return;
     }
 
@@ -180,7 +179,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
         } else if (add_groupGPG13(rule, token, firstGPG13)) {
             firstGPG13 = 0;
         } else {
-            cJSON_AddItemToArray(groups, cJSON_CreateString(token));
+            if (token) cJSON_AddItemToArray(groups, cJSON_CreateString(token));
         }
         token = strtok(0, delim);
     }

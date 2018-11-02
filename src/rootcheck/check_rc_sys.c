@@ -313,7 +313,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
         char op_msg[OS_SIZE_1024 + 1];
 
         if ((lstat(dir_name, &statbuf2) == 0) &&
-                (statbuf2.st_nlink != entry_count)) {
+                ((unsigned) statbuf2.st_nlink != entry_count)) {
             snprintf(op_msg, OS_SIZE_1024, "Files hidden inside directory "
                      "'%s'. Link count does not match number of files "
                      "(%d,%d).",

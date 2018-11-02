@@ -12,6 +12,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "shared_download.h"
+#include "os_crypto/sha256/sha256_op.h"
 #include <pthread.h>
 
 #if defined(__FreeBSD__) || defined(__MACH__) || defined(__sun__)
@@ -32,15 +33,17 @@ typedef struct group_t {
 
 /* Internal functions prototypes */
 static void read_controlmsg(const char *agent_id, char *msg);
-static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum);
-static void c_group(const char *group, char ** files, file_sum ***_f_sum);
+static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
+static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
+static void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup);
 static void c_files(void);
 static file_sum** find_sum(const char *group);
-static file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE]);
+static file_sum ** find_group(const char * file, const char * md5, char group[OS_SIZE_65536]);
 
 /* Global vars */
 static group_t **groups;
 static time_t _stime;
+int INTERVAL;
 
 /* For the last message tracking */
 static char pending_queue[MAX_AGENTS][9];
@@ -53,9 +56,14 @@ static pthread_mutex_t lastmsg_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t files_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t awake_mutex = PTHREAD_COND_INITIALIZER;
 
+/* Hash table for multigroups */
+OSHash *m_hash;
 
 /* Interval polling */
 static int poll_interval_time = 0;
+
+/* Message reporting */
+static int reported_metadata_not_exists = 0;
 
 /* Save a control message received from an agent
  * read_controlmsg (other thread) is going to deal with it
@@ -212,7 +220,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     }
 }
 
-void c_group(const char *group, char ** files, file_sum ***_f_sum) {
+void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir) {
     os_md5 md5sum;
     unsigned int f_size = 0;
     file_sum **f_sum;
@@ -231,7 +239,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     f_sum[f_size]->name = NULL;
     f_sum[f_size]->sum[0] = '\0';
 
-    snprintf(merged, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, SHAREDCFG_FILENAME);
+    snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
     if (!logr.nocmerged && (r_group = w_parser_get_group(group), r_group)) {
         if(r_group->current_polling_time <= 0){
@@ -280,7 +288,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
                     {
                         file_url = r_group->files[i].url;
                         file_name = r_group->files[i].name;
-                        snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, file_name);
+                        snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, file_name);
                         snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
                         mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
                         downloaded = wurl_request(file_url,download_path);
@@ -345,7 +353,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
                 continue;
             }
 
-            snprintf(file, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
+            snprintf(file, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, files[i]);
 
             if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
                 merror("Accessing file '%s'", file);
@@ -384,6 +392,112 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum) {
     }
 }
 
+/* Generate merged file for multi-groups */
+void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
+    DIR *dp;
+    char *group;
+    const char delim[2] = ",";
+    char path[PATH_MAX + 1];
+    char ** files;
+    char ** subdir;
+    char agent_conf_multi_path[PATH_MAX + 1] = {0};
+
+    if(!hash_multigroup){
+        return;
+    }
+
+    if (!logr.nocmerged) {
+        /* Get each group of the multi-group */
+        group = strtok(multi_group, delim);
+
+        /* Delete agent.conf from multi group before appending to it */
+        snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup,"agent.conf");
+        unlink(agent_conf_multi_path);
+
+        while( group != NULL ) {
+            /* Now for each group copy the files to the multi-group folder */
+            char dir[PATH_MAX + 1] = {0};
+
+            snprintf(dir, PATH_MAX + 1, "%s/%s", SHAREDCFG_DIR, group);
+
+            dp = opendir(SHAREDCFG_DIR);
+
+            if (!dp) {
+                mdebug2("Opening directory: '%s': %s", dir, strerror(errno));
+                return;
+            }
+
+            if (files = wreaddir(dir), !files) {
+                if (errno != ENOTDIR) {
+                    mdebug2("At c_multi_group(): Could not open directory '%s'", dir);
+                    closedir(dp);
+                    return;
+                }
+                continue;
+            }
+
+            unsigned int i;
+            for (i = 0; files[i]; ++i) {
+                /* Ignore hidden files  */
+                /* Leave the shared config file for later */
+                /* Also discard merged.mg.tmp */
+                if (files[i][0] == '.' || !strncmp(files[i], SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
+                    continue;
+                }
+
+                char destination_path[PATH_MAX + 1] = {0};
+                char source_path[PATH_MAX + 1] = {0};
+                char agent_conf_chunck_message[PATH_MAX + 1]= {0};
+
+                snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
+                snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, hash_multigroup, files[i]);
+
+                /* If the file is agent.conf, append */
+                if(strcmp(files[i],"agent.conf") == 0){
+                    snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
+                    w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message);
+                }
+                else {
+                    w_copy_file(source_path,destination_path,'c',NULL);
+                }
+
+            }
+            group = strtok(NULL, delim);
+            free_strarray(files);
+            closedir(dp);
+
+        }
+    }
+
+    /* Open de multi-group files and generate merged */
+    dp = opendir(MULTIGROUPS_DIR);
+
+    if (!dp) {
+        mdebug2("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
+        return;
+    }
+
+    if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", hash_multigroup) > PATH_MAX) {
+        mdebug2("At c_multi_group(): path too long.");
+        closedir(dp);
+        return;
+    }
+
+    // Try to open directory, avoid TOCTOU hazard
+    if (subdir = wreaddir(path), !subdir) {
+        if (errno != ENOTDIR) {
+            mdebug2("At c_multi_group(): Could not open directory '%s'", path);
+        }
+        closedir(dp);
+        return;
+    }
+
+    c_group(hash_multigroup, subdir, _f_sum,MULTIGROUPS_DIR);
+    free_strarray(subdir);
+
+    closedir(dp);
+}
+
 /* Create the structure with the files and checksums */
 static void c_files()
 {
@@ -408,12 +522,17 @@ static void c_files()
             for (i = 0; groups[i]; i++) {
                 f_sum = groups[i]->f_sum;
 
-                for (j = 0; f_sum[j]; j++) {
-                    free(f_sum[j]->name);
-                    free(f_sum[j]);
+                if(f_sum){
+                    for (j = 0; f_sum[j]; j++) {
+                        free(f_sum[j]->name);
+                        free(f_sum[j]);
+                        f_sum[j] = NULL;
+                    }
+
+                    free(f_sum);
+                    f_sum = NULL;
                 }
 
-                free(f_sum);
                 free(groups[i]->group);
             }
 
@@ -433,7 +552,7 @@ static void c_files()
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
 
-        merror("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
+        mdebug1("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
         return;
     }
 
@@ -452,9 +571,8 @@ static void c_files()
 
         if (subdir = wreaddir(path), !subdir) {
             if (errno != ENOTDIR) {
-                merror("Could not open directory '%s'", path);
+                mdebug1("At c_files() 1: Could not open directory '%s'", path);
             }
-
             continue;
         }
 
@@ -462,10 +580,90 @@ static void c_files()
         os_calloc(1, sizeof(group_t), groups[p_size]);
         groups[p_size]->group = strdup(entry->d_name);
         groups[p_size + 1] = NULL;
-        c_group(entry->d_name, subdir, &groups[p_size]->f_sum);
+        c_group(entry->d_name, subdir, &groups[p_size]->f_sum,SHAREDCFG_DIR);
         free_strarray(subdir);
         p_size++;
     }
+    closedir(dp);
+
+    dp = opendir(MULTIGROUPS_DIR);
+
+    if (!dp) {
+        /* Unlock mutex */
+        w_mutex_unlock(&files_mutex);
+
+        merror("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
+        return;
+    }
+
+    /* Read multigroups from .metatada file */
+    FILE *fp;
+    char metadata_path[PATH_MAX + 1] = {0};
+    char multi_group[OS_SIZE_65536 + 1] = {0};
+    snprintf(metadata_path,PATH_MAX,"%s/%s",MULTIGROUPS_DIR,".metadata");
+
+    fp = fopen(metadata_path,"r");
+
+    if(!fp){
+        if(!reported_metadata_not_exists){
+            mdebug1("At c_files(): Could not find '%s' file. It will be generated when an agent connects",metadata_path);
+            reported_metadata_not_exists = 1;
+        }
+        w_mutex_unlock(&files_mutex);
+        closedir(dp);
+        return;
+    }
+
+    while (fgets(multi_group, OS_SIZE_65536, fp) != NULL) {
+        char *endl = strchr(multi_group, '\n');
+
+        if (endl) {
+            *endl = '\0';
+        }
+
+        os_sha256 multi_group_hash;
+        char _hash[9];
+        char *multi_group_hash_pt = NULL;
+
+        if(multi_group_hash_pt = OSHash_Get(m_hash,multi_group),multi_group_hash_pt){
+
+            strncpy(_hash,multi_group_hash_pt,8);
+            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
+                merror("At c_files(): path '%s' too long.",path);
+                break;
+            }
+
+        } else {
+
+            OS_SHA256_String(multi_group,multi_group_hash);
+            strncpy(_hash,multi_group_hash,8);
+            OSHash_Add(m_hash,multi_group,strdup(_hash));
+
+            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
+                merror("At c_files(): path '%s' too long.",path);
+                break;
+            }
+        }
+
+
+        // Try to open directory, avoid TOCTOU hazard
+        if (subdir = wreaddir(path), !subdir) {
+            if (errno != ENOTDIR) {
+                mdebug1("At c_files(): Could not open directory '%s'", path);
+            }
+            continue;
+        }
+
+        os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
+        os_calloc(1, sizeof(group_t), groups[p_size]);
+        groups[p_size]->group = strdup(multi_group);
+        groups[p_size + 1] = NULL;
+        c_multi_group(multi_group,&groups[p_size]->f_sum,_hash);
+        free_strarray(subdir);
+        p_size++;
+    }
+
+    fclose(fp);
 
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
@@ -487,7 +685,7 @@ file_sum** find_sum(const char *group) {
     return NULL;
 }
 
-file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE]) {
+file_sum ** find_group(const char * file, const char * md5, char group[OS_SIZE_65536]) {
     int i;
     int j;
     file_sum ** f_sum;
@@ -497,7 +695,7 @@ file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE])
 
         for (j = 0; f_sum[j]; j++) {
             if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                strncpy(group, groups[i]->group, KEYSIZE);
+                strncpy(group, groups[i]->group, OS_SIZE_65536);
                 return f_sum;
             }
         }
@@ -509,15 +707,37 @@ file_sum ** find_group(const char * file, const char * md5, char group[KEYSIZE])
 /* Send a file to the agent
  * Returns -1 on error
  */
-int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum)
+int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir)
 {
     int i = 0;
     size_t n = 0;
     char file[OS_SIZE_1024 + 1];
     char buf[OS_SIZE_1024 + 1];
     FILE *fp;
+    os_sha256 multi_group_hash;
+    char *multi_group_hash_pt = NULL;
 
-    snprintf(file, OS_SIZE_1024, "%s/%s/%s", SHAREDCFG_DIR, group, name);
+    /* Check if it is multigroup */
+    if(strchr(group,MULTIGROUP_SEPARATOR)){
+
+        if(multi_group_hash_pt = OSHash_Get(m_hash,group),multi_group_hash_pt){
+            mdebug1("At send_file_toagent(): Hash is '%s'",multi_group_hash);
+            snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash_pt, name);
+        }
+        else{
+            OS_SHA256_String(group,multi_group_hash);
+            char _hash[9];
+            strncpy(_hash,multi_group_hash,8);
+            OSHash_Add(m_hash,group,strdup(_hash));
+
+            snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, _hash, name);
+        }
+    }
+    else{
+        snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
+    }
+
+
     fp = fopen(file, "r");
     if (!fp) {
         merror(FOPEN_ERROR, file, errno, strerror(errno));
@@ -528,8 +748,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n",
              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
-    if (send_msg(agent_id, buf, -1) == -1) {
-        merror(SEC_ERROR);
+    if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
         return (-1);
     }
@@ -538,8 +757,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
 
-        if (send_msg(agent_id, buf, -1) == -1) {
-            merror(SEC_ERROR);
+        if (send_msg(agent_id, buf, -1) < 0) {
             fclose(fp);
             return (-1);
         }
@@ -557,8 +775,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     /* Send the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
 
-    if (send_msg(agent_id, buf, -1) == -1) {
-        merror(SEC_ERROR);
+    if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
         return (-1);
     }
@@ -572,7 +789,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
 static void read_controlmsg(const char *agent_id, char *msg)
 {
     int i;
-    char group[KEYSIZE];
+    char group[OS_SIZE_65536];
     file_sum **f_sum = NULL;
     os_md5 tmp_sum;
     char *end;
@@ -596,14 +813,14 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
 
     // Get agent group
-
     if (agt_group = w_parser_get_agent(agent_id), agt_group) {
-        strncpy(group, agt_group->group, KEYSIZE);
-        group[KEYSIZE - 1] = '\0';
+        strncpy(group, agt_group->group, OS_SIZE_65536);
+        group[OS_SIZE_65536 - 1] = '\0';
         set_agent_group(agent_id, group);
-    } else if (get_agent_group(agent_id, group, KEYSIZE) < 0) {
+    } else if (get_agent_group(agent_id, group, OS_SIZE_65536) < 0) {
         group[0] = '\0';
     }
+    mdebug2("Agent '%s' group is '%s'",agent_id,group);
 
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
@@ -615,7 +832,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
 
-            merror("No such group '%s' for agent '%s'", group, agent_id);
+            mdebug1("No such group '%s' for agent '%s'", group, agent_id);
             return;
         }
     }
@@ -654,10 +871,11 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         // If group was not got, guess it by matching sum
 
+        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'",agent_id,group,file,md5);
         if (!f_sum) {
             if (f_sum = find_group(file, md5, group), !f_sum) {
                 // If the group could not be guessed, set to "default"
-                strncpy(group, "default", KEYSIZE);
+                strncpy(group, "default", OS_SIZE_65536);
 
                 if (f_sum = find_sum(group), !f_sum) {
                     /* Unlock mutex */
@@ -686,8 +904,18 @@ static void read_controlmsg(const char *agent_id, char *msg)
             if (tmp_sum[0] && strcmp(tmp_sum, md5) != 0) {
                 mdebug1("Sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
 
-                if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum) < 0) {
-                    merror(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
+                /* If the agent has multi group, change the shared path */
+                char *multi_group = strchr(group,MULTIGROUP_SEPARATOR);
+                char sharedcfg_dir[128] = {0};
+
+                if(multi_group) {
+                    strcpy(sharedcfg_dir,MULTIGROUPS_DIR);
+                } else {
+                    strcpy(sharedcfg_dir,SHAREDCFG_DIR);
+                }
+
+                if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum,sharedcfg_dir) < 0) {
+                    mwarn(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
                 }
 
                 mdebug2("End sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
@@ -718,8 +946,19 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 (f_sum[i]->mark == 0)) {
 
             mdebug1("Sending file '%s/%s' to agent '%s'.", group, f_sum[i]->name, agent_id);
-            if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum) < 0) {
-                merror(SHARED_ERROR, f_sum[i]->name, agent_id);
+
+            /* If the agent has multi group, change the shared path */
+            char *multi_group = strchr(group,MULTIGROUP_SEPARATOR);
+            char sharedcfg_dir[128] = {0};
+
+            if(multi_group) {
+                strcpy(sharedcfg_dir,MULTIGROUPS_DIR);
+            } else {
+                strcpy(sharedcfg_dir,SHAREDCFG_DIR);
+            }
+
+            if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum,sharedcfg_dir) < 0) {
+                mwarn(SHARED_ERROR, f_sum[i]->name, agent_id);
             }
         }
 
@@ -783,7 +1022,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 }
 /* Update shared files */
 void *update_shared_files(__attribute__((unused)) void *none) {
-    const int INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
+    INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
     poll_interval_time = INTERVAL;
 
     while (1) {
@@ -814,6 +1053,7 @@ void *update_shared_files(__attribute__((unused)) void *none) {
 void manager_init()
 {
     _stime = time(0);
+    m_hash = OSHash_Create();
     mdebug1("Running manager_init");
     c_files();
     w_yaml_create_groups();

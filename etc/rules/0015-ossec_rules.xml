@@ -96,7 +96,8 @@
     <match>^Starting syscheck scan|^Ending syscheck scan.|</match>
     <match>^Starting OpenSCAP scan|^Ending OpenSCAP scan.|</match>
     <match>^Starting CIS-CAT scan|^Ending CIS-CAT scan.|</match>
-    <match>^Starting vulnerability scan|^Ending vulnerability scan.</match>
+    <match>^Starting vulnerability scan|^Ending vulnerability scan.|</match>
+    <match>^Starting Azure-logs scan.|^Ending Azure-logs scan.</match>
     <description>Ignoring scan messages.</description>
     <group>rootcheck,syscheck,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,</group>
   </rule>
@@ -197,20 +198,6 @@
     <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,</group>
   </rule>
 
-  <rule id="551" level="7">
-    <category>ossec</category>
-    <decoded_as>syscheck_integrity_changed_2nd</decoded_as>
-    <description>Integrity checksum changed again (2nd time).</description>
-    <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,</group>
-  </rule>
-
-  <rule id="552" level="7">
-    <category>ossec</category>
-    <decoded_as>syscheck_integrity_changed_3rd</decoded_as>
-    <description>Integrity checksum changed again (3rd time).</description>
-    <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,</group>
-  </rule>
-
   <rule id="553" level="7">
     <category>ossec</category>
     <decoded_as>syscheck_deleted</decoded_as>
@@ -276,22 +263,6 @@
     <hostname>syscheck-registry</hostname>
     <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,</group>
     <description>Registry Integrity Checksum Changed</description>
-  </rule>
-
-  <rule id="595" level="5">
-    <category>ossec</category>
-    <if_sid>551</if_sid>
-    <hostname>syscheck-registry</hostname>
-    <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,</group>
-    <description>Registry Integrity Checksum Changed Again (2nd time)</description>
-  </rule>
-
-  <rule id="596" level="5">
-    <category>ossec</category>
-    <if_sid>552</if_sid>
-    <hostname>syscheck-registry</hostname>
-    <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,</group>
-    <description>Registry Integrity Checksum Changed Again (3rd time)</description>
   </rule>
 
   <rule id="597" level="5">

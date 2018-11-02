@@ -14,16 +14,15 @@ import threading
 import time
 from datetime import datetime
 from operator import itemgetter
-
 from wazuh import common, WazuhException
 from wazuh.agent import Agent
 from wazuh.cluster import __version__
 from wazuh.cluster.cluster import get_cluster_items, _update_file, \
     decompress_files, get_files_status, \
-    compress_files, compare_files, get_agents_status, \
-    read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
-from wazuh.cluster.communication import ProcessFiles, Server, ServerHandler, \
-    InternalSocketHandler, ClusterThread
+    compress_files, compare_files, read_config, unmerge_agent_info, merge_agent_info, get_cluster_items_master_intervals
+from wazuh.cluster.communication import FragmentedStringReceiver, FragmentedFileReceiver, Server, ServerHandler, ClusterThread
+from wazuh.cluster.internal_socket import InternalSocketHandler
+from wazuh.cluster.dapi import dapi
 from wazuh.utils import mkdir_with_mode
 
 
@@ -41,10 +40,10 @@ class MasterManagerHandler(ServerHandler):
 
     # Overridden methods
     def process_request(self, command, data):
-        logger.debug("[Master] [{0}] [Request-R]: '{1}'.".format(self.name, command))
-
+        logger.debug("[Master ] [{0}] [Request-R    ]: '{1}'.".format(self.name, command))
 
         if command == 'echo-c':  # Echo
+            self.process_keep_alive_from_worker()
             return 'ok-c ', data.decode()
         elif command == 'sync_i_c_m_p':
             result = self.manager.get_worker_status(worker_id=self.name, key='sync_integrity_free')
@@ -75,25 +74,31 @@ class MasterManagerHandler(ServerHandler):
             response = {name:data['info'] for name,data in self.server.get_connected_workers().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master",  "version": __version__}})
-            serialized_response = ['ok', json.dumps(response)]
+            serialized_response = ['json', json.dumps(response)]
             return serialized_response
         elif command == 'get_health':
-            filter_nodes = data.decode()
-            response = self.manager.get_healthcheck(filter_nodes)
+            _, filter_nodes = data.decode().split(' ',1)
+            response = self.manager.get_healthcheck(filter_nodes if filter_nodes != 'None' else None)
+            serialized_response = ['json', json.dumps(response)]
+            return serialized_response
+        elif command == 'get_config':
+            response = self.manager.get_configuration()
             serialized_response = ['ok', json.dumps(response)]
             return serialized_response
-        elif command == 'get_agents':
-            data = data.decode()
-            split_data = data.split('%--%', 5)
-            filter_status = split_data[0] if split_data[0] != 'None' else None
-            filter_nodes = split_data[1] if split_data[1] != 'None' else None
-            offset = split_data[2] if split_data[2] != 'None' else None
-            limit = split_data[3] if split_data[3] != 'None' else None
-            sort = split_data[4] if split_data[4] != 'None' else None
-            search = split_data[5] if split_data[5] != 'None' else None
-            response = get_agents_status(filter_status, filter_nodes, offset, limit, sort, search)
-            serialized_response = ['ok', json.dumps(response)]
-            return serialized_response
+        elif command == 'string':
+            string_sender_thread = FragmentedStringReceiverMaster(manager_handler=self, stopper=self.stopper)
+            string_sender_thread.start()
+            return 'ack', self.set_worker_thread(command, string_sender_thread)
+        elif command == 'dapi':
+            self.server.add_api_request(self.name + ' ' + data.decode())
+            return 'ack', "Request is being processed"
+        elif command == "dapi_res":
+            string_receiver = FragmentedAPIResponseReceiver(manager_handler=self, stopper=self.stopper, worker_id=data.decode())
+            string_receiver.start()
+            return 'ack', self.set_worker_thread(command, string_receiver)
+        elif command == 'err-is':
+            logger.debug("{} Internal socket error received: {}".format(self.tag, data.decode()))
+            return 'ack','thanks'
         else:  # Non-master requests
             return ServerHandler.process_request(self, command, data)
 
@@ -102,7 +107,7 @@ class MasterManagerHandler(ServerHandler):
         # FixMe: Move this line to communications
         answer, payload = self.split_data(response)
 
-        logger.debug("[Master] [{0}] [Response-R]: '{1}'.".format(self.name, answer))
+        logger.debug("[Master ] [{0}] [Response-R   ]: '{1}'.".format(self.name, answer))
 
         if answer == 'ok-m':  # test
             response_data = '[response_only_for_master] Worker answered: {}.'.format(payload)
@@ -202,15 +207,19 @@ class MasterManagerHandler(ServerHandler):
         if sum(n_errors['warnings'].values()) > 0:
             for key, value in n_errors['warnings'].items():
                 if key == '/queue/agent-info/':
-                    logger.warning("Received {} agent statuses for non-existent agents. Skipping.".format(value))
+                    logger.debug2("Received {} agent statuses for non-existent agents. Skipping.".format(value))
                 elif key == '/queue/agent-groups/':
-                    logger.warning("Received {} group assignments for non-existent agents. Skipping.".format(value))
+                    logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
 
         # Save info for healthcheck
         self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status=n_merged_files)
 
 
     # New methods
+    def process_keep_alive_from_worker(self):
+        self.manager.set_worker_status(worker_id=self.name, key='last_keep_alive', status=time.time())
+
+
     def process_files_from_worker(self, worker_name, data_received, cluster_control_key, cluster_control_subkey, tag=None):
         sync_result = False
 
@@ -345,12 +354,47 @@ class MasterManagerHandler(ServerHandler):
 #
 # Threads (worker_threads) created by MasterManagerHandler
 #
+class FragmentedStringReceiverMaster(FragmentedStringReceiver):
+
+    def __init__(self, manager_handler, stopper):
+        FragmentedStringReceiver.__init__(self, manager_handler, stopper)
+        self.thread_tag = "[Master ] [{0}] [String-R     ]".format(self.manager_handler.name)
+
+    def check_connection(self):
+        return True
 
 
-class ProcessWorker(ProcessFiles):
+class FragmentedAPIResponseReceiver(FragmentedStringReceiverMaster):
+
+    def __init__(self, manager_handler, stopper, worker_id):
+        FragmentedStringReceiverMaster.__init__(self, manager_handler, stopper)
+        self.thread_tag = "[Master ] [{}] [API-R_{}]".format(manager_handler.name, worker_id)
+        self.worker_id = worker_id
+
+    def process_received_data(self):
+        logger.debug("{}: Data received. Forwarding it to local client. ({})".format(self.thread_tag, self.worker_id))
+
+        self.manager_handler.isocket_handler.send_string(self.worker_id, "dapi_res", self.sting_received.decode())
+        return True
+
+    def process_cmd(self, command, data):
+        requests = {'fwd_new':'new_f_r', 'fwd_upd':'update_f_r', 'fwd_end':'end_f_r'}
+
+        if data is not None and not isinstance(data, bytes):
+            data = data.decode()
+
+        return FragmentedStringReceiverMaster.process_cmd(self, requests[command], data)
+
+    def unlock_and_stop(self, reason, send_err_request=None):
+        if reason == 'error':
+            self.manager_handler.isocket_handler.send_request(self.worker_id, 'err-is', send_err_request)
+        FragmentedStringReceiverMaster.unlock_and_stop(self, reason, None)
+
+
+class ProcessWorker(FragmentedFileReceiver):
 
     def __init__(self, manager_handler, filename, stopper):
-        ProcessFiles.__init__(self, manager_handler, filename,
+        FragmentedFileReceiver.__init__(self, manager_handler, filename,
                               manager_handler.get_worker(),
                               stopper)
 
@@ -370,7 +414,7 @@ class ProcessWorker(ProcessFiles):
 
     def unlock_and_stop(self, reason, send_err_request=None):
         logger.info("{0}: Unlocking '{1}' due to {2}.".format(self.thread_tag, self.status_type, reason))
-        ProcessFiles.unlock_and_stop(self, reason, send_err_request)
+        FragmentedFileReceiver.unlock_and_stop(self, reason, send_err_request)
 
 
 class ProcessWorkerIntegrity(ProcessWorker):
@@ -378,7 +422,7 @@ class ProcessWorkerIntegrity(ProcessWorker):
     def __init__(self, manager, manager_handler, filename, stopper):
         ProcessWorker.__init__(self, manager_handler, filename, stopper)
         self.manager = manager
-        self.thread_tag = "[Master] [{0}] [Integrity-R  ]".format(self.manager_handler.name)
+        self.thread_tag = "[Master ] [{0}] [Integrity-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_integrity_free"
         self.function = self.manager_handler.process_integrity_from_worker
         self.cluster_control_key = "last_sync_integrity"
@@ -442,7 +486,7 @@ class ProcessWorkerFiles(ProcessWorker):
 
    def __init__(self, manager_handler, filename, stopper):
         ProcessWorker.__init__(self, manager_handler, filename, stopper)
-        self.thread_tag = "[Master] [{0}] [AgentInfo-R  ]".format(self.manager_handler.name)
+        self.thread_tag = "[Master ] [{0}] [AgentInfo-R  ]".format(self.manager_handler.name)
         self.status_type = "sync_agentinfo_free"
         self.function = self.manager_handler.process_files_from_worker
         self.cluster_control_key = "last_sync_agentinfo"
@@ -453,7 +497,7 @@ class ProcessExtraValidFiles(ProcessWorker):
 
     def __init__(self, manager_handler, filename, stopper):
         ProcessWorker.__init__(self, manager_handler, filename, stopper)
-        self.thread_tag = "[Master] [{0}] [AgentGroup-R ]".format(self.manager_handler.name)
+        self.thread_tag = "[Master ] [{0}] [AgentGroup-R ]".format(self.manager_handler.name)
         self.status_type = "sync_extravalid_free"
         self.function = self.manager_handler.process_files_from_worker
         self.cluster_control_key = "last_sync_agentgroups"
@@ -465,11 +509,13 @@ class ProcessExtraValidFiles(ProcessWorker):
 #
 class MasterManager(Server):
     Integrity_T = "Integrity_Thread"
+    APIRequests_T = "API_Requests_Thread"
+    ClientStatus_T = "ClientStatusCheck_Thread"
 
     def __init__(self, cluster_config):
         Server.__init__(self, cluster_config['bind_addr'], cluster_config['port'], MasterManagerHandler)
 
-        logger.info("[Master] Listening '{0}:{1}'.".format(cluster_config['bind_addr'], cluster_config['port']))
+        logger.info("[Master ] Listening '{0}:{1}'.".format(cluster_config['bind_addr'], cluster_config['port']))
 
         # Intervals
         self.interval_recalculate_integrity = get_cluster_items_master_intervals()['recalculate_integrity']
@@ -497,12 +543,16 @@ class MasterManager(Server):
 
     # Private methods
     def _initiate_master_threads(self):
-        logger.debug("[Master] Creating threads.")
+        logger.debug("[Master ] Creating threads.")
 
         self.threads[MasterManager.Integrity_T] = FileStatusUpdateThread(master=self, interval=self.interval_recalculate_integrity, stopper=self.stopper)
-        self.threads[MasterManager.Integrity_T].start()
+        self.threads[MasterManager.ClientStatus_T] = ClientStatusCheckThread(master=self, stopper=self.stopper)
+        self.threads[MasterManager.APIRequests_T] = dapi.APIRequestQueue(server=self, stopper=self.stopper)
 
-        logger.debug("[Master] Threads created.")
+        for thread in self.threads.values():
+            thread.start()
+
+        logger.debug("[Master ] Threads created.")
 
     # New methods
     def set_worker_status(self, worker_id, key, status, subkey=None, subsubkey=None):
@@ -529,6 +579,14 @@ class MasterManager(Server):
 
         return result
 
+    def get_configuration(self):
+        result = False
+
+        if self.config:
+            result = self.config
+
+        return result
+
 
     def req_file_status_to_workers(self):
         responses = list(self.send_request_broadcast(command = 'file_status'))
@@ -550,7 +608,7 @@ class MasterManager(Server):
 
     def get_healthcheck(self, filter_nodes=None):
         workers_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_workers().items() if not filter_nodes or name in filter_nodes}
-        n_connected_nodes = len(self.get_connected_workers().items()) + 1 # workers + master
+        n_connected_nodes = len(workers_info) + 1 # workers + master
 
         cluster_config = read_config()
         if  not filter_nodes or cluster_config['node_name'] in filter_nodes:
@@ -558,40 +616,46 @@ class MasterManager(Server):
                                                                   "ip": cluster_config['nodes'][0], "version": __version__,
                                                                   "type": "master"}}})
 
-        # Get active agents by node
+        # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             workers_info[node_name]["info"]["n_active_agents"]=Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
+            if workers_info[node_name]['info']['type'] != 'master' and isinstance(workers_info[node_name]['status']['last_keep_alive'], float):
+                workers_info[node_name]['status']['last_keep_alive'] = str(datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
 
         health_info = {"n_connected_nodes":n_connected_nodes, "nodes": workers_info}
         return health_info
 
 
     def exit(self):
-        logger.debug("[Master] Cleaning threads. Start.")
+        logger.debug("[Master ] Cleaning threads. Start.")
 
         # Cleaning master threads
         self.stopper.set()
 
         for thread in self.threads:
-            logger.debug2("[Master] Cleaning threads '{0}'.".format(thread))
+            logger.debug2("[Master ] Cleaning threads '{0}'.".format(thread))
 
             try:
                 self.threads[thread].join(timeout=2)
             except Exception as e:
-                logger.error("[Master] Cleaning '{0}' thread. Error: '{1}'.".format(thread, str(e)))
+                logger.error("[Master ] Cleaning '{0}' thread. Error: '{1}'.".format(thread, str(e)))
 
             if self.threads[thread].isAlive():
-                logger.warning("[Master] Cleaning '{0}' thread. Timeout.".format(thread))
+                logger.warning("[Master ] Cleaning '{0}' thread. Timeout.".format(thread))
             else:
-                logger.debug2("[Master] Cleaning '{0}' thread. Terminated.".format(thread))
+                logger.debug2("[Master ] Cleaning '{0}' thread. Terminated.".format(thread))
 
         # Cleaning handler threads
-        logger.debug("[Master] Cleaning threads generated to handle workers.")
+        logger.debug("[Master ] Cleaning threads generated to handle workers.")
         workers = self.get_connected_workers().copy().keys()
         for worker in workers:
             self.remove_worker(worker_id=worker)
 
-        logger.debug("[Master] Cleaning threads. End.")
+        logger.debug("[Master ] Cleaning threads. End.")
+
+
+    def add_api_request(self, request):
+        self.threads[self.APIRequests_T].set_request(request)
 
 
 #
@@ -606,14 +670,34 @@ class FileStatusUpdateThread(ClusterThread):
 
     def run(self):
         while not self.stopper.is_set() and self.running:
-            logger.debug("[Master] [IntegrityControl] Calculating.")
+            logger.debug("[Master ] [IntegrityControl] Calculating.")
             try:
                 tmp_integrity_control = get_files_status('master')
                 self.master.set_integrity_control(tmp_integrity_control)
             except Exception as e:
-                logger.error("[Master] [IntegrityControl] Error: {}".format(str(e)))
+                logger.error("[Master ] [IntegrityControl] Error: {}".format(str(e)))
 
-            logger.debug("[Master] [IntegrityControl] Calculated.")
+            logger.debug("[Master ] [IntegrityControl] Calculated.")
+
+            self.sleep(self.interval)
+
+
+class ClientStatusCheckThread(ClusterThread):
+    def __init__(self, master, stopper):
+        ClusterThread.__init__(self, stopper)
+        self.master = master
+        self.interval = get_cluster_items_master_intervals()['check_worker_lastkeepalive']
+        self.thread_tag = "WorkerChecks"
+
+
+    def run(self):
+        while not self.stopper.is_set() and self.running:
+            logger.debug("[Master ] [{}] Checking workers statuses.".format(self.thread_tag))
+
+            for worker, worker_info in self.master.get_connected_workers().items():
+                if time.time() - worker_info['status']['last_keep_alive'] > get_cluster_items_master_intervals()['max_allowed_time_without_keepalive']:
+                    logger.critical("[Master ] [{}] [{}]: Last keep alive is higher than allowed maximum. Disconnecting.".format(self.thread_tag, worker))
+                    self.master.remove_worker(worker)
 
             self.sleep(self.interval)
 
@@ -622,92 +706,40 @@ class FileStatusUpdateThread(ClusterThread):
 # Internal socket
 #
 class MasterInternalSocketHandler(InternalSocketHandler):
-    def __init__(self, sock, manager, asyncore_map):
-        InternalSocketHandler.__init__(self, sock=sock, manager=manager, asyncore_map=asyncore_map)
+    def __init__(self, sock, server, asyncore_map, addr):
+        InternalSocketHandler.__init__(self, sock=sock, server=server, asyncore_map=asyncore_map, addr=addr)
 
     def process_request(self, command, data):
-        logger.debug("[Transport-I] Forwarding request to master of cluster '{0}' - '{1}'".format(command, data))
-        serialized_response = ""
+        logger.debug("[Master ] [LocalServer  ] Request received in cluster local server: '{0}' - '{1}'".format(command, data))
         data = data.decode()
 
-        if command == 'get_files':
-            split_data = data.split('%--%', 2)
-            node_list = ast.literal_eval(split_data[1]) if split_data[1] else None
-            get_my_files = False
-
-            response = {}
-
-            if node_list and len(node_list) > 0: #Selected nodes
-                for node in node_list:
-                    if node == read_config()['node_name']:
-                        get_my_files = True
-                        continue
-                    node_file = self.manager.send_request(worker_name=node, command='file_status', data='')
-
-                    if node_file.split(' ', 1)[0] == 'err': # Error response
-                        response.update({node:node_file.split(' ', 1)[1]})
-                    else:
-                        response.update({node:json.loads(node_file.split(' ',1)[1])})
-            else: # Broadcast
-                get_my_files = True
-
-                node_file = list(self.manager.send_request_broadcast(command = 'file_status'))
-
-                for node,data in node_file:
-                    try:
-                        response.update({node:json.loads(data.split(' ',1)[1])})
-                    except ValueError: # json.loads will raise a ValueError
-                        response.update({node:data.split(' ',1)[1]})
-
-            if get_my_files:
-                my_files = get_files_status('master', get_md5=True)
-                my_files.update(get_files_status('worker', get_md5=True))
-                response.update({read_config()['node_name']:my_files})
-
-            # Filter files
-            if node_list and len(response):
-                response = {node: response.get(node) for node in node_list}
-
-            serialized_response = ['ok',  json.dumps(response)]
-            return serialized_response
-
-        elif command == 'get_nodes':
-            response = {name:data['info'] for name,data in self.manager.get_connected_workers().items()}
+        if command == 'get_nodes':
+            response = {name:data['info'] for name,data in self.server.manager.get_connected_workers().items()}
             cluster_config = read_config()
             response.update({cluster_config['node_name']:{"name": cluster_config['node_name'], "ip": cluster_config['nodes'][0],  "type": "master", "version":__version__}})
 
-            serialized_response = ['ok', json.dumps(response)]
-            return serialized_response
-
-        elif command == 'get_agents':
-            split_data = data.split('%--%', 5)
-            filter_status = split_data[0] if split_data[0] != 'None' else None
-            filter_nodes = split_data[1] if split_data[1] != 'None' else None
-            offset = int(split_data[2]) if split_data[2] != 'None' and split_data[2].isdigit() else None
-            limit = int(split_data[3]) if split_data[3] != 'None' and split_data[3].isdigit() else None
-            response = get_agents_status(filter_status, filter_nodes, offset, limit)
-            serialized_response = ['ok',  json.dumps(response)]
+            serialized_response = ['json', json.dumps(response)]
             return serialized_response
 
         elif command == 'get_health':
+            _, data = data.split(' ', 1)
             node_list = data if data != 'None' else None
-            response = self.manager.get_healthcheck(node_list)
-            serialized_response = ['ok',  json.dumps(response)]
+            response = self.server.manager.get_healthcheck(node_list)
+            serialized_response = ['json',  json.dumps(response)]
             return serialized_response
 
-        elif command == 'sync':
-            command = "req_sync_m_c"
-            split_data = data.split(' ', 1)
-            node_list = ast.literal_eval(split_data[0]) if split_data[0] else None
-
-            if node_list:
-                for node in node_list:
-                    response = {node:self.manager.send_request(worker_name=node, command=command, data="")}
-                serialized_response = ['ok', json.dumps(response)]
-            else:
-                response = list(self.manager.send_request_broadcast(command=command, data=data))
-                serialized_response = ['ok', json.dumps({node:data for node,data in response})]
+        elif command == 'get_config':
+            response = self.server.manager.get_configuration()
+            serialized_response = ['ok', json.dumps(response)]
             return serialized_response
+
+        elif command == 'dapi':
+            return ['json', dapi.distribute_function(json.loads(data.split(' ', 1)[1]))]
+
+        elif command == 'dapi_forward':
+            worker_id, node_name, input_json = data.split(' ', 2)
+            res_cmd, res = self.server.manager.send_request(worker_name=node_name, command='dapi', data=worker_id + ' ' + input_json).split(' ', 1)
+            return res_cmd, res if res_cmd != 'err' else json.dumps({'err': res})
 
         else:
-            return ['err', json.dumps({'err': "Received an unknown command '{}'".format(command)})]
+            return InternalSocketHandler.process_request(self, command, data)

@@ -21,11 +21,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* rule = NULL;
     cJSON* file_diff = NULL;
     cJSON* manager;
-	cJSON* agent;
+    cJSON* agent;
     cJSON* predecoder;
     cJSON* data;
     cJSON* cluster;
-	char manager_name[512];
+    char manager_name[512];
     char* out;
     int i;
 
@@ -99,8 +99,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         }
         cJSON_AddItemToObject(rule, "mail", cJSON_CreateBool(lf->generated_rule->alert_opts & DO_MAILALERT));
 
-        if (lf->generated_rule->last_events && lf->generated_rule->last_events[0] && lf->generated_rule->last_events[1] && lf->generated_rule->last_events[1][0]) {
-            cJSON_AddStringToObject(root, "previous_output", lf->generated_rule->last_events[1]);
+        if (lf->last_events && lf->last_events[0] && lf->last_events[1] && *lf->last_events[1] != '\0') {
+            cJSON_AddStringToObject(root, "previous_output", lf->last_events[0]);
         }
     }
 
@@ -383,7 +383,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         // Dynamic fields, except for syscheck events
         if (lf->fields && !lf->filename) {
             for (i = 0; i < lf->nfields; i++) {
-                if (lf->fields[i].value) {
+                if (lf->fields[i].value && *lf->fields[i].value) {
                     W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);
                 }
             }

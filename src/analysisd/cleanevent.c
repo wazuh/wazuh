@@ -26,7 +26,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     size_t loglen;
     char *pieces;
-    struct tm *p;
+    struct tm p;
+    struct timespec local_c_timespec;
 
     /* The message is formated in the following way:
      * id:location:message.
@@ -546,25 +547,24 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         free(orig);
     } else {
         os_strdup(lf->hostname ? lf->hostname : __shost, lf->hostname);
-        lf->agent_id = strdup("000");
+        os_strdup("000", lf->agent_id);
     }
 
     /* Set up the event data */
-    lf->time = c_timespec;
-    p = localtime(&c_time);
+    localtime(&c_time);
+    gettime(&local_c_timespec);
+    time(&lf->generate_time);
+    lf->time = local_c_timespec;
+    localtime_r(&lf->time.tv_sec, &p);
 
     /* Assign hour, day, year and month values */
-    lf->day = p->tm_mday;
-    lf->year = p->tm_year + 1900;
-    strncpy(lf->mon, month[p->tm_mon], 3);
+    lf->day = p.tm_mday;
+    lf->year = p.tm_year + 1900;
+    strncpy(lf->mon, month[p.tm_mon], 3);
     snprintf(lf->hour, 9, "%02d:%02d:%02d",
-             p->tm_hour,
-             p->tm_min,
-             p->tm_sec);
-
-    /* Set the global hour/weekday */
-    __crt_hour = p->tm_hour;
-    __crt_wday = p->tm_wday;
+             p.tm_hour,
+             p.tm_min,
+             p.tm_sec);
 
 #ifdef TESTRULE
     if (!alert_only) {

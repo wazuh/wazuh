@@ -174,7 +174,7 @@ extern const char *__local_name;
 
 #define os_malloc(x,y) ((y = (__typeof__(y)) malloc(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
-#define os_free(x) (x)?free(x):merror("free a null")
+#define os_free(x) if(x){free(x);x=NULL;}
 
 #define os_realloc(x,y,z) ((z = (__typeof__(z))realloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
 
@@ -226,5 +226,6 @@ extern const char *__local_name;
 #include "error_messages/debug_messages.h"
 #include "custom_output_search.h"
 #include "url.h"
+#include "cluster_utils.h"
 
 #endif /* __SHARED_H */

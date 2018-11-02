@@ -20,13 +20,13 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\n%s %s: Updates (clears) the integrity check database.\n", __ossec_name, ARGV0);
+    printf("\n%s %s: This binary it's deprecated, use API calls related below instead.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
     printf("\t-h       This help message.\n");
-    printf("\t-l       List available agents.\n");
-    printf("\t-a       Update (clear) syscheck database for all agents.\n");
-    printf("\t-u <id>  Update (clear) syscheck database for a specific agent.\n");
-    printf("\t-u local Update (clear) syscheck database locally.\n\n");
+    printf("\t-l       List available agents. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#get-all-agents filtering by status.\n");
+    printf("\t-a       Update (clear) syscheck database for all agents. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#clear-syscheck-database.\n");
+    printf("\t-u <id>  Update (clear) syscheck database for a specific agent. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#clear-syscheck-database-of-an-agent.\n");
+    printf("\t-u local Update (clear) syscheck database locally. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#clear-syscheck-database-of-an-agent with id 0.\n\n");
     exit(1);
 }
 
@@ -37,6 +37,9 @@ int main(int argc, char **argv)
     const char *user = USER;
     gid_t gid;
     uid_t uid;
+
+    //This binary its deprecated, use RestFull API instead
+    helpmsg();
 
     /* Set the name */
     OS_SetName(ARGV0);

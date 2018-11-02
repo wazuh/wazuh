@@ -48,7 +48,7 @@ try:
     from wazuh.cluster.cluster import read_config, check_cluster_config, clean_up, get_cluster_items, CustomFileRotatingHandler
     from wazuh.cluster.master import MasterManager, MasterInternalSocketHandler
     from wazuh.cluster.worker import WorkerManager, WorkerInternalSocketHandler
-    from wazuh.cluster.communication import InternalSocketThread
+    from wazuh.cluster.internal_socket import InternalSocketThread
     from wazuh import configuration as config
     from wazuh.manager import status
 
@@ -150,9 +150,10 @@ def master_main(cluster_configuration):
     manager = MasterManager(cluster_config=cluster_configuration)
 
     # Internal socket
-    internal_socket_thread = InternalSocketThread("c-internal", tag="[Master]")
+    internal_socket_thread = InternalSocketThread("c-internal", tag="[Master ]")
     internal_socket_thread.start()
     internal_socket_thread.setmanager(manager, MasterInternalSocketHandler)
+    manager.handler.isocket_handler = internal_socket_thread.internal_socket
 
     # Loop
     asyncore.loop(timeout=1, use_poll=False, map=manager.map, count=None)
@@ -166,7 +167,7 @@ def worker_main(cluster_configuration):
     connection_retry_interval = get_cluster_items()['intervals']['worker']['connection_retry']
 
     # Internal socket
-    internal_socket_thread = InternalSocketThread("c-internal", tag="[Worker]")
+    internal_socket_thread = InternalSocketThread("c-internal", tag="[Worker ]")
     internal_socket_thread.start()
 
     # Loop
@@ -176,15 +177,17 @@ def worker_main(cluster_configuration):
 
             internal_socket_thread.setmanager(manager, WorkerInternalSocketHandler)
 
+            manager.handler.isocket_handler = internal_socket_thread.internal_socket
+
             asyncore.loop(timeout=1, use_poll=False, map=manager.handler.map, count=None)
 
             logger.error("[{0}] Disconnected. Trying to connect again in {1}s.".format(manager_tag, connection_retry_interval))
 
             manager.exit()
         except socket.gaierror as e:
-            logger.error("[Worker] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(e, connection_retry_interval))
+            logger.error("[Worker ] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(e, connection_retry_interval))
         except socket.error as e:
-            logger.error("[Worker] Could not connect to master: {}. Trying to connect again in {}s.".format(e, connection_retry_interval))
+            logger.error("[Worker ] Could not connect to master: {}. Trying to connect again in {}s.".format(e, connection_retry_interval))
 
         time.sleep(connection_retry_interval)
 
@@ -268,7 +271,7 @@ if __name__ == '__main__':
     try:
 
         if cluster_config['node_type'] == "master":
-            manager_tag = "Master"
+            manager_tag = "Master "
             logger.info("[{0}] PID: {1}".format(manager_tag, getpid()))
 
             try:
@@ -280,7 +283,7 @@ if __name__ == '__main__':
                     logger.error("{0}".format(str(e)))
 
         elif cluster_config['node_type'] == "worker":
-            manager_tag = "Worker"
+            manager_tag = "Worker "
             logger.info("[{0}] PID: {1}".format(manager_tag, getpid()))
 
             worker_main(cluster_config)

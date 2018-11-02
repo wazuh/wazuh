@@ -9,6 +9,10 @@
 
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha256/sha256_op.h"
+#ifndef CLIENT
+#include "wazuh_db/wdb.h"
+#endif
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
 #define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))
@@ -651,23 +655,6 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
     status += link(path_src, path_dst);
 
-    /* syscheck */
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
-    status += link(path_src, path_dst);
-
     /* rootcheck */
     snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
     snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
@@ -833,7 +820,75 @@ void OS_RemoveAgentGroup(const char *id)
 {
     char group_file[OS_FLSIZE + 1];
     snprintf(group_file, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
-    unlink(group_file);
+
+    FILE *fp;
+    char group[OS_SIZE_65536 + 1] = {0};
+    fp = fopen(group_file,"r");
+
+    if(!fp){
+        mdebug1("At OS_RemoveAgentGroup(): Could not open file '%s'",group_file);
+    } else {
+        if(fgets(group, OS_SIZE_65536, fp)!=NULL ) {
+            fclose(fp);
+            fp = NULL;
+            unlink(group_file);
+
+            char *endl = strchr(group, '\n');
+
+            if (endl) {
+                *endl = '\0';
+            }
+
+            /* Remove multigroup if it's not used on any other agent */
+            w_remove_multigroup(group);
+        }
+#ifndef CLIENT
+        /* Remove from the 'belongs' table groups which the agent belongs to*/
+        wdb_delete_agent_belongs(atoi(id));
+#endif
+
+        if(fp){
+            fclose(fp);
+        }
+    }
+}
+
+void w_remove_multigroup(const char *group){
+    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
+    char path[PATH_MAX + 1] = {0};
+    char metadata_file[PATH_MAX + 1] = {0};
+    int line = 0;
+
+    if(multigroup){
+        sprintf(path,"%s",isChroot() ?  GROUPS_DIR :  DEFAULTDIR GROUPS_DIR);
+
+        if(wstr_find_in_folder(path,group,1) < 0){
+            sprintf(metadata_file,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR, ".metadata");
+
+            line = wstr_find_line_in_file(metadata_file,group,1);
+
+            if(line >= 0){
+                /* Remove line from file */
+                w_remove_line_from_file(metadata_file,line);
+            }
+
+            /* Remove the DIR */
+            os_sha256 multi_group_hash;
+            OS_SHA256_String(group,multi_group_hash);
+            char _hash[9];
+
+            /* We only want the 8 first bytes of the hash */
+            multi_group_hash[8] = '\0';
+
+            strncpy(_hash,multi_group_hash,8);
+
+            sprintf(path,"%s/%s",isChroot() ? MULTIGROUPS_DIR : DEFAULTDIR MULTIGROUPS_DIR,_hash);
+
+            if (rmdir_ex(path) != 0) {
+                mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
+            }
+        }
+    }
 }
 
 void FormatID(char *id) {

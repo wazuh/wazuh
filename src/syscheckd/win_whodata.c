@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "hash_op.h"
 #include "syscheck.h"
+#include "syscheck_op.h"
 
 #ifdef WIN_WHODATA
 
@@ -57,7 +58,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 char *guid_to_string(GUID *guid);
 int set_policies();
 void set_subscription_query(wchar_t *query);
-extern int wm_exec(char *command, char **output, int *exitcode, int secs);
+extern int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 int restore_audit_policies();
 void audit_restore();
 int check_object_sacl(char *obj, int is_file);
@@ -421,7 +422,7 @@ int restore_audit_policies() {
         return 1;
     }
     // Get the current policies
-    if (wm_exec(command, &output, &result_code, 5), result_code) {
+    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
         merror("Auditpol backup error: '%s'.", output);
         return 1;
     }
@@ -562,6 +563,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
                 // Check if it is a known file
+                str_lowercase(path);
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     // Check if it is not a directory
                     if (strchr(path, ':') && check_path_type(path) == 1) {
@@ -642,7 +644,7 @@ add_whodata_evt:
                 if (mask) {
                     if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                         w_evt->mask |= mask;
-
+                        str_lowercase(path);
                         if (w_evt->scan_directory && (mask & FILE_WRITE_DATA)) {
                             if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, path), w_dir) {
                                 // Get the event time
@@ -721,7 +723,13 @@ add_whodata_evt:
                         // Check that a new file has been added
                         if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             GetSystemTime(&w_dir->timestamp);
-                            read_dir(w_evt->path, w_dir->position, NULL, 0);
+                            int pos;
+                            if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
+                                int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
+                                int depth = syscheck.recursion_level[pos] - diff;
+                                read_dir(w_evt->path, pos, w_evt, depth);
+                            }
+
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
                         } else {
                             mdebug2("The '%s' directory has not been scanned because no new files have been detected. Mask: '%x'", w_evt->path, w_evt->mask);
@@ -987,7 +995,7 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
     // Get the current policies
-    if (wm_exec(command, &output, &result_code, 5), result_code) {
+    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
         retval = 2;
         goto end;
     }
@@ -1018,7 +1026,7 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
 
     // Set the new policies
-    if (wm_exec(command, &output, &result_code, 5), result_code) {
+    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
         retval = 2;
         goto end;
     }

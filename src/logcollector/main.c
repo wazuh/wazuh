@@ -25,6 +25,8 @@
 /* Prototypes */
 static void help_logcollector(void) __attribute__((noreturn));
 
+int lc_debug_level;
+rlim_t nofile;
 
 /* Print help statement */
 static void help_logcollector()
@@ -49,6 +51,9 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = DEFAULTCPATH;
+    gid_t gid;
+    const char *group = GROUPGLOBAL;
+    lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
 
     /* Setup random */
     srandom_init();
@@ -87,12 +92,23 @@ int main(int argc, char **argv)
 
     }
 
+    /* Check if the group given is valid */
+    gid = Privsep_GetGroup(group);
+    if (gid == (gid_t) - 1) {
+        merror_exit(USER_ERROR, "", group);
+    }
+
+    /* Privilege separation */
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
+    }
+
     /* Check current debug_level
      * Command line setting takes precedence
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("logcollector", "debug", 0, 2);
+        debug_level = lc_debug_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
@@ -141,6 +157,13 @@ int main(int argc, char **argv)
     /* Start signal handler */
     StartSIG(ARGV0);
 
+    // Set max open files limit
+    struct rlimit rlimit = { nofile, nofile };
+
+    if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
+        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+    }
+
     if (!run_foreground) {
         /* Going on daemon mode */
         nowDaemon();
@@ -153,10 +176,6 @@ int main(int argc, char **argv)
     }
 
     mdebug1(STARTED_MSG);
-
-    /* Wait 6 seconds for the analysisd/agentd to settle */
-    mdebug1("Waiting main daemons to settle.");
-    sleep(6);
 
     /* Start the queue */
     if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {

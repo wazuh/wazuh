@@ -1077,16 +1077,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                         }
 
                         /* Get broadcast address (or destination address in a Point to Point connection) */
-                        if ((host[0] != '\0') && (netmask[0] != '\0')) {
-                            char * broadaddr;
-                            broadaddr = get_broadcast_addr(host, netmask);
-                            if (strncmp(broadaddr, "unknown", 7)) {
-                                cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
-                            } else {
-                                mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
-                            }
-                            free(broadaddr);
-                        } else if (ifa->ifa_ifu.ifu_broadaddr != NULL){
+                        if (ifa->ifa_ifu.ifu_broadaddr != NULL){
                             char broadaddr[NI_MAXHOST];
                             result = getnameinfo(ifa->ifa_ifu.ifu_broadaddr,
                                 sizeof(struct sockaddr_in),
@@ -1098,6 +1089,15 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                             } else {
                                 mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
                             }
+                        } else if ((host[0] != '\0') && (netmask[0] != '\0')) {
+                            char * broadaddr;
+                            broadaddr = get_broadcast_addr(host, netmask);
+                            if (strncmp(broadaddr, "unknown", 7)) {
+                                cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                            } else {
+                                mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
+                            }
+                            free(broadaddr);
                         }
                     }
 
@@ -1195,7 +1195,21 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             } else {
                 cJSON_Delete(ipv4_broadcast);
             }
+
+            /* Get Default Gateway */
+            char *gateway;
+            gateway = get_default_gateway(ifaces_list[i]);
+            cJSON_AddStringToObject(ipv4, "gateway", gateway);
+            free(gateway);
+
+            /* Get DHCP status for IPv4 */
+            char *dhcp_v4;
+            dhcp_v4 = check_dhcp(ifaces_list[i], AF_INET);
+            cJSON_AddStringToObject(ipv4, "DHCP", dhcp_v4);
+            free(dhcp_v4);
+
             cJSON_AddItemToObject(interface, "IPv4", ipv4);
+
         } else {
             cJSON_Delete(ipv4_addr);
             cJSON_Delete(ipv4_netmask);
@@ -1215,6 +1229,13 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             } else {
                 cJSON_Delete(ipv6_broadcast);
             }
+
+            /* Get DHCP status for IPv6 */
+            char *dhcp_v6;
+            dhcp_v6 = check_dhcp(ifaces_list[i], AF_INET6);
+            cJSON_AddStringToObject(ipv6, "DHCP", dhcp_v6);
+            free(dhcp_v6);
+
             cJSON_AddItemToObject(interface, "IPv6", ipv6);
         } else {
             cJSON_Delete(ipv6_addr);
@@ -1222,23 +1243,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             cJSON_Delete(ipv6_broadcast);
             cJSON_Delete(ipv6);
         }
-
-        /* Get Default Gateway */
-        char *gateway;
-        gateway = get_default_gateway(ifaces_list[i]);
-        cJSON_AddStringToObject(ipv4, "gateway", gateway);
-        free(gateway);
-
-        /* Get DHCP status for IPv4 */
-        char *dhcp_status;
-        dhcp_status = check_dhcp(ifaces_list[i], AF_INET);
-        cJSON_AddStringToObject(ipv4, "DHCP", dhcp_status);
-        free(dhcp_status);
-        
-        /* Get DHCP status for IPv6 */
-        dhcp_status = check_dhcp(ifaces_list[i], AF_INET6);
-        cJSON_AddStringToObject(ipv6, "DHCP", dhcp_status);
-        free(dhcp_status);
 
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
@@ -1397,7 +1401,7 @@ char* get_if_type(char *ifa_name){
     char file[PATH_LENGTH];
 
     FILE *fp;
-    char type_str[3];
+    char type_str[6];
     int type_int;
     char * type;
     os_calloc(TYPE_LENGTH + 1, sizeof(char), type);
@@ -1406,7 +1410,7 @@ char* get_if_type(char *ifa_name){
     snprintf(file, PATH_LENGTH - 1, "%s%s/%s", WM_SYS_IFDATA_DIR, ifa_name, "type");
 
     if((fp = fopen(file, "r"))){
-        if (fgets(type_str, 3, fp) != NULL){
+        if (fgets(type_str, 6, fp) != NULL){
 
             type_int = atoi(type_str);
 

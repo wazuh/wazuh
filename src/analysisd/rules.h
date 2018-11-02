@@ -96,9 +96,6 @@ typedef struct _RuleInfo {
     char **ckignore_fields;
     unsigned int group_prev_matched_sz;
 
-    int __frequency;
-    char **last_events;
-
     /* Not an option in the rule */
     u_int16_t alert_opts;
 
@@ -128,7 +125,7 @@ typedef struct _RuleInfo {
     OSList *group_search;
 
     /* Function pointer to the event_search */
-    void *(*event_search)(void *lf, void *rule);
+    void *(*event_search)(void *lf, void *rule, void *rule_match);
 
     char *group;
     OSMatch *match;
@@ -172,6 +169,9 @@ typedef struct _RuleInfo {
     void *(*compiled_rule)(void *lf);
     active_response **ar;
 
+    pthread_mutex_t mutex;
+
+    char *file;
 } RuleInfo;
 
 
@@ -182,7 +182,6 @@ typedef struct _RuleNode {
 } RuleNode;
 
 
-extern RuleInfo *currently_rule;
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
 int get_info_attributes(char **attributes, char **values);
@@ -242,8 +241,6 @@ int _setlevels(RuleNode *node, int nnode);
 #define HOSTINFO_NEW        "hostinfo_new"
 #define HOSTINFO_MOD        "hostinfo_modified"
 #define SYSCHECK_MOD        "syscheck_integrity_changed"
-#define SYSCHECK_MOD2       "syscheck_integrity_changed_2nd"
-#define SYSCHECK_MOD3       "syscheck_integrity_changed_3rd"
 #define SYSCHECK_NEW        "syscheck_new_entry"
 #define SYSCHECK_DEL        "syscheck_deleted"
 #define SYSCOLLECTOR_MOD    "syscollector"
@@ -251,5 +248,6 @@ int _setlevels(RuleNode *node, int nnode);
 
 /* Global variables */
 extern int _max_freq;
+extern int default_timeframe;
 
 #endif /* _OS_RULES */

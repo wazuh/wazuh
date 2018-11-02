@@ -31,5 +31,9 @@
 #define HC_SK_DB_COMPLETED  "syscheck-db-completed"
 #define HC_SK_RESTART       "syscheck restart"
 #define HC_REQUEST          "req "
+#define HC_FIM_DB_SFS       "fim-db-start-first-scan"
+#define HC_FIM_DB_EFS       "fim-db-end-first-scan"
+#define HC_FIM_DB_SS        "fim-db-start-scan"
+#define HC_FIM_DB_ES        "fim-db-end-scan"
 
 #endif

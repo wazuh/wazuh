@@ -604,7 +604,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char response[2048];
     SSL *ssl;
     char *id_exist = NULL;
-    char buf[4096 + 1];
+    char * buf = NULL;
     int index;
 
     authd_sigblock();
@@ -654,18 +654,22 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
         }
 
-        buf[0] = '\0';
-        ret = SSL_read(ssl, buf, sizeof(buf) - 1);
+        os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
 
-        if (ssl_error(ssl, ret)) {
-            merror("SSL Error (%d)", ret);
+        buf[0] = '\0';
+        ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
+        if (ret <= 0) {
+            switch (ssl_error(ssl, ret)) {
+            case 0:
+                minfo("Client timeout from %s", srcip);
+                break;
+            default:
+                merror("SSL Error (%d)", ret);
+            }
+
             SSL_free(ssl);
             close(client.socket);
-            continue;
-        } else if (ret <= 0) {
-            minfo("Client was disconnected, or network timeout.");
-            SSL_free(ssl);
-            close(client.socket);
+            free(buf);
             continue;
         }
 
@@ -695,6 +699,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 merror("Invalid password provided by %s. Closing connection.", srcip);
                 SSL_free(ssl);
                 close(client.socket);
+                free(buf);
                 continue;
             }
         }
@@ -731,45 +736,211 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 SSL_write(ssl, response, strlen(response));
                 SSL_free(ssl);
                 close(client.socket);
+                free(buf);
                 continue;
             }
 
             /* Check for valid centralized group */
-            char centralized_group[256] = {0};
+            char centralized_group[OS_SIZE_65536] = {0};
             char centralized_group_token[2] = "G:";
 
             if(strncmp(++tmpstr,centralized_group_token,2)==0)
             {
 
                 char group_path[PATH_MAX] = {0};
+                sscanf(tmpstr," G:\'%65535[^\']\"",centralized_group);
 
-                sscanf(tmpstr," G:\'%255[^\']\"",centralized_group);
+                const char delim[2] = ",";
+                char *multigroup = strchr(centralized_group,MULTIGROUP_SEPARATOR);
+                char groups_path[PATH_MAX + 1] = {0};
+                strcpy(groups_path,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s");
 
-                if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",centralized_group) >= PATH_MAX){
-                    merror("Invalid group name: %.255s... , group path is too large.",centralized_group);
-                    snprintf(response, 2048, "ERROR: Invalid group name: %.255s...\n\n, group path is too large", centralized_group);
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    close(client.socket);
-                    continue;
+                /* Validate the group name */
+                int valid = 0;
+                valid = w_validate_group_name(centralized_group);
+
+                switch(valid){
+
+                    case -6:
+                        merror("Invalid group name: %.255s... ,",centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... cannot start or end with ','\n\n", centralized_group);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        free(buf);
+                        continue;
+
+                    case -5:
+                        merror("Invalid group name: %.255s... ,",centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... consecutive ',' are not allowed \n\n, ", centralized_group);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        free(buf);
+                        continue;
+
+                    case -4:
+                        merror("Invalid group name: %.255s... ,",centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... white spaces are not allowed \n\n", centralized_group);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        free(buf);
+                        continue;
+
+                    case -3:
+                        merror("Invalid group name: %.255s... ,",centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... multigroup is too large \n\n", centralized_group);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        free(buf);
+                        continue;
+
+                    case -2:
+                        merror("Invalid group name: %.255s... ,",centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", centralized_group);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        free(buf);
+                        continue;
+
+                    case -1:
+                        merror("Invalid group name: %.255s... ,",centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", centralized_group);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        free(buf);
+                        continue;
                 }
 
-                /* Check if group exists */
-                DIR *group_dir = opendir(group_path);
-                if (!group_dir) {
-                    merror("Invalid group: %.255s",centralized_group);
-                    snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", centralized_group);
-                    SSL_write(ssl, response, strlen(response));
-                    snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                    SSL_write(ssl, response, strlen(response));
-                    SSL_free(ssl);
-                    close(client.socket);
-                    continue;
-                }
-                closedir(group_dir);
+                if(!multigroup){
+                    if(snprintf(group_path,PATH_MAX,groups_path,centralized_group) >= PATH_MAX){
+                        merror("Invalid group name: %.255s... , group path is too large.",centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group path is too large\n\n", centralized_group);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        free(buf);
+                        continue;
+                    }
+                    /* Check if group exists */
+                    DIR *group_dir = opendir(group_path);
+                    if (!group_dir) {
+                        merror("Invalid group: %.255s",centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", centralized_group);
+                        SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        SSL_write(ssl, response, strlen(response));
+                        SSL_free(ssl);
+                        close(client.socket);
+                        free(buf);
+                        continue;
+                    }
+                    closedir(group_dir);
+                }else{
+                    char *multi_group_cpy = NULL;
+                    os_strdup(centralized_group, multi_group_cpy);
 
+                    char *group = strtok(centralized_group, delim);
+                    int error = 0;
+                    int max_multigroups = 0;
+
+
+                    mdebug1("Multigroup: '%s'",multi_group_cpy);
+                    while( group != NULL ) {
+                        DIR * dp;
+                        char dir[PATH_MAX + 1] = {0};
+                        error = 0;
+
+                        /* Check limit */
+                        if(max_multigroups > MAX_GROUPS_PER_MULTIGROUP){
+                            merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
+                            snprintf(response, 2048, "Maximum multigroup reached: Limit is %d\n\n", MAX_GROUPS_PER_MULTIGROUP);
+                            SSL_write(ssl, response, strlen(response));
+                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                            SSL_write(ssl, response, strlen(response));
+                            SSL_free(ssl);
+                            close(client.socket);
+                            error = 1;
+                            break;
+                        }
+
+                        /* Validate the group name */
+                        int valid = 0;
+                        valid = w_validate_group_name(group);
+
+                        switch(valid){
+                            case -2:
+                                merror("Invalid group name: %.255s... ,",group);
+                                snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large\n\n", group);
+                                SSL_write(ssl, response, strlen(response));
+                                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                                SSL_write(ssl, response, strlen(response));
+                                SSL_free(ssl);
+                                close(client.socket);
+                                error = 1;
+                                break;
+
+
+                            case -1:
+                                merror("Invalid group name: %.255s... ,",centralized_group);
+                                snprintf(response, 2048, "ERROR: Invalid group name: %.255s... characters '\\/:*?\"<>|,' are prohibited\n\n", group);
+                                SSL_write(ssl, response, strlen(response));
+                                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                                SSL_write(ssl, response, strlen(response));
+                                SSL_free(ssl);
+                                close(client.socket);
+                                error = 1;
+                                break;
+
+                        }
+
+                        snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : DEFAULTDIR SHAREDCFG_DIR"/%s", group);
+
+                        dp = opendir(dir);
+
+                        if (!dp) {
+                            merror("Invalid group: %.255s",group);
+                            snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", group);
+                            SSL_write(ssl, response, strlen(response));
+                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                            SSL_write(ssl, response, strlen(response));
+                            SSL_free(ssl);
+                            close(client.socket);
+                            error = 1;
+                            break;
+                        }
+
+                        group = strtok(NULL, delim);
+                        max_multigroups++;
+                        closedir(dp);
+                    }
+
+                    snprintf(centralized_group,OS_SIZE_65536,"%s",multi_group_cpy);
+                    free(multi_group_cpy);
+
+                    if(error){
+                        free(buf);
+                        continue;
+                    }
+                }
                 /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
                 tmpstr+= 2+strlen(centralized_group)+2;
             }else{
@@ -796,6 +967,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         SSL_write(ssl, response, strlen(response));
                         SSL_free(ssl);
                         close(client.socket);
+                        free(buf);
                         continue;
                     }
 
@@ -814,6 +986,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
                         minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
+                        OS_RemoveAgentGroup(id_exist);
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist, 0);
                     } else {
@@ -825,6 +998,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         SSL_write(ssl, response, strlen(response));
                         SSL_free(ssl);
                         close(client.socket);
+                        free(buf);
                         continue;
                     }
                 }
@@ -841,6 +1015,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 SSL_write(ssl, response, strlen(response));
                 SSL_free(ssl);
                 close(client.socket);
+                free(buf);
                 continue;
             }
 
@@ -871,6 +1046,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         SSL_write(ssl, response, strlen(response));
                         SSL_free(ssl);
                         close(client.socket);
+                        free(buf);
                         continue;
                     }
 
@@ -889,6 +1065,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 SSL_write(ssl, response, strlen(response));
                 SSL_free(ssl);
                 close(client.socket);
+                free(buf);
                 continue;
             }
 
@@ -903,6 +1080,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 SSL_write(ssl, response, strlen(response));
                 SSL_free(ssl);
                 close(client.socket);
+                free(buf);
                 continue;
             }
 
@@ -911,6 +1089,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 char path[PATH_MAX];
 
                 if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+                    w_mutex_unlock(&mutex_keys);
                     merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
                     OS_RemoveAgent(keys.keyentries[index]->id);
                     merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
@@ -920,6 +1099,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     SSL_write(ssl, response, strlen(response));
                     SSL_free(ssl);
                     close(client.socket);
+                    free(buf);
                     continue;
                 }
             }
@@ -945,6 +1125,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         SSL_free(ssl);
         close(client.socket);
+        free(buf);
     }
 
     SSL_CTX_free(ctx);
