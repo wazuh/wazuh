@@ -318,7 +318,7 @@ int main(int argc, char **argv)
         }
     }
     if (!authpass) {
-        printf("WARN: No authentication password provided.\n");
+        printf("INFO: No authentication password provided.\n");
     }
 
     /* Connect via TCP */
