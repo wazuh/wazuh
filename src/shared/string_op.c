@@ -455,3 +455,47 @@ int wstr_find_line_in_file(char *file,const char *str,int strip_new_line){
 
     return -1;
 }
+
+char * wstr_delete_dup(char * string, char * delim){
+    char *find_delim, *find_sec_delim;
+    char *result;
+    char **word;
+    int i=0;
+    int offset=0;
+    minfo("string: %s delim %s", string, *delim);
+    /*os_malloc(MAX_GROUPS_PER_MULTIGROUP, *word);
+    if(*word){
+        for(i=0; i<MAX_GROUPS_PER_MULTIGROUP; i++){
+            os_malloc(OS_MAXSTR, **word);
+        }
+    }*/
+    
+    find_delim = strchr(string, delim); //group1,group2,group3
+    strncpy(word[i], string, find_delim - string); // group1,
+    i++;
+
+    for (find_sec_delim=find_delim+1; find_sec_delim < string + strlen(string); find_sec_delim++){
+
+        find_sec_delim = strchr(find_delim+1, delim);
+
+        if(!find_sec_delim){
+            find_sec_delim = strlen(string) - 1;
+        }
+
+        strncpy(word[i], (int) string + (int) find_delim + 1, find_sec_delim - find_delim + 1);
+        find_delim = find_sec_delim;
+        i++;
+    }
+    
+    for (int i=0; i<MAX_GROUPS_PER_MULTIGROUP; i++){
+        for (int j=0; j<MAX_GROUPS_PER_MULTIGROUP; j++){
+            if(!strcmp(word[i], word[j])){
+                continue;
+            }
+            memcpy(result+offset, word[i], strlen(word[i]) + 1);
+            offset = strlen(word[i]) + 1;
+        }
+    }
+
+    return result;
+}
