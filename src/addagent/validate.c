@@ -875,7 +875,7 @@ void w_remove_multigroup(const char *group){
             /* Remove the DIR */
             os_sha256 multi_group_hash;
             OS_SHA256_String(group,multi_group_hash);
-            char _hash[9];
+            char _hash[9] = {0};
 
             /* We only want the 8 first bytes of the hash */
             multi_group_hash[8] = '\0';
