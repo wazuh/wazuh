@@ -138,7 +138,7 @@ typedef struct _Eventinfo {
 struct _EventNode {
     Eventinfo *event;
     pthread_mutex_t mutex;
-    int count;
+    volatile int count;
     EventNode *next;
     EventNode *prev;
 };
