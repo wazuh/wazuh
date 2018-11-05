@@ -69,4 +69,7 @@ void w_init_queues();
 OSHash *fim_agentinfo;
 extern int num_rule_matching_threads;
 
+#define FIM_MAX_WAZUH_DB_ATTEMPS 5
+#define SYS_MAX_WAZUH_DB_ATTEMPS 5
+
 #endif /* _LOGAUDIT__H */
