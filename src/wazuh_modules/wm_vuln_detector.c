@@ -2052,8 +2052,8 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     int sock = 0;
     unsigned int i;
     int size;
-    char buffer[OS_MAXSTR];
-    char json_str[OS_MAXSTR];
+    char buffer[OS_SIZE_6144 + 1];
+    char json_str[OS_SIZE_6144 + 1];
     char scan_id[OS_SIZE_1024];
     int request = VU_SOFTWARE_REQUEST;
     char *found;
@@ -2066,7 +2066,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
 
     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
-    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 0; i++) {
+    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_SIZE_6144)) < 0; i++) {
         mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK_PATH, i);
         sleep(i);
     }
@@ -2077,8 +2077,8 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     }
 
     // Request the ID of the last scan
-    size = snprintf(buffer, OS_MAXSTR, vu_queries[VU_SYSC_SCAN_REQUEST], agent->agent_id);
-    if (OS_SendSecureTCP(sock, size + 1, buffer) || (size = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR)) < 1) {
+    size = snprintf(buffer, OS_SIZE_6144, vu_queries[VU_SYSC_SCAN_REQUEST], agent->agent_id);
+    if (OS_SendSecureTCP(sock, size + 1, buffer) || (size = OS_RecvSecureTCP(sock, buffer, OS_SIZE_6144)) < 1) {
         close(sock);
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SYSC_SCAN_REQUEST_ERROR, agent->agent_id);
         return OS_INVALID;
@@ -2093,7 +2093,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
             retval = 2;
             goto end;
         }
-        size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
+        size = snprintf(json_str, OS_SIZE_6144, "{\"data\":%s}", buffer);
         json_str[size] = '\0';
     } else {
         retval = OS_INVALID;
@@ -2137,14 +2137,14 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
 
     // Request and store packages
     i = 0;
-    size = snprintf(buffer, OS_MAXSTR, vu_queries[request], agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
+    size = snprintf(buffer, OS_SIZE_6144, vu_queries[request], agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
     if (OS_SendSecureTCP(sock, size + 1, buffer)) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
         close(sock);
         return OS_INVALID;
     }
 
-    while (size = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), size) {
+    while (size = OS_RecvSecureTCP(sock, buffer, OS_SIZE_6144), size) {
         if (size > 0) {
             if (size < 10) {
                 break;
@@ -2152,7 +2152,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
             buffer[size] = '\0';
             if (!strncmp(buffer, "ok", 2)) {
                 buffer[0] = buffer[1] = ' ';
-                size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
+                size = snprintf(json_str, OS_SIZE_6144, "{\"data\":%s}", buffer);
                 json_str[size] = '\0';
             } else {
                 retval = OS_INVALID;
@@ -2188,7 +2188,7 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
             }
 
             i += VU_MAX_PACK_REQ;
-            size = snprintf(buffer, OS_MAXSTR, vu_queries[request], agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
+            size = snprintf(buffer, OS_SIZE_6144, vu_queries[request], agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
             if (OS_SendSecureTCP(sock, size + 1, buffer)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
                 retval = OS_INVALID;
@@ -2201,8 +2201,8 @@ int wm_vulnerability_detector_get_software_info(agent_software *agent, sqlite3 *
     }
 
     // Avoid checking the same packages again
-    size = snprintf(buffer, OS_MAXSTR, vu_queries[VU_SYSC_UPDATE_SCAN], agent->agent_id, scan_id);
-    if (OS_SendSecureTCP(sock, size + 1, buffer) || (size = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR)) < 1) {
+    size = snprintf(buffer, OS_SIZE_6144, vu_queries[VU_SYSC_UPDATE_SCAN], agent->agent_id, scan_id);
+    if (OS_SendSecureTCP(sock, size + 1, buffer) || (size = OS_RecvSecureTCP(sock, buffer, OS_SIZE_6144)) < 1) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
         retval = OS_INVALID;
         goto end;
