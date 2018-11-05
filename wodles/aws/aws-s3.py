@@ -445,28 +445,7 @@ class AWSBucket:
         :param log_key: name of the log file
         :return: list of events in json format.
         """
-
-        def json_event_generator(data):
-            while data:
-                json_data, json_index = decoder.raw_decode(data)
-                data = data[json_index:]
-                yield json_data
-
-        with self.decompress_file(log_key=log_key) as f:
-            if '.json' in log_key:
-                json_file = json.load(f)
-                return None if 'Records' not in json_file else [dict(x, source='cloudtrail') for x in
-                                                                json_file['Records']]
-            elif f.read(1) == '{':
-                decoder = json.JSONDecoder()
-                return [dict(event['detail'], source=event['source'].replace('aws.', '')) for event in
-                        json_event_generator('{' + f.read()) if 'detail' in event]
-            else:
-                fieldnames = (
-                "version", "account_id", "interface_id", "srcaddr", "dstaddr", "srcport", "dstport", "protocol",
-                "packets", "bytes", "start", "end", "action", "log_status")
-                tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
-                return [dict(x, source='vpc') for x in tsv_file]
+        raise NotImplementedError
 
     def get_log_file(self, aws_account_id, log_key):
         def exception_handler(error_txt, error_code):
@@ -549,10 +528,16 @@ class AWSBucket:
             sys.exit(7)
 
 
-class AWSCloudtrailBucket(AWSBucket):
+class AWSLogsBucket(AWSBucket):
     """
-    Represents a bucket with cloudtrail logs
+    Abstract class for logs generated from services such as CloudTrail or Config
     """
+
+    def load_information_from_file(self, log_key):
+        with self.decompress_file(log_key=log_key) as f:
+            json_file = json.load(f)
+            return None if 'Records' not in json_file else [dict(x, source='cloudtrail') for x in
+                                                            json_file['Records']]
 
     def get_full_prefix(self, account_id, account_region):
         return '{trail_prefix}AWSLogs/{aws_account_id}/CloudTrail/{aws_region}/'.format(
@@ -644,6 +629,25 @@ class AWSFirehouseBucket(AWSBucket):
     def __init__(self, *args):
         AWSBucket.__init__(self, *args)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
+
+    def load_information_from_file(self, log_key):
+        def json_event_generator(data):
+            while data:
+                json_data, json_index = decoder.raw_decode(data)
+                data = data[json_index:]
+                yield json_data
+
+        with self.decompress_file(log_key=log_key) as f:
+            if f.read(1) == '{':
+                decoder = json.JSONDecoder()
+                return [dict(event['detail'], source=event['source'].replace('aws.', '')) for event in
+                        json_event_generator('{' + f.read()) if 'detail' in event]
+            else:
+                fieldnames = (
+                "version", "account_id", "interface_id", "srcaddr", "dstaddr", "srcport", "dstport", "protocol",
+                "packets", "bytes", "start", "end", "action", "log_status")
+                tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+                return [dict(x, source='vpc') for x in tsv_file]
 
     def get_creation_date(self, log_file):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
