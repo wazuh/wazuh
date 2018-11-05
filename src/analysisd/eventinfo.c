@@ -200,6 +200,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 {
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
+    Eventinfo *first_lf;
     int frequency_count = 0;
     OSList *list = rule->group_search;
 
@@ -228,6 +229,9 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         lf = NULL;
         goto end;
     }
+
+    first_lf = (Eventinfo *)lf_node->data;
+
     do {
         lf = (Eventinfo *)lf_node->data;
 
@@ -349,6 +353,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
+        first_lf->matched = rule->level;
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
