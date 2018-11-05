@@ -533,16 +533,11 @@ class AWSLogsBucket(AWSBucket):
     Abstract class for logs generated from services such as CloudTrail or Config
     """
 
-    def load_information_from_file(self, log_key):
-        with self.decompress_file(log_key=log_key) as f:
-            json_file = json.load(f)
-            return None if 'Records' not in json_file else [dict(x, source='cloudtrail') for x in
-                                                            json_file['Records']]
-
     def get_full_prefix(self, account_id, account_region):
-        return '{trail_prefix}AWSLogs/{aws_account_id}/CloudTrail/{aws_region}/'.format(
+        return '{trail_prefix}AWSLogs/{aws_account_id}/{aws_service}/{aws_region}/'.format(
             trail_prefix=self.prefix,
             aws_account_id=account_id,
+            aws_service=self.service,
             aws_region=account_region)
 
     def get_creation_date(self, log_file):
@@ -564,30 +559,13 @@ class AWSLogsBucket(AWSBucket):
         )
         return aws_region, aws_account_id, log_key
 
-    def migrate_legacy_table(self):
-        for row in filter(lambda x: x[0] != '', self.db_connector.execute(sql_select_migrate_legacy)):
-            try:
-                aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
-                self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
-            except Exception as e:
-                debug("++ Error parsing log file name: {}".format(row[0]), 1)
-
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
         alert_msg = AWSBucket.get_alert_msg(self, aws_account_id, log_key, event, error_msg)
         alert_msg['aws']['aws_account_id'] = aws_account_id
         return alert_msg
 
     def reformat_msg(self, event):
-        debug('++ Reformat message', 3)
-        AWSBucket.reformat_msg(self, event)
-        # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
-        # ES mapping expects for a dictionary, if the field is any other type (list or string)
-        # turn it into a dictionary
-        for field_to_cast in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
-                event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
-
-        return event
+        raise NotImplementedError
 
     def find_account_ids(self):
         return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
@@ -597,9 +575,10 @@ class AWSLogsBucket(AWSBucket):
                 ]
 
     def find_regions(self, account_id):
-        regions_prefix = '{trail_prefix}AWSLogs/{aws_account_id}/CloudTrail/'.format(
+        regions_prefix = '{trail_prefix}AWSLogs/{aws_account_id}/{aws_service}/'.format(
             trail_prefix=self.prefix,
-            aws_account_id=account_id)
+            aws_account_id=account_id,
+            aws_service=self.service)
         regions = self.client.list_objects_v2(Bucket=self.bucket,
                                               Prefix=regions_prefix,
                                               Delimiter='/')
@@ -623,6 +602,47 @@ class AWSLogsBucket(AWSBucket):
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id, aws_region)
+
+    def load_information_from_file(self, log_key):
+        with self.decompress_file(log_key=log_key) as f:
+            json_file = json.load(f)
+            return None if self.field_to_load not in json_file else [dict(x, source=self.service.lower()) for x in json_file[self.field_to_load]]
+
+
+class AWSCloudTrailBucket(AWSLogsBucket):
+    """
+    Represents a bucket with AWS CloudTrail logs
+    """
+
+    def __init__(self, *args):
+        AWSLogsBucket.__init__(self, *args)
+        self.service = 'CloudTrail'
+        self.field_to_load = 'Records'
+
+    def migrate_legacy_table(self):
+        for row in filter(lambda x: x[0] != '', self.db_connector.execute(sql_select_migrate_legacy)):
+            try:
+                aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
+                self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
+            except Exception as e:
+                debug("++ Error parsing log file name ({}): {}".format(row[0], e), 1)
+
+
+class AWSConfigBucket(AWSLogsBucket):
+    """
+    Represents a bucket with AWS Config logs
+    """
+
+    def __init__(self, *args):
+        AWSLogsBucket.__init__(self, *args)
+        self.service = 'Config'
+        self.field_to_load = 'configurationItems'
+
+    def reformat_msg(self, event):
+        debug('++ Reformat message', 3)
+        AWSBucket.reformat_msg(self, event)
+        event['aws']['type'] = 'AWS Config'
+        return event
 
 
 class AWSFirehouseBucket(AWSBucket):
