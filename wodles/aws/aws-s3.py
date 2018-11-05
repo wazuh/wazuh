@@ -582,6 +582,7 @@ class AWSLogsBucket(AWSBucket):
         regions = self.client.list_objects_v2(Bucket=self.bucket,
                                               Prefix=regions_prefix,
                                               Delimiter='/')
+
         if 'CommonPrefixes' in regions:
             return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
         else:
@@ -626,6 +627,18 @@ class AWSCloudTrailBucket(AWSLogsBucket):
                 self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
             except Exception as e:
                 debug("++ Error parsing log file name ({}): {}".format(row[0], e), 1)
+
+    def reformat_msg(self, event):
+        debug('++ Reformat message', 3)
+        AWSBucket.reformat_msg(self, event)
+        # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
+        # ES mapping expects for a dictionary, if the field is any other type (list or string)
+        # turn it into a dictionary
+        for field_to_cast in ['additionalEventData', 'responseElements', 'requestParameters']:
+            if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
+                event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
+
+        return event
 
 
 class AWSConfigBucket(AWSLogsBucket):
