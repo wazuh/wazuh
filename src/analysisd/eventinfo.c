@@ -606,6 +606,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->process_id = NULL;
     lf->is_a_copy = 0;
     lf->last_events = NULL;
+    lf->r_firedtimes = -1;
     lf->queue_added = 0;
     lf->rootcheck_fts = 0;
     lf->decoder_syscheck_id = 0;
@@ -1237,6 +1238,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     lf_cpy->mtime_after = lf->mtime_after;
     lf_cpy->inode_before = lf->inode_before;
     lf_cpy->inode_after = lf->inode_after;
+    lf_cpy->r_firedtimes = lf->r_firedtimes;
 
 
     if(lf->diff){

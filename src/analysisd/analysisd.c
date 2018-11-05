@@ -1404,7 +1404,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     w_mutex_lock(&hourly_alert_mutex);
     hourly_alerts++;
     w_mutex_unlock(&hourly_alert_mutex);
+    w_mutex_lock(&rule->mutex);
     rule->firedtimes++;
+    lf->r_firedtimes = rule->firedtimes;
+    w_mutex_unlock(&rule->mutex);
     return (rule); /* Matched */
 }
 
