@@ -859,9 +859,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     os_strdup(centralized_group, multi_group_cpy);
 
                     char *group = strtok(centralized_group, delim);
+                    char *groups_added;
                     int error = 0;
                     int max_multigroups = 0;
-
+                    os_strdup(multi_group_cpy, groups_added);
+                    merror("groups added: %s - %s", groups_added, delim);
+                    groups_added = wstr_delete_dup(groups_added, delim);
 
                     mdebug1("Multigroup: '%s'",multi_group_cpy);
                     while( group != NULL ) {
