@@ -664,7 +664,7 @@ void Free_Eventinfo(Eventinfo *lf)
             i = 0;
             // Remove the node from all lists
             while (i < lf->generated_rule->group_prev_matched_sz) {
-                while (lf->generated_rule->group_prev_matched[i]->count);
+                while (lf->generated_rule->group_prev_matched[i]->count > 0);
                 OSList_DeleteThisNode(lf->generated_rule->group_prev_matched[i],
                                         lf->group_node_to_delete[i]);
                 // Unblock the list
