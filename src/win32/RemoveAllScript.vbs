@@ -30,15 +30,15 @@ public function removeAll()
  
    Set objSFO = CreateObject("Scripting.FileSystemObject")
 
-   If objSFO.fileExists(home_dir & "ossec.conf.save") Then
+   If objSFO.fileExists(home_dir & "ossec.conf.save") AND objSFO.fileExists(home_dir & "ossec.conf") Then
       objSFO.DeleteFile(home_dir & "ossec.conf.save")
    End If
 
-   If objSFO.fileExists(home_dir & "client.keys.save") Then
+   If objSFO.fileExists(home_dir & "client.keys.save") AND objSFO.fileExists(home_dir & "client.keys") Then
       objSFO.DeleteFile(home_dir & "client.keys.save")
    End If
 
-   If objSFO.fileExists(home_dir & "local_internal_options.conf.save") Then
+   If objSFO.fileExists(home_dir & "local_internal_options.conf.save") AND objSFO.fileExists(home_dir & "local_internal_options.conf") Then
       objSFO.DeleteFile(home_dir & "local_internal_options.conf.save")
    End If
 
