@@ -846,6 +846,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     switch (wdb_get_agent_status(id_agent)) {
     case -1:
         mterror(WM_DATABASE_LOGTAG, "Couldn't get database status for agent '%d'.", id_agent);
+        wdb_delete_agent_belongs(id_agent);
         return -1;
     case WDB_AGENT_PENDING:
         mtwarn(WM_DATABASE_LOGTAG, "Agent '%d' database status was 'pending'. Data could be lost.", id_agent);
