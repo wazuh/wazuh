@@ -805,6 +805,10 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
+        if (wdb_get_agent_status(id_agent) < 0) {
+            return -1;
+        }
+
         break;
 
      case WDB_SHARED_GROUPS:
