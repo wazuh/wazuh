@@ -645,7 +645,7 @@ class AWSConfigBucket(AWSLogsBucket):
         return event
 
 
-class AWSFirehouseBucket(AWSBucket):
+class AWSCustomBucket(AWSBucket):
     def __init__(self, *args):
         AWSBucket.__init__(self, *args)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
@@ -811,7 +811,15 @@ def main(argv):
         debug_level = int(options.debug)
         debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
 
-    bucket_type = AWSCloudtrailBucket if options.type.lower() == 'cloudtrail' else AWSFirehouseBucket
+    if options.type.lower() == 'cloudtrail':
+        bucket_type = AWSCloudTrailBucket
+    elif options.type.lower() == 'config':
+        bucket_type = AWSConfigBucket
+    elif options.type.lower() == 'custom':
+        bucket_type = AWSCustomBucket
+    else:
+        raise Exception
+
     bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
                          options.aws_profile, options.iam_role_arn, options.logBucket,
                          options.only_logs_after, options.skip_on_error,
