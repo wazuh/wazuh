@@ -1361,8 +1361,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     if (rule->context == 1) {
         if (!(rule->context_opts & SAME_DODIFF)) {
             if (rule->event_search) {
-                w_FreeArray(lf->last_events);
                 if (!rule->event_search(lf, rule, rule_match)) {
+                    w_FreeArray(lf->last_events);
                     return (NULL);
                 }
             }
@@ -2246,7 +2246,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
         w_inc_processed_events();
-        
+
         if (Config.logall || Config.logall_json){
             if (!lf_logall) {
                 os_calloc(1, sizeof(Eventinfo), lf_logall);
