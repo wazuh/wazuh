@@ -806,12 +806,13 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         if (wdb_get_agent_status(id_agent) < 0) {
+            wdb_delete_agent_belongs(id_agent);
             return -1;
         }
 
         break;
 
-     case WDB_SHARED_GROUPS:
+    case WDB_SHARED_GROUPS:
         id_agent = 0;
         break;
 
