@@ -21,7 +21,7 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storage *peer_info, int sock_client);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -35,7 +35,7 @@ void HandleSecure()
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     uint32_t length;
-    struct sockaddr_in peer_info;
+    struct sockaddr_storage peer_info;
     wnotify_t * notify = NULL;
 
     /* Initialize manager */
@@ -135,7 +135,7 @@ void HandleSecure()
                     }
 
                     rem_inc_tcp();
-                    mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
+                    mdebug1("New TCP connection at %s.", OS_GetAddress(peer_info));
 
                     if (wnotify_add(notify, sock_client) < 0) {
                         merror("wnotify_add(%d, %d): %s (%d)", notify->fd, sock_client, strerror(errno), errno);
@@ -164,20 +164,20 @@ void HandleSecure()
                         switch (recv_b) {
                         case -1:
                             if (errno == ENOTCONN) {
-                                mdebug1("TCP peer at %s disconnected (ENOTCONN) [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
+                                mdebug1("TCP peer at %s disconnected (ENOTCONN) [%d]", OS_GetAddress(peer_info), sock_client);
                             } else {
-                                merror("TCP peer at %s: %s (%d)", inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
+                                merror("TCP peer at %s: %s (%d)", OS_GetAddress(peer_info), strerror(errno), errno);
                             }
 
                             break;
 
                         case 0:
-                            mdebug1("TCP peer at %s disconnected [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
+                            mdebug1("TCP peer at %s disconnected [%d]", OS_GetAddress(peer_info), sock_client);
                             break;
 
                         default:
                             // length > OS_MAXSTR
-                            mwarn("Too big message size from %s.", inet_ntoa(peer_info.sin_addr));
+                            mwarn("Too big message size from %s.", OS_GetAddress(peer_info));
                         }
 
                         if (wnotify_delete(notify, sock_client) < 0) {
@@ -191,7 +191,7 @@ void HandleSecure()
                     recv_b = recv(sock_client, buffer, length, MSG_WAITALL);
 
                     if (recv_b != (ssize_t)length) {
-                        mwarn("Incorrect message size from %s: expecting %u, got %zd. Agent may have disconnected [%d]", inet_ntoa(peer_info.sin_addr), length, recv_b, sock_client);
+                        mwarn("Incorrect message size from %s: expecting %u, got %zd. Agent may have disconnected [%d]", OS_GetAddress(peer_info), length, recv_b, sock_client);
 
                         if (wnotify_delete(notify, sock_client) < 0) {
                             merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
@@ -246,7 +246,7 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
     }
 }
 
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client) {
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storage *peer_info, int sock_client) {
     int agentid;
     int protocol = logr.proto[logr.position];
     char cleartext_msg[OS_MAXSTR + 1];
@@ -257,7 +257,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     size_t msg_length;
 
     /* Set the source IP */
-    strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
+    strncpy(srcip, OS_GetAddress(*peer_info), IPSIZE);
     srcip[IPSIZE] = '\0';
 
     /* Initialize some variables */

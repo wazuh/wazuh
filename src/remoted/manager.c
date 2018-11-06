@@ -102,7 +102,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     send_msg(key->id, msg_ack, -1);
 
     if (strcmp(r_msg, HC_STARTUP) == 0) {
-        mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
+        mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, OS_GetAddress(key->peer_info));
         is_startup = 1;
     } else {
         /* Clean uname and shared files (remove random string) */

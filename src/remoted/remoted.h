@@ -35,7 +35,7 @@ typedef struct pending_data_t {
 typedef struct message_t {
     char * buffer;
     unsigned int size;
-    struct sockaddr_in addr;
+    struct sockaddr_storage addr;
     int sock;
 } message_t;
 
@@ -103,7 +103,7 @@ void key_unlock(void);
 void rem_msginit(size_t size);
 
 // Push message into queue
-int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * addr, int sock);
+int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock);
 
 // Pop message from queue
 message_t * rem_msgpop();

@@ -480,31 +480,70 @@ int OS_SendUnix(int socket, const char *msg, int size)
 char *OS_GetHost(const char *host, unsigned int attempts)
 {
     unsigned int i = 0;
-    size_t sz;
     char *ip;
-    struct hostent *h;
+    struct addrinfo *h;
 
     if (host == NULL) {
         return (NULL);
     }
 
     while (i <= attempts) {
-        if ((h = gethostbyname(host)) == NULL) {
+        if (getaddrinfo(host, NULL, NULL, &h) != 0) {
             sleep(i++);
             continue;
         }
 
-        sz = strlen(inet_ntoa(*((struct in_addr *)h->h_addr))) + 1;
-        if ((ip = (char *) calloc(sz, sizeof(char))) == NULL) {
+        if ((ip = (char *) calloc(IPSIZE + 1, sizeof(char))) == NULL) {
+            freeaddrinfo(h);
             return (NULL);
         }
 
-        strncpy(ip, inet_ntoa(*((struct in_addr *)h->h_addr)), sz - 1);
+        getnameinfo(h->ai_addr, h->ai_addrlen, ip, IPSIZE + 1, NULL, 0, NI_NUMERICHOST);
+
+        if (strlen(ip) == 0) {
+            freeaddrinfo(h);
+            free(ip);
+            return (NULL);
+        }
+
+        freeaddrinfo(h);
 
         return (ip);
     }
 
     return (NULL);
+}
+
+#ifndef WIN32
+typedef union
+{
+    struct sockaddr s;
+    struct sockaddr_in s4;
+    struct sockaddr_in6 s6;
+    struct sockaddr_storage ss;
+} sockaddr_union_t;
+#endif
+
+/* Calls inet_ntoa */
+char *OS_GetAddress(struct sockaddr_storage sockaddr) {
+#ifndef WIN32
+    static __thread char srcip[IPSIZE + 1] = { 0 };
+
+    sockaddr_union_t addr = { .ss = sockaddr };
+
+    if (addr.s.sa_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&addr.s6.sin6_addr)) {
+        addr.s.sa_family = AF_INET;
+        addr.s4.sin_addr.s_addr = addr.s6.sin6_addr.s6_addr32[3];
+    }
+
+    if (getnameinfo(&addr.s, sizeof(sockaddr_union_t), srcip, sizeof(srcip), NULL, 0, NI_NUMERICHOST) != 0) {
+        return (NULL);
+    };
+
+    return srcip;
+#else
+    return inet_ntoa(((struct sockaddr_in*)&sockaddr)->sin_addr);
+#endif
 }
 
 int OS_CloseSocket(int socket)

@@ -10,6 +10,7 @@
 
 #include <shared.h>
 #include "remoted.h"
+#include "os_net/os_net.h"
 
 static w_queue_t * queue;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -21,7 +22,7 @@ void rem_msginit(size_t size) {
 }
 
 // Push message into queue
-int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * addr, int sock) {
+int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock) {
     message_t * message;
     int result;
     static int reported = 0;
@@ -30,7 +31,7 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * ad
     os_malloc(size, message->buffer);
     memcpy(message->buffer, buffer, size);
     message->size = size;
-    memcpy(&message->addr, addr, sizeof(struct sockaddr_in));
+    memcpy(&message->addr, addr, sizeof(struct sockaddr_storage));
     message->sock = sock;
 
     w_mutex_lock(&mutex);
@@ -43,7 +44,7 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * ad
 
     if (result < 0) {
         rem_msgfree(message);
-        mdebug2("Discarding event from host '%s'", inet_ntoa(addr->sin_addr));
+        mdebug2("Discarding event from host '%s'", OS_GetAddress(*addr));
         rem_inc_discarded();
         if (!reported) {
             mwarn("Message queue is full (%zu). Events may be lost.", queue->size);

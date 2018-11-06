@@ -70,6 +70,9 @@ int OS_SendUDPbySize(int socket, int size, const char *msg) __attribute__((nonnu
  */
 char *OS_GetHost(const char *host, unsigned int attempts);
 
+/* Calls inet_ntoa */
+char *OS_GetAddress(struct sockaddr_storage sockaddr);
+
 /* Close a network socket
  * Returns 0 on success, else -1 or SOCKET_ERROR
  */

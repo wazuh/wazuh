@@ -38,7 +38,11 @@ typedef struct _keyentry {
     os_ip *ip;
     int sock;
     pthread_mutex_t mutex;
+#ifndef WIN32
+    struct sockaddr_storage peer_info;
+#else
     struct sockaddr_in peer_info;
+#endif
     FILE *fp;
     crypt_method crypto_method;
 } keyentry;
