@@ -466,22 +466,29 @@ char * wstr_delete_repeated_groups(char * string){
     OSHash *groups_added;
     groups_added = OSHash_Create();
 
-    minfo("string: %s", string);
-
     aux = OS_StrBreak(delim, string, MAX_GROUPS_PER_MULTIGROUP);
 
     os_calloc(MAX_GROUPS_PER_MULTIGROUP, sizeof (char), result);
 
     for (i=0; aux[i] != NULL; i++){
         if (!OSHash_Get(groups_added, aux[i])){
-            OSHash_Add(groups_added, aux[i], 1);
-            minfo("Added %s", aux[i]);
-            if(!aux[i+1]){
-                wm_strcat2(&result, aux[i], NULL);
-            } else {
-                wm_strcat2(&result, aux[i], delim);
+
+            switch (OSHash_Add(groups_added, aux[i], 1)){
+                case 0:
+                    merror("Cannot add group %s into hash table.", aux[i]);
+                    break;
+
+                case 1:
+                    // Group already added
+                    break;
+                
+                default:
+                    if(!aux[i+1]){
+                        wm_strcat2(&result, aux[i], NULL);
+                    } else {
+                        wm_strcat2(&result, aux[i], delim);
+                    }
             }
-            minfo("Result: %s", result);
         }
     }
 
