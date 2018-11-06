@@ -1178,6 +1178,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
                 if(set_agent_group(cur->id,cur->group) == -1){
                     merror("Unable to set agent centralized group: %s (internal error)", cur->group);
                 }
+
+                set_agent_multigroup(cur->group);
             }
 
             free(cur->id);
