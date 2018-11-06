@@ -859,11 +859,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     int max_multigroups = 0;
                     char *groups_added;
 
-                    groups_added = wstr_delete_repeated_groups(centralized_group,MULTIGROUP_SEPARATOR);
+                    groups_added = wstr_delete_repeated_groups(centralized_group);
                     mdebug1("Multigroup is: %s",groups_added);
                     snprintf(centralized_group,OS_SIZE_65536,"%s",groups_added);
                     char *group = strtok(groups_added, delim);
-                   
+
                     while( group != NULL ) {
                         DIR * dp;
                         char dir[PATH_MAX + 1] = {0};
@@ -932,7 +932,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         max_multigroups++;
                         closedir(dp);
                     }
-                    
+
                     os_free(groups_added);
 
                     if(error){
