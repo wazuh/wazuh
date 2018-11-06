@@ -70,6 +70,6 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line);
 int wstr_find_line_in_file(char *file,const char *str,int strip_new_line);
 
 // Delete last occurrence of duplicated string
-char * wstr_delete_dup(char * string, char * delim);
+char * wstr_delete_repeated_groups(char * string);
 
 #endif
