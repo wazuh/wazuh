@@ -306,8 +306,9 @@ int set_agent_group(const char * id, const char * group) {
 }
 
 int set_agent_multigroup(char * group){
-
+    int oldmask;
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
+    char * buffer;
 
     if(!multigroup){
         return 0;
@@ -322,94 +323,81 @@ int set_agent_multigroup(char * group){
     /* Remove multigroup if it's not used on any other agent */
     w_remove_multigroup(group);
 
-    /* Check if the .metadata file is created */
-    if(strchr(group,MULTIGROUP_SEPARATOR)){
+    FILE *fp_metadata;
+    char metadata_path[PATH_MAX + 1] = {0};
+    snprintf(metadata_path,PATH_MAX,"%s",isChroot() ?  METADATA_FILE :  DEFAULTDIR METADATA_FILE);
 
-        FILE *fp_metadata;
-        char metadata_path[PATH_MAX + 1] = {0};
-        snprintf(metadata_path,PATH_MAX,"%s",isChroot() ?  METADATA_FILE :  DEFAULTDIR METADATA_FILE);
-        fp_metadata = fopen(metadata_path,"r");
+    oldmask = umask(0002);
+    fp_metadata = fopen(metadata_path,"a+");
+    umask(oldmask);
 
-        if(!fp_metadata){
-            fp_metadata = fopen(metadata_path,"a");
+    if (!fp_metadata) {
+        merror(FOPEN_ERROR, metadata_path, errno, strerror(errno));
+        return -1;
+    }
 
-            if(fp_metadata){
-                char metadata_multigroup[OS_SIZE_65536] = {0};
-                snprintf(metadata_multigroup,OS_SIZE_65536 - 1,"%s\n",group);
-                fwrite(metadata_multigroup,1,strlen(metadata_multigroup),fp_metadata);
-                fclose(fp_metadata);
+    if (fseek(fp_metadata, 0, SEEK_SET) < 0) {
+        merror(FSEEK_ERROR, metadata_path, errno, strerror(errno));
+        fclose(fp_metadata);
+        return -1;
+    }
 
-                if(chmod(metadata_path,0660) < 0){
-                    mdebug2("At read_controlmsg(): Error in chmod setting permissions for path: %s",metadata_path);
-                    return -1;
-                }
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), buffer);
+
+    int found = 0;
+    while (fgets(buffer, OS_SIZE_65536 + 1, fp_metadata) != NULL) {
+        char *endl = strchr(buffer, '\n');
+
+        if (endl) {
+            *endl = '\0';
+        } else {
+            static int reported = 0;
+            if (!reported) {
+                mdebug1("File '%s' is corrupted: line too long.", metadata_path);
+                reported = 1;
             }
-        }else{
-            /* Check if the multigroup is in .metadata */
-            char buffer[OS_SIZE_65536 + 1] = {0};
-            int found = 0;
-            while (fgets(buffer, sizeof(buffer), fp_metadata) != NULL) {
-                char *endl = strchr(buffer, '\n');
-
-                if (endl) {
-                    *endl = '\0';
-                } else {
-                    static int reported = 0;
-                    if (!reported) {
-                        mdebug1("File '%s' is corrupted: line too long.", metadata_path);
-                        reported = 1;
-                    }
-                }
-
-                if(strncmp(buffer,group,OS_SIZE_65536) == 0){
-                    found = 1;
-                    break;
-                }
-            }
-
-            if(!found){
-                fclose(fp_metadata);
-                fp_metadata = fopen(metadata_path,"a");
-                char metadata_multigroup[OS_SIZE_65536] = {0};
-                snprintf(metadata_multigroup,OS_SIZE_65536 - 1,"%s\n",group);
-                fprintf(fp_metadata, "%s", metadata_multigroup);
-            }
-            fclose(fp_metadata);
         }
 
-        /* Check if the multigroup dir is created */
-        os_sha256 multi_group_hash;
-        char multigroup_path[PATH_MAX + 1] = {0};
-        OS_SHA256_String(group,multi_group_hash);
-        char _hash[9] = {0};
-
-        strncpy(_hash,multi_group_hash,8);
-        snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,_hash);
-        DIR *dp;
-        dp = opendir(multigroup_path);
-
-        if(!dp){
-            if (errno == ENOENT) {
-                if (mkdir(multigroup_path, 0770) == -1) {
-                    mdebug1("At read_controlmsg(): couldn't create directory '%s'", multigroup_path);
-                    return -1;
-                }
-
-                if(chmod(multigroup_path,0770) < 0){
-                    mdebug1("At read_controlmsg(): Error in chmod setting permissions for path: %s",multigroup_path);
-                }
-
-                uid_t uid = Privsep_GetUser(USER);
-                gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
-
-                if (chown(multigroup_path, uid, gid) == -1) {
-                    mdebug1(CHOWN_ERROR, multigroup_path, errno, strerror(errno));
-                    return -1;
-                }
-            }
-        }else{
-            closedir(dp);
+        if(strncmp(buffer,group,OS_SIZE_65536) == 0){
+            found = 1;
+            break;
         }
+    }
+
+    free(buffer);
+
+    if(!found){
+        fprintf(fp_metadata, "%s\n", group);
+    }
+
+    fclose(fp_metadata);
+
+    /* Check if the multigroup dir is created */
+    os_sha256 multi_group_hash;
+    char multigroup_path[PATH_MAX + 1] = {0};
+    OS_SHA256_String(group,multi_group_hash);
+    char _hash[9] = {0};
+
+    strncpy(_hash,multi_group_hash,8);
+    snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,_hash);
+    DIR *dp;
+    dp = opendir(multigroup_path);
+
+    if(!dp){
+        if (errno == ENOENT) {
+            oldmask = umask(0002);
+            int retval = mkdir(multigroup_path, 0770);
+            umask(oldmask);
+
+            if (retval == -1) {
+                mdebug1("At read_controlmsg(): couldn't create directory '%s'", multigroup_path);
+                return -1;
+            }
+        } else {
+            mwarn("Could not create directory '%s': %s (%d)", multigroup_path, strerror(errno), errno);
+        }
+    }else{
+        closedir(dp);
     }
 
     return 0;
@@ -530,7 +518,7 @@ int w_validate_group_name(const char *group){
 
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
- 
+
     if(!multigroup && (strlen(group) > MAX_GROUP_NAME)){
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
@@ -560,7 +548,7 @@ int w_validate_group_name(const char *group){
 
         const char delim[2] = ",";
         char *individual_group = strtok(multi_group_cpy, delim);
-            
+
         while( individual_group != NULL ) {
 
             /* Spaces are not allowed */
