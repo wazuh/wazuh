@@ -107,17 +107,20 @@ HWND hStatus;
 
 #define IDD_MAIN                1700
 #define IDC_MAIN_STATUS         1701
-#define IDC_ADD                 1702
-#define IDC_CANCEL              1703
+#define IDC_SAVE                1702
+#define IDC_REFRESH             1703
 #define IDD_ABOUT               1704
-#define IDC_STATIC -1
+#define IDC_STATIC              -1
 
 /** Prototypes **/
+
+/* Duplicate string */
+void dupStr(char *src, char **dst);
 
 /* Generate server info */
 int gen_server_info(HWND hwnd);
 
-char *cat_file(char *file, FILE *fp2);
+char *cat_file(char *file);
 
 int is_file(char *file);
 
@@ -126,9 +129,6 @@ int config_read(HWND hwnd);
 
 /* Initializes the config */
 void init_config();
-
-/* Run command using cmd.exe */
-int run_cmd(char *cmd, HWND hwnd);
 
 /* Set OSSEC Server IP */
 int set_ossec_server(char *ip, HWND hwnd);

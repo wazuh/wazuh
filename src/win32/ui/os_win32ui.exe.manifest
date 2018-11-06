@@ -1,6 +1,5 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
  <assemblyIdentity
-   processorArchitecture="x86"
    version="1.5"
    type="win32"
    name="os_win32ui.exe"/>

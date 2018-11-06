@@ -13,7 +13,7 @@ EXTERNAL_OPENSSL=external/openssl/
 EXTERNAL_LIBYAML=external/libyaml/
 EXTERNAL_CURL=external/curl/
 EXTERNAL_AUDIT=external/audit-userspace/
-ifneq (${TARGET},winagent)
+ifeq (,$(filter ${TARGET},winagent winagent-x64))
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
@@ -70,7 +70,7 @@ OSSEC_CFLAGS = ${CFLAGS}
 OSSEC_LDFLAGS = ${LDFLAGS}
 OSSEC_LIBS = $(LIBS)
 
-ifneq (${TARGET},winagent)
+ifeq (,$(filter ${TARGET},winagent winagent-x64))
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
@@ -232,34 +232,85 @@ ifndef V
 endif
 
 MING_BASE:=
-ifeq (${TARGET}, winagent)
-# Avoid passing environment variables such CFLAGS to external Makefiles
-MAKEOVERRIDES=
-
-CC=gcc
-ifneq (,$(shell which amd64-mingw32msvc-gcc))
-	MING_BASE:=amd64-mingw32msvc-
-else
-ifneq (,$(shell which i686-pc-mingw32-gcc))
-	MING_BASE:=i686-pc-mingw32-
-else
-ifneq (,$(shell which i686-w64-mingw32-gcc))
-	MING_BASE:=i686-w64-mingw32-
-else
-$(error No windows cross-compiler found!) #MING_BASE:=unknown-
-endif
-endif
-endif
-
-ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread-1.dll))
-	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
-else
-ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
-	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
-endif
-endif
-
-endif #winagent
+ifneq (,$(filter ${TARGET},winagent winagent-x64))
+    # Avoid passing environment variables such CFLAGS to external Makefiles
+    MAKEOVERRIDES=
+    CC=gcc
+    
+    ifeq (${TARGET},winagent)
+        # Check for 32-bit cross-compilers
+        ifneq (,$(shell which i586-mingw32msvc-gcc))
+            MING_BASE:=i586-mingw32msvc-
+            ifneq (,$(wildcard /usr/i586-mingw32msvc/lib/libwinpthread-1.dll))
+                WIN_PTHREAD_LIB:=/usr/i586-mingw32msvc/lib/libwinpthread-1.dll
+            else
+                ifneq (,$(wildcard /usr/i586-mingw32msvc/sys-root/mingw/bin/libwinpthread-1.dll))
+                    WIN_PTHREAD_LIB:=/usr/i586-mingw32msvc/sys-root/mingw/bin/libwinpthread-1.dll
+                endif
+            endif
+        else
+            ifneq (,$(shell which i686-pc-mingw32-gcc))
+                MING_BASE:=i686-pc-mingw32-
+                ifneq (,$(wildcard /usr/i686-pc-mingw32/lib/libwinpthread-1.dll))
+                    WIN_PTHREAD_LIB:=/usr/i686-pc-mingw32/lib/libwinpthread-1.dll
+                else
+                    ifneq (,$(wildcard /usr/i686-pc-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
+                        WIN_PTHREAD_LIB:=/usr/i686-pc-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+                    endif
+                endif
+            else
+                ifneq (,$(shell which i686-w64-mingw32-gcc))
+                    MING_BASE:=i686-w64-mingw32-
+                    ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread-1.dll))
+                        WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
+                    else
+                        ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
+                            WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+                        endif
+                    endif
+                else
+                    $(error No windows cross-compiler found!) #MING_BASE:=unknown-
+                endif
+            endif
+        endif
+    else
+        # Check for 64-bit cross-compilers
+        ifneq (,$(shell which amd64-mingw32msvc-gcc))
+            MING_BASE:=amd64-mingw32msvc-
+            ifneq (,$(wildcard /usr/amd64-mingw32msvc/lib/libwinpthread-1.dll))
+                WIN_PTHREAD_LIB:=/usr/amd64-mingw32msvc/lib/libwinpthread-1.dll
+            else
+                ifneq (,$(wildcard /usr/amd64-mingw32msvc/sys-root/mingw/bin/libwinpthread-1.dll))
+                    WIN_PTHREAD_LIB:=/usr/amd64-mingw32msvc/sys-root/mingw/bin/libwinpthread-1.dll
+                endif
+            endif
+        else
+            ifneq (,$(shell which x86_64-pc-mingw32-gcc))
+                MING_BASE:=x86_64-pc-mingw32-
+                ifneq (,$(wildcard /usr/x86_64-pc-mingw32/lib/libwinpthread-1.dll))
+                    WIN_PTHREAD_LIB:=/usr/x86_64-pc-mingw32/lib/libwinpthread-1.dll
+                else
+                    ifneq (,$(wildcard /usr/x86_64-pc-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
+                        WIN_PTHREAD_LIB:=/usr/x86_64-pc-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+                    endif
+                endif
+            else
+                ifneq (,$(shell which x86_64-w64-mingw32-gcc))
+                    MING_BASE:=x86_64-w64-mingw32-
+                    ifneq (,$(wildcard /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll))
+                        WIN_PTHREAD_LIB:=/usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll
+                    else
+                        ifneq (,$(wildcard /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
+                            WIN_PTHREAD_LIB:=/usr/x86_64-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+                        endif
+                    endif
+                else
+                    $(error No windows cross-compiler found!) #MING_BASE:=unknown-
+                endif
+            endif
+        endif
+    endif
+endif # winagent / winagent-x64
 
 
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
@@ -415,7 +466,8 @@ failtarget:
 	@echo "   make TARGET=local      - local version of server"
 	@echo "   make TARGET=hybrid     - hybrid version of server"
 	@echo "   make TARGET=agent    to build the unix agent"
-	@echo "   make TARGET=winagent to build the windows agent"
+	@echo "   make TARGET=winagent to build the windows agent (32-bit)"
+	@echo "   make TARGET=winagent-x64 to build the windows agent (64-bit)"
 
 .PHONY: help
 help: failtarget
@@ -576,7 +628,12 @@ WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/oss
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
-.PHONY: winagent
+ifeq (${MAKECMDGOALS},winagent-x64)
+$(error Do not use 'winagent-x64' directly, use 'TARGET=winagent-x64')
+endif
+
+.PHONY: winagent winagent-x64
+winagent-x64: winagent
 winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
@@ -614,7 +671,7 @@ AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
 
-ifneq (${TARGET},winagent)
+ifeq (,$(filter ${TARGET},winagent winagent-x64))
 ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB)
 endif
@@ -642,8 +699,14 @@ OPENSSL_FLAGS = enable-weak-ssl-ciphers no-shared
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
 
 ${OPENSSL_LIB}:
-ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ./Configure $(OPENSSL_FLAGS) mingw && ${MAKE} build_libs
+ifneq (,$(filter ${TARGET},winagent winagent-x64))
+    ifeq (${TARGET},winagent)
+		# 32-bit
+		cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ./Configure $(OPENSSL_FLAGS) mingw && ${MAKE} build_libs
+    else
+		# 64-bit
+		cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ./Configure $(OPENSSL_FLAGS) mingw64 && ${MAKE} build_libs
+    endif
 else
 ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
@@ -667,7 +730,7 @@ endif
 #### zlib ##########
 
 $(ZLIB_LIB):
-ifeq (${TARGET},winagent)
+ifneq (,$(filter ${TARGET},winagent winagent-x64))
 	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
 else
 	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure && ${MAKE} libz.a
@@ -877,7 +940,7 @@ wmodules_o := $(wmodules_c:.c=.o)
 wazuh_modules/%.o: wazuh_modules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-ifeq (${TARGET},winagent)
+ifneq (,$(filter ${TARGET},winagent winagent-x64))
 wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/syscollector_win_ext.o
 	${OSSEC_SHARED} ${OSSEC_LDFLAGS} $^ -o $@ $(OSSEC_LIBS) $(JSON_LIB) -liphlpapi -lws2_32
 endif # DLL for Windows
@@ -982,7 +1045,7 @@ WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
 else
-ifeq (${TARGET}, winagent)
+ifneq (,$(filter ${TARGET},winagent winagent-x64))
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
