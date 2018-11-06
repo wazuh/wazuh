@@ -682,22 +682,25 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
     os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
     clock_t clock0 = clock();
 
-    get_agent_group(fname, group, OS_SIZE_65536);
+    if (get_agent_group(fname, group, OS_SIZE_65536) == 0) {
 
-    switch (wdb_update_agent_group(id_agent, *group ? group : NULL)) {
-    case -1:
-        mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
-        result = -1;
-        break;
-    case 0:
-        mtdebug1(WM_DATABASE_LOGTAG, "No such agent '%s' on DB when updating group.", fname);
-        break;
-    default:
-        break;
+        switch (wdb_update_agent_group(id_agent, *group ? group : NULL)) {
+        case -1:
+            mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
+            result = -1;
+            break;
+        case 0:
+            mtdebug1(WM_DATABASE_LOGTAG, "No such agent '%s' on DB when updating group.", fname);
+            break;
+        default:
+            break;
+        }
+
+        mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agent_group(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
     }
-
-    mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agent_group(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
-
+    else {
+        mtdebug2("Agent '%s' has group NULL.",fname);
+    }
     free(group);
     return result;
 }
