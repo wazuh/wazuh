@@ -136,6 +136,14 @@ void wm_kill_children();
 // Reads an HTTP header and extracts the size of the response
 long int wm_read_http_size(char *header);
 
+/* Concatenate strings with optional separator after adding the new string str2
+ *
+ * str1 must be a valid pointer to NULL or a string at heap
+ * Returns 0 if success, or -1 if fail.
+ */
+
+int wm_strcat2(char **str1, const char *str2, char sep);
+
 /* Concatenate strings with optional separator
  *
  * str1 must be a valid pointer to NULL or a string at heap

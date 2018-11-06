@@ -9,6 +9,8 @@
 
 #include "shared.h"
 #include "string.h"
+#include "../wazuh_modules/wmodules.h"
+#include "../os_regex/os_regex.h"
 
 #ifdef WIN32
 #ifdef EVENTCHANNEL_SUPPORT
@@ -456,46 +458,50 @@ int wstr_find_line_in_file(char *file,const char *str,int strip_new_line){
     return -1;
 }
 
-char * wstr_delete_dup(char * string, char * delim){
-    char *find_delim, *find_sec_delim;
+char * wstr_delete_repeated_groups(char * string){
+    char **aux;
     char *result;
-    char **word;
-    int i=0;
-    int offset=0;
-    minfo("string: %s delim %s", string, *delim);
-    /*os_malloc(MAX_GROUPS_PER_MULTIGROUP, *word);
-    if(*word){
-        for(i=0; i<MAX_GROUPS_PER_MULTIGROUP; i++){
-            os_malloc(OS_MAXSTR, **word);
-        }
-    }*/
-    
-    find_delim = strchr(string, delim); //group1,group2,group3
-    strncpy(word[i], string, find_delim - string); // group1,
-    i++;
+    int i, k, l, p;
+    p = 0;
+    k = 0;
+    char delim = ',';
+    int groups=0;
 
-    for (find_sec_delim=find_delim+1; find_sec_delim < string + strlen(string); find_sec_delim++){
+    aux = OS_StrBreak(delim, string, MAX_GROUPS_PER_MULTIGROUP);
 
-        find_sec_delim = strchr(find_delim+1, delim);
+    os_calloc(MAX_GROUPS_PER_MULTIGROUP, sizeof (char), result);
 
-        if(!find_sec_delim){
-            find_sec_delim = strlen(string) - 1;
-        }
+    for (i=0; aux[i] != NULL; i++){
+        for(k=i+1; aux[k] != NULL; k++){
+            if (!strcmp(aux[k], aux[i])){
 
-        strncpy(word[i], (int) string + (int) find_delim + 1, find_sec_delim - find_delim + 1);
-        find_delim = find_sec_delim;
-        i++;
-    }
-    
-    for (int i=0; i<MAX_GROUPS_PER_MULTIGROUP; i++){
-        for (int j=0; j<MAX_GROUPS_PER_MULTIGROUP; j++){
-            if(!strcmp(word[i], word[j])){
-                continue;
+                for(l=k; aux[l+1] != NULL; l++){
+                    strcpy(aux[l], aux[l+1]);
+                }
+
+                aux[l] = '\0';
             }
-            memcpy(result+offset, word[i], strlen(word[i]) + 1);
-            offset = strlen(word[i]) + 1;
         }
     }
+
+    while(aux[p]){
+        groups++;
+        p++;
+    }
+
+    for(p=0; aux[p]; p++){
+
+        if(p == (groups - 1)){
+            wm_strcat2(&result, aux[p], NULL);
+        } else {
+            wm_strcat2(&result, aux[p], delim);
+        }
+    }
+
+    for (i=0; i<MAX_GROUPS_PER_MULTIGROUP; i++){
+        os_free(aux[i]);
+    }
+    os_free(aux);
 
     return result;
 }

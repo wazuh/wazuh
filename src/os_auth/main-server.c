@@ -863,9 +863,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     int error = 0;
                     int max_multigroups = 0;
                     os_strdup(multi_group_cpy, groups_added);
-                    merror("groups added: %s - %s", groups_added, delim);
-                    groups_added = wstr_delete_dup(groups_added, delim);
-
+                    groups_added = wstr_delete_repeated_groups(groups_added);
+                    os_strdup(groups_added, multi_group_cpy);
+                    os_free(groups_added);
                     mdebug1("Multigroup: '%s'",multi_group_cpy);
                     while( group != NULL ) {
                         DIR * dp;
