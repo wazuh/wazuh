@@ -923,12 +923,14 @@
 
   <rule id="18152" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_group>win_authentication_failed</if_matched_group>
+    <same_source_ip />
     <description>Multiple Windows Logon Failures.</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="18153" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>18105</if_matched_sid>
+    <same_source_ip />
     <description>Multiple Windows audit failure events.</description>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
@@ -985,3 +987,4 @@
   </rule>
 
 </group>
+

@@ -49,6 +49,7 @@
 
   <rule id="86806" level="12" frequency="7" timeframe="120">
     <if_matched_sid>86804</if_matched_sid>
+    <same_source_ip />
     <description>VShell multiple connection attempts within 2 minute by a host in the deny file, potential DOS or brute force attempt.</description>
     <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
