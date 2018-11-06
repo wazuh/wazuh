@@ -216,7 +216,6 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         w_mutex_unlock(&mutex_pool);
 
         w_mutex_lock(&node->mutex);
-
 #ifdef WIN32
         // In Windows, forward request to target socket
         if (strncmp(node->target, "agent", 5) == 0) {
@@ -278,7 +277,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
         if (length <= 0) {
             // Build error string
-            strcpy(buffer,"err Disconnected");
+            os_strdup("err Disconnected", buffer);
             length = strlen(buffer);
         }
 
@@ -339,6 +338,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         free(buffer);
         req_free(node);
     }
+
 
     return NULL;
 }
