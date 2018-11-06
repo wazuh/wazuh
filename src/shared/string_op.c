@@ -458,48 +458,26 @@ int wstr_find_line_in_file(char *file,const char *str,int strip_new_line){
     return -1;
 }
 
-char * wstr_delete_repeated_groups(const char * string,const char delim){
+char * wstr_delete_repeated_groups(const char * string){
     char **aux;
-    char *result;
-    result = NULL;
-    int i, k, l, p;
-    p = 0;
-    k = 0;
-    int groups=0;
+    char *result = NULL;
+    int i, k;
 
     aux = OS_StrBreak(MULTIGROUP_SEPARATOR, string, MAX_GROUPS_PER_MULTIGROUP);
 
-    for (i=0; aux[i] != NULL; i++){
-        for(k=i+1; aux[k] != NULL; k++){
-            if (!strcmp(aux[k], aux[i])){
-
-                for(l=k; aux[l+1] != NULL; l++){
-                    strcpy(aux[l], aux[l+1]);
-                }
-
-                aux[l] = '\0';
+    for (i=0; aux[i] != NULL; i++) {
+        for (k=0; k < i; k++){
+            if (!strcmp(aux[k], aux[i])) {
+                break;
             }
         }
-    }
 
-    while(aux[p]){
-        groups++;
-        p++;
-    }
-
-    for(p=0; aux[p]; p++){
-
-        if(p == (groups - 1)){
-            wm_strcat(&result, aux[p], 0);
-        } else {
-            wm_strcat(&result, aux[p], delim);
+        // If no duplicate found, append
+        if (k == i) {
+            wm_strcat(&result, aux[i], MULTIGROUP_SEPARATOR);
         }
     }
 
-    for (i=0; aux[i] != NULL; i++){
-        os_free(aux[i]);
-    }
-    os_free(aux);
-
+    free_strarray(aux);
     return result;
 }
