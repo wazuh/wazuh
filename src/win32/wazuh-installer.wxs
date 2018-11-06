@@ -55,8 +55,8 @@
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
         <CustomAction Id="CustomAction_RunAuthd" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT]" Directory="APPLICATIONFOLDER" Execute="immediate" />
         <CustomAction Id="CustomAction_RunAuthdPassword" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD]" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdCACertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v [CERTIFICATE]" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdAgentCertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k \"[KEY]\" -x \"[PEM]\"" Execute="immediate" />
+        <CustomAction Id="CustomAction_RunAuthdCACertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot;" Execute="immediate" />
+        <CustomAction Id="CustomAction_RunAuthdAgentCertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" Execute="immediate" />
         <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
 
         <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
