@@ -690,7 +690,7 @@ int main_analysisd(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     // Start com request thread
-    w_create_thread(syscom_main, NULL);
+    w_create_thread(asyscom_main, NULL);
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);
