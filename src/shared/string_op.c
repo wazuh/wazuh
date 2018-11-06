@@ -461,40 +461,27 @@ int wstr_find_line_in_file(char *file,const char *str,int strip_new_line){
 char * wstr_delete_repeated_groups(char * string){
     char **aux;
     char *result;
-    int i, k, l, p;
-    p = 0;
-    k = 0;
+    int i;
     char delim = ',';
-    int groups=0;
+    OSHash *groups_added;
+    groups_added = OSHash_Create();
+
+    minfo("string: %s", string);
 
     aux = OS_StrBreak(delim, string, MAX_GROUPS_PER_MULTIGROUP);
 
     os_calloc(MAX_GROUPS_PER_MULTIGROUP, sizeof (char), result);
 
     for (i=0; aux[i] != NULL; i++){
-        for(k=i+1; aux[k] != NULL; k++){
-            if (!strcmp(aux[k], aux[i])){
-
-                for(l=k; aux[l+1] != NULL; l++){
-                    strcpy(aux[l], aux[l+1]);
-                }
-
-                aux[l] = '\0';
+        if (!OSHash_Get(groups_added, aux[i])){
+            OSHash_Add(groups_added, aux[i], 1);
+            minfo("Added %s", aux[i]);
+            if(!aux[i+1]){
+                wm_strcat2(&result, aux[i], NULL);
+            } else {
+                wm_strcat2(&result, aux[i], delim);
             }
-        }
-    }
-
-    while(aux[p]){
-        groups++;
-        p++;
-    }
-
-    for(p=0; aux[p]; p++){
-
-        if(p == (groups - 1)){
-            wm_strcat2(&result, aux[p], NULL);
-        } else {
-            wm_strcat2(&result, aux[p], delim);
+            minfo("Result: %s", result);
         }
     }
 
@@ -502,6 +489,8 @@ char * wstr_delete_repeated_groups(char * string){
         os_free(aux[i]);
     }
     os_free(aux);
+
+    OSHash_Free(groups_added);
 
     return result;
 }
