@@ -458,22 +458,19 @@ int wstr_find_line_in_file(char *file,const char *str,int strip_new_line){
     return -1;
 }
 
-char * wstr_delete_repeated_groups(char * string){
+char * wstr_delete_repeated_groups(const char * string,const char delim){
     char **aux;
     char *result;
     int i;
-    char delim = ',';
     OSHash *groups_added;
     groups_added = OSHash_Create();
+    result = NULL;
 
-    aux = OS_StrBreak(delim, string, MAX_GROUPS_PER_MULTIGROUP);
-
-    os_calloc(MAX_GROUPS_PER_MULTIGROUP, sizeof (char), result);
+    aux = OS_StrBreak(MULTIGROUP_SEPARATOR, string, MAX_GROUPS_PER_MULTIGROUP);
 
     for (i=0; aux[i] != NULL; i++){
         if (!OSHash_Get(groups_added, aux[i])){
-
-            switch (OSHash_Add(groups_added, aux[i], 1)){
+            switch (OSHash_Add(groups_added, aux[i], (void *)1)){
                 case 0:
                     merror("Cannot add group %s into hash table.", aux[i]);
                     break;
@@ -483,20 +480,15 @@ char * wstr_delete_repeated_groups(char * string){
                     break;
                 
                 default:
-                    if(!aux[i+1]){
-                        wm_strcat2(&result, aux[i], NULL);
-                    } else {
-                        wm_strcat2(&result, aux[i], delim);
-                    }
+                    wm_strcat(&result, aux[i], delim);
             }
         }
     }
 
-    for (i=0; i<MAX_GROUPS_PER_MULTIGROUP; i++){
+    for (i=0; aux[i] != NULL; i++){
         os_free(aux[i]);
     }
     os_free(aux);
-
     OSHash_Free(groups_added);
 
     return result;
