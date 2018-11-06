@@ -390,7 +390,7 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
         }
 
         if( fgets (buffer, OS_SIZE_65536, fp)!=NULL ) {
-            
+
             if(strip_new_line){
 
                 char *endl = strchr(buffer, '\n');
@@ -461,27 +461,38 @@ int wstr_find_line_in_file(char *file,const char *str,int strip_new_line){
 char * wstr_delete_repeated_groups(const char * string,const char delim){
     char **aux;
     char *result;
-    int i;
-    OSHash *groups_added;
-    groups_added = OSHash_Create();
     result = NULL;
+    int i, k, l, p;
+    p = 0;
+    k = 0;
+    int groups=0;
 
     aux = OS_StrBreak(MULTIGROUP_SEPARATOR, string, MAX_GROUPS_PER_MULTIGROUP);
 
     for (i=0; aux[i] != NULL; i++){
-        if (!OSHash_Get(groups_added, aux[i])){
-            switch (OSHash_Add(groups_added, aux[i], (void *)1)){
-                case 0:
-                    merror("Cannot add group %s into hash table.", aux[i]);
-                    break;
+        for(k=i+1; aux[k] != NULL; k++){
+            if (!strcmp(aux[k], aux[i])){
 
-                case 1:
-                    // Group already added
-                    break;
-                
-                default:
-                    wm_strcat(&result, aux[i], delim);
+                for(l=k; aux[l+1] != NULL; l++){
+                    strcpy(aux[l], aux[l+1]);
+                }
+
+                aux[l] = '\0';
             }
+        }
+    }
+
+    while(aux[p]){
+        groups++;
+        p++;
+    }
+
+    for(p=0; aux[p]; p++){
+
+        if(p == (groups - 1)){
+            wm_strcat(&result, aux[p], 0);
+        } else {
+            wm_strcat(&result, aux[p], delim);
         }
     }
 
@@ -489,7 +500,6 @@ char * wstr_delete_repeated_groups(const char * string,const char delim){
         os_free(aux[i]);
     }
     os_free(aux);
-    OSHash_Free(groups_added);
 
     return result;
 }
