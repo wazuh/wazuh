@@ -72,4 +72,11 @@ int wstr_find_line_in_file(char *file,const char *str,int strip_new_line);
 // Delete last occurrence of duplicated string
 char * wstr_delete_repeated_groups(const char * string);
 
+/* Concatenate strings with optional separator
+ *
+ * str1 must be a valid pointer to NULL or a string at heap
+ * Returns 0 if success, or -1 if fail.
+ */
+int wm_strcat(char **str1, const char *str2, char sep);
+
 #endif
