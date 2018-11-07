@@ -22,8 +22,6 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 
 /* Unix socket -- not for windows */
 #ifndef WIN32
-static struct sockaddr_un n_us;
-static socklen_t us_l = sizeof(n_us);
 
 /* UNIX SOCKET */
 #ifndef SUN_LEN
@@ -129,6 +127,7 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
 /* Bind to a Unix domain, using DGRAM sockets */
 int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
 {
+    struct sockaddr_un n_us;
     int ossock = 0;
 
     /* Make sure the path isn't there */
@@ -172,6 +171,8 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
  */
 int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
 {
+    struct sockaddr_un n_us;
+
     int ossock = 0;
 
     memset(&n_us, 0, sizeof(n_us));
@@ -430,6 +431,8 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 /* Receive a message from a Unix socket */
 int OS_RecvUnix(int socket, int sizet, char *ret)
 {
+    struct sockaddr_un n_us;
+    socklen_t us_l = sizeof(n_us);
     ssize_t recvd;
     ret[sizet] = '\0';
 
