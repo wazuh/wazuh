@@ -65,6 +65,8 @@ static int poll_interval_time = 0;
 /* Message reporting */
 static int reported_metadata_not_exists = 0;
 
+static int reported_non_existing_group = 0;
+
 /* Save a control message received from an agent
  * read_controlmsg (other thread) is going to deal with it
  * (only if message changed)
@@ -429,7 +431,12 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
             if (files = wreaddir(dir), !files) {
                 if (errno != ENOTDIR) {
-                    mdebug2("At c_multi_group(): Could not open directory '%s'.Ignoring this group.", dir);
+                    mdebug1("At c_multi_group(): Could not open directory '%s'. %s. Ignoring this group.", dir,strerror(errno));
+                    if((reported_non_existing_group % 100) == 0){
+                        mwarn("Could not open directory '%s'. %s. Ignoring this group.", dir,strerror(errno));
+                    }
+                    reported_non_existing_group++;
+
                     goto next;
                 }
                 goto next;
