@@ -582,7 +582,7 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         }
         return (-1);
     }
-    fd = _open_osfhandle((long)lf->h, 0);
+    fd = _open_osfhandle((intptr_t)lf->h, 0);
     if (fd == -1) {
         merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
         CloseHandle(lf->h);
@@ -1053,11 +1053,7 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         mdebug2("Discarding log line from logcollector");
 
         if (!reported) {
-#ifndef WIN32
             mwarn("Message message queue is full (%zu). Log lines may be lost.", msg->msg_queue->size);
-#else
-            mwarn("Message message queue is full (%u). Log lines may be lost.", msg->msg_queue->size);
-#endif
             reported = 1;
         }
     }

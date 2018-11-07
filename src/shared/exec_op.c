@@ -39,7 +39,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             return NULL;
         }
 
-        if (fd = _open_osfhandle((int)hPipe[0], 0), fd < 0) {
+        if (fd = _open_osfhandle((intptr_t)hPipe[0], 0), fd < 0) {
             merror("_open_osfhandle(): %ld", GetLastError());
             CloseHandle(hPipe[0]);
             CloseHandle(hPipe[1]);

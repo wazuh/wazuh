@@ -879,10 +879,10 @@ whodata_event_node *whodata_list_add(char *id) {
     if (syscheck.wlist.current_size < syscheck.wlist.max_size) {
         if (!syscheck.wlist.alerted && syscheck.wlist.alert_threshold < syscheck.wlist.current_size) {
             syscheck.wlist.alerted = 1;
-            mwarn("Whodata events queue for Windows has more than %d elements.", syscheck.wlist.alert_threshold);
+            mwarn("Whodata events queue for Windows has more than %zu elements.", syscheck.wlist.alert_threshold);
         }
     } else {
-        mdebug1("Whodata events queue for Windows is full. Removing the first %d...", syscheck.wlist.max_remove);
+        mdebug1("Whodata events queue for Windows is full. Removing the first %zu...", syscheck.wlist.max_remove);
         whodata_list_remove_multiple(syscheck.wlist.max_remove);
     }
     os_calloc(sizeof(whodata_event_node), 1, node);
@@ -909,7 +909,7 @@ void whodata_list_remove_multiple(size_t quantity) {
         }
         whodata_list_remove(syscheck.wlist.first);
     }
-    mdebug1("%d events have been deleted from the whodata list.", quantity);
+    mdebug1("%zu events have been deleted from the whodata list.", quantity);
 }
 
 void whodata_list_remove(whodata_event_node *node) {
@@ -948,7 +948,7 @@ void whodata_list_set_values() {
     syscheck.wlist.max_size = WLIST_MAX_SIZE;
     syscheck.wlist.max_remove = syscheck.wlist.max_size * WLIST_REMOVE_MAX * 0.01;
     syscheck.wlist.alert_threshold = syscheck.wlist.max_size * WLIST_ALERT_THRESHOLD * 0.01;
-    mdebug1("Whodata event queue values for Windows -> max_size:'%d' | max_remove:'%d' | alert_threshold:'%d'.",
+    mdebug1("Whodata event queue values for Windows -> max_size:'%zu' | max_remove:'%zu' | alert_threshold:'%zu'.",
     syscheck.wlist.max_size, syscheck.wlist.max_remove, syscheck.wlist.alert_threshold);
 }
 
