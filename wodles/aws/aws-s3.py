@@ -44,6 +44,7 @@
 #   9 - Failed to parse file
 #   10 - Failed to execute DB cleanup
 #   11 - Unable to connect to Wazuh
+#   12 - Invalid type of bucket
 
 import signal
 import sys
@@ -824,14 +825,19 @@ def main(argv):
         debug_level = int(options.debug)
         debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
 
-    if options.type.lower() == 'cloudtrail':
-        bucket_type = AWSCloudTrailBucket
-    elif options.type.lower() == 'config':
-        bucket_type = AWSConfigBucket
-    elif options.type.lower() == 'custom':
-        bucket_type = AWSCustomBucket
-    else:
-        raise Exception
+    try:
+        if options.type.lower() == 'cloudtrail':
+            bucket_type = AWSCloudTrailBucket
+        elif options.type.lower() == 'config':
+            bucket_type = AWSConfigBucket
+        elif options.type.lower() == 'custom':
+            bucket_type = AWSCustomBucket
+        else:
+            raise Exception("Invalid type of bucket")
+    except Exception as err:
+        debug("+++ Error: {}".format(err.message), 2)
+        print("ERROR: {}".format(err.message))
+        sys.exit(12)
 
     bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
                          options.aws_profile, options.iam_role_arn, options.logBucket,
