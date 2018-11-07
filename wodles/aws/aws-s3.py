@@ -415,7 +415,6 @@ class AWSBucket:
         
         return event
 
-
     def decompress_file(self, log_key):
         def decompress_gzip(raw_object):
             # decompress gzip file in text mode.
@@ -655,7 +654,7 @@ class AWSConfigBucket(AWSLogsBucket):
     def reformat_msg(self, event):
         debug('++ Reformat message', 3)
         AWSBucket.reformat_msg(self, event)
-        event['aws']['type'] = 'AWS Config'
+
         return event
 
 
