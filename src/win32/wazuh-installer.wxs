@@ -3,34 +3,45 @@
     <Product Id="*" Name="Wazuh Agent 3.7.0" Language="1033" Version="3.7.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
+        
+        <!-- Check if this is the 32-bit MSI running under Win64 -->
+        <?if $(var.DestInstallDir)=ProgramFilesFolder ?>
+            <Condition Message="This MSI package is designed for Win32">%PROCESSOR_ARCHITECTURE~="x86" AND %PROCESSOR_ARCHITEW6432&lt;&gt;"amd64"</Condition>
+        <?endif?>
+        
+        <!-- Fix for a WixUI_Advanced sequence bug that makes the 64-bit MSI display a 32-bit destination folder -->
+        <Property Id="APPLICATIONFOLDER" Secure="yes">
+            <RegistrySearch Id="FindInstallLocation" Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[WIX_UPGRADE_DETECTED]" Name="InstallLocation" Type="raw" />
+        </Property>
+        <Property Id="ApplicationFolderName" Value="ossec-agent" />
+        <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
+        <SetDirectory Id="APPLICATIONFOLDER" Value="[$(var.DestInstallDir)][ApplicationFolderName]">APPLICATIONFOLDER=""</SetDirectory>
+        <CustomAction Id="OverwriteWixSetDefaultPerMachineFolder" Property="WixPerMachineFolder" Value="[APPLICATIONFOLDER]" Execute="immediate" />
+        <CustomAction Id="SetARPINSTALLLOCATION" Property="ARPINSTALLLOCATION" Value="[APPLICATIONFOLDER]" />
+        <InstallUISequence>
+            <Custom Action="OverwriteWixSetDefaultPerMachineFolder" After="WixSetDefaultPerMachineFolder" />
+        </InstallUISequence>
+        <InstallExecuteSequence>
+            <Custom Action="OverwriteWixSetDefaultPerMachineFolder" After="WixSetDefaultPerMachineFolder" />
+            <Custom Action="SetARPINSTALLLOCATION" After="InstallValidate" />
+        </InstallExecuteSequence>
+        
         <!-- Default configuration values -->
-        <Property Id="ADDRESS" Secure="yes">
-        </Property>
-        <Property Id="SERVER_PORT" Secure="yes">
-        </Property>
-        <Property Id="NOTIFY_TIME" Secure="yes">
-        </Property>
-        <Property Id="TIME_RECONNECT" Secure="yes">
-        </Property>
-        <Property Id="AUTHD_SERVER" Secure="yes">
-        </Property>
+        <Property Id="ADDRESS" Secure="yes" />
+        <Property Id="SERVER_PORT" Secure="yes" />
+        <Property Id="NOTIFY_TIME" Secure="yes" />
+        <Property Id="TIME_RECONNECT" Secure="yes" />
+        <Property Id="AUTHD_SERVER" Secure="yes" />
         <Property Id="AUTHD_PORT" Secure="yes">1515</Property>
-        <Property Id="PROTOCOL" Secure="yes">
-        </Property>
-        <Property Id="PASSWORD" Secure="yes">
-        </Property>
-        <Property Id="CERTIFICATE" Secure="yes">
-        </Property>
-        <Property Id="PEM" Secure="yes">
-        </Property>
-        <Property Id="KEY" Secure="yes">
-        </Property>
-        <Property Id="AGENT_NAME" Secure="yes">
-        </Property>
+        <Property Id="PROTOCOL" Secure="yes" />
+        <Property Id="PASSWORD" Secure="yes" />
+        <Property Id="CERTIFICATE" Secure="yes" />
+        <Property Id="PEM" Secure="yes" />
+        <Property Id="KEY" Secure="yes" />
+        <Property Id="AGENT_NAME" Secure="yes" />
         <Property Id="MsiLogging" Value="v" />
         <Icon Id="icon.ico" SourceFile="ui\favicon.ico" />
         <Property Id="ARPPRODUCTICON" Value="icon.ico" />
-        <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
         <WixVariable Id="WixUISupportPerUser" Value="0" />
         <Property Id="ALLUSERS" Value="1" />
         <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
@@ -40,38 +51,38 @@
         <Property Id="WixShellExecTarget" Value="[#WIN32UI.EXE]" />
         <Property Id="ARPNOMODIFY" Value="yes" />
         <Property Id="ARPNOREPAIR" Value="yes" />
-        <Property Id="ApplicationFolderName" Value="ossec-agent" />
         <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
-
+        
         <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
         <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no" />
-
+        
         <CustomAction Id="CustomActionSetComputerName" Property="AGENT_NAME" Value="[ComputerName]" Execute="immediate" />
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
         <CustomAction Id="CustomAction_RunAuthd" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT]" Directory="APPLICATIONFOLDER" Execute="immediate" />
         <CustomAction Id="CustomAction_RunAuthdPassword" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD]" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdCACertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v [CERTIFICATE]" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdAgentCertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k \"[KEY]\" -x \"[PEM]\"" Execute="immediate" />
+        <CustomAction Id="CustomAction_RunAuthdCACertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot;" Execute="immediate" />
+        <CustomAction Id="CustomAction_RunAuthdAgentCertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" Execute="immediate" />
         <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
-
+        
         <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
         <!-- Otherwise, the locked files and directories will not be deleted. -->
         <CustomAction Id="StopWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
-
+        
         <UI>
             <UIRef Id="WixUI_Advanced" />
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
+        
         <InstallExecuteSequence>
             <Custom Action="CustomActionSetComputerName" Before="FileCost">AGENT_NAME=""</Custom>
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
-
+            
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
@@ -82,8 +93,9 @@
             <Custom Action="CustomAction_RunAuthdAgentCertificate" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
             <Custom Action="StartWinService" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; ""</Custom>
         </InstallExecuteSequence>
+        
         <Directory Id="TARGETDIR" Name="SourceDir">
-            <Directory Id="ProgramFilesFolder" Name="PFiles">
+            <Directory Id="$(var.DestInstallDir)" Name="PFiles">
                 <Directory Id="APPLICATIONFOLDER" Name="ossec-agent">
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
                         <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" />
@@ -94,12 +106,12 @@
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
-
+                    
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
-
+                    
                     <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes">
                         <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
@@ -235,6 +247,7 @@
                 </Directory>
             </Directory>
         </Directory>
+        
         <DirectoryRef Id="ACTIVE_RESPONSE">
             <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />

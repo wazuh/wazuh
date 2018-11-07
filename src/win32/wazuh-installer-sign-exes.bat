@@ -1,3 +1,4 @@
+@echo off
 SETLOCAL
 SET PATH=%PATH%;C:\Program Files\Microsoft SDKs\Windows\v7.0\Bin
 SET PATH=%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin
