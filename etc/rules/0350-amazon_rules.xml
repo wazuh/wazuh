@@ -179,7 +179,7 @@ ID: 80200 - 80499
         <decoded_as>json</decoded_as>
         <if_sid>80450</if_sid>
 		<field name="aws.configuration.complianceType">NON_COMPLIANT</field>
-		<description>Resource Type: $(aws.configuration.targetResourceType) - Resource ID: $(resourceId) - Rule ID: $(aws.configuration.configRuleList.configRuleId) - Rule name: $(aws.configuration.configRuleList.configRuleName)</description>
+		<description>Compliance Type: $(aws.configuration.complianceType) - Resource ID: $(resourceId) - Rule ID: $(aws.configuration.configRuleList.configRuleId) - Rule name: $(aws.configuration.configRuleList.configRuleName)</description>
 	</rule>
 
 
