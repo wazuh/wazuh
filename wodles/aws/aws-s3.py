@@ -652,12 +652,6 @@ class AWSConfigBucket(AWSLogsBucket):
         self.service = 'Config'
         self.field_to_load = 'configurationItems'
 
-    def reformat_msg(self, event):
-        debug('++ Reformat message', 3)
-        AWSBucket.reformat_msg(self, event)
-        event['aws']['type'] = 'AWS Config'
-        return event
-
 
 class AWSCustomBucket(AWSBucket):
     def __init__(self, *args):
