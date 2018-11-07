@@ -1082,9 +1082,7 @@ int wm_vulnerability_detector_check_db() {
 
 char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
     FILE *input, *output = NULL;
-    char *buffer = NULL;
-    size_t size;
-    size_t max_size = OS_MAXSTR;
+    char buffer[OS_MAXSTR];
     parser_state state = V_OVALDEFINITIONS;
     char *found;
     char *tmp_file;
@@ -1108,34 +1106,34 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
         goto free_mem;
     }
 
-    while (size = getline(&buffer, &max_size, input), (int) size > 0) {
+    while (fgets(buffer, OS_MAXSTR, input)) {
         if (dist == DIS_UBUNTU) { //5.11.1
             switch (state) {
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_OVALDEFINITIONS;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if ((found = strstr(buffer, "is not affected")) &&
                               (found = strstr(buffer, "negate")) &&
                         strstr(found, "true")) {
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "a decision has been made to ignore it")) {
-                        goto free_buffer;
+                        continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_OVALDEFINITIONS;
-                        //goto free_buffer;
+                        //continue;
                     }
                 break;
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
-                      //goto free_buffer;
+                      //continue;
                   }
             }
         } else if (dist == DIS_DEBIAN) { //5.3
@@ -1144,18 +1142,18 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                     if (found = strstr(buffer, "?>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if (strstr(buffer, exclude_tags[0]) ||
                         strstr(buffer, exclude_tags[1])) {
-                        goto free_buffer;
+                        continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_STATES;
                     }
@@ -1163,7 +1161,7 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
                     } else if (strstr(buffer, "<tests>")) {
@@ -1176,17 +1174,17 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                     if (found = strstr(buffer, "?>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if (strstr(buffer, "is signed with")) {
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "</definitions>")) {
                         state = V_STATES;
                     }
@@ -1195,12 +1193,12 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                     if (strstr(buffer, "</description>")) {
                         state = V_DEFINITIONS;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_TESTS:
                     if (strstr(buffer, "is signed with")) {
                         state = V_SIGNED_TEST;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "</tests>")) {
                         state = V_STATES;
                     }
@@ -1209,12 +1207,12 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                     if (strstr(buffer, "</red-def:rpminfo_test>")) {
                         state = V_TESTS;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
                     } else if (strstr(buffer, "<tests>")) {
@@ -1226,14 +1224,10 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
             tmp_file = NULL;
             goto free_mem;
         }
-        fwrite(buffer, 1, size, output);
-free_buffer:
-        free(buffer);
-        buffer = NULL;
+        fwrite(buffer, 1, strlen(buffer), output);
     }
 
 free_mem:
-    free(buffer);
     if (input) {
         fclose(input);
     }
@@ -1910,11 +1904,9 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
     char repo[OS_SIZE_2048 + 1];
     static const char *timestamp_tag = "timestamp>";
     char timestamp[OS_SIZE_256 + 1];
-    size_t max_size = OS_SIZE_256;
-    char *buffer = NULL;
+    char buffer[OS_SIZE_256];
     int i;
     char *low_repo;
-    int size;
     FILE *fp = NULL;
     unsigned char success = 0;
     char *found;
@@ -1958,7 +1950,7 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
         goto end;
     }
 
-    while (size = getline(&buffer, &max_size, fp), (int) size > 0) {
+    while (fgets(buffer, OS_SIZE_256, fp)) {
         if (found = strstr(buffer, timestamp_tag), found) {
             char *close_tag;
             found+=strlen(timestamp_tag);
@@ -1983,13 +1975,10 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
             }
             break;
         }
-        free(buffer);
-        buffer = NULL;
     }
 
     success = 1;
 end:
-    free(buffer);
     if (fp) {
         fclose(fp);
     }

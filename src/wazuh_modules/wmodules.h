@@ -16,15 +16,6 @@
 #define ARGV0 "wazuh-modulesd"
 #endif // ARGV0
 
-// This is because getline is not included in glibc versions prior to 2.10
-// At the moment, it is only used in manager code
-#ifndef CLIENT
-#if (defined(__GLIBC__) && defined(__GLIBC_MINOR__)) && \
-    ((__GLIBC__ < 2) || ((__GLIBC__ == 2) && (__GLIBC_MINOR__ < 10)))
-#define _GNU_SOURCE
-#endif
-#endif
-
 #include <pthread.h>
 #include "shared.h"
 #include "config/config.h"
