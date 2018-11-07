@@ -687,6 +687,7 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
     switch (wdb_update_agent_group(id_agent, *group ? group : NULL)) {
     case -1:
         mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
+        wdb_delete_agent_belongs(id_agent);
         result = -1;
         break;
     case 0:
