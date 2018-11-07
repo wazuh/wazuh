@@ -429,11 +429,10 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
             if (files = wreaddir(dir), !files) {
                 if (errno != ENOTDIR) {
-                    mdebug2("At c_multi_group(): Could not open directory '%s'", dir);
-                    closedir(dp);
-                    return;
+                    mdebug2("At c_multi_group(): Could not open directory '%s'.Ignoring this group.", dir);
+                    goto next;
                 }
-                continue;
+                goto next;
             }
 
             unsigned int i;
@@ -462,6 +461,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
                 }
 
             }
+next:
             group = strtok(NULL, delim);
             free_strarray(files);
             closedir(dp);
@@ -709,10 +709,12 @@ file_sum ** find_group(const char * file, const char * md5, char group[OS_SIZE_6
     for (i = 0; groups[i]; i++) {
         f_sum = groups[i]->f_sum;
 
-        for (j = 0; f_sum[j]; j++) {
-            if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                strncpy(group, groups[i]->group, OS_SIZE_65536);
-                return f_sum;
+        if(f_sum) {
+            for (j = 0; f_sum[j]; j++) {
+                if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
+                    strncpy(group, groups[i]->group, OS_SIZE_65536);
+                    return f_sum;
+                }
             }
         }
     }
