@@ -533,6 +533,14 @@ class AWSBucket:
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
 
+    def migrate_legacy_table(self):
+        for row in filter(lambda x: x[0] != '', self.db_connector.execute(sql_select_migrate_legacy)):
+            try:
+                aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
+                self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
+            except Exception as e:
+                debug("++ Error parsing log file name ({}): {}".format(row[0], e), 1)
+
     def skip(self, file_name):
         """
         Defines the conditions to skip a file or not. By default a file is never skipped.
@@ -633,14 +641,6 @@ class AWSCloudTrailBucket(AWSLogsBucket):
         AWSLogsBucket.__init__(self, *args)
         self.service = 'CloudTrail'
         self.field_to_load = 'Records'
-
-    def migrate_legacy_table(self):
-        for row in filter(lambda x: x[0] != '', self.db_connector.execute(sql_select_migrate_legacy)):
-            try:
-                aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
-                self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
-            except Exception as e:
-                debug("++ Error parsing log file name ({}): {}".format(row[0], e), 1)
 
     def reformat_msg(self, event):
         debug('++ Reformat message', 3)
