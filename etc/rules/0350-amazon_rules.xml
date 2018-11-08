@@ -167,4 +167,50 @@ ID: 80200 - 80499
         <description>VPC Flow rejected connection: Interface: $(aws.interface-id) - Protocol: $(aws.protocol)</description>
     </rule>
 
+    <!-- AWS Config -->
+    <!-- Documentation: https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html -->
+
+    <!-- AWS Config generic -->
+    <rule id="80450" level="0">
+        <decoded_as>json</decoded_as>
+        <field name="aws.source">config</field>
+        <description>AWS Config</description>
+    </rule>
+
+    <!-- ConfigHistory vs ConfigSnapshot -->
+    <rule id="80451" level="0">
+        <if_sid>80450</if_sid>
+        <field name="aws.log_info.log_file">\.+ConfigHistory</field>
+        <description>AWS Config - History</description>
+        <group>aws_config_history,</group>
+    </rule>
+
+    <rule id="80452" level="0">
+        <if_sid>80450</if_sid>
+        <field name="aws.log_info.log_file">\.+ConfigSnapshot</field>
+        <description>AWS Config - Snapshot</description>
+        <group>aws_config_snapshot,</group>
+    </rule>
+
+    <!-- Config history -->
+    <rule id="80453" level="3">
+        <if_sid>80451</if_sid>
+        <description>AWS Config - History [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
+        <group>aws_config_history,</group>
+    </rule>
+
+    <!-- Config Snapshot -->
+    <rule id="80475" level="3">
+        <if_sid>80452</if_sid>
+        <description>AWS Config - Snapshot [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
+        <group>aws_config_snapshot,</group>
+    </rule>
+
+    <rule id="80476" level="6">
+        <if_sid>80475</if_sid>
+        <field name="aws.configuration.complianceType">\.+</field>
+        <description>AWS Config - Snapshot Compliance [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)] [$(aws.configuration.configRuleList.configRuleName)]: $(aws.resourceId) ($(aws.configurationItemStatus)) $(aws.configuration.complianceType)</description>
+        <group>aws_config_snapshot,aws_config_snapshot_compliance,</group>
+    </rule>
+  
 </group>
