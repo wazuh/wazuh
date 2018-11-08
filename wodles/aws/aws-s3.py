@@ -498,9 +498,15 @@ class AWSBucket:
             if 'Contents' not in bucket_files:
                 debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                 return
+
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
+
+                if self.skip(bucket_file['Key']):
+                    debug("+++ {} file was not processed".format(bucket_file['Key']), 1)
+                    continue
+
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
                         debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -526,6 +532,14 @@ class AWSBucket:
                 debug("+++ Unexpected error: {}".format(err), 2)
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
+
+    def skip(self, file_name):
+        """
+        Defines the conditions to skip a file or not. By default a file is never skipped.
+        :param file_name: name of the file
+        :return: True or False
+        """
+        return False
 
 
 class AWSLogsBucket(AWSBucket):
@@ -656,6 +670,15 @@ class AWSConfigBucket(AWSLogsBucket):
         AWSBucket.reformat_msg(self, event)
 
         return event
+
+    def skip(self, file_name):
+        """
+        Defines the conditions to skip a file or not. AWS Config storages files on ConfigSnapshot and ConfigHistory directories.
+        Files in ConfigSnapshot directory are periodically generated and therefore produce repeated alerts.
+        :param file_name: name of the file
+        :return: True or False
+        """
+        return False if not "ConfigSnapshot" in file_name else True
 
 
 class AWSCustomBucket(AWSBucket):
