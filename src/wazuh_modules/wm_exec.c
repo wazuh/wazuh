@@ -350,12 +350,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
         setsid();
         if (nice(wm_task_nice)) {}
-        if (execvp(argv[0], argv) < 0)
-            exit(EXECVE_ERROR);
+        execvp(argv[0], argv);
+        _exit(EXECVE_ERROR);
 
-        // Dead code
-        // ToDo: remove execvpe()
-        free_strarray(argv);
         break;
 
     default:

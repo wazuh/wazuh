@@ -63,6 +63,7 @@ All notable changes to this project will be documented in this file.
 - Fix timeout overtaken message using infinite timeout. ([#1604](https://github.com/wazuh/wazuh/pull/1604))
 - Prevent service from crashing if _global.db_ is not created. ([#1485](https://github.com/wazuh/wazuh/pull/1485))
 - Set new agent.conf template when creating new groups. ([#1647](https://github.com/wazuh/wazuh/pull/1647))
+- Fix bug in Wazuh Modules that tried to delete PID folders if a subprocess call failed. ([#1836](https://github.com/wazuh/wazuh/pull/1836))
 
 
 ## [v3.6.1] 2018-09-07
