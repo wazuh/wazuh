@@ -298,6 +298,8 @@ class AWSBucket:
                 self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
             except Exception as e:
                 debug("++ Error parsing log file name ({}): {}".format(row[0], e), 1)
+        # rename log_progress table to legacy_log_progress
+        self.db_connector.execute(sql_rename_migrate_legacy)
 
     def create_table(self):
         try:
