@@ -323,6 +323,7 @@ int main(int argc, char **argv)
         if (!Config.g_rules_hash) {
             merror_exit(MEM_ERROR, errno, strerror(errno));
         }
+        OSHash_SetFreeDataPointer(Config.g_rules_hash, (void (*)(void *))_OS_FreeRule);
         AddHash_Rule(tmp_node);
     }
 
@@ -582,15 +583,13 @@ void OS_ReadMSG(char *ut_str)
                     unsigned int i = 0;
 
                     while (i < currently_rule->group_prev_matched_sz) {
-                        if (!OSList_AddData(
-                                    currently_rule->group_prev_matched[i],
-                                    lf)) {
+                        if (!OSList_AddData(currently_rule->group_prev_matched[i], lf)) {
                             merror("Unable to add data to grp list.");
                         }
                         i++;
                     }
                 }
-
+                
                 OS_AddEvent(lf, last_events_list);
                 break;
 

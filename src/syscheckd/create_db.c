@@ -86,7 +86,7 @@ static int read_dir_diff(char *dir_name) {
         if (strcmp(DIFF_LAST_FILE, s_name) == 0) {
             memset(file_name, 0, strlen(file_name));
             memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
-            if (ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL), ret_add < 2) {
+            if (ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL), ret_add != 2) {
                 merror("Unable to add file to db: %s", file_name);
             }
         } else {

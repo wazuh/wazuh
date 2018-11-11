@@ -2255,6 +2255,12 @@ end:
     return retval;
 }
 
+void free_agents_triag(last_scan *data) {
+    if (!data) return;
+    if (data->last_scan_id) free(data->last_scan_id);
+    free(data);
+}
+
 void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerability_detector) {
     time_t time_sleep = 0;
     wm_vulnerability_detector_flags *flags = &vulnerability_detector->flags;
@@ -2311,6 +2317,8 @@ void * wm_vulnerability_detector_main(wm_vulnerability_detector_t * vulnerabilit
         mterror(WM_VULNDETECTOR_LOGTAG, VU_CREATE_HASH_ERRO);
         pthread_exit(NULL);
     }
+    
+    OSHash_SetFreeDataPointer(vulnerability_detector->agents_triag, (void (*)(void *))free_agents_triag);
 
     while (1) {
         // Update CVE databases

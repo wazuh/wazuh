@@ -15,6 +15,8 @@
 /* Prototypes */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));
 
+void OS_FreeKey(keyentry *key);
+
 static int pass_empty_keyfile = 0;
 
 /* Clear keys entries */
@@ -57,12 +59,11 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     os_md5 filesum1;
     os_md5 filesum2;
 
-    char *tmp_str;
-    char _finalstr[KEYSIZE];
+    char *tmp_str = NULL;
+    char _finalstr[KEYSIZE] = {'\0'};
 
     /* Allocate for the whole structure */
-    keys->keyentries = (keyentry **)realloc(keys->keyentries,
-                                            (keys->keysize + 2) * sizeof(keyentry *));
+    keys->keyentries = (keyentry **)realloc(keys->keyentries, (keys->keysize + 2) * sizeof(keyentry *));
     if (!keys->keyentries) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
@@ -72,9 +73,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
 
     /* Set configured values for id */
     os_strdup(id, keys->keyentries[keys->keysize]->id);
-    OSHash_Add(keys->keyhash_id,
-               keys->keyentries[keys->keysize]->id,
-               keys->keyentries[keys->keysize]);
+    OSHash_Add(keys->keyhash_id, keys->keyentries[keys->keysize]->id, keys->keyentries[keys->keysize]);
 
     /* Agent IP */
     os_calloc(1, sizeof(os_ip), keys->keyentries[keys->keysize]->ip);
@@ -86,9 +85,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     if ((tmp_str = strchr(keys->keyentries[keys->keysize]->ip->ip, '/')) != NULL) {
         *tmp_str = '\0';
     }
-    OSHash_Add(keys->keyhash_ip,
-               keys->keyentries[keys->keysize]->ip->ip,
-               keys->keyentries[keys->keysize]);
+    OSHash_Add(keys->keyhash_ip, keys->keyentries[keys->keysize]->ip->ip, keys->keyentries[keys->keysize]);
 
     /* Agent name */
     os_strdup(name, keys->keyentries[keys->keysize]->name);
@@ -175,6 +172,8 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
     char key[KEYSIZE + 1];
     char *end;
     int id_number;
+    
+    int success = 0;
 
     /* Check if the keys file is present and we can read it */
     if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
@@ -195,12 +194,22 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
     keys->keyhash_ip = OSHash_Create();
     keys->keyhash_sock = OSHash_Create();
 
-    if (!(keys->keyhash_id && keys->keyhash_ip && keys->keyhash_sock)) {
-        merror_exit(MEM_ERROR, errno, strerror(errno));
+    if (!keys->keyhash_id || !keys->keyhash_ip || !keys->keyhash_sock) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        goto ret;
     }
+    
+    OSHash_SetFreeDataPointer(keys->keyhash_id, (void (*)(void *))OS_FreeKey);
+    OSHash_SetFreeDataPointer(keys->keyhash_ip, (void (*)(void *))OS_FreeKey);
+    OSHash_SetFreeDataPointer(keys->keyhash_sock, (void (*)(void *))OS_FreeKey);
 
     /* Initialize structure */
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
+    if (!keys->keyentries) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        goto ret;
+    }
+    
     keys->keysize = 0;
     keys->id_counter = 0;
     keys->flags.rehash_keys = rehash_keys;
@@ -215,9 +224,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
         char *tmp_str;
         char *valid_str;
 
-        if ((buffer[0] == '#') || (buffer[0] == ' ')) {
-            continue;
-        }
+        if ((buffer[0] == '#') || (buffer[0] == ' ')) continue;
 
         /* Get ID */
         valid_str = buffer;
@@ -232,11 +239,8 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
         strncpy(id, valid_str, KEYSIZE - 1);
 
         /* Update counter */
-
         id_number = strtol(id, &end, 10);
-
-        if (!*end && id_number > keys->id_counter)
-            keys->id_counter = id_number;
+        if (!*end && id_number > keys->id_counter) keys->id_counter = id_number;
 
         /* Removed entry */
         if (*tmp_str == '#' || *tmp_str == '!') {
@@ -244,9 +248,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
                 tmp_str[-1] = ' ';
                 tmp_str = strchr(tmp_str, '\n');
 
-                if (tmp_str) {
-                    *tmp_str = '\0';
-                }
+                if (tmp_str) *tmp_str = '\0';
 
                 save_removed_key(keys, buffer);
             }
@@ -281,9 +283,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
         /* Get key */
         valid_str = tmp_str;
         tmp_str = strchr(tmp_str, '\n');
-        if (tmp_str) {
-            *tmp_str = '\0';
-        }
+        if (tmp_str) *tmp_str = '\0';
 
         strncpy(key, valid_str, KEYSIZE - 1);
 
@@ -296,7 +296,8 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
         /* Check for maximum agent size */
         if ( !no_limit && keys->keysize >= (MAX_AGENTS - 2) ) {
             merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-            merror_exit(CONFIG_ERROR, keys_file);
+            merror(CONFIG_ERROR, keys_file);
+            goto ret;
         }
 
         continue;
@@ -313,15 +314,29 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
         if (pass_empty_keyfile) {
             mdebug1(NO_CLIENT_KEYS);
         } else {
-            merror_exit(NO_CLIENT_KEYS);
+            merror(NO_CLIENT_KEYS);
+            goto ret;
         }
     }
 
     /* Add additional entry for sender == keysize */
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
+    if (!keys->keyentries[keys->keysize]) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        goto ret;
+    }
+    
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
-
-    return;
+    
+    success = 1;
+    
+ret:
+    if (!success) {
+        if (fp) fclose(fp);
+        OS_FreeKeys(keys);
+        free(keys);
+        exit(1);
+    }
 }
 
 void OS_FreeKey(keyentry *key) {
@@ -354,18 +369,12 @@ void OS_FreeKey(keyentry *key) {
 /* Free the auth keys */
 void OS_FreeKeys(keystore *keys)
 {
-    unsigned int i;
+    size_t i;
 
     /* Free the hashes */
-
-    if (keys->keyhash_id)
-        OSHash_Free(keys->keyhash_id);
-
-    if (keys->keyhash_ip)
-        OSHash_Free(keys->keyhash_ip);
-
-    if (keys->keyhash_sock)
-        OSHash_Free(keys->keyhash_sock);
+    if (keys->keyhash_id) OSHash_Free(keys->keyhash_id);
+    if (keys->keyhash_ip) OSHash_Free(keys->keyhash_ip);
+    if (keys->keyhash_sock) OSHash_Free(keys->keyhash_sock);
 
     for (i = 0; i <= keys->keysize; i++) {
         if (keys->keyentries[i]) {
@@ -381,10 +390,9 @@ void OS_FreeKeys(keystore *keys)
     keys->keyhash_sock = NULL;
 
     if (keys->removed_keys) {
-        for (i = 0; i < keys->removed_keys_size; i++)
-            free(keys->removed_keys[i]);
-
+        for (i = 0; i < keys->removed_keys_size; i++) free(keys->removed_keys[i]);
         free(keys->removed_keys);
+        
         keys->removed_keys = NULL;
         keys->removed_keys_size = 0;
     }
@@ -505,10 +513,8 @@ void OS_PassEmptyKeyfile() {
 /* Delete a key */
 int OS_DeleteKey(keystore *keys, const char *id, int purge) {
     int i = OS_IsAllowedID(keys, id);
-
-
-    if (i < 0)
-        return -1;
+    
+    if (i < 0) return -1;
 
     /* Save removed key */
 

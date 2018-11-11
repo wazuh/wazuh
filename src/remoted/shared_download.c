@@ -573,7 +573,6 @@ void w_create_group(char *group){
 
 int w_prepare_parsing()
 {
-
     int parse_ok;
 
     // Save date and inode of the yaml file

@@ -1074,6 +1074,13 @@ void *update_shared_files(__attribute__((unused)) void *none) {
     return NULL;
 }
 
+void free_pending_data(pending_data_t *data) {
+    if (!data) return;
+    if (data->message) free(data->message);
+    if (data->keep_alive) free(data->keep_alive);
+    free(data);
+}
+
 /* Should be called before anything here */
 void manager_init()
 {
@@ -1084,4 +1091,8 @@ void manager_init()
     w_yaml_create_groups();
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
+    
+    if (!m_hash || !pending_data) merror_exit("At manager_init(): OSHash_Create() failed");
+    
+    OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
 }

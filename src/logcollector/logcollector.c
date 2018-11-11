@@ -964,6 +964,11 @@ void w_set_file_mutexes(){
     }
 }
 
+void free_msg_queue(w_msg_queue_t *msg) {
+    if (msg->msg_queue) queue_free(msg->msg_queue);
+    free(msg);
+}
+
 void w_msg_hash_queues_init(){
 
     OUTPUT_QUEUE_SIZE = getDefine_Int("logcollector", "queue_size", OUTPUT_MIN_QUEUE_SIZE, 220000);
@@ -972,6 +977,8 @@ void w_msg_hash_queues_init(){
     if(!msg_queues_table){
         merror_exit("Failed to create hash table for queue threads");
     }
+    
+    OSHash_SetFreeDataPointer(msg_queues_table, (void (*)(void *))free_msg_queue);
 }
 
 int w_msg_hash_queues_add_entry(const char *key){

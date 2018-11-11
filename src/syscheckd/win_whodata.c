@@ -450,6 +450,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
     syscheck_node *s_node;
+    unsigned int *fields_dup = NULL;
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
@@ -570,7 +571,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
                             // Discard the file if its monitoring has not been activated
                             mdebug2("'%s' is discarded because its monitoring is not activated.", path);
-                            whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
+                            
+                            os_calloc(1, sizeof(unsigned int), fields_dup);
+                            *fields_dup = fields_number;
+                            
+                            if (whodata_hash_add(syscheck.wdata.ignored_paths, path, fields_dup, "ignored") != 2) free(fields_dup);
+                            fields_dup = NULL;
+                            
                             break;
                         } else {
                             // The file is new and has to be notified
@@ -588,7 +595,13 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     // Check if the file belongs to a directory that has been transformed to real-time
                     if (!(syscheck.wdata.dirs_status[s_node->dir_position].status & WD_CHECK_WHODATA)) {
                         mdebug2("The monitoring of '%s' in whodata mode has been canceled. Added to the ignore list.", path);
-                        whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
+                        
+                        os_calloc(1, sizeof(unsigned int), fields_dup);
+                        *fields_dup = fields_number;
+                        
+                        if (whodata_hash_add(syscheck.wdata.ignored_paths, path, fields_dup, "ignored") != 2) free(fields_dup);
+                        fields_dup = NULL;
+                        
                         goto clean;
                     }
 
@@ -776,6 +789,9 @@ int whodata_audit_start() {
     if (syscheck.wdata.fd = OSHash_Create(), !syscheck.wdata.fd) {
         return 1;
     }
+    
+    OSHash_SetFreeDataPointer(syscheck.wdata.fd, (void (*)(void *))free_win_whodata_evt);
+    
     memset(&syscheck.wlist, 0, sizeof(whodata_event_list));
     whodata_list_set_values();
 

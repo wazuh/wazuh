@@ -453,7 +453,10 @@ static void ExecdStart(int q)
                             new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
                             ntimes_int++;
                             snprintf(ntimes, 16, "%d", ntimes_int);
-                            OSHash_Update(repeated_hash, rkey, ntimes);
+                            if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
+                                free(ntimes);
+                                merror("At ExecdStart: OSHash_Update() failed");
+                            }
                         }
                         list_entry->time_to_block = new_timeout;
                     }
@@ -495,13 +498,15 @@ static void ExecdStart(int q)
                             new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
                             ntimes_int++;
                             snprintf(ntimes, 16, "%d", ntimes_int);
-                            OSHash_Update(repeated_hash, rkey, ntimes);
+                            if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
+                                free(ntimes);
+                                merror("At ExecdStart: OSHash_Update() failed");
+                            }
                         }
                         timeout_value = new_timeout;
                     } else {
                         /* Add to the repeat offenders list */
-                        OSHash_Add(repeated_hash,
-                                   rkey, strdup("0"));
+                        OSHash_Add(repeated_hash, rkey, strdup("0"));
                     }
                 }
 

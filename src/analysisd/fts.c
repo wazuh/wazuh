@@ -31,45 +31,46 @@ static pthread_mutex_t fts_write_lock;
 int FTS_Init(int threads)
 {
     char _line[OS_FLSIZE + 1];
-    int i;
+    int i, out = 0;
 
     _line[OS_FLSIZE] = '\0';
 
     fts_list = OSList_Create();
     if (!fts_list) {
         merror(LIST_ERROR);
-        return (0);
+        goto ret;
     }
 
     pthread_rwlock_init(&file_update_rwlock, NULL);
     fts_write_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 
     fp_ignore = (FILE **)calloc(threads, sizeof(FILE*));
+    if (!fp_ignore) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        goto ret;
+    }
 
     /* Create store data */
     fts_store = OSHash_Create();
     if (!fts_store) {
         merror(LIST_ERROR);
-        return (0);
+        goto ret;
     }
+    
     if (!OSHash_setSize(fts_store, 2048)) {
         merror(LIST_ERROR);
-        return (0);
+        goto ret;
     }
 
     /* Get default list size */
-    fts_list_size = getDefine_Int("analysisd",
-                                  "fts_list_size",
-                                  12, 512);
+    fts_list_size = getDefine_Int("analysisd", "fts_list_size", 12, 512);
 
     /* Get minimum string size */
-    fts_minsize_for_str = (unsigned int) getDefine_Int("analysisd",
-                          "fts_min_size_for_str",
-                          6, 128);
+    fts_minsize_for_str = (unsigned int) getDefine_Int("analysisd", "fts_min_size_for_str", 6, 128);
 
     if (!OSList_SetMaxSize(fts_list, fts_list_size)) {
         merror(LIST_SIZE_ERROR);
-        return (0);
+        goto ret;
     }
 
     /* Create fts list */
@@ -77,28 +78,26 @@ int FTS_Init(int threads)
     if (!fp_list) {
         /* Create the file if we cant open it */
         fp_list = fopen(FTS_QUEUE, "w+");
-        if (fp_list) {
-            fclose(fp_list);
-        }
-
+        if (fp_list) fclose(fp_list);
+        
         if (chmod(FTS_QUEUE, 0640) == -1) {
             merror(CHMOD_ERROR, FTS_QUEUE, errno, strerror(errno));
-            return 0;
+            goto ret;
         }
-
+        
         uid_t uid = Privsep_GetUser(USER);
         gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
         if (uid != (uid_t) - 1 && gid != (gid_t) - 1) {
             if (chown(FTS_QUEUE, uid, gid) == -1) {
                 merror(CHOWN_ERROR, FTS_QUEUE, errno, strerror(errno));
-                return (0);
+                goto ret;
             }
         }
-
+        
         fp_list = fopen(FTS_QUEUE, "r+");
         if (!fp_list) {
             merror(FOPEN_ERROR, FTS_QUEUE, errno, strerror(errno));
-            return (0);
+            goto ret;
         }
     }
 
@@ -106,18 +105,24 @@ int FTS_Init(int threads)
     fseek(fp_list, 0, SEEK_SET);
     while (fgets(_line, OS_FLSIZE , fp_list) != NULL) {
         char *tmp_s;
-
+        
         /* Remove newlines */
         tmp_s = strchr(_line, '\n');
-        if (tmp_s) {
-            *tmp_s = '\0';
-        }
-
+        if (tmp_s) *tmp_s = '\0';
+        
         os_strdup(_line, tmp_s);
-        if (OSHash_Add(fts_store, tmp_s, tmp_s) <= 0) {
-            free(tmp_s);
-            merror(LIST_ADD_ERROR);
+        if (!tmp_s) {
+            merror(MEM_ERROR, errno, strerror(errno));
+        } else {
+            if (OSHash_Add(fts_store, tmp_s, tmp_s) != 2) {
+                merror("At FTS_Init(): OSHash_Add() failed");
+                free(tmp_s);
+            }
         }
+        
+        /* Reset pointer addresses before using strdup() again */
+        /* The hash will keep the needed memory references */
+        tmp_s = NULL;
     }
 
     /* Create ignore list */
@@ -125,38 +130,43 @@ int FTS_Init(int threads)
     if (!*fp_ignore) {
         /* Create the file if we cannot open it */
         *fp_ignore = fopen(IG_QUEUE, "w+");
-        if (*fp_ignore) {
-            fclose(*fp_ignore);
-        }
-
+        if (*fp_ignore) fclose(*fp_ignore);
+        
         if (chmod(IG_QUEUE, 0640) == -1) {
             merror(CHMOD_ERROR, IG_QUEUE, errno, strerror(errno));
-            return (0);
+            goto ret;
         }
-
+        
         uid_t uid = Privsep_GetUser(USER);
         gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
         if (uid != (uid_t) - 1 && gid != (gid_t) - 1) {
             if (chown(IG_QUEUE, uid, gid) == -1) {
                 merror(CHOWN_ERROR, IG_QUEUE, errno, strerror(errno));
-                return (0);
+                goto ret;
             }
         }
-
+        
         *fp_ignore = fopen(IG_QUEUE, "r+");
         if (!*fp_ignore) {
             merror(FOPEN_ERROR, IG_QUEUE, errno, strerror(errno));
-            return (0);
+            goto ret;
         }
     }
-
-    for (i = 1; i < threads; i++) {
-        fp_ignore[i] = fopen(IG_QUEUE, "r+");
+    
+    for (i = 1; i < threads; i++) fp_ignore[i] = fopen(IG_QUEUE, "r+");
+    
+    mdebug1("FTSInit completed.");
+    
+    out = 1;
+    
+ret:
+    if (!out) {
+        if (fts_list) free(fts_list);
+        if (fp_ignore) free(fp_ignore);
+        if (fts_store) OSHash_Free(fts_store);
     }
 
-    mdebug1("FTSInit completed.");
-
-    return (1);
+    return (out);
 }
 
 /* Add a pattern to be ignored */
@@ -273,7 +283,7 @@ char * FTS(Eventinfo *lf)
     int number_of_matches = 0;
     char *_line = NULL;
     char *line_for_list = NULL;
-    OSListNode *fts_node;
+    OSListNode *fts_node = NULL;
     const char *field;
 
     os_calloc(OS_FLSIZE + 1,sizeof(char),_line);
@@ -311,39 +321,53 @@ char * FTS(Eventinfo *lf)
     if (lf->decoder_info->type == IDS) {
         fts_node = OSList_GetLastNode(fts_list);
         while (fts_node) {
-            if (OS_StrHowClosedMatch((char *)fts_node->data, _line) >
-                    fts_minsize_for_str) {
+            if (OS_StrHowClosedMatch((char *)fts_node->data, _line) > fts_minsize_for_str) {
                 number_of_matches++;
-
+                
                 /* We go and add this new entry to the list */
                 if (number_of_matches > 2) {
                     _line[fts_minsize_for_str] = '\0';
                     break;
                 }
             }
-
+            
             fts_node = OSList_GetPrevNode(fts_list);
         }
-
+        
+        fts_node = NULL;
+        
         os_strdup(_line, line_for_list);
-        OSList_AddData(fts_list, line_for_list);
+        if (!line_for_list) {
+            merror(MEM_ERROR, errno, strerror(errno));
+            free(_line);
+            return NULL;
+        }
+        
+        fts_node = OSList_AddData(fts_list, line_for_list);
+        if (!fts_node) {
+            free(line_for_list);
+            free(_line);
+            return NULL;
+        }
     }
 
     /* Store new entry */
     if (line_for_list == NULL) {
         os_strdup(_line, line_for_list);
+        if (!line_for_list) {
+            merror(MEM_ERROR, errno, strerror(errno));
+            free(_line);
+            return NULL;
+        }
     }
 
-    if (OSHash_Add_ex(fts_store, line_for_list, line_for_list) <= 1) {
+    if (OSHash_Add_ex(fts_store, line_for_list, line_for_list) != 2) {
+        if (fts_node) OSList_DeleteThisNode(fts_list, fts_node);
+        free(line_for_list);
         free(_line);
         return NULL;
     }
-
-
-#ifdef TESTRULE
-    return _line;
-#endif
-
+    
     return _line;
 }
 

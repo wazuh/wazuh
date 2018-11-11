@@ -46,15 +46,26 @@ static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 // Initialize the necessary information to process the syscheck information
-void fim_init(void) {
+int fim_init(void) {
     // Create decoder
     os_calloc(1, sizeof(OSDecoderInfo), fim_decoder);
+    if (!fim_decoder) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (0);
+    }
+    
     fim_decoder->id = getDecoderfromlist(SYSCHECK_MOD);
     fim_decoder->name = SYSCHECK_MOD;
     fim_decoder->type = OSSEC_RL;
     fim_decoder->fts = 0;
 
     os_calloc(Config.decoder_order_size, sizeof(char *), fim_decoder->fields);
+    if (!fim_decoder->fields) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        free(fim_decoder);
+        return (0);
+    }
+    
     fim_decoder->fields[SK_FILE] = "file";
     fim_decoder->fields[SK_SIZE] = "size";
     fim_decoder->fields[SK_PERM] = "perm";
@@ -84,6 +95,14 @@ void fim_init(void) {
 
     //Create hash table for agent information
     fim_agentinfo = OSHash_Create();
+    if (!fim_agentinfo) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        free(fim_decoder->fields);
+        free(fim_decoder);
+        return (0);
+    }
+    
+    return (1);
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -866,8 +885,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
                 if (result = OSHash_Add_ex(fim_agentinfo, lf->agent_id, ts_end), result != 2) {
                     os_free(ts_end);
-                    merror("Unable to add last scan_info to hash table for agent: %s. Error: %d.",
-                            lf->agent_id, result);
+                    merror("Unable to add last scan_info to hash table for agent: %s. Error: %d.", lf->agent_id, result);
                 }
             }
             else {
