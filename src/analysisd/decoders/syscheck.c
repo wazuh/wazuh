@@ -471,7 +471,7 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
                 return (-2);
             }
 
-            if (!OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
+            if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
                 mterror(ARGV0, "FIM decoder: in send reattempt (%d) '%s'.", errno, strerror(errno));
                 return (-2);
             }

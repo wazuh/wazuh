@@ -566,7 +566,8 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
             if (chdir(path) < 0) {
                 ciscat->flags.error = 1;
-                mterror_exit(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
+                mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
+                _exit(EXIT_FAILURE);
             } else
                 mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
 
@@ -577,7 +578,8 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
                     if (status > 0) {
                         ciscat->flags.error = 1;
                         mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-                        mterror_exit(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+                        mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+                        _exit(EXIT_FAILURE);
                     }
 
                     mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
@@ -594,8 +596,8 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
                 default:
                     ciscat->flags.error = 1;
-                    mterror_exit(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
-                    pthread_exit(NULL);
+                    mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+                    _exit(EXIT_FAILURE);
             }
 
             _exit(0);
