@@ -114,46 +114,39 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
     char *ret_str;
     HKEY key;
     DWORD ret;
-    char keyname[512];
+    char keyname[512] = {'\0'};
+	char *skey = NULL, *sval = NULL;
 
-    keyname[511] = '\0';
-
-    snprintf(keyname, 510,
-             "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s",
-             evt_name,
-             source);
+    snprintf(keyname, 510, "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s", evt_name, source);
 
     /* Check if we have it in memory */
     ret_str = OSHash_Get(dll_hash, keyname + 42);
-    if (ret_str) {
-        return (ret_str);
-    }
+    if (ret_str) return (ret_str);
 
     /* Open Registry */
-    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0,
-                     KEY_ALL_ACCESS, &key) != ERROR_SUCCESS) {
-        return (NULL);
-    }
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0, KEY_ALL_ACCESS, &key) != ERROR_SUCCESS) return (NULL);
 
     ret = MAX_PATH - 1;
-    if (RegQueryValueEx(key, "EventMessageFile", NULL,
-                        NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS) {
+    if (RegQueryValueEx(key, "EventMessageFile", NULL, NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS) {
         event[0] = '\0';
         RegCloseKey(key);
         return (NULL);
     } else {
         /* Adding to memory */
-        char *skey = strdup(keyname + 42);
-        char *sval = strdup(event);
+        skey = strdup(keyname + 42);
+        sval = strdup(event);
         
-        if (skey && sval) {
+        if (skey != NULL && sval != NULL) {
             if (OSHash_Add(dll_hash, skey, sval) != 2) free(sval);
-            free(key);
+            free(skey);
         } else {
             merror(MEM_ERROR, errno, strerror(errno));
-            if (skey) free(skey);
-            if (sval) free(sval);
+            if (skey != NULL) free(skey);
+            if (sval != NULL) free(sval);
         }
+		
+		skey = NULL;
+		sval = NULL;
     }
 
     RegCloseKey(key);

@@ -247,7 +247,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #endif
         free(wd_sum);
         return (read_dir(file_name, dir_position, NULL, max_depth-1));
-
     }
 
     if (fim_check_restrict (file_name, restriction) == 1) {
@@ -264,15 +263,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #endif
     {
         mdebug2("REG File '%s'", file_name);
-        os_md5 mf_sum;
-        os_sha1 sf_sum;
-        os_sha256 sf256_sum;
-
-        /* Clean sums */
-        strncpy(mf_sum, "", 1);
-        strncpy(sf_sum, "", 1);
-        strncpy(sf256_sum, "", 1);
-
+        os_md5 mf_sum = {'\0'};
+        os_sha1 sf_sum = {'\0'};
+        os_sha256 sf256_sum = {'\0'};
+		
         /* Generate checksums */
         if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) || (opts & CHECK_SHA256SUM)) {
             /* If it is a link, check if dest is valid */
@@ -282,9 +276,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 if (stat(file_name, &statbuf_lnk) == 0) {
                     if (S_ISREG(statbuf_lnk.st_mode)) {
                         if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
-                            strncpy(mf_sum, "n/a", 4);
-                            strncpy(sf_sum, "n/a", 4);
-                            strncpy(sf256_sum, "n/a", 4);
+                            snprintf(mf_sum, 4, "n/a");
+                            snprintf(sf_sum, 4, "n/a");
+                            snprintf(sf256_sum, 4, "n/a");
                         }
                     }
                 }
@@ -293,9 +287,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
 #endif
             {
-                strncpy(mf_sum, "n/a", 4);
-                strncpy(sf_sum, "n/a", 4);
-                strncpy(sf256_sum, "n/a", 4);
+				snprintf(mf_sum, 4, "n/a");
+				snprintf(sf_sum, 4, "n/a");
+				snprintf(sf256_sum, 4, "n/a");
             }
         }
 
@@ -424,7 +418,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             s_node->checksum = strdup(alert_msg);
             s_node->dir_position = dir_position;
 
-            if (OSHash_Add_ex(syscheck.fp, file_name, s_node) <= 0) {
+            if (OSHash_Add_ex(syscheck.fp, file_name, s_node) != 2) {
                 free(s_node->checksum);
                 free(s_node);
                 merror("Unable to add file to db: %s", file_name);
@@ -550,7 +544,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             char *c_sum;
             os_calloc(OS_MAXSTR + 1, sizeof(char), c_sum);
 
-
             buf = s_node->checksum;
 
             /* If it returns < 0, we have already alerted */
@@ -580,17 +573,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 if (buf[9] == '+') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name, fullalert);
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name, fullalert);
                         free(fullalert);
                         fullalert = NULL;
                     } else {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
                     }
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s",
-                            c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
                 }
                 free(buf);
                 send_syscheck_msg(alert_msg);

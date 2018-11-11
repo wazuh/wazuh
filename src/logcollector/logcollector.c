@@ -1211,7 +1211,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 * the fgetc. To solve this problem, we always
                 * pass it to the function pointer directly.
                 */
-    #ifndef WIN32
+#ifndef WIN32
                 /* We check for the end of file. If is returns EOF,
                 * we don't attempt to read it.
                 */
@@ -1224,7 +1224,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
                 /* If it is not EOF, we need to return the read character */
                 ungetc(r, current->fp);
-    #endif
+#endif
 
                 /* Finally, send to the function pointer to read it */
                 current->read(current, &r, 0);
@@ -1242,22 +1242,22 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 /* If ferror is set */
                 else {
                     merror(FREAD_ERROR, current->file, errno, strerror(errno));
-    #ifndef WIN32
+#ifndef WIN32
                     if (fseek(current->fp, 0, SEEK_END) < 0)
-    #else
+#else
                     if (1)
-    #endif
+#endif
                     {
 
-    #ifndef WIN32
+#ifndef WIN32
                         merror(FSEEK_ERROR, current->file, errno, strerror(errno));
-    #endif
+#endif
 
                         /* Close the file */
                         fclose(current->fp);
-    #ifdef WIN32
+#ifdef WIN32
                         CloseHandle(current->h);
-    #endif
+#endif
                         current->fp = NULL;
 
                         /* Try to open it again */
@@ -1267,9 +1267,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             w_rwlock_unlock(&files_update_rwlock);
                             continue;
                         }
-    #ifdef WIN32
+#ifdef WIN32
                         current->read(current, &r, 1);
-    #endif
+#endif
                     }
                     /* Increase the error count  */
                     current->ign++;
