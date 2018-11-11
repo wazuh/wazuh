@@ -690,7 +690,7 @@ int main_analysisd(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     // Start com request thread
-    w_create_thread(syscom_main, NULL);
+    w_create_thread(asyscom_main, NULL);
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);
@@ -1361,8 +1361,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     if (rule->context == 1) {
         if (!(rule->context_opts & SAME_DODIFF)) {
             if (rule->event_search) {
-                w_FreeArray(lf->last_events);
                 if (!rule->event_search(lf, rule, rule_match)) {
+                    w_FreeArray(lf->last_events);
                     return (NULL);
                 }
             }
@@ -1404,7 +1404,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     w_mutex_lock(&hourly_alert_mutex);
     hourly_alerts++;
     w_mutex_unlock(&hourly_alert_mutex);
+    w_mutex_lock(&rule->mutex);
     rule->firedtimes++;
+    lf->r_firedtimes = rule->firedtimes;
+    w_mutex_unlock(&rule->mutex);
     return (rule); /* Matched */
 }
 
@@ -2246,7 +2249,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
         w_inc_processed_events();
-        
+
         if (Config.logall || Config.logall_json){
             if (!lf_logall) {
                 os_calloc(1, sizeof(Eventinfo), lf_logall);

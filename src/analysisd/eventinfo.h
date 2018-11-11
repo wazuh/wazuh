@@ -126,6 +126,7 @@ typedef struct _Eventinfo {
     int rootcheck_fts;
     int is_a_copy;
     char **last_events;
+    int r_firedtimes;
     int queue_added;
     // Node reference
     EventNode *node;
@@ -137,7 +138,7 @@ typedef struct _Eventinfo {
 struct _EventNode {
     Eventinfo *event;
     pthread_mutex_t mutex;
-    int count;
+    volatile int count;
     EventNode *next;
     EventNode *prev;
 };

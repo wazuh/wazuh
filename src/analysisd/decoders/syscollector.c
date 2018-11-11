@@ -1340,57 +1340,58 @@ int decode_process(char *agent_id, cJSON * logJSON,int *socket) {
     return 0;
 }
 
-int sc_send_db(char * msg,int *sock) {
-    char response[OS_MAXSTR];
+int sc_send_db(char *msg, int *sock) {
+    char response[OS_SIZE_128 + 1];
     ssize_t length;
     fd_set fdset;
     struct timeval timeout = {0, 1000};
     int size = strlen(msg);
     int retval = -1;
-    static time_t last_attempt = 0;
-    time_t mtime;
+    int attempts;
 
     // Connect to socket if disconnected
     if (*sock < 0) {
-        if (mtime = time(NULL), mtime > last_attempt + 10) {
-            if (*sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), *sock < 0) {
-                last_attempt = mtime;
-                merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
-                goto end;
+        for (attempts = 1; attempts <= SYS_MAX_WAZUH_DB_ATTEMPS && (*sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_128)) < 0; attempts++) {
+            switch (errno) {
+            case ENOENT:
+                mtinfo(ARGV0, "at sc_send_db(): Cannot find '%s'. Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, attempts);
+                break;
+            default:
+                mtinfo(ARGV0, "at sc_send_db(): Cannot connect to '%s': %s (%d). Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, strerror(errno), errno, attempts);
             }
-        } else {
-            // Return silently
+            sleep(attempts);
+        }
+
+        if (*sock < 0) {
+            mterror(ARGV0, "at sc_send_db(): Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
             goto end;
         }
     }
 
     // Send msg to Wazuh DB
-
     if (OS_SendSecureTCP(*sock, size + 1, msg) != 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             merror("at sc_send_db(): database socket is full");
         } else if (errno == EPIPE) {
-            if (mtime = time(NULL), mtime > last_attempt + 10) {
-                // Retry to connect
-                merror("at sc_send_db(): Connection with wazuh-db lost. Reconnecting.");
-                close(*sock);
+            // Retry to connect
+            merror("at sc_send_db(): Connection with wazuh-db lost. Reconnecting.");
+            close(*sock);
 
-                if (*sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), *sock < 0) {
-                    last_attempt = mtime;
-                    merror("Unable to connect to socket '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
-                    goto end;
+            if (*sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_128), *sock < 0) {
+                switch (errno) {
+                case ENOENT:
+                    mterror(ARGV0, "at sc_send_db(): Cannot find '%s'.", WDB_LOCAL_SOCK);
+                    break;
+                default:
+                    mterror(ARGV0, "at sc_send_db(): Cannot connect to '%s': %s (%d).", WDB_LOCAL_SOCK, strerror(errno), errno);
                 }
-
-                if (!OS_SendSecureTCP(*sock, size + 1, msg)) {
-                    last_attempt = mtime;
-                    merror("at sc_send_db(): at OS_SendSecureTCP() (retry): %s (%d)", strerror(errno), errno);
-                    goto end;
-                }
-            } else {
-                // Return silently
                 goto end;
             }
 
+            if (OS_SendSecureTCP(*sock, size + 1, msg)) {
+                merror("at sc_send_db(): at OS_SendSecureTCP() (retry): %s (%d)", strerror(errno), errno);
+                goto end;
+            }
         } else {
             merror("at sc_send_db(): at OS_SendSecureTCP(): %s (%d)", strerror(errno), errno);
             goto end;
@@ -1398,7 +1399,6 @@ int sc_send_db(char * msg,int *sock) {
     }
 
     // Wait for socket
-
     FD_ZERO(&fdset);
     FD_SET(*sock, &fdset);
 
@@ -1408,7 +1408,7 @@ int sc_send_db(char * msg,int *sock) {
     }
 
     // Receive response from socket
-    length = OS_RecvSecureTCP(*sock,response,OS_MAXSTR);
+    length = OS_RecvSecureTCP(*sock, response, OS_SIZE_128);
     switch (length) {
         case -1:
             merror("at sc_send_db(): at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);

@@ -84,8 +84,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
             hStatus = CreateWindowEx(0, STATUSCLASSNAME, NULL, WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)IDC_MAIN_STATUS, GetModuleHandle(NULL), NULL);
             
             SendMessage(hStatus, SB_SETPARTS, sizeof(statwidths) / sizeof(int), (LPARAM)statwidths);
-            SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://wazuh.com");
-            
+            SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"https://wazuh.com");
+
             /* Initializing config */
             config_read(hwnd);
             gen_server_info(hwnd);

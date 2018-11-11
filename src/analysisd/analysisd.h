@@ -42,9 +42,9 @@ extern EventList *last_events_list;
 extern time_t current_time;
 
 // Com request thread dispatcher
-void * syscom_main(__attribute__((unused)) void * arg) ;
-size_t syscom_dispatch(char * command, char ** output);
-size_t syscom_getconfig(const char * section, char ** output);
+void * asyscom_main(__attribute__((unused)) void * arg) ;
+size_t asyscom_dispatch(char * command, char ** output);
+size_t asyscom_getconfig(const char * section, char ** output);
 
 #define WM_ANALYSISD_LOGTAG ARGV0 "" // Tag for log messages
 
@@ -68,5 +68,8 @@ void w_init_queues();
 
 OSHash *fim_agentinfo;
 extern int num_rule_matching_threads;
+
+#define FIM_MAX_WAZUH_DB_ATTEMPS 5
+#define SYS_MAX_WAZUH_DB_ATTEMPS 5
 
 #endif /* _LOGAUDIT__H */

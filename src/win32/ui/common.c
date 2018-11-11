@@ -47,7 +47,7 @@ int gen_server_info(HWND hwnd)
     if (config_inst.server) SetDlgItemText(hwnd, UI_SERVER_TEXT, config_inst.server);
     
     /* Set status data */
-    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://wazuh.com");
+    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"https://wazuh.com");
     if (config_inst.revision) SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)config_inst.revision);
     
     return (0);

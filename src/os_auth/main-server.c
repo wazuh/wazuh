@@ -855,15 +855,15 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     }
                     closedir(group_dir);
                 }else{
-                    char *multi_group_cpy = NULL;
-                    os_strdup(centralized_group, multi_group_cpy);
-
-                    char *group = strtok(centralized_group, delim);
                     int error = 0;
                     int max_multigroups = 0;
+                    char *groups_added;
 
+                    groups_added = wstr_delete_repeated_groups(centralized_group);
+                    mdebug1("Multigroup is: %s",groups_added);
+                    snprintf(centralized_group,OS_SIZE_65536,"%s",groups_added);
+                    char *group = strtok(groups_added, delim);
 
-                    mdebug1("Multigroup: '%s'",multi_group_cpy);
                     while( group != NULL ) {
                         DIR * dp;
                         char dir[PATH_MAX + 1] = {0};
@@ -933,8 +933,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         closedir(dp);
                     }
 
-                    snprintf(centralized_group,OS_SIZE_65536,"%s",multi_group_cpy);
-                    free(multi_group_cpy);
+                    os_free(groups_added);
 
                     if(error){
                         free(buf);
@@ -1179,6 +1178,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
                 if(set_agent_group(cur->id,cur->group) == -1){
                     merror("Unable to set agent centralized group: %s (internal error)", cur->group);
                 }
+
+                set_agent_multigroup(cur->group);
             }
 
             free(cur->id);
