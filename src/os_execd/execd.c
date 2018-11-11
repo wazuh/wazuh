@@ -506,7 +506,9 @@ static void ExecdStart(int q)
                         timeout_value = new_timeout;
                     } else {
                         /* Add to the repeat offenders list */
-                        OSHash_Add(repeated_hash, rkey, strdup("0"));
+                        char *tmp_zero = strdup("0");
+                        if (OSHash_Add(repeated_hash, rkey, tmp_zero) != 2) free(tmp_zero);
+                        tmp_zero = NULL;
                     }
                 }
 

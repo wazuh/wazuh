@@ -20,6 +20,7 @@
 #define w_rwlock_rdlock(x) { int error = pthread_rwlock_rdlock(x); if (error) merror_exit("At pthread_rwlock_rdlock(): %s", strerror(error)); }
 #define w_rwlock_wrlock(x) { int error = pthread_rwlock_wrlock(x); if (error) merror_exit("At pthread_rdlock_wrlock(): %s", strerror(error)); }
 #define w_rwlock_unlock(x) { int error = pthread_rwlock_unlock(x); if (error) merror_exit("At pthread_rwlock_unlock(): %s", strerror(error)); }
+#define w_mutex_destroy(x) { int error = pthread_mutex_destroy(x); if (error) merror_exit("At pthread_mutex_destroy(): %s", strerror(error)); }
 
 #ifndef WIN32
 int CreateThread(void * (*function_pointer)(void *), void * data) __attribute__((nonnull(1)));

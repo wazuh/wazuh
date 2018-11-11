@@ -1148,6 +1148,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     struct timeval fp_timeout;
 #endif
 
+    /* Initialize mutex */
+    w_mutex_init(&win_el_mutex, NULL);
+
     /* Daemon loop */
     while (1) {
 #ifndef WIN32
@@ -1178,9 +1181,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 #endif
 
         /* Check which file is available */
-        for (i = 0, j = -1;; i++) {
-
+        for (i = 0, j = -1; ; i++) {
             w_rwlock_rdlock(&files_update_rwlock);
+            
             if (f_control = update_current(&current, &i, &j), f_control) {
                 if (f_control == NEXT_IT) {
                     w_rwlock_unlock(&files_update_rwlock);
@@ -1190,7 +1193,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     break;
                 }
             }
-
+            
+            w_mutex_init(&current->mutex, NULL);
+            
             if (pthread_mutex_trylock(&current->mutex) == 0){
 
                 if (!current->fp) {
@@ -1202,7 +1207,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             current->read(current, &r, 0);
                         }
                     }
-                    pthread_mutex_unlock (&current->mutex);
+                    pthread_mutex_unlock(&current->mutex);
+                    w_mutex_destroy(&current->mutex);
                     w_rwlock_unlock(&files_update_rwlock);
                     continue;
                 }
@@ -1217,7 +1223,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 */
                 if ((r = fgetc(current->fp)) == EOF) {
                     clearerr(current->fp);
-                    pthread_mutex_unlock (&current->mutex);
+                    pthread_mutex_unlock(&current->mutex);
+                    w_mutex_destroy(&current->mutex);
                     w_rwlock_unlock(&files_update_rwlock);
                     continue;
                 }
@@ -1237,7 +1244,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     if (r != 0) {
                         current->ign++;
                     }
-                    pthread_mutex_unlock (&current->mutex);
+                    pthread_mutex_unlock(&current->mutex);
                 }
                 /* If ferror is set */
                 else {
@@ -1263,7 +1270,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         /* Try to open it again */
                         if (handle_file(i, j, 1, 1)) {
                             current->ign++;
-                            pthread_mutex_unlock (&current->mutex);
+                            pthread_mutex_unlock(&current->mutex);
+                            w_mutex_destroy(&current->mutex);
                             w_rwlock_unlock(&files_update_rwlock);
                             continue;
                         }
@@ -1274,13 +1282,17 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     /* Increase the error count  */
                     current->ign++;
                     clearerr(current->fp);
-                    pthread_mutex_unlock (&current->mutex);
+                    pthread_mutex_unlock(&current->mutex);
                 }
             }
-
+            
+            w_mutex_destroy(&current->mutex);
             w_rwlock_unlock(&files_update_rwlock);
         }
     }
+    
+    /* Destroy mutex */
+    w_mutex_destroy(&win_el_mutex);
 
     return NULL;
 }
