@@ -270,6 +270,29 @@ UseSyscollector()
      fi
 }
 
+UseSSLCert()
+{
+    echo ""
+    $ECHO "     ${runsslcert} ($yes/$no) [$yes]: "
+
+    if [ "X${USER_CREATE_SSL_CERT}" = "X" ]; then
+        read ES
+    else
+        ES=${USER_CREATE_SSL_CERT}
+    fi
+
+    echo ""
+    case $ES in
+        $nomatch)
+            echo "   - ${nosslcert}."
+            ;;
+        *)
+            SSL_CERT="yes"
+            echo "   - ${yessslcert}."
+            ;;
+    esac
+
+}
 
 ##########
 # EnableAuthd()
@@ -414,6 +437,8 @@ ConfigureClient()
             echo "   - ${yesactive}."
             ;;
     esac
+
+    UseSSLCert
 
     # Set up CA store
     catMsg "0x109-castore"
@@ -567,6 +592,8 @@ ConfigureServer()
       # Configuring remote connections
       SLOG="yes"
     fi
+
+    UseSSLCert
 
     # Setting up the auth daemon & logs
     if [ "X$INSTYPE" = "Xserver" ]; then
@@ -1129,6 +1156,8 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
