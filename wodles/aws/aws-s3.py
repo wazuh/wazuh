@@ -6,31 +6,6 @@
 # Copyright: GPLv3
 #
 # Updated by Jeremy Phillips <jeremy@uranusbytes.com>
-# Full re-work of AWS wodle as per #510
-# - Scalability and functional enhancements for parsing of CloudTrail
-# - Support for existing config params
-# - Upgrade to a granular object key addressing to support multiple CloudTrails in S3 bucket
-# - Support granular parsing by account id, region, prefix
-# - Support only parsing logs after a given date
-# - Support IAM credential profiles, IAM roles
-# - Only look for new logs/objects since last iteration
-# - Skip digest files altogether (only look at logs)
-# - Move from downloading object and working with file on filesystem to byte stream
-# - Inherit debug from modulesd
-# - Add bounds checks for msg against socket buffer size; truncate fields if too big (wazuh/wazuh#733)
-# - Support multiple debug levels
-# - Move connect error so not confused with general error
-# - If fail to parse log, and skip_on_error, attempt to send me msg to wazuh
-# - Support existing configurations by migrating data, inferring other required params
-# - Reparse flag to support re-parsing of log files from s3 bucket
-# - Use CloudTrail timestamp for ES timestamp
-#
-# Future
-# ToDo: Integrity check logs against digest
-# ToDo: Escape special characters in arguments?  Needed?
-#     Valid values for AWS Keys
-#     Alphanumeric characters [0-9a-zA-Z]
-#     Special characters !, -, _, ., *, ', (, and )
 #
 # Error Codes:
 #   1 - Unknown
@@ -50,6 +25,7 @@ import sys
 import sqlite3
 import argparse
 import socket
+import logging
 
 try:
     import boto3
@@ -71,8 +47,14 @@ import operator
 # Constants
 ################################################################################
 
-# Enable/disable debug mode
-debug_level = 0
+# Define default debugging level from the logging class: DEBUG, INFO, WARNING, or ERROR
+default_logging_level = logging.ERROR
+# Enable/disable logging to file
+log_to_file = True
+# Default is to use same logging level in file as in console (which is driven by the --debug arg), but changing this
+# allows for the console to run at one logging level, yet capture events in the logfile at a more verbose level
+# Example: logfile_logging_level = logging.DEBUG
+logfile_logging_level = default_logging_level
 
 # DB Query SQL
 sql_already_processed = """
@@ -207,6 +189,7 @@ class AWSBucket:
         self.max_queue_buffer = max_queue_buffer
         self.prefix = prefix
         self.delete_file = delete_file
+        self.logger = logging.getLogger('AWSBucket')
 
     def get_s3_client(self, access_key, secret_key, profile, iam_role_arn):
         conn_args = {}
@@ -232,7 +215,7 @@ class AWSBucket:
                 s3_client = boto_session.client(service_name='s3')
                 s3_client.head_bucket(Bucket=self.bucket)
         except botocore.exceptions.ClientError as e:
-            print("ERROR: Bucket {} access error: {}".format(self.bucket, e))
+            self.logger.error('Bucket {0} access error: {1}'.format(self.bucket, e))
             sys.exit(3)
         return s3_client
 
@@ -244,7 +227,7 @@ class AWSBucket:
         """
         try:
             json_msg = json.dumps(msg)
-            debug(json_msg, 3)
+            self.logger.debug(json_msg)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
             s.send("{header}{msg}".format(header=self.msg_header,
@@ -252,13 +235,13 @@ class AWSBucket:
             s.close()
         except socket.error as e:
             if e.errno == 111:
-                print('ERROR: Wazuh must be running.')
+                self.logger.error('Wazuh must be running.')
                 sys.exit(11)
             else:
-                print("ERROR: Error sending message to wazuh: {}".format(e))
+                self.logger.error('Error sending message to wazuh: {}'.format(e))
                 sys.exit(13)
         except Exception as e:
-            print("ERROR: Error sending message to wazuh: {}".format(e))
+            self.logger.error('Error sending message to wazuh: {}'.format(e))
             sys.exit(13)
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
@@ -275,9 +258,7 @@ class AWSBucket:
     def mark_complete(self, aws_account_id, aws_region, log_file):
         if self.reparse:
             if self.already_processed(log_file['Key'], aws_account_id, aws_region):
-                debug(
-                    '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']),
-                    2)
+                self.logger.info('File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']))
         else:
             try:
                 self.db_connector.execute(sql_mark_complete.format(
@@ -287,7 +268,7 @@ class AWSBucket:
                     created_date=self.get_creation_date(log_file)
                 ))
             except Exception as e:
-                debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
+                self.logger.info('Error marking log {} as completed: {}'.format(log_file['Key'], e))
                 raise e
 
     def migrate_legacy_table(self):
@@ -295,17 +276,17 @@ class AWSBucket:
 
     def create_table(self):
         try:
-            debug('+++ Table does not exist; create', 1)
+            self.logger.warning('Table does not exist; create')
             self.db_connector.execute(sql_create_table)
         except Exception as e:
-            print("ERROR: Unable to create SQLite DB: {}".format(e))
+            self.logger.error('Unable to create SQLite DB: {}'.format(e))
             sys.exit(6)
 
     def init_db(self):
         try:
             tables = set(map(operator.itemgetter(0), self.db_connector.execute(sql_find_table_names)))
         except Exception as e:
-            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
+            self.logger.error('Unexpected error accessing SQLite DB: {}'.format(e))
             sys.exit(5)
 
         # DB does exist yet
@@ -317,7 +298,7 @@ class AWSBucket:
             self.migrate_legacy_table()
 
     def db_maintenance(self, aws_account_id, aws_region):
-        debug("+++ DB Maintenance", 1)
+        self.logger.warning('DB Maintenance')
         try:
             self.db_connector.execute(sql_db_maintenance.format(
                 aws_account_id=aws_account_id,
@@ -325,8 +306,7 @@ class AWSBucket:
                 retain_db_records=self.retain_db_records
             ))
         except Exception as e:
-            print(
-                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
+            self.logger.error('ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}'.format(
                     aws_account_id=aws_account_id,
                     aws_region=aws_region,
                     error_msg=e))
@@ -393,7 +373,8 @@ class AWSBucket:
         }
         if filter_marker:
             filter_args['StartAfter'] = filter_marker
-            debug('+++ Marker: {0}'.format(filter_marker), 2)
+            self.logger.info('Marker: {0}'.format(filter_marker))
+        self.logger.debug('S3 Filter Args: {0}'.format(filter_args))
         return filter_args
 
     def reformat_msg(self, event):
@@ -413,7 +394,6 @@ class AWSBucket:
             event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
         
         return event
-
 
     def decompress_file(self, log_key):
         def decompress_gzip(raw_object):
@@ -471,7 +451,7 @@ class AWSBucket:
     def get_log_file(self, aws_account_id, log_key):
         def exception_handler(error_txt, error_code):
             if self.skip_on_error:
-                debug("++ {}; skipping...".format(error_txt), 1)
+                self.logger.warning('{}; skipping...'.format(error_txt))
                 try:
                     error_msg = self.get_alert_msg(aws_account_id,
                                                    log_key,
@@ -479,9 +459,9 @@ class AWSBucket:
                                                    error_txt)
                     self.send_msg(error_msg)
                 except:
-                    debug("++ Failed to send message to Wazuh", 1)
+                    self.logger.warning('Failed to send message to Wazuh')
             else:
-                print("ERROR: {}".format(error_txt))
+                self.logger.error('Failed to get log: {0}'.format(error_txt))
                 sys.exit(error_code)
 
         try:
@@ -517,42 +497,46 @@ class AWSBucket:
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
             if 'Contents' not in bucket_files:
-                debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                self.logger.warn('No logs to process in bucket: {}/{}'.format(aws_account_id, aws_region))
                 return
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
-                        debug("++ File previously processed, but reparse flag set: {file}".format(
-                            file=bucket_file['Key']), 1)
+                        self.logger.warn('File previously processed, but reparse flag set: {file}'.format(
+                            file=bucket_file['Key']))
                     else:
-                        debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                        self.logger.warn('Skipping previously processed file: {file}'.format(file=bucket_file['Key']))
                         continue
-                debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
+                self.logger.info('Found new log: {0}'.format(bucket_file['Key']))
                 # Get the log file from S3 and decompress it
                 log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
                 self.iter_events(log_json, bucket_file['Key'], aws_account_id)
                 # Remove file from S3 Bucket
                 if self.delete_file:
-                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                    self.logger.info('Remove file from S3 Bucket:{0}'.format(bucket_file['Key']))
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
         except SystemExit:
             raise
         except Exception as err:
             if hasattr(err, 'message'):
-                debug("+++ Unexpected error: {}".format(err.message), 2)
+                self.logger.info('Unexpected error querying/working with objects in S3: {}'.format(err.message))
             else:
-                debug("+++ Unexpected error: {}".format(err), 2)
-            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
+                self.logger.info('Unexpected error querying/working with objects in S3: {}'.format(err))
+
             sys.exit(7)
 
 
-class AWSCloudtrailBucket(AWSBucket):
+class AWSCloudTrailBucket(AWSBucket):
     """
     Represents a bucket with cloudtrail logs
     """
+
+    def __init__(self, *args):
+        AWSBucket.__init__(self, *args)
+        self.logger = logging.getLogger('AWSCloudTrailBucket')
 
     def get_full_prefix(self, account_id, account_region):
         return '{trail_prefix}AWSLogs/{aws_account_id}/CloudTrail/{aws_region}/'.format(
@@ -567,7 +551,7 @@ class AWSCloudtrailBucket(AWSBucket):
         return int(path.basename(log_file['Key']).split('_')[-2].split('T')[0])
 
     def get_extra_data_from_filename(self, filename):
-        debug('++ Parse arguments from log file name', 2)
+        self.logger.info('Parse arguments from log file name')
         filename_parts = filename.split('_')
         aws_account_id = filename_parts[0]
         aws_region = filename_parts[2]
@@ -585,7 +569,7 @@ class AWSCloudtrailBucket(AWSBucket):
                 aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
                 self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
             except Exception as e:
-                debug("++ Error parsing log file name: {}".format(row[0]), 1)
+                self.logger.warning('Error parsing log file name: {}'.format(row[0]))
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
         alert_msg = AWSBucket.get_alert_msg(self, aws_account_id, log_key, event, error_msg)
@@ -593,7 +577,7 @@ class AWSCloudtrailBucket(AWSBucket):
         return alert_msg
 
     def reformat_msg(self, event):
-        debug('++ Reformat message', 3)
+        self.logger.debug('Reformat message')
         AWSBucket.reformat_msg(self, event)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
         # ES mapping expects for a dictionary, if the field is any other type (list or string)
@@ -621,7 +605,7 @@ class AWSCloudtrailBucket(AWSBucket):
         if 'CommonPrefixes' in regions:
             return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
         else:
-            debug("+++ No regions found for AWS Account {}".format(account_id), 1)
+            self.logger.warning('No regions found for AWS Account {}'.format(account_id))
             return []
 
     def iter_regions_and_accounts(self, account_id, regions):
@@ -635,15 +619,16 @@ class AWSCloudtrailBucket(AWSBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
-                debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                self.logger.warning('Working on {} - {}'.format(aws_account_id, aws_region))
                 self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id, aws_region)
 
 
-class AWSFirehouseBucket(AWSBucket):
+class AWSFirehoseBucket(AWSBucket):
     def __init__(self, *args):
         AWSBucket.__init__(self, *args)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
+        self.logger = logging.getLogger('AWSFirehoseBucket')
 
     def get_creation_date(self, log_file):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
@@ -655,7 +640,7 @@ class AWSFirehouseBucket(AWSBucket):
 
     def migrate_legacy_table(self):
         # Firehouse events aren't legacy. No migration is needed.
-        debug("+++ Migrating firehouse events. Skipping...", 1)
+        self.logger.warning('Migrating firehouse events. Skipping...')
 
     def get_full_prefix(self, account_id, account_region):
         return self.prefix
@@ -687,11 +672,6 @@ class AWSFirehouseBucket(AWSBucket):
 def handler(signal, frame):
     print("ERROR: SIGINT received.")
     sys.exit(12)
-
-
-def debug(msg, msg_level):
-    if debug_level >= msg_level:
-        print('DEBUG: {debug_msg}'.format(debug_msg=msg))
 
 
 def arg_valid_date(arg_string):
@@ -732,6 +712,24 @@ def arg_valid_regions(arg_string):
     return final_regions
 
 
+def arg_valid_debug(arg_string):
+    print ('Arg string: {}'.format(arg_string))
+    logging_level = default_logging_level
+    try:
+        if int(arg_string) == 0:
+            logging_level = logging.ERROR
+        elif int(arg_string) == 1:
+            logging_level = logging.WARNING
+        elif int(arg_string) == 2:
+            logging_level = logging.INFO
+        elif int(arg_string) == 3:
+            logging_level = logging.DEBUG
+    except:
+        pass
+
+    return logging_level
+
+
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring of AWS logs in S3 bucket",
@@ -741,7 +739,9 @@ def get_script_arguments():
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
                         help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
-    parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debug')
+    parser.add_argument('-d', '--debug', action='store', dest='logging_level', default=default_logging_level,
+                        help='Enable debug (0: ERROR, 1: WARN, 2: INFO, 3: DEBUG)',
+                        type=arg_valid_debug)
     parser.add_argument('-a', '--access_key', dest='access_key', help='S3 Access key credential', default=None)
     parser.add_argument('-k', '--secret_key', dest='secret_key', help='S3 Secret key credential', default=None)
     # Beware, once you delete history it's gone.
@@ -770,10 +770,49 @@ def get_script_arguments():
     return parser.parse_args()
 
 
+def get_logger(logging_level, logfile_logging_level):
+    logfile = '/logs/wodle-aws-s3.log'
+    # Setup root logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.NOTSET)
+    logging_format = logging.Formatter(fmt='[%(asctime)s] [%(levelname)s] - %(message)s')
+
+    # Setup logging to stdout
+    stdout_handler = logging.StreamHandler(stream=sys.stdout)
+    stdout_handler.setLevel(logging_level)
+    stdout_handler.setFormatter(logging_format)
+    logger.addHandler(stdout_handler)
+
+    # If enabled, setup logging to file
+    if log_to_file:
+        wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+        logfile_handler = logging.FileHandler('{0}{1}'.format(wazuh_path, logfile))
+        # If a custom file log level defined; else use 'debug' arg value
+        if logfile_logging_level == default_logging_level:
+            logfile_logging_level = logging_level
+
+        logfile_handler.setLevel(logfile_logging_level)
+        # If debug logging enabled, get very verbose about where the log event came from
+        if logfile_logging_level <= logging.DEBUG:
+            logging_format = logging.Formatter(fmt='[%(asctime)s] [%(levelname)s] [%(filename)s\line-%(lineno)d : %(name)s\%(funcName)s] - %(message)s')
+        logfile_handler.setFormatter(logging_format)
+        logger.addHandler(logfile_handler)
+
+    logger.info('StdOut Log Level: {0}'.format(logging_level))
+    logger.info('File Log Level: {0}'.format(logfile_logging_level))
+
+    # Change logging levels for imported libraries to CRITICAL; reduces outside noise
+    if 'boto3' in sys.modules:
+      logging.getLogger('boto3').setLevel(logging.CRITICAL)
+    if 'botocore' in sys.modules:
+      logging.getLogger('botocore').setLevel(logging.CRITICAL)
+    if 'urllib3' in sys.modules:
+      logging.getLogger('urllib3').setLevel(logging.CRITICAL)
+    return logger
+
+
 # Main
 ###############################################################################
-
-
 def main(argv):
     # Parse arguments
     options = get_script_arguments()
@@ -782,12 +821,11 @@ def main(argv):
     with open('/proc/sys/net/core/rmem_max', 'r') as kernel_param:
         max_queue_buffer = int(kernel_param.read().strip())
 
-    if int(options.debug) > 0:
-        global debug_level
-        debug_level = int(options.debug)
-        debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
+    # Setup logging
+    logger = get_logger(options.logging_level, logfile_logging_level)
+    logger.info('Args: {args}'.format(args=str(sys.argv)))
 
-    bucket_type = AWSCloudtrailBucket if options.type.lower() == 'cloudtrail' else AWSFirehouseBucket
+    bucket_type = AWSCloudTrailBucket if options.type.lower() == 'cloudtrail' else AWSFirehoseBucket
     bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
                          options.aws_profile, options.iam_role_arn, options.logBucket,
                          options.only_logs_after, options.skip_on_error,
@@ -798,12 +836,11 @@ def main(argv):
 
 if __name__ == '__main__':
     try:
-        debug('Args: {args}'.format(args=str(sys.argv)), 2)
         signal.signal(signal.SIGINT, handler)
         main(sys.argv[1:])
         sys.exit(0)
     except Exception as e:
         print("Unknown error: {}".format(e))
-        if debug_level > 0:
+        if default_logging_level != logging.ERROR:
             raise
         sys.exit(1)
