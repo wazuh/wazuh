@@ -92,10 +92,6 @@ runauthd="Do you want to run the Auth daemon?"
 norunauthd="Not running Auth daemon"
 yesrunauthd="Running Auth daemon"
 
-runsslcert="Do you want to create the SSL cert?"
-nosslcert="Not creating SSL cert"
-yessslcert="Creating SSL cert"
-
 # Part 4
 installing="Installing the system"
 startwazuh="Do you want to start Wazuh after the installation?"

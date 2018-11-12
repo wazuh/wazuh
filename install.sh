@@ -272,26 +272,11 @@ UseSyscollector()
 
 UseSSLCert()
 {
-    echo ""
-    $ECHO "     ${runsslcert} ($yes/$no) [$yes]: "
-
-    if [ "X${USER_CREATE_SSL_CERT}" = "X" ]; then
-        read ES
+    if [ "X${USER_CREATE_SSL_CERT}" = "Xn" ]; then
+        SSL_CERT="no"
     else
-        ES=${USER_CREATE_SSL_CERT}
+        SSL_CERT="yes"
     fi
-
-    echo ""
-    case $ES in
-        $nomatch)
-            echo "   - ${nosslcert}."
-            ;;
-        *)
-            SSL_CERT="yes"
-            echo "   - ${yessslcert}."
-            ;;
-    esac
-
 }
 
 ##########
