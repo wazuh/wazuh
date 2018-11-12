@@ -199,6 +199,13 @@ ID: 80200 - 80499
         <group>aws_config_history,</group>
     </rule>
 
+    <rule id="8054" level="6">
+        <if_sid>80453</if_sid>
+        <field name="aws.configuration.complianceType">\.+</field>
+        <description>AWS Config - History Compliance [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)] [$(aws.configuration.configRuleList.configRuleName)]: $(aws.resourceId) ($(aws.configurationItemStatus)) $(aws.configuration.complianceType)</description>
+        <group>aws_config_history,aws_config_history_compliance,</group>
+    </rule>
+
     <!-- Config Snapshot -->
     <rule id="80475" level="3">
         <if_sid>80452</if_sid>
