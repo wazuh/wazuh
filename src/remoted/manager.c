@@ -506,6 +506,8 @@ static void c_files()
     struct dirent *entry;
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
+    int oldmask;
+    int retval;
 
     mdebug2("Updating shared files sums.");
 
@@ -645,13 +647,27 @@ static void c_files()
             }
         }
 
-
         // Try to open directory, avoid TOCTOU hazard
         if (subdir = wreaddir(path), !subdir) {
-            if (errno != ENOTDIR) {
-                mdebug1("At c_files(): Could not open directory '%s'", path);
+            switch (errno) {
+            case ENOENT:
+                mdebug1("Making multi-group directory: %s", path);
+
+                oldmask = umask(0006);
+                retval = mkdir(path, 0770);
+                umask(oldmask);
+
+                if (retval < 0) {
+                    merror("Cannot create multigroup directory '%s': %s (%d)", path, strerror(errno), errno);
+                    continue;
+                }
+
+                break;
+
+            default:
+                merror("Cannot open multigroup directory '%s': %s (%d)", path, strerror(errno), errno);
+                continue;
             }
-            continue;
         }
 
         os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);

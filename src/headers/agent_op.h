@@ -67,4 +67,8 @@ char* hostname_parse(const char *path);
  */
 int w_validate_group_name(const char *group);
 
+int set_agent_multigroup(char * group);
+
+void w_remove_multigroup(const char *group);
+
 #endif /* __AGENT_OP_H */
