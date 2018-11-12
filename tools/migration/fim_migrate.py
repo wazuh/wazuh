@@ -5,6 +5,7 @@
 # September 28, 2018.
 # This program is a free software, you can redistribute it
 # and/or modify it under the terms of GPLv2.
+# Revision 11/12/2018
 
 import sys
 from getopt import getopt, GetoptError
@@ -77,10 +78,13 @@ def _fim_decode(fline):
             timestamp = parsed[0]
             path = parsed[1]
         else:
-            logging.debug("Error parsing line: {0}".format(readed))
             logging.error("Couldn't decode line at syscheck database.")
+            logging.debug("Error parsing line: {0}".format(readed))
+            return None
     else:
         logging.error("Couldn't decode line at syscheck database.")
+        logging.debug("Error parsing line: {0}".format(readed))
+        return None
 
     return fim, timestamp, path
 
@@ -231,6 +235,8 @@ if __name__ == '__main__':
             for line in syscheck:
                 if not line[0] == b'#':
                     decoded = _fim_decode(line)
+                    if not decoded:
+                        continue
                     if not _force:
                         if not check_file_entry(0, decoded[2], s):
                             res = insert_fim(0, decoded, 'file', s)
@@ -283,6 +289,8 @@ if __name__ == '__main__':
                 for line in syscheck:
                     if not line[0] == b'#':
                         decoded = _fim_decode(line)
+                        if not decoded:
+                            continue
                         if not _force:
                             if not check_file_entry(agt[0], decoded[2], s):
                                 res = insert_fim(agt[0], decoded, 'file', s)
@@ -316,6 +324,8 @@ if __name__ == '__main__':
                 for line in syscheck:
                     if not line[0] == b'#':
                         decoded = _fim_decode(line)
+                        if not decoded:
+                            continue
                         if not _force:
                             if not check_file_entry(agt[0], decoded[2], s):
                                 res = insert_fim(agt[0], decoded, 'registry', s)
