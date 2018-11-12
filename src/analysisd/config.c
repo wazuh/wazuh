@@ -99,7 +99,9 @@ int GlobalConf(const char *cfgfile)
     }
     int current_label = 0;
     for (current_label; Config.labels[current_label].key != NULL; current_label++){
-      Config.labels[current_label].value = parse_environment_labels(Config.labels[current_label]);
+      char * auto_label = parse_environment_labels(Config.labels[current_label]);
+      free(Config.labels[current_label].value);
+      Config.labels[current_label].value = auto_label;
     }
 
     Config.min_rotate_interval = getDefine_Int("analysisd", "min_rotate_interval", 10, 86400);

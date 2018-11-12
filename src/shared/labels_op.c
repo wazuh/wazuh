@@ -91,7 +91,7 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
         if (z >= size)
             return -1;
     }
-
+    free(value_label);
     return 0;
 }
 
@@ -205,6 +205,7 @@ char * parse_environment_labels(const wlabel_t label) {
     cJSON *iface;
     cJSON *ipv4;
     cJSON *ipv6;
+    char timezone_number[21];
     int i;
     int automatic_label ;
 
@@ -452,7 +453,6 @@ char * parse_environment_labels(const wlabel_t label) {
 
         }else  if (!strcmp(var,"timezone")) {
           int zone;
-          char timezone_number[21];
 
           #ifndef WIN32
             time_t t = time(NULL);
@@ -499,7 +499,7 @@ char * parse_environment_labels(const wlabel_t label) {
 
     }
 
-    if (n + (z = strlen(str)) >= OS_COMMENT_MAX) {
+    if (n + (z = strlen(str)) >= OS_COMMENT_MAX && field) {
 
         return field;
     }

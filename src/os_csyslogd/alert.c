@@ -35,7 +35,9 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 
     if (syslog_config->location) {
         //Check if location is headless
-        char * location_headless = strstr(al_data->location,"->");
+        char * location_headless;
+        char * copy_location = location_headless;
+        copy_location = strstr(al_data->location,"->");
 
         if (location_headless){        //If location has head, cut it off
             location_headless = location_headless + 2;
