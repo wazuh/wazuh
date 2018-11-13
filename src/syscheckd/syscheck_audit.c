@@ -23,7 +23,9 @@
 #define ADD_RULE 1
 #define DELETE_RULE 2
 #define AUDIT_CONF_FILE DEFAULTDIR "/etc/af_wazuh.conf"
-#define AUDIT_CONF_LINK "/etc/audisp/plugins.d/af_wazuh.conf"
+#define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
+#define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
+#define AUDIT_CONF_LINK "af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 4096
 #define AUDIT_KEY "wazuh_fim"
@@ -142,10 +144,22 @@ int audit_restart(void) {
 int set_auditd_config(void) {
 
     FILE *fp;
+    char audit_path[50] = {0};
+
+    // Check audisp version
+    if (IsDir(PLUGINS_DIR_AUDIT_3) == 0) {
+        // Audit 3.X
+        snprintf(audit_path, sizeof(audit_path) - 1, "%s/%s", PLUGINS_DIR_AUDIT_3, AUDIT_CONF_LINK);
+    } else if (IsDir(PLUGINS_DIR_AUDIT_2) == 0) {
+        // Audit 2.X
+        snprintf(audit_path, sizeof(audit_path) - 1, "%s/%s", PLUGINS_DIR_AUDIT_2, AUDIT_CONF_LINK);
+    } else {
+        return 0;
+    }
 
     // Check that the plugin file is installed
 
-    if (!IsLink(AUDIT_CONF_LINK) && !IsFile(AUDIT_CONF_LINK)) {
+    if (!IsLink(audit_path) && !IsFile(audit_path)) {
         // Check that the socket exists
 
         if (!IsSocket(AUDIT_SOCKET)) {
@@ -181,22 +195,22 @@ int set_auditd_config(void) {
         return -1;
     }
 
-    if (symlink(AUDIT_CONF_FILE, AUDIT_CONF_LINK) < 0) {
+    if (symlink(AUDIT_CONF_FILE, audit_path) < 0) {
         switch (errno) {
         case EEXIST:
-            if (unlink(AUDIT_CONF_LINK) < 0) {
-                merror(UNLINK_ERROR, AUDIT_CONF_LINK, errno, strerror(errno));
+            if (unlink(audit_path) < 0) {
+                merror(UNLINK_ERROR, audit_path, errno, strerror(errno));
                 return -1;
             }
 
-            if (symlink(AUDIT_CONF_FILE, AUDIT_CONF_LINK) == 0) {
+            if (symlink(AUDIT_CONF_FILE, audit_path) == 0) {
                 break;
             }
 
             break;
 
         default: // Fallthrough
-            merror(LINK_ERROR, AUDIT_CONF_LINK, AUDIT_CONF_FILE, errno, strerror(errno));
+            merror(LINK_ERROR, audit_path, AUDIT_CONF_FILE, errno, strerror(errno));
             return -1;
         }
     }
