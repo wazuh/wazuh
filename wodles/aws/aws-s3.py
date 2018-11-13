@@ -190,6 +190,10 @@ class AWSBucket:
         :param prefix: Prefix to filter files in bucket
         :param delete_file: Wether to delete an already processed file from a bucket or not
         """
+        ## temporal
+        self.access_key = access_key
+        self.secret_key = secret_key
+        ##
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
@@ -726,7 +730,7 @@ class AWSInspector(AWSBucket):
         ### conectar a la BD 
         ### procesar todas las alertas
 
-    def reformat_msg(self, event):
+    def reformat_msg(self, event):  ### quitar!
         debug('++ Reformat message', 3)
         AWSBucket.reformat_msg(self, event)
 
