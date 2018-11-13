@@ -8,6 +8,7 @@
  */
 
 #include "shared.h"
+#include "os_crypto/sha256/sha256_op.h"
 static pthread_mutex_t restart_syscheck = PTHREAD_MUTEX_INITIALIZER;
 
 /* Check if syscheck is to be executed/restarted
@@ -298,6 +299,111 @@ int set_agent_group(const char * id, const char * group) {
 
     fprintf(fp, "%s\n", group);
     fclose(fp);
+
+    // Check for multigroup
+
+    return 0;
+}
+
+int set_agent_multigroup(char * group){
+    int oldmask;
+    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
+    char * buffer;
+
+    if(!multigroup){
+        return 0;
+    }
+
+    char *endl = strchr(group, '\n');
+
+    if (endl) {
+        *endl = '\0';
+    }
+
+    /* Remove multigroup if it's not used on any other agent */
+    w_remove_multigroup(group);
+
+    FILE *fp_metadata;
+    char metadata_path[PATH_MAX + 1] = {0};
+    snprintf(metadata_path,PATH_MAX,"%s",isChroot() ?  METADATA_FILE :  DEFAULTDIR METADATA_FILE);
+
+    oldmask = umask(0002);
+    fp_metadata = fopen(metadata_path,"a+");
+    umask(oldmask);
+
+    if (!fp_metadata) {
+        merror(FOPEN_ERROR, metadata_path, errno, strerror(errno));
+        return -1;
+    }
+
+    if (fseek(fp_metadata, 0, SEEK_SET) < 0) {
+        merror(FSEEK_ERROR, metadata_path, errno, strerror(errno));
+        fclose(fp_metadata);
+        return -1;
+    }
+
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), buffer);
+
+    int found = 0;
+    while (fgets(buffer, OS_SIZE_65536 + 1, fp_metadata) != NULL) {
+        char *endl = strchr(buffer, '\n');
+
+        if (endl) {
+            *endl = '\0';
+        } else {
+            static int reported = 0;
+            if (!reported) {
+                mdebug1("File '%s' is corrupted: line too long.", metadata_path);
+                reported = 1;
+            }
+        }
+
+        if(strncmp(buffer,group,OS_SIZE_65536) == 0){
+            found = 1;
+            break;
+        }
+    }
+
+    free(buffer);
+
+    if(!found){
+        fprintf(fp_metadata, "%s\n", group);
+    }
+
+    fclose(fp_metadata);
+
+    /* Check if the multigroup dir is created */
+    os_sha256 multi_group_hash;
+    char multigroup_path[PATH_MAX + 1] = {0};
+    OS_SHA256_String(group,multi_group_hash);
+    char _hash[9] = {0};
+
+    strncpy(_hash,multi_group_hash,8);
+    snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,_hash);
+    DIR *dp;
+    dp = opendir(multigroup_path);
+
+    if(!dp){
+        if (errno == ENOENT) {
+            oldmask = umask(0002);
+#ifndef WIN32
+            int retval = mkdir(multigroup_path, 0770);
+#else
+            int retval = mkdir(multigroup_path); 
+#endif
+            umask(oldmask);
+
+            if (retval == -1) {
+                mdebug1("At read_controlmsg(): couldn't create directory '%s'", multigroup_path);
+                return -1;
+            }
+        } else {
+            mwarn("Could not create directory '%s': %s (%d)", multigroup_path, strerror(errno), errno);
+        }
+    }else{
+        closedir(dp);
+    }
+
     return 0;
 }
 
@@ -416,7 +522,7 @@ int w_validate_group_name(const char *group){
 
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
- 
+
     if(!multigroup && (strlen(group) > MAX_GROUP_NAME)){
         free(multi_group_cpy);
         mdebug1("At w_validate_group_name(): Group length is over %d characters",MAX_GROUP_NAME);
@@ -446,7 +552,7 @@ int w_validate_group_name(const char *group){
 
         const char delim[2] = ",";
         char *individual_group = strtok(multi_group_cpy, delim);
-            
+
         while( individual_group != NULL ) {
 
             /* Spaces are not allowed */
@@ -485,4 +591,42 @@ int w_validate_group_name(const char *group){
 
     free(multi_group_cpy);
     return 0;
+}
+
+void w_remove_multigroup(const char *group){
+    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
+    char path[PATH_MAX + 1] = {0};
+    char metadata_file[PATH_MAX + 1] = {0};
+    int line = 0;
+
+    if(multigroup){
+        sprintf(path,"%s",isChroot() ?  GROUPS_DIR :  DEFAULTDIR GROUPS_DIR);
+
+        if(wstr_find_in_folder(path,group,1) < 0){
+            sprintf(metadata_file,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR, ".metadata");
+
+            line = wstr_find_line_in_file(metadata_file,group,1);
+
+            if(line >= 0){
+                /* Remove line from file */
+                w_remove_line_from_file(metadata_file,line);
+            }
+
+            /* Remove the DIR */
+            os_sha256 multi_group_hash;
+            OS_SHA256_String(group,multi_group_hash);
+            char _hash[9] = {0};
+
+            /* We only want the 8 first bytes of the hash */
+            multi_group_hash[8] = '\0';
+
+            strncpy(_hash,multi_group_hash,8);
+
+            sprintf(path,"%s/%s",isChroot() ? MULTIGROUPS_DIR : DEFAULTDIR MULTIGROUPS_DIR,_hash);
+
+            if (rmdir_ex(path) != 0) {
+                mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
+            }
+        }
+    }
 }

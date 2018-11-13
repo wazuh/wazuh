@@ -6,6 +6,8 @@
         <!-- Default configuration values -->
         <Property Id="ADDRESS" Secure="yes">
         </Property>
+        <Property Id="GROUP" Secure="yes">
+        </Property>
         <Property Id="SERVER_PORT" Secure="yes">
         </Property>
         <Property Id="NOTIFY_TIME" Secure="yes">
@@ -47,16 +49,53 @@
         <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
         <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
+
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no" />
 
-        <CustomAction Id="CustomActionSetComputerName" Property="AGENT_NAME" Value="[ComputerName]" Execute="immediate" />
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
-        <CustomAction Id="CustomAction_RunAuthd" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT]" Directory="APPLICATIONFOLDER" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdPassword" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD]" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdCACertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v [CERTIFICATE]" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdAgentCertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k \"[KEY]\" -x \"[PEM]\"" Execute="immediate" />
+
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT]" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
+
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD]" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
+
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT]" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
+
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD]" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
+
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+
         <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
 
         <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
@@ -68,7 +107,6 @@
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
         <InstallExecuteSequence>
-            <Custom Action="CustomActionSetComputerName" Before="FileCost">AGENT_NAME=""</Custom>
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
@@ -76,10 +114,47 @@
             <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
-            <Custom Action="CustomAction_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
-            <Custom Action="CustomAction_RunAuthdPassword" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PASSWORD &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_RunAuthdCACertificate" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND CERTIFICATE &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_RunAuthdAgentCertificate" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_Group_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_Group_Name_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_Group_Name_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
             <Custom Action="StartWinService" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; ""</Custom>
         </InstallExecuteSequence>
         <Directory Id="TARGETDIR" Name="SourceDir">
@@ -100,7 +175,7 @@
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
 
-                    <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes">
+                    <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
                         <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
@@ -364,3 +439,4 @@
         <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>
 </Wix>
+

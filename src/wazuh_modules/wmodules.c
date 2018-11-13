@@ -138,32 +138,6 @@ void wm_destroy() {
     wm_free(wmodules);
 }
 
-// Concatenate strings with optional separator
-
-int wm_strcat(char **str1, const char *str2, char sep) {
-    size_t len1;
-    size_t len2;
-
-    if (str2) {
-        len2 = strlen(str2);
-
-        if (*str1) {
-            len1 = strlen(*str1);
-            os_realloc(*str1, len1 + len2 + (sep ? 2 : 1), *str1);
-
-            if (sep)
-                memcpy(*str1 + (len1++), &sep, 1);
-        } else {
-            len1 = 0;
-            os_malloc(len2 + 1, *str1);
-        }
-
-        memcpy(*str1 + len1, str2, len2 + 1);
-        return 0;
-    } else
-        return -1;
-}
-
 // Tokenize string separated by spaces, respecting double-quotes
 
 char** wm_strtok(char *string) {

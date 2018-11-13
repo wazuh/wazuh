@@ -64,7 +64,9 @@ void OSRegex_FreePattern(OSRegex *reg)
         w_FreeArray(reg->d_sub_strings);
         free(reg->d_sub_strings);
         reg->d_sub_strings = NULL;
-}
+    }
+
+    free(reg->d_size.prts_str_size);
 
     w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
     return;

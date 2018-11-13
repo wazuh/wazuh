@@ -89,9 +89,6 @@ int main(int argc, char **argv)
 
     minfo("Process started.");
 
-    // Start com request thread
-    w_create_thread(wmcom_main, NULL);
-
     // Run modules
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
@@ -100,6 +97,9 @@ int main(int argc, char **argv)
         }
         mdebug2("Created new thread for the '%s' module.", cur_module->tag);
     }
+
+    // Start com request thread
+    w_create_thread(wmcom_main, NULL);
 
     // Wait for threads
 

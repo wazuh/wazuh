@@ -14,7 +14,7 @@
 #include "analysisd.h"
 #include "config.h"
 
-size_t syscom_dispatch(char * command, char ** output) {
+size_t asyscom_dispatch(char * command, char ** output) {
 
     const char *rcv_comm = command;
     char *rcv_args = NULL;
@@ -27,20 +27,20 @@ size_t syscom_dispatch(char * command, char ** output) {
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            mdebug1("SYSCOM getconfig needs arguments.");
-            *output = strdup("err SYSCOM getconfig needs arguments");
+            mdebug1("ASYSCOM getconfig needs arguments.");
+            *output = strdup("err ASYSCOM getconfig needs arguments");
             return strlen(*output);
         }
-        return syscom_getconfig(rcv_args, output);
+        return asyscom_getconfig(rcv_args, output);
 
     } else {
-        mdebug1("SYSCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1("ASYSCOM Unrecognized command '%s'.", rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
 }
 
-size_t syscom_getconfig(const char * section, char ** output) {
+size_t asyscom_getconfig(const char * section, char ** output) {
 
     cJSON *cfg;
     char *json_str;
@@ -144,13 +144,13 @@ size_t syscom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    mdebug1("At SYSCOM getconfig: Could not get '%s' section", section);
+    mdebug1("At ASYSCOM getconfig: Could not get '%s' section", section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }
 
 
-void * syscom_main(__attribute__((unused)) void * arg) {
+void * asyscom_main(__attribute__((unused)) void * arg) {
     int sock;
     int peer;
     char *buffer = NULL;
@@ -161,7 +161,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(ANLSYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s'. Closing local server: %s (%d)", ANLSYS_LOCAL_SOCK,strerror(errno),errno);
+        merror("Unable to bind to socket '%s': (%d) %s.", ANLSYS_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
@@ -174,7 +174,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At syscom_main(): select(): %s", strerror(errno));
+                merror_exit("At asyscom_main(): select(): %s", strerror(errno));
             }
 
             continue;
@@ -185,7 +185,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("At syscom_main(): accept(): %s", strerror(errno));
+                merror("At asyscom_main(): accept(): %s", strerror(errno));
             }
 
             continue;
@@ -194,7 +194,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case -1:
-            merror("At syscom_main(): OS_RecvSecureTCP: %s", strerror(errno));
+            merror("At asyscom_main(): OS_RecvSecureTCP: %s", strerror(errno));
             break;
 
         case 0:
@@ -208,7 +208,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
             break;
 
         default:
-            length = syscom_dispatch(buffer, &response);
+            length = asyscom_dispatch(buffer, &response);
             OS_SendSecureTCP(peer, length, response);
             free(response);
             close(peer);

@@ -411,14 +411,37 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
     struct timeval timeout = {0, 1000};
     int size = strlen(wazuhdb_query);
     int retval = -2;
-    static time_t last_attempt = 0;
-    time_t mtime;
+    int attempts;
 
     // Connect to socket if disconnected
     if (sdb->socket < 0) {
-        if (mtime = time(NULL), mtime >= last_attempt + 10) {
+        for (attempts = 1; attempts <= FIM_MAX_WAZUH_DB_ATTEMPS && (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
+            switch (errno) {
+            case ENOENT:
+                mtinfo(ARGV0, "FIM decoder: Cannot find '%s'. Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, attempts);
+                break;
+            default:
+                mtinfo(ARGV0, "FIM decoder: Cannot connect to '%s': %s (%d). Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, strerror(errno), errno, attempts);
+            }
+            sleep(attempts);
+        }
+
+        if (sdb->socket < 0) {
+            mterror(ARGV0, "FIM decoder: Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
+            return -2;
+        }
+    }
+
+    // Send query to Wazuh DB
+    if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query) != 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            mterror(ARGV0, "FIM decoder: database socket is full");
+        } else if (errno == EPIPE) {
+            // Retry to connect
+            mterror(ARGV0, "FIM decoder: Connection with wazuh-db lost. Reconnecting.");
+            close(sdb->socket);
+
             if (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sdb->socket < 0) {
-                last_attempt = mtime;
                 switch (errno) {
                 case ENOENT:
                     mterror(ARGV0, "FIM decoder: Cannot find '%s'. Please check that Wazuh DB is running.", WDB_LOCAL_SOCK);
@@ -428,44 +451,11 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
                 }
                 return (-2);
             }
-        } else {
-            // Return silently
-            return (-1);
-        }
-    }
 
-    // Send query to Wazuh DB
-    if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query) != 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            mterror(ARGV0, "FIM decoder: database socket is full");
-        } else if (errno == EPIPE) {
-            if (mtime = time(NULL), mtime >= last_attempt + 10) {
-                // Retry to connect
-                mterror(ARGV0, "FIM decoder: Connection with wazuh-db lost. Reconnecting.");
-                close(sdb->socket);
-
-                if (sdb->socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144), sdb->socket < 0) {
-                    last_attempt = mtime;
-                    switch (errno) {
-                    case ENOENT:
-                        mterror(ARGV0, "FIM decoder: Cannot find '%s'. Please check that Wazuh DB is running.", WDB_LOCAL_SOCK);
-                        break;
-                    default:
-                        mterror(ARGV0, "FIM decoder: Cannot connect to '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
-                    }
-                    return (-2);
-                }
-
-                if (!OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
-                    last_attempt = mtime;
-                    mterror(ARGV0, "FIM decoder: in send reattempt (%d) '%s'.", errno, strerror(errno));
-                    return (-2);
-                }
-            } else {
-                // Return silently
-                return (-1);
+            if (!OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
+                mterror(ARGV0, "FIM decoder: in send reattempt (%d) '%s'.", errno, strerror(errno));
+                return (-2);
             }
-
         } else {
             mterror(ARGV0, "FIM decoder: in send (%d) '%s'.", errno, strerror(errno));
         }

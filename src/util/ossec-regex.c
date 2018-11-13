@@ -87,5 +87,9 @@ int main(int argc, char **argv)
         w_FreeArray(regex.d_sub_strings);
         free(string);
     }
+
+    OSRegex_FreePattern(&regex);
+    OSMatch_FreePattern(&matcher);
+
     return (0);
 }
