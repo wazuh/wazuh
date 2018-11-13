@@ -169,49 +169,18 @@ ID: 80200 - 80499
 
     <!-- AWS Config -->
     <!-- Documentation: https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html -->
-
-    <!-- AWS Config generic -->
     <rule id="80450" level="0">
         <decoded_as>json</decoded_as>
         <field name="aws.source">config</field>
-        <description>AWS Config</description>
+        <description>AWS Config alert</description>
     </rule>
 
-    <!-- ConfigHistory vs ConfigSnapshot -->
-    <rule id="80451" level="0">
+	<rule id="80451" level="3">
+        <decoded_as>json</decoded_as>
         <if_sid>80450</if_sid>
-        <field name="aws.log_info.log_file">\.+ConfigHistory</field>
-        <description>AWS Config - History</description>
-        <group>aws_config_history,</group>
-    </rule>
-
-    <rule id="80452" level="0">
-        <if_sid>80450</if_sid>
-        <field name="aws.log_info.log_file">\.+ConfigSnapshot</field>
-        <description>AWS Config - Snapshot</description>
-        <group>aws_config_snapshot,</group>
-    </rule>
-
-    <!-- Config history -->
-    <rule id="80453" level="3">
-        <if_sid>80451</if_sid>
-        <description>AWS Config - History [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
-        <group>aws_config_history,</group>
-    </rule>
-
-    <!-- Config Snapshot -->
-    <rule id="80475" level="3">
-        <if_sid>80452</if_sid>
-        <description>AWS Config - Snapshot [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
-        <group>aws_config_snapshot,</group>
-    </rule>
-
-    <rule id="80476" level="6">
-        <if_sid>80475</if_sid>
-        <field name="aws.configuration.complianceType">\.+</field>
-        <description>AWS Config - Snapshot Compliance [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)] [$(aws.configuration.configRuleList.configRuleName)]: $(aws.resourceId) ($(aws.configurationItemStatus)) $(aws.configuration.complianceType)</description>
-        <group>aws_config_snapshot,aws_config_snapshot_compliance,</group>
-    </rule>
+		<field name="aws.configuration.complianceType">NON_COMPLIANT</field>
+		<description>Compliance Type: $(aws.configuration.complianceType) - Resource ID: $(resourceId) - Rule ID: $(aws.configuration.configRuleList.configRuleId) - Rule name: $(aws.configuration.configRuleList.configRuleName)</description>
+	</rule>
 
     <!-- AWS Trusted Advisor -->
     <!-- Documentation: https://docs.aws.amazon.com/awssupport/latest/user/trustedadvisor.html -->
@@ -242,5 +211,14 @@ ID: 80200 - 80499
         <description>AWS Trusted Advisor - Status: $(aws.status) [$(aws.check-name)] [$(aws.uuid)]</description>
         <group>aws_trusted_advisor, aws_trusted_advisor_ok,</group>
     </rule>
-  
+
+    <!-- AWS KMS (Key Management Service) -->
+    <!-- Documentation: https://docs.aws.amazon.com/kms/latest/developerguide/overview.html -->
+    <rule id="80490" level="3">
+        <if_sid>80201</if_sid>
+        <field name="aws.source">kms</field>
+        <description>AWS KMS - Event: $(aws.eventName) [$(aws.eventID)]</description>
+        <group>aws_kms,</group>
+    </rule>
+
 </group>
