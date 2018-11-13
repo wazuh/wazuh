@@ -190,10 +190,6 @@ class AWSBucket:
         :param prefix: Prefix to filter files in bucket
         :param delete_file: Wether to delete an already processed file from a bucket or not
         """
-        ## temporal
-        self.access_key = access_key
-        self.secret_key = secret_key
-        ##
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
@@ -719,16 +715,48 @@ class AWSCustomBucket(AWSBucket):
         self.db_maintenance('', self.bucket)
 
 
-class AWSInspector(AWSBucket):
+class AWSInspector:
 
-    def __init__(self, *args):
-        AWSBucket.__init__(self, *args)
-        self.session = boto3.session.Session(aws_access_key_id=self.access_key, aws_secret_access_key=self.secret_key)
+    def __init__(self, **kwargs):
+        self.session = boto3.session.Session(aws_access_key_id=kwargs['access_key'], aws_secret_access_key=kwargs['secret_key'])
         self.client = boto3.client('inspector')
         self.get_alerts()
         ### crear nueva BD?
         ### conectar a la BD 
         ### procesar todas las alertas
+        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
+        self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
+        self.msg_header = "1:Wazuh-AWS:"
+        self.legacy_db_table_name = 'log_progress'
+        self.db_table_name = 'trail_progress'
+        self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
+        self.db_connector = sqlite3.connect(self.db_path)
+
+    def send_msg(self, msg):
+        """
+        Sends an AWS event to the Wazuh Queue
+
+        :param msg: JSON message to be sent.
+        """
+        try:
+            json_msg = json.dumps(msg)
+            debug(json_msg, 3)
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            s.connect(self.wazuh_queue)
+            s.send("{header}{msg}".format(header=self.msg_header,
+                                          msg=json_msg).encode())
+            s.close()
+        except socket.error as e:
+            if e.errno == 111:
+                print('ERROR: Wazuh must be running.')
+                sys.exit(11)
+            else:
+                print("ERROR: Error sending message to wazuh: {}".format(e))
+                sys.exit(13)
+        except Exception as e:
+            print("ERROR: Error sending message to wazuh: {}".format(e))
+            sys.exit(13)
 
     def reformat_msg(self, event):  ### quitar!
         debug('++ Reformat message', 3)
@@ -882,13 +910,15 @@ def main(argv):
         print("ERROR: {}".format(err.message))
         sys.exit(12)
 
-    bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
-                         options.aws_profile, options.iam_role_arn, options.logBucket,
-                         options.only_logs_after, options.skip_on_error,
-                         options.aws_account_alias, max_queue_buffer,
-                         options.trail_prefix, options.deleteFile)
-    bucket.iter_bucket(options.aws_account_id, options.regions)
-
+    if options.type.lower() != 'inspector':
+        bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
+                            options.aws_profile, options.iam_role_arn, options.logBucket,
+                            options.only_logs_after, options.skip_on_error,
+                            options.aws_account_alias, max_queue_buffer,
+                            options.trail_prefix, options.deleteFile)
+        bucket.iter_bucket(options.aws_account_id, options.regions)
+    else:
+        bucket = bucket_type('access_key': options.access_key, 'secret_key': options.secret_key))
 
 if __name__ == '__main__':
     try:
