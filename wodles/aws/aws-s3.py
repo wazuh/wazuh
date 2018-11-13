@@ -869,6 +869,8 @@ def main(argv):
             bucket_type = AWSConfigBucket
         elif options.type.lower() == 'custom':
             bucket_type = AWSCustomBucket
+        elif options.type.lower() == 'inspector':
+            bucket_type = AWSInspector
         else:
             raise Exception("Invalid type of bucket")
     except Exception as err:
