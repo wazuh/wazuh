@@ -648,13 +648,18 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
 
             /* Attributes message */
             if (oldsum->attrs && newsum->attrs && oldsum->attrs != newsum->attrs) {
+                char *str_attr_before;
+                char *str_attr_after;
                 changes = 1;
-                os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->attrs_before);
-                os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->attrs_after);
-                get_attributes_str(lf->attrs_before, oldsum->attrs);
-                get_attributes_str(lf->attrs_after, newsum->attrs);
+                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_before);
+                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_after);
+                get_attributes_str(str_attr_before, oldsum->attrs, 1);
+                get_attributes_str(str_attr_after, newsum->attrs, 1);
                 wm_strcat(&lf->fields[SK_ATTRS].value, "attributes", ',');
-                snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", lf->attrs_before, lf->attrs_after);
+                snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", str_attr_before, str_attr_after);
+                lf->attrs_before = oldsum->attrs; 
+                free(str_attr_before);
+                free(str_attr_after);
             } else {
                 localsdb->attrs[0] = '\0';
             }

@@ -796,12 +796,6 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->sha256_after) {
         free(lf->sha256_after);
     }
-    if (lf->attrs_before) {
-        free(lf->attrs_before);
-    }
-    if (lf->attrs_after) {
-        free(lf->attrs_after);
-    }
     if (lf->size_before) {
         free(lf->size_before);
     }
@@ -1159,6 +1153,9 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     if(lf->sha256_after){
         os_strdup(lf->sha256_after,lf_cpy->sha256_after);
     }
+
+    lf_cpy->attrs_before = lf->attrs_before;
+    lf_cpy->attrs_after = lf->attrs_after;
 
     if(lf->size_before){
         os_strdup(lf->size_before,lf_cpy->size_before);

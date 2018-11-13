@@ -23,7 +23,6 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_mtime;
     char *c_inode;
     char *attrs;
-    char *tag;
     int retval = 0;
 
     if (c_sum[0] == '-' && c_sum[1] == '1') {
@@ -82,15 +81,10 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             if ((sum->sha256 = strchr(c_inode, ':'))) {
                 *(sum->sha256++) = '\0';
 
-                /* Look for a defined tag */
                 if (sum->sha256) {
-                    if (tag = strchr(sum->sha256, ':'), tag) {
-                        *(tag++) = '\0';
-                        sum->tag = tag;
-                        if ((attrs = strchr(sum->sha256, ':'))) {
-                            *(attrs++) = '\0';
-                            sum->attrs = strtoul(attrs, NULL, 10);
-                        }
+                    if (attrs = strchr(sum->sha256, ':'), attrs) {
+                        *(attrs++) = '\0';
+                        sum->attrs = strtoul(attrs, NULL, 10);
                     }
                 }
 
@@ -276,6 +270,12 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
     }
 
+    if(sum->attrs) {
+        lf->attrs_after = sum->attrs;
+        os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->fields[SK_ATTRS].value);
+        get_attributes_str(lf->fields[SK_ATTRS].value, lf->attrs_after, 1);
+    }
+
     if(sum->wdata.user_id) {
         os_strdup(sum->wdata.user_id, lf->user_id);
         os_strdup(sum->wdata.user_id, lf->fields[SK_USER_ID].value);
@@ -351,18 +351,19 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     snprintf(s_mtime, sizeof(s_mtime), "%ld", sum->mtime);
     snprintf(s_inode, sizeof(s_inode), "%ld", sum->inode);
 
-    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
+    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
             sum->size,
             s_perm,
             sum->uid,
             sum->gid,
             sum->md5,
             sum->sha1,
-            sum->uname? sum->uname : "",
-            sum->gname? sum->gname : "",
-            sum->mtime? s_mtime : "",
-            sum->inode? s_inode : "",
-            sum->sha256? sum->sha256 : "",
+            sum->uname ? sum->uname : "",
+            sum->gname ? sum->gname : "",
+            sum->mtime ? s_mtime : "",
+            sum->inode ? s_inode : "",
+            sum->sha256 ? sum->sha256 : "",
+            sum->attrs ? sum->attrs : 0,
             sum->changes,
             sum->date_alert
     );
@@ -510,33 +511,124 @@ const char* get_group(int gid) {
     return group ? group->gr_name : "";
 }
 
-void get_attributes_str(char *str, unsigned int attrs) {
+void get_attributes_str(char *str, unsigned int attrs, char seq) {
     size_t size;
 
-    size = snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
-                    attrs & FILE_ATTRIBUTE_ARCHIVE ? "ARCHIVE ," : "",
-                    attrs & FILE_ATTRIBUTE_COMPRESSED ? "COMPRESSED ," : "",
-                    attrs & FILE_ATTRIBUTE_DEVICE ? "DEVICE ," : "",
-                    attrs & FILE_ATTRIBUTE_DIRECTORY ? "DIRECTORY ," : "",
-                    attrs & FILE_ATTRIBUTE_ENCRYPTED ? "ENCRYPTED ," : "",
-                    attrs & FILE_ATTRIBUTE_HIDDEN ? "HIDDEN ," : "",
-                    attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "INTEGRITY_STREAM ," : "",
-                    attrs & FILE_ATTRIBUTE_NORMAL ? "NORMAL ," : "",
-                    attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "NOT_CONTENT_INDEXED ," : "",
-                    attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "NO_SCRUB_DATA ," : "",
-                    attrs & FILE_ATTRIBUTE_OFFLINE ? "OFFLINE ," : "",
-                    attrs & FILE_ATTRIBUTE_READONLY ? "READONLY ," : "",
-                    attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "RECALL_ON_DATA_ACCESS ," : "",
-                    attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "RECALL_ON_OPEN ," : "",
-                    attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "REPARSE_POINT ," : "",
-                    attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "SPARSE_FILE ," : "",
-                    attrs & FILE_ATTRIBUTE_SYSTEM ? "SYSTEM ," : "",
-                    attrs & FILE_ATTRIBUTE_TEMPORARY ? "TEMPORARY ," : "",
-                    attrs & FILE_ATTRIBUTE_VIRTUAL ? "VIRTUAL ," : ""
-    );
-    if (size > 1) {
-        str[size - 2] = '\0';
+    if (seq) {
+        size = snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                        attrs & FILE_ATTRIBUTE_ARCHIVE ? "ARCHIVE," : "",
+                        attrs & FILE_ATTRIBUTE_COMPRESSED ? "COMPRESSED," : "",
+                        attrs & FILE_ATTRIBUTE_DEVICE ? "DEVICE," : "",
+                        attrs & FILE_ATTRIBUTE_DIRECTORY ? "DIRECTORY," : "",
+                        attrs & FILE_ATTRIBUTE_ENCRYPTED ? "ENCRYPTED," : "",
+                        attrs & FILE_ATTRIBUTE_HIDDEN ? "HIDDEN," : "",
+                        attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "INTEGRITY_STREAM," : "",
+                        attrs & FILE_ATTRIBUTE_NORMAL ? "NORMAL," : "",
+                        attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "NOT_CONTENT_INDEXED," : "",
+                        attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "NO_SCRUB_DATA," : "",
+                        attrs & FILE_ATTRIBUTE_OFFLINE ? "OFFLINE," : "",
+                        attrs & FILE_ATTRIBUTE_READONLY ? "READONLY," : "",
+                        attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "RECALL_ON_DATA_ACCESS," : "",
+                        attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "RECALL_ON_OPEN," : "",
+                        attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "REPARSE_POINT," : "",
+                        attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "SPARSE_FILE," : "",
+                        attrs & FILE_ATTRIBUTE_SYSTEM ? "SYSTEM," : "",
+                        attrs & FILE_ATTRIBUTE_TEMPORARY ? "TEMPORARY," : "",
+                        attrs & FILE_ATTRIBUTE_VIRTUAL ? "VIRTUAL," : ""
+        );
+        if (size > 1) {
+            str[size - 1] = '\0';
+        }
+    } else {
+        snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                attrs & FILE_ATTRIBUTE_ARCHIVE ? "  + ARCHIVE\n" : "",
+                attrs & FILE_ATTRIBUTE_COMPRESSED ? "  + COMPRESSED\n" : "",
+                attrs & FILE_ATTRIBUTE_DEVICE ? "  + DEVICE\n" : "",
+                attrs & FILE_ATTRIBUTE_DIRECTORY ? "  + DIRECTORY\n" : "",
+                attrs & FILE_ATTRIBUTE_ENCRYPTED ? "  + ENCRYPTED\n" : "",
+                attrs & FILE_ATTRIBUTE_HIDDEN ? "  + HIDDEN\n" : "",
+                attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "  + INTEGRITY_STREAM\n" : "",
+                attrs & FILE_ATTRIBUTE_NORMAL ? "  + NORMAL\n" : "",
+                attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "  + NOT_CONTENT_INDEXED\n" : "",
+                attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "  + NO_SCRUB_DATA\n" : "",
+                attrs & FILE_ATTRIBUTE_OFFLINE ? "  + OFFLINE\n" : "",
+                attrs & FILE_ATTRIBUTE_READONLY ? "  + READONLY\n" : "",
+                attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "  + RECALL_ON_DATA_ACCESS\n" : "",
+                attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "  + RECALL_ON_OPEN\n" : "",
+                attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "  + REPARSE_POINT\n" : "",
+                attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "  + SPARSE_FILE\n" : "",
+                attrs & FILE_ATTRIBUTE_SYSTEM ? "  + SYSTEM\n" : "",
+                attrs & FILE_ATTRIBUTE_TEMPORARY ? "  + TEMPORARY\n" : "",
+                attrs & FILE_ATTRIBUTE_VIRTUAL ? "  + VIRTUAL\n" : ""
+        );
     }
+}
+
+cJSON *attrs_to_array(unsigned int attributes) {
+    cJSON *ab_array;
+
+    if (ab_array = cJSON_CreateArray(), !ab_array) {
+        return NULL;
+    }
+
+    if (attributes & FILE_ATTRIBUTE_ARCHIVE) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ARCHIVE"));
+    }
+    if (attributes & FILE_ATTRIBUTE_COMPRESSED) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("COMPRESSED"));
+    }
+    if (attributes & FILE_ATTRIBUTE_DEVICE) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DEVICE"));
+    }
+    if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DIRECTORY"));
+    }
+    if (attributes & FILE_ATTRIBUTE_ENCRYPTED) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ENCRYPTED"));
+    }
+    if (attributes & FILE_ATTRIBUTE_HIDDEN) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("HIDDEN"));
+    }
+    if (attributes & FILE_ATTRIBUTE_INTEGRITY_STREAM) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("INTEGRITY_STREAM"));
+    }
+    if (attributes & FILE_ATTRIBUTE_NORMAL) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NORMAL"));
+    }
+    if (attributes & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NOT_CONTENT_INDEXED"));
+    }
+    if (attributes & FILE_ATTRIBUTE_NO_SCRUB_DATA) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NO_SCRUB_DATA"));
+    }
+    if (attributes & FILE_ATTRIBUTE_OFFLINE) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("OFFLINE"));
+    }
+    if (attributes & FILE_ATTRIBUTE_READONLY) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("READONLY"));
+    }
+    if (attributes & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_DATA_ACCESS"));
+    }
+    if (attributes & FILE_ATTRIBUTE_RECALL_ON_OPEN) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_OPEN"));
+    }
+    if (attributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("REPARSE_POINT"));
+    }
+    if (attributes & FILE_ATTRIBUTE_SPARSE_FILE) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SPARSE_FILE"));
+    }
+    if (attributes & FILE_ATTRIBUTE_SYSTEM) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SYSTEM"));
+    }
+    if (attributes & FILE_ATTRIBUTE_TEMPORARY) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("TEMPORARY"));
+    }
+    if (attributes & FILE_ATTRIBUTE_VIRTUAL) {
+        cJSON_AddItemToArray(ab_array, cJSON_CreateString("VIRTUAL"));
+    }
+    return ab_array;
 }
 
 #else

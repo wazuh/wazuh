@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "log.h"
+#include "syscheck_op.h"
 #include "alerts.h"
 #include "getloglocation.h"
 #include "rules.h"
@@ -226,10 +227,12 @@ void OS_LogOutput(Eventinfo *lf)
             }
         }
 
-        if (lf->attrs_after) {
-            if (strcmp(lf->attrs_after, "xxx") != 0 && strcmp(lf->attrs_after, "") != 0) {
-                printf(" - File attributes: %s\n", lf->attrs_after);
-            }
+        if (lf->attrs_after != 0) {
+            char *attributes_list;
+            os_calloc(OS_SIZE_256 + 1, sizeof(char), attributes_list);
+            get_attributes_str(attributes_list, lf->attrs_after, 0);
+            printf(" - File attributes: \n%s", attributes_list);
+            free(attributes_list);
         }
     }
 
@@ -395,10 +398,12 @@ void OS_Log(Eventinfo *lf)
             }
         }
 
-        if (lf->attrs_after) {
-            if (strcmp(lf->attrs_after, "xxx") != 0 && strcmp(lf->attrs_after, "") != 0) {
-                fprintf(_aflog, " - File attributes: %s\n", lf->attrs_after);
-            }
+        if (lf->attrs_after != 0) {
+            char *attributes_list;
+            os_calloc(OS_SIZE_256 + 1, sizeof(char), attributes_list);
+            get_attributes_str(attributes_list, lf->attrs_after, 0);
+            fprintf(_aflog, " - File attributes: \n%s", attributes_list);
+            free(attributes_list);
         }
     }
 

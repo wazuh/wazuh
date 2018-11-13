@@ -173,7 +173,8 @@ void normalize_path(char *path);
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
 const char* get_group(int gid);
-void get_attributes_str(char *str, unsigned int attrs);
+void get_attributes_str(char *str, unsigned int attrs, char seq);
+cJSON *attrs_to_array(unsigned int attributes);
 
 #else
 

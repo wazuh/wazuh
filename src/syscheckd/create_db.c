@@ -535,7 +535,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
             snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s %s%s%s",
                 str_size,
-                permissions,
+                str_perm,
                 str_owner,
                 str_group,
                 opts & CHECK_MD5SUM ? mf_sum : "",

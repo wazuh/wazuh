@@ -10,6 +10,7 @@
 #include "to_json.h"
 #include "json_extended.h"
 #include "shared.h"
+#include "syscheck_op.h"
 #include "rules.h"
 #include "cJSON.h"
 #include "config.h"
@@ -232,13 +233,23 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             }
         }
         if(lf->attrs_before) {
-            if (strcmp(lf->attrs_before, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "attrs_before", lf->attrs_before);
+            if (lf->attrs_before != 0) {
+                cJSON *old_attrs;
+                if (old_attrs = attrs_to_array(lf->attrs_before), old_attrs) {
+                    cJSON_AddItemToObject(file_diff, "attrs_before", old_attrs);
+                } else {
+                    merror("The array of old attributes could not be created.");
+                }
             }
         }
         if(lf->attrs_after) {
-            if (strcmp(lf->attrs_after, "") != 0) {
-                cJSON_AddStringToObject(file_diff, "attrs_after", lf->attrs_after);
+            if (lf->attrs_after != 0) {
+                cJSON *new_attrs;
+                if (new_attrs = attrs_to_array(lf->attrs_after), new_attrs) {
+                    cJSON_AddItemToObject(file_diff, "attrs_after", new_attrs);
+                } else {
+                    merror("The array of new attributes could not be created.");
+                }
             }
         }
         if(lf->uname_before) {
