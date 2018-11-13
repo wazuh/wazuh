@@ -172,7 +172,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 // type is an attribute of the bucket tag
                 if (!strcmp(*nodes[i]->attributes, XML_BUCKET_TYPE)) {
                     if (!strcmp(*nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CONFIG_BUCKET_TYPE)
-                        || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE || !strcmp(*nodes[i]->values, INSPECTOR_TYPE)) {
+                        || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE) || !strcmp(*nodes[i]->values, INSPECTOR_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
                         mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE,
