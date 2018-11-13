@@ -5,7 +5,7 @@
 # September 28, 2018.
 # This program is a free software, you can redistribute it
 # and/or modify it under the terms of GPLv2.
-# Revision 11/12/2018
+# Revision 11/13/2018
 
 import sys
 from getopt import getopt, GetoptError
@@ -70,9 +70,11 @@ def _fim_decode(fline):
     timestamp = None
     path = None
     readed = fline
-    fline = fline[3:-1].split(b'!')
+    fline = fline[3:-1].split(b' !')
     if len(fline) == 2:
-        fim = fline[0][:-1]
+        fim = fline[0]
+        # Delete invalid content "!:::::::"
+        fim = fim.split(b'!')[0]
         parsed = fline[1].split(b' ', 1)
         if len(parsed) == 2:
             timestamp = parsed[0]
