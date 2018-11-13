@@ -761,6 +761,7 @@ InstallCommon(){
     fi
 
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
+  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/groups
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
@@ -883,6 +884,10 @@ TransferShared() {
     rm -f ${PREFIX}/etc/shared/merged.mg
     find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${PREFIX}/backup/shared \;
     find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${PREFIX}/etc/shared/default \;
+
+    rm -f ${PREFIX}/var/groups/merged.mg
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${PREFIX}/backup/shared \;
+    find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${PREFIX}/var/groups/default \;
 }
 
 InstallServer(){
@@ -894,8 +899,11 @@ InstallServer(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/cluster
 
     ${INSTALL} -d -m 760 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
-    ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
+    # ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
+    ln -s ${PREFIX}/var/groups/default ${PREFIX}/etc/shared/default
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
+    ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/var/groups/default
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
 
     TransferShared
 
@@ -913,12 +921,14 @@ InstallServer(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
 
     ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/default
+    ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/var/groups/default
 
-    if [ ! -f ${PREFIX}/etc/shared/default/agent.conf ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
+    if [ ! -f ${PREFIX}/var/groups/default/agent.conf ]; then
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/var/groups/default
     fi
 
-    if [ ! -f ${PREFIX}/etc/shared/agent-template.conf ]; then
+    if [ ! -f ${PREFIX}/var/groups/agent-template.conf ]; then
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/var/groups/agent-template.conf
         ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/agent-template.conf
     fi
 
