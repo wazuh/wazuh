@@ -2143,6 +2143,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                             < t_currently_rule->ignore_time) {
                     if (t_currently_rule->prev_rule) {
                         t_currently_rule = (RuleInfo*)t_currently_rule->prev_rule;
+                        w_FreeArray(lf->last_events);
                     } else {
                         break;
                     }
