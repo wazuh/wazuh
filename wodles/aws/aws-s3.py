@@ -44,6 +44,7 @@
 #   9 - Failed to parse file
 #   10 - Failed to execute DB cleanup
 #   11 - Unable to connect to Wazuh
+#   12 - Invalid type of bucket
 
 import signal
 import sys
@@ -291,7 +292,14 @@ class AWSBucket:
                 raise e
 
     def migrate_legacy_table(self):
-        raise NotImplementedError
+        for row in filter(lambda x: x[0] != '', self.db_connector.execute(sql_select_migrate_legacy)):
+            try:
+                aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
+                self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
+            except Exception as e:
+                debug("++ Error parsing log file name ({}): {}".format(row[0], e), 1)
+        # rename log_progress table to legacy_log_progress
+        self.db_connector.execute(sql_rename_migrate_legacy)
 
     def create_table(self):
         try:
@@ -414,7 +422,6 @@ class AWSBucket:
         
         return event
 
-
     def decompress_file(self, log_key):
         def decompress_gzip(raw_object):
             # decompress gzip file in text mode.
@@ -445,28 +452,7 @@ class AWSBucket:
         :param log_key: name of the log file
         :return: list of events in json format.
         """
-
-        def json_event_generator(data):
-            while data:
-                json_data, json_index = decoder.raw_decode(data)
-                data = data[json_index:]
-                yield json_data
-
-        with self.decompress_file(log_key=log_key) as f:
-            if '.json' in log_key:
-                json_file = json.load(f)
-                return None if 'Records' not in json_file else [dict(x, source='cloudtrail') for x in
-                                                                json_file['Records']]
-            elif f.read(1) == '{':
-                decoder = json.JSONDecoder()
-                return [dict(event['detail'], source=event['source'].replace('aws.', '')) for event in
-                        json_event_generator('{' + f.read()) if 'detail' in event]
-            else:
-                fieldnames = (
-                "version", "account_id", "interface_id", "srcaddr", "dstaddr", "srcport", "dstport", "protocol",
-                "packets", "bytes", "start", "end", "action", "log_status")
-                tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
-                return [dict(x, source='vpc') for x in tsv_file]
+        raise NotImplementedError
 
     def get_log_file(self, aws_account_id, log_key):
         def exception_handler(error_txt, error_code):
@@ -519,9 +505,11 @@ class AWSBucket:
             if 'Contents' not in bucket_files:
                 debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                 return
+
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
+
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
                         debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -549,15 +537,16 @@ class AWSBucket:
             sys.exit(7)
 
 
-class AWSCloudtrailBucket(AWSBucket):
+class AWSLogsBucket(AWSBucket):
     """
-    Represents a bucket with cloudtrail logs
+    Abstract class for logs generated from services such as CloudTrail or Config
     """
 
     def get_full_prefix(self, account_id, account_region):
-        return '{trail_prefix}AWSLogs/{aws_account_id}/CloudTrail/{aws_region}/'.format(
+        return '{trail_prefix}AWSLogs/{aws_account_id}/{aws_service}/{aws_region}/'.format(
             trail_prefix=self.prefix,
             aws_account_id=account_id,
+            aws_service=self.service,
             aws_region=account_region)
 
     def get_creation_date(self, log_file):
@@ -579,30 +568,13 @@ class AWSCloudtrailBucket(AWSBucket):
         )
         return aws_region, aws_account_id, log_key
 
-    def migrate_legacy_table(self):
-        for row in filter(lambda x: x[0] != '', self.db_connector.execute(sql_select_migrate_legacy)):
-            try:
-                aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
-                self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
-            except Exception as e:
-                debug("++ Error parsing log file name: {}".format(row[0]), 1)
-
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
         alert_msg = AWSBucket.get_alert_msg(self, aws_account_id, log_key, event, error_msg)
         alert_msg['aws']['aws_account_id'] = aws_account_id
         return alert_msg
 
     def reformat_msg(self, event):
-        debug('++ Reformat message', 3)
-        AWSBucket.reformat_msg(self, event)
-        # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
-        # ES mapping expects for a dictionary, if the field is any other type (list or string)
-        # turn it into a dictionary
-        for field_to_cast in ['additionalEventData', 'responseElements', 'requestParameters']:
-            if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
-                event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
-
-        return event
+        raise NotImplementedError
 
     def find_account_ids(self):
         return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
@@ -612,12 +584,14 @@ class AWSCloudtrailBucket(AWSBucket):
                 ]
 
     def find_regions(self, account_id):
-        regions_prefix = '{trail_prefix}AWSLogs/{aws_account_id}/CloudTrail/'.format(
+        regions_prefix = '{trail_prefix}AWSLogs/{aws_account_id}/{aws_service}/'.format(
             trail_prefix=self.prefix,
-            aws_account_id=account_id)
+            aws_account_id=account_id,
+            aws_service=self.service)
         regions = self.client.list_objects_v2(Bucket=self.bucket,
                                               Prefix=regions_prefix,
                                               Delimiter='/')
+
         if 'CommonPrefixes' in regions:
             return [common_prefix['Prefix'].split('/')[-2] for common_prefix in regions['CommonPrefixes']]
         else:
@@ -639,11 +613,75 @@ class AWSCloudtrailBucket(AWSBucket):
                 self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id, aws_region)
 
+    def load_information_from_file(self, log_key):
+        with self.decompress_file(log_key=log_key) as f:
+            json_file = json.load(f)
+            return None if self.field_to_load not in json_file else [dict(x, source=self.service.lower()) for x in json_file[self.field_to_load]]
 
-class AWSFirehouseBucket(AWSBucket):
+
+class AWSCloudTrailBucket(AWSLogsBucket):
+    """
+    Represents a bucket with AWS CloudTrail logs
+    """
+
+    def __init__(self, *args):
+        AWSLogsBucket.__init__(self, *args)
+        self.service = 'CloudTrail'
+        self.field_to_load = 'Records'
+
+    def reformat_msg(self, event):
+        debug('++ Reformat message', 3)
+        AWSBucket.reformat_msg(self, event)
+        # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
+        # ES mapping expects for a dictionary, if the field is any other type (list or string)
+        # turn it into a dictionary
+        for field_to_cast in ['additionalEventData', 'responseElements', 'requestParameters']:
+            if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
+                event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
+
+        return event
+
+
+class AWSConfigBucket(AWSLogsBucket):
+    """
+    Represents a bucket with AWS Config logs
+    """
+
+    def __init__(self, *args):
+        AWSLogsBucket.__init__(self, *args)
+        self.service = 'Config'
+        self.field_to_load = 'configurationItems'
+
+    def reformat_msg(self, event):
+        debug('++ Reformat message', 3)
+        AWSBucket.reformat_msg(self, event)
+
+        return event
+
+
+class AWSCustomBucket(AWSBucket):
     def __init__(self, *args):
         AWSBucket.__init__(self, *args)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
+
+    def load_information_from_file(self, log_key):
+        def json_event_generator(data):
+            while data:
+                json_data, json_index = decoder.raw_decode(data)
+                data = data[json_index:]
+                yield json_data
+
+        with self.decompress_file(log_key=log_key) as f:
+            if f.read(1) == '{':
+                decoder = json.JSONDecoder()
+                return [dict(event['detail'], source=event['source'].replace('aws.', '')) for event in
+                        json_event_generator('{' + f.read()) if 'detail' in event]
+            else:
+                fieldnames = (
+                "version", "account_id", "interface_id", "srcaddr", "dstaddr", "srcport", "dstport", "protocol",
+                "packets", "bytes", "start", "end", "action", "log_status")
+                tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+                return [dict(x, source='vpc') for x in tsv_file]
 
     def get_creation_date(self, log_file):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
@@ -652,10 +690,6 @@ class AWSFirehouseBucket(AWSBucket):
             return log_file['LastModified'].strftime('%Y%m%d')
         else:
             return int(name_regex.group(1).replace('-', ''))
-
-    def migrate_legacy_table(self):
-        # Firehouse events aren't legacy. No migration is needed.
-        debug("+++ Migrating firehouse events. Skipping...", 1)
 
     def get_full_prefix(self, account_id, account_region):
         return self.prefix
@@ -787,7 +821,20 @@ def main(argv):
         debug_level = int(options.debug)
         debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
 
-    bucket_type = AWSCloudtrailBucket if options.type.lower() == 'cloudtrail' else AWSFirehouseBucket
+    try:
+        if options.type.lower() == 'cloudtrail':
+            bucket_type = AWSCloudTrailBucket
+        elif options.type.lower() == 'config':
+            bucket_type = AWSConfigBucket
+        elif options.type.lower() == 'custom':
+            bucket_type = AWSCustomBucket
+        else:
+            raise Exception("Invalid type of bucket")
+    except Exception as err:
+        debug("+++ Error: {}".format(err.message), 2)
+        print("ERROR: {}".format(err.message))
+        sys.exit(12)
+
     bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
                          options.aws_profile, options.iam_role_arn, options.logBucket,
                          options.only_logs_after, options.skip_on_error,
