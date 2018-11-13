@@ -918,7 +918,7 @@ def main(argv):
                             options.trail_prefix, options.deleteFile)
         bucket.iter_bucket(options.aws_account_id, options.regions)
     else:
-        bucket = bucket_type('access_key': options.access_key, 'secret_key': options.secret_key))
+        bucket = bucket_type(access_key=options.access_key, secret_key=options.secret_key)
 
 if __name__ == '__main__':
     try:
