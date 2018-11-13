@@ -639,7 +639,7 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock) {
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
     keys->keyentries[i]->sock = sock;
-    return OSHash_Add_ex(keys->keyhash_sock, strsock, keys->keyentries[i]);
+    return OSHash_Set_ex(keys->keyhash_sock, strsock, keys->keyentries[i]);
 }
 
 // Delete socket number from keystore

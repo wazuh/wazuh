@@ -344,11 +344,11 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
         int r = 2;
-        keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
 
         /* We need to save the peerinfo if it is a control msg */
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
+        keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
         r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
 
@@ -357,7 +357,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             merror("Couldn't add TCP socket to keystore.");
             break;
         case 1:
-            mdebug2("TCP socket already in keystore.");
+            mdebug2("TCP socket %d already in keystore. Updating...", sock_client);
             break;
         default:
             ;
