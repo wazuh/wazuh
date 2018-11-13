@@ -1389,6 +1389,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
         while (child_node) {
             child_rule = OS_CheckIfRuleMatch(lf, child_node, rule_match);
             if (child_rule != NULL) {
+                if (!child_rule->prev_rule) {
+                    child_rule->prev_rule = rule;
+                }
                 return (child_rule);
             }
 
@@ -1408,6 +1411,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     rule->firedtimes++;
     lf->r_firedtimes = rule->firedtimes;
     w_mutex_unlock(&rule->mutex);
+
     return (rule); /* Matched */
 }
 
@@ -2133,11 +2137,15 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
                 /* If the current time - the time the rule was ignored
                     * is less than the time it should be ignored,
-                    * leave (do not alert again)
+                    * alert about the parent one instead
                     */
                 else if ((lf->generate_time - t_currently_rule->time_ignored)
                             < t_currently_rule->ignore_time) {
-                    break;
+                    if (t_currently_rule->prev_rule) {
+                        t_currently_rule = (RuleInfo*)t_currently_rule->prev_rule;
+                    } else {
+                        break;
+                    }
                 } else {
                     t_currently_rule->time_ignored = lf->generate_time;
                 }
