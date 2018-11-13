@@ -720,10 +720,6 @@ class AWSInspector:
     def __init__(self, **kwargs):
         self.session = boto3.session.Session(aws_access_key_id=kwargs['access_key'], aws_secret_access_key=kwargs['secret_key'])
         self.client = boto3.client('inspector')
-        self.get_alerts()
-        ### crear nueva BD?
-        ### conectar a la BD 
-        ### procesar todas las alertas
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
@@ -732,6 +728,7 @@ class AWSInspector:
         self.db_table_name = 'trail_progress'
         self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
         self.db_connector = sqlite3.connect(self.db_path)
+        self.get_alerts()
 
     def send_msg(self, msg):
         """
@@ -740,7 +737,7 @@ class AWSInspector:
         :param msg: JSON message to be sent.
         """
         try:
-            json_msg = json.dumps(msg)
+            json_msg = json.dumps(msg, default=str)
             debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
@@ -758,12 +755,6 @@ class AWSInspector:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
-    def reformat_msg(self, event):  ### quitar!
-        debug('++ Reformat message', 3)
-        AWSBucket.reformat_msg(self, event)
-
-        return event
-
     def get_describe_findings(self, arn_list):
         # describe_findings only can process 100 elements at once
         num_iterations = len(arn_list)//100 + 1
@@ -771,8 +762,7 @@ class AWSInspector:
             splitted_arn_list = arn_list[i:i+100]
             response = self.client.describe_findings(findingArns=splitted_arn_list)['findings']
             for elem in response:
-                self.send_msg(json.dumps(elem, default=str))  ## add default=str into send_msg function!
-                
+                self.send_msg(elem)
 
     def get_list_findings(self, max=100):
         max_results = 100 if max > 100 else max
@@ -783,7 +773,7 @@ class AWSInspector:
 
     def get_alerts(self):
         list_findings = self.get_list_findings(max=100)
-        print("list findings -> " + str(list_findings))
+        #print("list findings -> " + str(list_findings))
         self.get_describe_findings(list_findings)
 
 
