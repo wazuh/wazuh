@@ -718,8 +718,8 @@ class AWSCustomBucket(AWSBucket):
 class AWSInspector:
 
     def __init__(self, **kwargs):
-        self.session = boto3.session.Session(aws_access_key_id=kwargs['access_key'], aws_secret_access_key=kwargs['secret_key'])
-        self.client = boto3.client('inspector')
+        ## it is necessary to pass region_name as argument
+        self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=kwargs['access_key'], aws_secret_access_key=kwargs['secret_key'])
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
@@ -737,7 +737,8 @@ class AWSInspector:
         :param msg: JSON message to be sent.
         """
         try:
-            json_msg = json.dumps(msg, default=str)
+            formatted_msg = {'integration': 'aws', 'aws': msg}
+            json_msg = json.dumps(formatted_msg, default=str)
             debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
