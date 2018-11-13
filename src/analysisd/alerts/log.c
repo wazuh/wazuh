@@ -125,7 +125,7 @@ void OS_LogOutput(Eventinfo *lf)
     printf(
         "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
-        "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
+        "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
         (long int)lf->time.tv_sec,
         __crt_ftell,
         lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
@@ -174,7 +174,10 @@ void OS_LogOutput(Eventinfo *lf)
         lf->dstport == NULL ? "" : "\nDst Port: ",
         lf->dstport == NULL ? "" : lf->dstport,
 
-        lf->dstuser == NULL ? "" : "\nUser: ",
+        lf->srcuser == NULL ? "" : "\nSrc User: ",
+        lf->srcuser == NULL ? "" : lf->srcuser,
+
+        lf->dstuser == NULL ? "" : "\nDst User: ",
         lf->dstuser == NULL ? "" : lf->dstuser,
 
         lf->generated_rule->alert_opts & NO_FULL_LOG ? "" : "\n",
@@ -291,7 +294,7 @@ void OS_Log(Eventinfo *lf)
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
-            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
+            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
             (long int)lf->time.tv_sec,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT ? " mail " : "",
@@ -339,7 +342,10 @@ void OS_Log(Eventinfo *lf)
             lf->dstport == NULL ? "" : "\nDst Port: ",
             lf->dstport == NULL ? "" : lf->dstport,
 
-            lf->dstuser == NULL ? "" : "\nUser: ",
+            lf->srcuser == NULL ? "" : "\nSrc User: ",
+            lf->srcuser == NULL ? "" : lf->srcuser,
+
+            lf->dstuser == NULL ? "" : "\nDst User: ",
             lf->dstuser == NULL ? "" : lf->dstuser,
             "\n",
             lf->full_log);
