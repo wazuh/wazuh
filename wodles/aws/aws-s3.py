@@ -660,6 +660,7 @@ class AWSConfigBucket(AWSLogsBucket):
 
 
 class AWSCustomBucket(AWSBucket):
+
     def __init__(self, *args):
         AWSBucket.__init__(self, *args)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
@@ -712,6 +713,46 @@ class AWSCustomBucket(AWSBucket):
         # would prevent to loose lots of logs from different buckets.
         self.iter_files_in_bucket('', self.bucket)
         self.db_maintenance('', self.bucket)
+
+
+class AWSInspector(AWSBucket):
+
+    def __init__(self, *args):
+        AWSBucket.__init__(self, *args)
+        self.session = boto3.session.Session(aws_access_key_id=self.access_key, aws_secret_access_key=self.secret_key)
+        self.client = boto3.client('inspector')
+        self.get_alerts()
+        ### crear nueva BD?
+        ### conectar a la BD 
+        ### procesar todas las alertas
+
+    def reformat_msg(self, event):
+        debug('++ Reformat message', 3)
+        AWSBucket.reformat_msg(self, event)
+
+        return event
+
+    def get_describe_findings(self, arn_list):
+        # describe_findings only can process 100 elements at once
+        num_iterations = len(arn_list)//100 + 1
+        for i in range(0, num_iterations):
+            splitted_arn_list = arn_list[i:i+100]
+            response = self.client.describe_findings(findingArns=splitted_arn_list)['findings']
+            for elem in response:
+                self.send_msg(json.dumps(elem, default=str))  ## add default=str into send_msg function!
+                
+
+    def get_list_findings(self, max=100):
+        max_results = 100 if max > 100 else max
+        list_findings = []
+        response = self.client.list_findings(maxResults=max_results)
+        list_findings.extend(response['findingArns'])
+        return list_findings
+
+    def get_alerts(self):
+        list_findings = self.get_list_findings(max=100)
+        print("list findings -> " + str(list_findings))
+        self.get_describe_findings(list_findings)
 
 
 ################################################################################
