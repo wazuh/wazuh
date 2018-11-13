@@ -476,6 +476,9 @@ char * parse_environment_labels(const wlabel_t label) {
           field = cJSON_Print(cJSON_GetObjectItem(os_info,"hostname"));
           cJSON_Delete(os_info);
         }
+        else{
+            mwarn("Unrecognized label '%s'", var);
+        }
 
 
         if (field) {
