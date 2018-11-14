@@ -179,7 +179,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char *buf;
     syscheck_node *s_node;
     struct stat statbuf;
-    char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
+    char str_size[50], str_mtime[50], str_inode[50];
     char *wd_sum = NULL;
     char *alert_msg = NULL;
     char *c_sum = NULL;
@@ -187,9 +187,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifdef WIN32
     const char *user = NULL;
     char *sid = NULL;
-    char permissions[OS_SIZE_20480 + 1];
+    char *str_perm = NULL;
 #else
-    char str_owner[50], str_group[50];
+    char str_owner[50], str_group[50], str_perm[50];
 #endif
 
     opts = syscheck.opts[dir_position];
@@ -308,12 +308,17 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
 
         // Get the file permissions
-        *permissions = '\0';
         if (opts & CHECK_PERM) {
-          int error;
-          if (error = w_get_permissions(file_name, permissions), error) {
-            merror("No se pudieron extraer permisos de la '%s'. Error: %d.", file_name, error);
-          }
+            int error;
+            char perm_unescaped[OS_SIZE_6144 + 1];
+            if (error = w_get_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+                merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
+            } else {
+                char *perm_esc;
+                perm_esc = wstr_replace(perm_unescaped, ":", "\\:");
+                str_perm = wstr_replace(perm_esc, "!", "\\!");
+                free(perm_esc);
+            }
         }
 #endif
 
@@ -330,12 +335,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
             } else {
                 *str_size = '\0';
-            }
-
-            if (opts & CHECK_PERM) {
-                sprintf(str_perm,"%d",(int)statbuf.st_mode);
-            } else {
-                *str_perm = '\0';
             }
 
             if (opts & CHECK_MTIME) {
@@ -363,7 +362,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_ATTRS ? '+' : '-',
                     opts & CHECK_SEECHANGES ? '+' : '-',
                     str_size,
-                    permissions,
+                    str_perm ? str_perm : "",
                     (opts & CHECK_OWNER) && sid ? sid : "",
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
@@ -461,12 +460,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 *str_size = '\0';
             }
 
-            if (opts & CHECK_PERM) {
-                sprintf(str_perm,"%d",(int)statbuf.st_mode);
-            } else {
-                *str_perm = '\0';
-            }
-
             if (opts & CHECK_MTIME) {
                 sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
             } else {
@@ -481,7 +474,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
             snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s %s%s%s",
                 str_size,
-                permissions,
+                str_perm ? str_perm : "",
                 (opts & CHECK_OWNER) && sid ? sid : "",
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
@@ -626,6 +619,7 @@ end:
     if (sid) {
         LocalFree(sid);
     }
+    free(str_perm);
 #endif
     return 0;
 }

@@ -180,7 +180,7 @@ cJSON *attrs_to_array(unsigned int attributes);
 
 const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
 unsigned int w_get_attrs(const char *file_path);
-int w_get_permissions(const char *file_path, char *permissions);
+int w_get_permissions(const char *file_path, char *permissions, int perm_size);
 const char *get_group(__attribute__((unused)) int gid);
 
 #endif

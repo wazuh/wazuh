@@ -313,13 +313,14 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
     syscheck_node *s_node;
-    char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
+    char str_size[50], str_mtime[50], str_inode[50];
 #ifdef WIN32
     unsigned int attributes = 0;
     char *sid = NULL;
+    char *str_perm = NULL;
     const char *user;
 #else
-    char str_owner[50], str_group[50];
+    char str_owner[50], str_group[50], str_perm[50];
 #endif
 
     /* Clean sums */
@@ -512,10 +513,17 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         sprintf(str_size, "%ld", (long)statbuf.st_size);
     }
 
-    if (perm == 0){
-        *str_perm = '\0';
-    } else {
-        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+    if (perm == 1) {
+        int error;
+        char perm_unescaped[OS_SIZE_6144 + 1];
+        if (error = w_get_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+            merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
+        } else {
+            char *perm_esc;
+            perm_esc = wstr_replace(perm_unescaped, ":", "\\:");
+            str_perm = wstr_replace(perm_esc, "!", "\\!");
+            free(perm_esc);
+        }
     }
 
     if (mtime == 0){
@@ -532,7 +540,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 
     snprintf(newsum, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u",
         str_size,
-        str_perm,
+        (str_perm) ? str_perm : "",
         (owner == 0) && sid ? "" : sid,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,

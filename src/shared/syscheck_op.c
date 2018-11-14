@@ -12,10 +12,137 @@
 
 #ifdef WIN32
 #include <sddl.h>
+int copy_ace_info(void *ace, char *perm, int perm_size);
+int w_get_account_info(SID *sid, char **account_name, char **account_domain);
+#else
+static char *unescape_whodata_sum(char *sum);
 #endif
 
-static char *unescape_whodata_sum(char *sum);
+int delete_target_file(const char *path) {
+    char full_path[PATH_MAX] = "\0";
+    snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
+#ifdef WIN32
+    char *windows_path = strchr(path, ':');
+    strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
+#else
+    strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
+#endif
+    if(rmdir_ex(full_path) == 0){
+        mdebug1("Deleting last-entry of file '%s'", full_path);
+        return(remove_empty_folders(full_path));
+    }
+    return 1;
+}
+
+int fim_find_child_depth(const char *parent, const char *child) {
+
+    int length_A = strlen(parent);
+    int length_B = strlen(child);
+
+    char* p_first = strdup(parent);
+    char *p_second = strdup(child);
+
+    char *diff_str;
+
+    if(parent[length_A - 1] == PATH_SEP){
+        p_first[length_A - 1] = '\0';
+    }
+
+    if(child[length_B - 1] == PATH_SEP){
+        p_second[length_B - 1] = '\0';
+    }
+
+
+#ifndef WIN32
+    if(strncmp(parent, child, length_A) == 0) {
+#else
+    if(strncasecmp(parent, child, length_A) == 0) {
+#endif
+        diff_str = p_second;
+        diff_str += length_A;
+    }
+#ifndef WIN32
+    else if(strncmp(child, parent, length_B) == 0) {
+#else
+    else if(strncasecmp(child, parent, length_B) == 0) {
+#endif
+        diff_str = p_first;
+        diff_str += length_B;
+    }
+    else{
+        os_free(p_first);
+        os_free(p_second);
+        return INT_MAX;
+    }
+
+    char *c;
+    int child_depth = 0;
+    c = strchr(diff_str, PATH_SEP);
+    while (c != NULL) {
+        child_depth++;
+        c = strchr(c + 1, PATH_SEP);
+    }
+
+    os_free(p_first);
+    os_free(p_second);
+    return child_depth;
+}
+
+void normalize_path(char * path) {
+    char *ptname = path;
+
+    if(ptname[1] == ':' && ((ptname[0] >= 'A' && ptname[0] <= 'Z') || (ptname[0] >= 'a' && ptname[0] <= 'z'))) {
+        /* Change forward slashes to backslashes on entry */
+        ptname = strchr(ptname, '/');
+        while (ptname) {
+            *ptname = '\\';
+            ptname++;
+
+            ptname = strchr(ptname, '/');
+        }
+    }
+}
+
+int remove_empty_folders(const char *path) {
+    const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
+    char DIFF_PATH[MAXPATHLEN] = DIFF_DIR_PATH;
+    strcat(DIFF_PATH, LOCALDIR);
+    const char *c;
+    char parent[PATH_MAX] = "\0";
+    char ** subdir;
+    int retval = 0;
+
+    // Get parent
+    c = strrchr(path, PATH_SEP);
+    if (c) {
+        memcpy(parent, path, c - path);
+        parent[c - path] = '\0';
+        // Don't delete above /local
+        if (strcmp(DIFF_PATH, parent) != 0) {
+            subdir = wreaddir(parent);
+            if (!(subdir && *subdir)) {
+                // Remove empty folder
+                mdebug1("Removing empty directory '%s'.", parent);
+                if (rmdir_ex(parent) != 0) {
+                    mwarn("Empty directory '%s' couldn't be deleted. ('%s')",
+                        parent, strerror(errno));
+                    retval = 1;
+                } else {
+                    // Get parent and remove it if it's empty
+                    retval = remove_empty_folders(parent);
+                }
+            }
+
+            free_strarray(subdir);
+        }
+    }
+
+    return retval;
+}
+
+#ifndef WIN32
+#ifndef CLIENT
 /* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
    or -1 on failure. */
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
@@ -371,135 +498,12 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     return r < (int)size ? 0 : -1;
 }
 
-int remove_empty_folders(const char *path) {
-    const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
-    char DIFF_PATH[MAXPATHLEN] = DIFF_DIR_PATH;
-    strcat(DIFF_PATH, LOCALDIR);
-    const char *c;
-    char parent[PATH_MAX] = "\0";
-    char ** subdir;
-    int retval = 0;
-
-    // Get parent
-    c = strrchr(path, PATH_SEP);
-    if (c) {
-        memcpy(parent, path, c - path);
-        parent[c - path] = '\0';
-        // Don't delete above /local
-        if (strcmp(DIFF_PATH, parent) != 0) {
-            subdir = wreaddir(parent);
-            if (!(subdir && *subdir)) {
-                // Remove empty folder
-                mdebug1("Removing empty directory '%s'.", parent);
-                if (rmdir_ex(parent) != 0) {
-                    mwarn("Empty directory '%s' couldn't be deleted. ('%s')",
-                        parent, strerror(errno));
-                    retval = 1;
-                } else {
-                    // Get parent and remove it if it's empty
-                    retval = remove_empty_folders(parent);
-                }
-            }
-
-            free_strarray(subdir);
-        }
-    }
-
-    return retval;
-}
-
-int delete_target_file(const char *path) {
-    char full_path[PATH_MAX] = "\0";
-    snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
-
-#ifdef WIN32
-    char *windows_path = strchr(path, ':');
-    strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
-#else
-    strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
-#endif
-    if(rmdir_ex(full_path) == 0){
-        mdebug1("Deleting last-entry of file '%s'", full_path);
-        return(remove_empty_folders(full_path));
-    }
-    return 1;
-}
-
 void sk_sum_clean(sk_sum_t * sum) {
     os_free(sum->wdata.user_name);
     os_free(sum->wdata.process_name);
 }
 
-int fim_find_child_depth(const char *parent, const char *child) {
-
-    int length_A = strlen(parent);
-    int length_B = strlen(child);
-
-    char* p_first = strdup(parent);
-    char *p_second = strdup(child);
-
-    char *diff_str;
-
-    if(parent[length_A - 1] == PATH_SEP){
-        p_first[length_A - 1] = '\0';
-    }
-
-    if(child[length_B - 1] == PATH_SEP){
-        p_second[length_B - 1] = '\0';
-    }
-
-
-#ifndef WIN32
-    if(strncmp(parent, child, length_A) == 0) {
-#else
-    if(strncasecmp(parent, child, length_A) == 0) {
 #endif
-        diff_str = p_second;
-        diff_str += length_A;
-    }
-#ifndef WIN32
-    else if(strncmp(child, parent, length_B) == 0) {
-#else
-    else if(strncasecmp(child, parent, length_B) == 0) {
-#endif
-        diff_str = p_first;
-        diff_str += length_B;
-    }
-    else{
-        os_free(p_first);
-        os_free(p_second);
-        return INT_MAX;
-    }
-
-    char *c;
-    int child_depth = 0;
-    c = strchr(diff_str, PATH_SEP);
-    while (c != NULL) {
-        child_depth++;
-        c = strchr(c + 1, PATH_SEP);
-    }
-
-    os_free(p_first);
-    os_free(p_second);
-    return child_depth;
-}
-
-void normalize_path(char * path) {
-    char *ptname = path;
-
-    if(ptname[1] == ':' && ((ptname[0] >= 'A' && ptname[0] <= 'Z') || (ptname[0] >= 'a' && ptname[0] <= 'z'))) {
-        /* Change forward slashes to backslashes on entry */
-        ptname = strchr(ptname, '/');
-        while (ptname) {
-            *ptname = '\\';
-            ptname++;
-
-            ptname = strchr(ptname, '/');
-        }
-    }
-}
-
-#ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
     struct passwd *user = getpwuid(uid);
@@ -742,12 +746,149 @@ end:
     return AcctName;
 }
 
-int w_get_permissions(const char *file_path, char *permissions) {
-  int retval = 0;
-  *permissions = '\0';
-  SECURITY_DESCRIPTOR *s_desc;
+int w_get_permissions(const char *file_path, char *permissions, int perm_size) {
+    int retval = 0;
+    int error;
+    unsigned int i;
+    SECURITY_DESCRIPTOR *s_desc = NULL;
+    ACL *f_acl = NULL;
+    void *f_ace;
+    int has_dacl, default_dacl;
+    unsigned long size = 0;
+    ACL_SIZE_INFORMATION acl_size;
+    char *perm_it = permissions;
 
-  return retval;
+    *permissions = '\0';
+
+    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, 0, 0, &size)) {
+        // We must have this error at this point
+        if (error = GetLastError(), error != ERROR_INSUFFICIENT_BUFFER) {
+            return GetLastError();
+        }
+    }
+
+    if (s_desc = HeapAlloc(GetProcessHeap(), 0, size), !s_desc) {
+        return GetLastError();
+    }
+
+    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, s_desc, size, &size)) {
+        retval = GetLastError();
+        goto end;
+    }
+
+    if (!GetSecurityDescriptorDacl(s_desc, &has_dacl, &f_acl, &default_dacl)) {
+        mdebug1("The DACL of the file could not be obtained.");
+        retval = GetLastError();
+        goto end;
+    }
+
+    if (!has_dacl) {
+        mdebug1("'%s' has no DACL, so no permits can be extracted.", file_path);
+        goto end;
+    }
+
+    if (!GetAclInformation(f_acl, &acl_size, sizeof(acl_size), AclSizeInformation)) {
+        mdebug1("No information could be obtained from the ACL.");
+        retval = GetLastError();
+        goto end;
+    }
+
+    for (i = 0; i < acl_size.AceCount; i++) {
+        int written;
+
+        if (!GetAce(f_acl, i, &f_ace)) {
+            mdebug1("ACE number %d could not be obtained.", i);
+            retval = -2;
+            *permissions = '\0';
+            goto end;
+        }
+        written = copy_ace_info(f_ace, perm_it, perm_size);
+        if (written > 0) {
+            perm_it += written;
+            perm_size -= written;
+            if (perm_size > 0) {
+                continue;
+            }
+        }
+        *permissions = '\0';
+        retval = -3;
+        mdebug1("The parameters of ACE number %d could not be extracted. %d bytes remaining.", i, perm_size);
+        goto end;
+    }
+
+    mdebug2("The ACL extracted from '%s' is [%s].", file_path, permissions);
+end:
+    HeapFree(GetProcessHeap(), 0, s_desc);
+    if (f_acl) {
+        HeapFree(GetProcessHeap(), 0, f_acl);
+    }
+    return retval;
+}
+
+int copy_ace_info(void *ace, char *perm, int perm_size) {
+    SID *sid;
+    char *account_name;
+    char *domain_name;
+    int mask;
+    int ace_type;
+    int written = 0;
+    int error;
+
+	if (((ACCESS_ALLOWED_ACE *)ace)->Header.AceType == ACCESS_ALLOWED_ACE_TYPE) {
+		ACCESS_ALLOWED_ACE *allowed_ace = (ACCESS_ALLOWED_ACE *)ace;
+		sid = (SID *)&allowed_ace->SidStart;
+		mask = allowed_ace->Mask;
+		ace_type = 0;
+	} else if (((ACCESS_DENIED_ACE *)ace)->Header.AceType == ACCESS_DENIED_ACE_TYPE) {
+		ACCESS_DENIED_ACE *denied_ace = (ACCESS_DENIED_ACE *)ace;
+		sid = (SID *)&denied_ace->SidStart;
+		mask = denied_ace->Mask;
+		ace_type = 1;
+	} else {
+        mdebug2("Invalid ACE type.");
+        return 0;
+    }
+
+    if (!IsValidSid(sid)) {
+        mdebug2("Invalid SID found in ACE.");
+		return 0;
+	}
+
+    if (error = w_get_account_info(sid, &account_name, &domain_name), error) {
+        mdebug2("No information could be extracted from the account linked to the SID. Error: %d.", error);
+        return 0;
+    }
+
+    if (written + 1 < perm_size) {
+        written = snprintf(perm, perm_size, "|%s,%d,%d", account_name, ace_type, mask);
+    }
+
+    return written;
+}
+
+int w_get_account_info(SID *sid, char **account_name, char **account_domain) {
+    SID_NAME_USE snu;
+    unsigned long a_name_size = 0;
+    unsigned long a_domain_size = 0;
+    int error;
+
+    if (error = LookupAccountSid(0, sid, NULL, &a_name_size, NULL, &a_domain_size, &snu), !error) {
+        // We must have this error at this point
+        if (error = GetLastError(), error != ERROR_INSUFFICIENT_BUFFER) {
+            return GetLastError();
+        }
+    }
+
+    os_calloc(a_name_size, sizeof(char), *account_name);
+    os_calloc(a_domain_size, sizeof(char), *account_domain);
+
+    if (error = LookupAccountSid(0, sid, *account_name, &a_name_size, *account_domain, &a_domain_size, &snu), !error) {
+        os_free(*account_name);
+        os_free(*account_domain);
+        return GetLastError();
+    }
+
+    return 0;
 }
 
 unsigned int w_get_attrs(const char *file_path) {

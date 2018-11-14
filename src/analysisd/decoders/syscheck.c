@@ -63,7 +63,6 @@ void fim_init(void) {
     fim_decoder->fields[SK_MD5] = "md5";
     fim_decoder->fields[SK_SHA1] = "sha1";
     fim_decoder->fields[SK_SHA256] = "sha256";
-    fim_decoder->fields[SK_ATTRS] = "attributes";
     fim_decoder->fields[SK_UNAME] = "uname";
     fim_decoder->fields[SK_GNAME] = "gname";
     fim_decoder->fields[SK_INODE] = "inode";
@@ -530,11 +529,15 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
                     char opstr[10];
                     char npstr[10];
+                    char *old_perm =  agent_file_perm(oldsum->perm);
+                    char *new_perm =  agent_file_perm(newsum->perm);
 
-                    strncpy(opstr, agent_file_perm(oldsum->perm), sizeof(opstr) - 1);
-                    strncpy(npstr, agent_file_perm(newsum->perm), sizeof(npstr) - 1);
+                    strncpy(opstr, old_perm, sizeof(opstr) - 1);
+                    strncpy(npstr, new_perm, sizeof(npstr) - 1);
+                    free(old_perm);
+                    free(new_perm);
+
                     opstr[9] = npstr[9] = '\0';
-
                     snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
                              "'%9.9s' to '%9.9s'\n", opstr, npstr);
 
@@ -645,24 +648,6 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             } else {
                 localsdb->inode[0] = '\0';
             }
-
-            /* Attributes message */
-            if (oldsum->attrs && newsum->attrs && oldsum->attrs != newsum->attrs) {
-                char *str_attr_before;
-                char *str_attr_after;
-                changes = 1;
-                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_before);
-                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_after);
-                get_attributes_str(str_attr_before, oldsum->attrs, 1);
-                get_attributes_str(str_attr_after, newsum->attrs, 1);
-                wm_strcat(&lf->fields[SK_ATTRS].value, "attributes", ',');
-                snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", str_attr_before, str_attr_after);
-                lf->attrs_before = oldsum->attrs; 
-                free(str_attr_before);
-                free(str_attr_after);
-            } else {
-                localsdb->attrs[0] = '\0';
-            }
             break;
         default:
             return (-1);
@@ -687,7 +672,6 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             "%s"
             "%s"
             "%s"
-            "%s"
             "%s",
             f_name,
             msg_type,
@@ -698,7 +682,6 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             localsdb->md5,
             localsdb->sha1,
             localsdb->sha256,
-            localsdb->attrs,
             localsdb->mtime,
             localsdb->inode,
             localsdb->user_name,
