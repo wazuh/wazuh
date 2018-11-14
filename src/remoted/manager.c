@@ -898,8 +898,9 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'",agent_id,group,file,md5);
         if (!f_sum) {
-            if (f_sum = find_group(file, md5, group), !f_sum) {
+            if (guess_agent_group && (f_sum = find_group(file, md5, group), !f_sum)) {
                 // If the group could not be guessed, set to "default"
+                // but only if requested by the user through the internal option 'guess_agent_group'
                 strncpy(group, "default", OS_SIZE_65536);
 
                 if (f_sum = find_sum(group), !f_sum) {
@@ -909,9 +910,13 @@ static void read_controlmsg(const char *agent_id, char *msg)
                     merror("No such group '%s' for agent '%s'", group, agent_id);
                     return;
                 }
-            }
 
-            set_agent_group(agent_id, group);
+                set_agent_group(agent_id, group);
+
+            } else {
+                w_mutex_unlock(&files_mutex);
+                return;
+            }
         }
 
         /* New agents only have merged.mg */
