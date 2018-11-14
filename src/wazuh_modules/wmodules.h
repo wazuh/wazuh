@@ -81,6 +81,7 @@ typedef enum crypto_type {
 #include "wm_download.h"
 #include "wm_azure.h"
 #include "wm_docker.h"
+#include "wm_keyrequest.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.

@@ -9,6 +9,9 @@
 
 #include "shared.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include "../os_net/os_net.h"
+#include "../addagent/manage_agents.h"
+
 static pthread_mutex_t restart_syscheck = PTHREAD_MUTEX_INITIALIZER;
 
 /* Check if syscheck is to be executed/restarted
@@ -629,4 +632,100 @@ void w_remove_multigroup(const char *group){
             }
         }
     }
+}
+
+// Connect to Agentd. Returns socket or -1 on error.
+int auth_connect() {
+#ifndef WIN32
+    return OS_ConnectUnixDomain(isChroot() ? AUTH_LOCAL_SOCK : AUTH_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+#else
+    return -1;
+#endif
+}
+
+// Close socket if valid.
+int auth_close(int sock) {
+    return (sock >= 0) ? close(sock) : 0;
+}
+
+// Add agent. Returns 0 on success or -1 on error.
+int auth_add_agent(int sock, char *id, const char *name, const char *ip,const char *key, int force, int json_format) {
+    char buffer[OS_MAXSTR + 1];
+    char * output;
+    int result;
+    ssize_t length;
+    cJSON * response;
+    cJSON * error;
+    cJSON * message;
+    cJSON * data;
+    cJSON * data_id;
+    cJSON * request = cJSON_CreateObject();
+    cJSON * arguments = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(request, "arguments", arguments);
+    cJSON_AddStringToObject(request, "function", "add");
+    cJSON_AddStringToObject(arguments, "name", name);
+    cJSON_AddStringToObject(arguments, "ip", ip);
+
+    if(key) {
+        cJSON_AddStringToObject(arguments, "key", key);
+    }
+        
+    if (force >= 0) {
+        cJSON_AddNumberToObject(arguments, "force", force);
+    }
+
+    output = cJSON_PrintUnformatted(request);
+
+    if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
+        merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
+    }
+
+    cJSON_Delete(request);
+    free(output);
+
+    if (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length < 0) {
+        merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
+    } else if (length == 0) {
+        merror_exit("Empty message from local server.");
+    } else {
+        buffer[length] = '\0';
+
+        // Decode response
+
+        if (response = cJSON_Parse(buffer), !response) {
+            merror_exit("Parsing JSON response.");
+        }
+
+        // Detect error condition
+
+        if (error = cJSON_GetObjectItem(response, "error"), !error) {
+            merror_exit("No such status from response.");
+        } else if (error->valueint > 0) {
+            if (json_format) {
+                printf("%s", buffer);
+            } else {
+                message = cJSON_GetObjectItem(response, "message");
+                merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+            }
+
+            result = -1;
+        } else {
+            if (data = cJSON_GetObjectItem(response, "data"), !data) {
+                merror_exit("No data received.");
+            }
+
+            if (data_id = cJSON_GetObjectItem(data, "id"), !data) {
+                merror_exit("No id received.");
+            }
+
+            strncpy(id, data_id->valuestring, FILE_SIZE);
+            id[FILE_SIZE] = '\0';
+            result = 0;
+        }
+
+        cJSON_Delete(response);
+    }
+
+    return result;
 }

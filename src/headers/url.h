@@ -16,10 +16,12 @@
 
 #define WURL_WRITE_FILE_ERROR "Failed opening file '%s'"
 #define WURL_DOWNLOAD_FILE_ERROR "Failed to download file '%s' from url: %s"
+#define WURL_HTTP_GET_ERROR "Failed to get a response from '%s'"
 
 int wurl_get(const char * url, const char * dest);
 int w_download_status(int status,const char *url,const char *dest);
 // Request download
 int wurl_request(const char * url, const char * dest);
+int wurl_http_get(const char * url, char * data);
 
 #endif /* CUSTOM_OUTPUT_SEARCH_H_ */

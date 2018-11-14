@@ -471,3 +471,11 @@ int _close_sock(keystore * keys, int sock) {
 
     return retval;
 }
+
+static int key_request_connect() {
+#ifndef WIN32
+    return OS_ConnectUnixDomain(isChroot() ? WM_KEY_REQUEST_SOCK : WM_KEY_REQUEST_SOCK_PATH, SOCK_DGRAM, OS_MAXSTR);
+#else
+    return -1;
+#endif
+}

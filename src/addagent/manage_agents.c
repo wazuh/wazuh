@@ -381,7 +381,7 @@ int add_agent(int json_output, int no_limit)
                     } else
                         merror_exit("Lost authd socket connection.");
                 }
-                if (auth_add_agent(sock, id, name, ip, env_remove_dup ? force_antiquity : -1, json_output) < 0) {
+                if (auth_add_agent(sock, id, name, ip, NULL, env_remove_dup ? force_antiquity : -1, json_output) < 0) {
                     break;
                 }
             }
