@@ -717,14 +717,32 @@ class AWSCustomBucket(AWSBucket):
 
 class WazuhIntegration:
 
-    # hardcoded fields
-    wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
-    wazuh_queue = '{0}/queue/ossec/queue'.format(wazuh_path)
-    wazuh_wodle = '{0}/wodles/aws'.format(wazuh_path)
-    msg_header = "1:Wazuh-AWS:"
+    sql_find_table_names = """
+                            SELECT
+                                tbl_name
+                            FROM
+                                sqlite_master
+                            WHERE
+                                type='table';"""
 
-    @staticmethod
-    def send_msg(msg):
+    
+
+    def __init__(self, **kwargs):
+        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
+        self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
+        self.db_name = kwargs['db_name']
+        self.db_table_name = kwargs['sql_table_name']  ## kwarg
+        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)  ## kwarg
+        self.db_connector = sqlite3.connect(self.db_path)
+        self.msg_header = "1:Wazuh-AWS:"
+        #### SQL queries
+        self.sql_create_table = kwargs['sql_create_table']  ## kwarg
+        ### executions
+        self.init_db()
+
+
+    def send_msg(self, msg):
         """
         Sends an AWS event to the Wazuh Queue
 
@@ -734,13 +752,13 @@ class WazuhIntegration:
             json_msg = json.dumps(msg, default=str)
             debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            s.connect(WazuhIntegration.wazuh_queue)
-            s.send("{header}{msg}".format(header=WazuhIntegration.msg_header,
+            s.connect(self.wazuh_queue)
+            s.send("{header}{msg}".format(header=self.msg_header,
                                           msg=json_msg).encode())
             s.close()
         except socket.error as e:
             if e.errno == 111:
-                print('ERROR: Wazuh must be running.')
+                print("ERROR: Wazuh must be running.")
                 sys.exit(11)
             else:
                 print("ERROR: Error sending message to wazuh: {}".format(e))
@@ -749,15 +767,53 @@ class WazuhIntegration:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
+    def create_table(self):
+        try:
+            debug('+++ Table does not exist; create', 1)
+            self.db_connector.execute(self.sql_create_table)
+        except Exception as e:
+            print("ERROR: Unable to create SQLite DB: {}".format(e))
+            sys.exit(6)
+
+    def init_db(self):
+        try:
+            tables = set(map(operator.itemgetter(0), self.db_connector.execute(sql_find_table_names)))
+        except Exception as e:
+            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
+            sys.exit(5)
+        # DB does exist yet
+        if self.db_table_name not in tables:
+            self.create_table()
+
 
 class AWSInspector:
 
+    sql_inspector_create_table = """
+                                    CREATE TABLE
+                                        inspector (
+                                            scan_date 'text' NOT NULL,
+                                            PRIMARY KEY (last_scan_date));"""
+
+    sql_inspector_mark_complete = """
+                                    INSERT INTO inspector (
+                                        scan_date) VALUES (
+                                        '{scan_date}')"""
+    
+    sql_find_last_scan = """
+                            SELECT
+                                scan_date
+                            FROM
+                                inspector
+                            ORDER BY
+                                scan_date DESC
+                            LIMIT 1;"""
+
     def __init__(self, **kwargs):
+        self.wazuh_integration = WazuhIntegration(db_name='s3_inspector', sql_table_name='inspector',
+            sql_create_table=AWSInspector.sql_inspector_create_table)
         ## it is necessary to pass region_name as argument
-        self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=kwargs['access_key'], aws_secret_access_key=kwargs['secret_key'])
-        #self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
-        #self.db_path = "{0}/s3_inspector.db".format(self.wazuh_wodle)
-        #self.db_connector = sqlite3.connect(self.db_path)
+        self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=kwargs['access_key'],
+            aws_secret_access_key=kwargs['secret_key'])
         self.get_alerts()
 
     def format_message(self, msg):
@@ -766,7 +822,7 @@ class AWSInspector:
     def get_describe_findings(self, arn_list):
         response = self.client.describe_findings(findingArns=arn_list)['findings']
         for elem in response:
-            WazuhIntegration.send_msg(self.format_message(elem))
+            self.wazuh_integration.send_msg(self.format_message(elem))
 
     def get_alerts(self):
         # describe_findings only retrieves 100 results per call
