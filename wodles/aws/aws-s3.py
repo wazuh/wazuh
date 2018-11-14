@@ -715,34 +715,27 @@ class AWSCustomBucket(AWSBucket):
         self.db_maintenance('', self.bucket)
 
 
-class AWSInspector:
+class WazuhIntegration:
 
-    def __init__(self, **kwargs):
-        ## it is necessary to pass region_name as argument
-        self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=kwargs['access_key'], aws_secret_access_key=kwargs['secret_key'])
-        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
-        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
-        self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
-        self.msg_header = "1:Wazuh-AWS:"
-        self.legacy_db_table_name = 'log_progress'
-        self.db_table_name = 'trail_progress'
-        self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
-        self.db_connector = sqlite3.connect(self.db_path)
-        self.get_alerts()
+    # hardcoded fields
+    wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+    wazuh_queue = '{0}/queue/ossec/queue'.format(wazuh_path)
+    wazuh_wodle = '{0}/wodles/aws'.format(wazuh_path)
+    msg_header = "1:Wazuh-AWS:"
 
-    def send_msg(self, msg):
+    @staticmethod
+    def send_msg(msg):
         """
         Sends an AWS event to the Wazuh Queue
 
         :param msg: JSON message to be sent.
         """
         try:
-            formatted_msg = {'integration': 'aws', 'aws': msg}
-            json_msg = json.dumps(formatted_msg, default=str)
+            json_msg = json.dumps(msg, default=str)
             debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            s.connect(self.wazuh_queue)
-            s.send("{header}{msg}".format(header=self.msg_header,
+            s.connect(WazuhIntegration.wazuh_queue)
+            s.send("{header}{msg}".format(header=WazuhIntegration.msg_header,
                                           msg=json_msg).encode())
             s.close()
         except socket.error as e:
@@ -756,26 +749,32 @@ class AWSInspector:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
-    def get_describe_findings(self, arn_list):
-        # describe_findings only can process 100 elements at once
-        num_iterations = len(arn_list)//100 + 1
-        for i in range(0, num_iterations):
-            splitted_arn_list = arn_list[i:i+100]
-            response = self.client.describe_findings(findingArns=splitted_arn_list)['findings']
-            for elem in response:
-                self.send_msg(elem)
 
-    def get_list_findings(self, max=100):
-        max_results = 100 if max > 100 else max
-        list_findings = []
-        response = self.client.list_findings(maxResults=max_results)
-        list_findings.extend(response['findingArns'])
-        return list_findings
+class AWSInspector:
+
+    def __init__(self, **kwargs):
+        ## it is necessary to pass region_name as argument
+        self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=kwargs['access_key'], aws_secret_access_key=kwargs['secret_key'])
+        self.db_path = "{0}/s3_inspector.db".format(self.wazuh_wodle)
+        self.db_connector = sqlite3.connect(self.db_path)
+        self.get_alerts()
+
+    def format_message(self, msg):
+        return {'integration': 'aws', 'aws': msg}
+
+    def get_describe_findings(self, arn_list):
+        response = self.client.describe_findings(findingArns=arn_list)['findings']
+        for elem in response:
+            WazuhIntegration.send_msg(self.format_message(elem))
 
     def get_alerts(self):
-        list_findings = self.get_list_findings(max=100)
-        #print("list findings -> " + str(list_findings))
-        self.get_describe_findings(list_findings)
+        # describe_findings only retrieves 100 results per call
+        response = self.client.list_findings(maxResults=100)
+        self.get_describe_findings(response['findingArns'])
+        # iterate if there are more elements
+        while 'nextToken' in response:
+            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'])
+            self.get_describe_findings(response['findingArns'])
 
 
 ################################################################################
