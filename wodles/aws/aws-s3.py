@@ -792,7 +792,7 @@ class AWSInspector:
                                     CREATE TABLE
                                         inspector (
                                             scan_date 'text' NOT NULL,
-                                            PRIMARY KEY (last_scan_date));"""
+                                            PRIMARY KEY (scan_date));"""
 
     sql_inspector_mark_complete = """
                                     INSERT INTO inspector (
