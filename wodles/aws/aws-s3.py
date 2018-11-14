@@ -755,8 +755,9 @@ class AWSInspector:
     def __init__(self, **kwargs):
         ## it is necessary to pass region_name as argument
         self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=kwargs['access_key'], aws_secret_access_key=kwargs['secret_key'])
-        self.db_path = "{0}/s3_inspector.db".format(self.wazuh_wodle)
-        self.db_connector = sqlite3.connect(self.db_path)
+        #self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
+        #self.db_path = "{0}/s3_inspector.db".format(self.wazuh_wodle)
+        #self.db_connector = sqlite3.connect(self.db_path)
         self.get_alerts()
 
     def format_message(self, msg):
