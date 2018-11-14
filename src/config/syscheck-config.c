@@ -1221,7 +1221,6 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-            minfo("~~~key: '%s'", syscheck->audit_key);
         }
 
         /* Listen another audit keys */
@@ -1417,8 +1416,7 @@ char* check_ascci_hex (char *input) {
     char outhex[OS_SIZE_256];
 
     for (j = 0; j < strlen(input); j++) {
-        minfo("~~~char:'%c' hex:'%hhx' int:'%u'", input[j], input[j], (unsigned int)input[j]);
-        snprintf(outhex + j*2, OS_SIZE_256, "%hhx", input[j]);
+        snprintf(outhex + j*2, OS_SIZE_256, "%hhX", input[j]);
         if ((unsigned int)input[j] > 126 || (unsigned int)input[j] == 32) {
             hex = 1;
         }
@@ -1432,7 +1430,5 @@ char* check_ascci_hex (char *input) {
         os_calloc(strlen(input) + 1, sizeof(char *), output);
         os_strdup(input, output);
     }
-    minfo("~~~output: '%s' strlen(output): '%lu' input: '%s' strlen(input): '%lu'",
-            output, strlen(output), input, strlen(input));
     return output;
 }

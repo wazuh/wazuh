@@ -26,7 +26,6 @@
 #define AUDIT_CONF_LINK "/etc/audisp/plugins.d/af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 4096
-#define AUDIT_KEY "wazuh_fim"
 
 // Global variables
 W_Vector *audit_added_rules;
@@ -338,7 +337,7 @@ int add_audit_rules_syscheck(void) {
         if (syscheck.opts[i] & CHECK_WHODATA) {
             int retval;
             if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
-                if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
+                if (retval = audit_add_rule(syscheck.dir[i], syscheck.audit_key), retval > 0) {
                     mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
                     w_mutex_lock(&audit_rules_mutex);
                     W_Vector_insert(audit_added_rules, syscheck.dir[i]);
@@ -571,7 +570,7 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 
 
 void audit_parse(char *buffer) {
-    char *pkey;
+    int pkey;
     char *psuccess;
     char *pconfig;
     char *pdelete;
@@ -593,8 +592,9 @@ void audit_parse(char *buffer) {
     whodata_evt *w_evt;
     unsigned int items = 0;
 
-    if (pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) { // Parse only 'wazuh_fim' events.
+    pkey = filterkey_audit_events(buffer); // Checks if the key obtained is one of those configured to monitor
 
+    if (pkey) {
         if ((pconfig = strstr(buffer,"type=CONFIG_CHANGE"), pconfig)
         && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
             (pdelete = strstr(buffer,"op=\"remove_rule\""), pdelete))) { // Detect rules modification.
@@ -743,7 +743,9 @@ void audit_parse(char *buffer) {
                                 w_evt->ppid,
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if(filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            }
                         }
                     }
                     break;
@@ -760,7 +762,9 @@ void audit_parse(char *buffer) {
                                 w_evt->ppid,
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if(filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            }
                         }
                     }
                     break;
@@ -792,7 +796,9 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if(filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            }
                             free(file_path1);
                             w_evt->path = NULL;
                         }
@@ -811,7 +817,9 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if(filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            }
                         }
                     }
                     free(path2);
@@ -989,12 +997,49 @@ void clean_rules(void) {
     if (audit_added_rules) {
         mdebug2("Deleting Audit rules...");
         for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
-            audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
+            audit_delete_rule(W_Vector_get(audit_added_rules, i), syscheck.audit_key);
         }
         W_Vector_free(audit_added_rules);
         audit_added_rules = NULL;
     }
     w_mutex_unlock(&audit_mutex);
+}
+
+
+int filterkey_audit_events(char *buffer) {
+    int i = 0;
+    char logkey1[OS_SIZE_256];
+    char logkey2[OS_SIZE_256];
+
+    snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.audit_key);
+    snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_key);
+    if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
+        mdebug2("Match audit_key: '%s'", logkey1);
+        return 1;
+    }
+
+    while (syscheck.listen_audit_key[i]) {
+        snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.listen_audit_key[i]);
+        snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.listen_audit_key[i]);
+        if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
+            mdebug2("Match listen_audit_key: '%s'", logkey1);
+            return 1;
+        }
+        i++;
+    }
+    return 0;
+}
+
+int filterpath_audit_events(char *path) {
+    int i = 0;
+
+    for(i = 0; i < W_Vector_length(audit_added_dirs); i++) {
+        if (strstr(path, W_Vector_get(audit_added_dirs, i))) {
+            mdebug2("Found '%s' in '%s'", W_Vector_get(audit_added_dirs, i), path);
+            return 1;
+        }
+    }
+    return 0;
 }
 #endif
 #endif
