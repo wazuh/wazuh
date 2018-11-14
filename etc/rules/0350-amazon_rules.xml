@@ -218,7 +218,7 @@ ID: 80200 - 80499
 
     <rule id="80495" level="3">
         <field name="aws.service">Inspector</field>
-        <<description>AWS Inspector - Network assesment [$(aws.title)]: $(aws.severity)</description>
+        <description>AWS Inspector - Network assesment [$(aws.title)]: $(aws.severity)</description>
         <group>aws_inspector,</group>
     </rule>
 
