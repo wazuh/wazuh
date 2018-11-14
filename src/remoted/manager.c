@@ -910,13 +910,14 @@ static void read_controlmsg(const char *agent_id, char *msg)
                     merror("No such group '%s' for agent '%s'", group, agent_id);
                     return;
                 }
-
-                set_agent_group(agent_id, group);
-
-            } else {
+            }
+            // Not very beautiful... kind of duplicated code...
+            if (!f_sum) {
                 w_mutex_unlock(&files_mutex);
                 return;
             }
+
+            set_agent_group(agent_id, group);
         }
 
         /* New agents only have merged.mg */
