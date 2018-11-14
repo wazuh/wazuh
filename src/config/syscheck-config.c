@@ -1417,7 +1417,9 @@ char* check_ascci_hex (char *input) {
 
     for (j = 0; j < strlen(input); j++) {
         snprintf(outhex + j*2, OS_SIZE_256, "%hhX", input[j]);
-        if ((unsigned int)input[j] > 126 || (unsigned int)input[j] == 32) {
+        if ((unsigned int)input[j] > 126 ||
+                (unsigned int)input[j] == 32 ||
+                (unsigned int)input[j] == 34) {
             hex = 1;
         }
     }
