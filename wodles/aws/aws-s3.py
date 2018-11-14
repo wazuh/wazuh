@@ -67,6 +67,7 @@ import io
 from datetime import datetime
 from os import path
 import operator
+from datetime import datetime
 
 ################################################################################
 # Constants
@@ -735,6 +736,7 @@ class WazuhIntegration:
         self.db_table_name = kwargs['sql_table_name']  ## kwarg
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)  ## kwarg
         self.db_connector = sqlite3.connect(self.db_path)
+        self.db_cursor = self.db_connector.cursor()
         self.msg_header = "1:Wazuh-AWS:"
         #### SQL queries
         self.sql_create_table = kwargs['sql_create_table']  ## kwarg
@@ -819,19 +821,45 @@ class AWSInspector:
     def format_message(self, msg):
         return {'integration': 'aws', 'aws': msg}
 
-    def get_describe_findings(self, arn_list):
+    def send_describe_findings(self, arn_list):
         response = self.client.describe_findings(findingArns=arn_list)['findings']
         for elem in response:
             self.wazuh_integration.send_msg(self.format_message(elem))
 
     def get_alerts(self):
+        """
+        self.wazuh_integration.db_cursor.execute("INSERT INTO inspector (scan_date) VALUES ('Jan 1 1970');")
+        #self.wazuh_integration.db_connector.execute(AWSInspector.sql_find_last_scan)
+        self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
+        algo = self.wazuh_integration.db_cursor.fetchone()[0]
+        print("fetch -> " + algo)
+        """
+        try:
+            self.wazuh_integration.db_cursor.execute("INSERT INTO inspector (scan_date) VALUES ('1970 Jan 1');")
+            self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
+            last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
+        except sqlite3.IntegrityError:
+            self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
+            last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
+            
+        self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
+        datetime_last_scan = datetime.strptime(last_scan, '%Y %b %d')
+        # insert datetime_last_scan in the database
+        #self.wazuh_integration.db_cursor.execute(("INSERT INTO inspector (scan_date) VALUES ('{}');").format('datetime_last_scan'))
+        # datetime_last_scan = datetime(2018, 11, 14)
+
+        print("datetime_last_scan -> " + str(datetime_last_scan))
+        # if datetime.today is used two times there will be two different dates
+        current_time = datetime.today()
         # describe_findings only retrieves 100 results per call
-        response = self.client.list_findings(maxResults=100)
-        self.get_describe_findings(response['findingArns'])
+        response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
+            {'beginDate': datetime_last_scan, 'endDate': current_time}})
+        self.send_describe_findings(response['findingArns'])
         # iterate if there are more elements
         while 'nextToken' in response:
-            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'])
-            self.get_describe_findings(response['findingArns'])
+            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'], filter={'creationTimeRange':
+            {'beginDate': datetime_last_scan, 'endDate': current_time}})
+            self.send_describe_findings(response['findingArns'])
 
 
 ################################################################################
