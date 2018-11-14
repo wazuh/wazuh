@@ -258,10 +258,16 @@ char * parse_environment_labels(const wlabel_t label) {
 
             os_info = getunameJSON();
             field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_name"));
+            #if !defined(__MACH__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
+                cJSON_Delete(os_info);
+            #endif
 
         } else if (!strcmp(var, "os.version")) {
             os_info = getunameJSON();
             field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_version"));
+            #if !defined(__MACH__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
+                cJSON_Delete(os_info);
+            #endif
 
         } else if (!strcmp(var,"ipv4.primary")) {
             #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
@@ -483,7 +489,10 @@ char * parse_environment_labels(const wlabel_t label) {
         }else if (!strcmp(var,"hostname")) {
           os_info = getunameJSON();
           field = cJSON_Print(cJSON_GetObjectItem(os_info,"hostname"));
-          cJSON_Delete(os_info);
+          #if !defined(__MACH__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
+            cJSON_Delete(os_info);
+          #endif
+
         }
         else{
             mwarn("Unrecognized label '%s'", var);
@@ -505,9 +514,7 @@ char * parse_environment_labels(const wlabel_t label) {
         n += z;
 
         if(automatic_label){
-            mdebug2("Pre free field");
             free(field);
-            mdebug2("Post free field");
         }
 
     }

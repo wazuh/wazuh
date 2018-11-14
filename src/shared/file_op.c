@@ -2236,6 +2236,9 @@ cJSON* getunameJSON()
         if(!root){
             root = cJSON_CreateObject();
         }
+        else{
+            return root;
+        }
     #else
         cJSON* root=cJSON_CreateObject();
     #endif
