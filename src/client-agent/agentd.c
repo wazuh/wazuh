@@ -41,8 +41,10 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         getunameJSON();
     }
     
-    default_network_iface = getDefaultNetworkIface();
-
+    #ifndef WIN32
+        default_network_iface = getDefaultNetworkIface();
+    #endif
+    
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));

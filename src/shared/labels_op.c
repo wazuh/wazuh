@@ -205,13 +205,22 @@ char * parse_environment_labels(const wlabel_t label) {
     cJSON *iface;
     cJSON *ipv4;
     cJSON *ipv6;
-    char timezone_number[21];
+    char timezone_number[25];
     int i;
     int automatic_label ;
 
     #ifdef WIN32
     #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
     #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+    typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
+
+    CallFunc _get_network_win;
+    
+    /* Load DLL with network inventory functions */
+    HINSTANCE sys_library = LoadLibrary("syscollector_win_ext.dll");
+    if (sys_library != NULL){
+        _get_network_win = (CallFunc)GetProcAddress(sys_library, "get_network");
+    }
 
     char * windows_net_info;
     PIP_ADAPTER_ADDRESSES currentAddress = NULL;
@@ -260,7 +269,7 @@ char * parse_environment_labels(const wlabel_t label) {
               iface = cJSON_GetArrayItem(network_info, default_network_iface);
             #elif defined  WIN32
               dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
-              windows_net_info = get_network(currentAddress, 0, NULL);
+              windows_net_info = _get_network_win(currentAddress, 0, NULL);
               FREE(currentAddress);
               network_info = cJSON_Parse(windows_net_info);
               iface = cJSON_GetArrayItem(network_info, 2);
@@ -280,7 +289,7 @@ char * parse_environment_labels(const wlabel_t label) {
               iface = cJSON_GetArrayItem(network_info, default_network_iface);
             #elif defined WIN32
               dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
-              windows_net_info = get_network(currentAddress, 0, NULL);
+              windows_net_info = _get_network_win(currentAddress, 0, NULL);
               FREE(currentAddress);
               network_info = cJSON_Parse(windows_net_info);
               iface = cJSON_GetArrayItem(network_info, 2);
@@ -308,7 +317,7 @@ char * parse_environment_labels(const wlabel_t label) {
                     continue;
                 }
 
-              windows_net_info = get_network(currentAddress, 0, NULL);
+              windows_net_info = _get_network_win(currentAddress, 0, NULL);
               network_info = cJSON_Parse(windows_net_info);
               iface = cJSON_GetArrayItem(network_info, 2);
               ipv4 = cJSON_GetObjectItem(iface,"ipv4");
@@ -358,7 +367,7 @@ char * parse_environment_labels(const wlabel_t label) {
                   continue;
               }
 
-            windows_net_info = get_network(currentAddress, 0, NULL);
+            windows_net_info = _get_network_win(currentAddress, 0, NULL);
             network_info = cJSON_Parse(windows_net_info);
             iface = cJSON_GetArrayItem(network_info, 2);
             ipv6 = cJSON_GetObjectItem(iface, "ipv6");
@@ -394,7 +403,7 @@ char * parse_environment_labels(const wlabel_t label) {
         }else if (!strcmp(var, "mac.primary")) {
           #ifdef WIN32
             dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
-            windows_net_info = get_network(currentAddress, 0, NULL);
+            windows_net_info = _get_network_win(currentAddress, 0, NULL);
             FREE(currentAddress);
             network_info = cJSON_Parse(windows_net_info);
             iface = cJSON_GetArrayItem(network_info, 2);
@@ -423,7 +432,7 @@ char * parse_environment_labels(const wlabel_t label) {
                   continue;
               }
 
-            windows_net_info = get_network(currentAddress, 0, NULL);
+            windows_net_info = _get_network_win(currentAddress, 0, NULL);
             network_info = cJSON_Parse(windows_net_info);
             iface = cJSON_GetArrayItem(network_info, 2);
             cJSON_AddItemReferenceToArray(mac_addresses, cJSON_GetObjectItem(iface,"mac"));
@@ -459,13 +468,13 @@ char * parse_environment_labels(const wlabel_t label) {
             struct  tm lt={0};
             localtime_r(&t, &lt);
             zone = lt.tm_gmtoff/3600;
-            sprintf(timezone_number,"%d", zone);
+            sprintf(timezone_number,"UTC %d", zone);
 
           #else
           struct _timeb tstruct;
           _ftime( &tstruct );
           zone = tstruct.timezone*-1/60;
-          sprintf(timezone_number,"%d", zone);
+          sprintf(timezone_number,"UTC %d", zone);
           #endif
 
           field = timezone_number;
@@ -488,7 +497,6 @@ char * parse_environment_labels(const wlabel_t label) {
               }
         }
         else{
-
             automatic_label = 0;
             field = var;
         }
@@ -497,7 +505,9 @@ char * parse_environment_labels(const wlabel_t label) {
         n += z;
 
         if(automatic_label){
+            mdebug2("Pre free field");
             free(field);
+            mdebug2("Post free field");
         }
 
     }
