@@ -765,6 +765,8 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_both = "both";
     const char *xml_tag = "tags";
 #endif
+    const char *xml_audit_key = "audit_key";
+    const char *xml_listen_audit_key = "listen_audit_key";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -783,6 +785,9 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     } else {
         syscheck->disabled = 0;
     }
+
+    // Default value for fim audit key
+    syscheck->audit_key = strdup("wazuh_fim");
 
     while (node[i]) {
         if (!node[i]->element) {
@@ -1205,6 +1210,38 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 merror(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
+        }
+        /* Audit key */
+        else if (strcmp(node[i]->element, xml_audit_key) == 0) {
+
+            os_free(syscheck->audit_key);
+            if (*node[i]->content) {
+                syscheck->audit_key = check_ascci_hex(node[i]->content);
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            minfo("~~~key: '%s'", syscheck->audit_key);
+        }
+
+        /* Listen another audit keys */
+        else if (strcmp(node[i]->element, xml_listen_audit_key) == 0) {
+            int keyit = 0;
+            char delim = ',';
+            char *key;
+            os_calloc(1, sizeof(char *), syscheck->listen_audit_key);
+            syscheck->listen_audit_key[keyit] = NULL;
+            key = strtok(node[i]->content, &delim);
+
+            while (key) {
+                if (*key) {
+                    syscheck->listen_audit_key[keyit] = check_ascci_hex(key);
+                    os_realloc(syscheck->listen_audit_key, (keyit + 2) * sizeof(char *), syscheck->listen_audit_key);
+                    syscheck->listen_audit_key[keyit + 1] = NULL;
+                    key = strtok(NULL, &delim);
+                    keyit++;
+                }
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -1372,4 +1409,30 @@ void Free_Syscheck(syscheck_config * config) {
         }
         free(config->prefilter_cmd);
     }
+}
+
+char* check_ascci_hex (char *input) {
+    unsigned int j = 0;
+    int hex = 0;
+    char outhex[OS_SIZE_256];
+
+    for (j = 0; j < strlen(input); j++) {
+        minfo("~~~char:'%c' hex:'%hhx' int:'%u'", input[j], input[j], (unsigned int)input[j]);
+        snprintf(outhex + j*2, OS_SIZE_256, "%hhx", input[j]);
+        if ((unsigned int)input[j] > 126 || (unsigned int)input[j] == 32) {
+            hex = 1;
+        }
+    }
+
+    char *output;
+    if (hex) {
+        os_calloc(strlen(outhex) + 1, sizeof(char *), output);
+        os_strdup(outhex, output);
+    } else {
+        os_calloc(strlen(input) + 1, sizeof(char *), output);
+        os_strdup(input, output);
+    }
+    minfo("~~~output: '%s' strlen(output): '%lu' input: '%s' strlen(input): '%lu'",
+            output, strlen(output), input, strlen(input));
+    return output;
 }
