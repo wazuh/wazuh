@@ -17,6 +17,7 @@
 typedef struct wm_krequest_t {
     unsigned int enabled:1;
     unsigned int timeout;
+    unsigned int threads;
     char* script;
 } wm_krequest_t;
 

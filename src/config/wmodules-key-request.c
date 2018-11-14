@@ -4,6 +4,7 @@
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_TIMEOUT= "timeout";
+static const char *XML_THREADS = "threads";
 static const char *XML_SCRIPT = "script";
 
 static short eval_bool(const char *str)
@@ -22,6 +23,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
     module->context = &WM_KEY_REQUEST_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = key_request;
+    key_request->threads = 1;
 
     if (!nodes)
         return 0;
@@ -57,7 +59,17 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
             }
 
             mdebug2("Timeout read: %d", key_request->timeout);
-        } else {
+        } 
+        else if (!strcmp(nodes[i]->element, XML_THREADS))
+        {
+            key_request->threads = strtoul(nodes[i]->content, NULL, 0);
+
+            if (key_request->threads == 0 || key_request->threads == UINT_MAX) {
+                merror("Invalid number of threads at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
+                return OS_INVALID;
+            }
+        }
+        else {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_KEY_REQUEST_CONTEXT.name);
         }
 

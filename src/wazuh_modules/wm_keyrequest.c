@@ -48,7 +48,7 @@ typedef enum _request_type{
 void * wm_key_request_main(wm_krequest_t * data) {
     int sock;
     int recv;
-    int i;
+    unsigned int i;
     char buffer[OS_MAXSTR + 1];
     char * copy;
 
@@ -71,7 +71,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
     /* Init the decode rootcheck queue input */
     request_queue = queue_init(1024);
 
-    for(i = 0; i < 4;i++){
+    for(i = 0; i < data->threads;i++){
         w_create_thread(w_request_thread,data);
     }
 
