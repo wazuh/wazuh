@@ -20,7 +20,8 @@ static void* wm_aws_main(wm_aws *aws_config);           // Module main function.
 static void wm_aws_setup(wm_aws *_aws_config);          // Setup module
 static void wm_aws_cleanup();                           // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_aws_check();                             // Check configuration, disable flag
-static void wm_aws_run_s3(wm_aws_bucket *bucket);       // Run a s3
+static void wm_aws_run_s3(wm_aws_bucket *bucket);       // Run a s3 bucket
+static void wm_aws_run_service(wm_aws_service *service);// Run a AWS service such as Inspector
 static void wm_aws_destroy(wm_aws *aws_config);         // Destroy data
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
@@ -72,6 +73,17 @@ void* wm_aws_main(wm_aws *aws_config) {
                 mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analisys: %s", cur_bucket->bucket);
             }
             wm_aws_run_s3(cur_bucket);
+        }
+
+        for (cur_service = aws_config->services; cur_service; cur_service = cur_service->next) {
+            if (cur_service->aws_account_id && cur_service->aws_account_alias) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Service Analisys: %s (%s)", cur_service->aws_account_alias, cur_service->aws_account_id);
+            } else if (cur_service->aws_account_id) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Service Analisys: %s", cur_service->aws_account_id);
+            } else {
+                mtinfo(WM_AWS_LOGTAG, "Executing Service Analisys: %s", cur_service->service);
+            }
+            wm_aws_run_s3(cur_service);
         }
 
         mtinfo(WM_AWS_LOGTAG, "Fetching logs finished.");
@@ -283,43 +295,6 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
         wm_strcat(&command, "--type", ' ');
         wm_strcat(&command, exec_bucket->type, ' ');
     }
-    // service arguments
-    if (exec_service->access_key) {
-        wm_strcat(&command, "--access_key", ' ');
-        wm_strcat(&command, exec_service->access_key, ' ');
-    }
-    if (exec_service->secret_key) {
-        wm_strcat(&command, "--secret_key", ' ');
-        wm_strcat(&command, exec_service->secret_key, ' ');
-    }
-    if (exec_service->aws_profile) {
-        wm_strcat(&command, "--aws_profile", ' ');
-        wm_strcat(&command, exec_service->aws_profile, ' ');
-    }
-    if (exec_service->iam_role_arn) {
-        wm_strcat(&command, "--iam_role_arn", ' ');
-        wm_strcat(&command, exec_service->iam_role_arn, ' ');
-    }
-    if (exec_service->aws_account_id) {
-        wm_strcat(&command, "--aws_account_id", ' ');
-        wm_strcat(&command, exec_service->aws_account_id, ' ');
-    }
-    if (exec_service->aws_account_alias) {
-        wm_strcat(&command, "--aws_account_alias", ' ');
-        wm_strcat(&command, exec_service->aws_account_alias, ' ');
-    }
-    if (exec_service->only_logs_after) {
-        wm_strcat(&command, "--only_logs_after", ' ');
-        wm_strcat(&command, exec_service->only_logs_after, ' ');
-    }
-    if (exec_service->regions) {
-        wm_strcat(&command, "--regions", ' ');
-        wm_strcat(&command, exec_service->regions, ' ');
-    }
-    if (exec_service->type) {
-        wm_strcat(&command, "--type", ' ');
-        wm_strcat(&command, exec_service->type, ' ');
-    }
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');
         if (isDebug() > 2) {
@@ -338,7 +313,6 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     }
 
     // Execute
-
     char *trail_title = NULL;
     wm_strcat(&trail_title, "Bucket:", ' ');
     wm_strcat(&trail_title, exec_bucket->aws_account_id, ' ');
@@ -398,6 +372,140 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     }
     free(line);
     free(trail_title);
+    free(output);
+    free(command);
+}
+
+// Run a service parsing
+
+void wm_aws_run_service(wm_aws_service *exec_service) {
+    int status;
+    char *output = NULL;
+    char *command = NULL;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
+    // Create arguments
+    mtdebug2(WM_AWS_LOGTAG, "Create argument list");
+
+    wm_strcat(&command, WM_AWS_SCRIPT_PATH, '\0');
+    wm_strcat(&command, "--service", ' ');
+    wm_strcat(&command, exec_service->service, ' ');
+
+    if (exec_service->access_key) {
+        wm_strcat(&command, "--access_key", ' ');
+        wm_strcat(&command, exec_service->access_key, ' ');
+    }
+    if (exec_service->secret_key) {
+        wm_strcat(&command, "--secret_key", ' ');
+        wm_strcat(&command, exec_service->secret_key, ' ');
+    }
+    if (exec_service->aws_profile) {
+        wm_strcat(&command, "--aws_profile", ' ');
+        wm_strcat(&command, exec_service->aws_profile, ' ');
+    }
+    if (exec_service->iam_role_arn) {
+        wm_strcat(&command, "--iam_role_arn", ' ');
+        wm_strcat(&command, exec_service->iam_role_arn, ' ');
+    }
+    if (exec_service->aws_account_id) {
+        wm_strcat(&command, "--aws_account_id", ' ');
+        wm_strcat(&command, exec_service->aws_account_id, ' ');
+    }
+    if (exec_service->aws_account_alias) {
+        wm_strcat(&command, "--aws_account_alias", ' ');
+        wm_strcat(&command, exec_service->aws_account_alias, ' ');
+    }
+    if (exec_service->only_logs_after) {
+        wm_strcat(&command, "--only_logs_after", ' ');
+        wm_strcat(&command, exec_service->only_logs_after, ' ');
+    }
+    if (exec_service->regions) {
+        wm_strcat(&command, "--regions", ' ');
+        wm_strcat(&command, exec_service->regions, ' ');
+    }
+    if (exec_service->type) {
+        wm_strcat(&command, "--type", ' ');
+        wm_strcat(&command, exec_service->type, ' ');
+    }
+    if (isDebug()) {
+        wm_strcat(&command, "--debug", ' ');
+        if (isDebug() > 2) {
+            wm_strcat(&command, "3", ' ');
+        } else if (isDebug() > 1) {
+            wm_strcat(&command, "2", ' ');
+        } else {
+            wm_strcat(&command, "1", ' ');
+        }
+    }
+    if (aws_config->skip_on_error) {
+        wm_strcat(&command, "--skip_on_error", ' ');
+    }
+    if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_READ, &aws_config->state, sizeof(aws_config->state)) < 0) {
+        memset(&aws_config->state, 0, sizeof(aws_config->state));
+    }
+
+    // Execute
+    char *service_title = NULL;
+    wm_strcat(&service_title, "Bucket:", ' ');
+    wm_strcat(&service_title, exec_service->aws_account_id, ' ');
+    if(exec_service->aws_account_alias){
+        wm_strcat(&service_title, "(", '\0');
+        wm_strcat(&service_title, exec_bucket->aws_account_alias, '\0');
+        wm_strcat(&service_title, ")", '\0');
+    }
+    wm_strcat(&service_title, " - ", ' ');
+
+    mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
+    switch (wm_exec(command, &output, &status, 0, NULL)) {
+    case 0:
+        if (status > 0) {
+            mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", service_title, status);
+            if(status == 1) {
+                char * unknown_error_msg = strstr(output,"Unknown error");
+                if (unknown_error_msg == NULL)
+                    mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", service_title);
+                else
+                    mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, unknown_error_msg);
+            }
+            else if(status == 2) {
+                char * ptr;
+                if (ptr = strstr(output, "aws.py: error:"), ptr) {
+                    ptr += 14;
+                    mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", service_title, ptr);
+                } else {
+                    mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", service_title);
+                }
+            }
+            else {
+                char * ptr;
+                if (ptr = strstr(output, "ERROR: "), ptr) {
+                    ptr += 7;
+                    mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, ptr);
+                } else {
+                    mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, output);
+                }
+            }
+
+
+            mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
+        } else {
+            mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
+        }
+        break;
+
+    default:
+        mterror(WM_AWS_LOGTAG, "Internal calling. Exiting...");
+        pthread_exit(NULL);
+    }
+    char * line;
+
+    for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
+        wm_sendmsg(usec, queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
+    }
+    free(line);
+    free(service_title);
     free(output);
     free(command);
 }
