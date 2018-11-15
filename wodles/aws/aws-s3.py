@@ -809,11 +809,12 @@ class AWSInspector:
                                         inspector (
                                             scan_date 'text' NOT NULL,
                                             PRIMARY KEY (scan_date));"""
-
-    sql_inspector_mark_complete = """
-                                    INSERT INTO inspector (
-                                        scan_date) VALUES (
-                                        '{scan_date}')"""
+    
+    sql_inspector_insert_value = """
+                                    INSERT INTO 
+                                        inspector (scan_date)
+                                    VALUES
+                                        ('{}');"""
     
     sql_find_last_scan = """
                             SELECT
@@ -825,8 +826,10 @@ class AWSInspector:
                             LIMIT 1;"""
 
     def __init__(self, **kwargs):
-        self.wazuh_integration = WazuhIntegration(db_name='s3_inspector', table_name='inspector',
-            sql_create_table=AWSInspector.sql_inspector_create_table)
+        self.db_name = 's3_inspector'
+        self.table_name = 'inspector'
+        self.wazuh_integration = WazuhIntegration(db_name=self.db_name,
+            table_name=self.table_name, sql_create_table=AWSInspector.sql_inspector_create_table)
         ## it is necessary to pass region_name as argument
         self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=kwargs['access_key'],
             aws_secret_access_key=kwargs['secret_key'])
@@ -847,7 +850,8 @@ class AWSInspector:
     def get_alerts(self):
         try:
             # if DB is empty write first date
-            self.wazuh_integration.db_cursor.execute("INSERT INTO inspector (scan_date) VALUES ('1970-01-01 00:00:00.0');")
+            initial_date = '1970-01-01 00:00:00.0'
+            self.wazuh_integration.db_cursor.execute(AWSInspector.sql_inspector_insert_value.format(initial_date))
             self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
             last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
         except sqlite3.IntegrityError:
@@ -856,7 +860,7 @@ class AWSInspector:
 
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
         # get current time
-        datetime_current = datetime.today()
+        datetime_current = datetime.utcnow()
         # describe_findings only retrieves 100 results per call
         response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
             {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
@@ -867,7 +871,7 @@ class AWSInspector:
             {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
             self.send_describe_findings(response['findingArns'])
         # insert last scan in DB
-        self.wazuh_integration.db_cursor.execute(("INSERT INTO inspector (scan_date) VALUES ('{}');").format(datetime_current))
+        self.wazuh_integration.db_cursor.execute(AWSInspector.sql_inspector_insert_value.format(datetime_current))
         # close connection with DB
         self.wazuh_integration.close_db()
 
@@ -1004,6 +1008,7 @@ def main(argv):
         bucket.iter_bucket(options.aws_account_id, options.regions)
     else:
         bucket = bucket_type(access_key=options.access_key, secret_key=options.secret_key)
+
 
 if __name__ == '__main__':
     try:
