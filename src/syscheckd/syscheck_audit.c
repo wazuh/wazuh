@@ -27,7 +27,7 @@
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
-#define BUF_SIZE 4096
+#define BUF_SIZE 6144
 #define AUDIT_KEY "wazuh_fim"
 
 // Global variables
@@ -51,6 +51,7 @@ static regex_t regexCompiled_path0;
 static regex_t regexCompiled_path1;
 static regex_t regexCompiled_path2;
 static regex_t regexCompiled_path3;
+static regex_t regexCompiled_path4;
 static regex_t regexCompiled_items;
 static regex_t regexCompiled_dir;
 
@@ -440,6 +441,11 @@ int init_regex(void) {
         merror("Cannot compile path3 regular expression.");
         return -1;
     }
+    static const char *pattern_path4 = " item=4 name=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_path4, pattern_path4, REG_EXTENDED)) {
+        merror("Cannot compile path4 regular expression.");
+        return -1;
+    }
     static const char *pattern_items = " items=([0-9]*) ";
     if (regcomp(&regexCompiled_items, pattern_items, REG_EXTENDED)) {
         merror("Cannot compile items regular expression.");
@@ -602,6 +608,7 @@ void audit_parse(char *buffer) {
     char *path1 = NULL;
     char *path2 = NULL;
     char *path3 = NULL;
+    char *path4 = NULL;
     char *cwd = NULL;
     char *file_path = NULL;
     whodata_evt *w_evt;
@@ -831,6 +838,31 @@ void audit_parse(char *buffer) {
                     free(path2);
                     free(path3);
                     break;
+                case 5:
+                    // path4
+                    if(regexec(&regexCompiled_path4, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        os_malloc(match_size + 1, path4);
+                        snprintf (path4, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                    }
+                    if (cwd && path1 && path4) {
+                        char *file_path;
+                        if (file_path = gen_audit_path(cwd, path1, path4), file_path) {
+                            w_evt->path = file_path;
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                                (w_evt->user_name)?w_evt->user_name:"",
+                                (w_evt->audit_name)?w_evt->audit_name:"",
+                                (w_evt->effective_name)?w_evt->effective_name:"",
+                                (w_evt->group_name)?w_evt->group_name:"",
+                                w_evt->process_id,
+                                w_evt->ppid,
+                                (w_evt->path)?w_evt->path:"",
+                                (w_evt->process_name)?w_evt->process_name:"");
+                            realtime_checksumfile(w_evt->path, w_evt);
+                        }
+                    }
+                    free(path4);
+                    break;
             }
             free(cwd);
             free(path0);
@@ -975,6 +1007,9 @@ void * audit_main(int * audit_sock) {
     regfree(&regexCompiled_cwd);
     regfree(&regexCompiled_path0);
     regfree(&regexCompiled_path1);
+    regfree(&regexCompiled_path2);
+    regfree(&regexCompiled_path3);
+    regfree(&regexCompiled_path4);
     regfree(&regexCompiled_pname);
     regfree(&regexCompiled_items);
     // Change Audit monitored folders to Inotify.

@@ -739,7 +739,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         str_lowercase(f_name);
 #endif
         /* Check integrity of the file */
-        read_file(f_name, dir_position, NULL, max_depth);
+        read_file(f_name, dir_position, evt, max_depth);
     }
 
     free(f_name);
