@@ -19,6 +19,7 @@
 #include "syscheck.h"
 
 volatile int audit_thread_active;
+volatile int whodata_alerts;
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>

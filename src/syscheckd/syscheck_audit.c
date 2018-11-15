@@ -53,6 +53,7 @@ static regex_t regexCompiled_path2;
 static regex_t regexCompiled_path3;
 static regex_t regexCompiled_path4;
 static regex_t regexCompiled_items;
+static regex_t regexCompiled_inode;
 static regex_t regexCompiled_dir;
 
 
@@ -411,6 +412,12 @@ int init_regex(void) {
         merror("Cannot compile ppid regular expression.");
         return -1;
     }
+    // static const char *pattern_inode = " inode=([0-9]*) ";
+    static const char *pattern_inode = " item=[0-9] name=.* inode=([0-9]*)";
+    if (regcomp(&regexCompiled_inode, pattern_inode, REG_EXTENDED)) {
+        merror("Cannot compile inode regular expression.");
+        return -1;
+    }
     static const char *pattern_pname = " exe=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
         merror("Cannot compile pname regular expression.");
@@ -508,6 +515,7 @@ int audit_init(void) {
 
         // Start audit thread
         w_cond_init(&audit_thread_started, NULL);
+        w_cond_init(&audit_db_consistency, NULL);
         w_create_thread(audit_main, &audit_socket);
         w_mutex_lock(&audit_mutex);
         while (!audit_thread_active)
@@ -611,8 +619,10 @@ void audit_parse(char *buffer) {
     char *path4 = NULL;
     char *cwd = NULL;
     char *file_path = NULL;
+    char *inode = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
+    char *inode_temp;
 
     if (pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) { // Parse only 'wazuh_fim' events.
 
@@ -748,6 +758,14 @@ void audit_parse(char *buffer) {
                 os_malloc(match_size + 1, path1);
                 snprintf (path1, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             }
+            // inode
+            if(regexec(&regexCompiled_inode, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, inode);
+                snprintf (inode, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                w_evt->inode = strdup(inode);
+                free(inode);
+            }
 
             switch(items) {
 
@@ -755,16 +773,24 @@ void audit_parse(char *buffer) {
                     if (cwd && path0) {
                         if (file_path = gen_audit_path(cwd, path0, NULL), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            realtime_checksumfile(w_evt->path, w_evt);
+
+                            if(w_evt->inode){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
                         }
                     }
                     break;
@@ -772,16 +798,24 @@ void audit_parse(char *buffer) {
                     if (cwd && path0 && path1) {
                         if (file_path = gen_audit_path(cwd, path0, path1), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            realtime_checksumfile(w_evt->path, w_evt);
+
+                            if(w_evt->inode){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
                         }
                     }
                     break;
@@ -803,17 +837,25 @@ void audit_parse(char *buffer) {
                         char *file_path1;
                         if (file_path1 = gen_audit_path(cwd, path0, path2), file_path1) {
                             w_evt->path = file_path1;
-                            mdebug2("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if(w_evt->inode){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
+
                             free(file_path1);
                             w_evt->path = NULL;
                         }
@@ -822,17 +864,24 @@ void audit_parse(char *buffer) {
                         char *file_path2;
                         if (file_path2 = gen_audit_path(cwd, path1, path3), file_path2) {
                             w_evt->path = file_path2;
-                            mdebug2("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if(w_evt->inode){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
                         }
                     }
                     free(path2);
@@ -867,7 +916,6 @@ void audit_parse(char *buffer) {
             free(cwd);
             free(path0);
             free(path1);
-
             free_whodata_event(w_evt);
         }
     }
@@ -893,6 +941,7 @@ void * audit_main(int * audit_sock) {
     w_mutex_lock(&audit_mutex);
     audit_thread_active = 1;
     w_cond_signal(&audit_thread_started);
+    w_cond_wait(&audit_db_consistency, &audit_mutex);
     w_mutex_unlock(&audit_mutex);
 
     minfo("Starting FIM Whodata engine...");
@@ -1012,6 +1061,7 @@ void * audit_main(int * audit_sock) {
     regfree(&regexCompiled_path4);
     regfree(&regexCompiled_pname);
     regfree(&regexCompiled_items);
+    regfree(&regexCompiled_inode);
     // Change Audit monitored folders to Inotify.
     int i;
     w_mutex_lock(&audit_rules_mutex);
