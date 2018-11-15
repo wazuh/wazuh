@@ -60,8 +60,8 @@ int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
-// Init sdb struct
-void sdb_init(_sdb *localsdb);
+// Init sdb and decoder struct
+void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
 
 /* For stats */
 static void DumpLogstats(void);
@@ -81,7 +81,6 @@ char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 rlim_t nofile;
 int sys_debug_level;
-OSDecoderInfo *fim_decoder;
 int num_rule_matching_threads;
 EventList *last_events_list;
 time_t current_time;
@@ -1778,9 +1777,12 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char *msg = NULL;
     _sdb sdb;
+    OSDecoderInfo *fim_decoder = NULL;
+
+    os_calloc(1, sizeof(OSDecoderInfo), fim_decoder);
 
     /* Initialize the integrity database */
-    sdb_init(&sdb);
+    sdb_init(&sdb, fim_decoder);
 
     while(1){
 
@@ -1805,6 +1807,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
             w_inc_syscheck_decoded_events();
+            lf->decoder_info = fim_decoder;
 
             if (DecodeSyscheck(lf, &sdb) != 1) {
                 /* We don't process syscheck events further */
