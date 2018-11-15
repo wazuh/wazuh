@@ -211,9 +211,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         switch (errno) {
         case ENOENT:
             mwarn("Cannot access '%s': it was removed during scan.", file_name);
-            free(alert_msg);
-            free(wd_sum);
-            return (-1);
+            /* Fallthrough */
 
         case ENOTDIR:
             /*Deletion message sending*/
@@ -663,7 +661,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     }
 
     if (!dp) {
-        if (errno == ENOTDIR) {
+        if (errno == ENOTDIR || errno == ENOENT) {
             if (read_file(dir_name, dir_position, evt, max_depth) == 0) {
                 free(f_name);
                 return (0);

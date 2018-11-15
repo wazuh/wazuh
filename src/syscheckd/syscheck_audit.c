@@ -898,16 +898,24 @@ void audit_parse(char *buffer) {
                         char *file_path;
                         if (file_path = gen_audit_path(cwd, path1, path4), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            realtime_checksumfile(w_evt->path, w_evt);
+
+                            if(w_evt->inode){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
                         }
                     }
                     free(path4);
