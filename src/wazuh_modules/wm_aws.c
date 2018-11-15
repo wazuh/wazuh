@@ -131,6 +131,25 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
         }
         if (cJSON_GetArraySize(arr_buckets) > 0) cJSON_AddItemToObject(wm_aws,"buckets",arr_buckets);
     }
+    if (aws_config->services) {
+        wm_aws_service *iter;
+        cJSON *arr_services = cJSON_CreateArray();
+        for (iter = aws_config->services; iter; iter = iter->next) {
+            cJSON *service = cJSON_CreateObject();
+            if (iter->bucket) cJSON_AddStringToObject(service,"name",iter->bucket);
+            if (iter->access_key) cJSON_AddStringToObject(service,"access_key",iter->access_key);
+            if (iter->secret_key) cJSON_AddStringToObject(service,"secret_key",iter->secret_key);
+            if (iter->aws_profile) cJSON_AddStringToObject(service,"aws_profile",iter->aws_profile);
+            if (iter->iam_role_arn) cJSON_AddStringToObject(service,"iam_role_arn",iter->iam_role_arn);
+            if (iter->aws_account_id) cJSON_AddStringToObject(service,"aws_account_id",iter->aws_account_id);
+            if (iter->aws_account_alias) cJSON_AddStringToObject(service,"aws_account_alias",iter->aws_account_alias);
+            if (iter->only_logs_after) cJSON_AddStringToObject(service,"only_logs_after",iter->only_logs_after);
+            if (iter->regions) cJSON_AddStringToObject(service,"regions",iter->regions);
+            if (iter->type) cJSON_AddStringToObject(service,"type",iter->type);            
+            cJSON_AddItemToArray(arr_services,service);
+        }
+        if (cJSON_GetArraySize(arr_services) > 0) cJSON_AddItemToObject(wm_aws,"services",arr_services);
+    }
     cJSON_AddItemToObject(root,"aws-s3",wm_aws);
 
     return root;
@@ -220,6 +239,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     wm_strcat(&command, "--bucket", ' ');
     wm_strcat(&command, exec_bucket->bucket, ' ');
 
+    // bucket arguments
     if (exec_bucket->remove_from_bucket) {
         wm_strcat(&command, "--remove", ' ');
     }
@@ -262,6 +282,43 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     if (exec_bucket->type) {
         wm_strcat(&command, "--type", ' ');
         wm_strcat(&command, exec_bucket->type, ' ');
+    }
+    // service arguments
+    if (exec_service->access_key) {
+        wm_strcat(&command, "--access_key", ' ');
+        wm_strcat(&command, exec_service->access_key, ' ');
+    }
+    if (exec_service->secret_key) {
+        wm_strcat(&command, "--secret_key", ' ');
+        wm_strcat(&command, exec_service->secret_key, ' ');
+    }
+    if (exec_service->aws_profile) {
+        wm_strcat(&command, "--aws_profile", ' ');
+        wm_strcat(&command, exec_service->aws_profile, ' ');
+    }
+    if (exec_service->iam_role_arn) {
+        wm_strcat(&command, "--iam_role_arn", ' ');
+        wm_strcat(&command, exec_service->iam_role_arn, ' ');
+    }
+    if (exec_service->aws_account_id) {
+        wm_strcat(&command, "--aws_account_id", ' ');
+        wm_strcat(&command, exec_service->aws_account_id, ' ');
+    }
+    if (exec_service->aws_account_alias) {
+        wm_strcat(&command, "--aws_account_alias", ' ');
+        wm_strcat(&command, exec_service->aws_account_alias, ' ');
+    }
+    if (exec_service->only_logs_after) {
+        wm_strcat(&command, "--only_logs_after", ' ');
+        wm_strcat(&command, exec_service->only_logs_after, ' ');
+    }
+    if (exec_service->regions) {
+        wm_strcat(&command, "--regions", ' ');
+        wm_strcat(&command, exec_service->regions, ' ');
+    }
+    if (exec_service->type) {
+        wm_strcat(&command, "--type", ' ');
+        wm_strcat(&command, exec_service->type, ' ');
     }
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');
