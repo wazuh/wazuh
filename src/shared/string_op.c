@@ -159,7 +159,6 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
     char *current;
     char *nest = strchr(key, '.');
     size_t length;
-    cJSON * json_value;
 
     if (nest) {
         length = nest - key;
@@ -178,11 +177,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
-        if (json_value = cJSON_Parse(value), json_value) {
-            cJSON_AddItemToObject(root,key,json_value);
-        } else {
-            cJSON_AddStringToObject(root, key, value);
-        }
+        cJSON_AddStringToObject(root, key, value);
     }
 }
 
