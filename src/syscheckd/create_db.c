@@ -184,6 +184,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 #ifndef WIN32
     char str_owner[50], str_group[50];
+    char *hash_file_name;
 #else
     const char *user;
     char *sid = NULL;
@@ -430,7 +431,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 merror("Unable to add file to db: %s", file_name);
             }
 #ifndef WIN32
-            if (OSHash_Add_ex(syscheck.inode_hash, str_inode, strdup(file_name)) <= 0) {
+            hash_file_name = strdup(file_name);
+            if (OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name) != 2) {
+                free(hash_file_name);
                 mwarn("Unable to add inode to db: %s (%s) ", file_name, str_inode);
             }
 #endif
