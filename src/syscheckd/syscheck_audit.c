@@ -26,6 +26,7 @@
 #define AUDIT_CONF_LINK "/etc/audisp/plugins.d/af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 4096
+#define AUDIT_KEY "wazuh_fim"
 
 // Global variables
 W_Vector *audit_added_rules;
@@ -337,7 +338,7 @@ int add_audit_rules_syscheck(void) {
         if (syscheck.opts[i] & CHECK_WHODATA) {
             int retval;
             if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
-                if (retval = audit_add_rule(syscheck.dir[i], syscheck.audit_key), retval > 0) {
+                if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
                     mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
                     w_mutex_lock(&audit_rules_mutex);
                     W_Vector_insert(audit_added_rules, syscheck.dir[i]);
@@ -997,7 +998,7 @@ void clean_rules(void) {
     if (audit_added_rules) {
         mdebug2("Deleting Audit rules...");
         for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
-            audit_delete_rule(W_Vector_get(audit_added_rules, i), syscheck.audit_key);
+            audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
         }
         W_Vector_free(audit_added_rules);
         audit_added_rules = NULL;
@@ -1011,18 +1012,17 @@ int filterkey_audit_events(char *buffer) {
     char logkey1[OS_SIZE_256];
     char logkey2[OS_SIZE_256];
 
-    snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.audit_key);
-    snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_key);
+    snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_KEY);
     if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
         mdebug2("Match audit_key: '%s'", logkey1);
         return 1;
     }
 
-    while (syscheck.listen_audit_key[i]) {
-        snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.listen_audit_key[i]);
-        snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.listen_audit_key[i]);
+    while (syscheck.audit_extra_key[i]) {
+        snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.audit_extra_key[i]);
+        snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_extra_key[i]);
         if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
-            mdebug2("Match listen_audit_key: '%s'", logkey1);
+            mdebug2("Match audit_extra_key: '%s'", logkey1);
             return 1;
         }
         i++;

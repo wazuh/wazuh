@@ -736,9 +736,11 @@ out_free:
     return ret;
 }
 
-int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
+    int j = 0;
+    xml_node **children = NULL;
 
     /* XML Definitions */
     const char *xml_directories = "directories";
@@ -765,8 +767,8 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_both = "both";
     const char *xml_tag = "tags";
 #endif
-    const char *xml_audit_key = "audit_key";
-    const char *xml_listen_audit_key = "listen_audit_key";
+    const char *xml_whodata_options = "whodata";
+    const char *xml_audit_extra_key = "audit_extra_key";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -785,9 +787,6 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     } else {
         syscheck->disabled = 0;
     }
-
-    // Default value for fim audit key
-    syscheck->audit_key = strdup("wazuh_fim");
 
     while (node[i]) {
         if (!node[i]->element) {
@@ -1211,34 +1210,36 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 return(OS_INVALID);
             }
         }
-        /* Audit key */
-        else if (strcmp(node[i]->element, xml_audit_key) == 0) {
+        /* Whodata options */
+        else if (strcmp(node[i]->element, xml_whodata_options) == 0) {
 
-            os_free(syscheck->audit_key);
-            if (*node[i]->content) {
-                syscheck->audit_key = check_ascci_hex(node[i]->content);
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                continue;
             }
-        }
 
-        /* Listen another audit keys */
-        else if (strcmp(node[i]->element, xml_listen_audit_key) == 0) {
-            int keyit = 0;
-            char delim = ',';
-            char *key;
-            os_calloc(1, sizeof(char *), syscheck->listen_audit_key);
-            syscheck->listen_audit_key[keyit] = NULL;
-            key = strtok(node[i]->content, &delim);
+            for (j = 0; children[j]; j++) {
+                /* Listen another audit keys */
+                if (strcmp(children[j]->element, xml_audit_extra_key) == 0) {
+                    int keyit = 0;
+                    char delim = ',';
+                    char *key;
+                    os_calloc(1, sizeof(char *), syscheck->audit_extra_key);
+                    syscheck->audit_extra_key[keyit] = NULL;
+                    key = strtok(children[j]->content, &delim);
 
-            while (key) {
-                if (*key) {
-                    syscheck->listen_audit_key[keyit] = check_ascci_hex(key);
-                    os_realloc(syscheck->listen_audit_key, (keyit + 2) * sizeof(char *), syscheck->listen_audit_key);
-                    syscheck->listen_audit_key[keyit + 1] = NULL;
-                    key = strtok(NULL, &delim);
-                    keyit++;
+                    while (key) {
+                        if (*key) {
+                            syscheck->audit_extra_key[keyit] = check_ascci_hex(key);
+                            os_realloc(syscheck->audit_extra_key, (keyit + 2) * sizeof(char *), syscheck->audit_extra_key);
+                            syscheck->audit_extra_key[keyit + 1] = NULL;
+                            key = strtok(NULL, &delim);
+                            keyit++;
+                        }
+                    }
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
                 }
             }
         } else {

@@ -208,8 +208,7 @@ typedef struct _config {
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
 #endif
 
-    char *audit_key;                        // Key for whodata
-    char **listen_audit_key;                // Listen audit keys
+    char **audit_extra_key;                // Listen audit keys
 
     OSHash *fp;
     OSHash *last_check;
