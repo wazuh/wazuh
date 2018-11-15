@@ -948,7 +948,7 @@ int connect_to_remoted()
     return (arq);
 }
 
-const char *agent_file_perm(mode_t mode)
+char *agent_file_perm(mode_t mode)
 {
 	/* rwxrwxrwx0 -> 10 */
 	static char permissions[10];

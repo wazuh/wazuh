@@ -77,7 +77,7 @@ int connect_to_remoted(void);
 /* Return the unix permission string
  * Returns a pointer to a local static array
  */
-const char *agent_file_perm(mode_t mode);
+char *agent_file_perm(mode_t mode);
 #endif
 
 /* Sends a message to an agent

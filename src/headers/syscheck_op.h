@@ -20,6 +20,7 @@
 #include <grp.h>
 #define PATH_SEP '/'
 
+// ATTRS
 #define FILE_ATTRIBUTE_READONLY                0x00000001
 #define FILE_ATTRIBUTE_HIDDEN                  0x00000002
 #define FILE_ATTRIBUTE_SYSTEM                  0x00000004
@@ -39,6 +40,22 @@
 #define FILE_ATTRIBUTE_NO_SCRUB_DATA           0x00020000
 #define FILE_ATTRIBUTE_RECALL_ON_OPEN          0x00040000
 #define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS   0x00400000
+
+// Permissions
+#define FILE_READ_DATA	                       0x00000001
+#define FILE_WRITE_DATA                        0x00000002
+#define FILE_APPEND_DATA	                   0x00000004
+#define FILE_READ_EA	                       0x00000008
+#define FILE_WRITE_EA	                       0x00000010
+#define FILE_EXECUTE	                       0x00000020
+#define FILE_DELETE_CHILD	                   0x00000040
+#define FILE_READ_ATTRIBUTES	               0x00000080
+#define FILE_WRITE_ATTRIBUTES	               0x00000100
+#define DELETE	                               0x00010000
+#define READ_CONTROL	                       0x00020000
+#define WRITE_DAC	                           0x00040000
+#define WRITE_OWNER	                           0x00080000
+#define SYNCHRONIZE	                           0x00100000
 
 #else
 
@@ -84,7 +101,7 @@ typedef enum sk_syscheck {
 typedef struct __sdb {
     char comment[OS_MAXSTR + 1];
     char size[OS_FLSIZE + 1];
-    char perm[OS_FLSIZE + 1];
+    char perm[OS_SIZE_20480 + 1];
     char owner[OS_FLSIZE + 1];
     char gowner[OS_FLSIZE + 1];
     char md5[OS_FLSIZE + 1];
@@ -129,6 +146,7 @@ typedef struct sk_sum_wdata {
 typedef struct sk_sum_t {
     char *size;
     int perm;
+    char *win_perm;
     char *uid;
     char *gid;
     char *md5;
@@ -173,14 +191,15 @@ void normalize_path(char *path);
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
 const char* get_group(int gid);
-void get_attributes_str(char *str, unsigned int attrs, char seq);
+void decode_win_attributes(char *str, unsigned int attrs, char seq);
+int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq);
 cJSON *attrs_to_array(unsigned int attributes);
 
 #else
 
 const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
-unsigned int w_get_attrs(const char *file_path);
-int w_get_permissions(const char *file_path, char *permissions, int perm_size);
+unsigned int w_get_file_attrs(const char *file_path);
+int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 const char *get_group(__attribute__((unused)) int gid);
 
 #endif

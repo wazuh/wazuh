@@ -573,6 +573,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->filename = NULL;
     lf->perm_before = 0;
     lf->perm_after = 0;
+    lf->win_perm_before = NULL;
+    lf->win_perm_after = NULL;
     lf->md5_before = NULL;
     lf->md5_after = NULL;
     lf->sha1_before = NULL;
@@ -777,6 +779,12 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->sk_tag) {
         free(lf->sk_tag);
+    }
+    if (lf->win_perm_before) {
+        free(lf->win_perm_before);
+    }
+    if (lf->win_perm_after) {
+        free(lf->win_perm_after);
     }
     if (lf->md5_before) {
         free(lf->md5_before);
@@ -1128,6 +1136,14 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if (lf->sk_tag){
         os_strdup(lf->sk_tag, lf_cpy->sk_tag);
+    }
+
+    if (lf->win_perm_before) {
+        os_strdup(lf->win_perm_before, lf_cpy->win_perm_before);
+    }
+
+    if (lf->win_perm_after) {
+        os_strdup(lf->win_perm_after, lf_cpy->win_perm_after);
     }
 
     if(lf->md5_before){

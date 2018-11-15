@@ -16,6 +16,7 @@ int copy_ace_info(void *ace, char *perm, int perm_size);
 int w_get_account_info(SID *sid, char **account_name, char **account_domain);
 #else
 static char *unescape_whodata_sum(char *sum);
+static char *unescape_perm_sum(char *sum);
 #endif
 
 int delete_target_file(const char *path) {
@@ -166,7 +167,13 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             return -1;
 
         *(sum->uid++) = '\0';
-        sum->perm = atoi(c_perm);
+
+        if (*c_perm == '|') {
+            // Windows permissions
+            sum->win_perm = unescape_perm_sum(c_perm);
+        } else {
+            sum->perm = atoi(c_perm);
+        }
 
         if (!(sum->gid = strchr(sum->uid, ':')))
             return -1;
@@ -335,6 +342,18 @@ char *unescape_whodata_sum(char *sum) {
     return NULL;
 }
 
+char *unescape_perm_sum(char *sum) {
+    char *esc_it;
+
+    if (*sum != '\0' ) {
+        esc_it = wstr_replace(sum, "\\!", "!");
+        sum = wstr_replace(esc_it, "\\:", ":");
+        os_free(esc_it);
+        return sum;
+    }
+    return NULL;
+}
+
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     os_strdup(f_name, lf->filename);
     os_strdup(f_name, lf->fields[SK_FILE].value);
@@ -348,6 +367,13 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         lf->perm_after = sum->perm;
         os_calloc(7, sizeof(char), lf->fields[SK_PERM].value);
         snprintf(lf->fields[SK_PERM].value, 7, "%06o", sum->perm);
+    } else if (sum->win_perm && *sum->win_perm != '\0') {
+        int size;
+        os_strdup(sum->win_perm, lf->win_perm_after);
+        os_calloc(OS_SIZE_20480 + 1, sizeof(char), lf->fields[SK_PERM].value);
+        if (size = decode_win_permissions(lf->fields[SK_PERM].value, OS_SIZE_20480, lf->win_perm_after, 1), size > 1) {
+            os_realloc(lf->fields[SK_PERM].value, size + 1, lf->fields[SK_PERM].value);
+        }
     }
 
     if (sum->uid) {
@@ -400,7 +426,7 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     if(sum->attrs) {
         lf->attrs_after = sum->attrs;
         os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->fields[SK_ATTRS].value);
-        get_attributes_str(lf->fields[SK_ATTRS].value, lf->attrs_after, 1);
+        decode_win_attributes(lf->fields[SK_ATTRS].value, lf->attrs_after, 1);
     }
 
     if(sum->wdata.user_id) {
@@ -515,7 +541,7 @@ const char* get_group(int gid) {
     return group ? group->gr_name : "";
 }
 
-void get_attributes_str(char *str, unsigned int attrs, char seq) {
+void decode_win_attributes(char *str, unsigned int attrs, char seq) {
     size_t size;
 
     if (seq) {
@@ -566,6 +592,84 @@ void get_attributes_str(char *str, unsigned int attrs, char seq) {
                 attrs & FILE_ATTRIBUTE_VIRTUAL ? "  + VIRTUAL\n" : ""
         );
     }
+}
+
+int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq) {
+    int writted = 0;
+    int size;
+    char *perm_it = NULL;
+    char *base_it = NULL;
+    char *account_name = NULL;
+    char a_type;
+    long mask;
+
+    if (seq) {
+        writted = snprintf(str, 50, "========~~~=====");
+    } else {
+        perm_it = raw_perm;
+        while (perm_it = strchr(perm_it, '|'), perm_it) {
+            // Get the account/group name
+            base_it = ++perm_it;
+            if (perm_it = strchr(perm_it, ','), !perm_it) {
+                goto error;
+            }
+            *perm_it = '\0';
+            os_strdup(base_it, account_name);
+            *perm_it = ',';
+
+            // Get the access type
+            base_it = ++perm_it;
+            if (perm_it = strchr(perm_it, ','), !perm_it) {
+                goto error;
+            }
+            *perm_it = '\0';
+            a_type = *base_it;
+            *perm_it = ',';
+
+            // Get the access mask
+            base_it = ++perm_it;
+            if (perm_it = strchr(perm_it, '|'), perm_it) {
+                *perm_it = '\0';
+                mask = strtol(base_it, NULL, 10);
+                *perm_it = '|';
+            } else {
+                // End of the msg
+                mask = strtol(base_it, NULL, 10);
+            }
+
+            size = snprintf(str, str_size, "  [%s]  (%s)\n%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                            account_name,
+                            a_type == '0' ? "ALLOWED" : "DENIED",
+                            mask & FILE_READ_DATA ? "  + FILE_READ_DATA\n" : "",
+                            mask & FILE_WRITE_DATA ? "  + FILE_WRITE_DATA\n" : "",
+                            mask & FILE_APPEND_DATA ? "  + FILE_APPEND_DATA\n" : "",
+                            mask & FILE_READ_EA ? "  + FILE_READ_EA\n" : "",
+                            mask & FILE_WRITE_EA ? "  + FILE_WRITE_EA\n" : "",
+                            mask & FILE_EXECUTE ? "  + FILE_EXECUTE\n" : "",
+                            mask & FILE_READ_ATTRIBUTES ? "  + FILE_READ_ATTRIBUTES\n" : "",
+                            mask & FILE_WRITE_ATTRIBUTES ? "  + FILE_WRITE_ATTRIBUTES\n" : "",
+                            mask & FILE_DELETE_CHILD ? "  + FILE_DELETE\n" : "",
+                            mask & DELETE ? "  + DELETE\n" : "",
+                            mask & READ_CONTROL ? "  + READ_CONTROL\n" : "",
+                            mask & WRITE_DAC ? "  + WRITE_DAC\n" : "",
+                            mask & WRITE_OWNER ? "  + WRITE_OWNER\n" : "",
+                            mask & SYNCHRONIZE ? "  + SYNCHRONIZE\n" : ""
+            );
+            writted += size;
+            str += size;
+            os_free(account_name);
+            if (!perm_it) {
+                break;
+            }
+        }
+    }
+
+    return writted;
+error:
+    os_free(account_name);
+    mdebug1("The file permissions could not be decoded: '%s'", raw_perm);
+    *str = '\0';
+    return 0;
 }
 
 cJSON *attrs_to_array(unsigned int attributes) {
@@ -746,7 +850,7 @@ end:
     return AcctName;
 }
 
-int w_get_permissions(const char *file_path, char *permissions, int perm_size) {
+int w_get_file_permissions(const char *file_path, char *permissions, int perm_size) {
     int retval = 0;
     int error;
     unsigned int i;
@@ -891,7 +995,7 @@ int w_get_account_info(SID *sid, char **account_name, char **account_domain) {
     return 0;
 }
 
-unsigned int w_get_attrs(const char *file_path) {
+unsigned int w_get_file_attrs(const char *file_path) {
     unsigned int attrs;
 
     if (attrs = GetFileAttributesA(file_path), attrs == INVALID_FILE_ATTRIBUTES) {

@@ -63,6 +63,7 @@ void fim_init(void) {
     fim_decoder->fields[SK_MD5] = "md5";
     fim_decoder->fields[SK_SHA1] = "sha1";
     fim_decoder->fields[SK_SHA256] = "sha256";
+    fim_decoder->fields[SK_ATTRS] = "attributes";
     fim_decoder->fields[SK_UNAME] = "uname";
     fim_decoder->fields[SK_GNAME] = "gname";
     fim_decoder->fields[SK_INODE] = "inode";
@@ -98,7 +99,7 @@ void sdb_init(_sdb *localsdb) {
 void sdb_clean(_sdb *localsdb) {
     memset(localsdb->comment, '\0', OS_MAXSTR + 1);
     memset(localsdb->size, '\0', OS_FLSIZE + 1);
-    memset(localsdb->perm, '\0', OS_FLSIZE + 1);
+    memset(localsdb->perm, '\0', OS_SIZE_20480 + 1);
     memset(localsdb->owner, '\0', OS_FLSIZE + 1);
     memset(localsdb->gowner, '\0', OS_FLSIZE + 1);
     memset(localsdb->md5, '\0', OS_FLSIZE + 1);
@@ -542,6 +543,16 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                              "'%9.9s' to '%9.9s'\n", opstr, npstr);
 
                     lf->perm_before = oldsum->perm;
+                }
+            } else if (oldsum->win_perm && newsum->win_perm) { // Check for Windows permissions
+                if (oldsum->win_perm == newsum->win_perm) {
+                    localsdb->perm[0] = '\0';
+                } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
+                    changes = 1;
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
+                    snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
+                             "'%s' to '%s'\n", "---------", "---------");
+                    lf->win_perm_before = oldsum->win_perm;
                 }
             }
 

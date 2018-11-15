@@ -311,7 +311,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         if (opts & CHECK_PERM) {
             int error;
             char perm_unescaped[OS_SIZE_6144 + 1];
-            if (error = w_get_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+            if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
                 merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
             } else {
                 char *perm_esc;
@@ -371,7 +371,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     str_mtime,
                     str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
-                    opts & CHECK_ATTRS ? w_get_attrs(file_name) : 0);
+                    opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0);
 #else
             if (opts & CHECK_SIZE) {
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
@@ -483,7 +483,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 str_mtime,
                 str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
-                opts & CHECK_ATTRS ? w_get_attrs(file_name) : 0,
+                opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
                 file_name,

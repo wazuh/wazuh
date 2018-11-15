@@ -413,7 +413,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     /* Attributes*/
 #ifdef WIN32
     if (oldsum[9] == '+') {
-        attributes = w_get_attrs(file_name);
+        attributes = w_get_file_attrs(file_name);
     }
 #endif
 
@@ -516,7 +516,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     if (perm == 1) {
         int error;
         char perm_unescaped[OS_SIZE_6144 + 1];
-        if (error = w_get_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+        if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
             merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
         } else {
             char *perm_esc;
