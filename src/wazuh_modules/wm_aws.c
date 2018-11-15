@@ -38,6 +38,7 @@ const wm_context WM_AWS_CONTEXT = {
 
 void* wm_aws_main(wm_aws *aws_config) {
     wm_aws_bucket *cur_bucket;
+    wm_aws_service *cur_service;
     time_t time_start;
     time_t time_sleep = 0;
 
@@ -81,9 +82,9 @@ void* wm_aws_main(wm_aws *aws_config) {
             } else if (cur_service->aws_account_id) {
                 mtinfo(WM_AWS_LOGTAG, "Executing Service Analisys: %s", cur_service->aws_account_id);
             } else {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service Analisys: %s", cur_service->service);
+                mtinfo(WM_AWS_LOGTAG, "Executing Service Analisys: %s", cur_service->type);
             }
-            wm_aws_run_s3(cur_service);
+            wm_aws_run_service(cur_service);
         }
 
         mtinfo(WM_AWS_LOGTAG, "Fetching logs finished.");
@@ -148,7 +149,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
         cJSON *arr_services = cJSON_CreateArray();
         for (iter = aws_config->services; iter; iter = iter->next) {
             cJSON *service = cJSON_CreateObject();
-            if (iter->bucket) cJSON_AddStringToObject(service,"name",iter->bucket);
+            if (iter->type) cJSON_AddStringToObject(service,"type",iter->type); // type is the name of the service
             if (iter->access_key) cJSON_AddStringToObject(service,"access_key",iter->access_key);
             if (iter->secret_key) cJSON_AddStringToObject(service,"secret_key",iter->secret_key);
             if (iter->aws_profile) cJSON_AddStringToObject(service,"aws_profile",iter->aws_profile);
@@ -157,7 +158,6 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->aws_account_alias) cJSON_AddStringToObject(service,"aws_account_alias",iter->aws_account_alias);
             if (iter->only_logs_after) cJSON_AddStringToObject(service,"only_logs_after",iter->only_logs_after);
             if (iter->regions) cJSON_AddStringToObject(service,"regions",iter->regions);
-            if (iter->type) cJSON_AddStringToObject(service,"type",iter->type);            
             cJSON_AddItemToArray(arr_services,service);
         }
         if (cJSON_GetArraySize(arr_services) > 0) cJSON_AddItemToObject(wm_aws,"services",arr_services);
@@ -215,8 +215,8 @@ void wm_aws_check() {
 
     // Check if buckets defines
 
-    if (!aws_config->buckets) {
-        mtwarn(WM_AWS_LOGTAG, "No AWS buckets defined. Exiting...");
+    if (!aws_config->buckets || !aws_config->services) {
+        mtwarn(WM_AWS_LOGTAG, "No AWS buckets or services defined. Exiting...");
         pthread_exit(NULL);
     }
 
@@ -391,7 +391,7 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
 
     wm_strcat(&command, WM_AWS_SCRIPT_PATH, '\0');
     wm_strcat(&command, "--service", ' ');
-    wm_strcat(&command, exec_service->service, ' ');
+    wm_strcat(&command, exec_service->type, ' ');
 
     if (exec_service->access_key) {
         wm_strcat(&command, "--access_key", ' ');
@@ -425,10 +425,6 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
         wm_strcat(&command, "--regions", ' ');
         wm_strcat(&command, exec_service->regions, ' ');
     }
-    if (exec_service->type) {
-        wm_strcat(&command, "--type", ' ');
-        wm_strcat(&command, exec_service->type, ' ');
-    }
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');
         if (isDebug() > 2) {
@@ -452,7 +448,7 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
     wm_strcat(&service_title, exec_service->aws_account_id, ' ');
     if(exec_service->aws_account_alias){
         wm_strcat(&service_title, "(", '\0');
-        wm_strcat(&service_title, exec_bucket->aws_account_alias, '\0');
+        wm_strcat(&service_title, exec_service->aws_account_alias, '\0');
         wm_strcat(&service_title, ")", '\0');
     }
     wm_strcat(&service_title, " - ", ' ');

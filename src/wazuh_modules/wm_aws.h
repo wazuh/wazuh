@@ -41,7 +41,7 @@ typedef struct wm_aws_bucket {
 
 
 typedef struct wm_aws_service {
-    char *service;                      // S3 service
+    char *type;                         // String defining service type.
     char *access_key;                   // IAM access key
     char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
@@ -50,7 +50,6 @@ typedef struct wm_aws_service {
     char *aws_account_alias;            // AWS account alias
     char *only_logs_after;              // Date (YYYY-MMM-DD) to only parse logs after
     char *regions;                      // CSV of regions to parse
-    char *type;                         // String defining servuce type.
     struct wm_aws_service *next;     // Pointer to next
 } wm_aws_service;
 
