@@ -179,6 +179,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
+#define AGENTINFO_DIR_PATH DEFAULTDIR "/queue/agent-info"
 
 /* Agent groups location */
 #define GROUPS_DIR    "/queue/agent-groups"

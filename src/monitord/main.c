@@ -148,6 +148,7 @@ int main(int argc, char **argv)
     mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
     mond.size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
     mond.daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
+    mond.delete_old_agents = (unsigned int)getDefine_Int("monitord", "delete_old_agents", 0, 1);
 
     mond.agents = NULL;
     mond.smtpserver = NULL;

@@ -54,7 +54,7 @@ int delete_agentinfo(const char *id, const char *name) __attribute__((nonnull));
 void delete_sqlite(const char *id, const char *name);
 
 /* Get all available agents */
-char **get_agents(int flag);
+char **get_agents(int flag, int mon_time);
 
 /* Free the agent list */
 void free_agents(char **agent_list);

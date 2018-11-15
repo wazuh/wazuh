@@ -69,7 +69,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
     }
 
     /* Init the decode rootcheck queue input */
-    request_queue = queue_init(1024);
+    request_queue = queue_init(data->queue_size);
 
     for(i = 0; i < data->threads;i++){
         w_create_thread(w_request_thread,data);
@@ -94,7 +94,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
 
             if(queue_full(request_queue)){
                 mdebug1("Request queue is full. Discarting...");
-                free(copy);
+                os_free(copy);
                 continue;
             }
 
@@ -102,7 +102,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
 
             if(result < 0){
                 mdebug1("Request queue is full. Discarting...");
-                free(copy);
+                os_free(copy);
                 continue;
             }
         }
@@ -160,8 +160,18 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     // Run external query
     mdebug1("Getting key from script '%s'", data->script);
     
-    if (wm_exec(data->script, &output, &result_code, data->timeout, NULL) < 0) {
+    char *command = NULL;
+    os_calloc(OS_MAXSTR + 1,sizeof(char),command);
+
+    if(snprintf(command,OS_MAXSTR,"%s %s",data->script,request) > OS_MAXSTR) {
+        mdebug1("Request is too long.");
+        os_free(command);
+        return;
+    }
+
+    if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
         mdebug1("At wm_key_request_dispatch(): Error executing script [%s]", data->script);
+        os_free(command);
         return;
     } else {
         agent_infoJSON = cJSON_Parse(output);
@@ -181,6 +191,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             if (!agent_id) {
                 mdebug1("Agent ID not found.");
                 cJSON_Delete (agent_infoJSON);
+                os_free(command);
                 return;
             }
 
@@ -188,6 +199,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             if (!agent_name) {
                 mdebug1("Agent name not found.");
                 cJSON_Delete (agent_infoJSON);
+                os_free(command);
                 return;
             }
 
@@ -195,6 +207,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             if (!agent_address) {
                 mdebug1("Agent address not found.");
                 cJSON_Delete (agent_infoJSON);
+                os_free(command);
                 return;
             }
 
@@ -202,25 +215,27 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             if (!agent_key) {
                 mdebug1("Agent key not found.");
                 cJSON_Delete (agent_infoJSON);
+                os_free(command);
                 return;
             }
 
             if (sock = auth_connect(), sock < 0) { 
                 mdebug1("Could not connect to authd socket. Is authd running?");
             } else {
-                auth_add_agent(sock,id,agent_name,agent_address,agent_key,1,1);
+                auth_add_agent(sock,id,agent_name,agent_address,agent_key,1,1,agent_id);
             }
 
             OSHash_Delete_ex(request_hash,buffer);
             cJSON_Delete(agent_infoJSON);
         }
-        free(output);
+        os_free(output);
     }
+    os_free(command);
 }
 
 // Destroy data
 void wm_key_request_destroy(wm_krequest_t * data) {
-    free(data);
+    os_free(data);
 }
 
 cJSON *wm_key_request_dump(const wm_krequest_t *data) {
@@ -236,7 +251,15 @@ cJSON *wm_key_request_dump(const wm_krequest_t *data) {
         cJSON_AddStringToObject(wm_wd,"script",data->script);
     }
 
-    cJSON_AddItemToObject(root,"wazuh_key_request",wm_wd);
+    if(data->threads){
+        cJSON_AddNumberToObject(wm_wd,"threads",data->threads);
+    }
+
+    if(data->queue_size){
+        cJSON_AddNumberToObject(wm_wd,"queue_size",data->queue_size);
+    }
+
+    cJSON_AddItemToObject(root,"key-request",wm_wd);
     return root;
 }
 
@@ -250,7 +273,7 @@ void * w_request_thread(const wm_krequest_t *data) {
 
             /* Dispatch the request */
             wm_key_request_dispatch(msg,data);
-            free(msg);
+            os_free(msg);
         }
     }
 }

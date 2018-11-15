@@ -48,9 +48,6 @@ void OS_RemoveAgentTimestamp(const char *id);
 void OS_RemoveAgentGroup(const char *id);
 void FormatID(char *id);
 
-// Remove agent. Returns 0 on success or -1 on error.
-int auth_remove_agent(int sock, const char *id, int json_format);
-
 /* Load gid and uid.
  * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
  * Should be called before chroot().

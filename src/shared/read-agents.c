@@ -1271,7 +1271,7 @@ agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
 }
 
 /* List available agents */
-char **get_agents(int flag)
+char **get_agents(int flag,int mon_time)
 {
     size_t f_size = 0;
     char **f_files = NULL;
@@ -1306,7 +1306,7 @@ char **get_agents(int flag)
                 continue;
             }
 
-            if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
+            if (file_status.st_mtime > (time(0) - DISCON_TIME) || (file_status.st_mtime > (time(0) - mon_time) && mon_time)) {
                 status = 1;
                 if (flag == GA_NOTACTIVE) {
                     continue;

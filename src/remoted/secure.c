@@ -33,6 +33,15 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
 
+/* Decode hostinfo input queue */
+static w_queue_t * key_request_queue;
+
+/* Remote key request thread */
+void * w_key_request_thread(__attribute__((unused)) void * args);
+
+/* Push key request */
+static int push_request(const char *request,const char *type);
+
 /* Handle secure connections */
 void HandleSecure()
 {
@@ -75,6 +84,11 @@ void HandleSecure()
     // Create State writer thread
     w_create_thread(rem_state_main, NULL);
 
+    key_request_queue = queue_init(1024);
+
+    // Create key request thread
+    w_create_thread(w_key_request_thread, NULL);
+    
     /* Create wait_for_msgs threads */
 
     {
@@ -373,6 +387,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
 
+            // Send key request by id
+            push_request(buffer + 1,"id");
             if (sock_client >= 0)
                 _close_sock(&keys, sock_client);
 
@@ -386,6 +402,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             key_unlock();
             mwarn(DENYIP_WARN, srcip);
 
+            // Send key request by ip
+            push_request(srcip,"ip");
             if (sock_client >= 0)
                 _close_sock(&keys, sock_client);
 
@@ -478,4 +496,69 @@ static int key_request_connect() {
 #else
     return -1;
 #endif
+}
+
+static int send_key_request(int socket,const char *msg) {
+    return OS_SendUnix(socket,msg,strlen(msg));
+}
+
+static int push_request(const char *request,const char *type) {
+    char *msg = NULL;
+    os_calloc(OS_MAXSTR,sizeof(char),msg);
+
+    snprintf(msg,OS_MAXSTR,"%s:%s",type,request);
+
+    if(queue_push_ex(key_request_queue,msg) < 0) {
+        os_free(msg);
+    }
+    return 0;
+}
+
+void * w_key_request_thread(__attribute__((unused)) void * args) { 
+    char * msg;
+    int socket = key_request_connect();
+
+    int times = 4;
+    while(times > 0) {
+        if (socket = key_request_connect(), socket < 0) { 
+            sleep(1);
+        } else {
+            break;
+        }
+        times--;
+    }
+
+    while(1) {
+
+        if (msg = queue_pop_ex(key_request_queue), msg) {
+            int rc;
+send:
+            if ((rc = send_key_request(socket, msg)) < 0) {
+                if (rc == OS_SOCKBUSY) {
+                    mdebug1("Key request socket busy.");
+                } else {
+                    mdebug1("Key request socket error (shutdown?).");
+                }
+                mdebug1("Error communicating with key request queue (%d). Is the module running?", rc);
+
+                if (socket >= 0) {
+                    close(socket);
+                }
+
+                /* Try to send again */
+                times = 4;
+                while(times > 0) {
+
+                    if (socket = key_request_connect(), socket < 0) { 
+                        sleep(1);
+                    } else {
+                        goto send;
+                    }
+                    times--;
+                }
+
+            }
+            os_free(msg);
+        }
+    }
 }

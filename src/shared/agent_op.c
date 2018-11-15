@@ -649,7 +649,7 @@ int auth_close(int sock) {
 }
 
 // Add agent. Returns 0 on success or -1 on error.
-int auth_add_agent(int sock, char *id, const char *name, const char *ip,const char *key, int force, int json_format) {
+int auth_add_agent(int sock, char *id, const char *name, const char *ip,const char *key, int force, int json_format,const char *agent_id) {
     char buffer[OS_MAXSTR + 1];
     char * output;
     int result;
@@ -669,6 +669,10 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
 
     if(key) {
         cJSON_AddStringToObject(arguments, "key", key);
+    }
+
+    if(agent_id) {
+        cJSON_AddStringToObject(arguments, "id", agent_id);
     }
         
     if (force >= 0) {
@@ -728,4 +732,66 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
     }
 
     return result;
+}
+
+char * get_agent_id_from_name(const char *agent_name) {
+
+    FILE *fp;
+    char *path = NULL;
+    char *buffer = NULL;
+
+    os_calloc(PATH_MAX,sizeof(char),path);
+    os_calloc(OS_SIZE_65536 + 1,sizeof(char),buffer);
+
+    snprintf(path,PATH_MAX,"%s",isChroot() ? KEYS_FILE : KEYSFILE_PATH);
+
+    fp = fopen(path,"r");
+
+    if(!fp) { 
+        mdebug1("Couldnt open file '%s'",path);
+        os_free(path);
+        return NULL;
+    }
+
+    os_free(path);
+
+    while(fgets (buffer, OS_SIZE_65536, fp) != NULL) {
+
+        char **parts;
+
+        parts = OS_StrBreak(' ',buffer,OS_SIZE_65536);
+
+        if(!parts) {
+            continue;
+        }
+
+        // Make sure we have 4 parts
+        int count = 0;
+        char **p = parts;
+
+        while(p){
+            count++;
+            p++;
+        }
+
+        if(count < 3) {
+            free_strarray(parts);
+            os_free(buffer);
+            fclose(fp);
+            return NULL;
+        }
+
+        // If the agent name is the same, return its ID
+        if(strncmp(parts[1],agent_name,OS_SIZE_65536) == 0){
+            fclose(fp);
+            free_strarray(parts);
+            os_free(buffer);
+            return strdup(parts[0]);
+        }
+    }
+
+    fclose(fp);
+    os_free(buffer);
+
+    return NULL;
 }

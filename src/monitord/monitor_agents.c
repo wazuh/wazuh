@@ -17,7 +17,7 @@ void monitor_agents()
     char **cr_agents;
     char **av_agents;
 
-    av_agents = get_agents(GA_ACTIVE);
+    av_agents = get_agents(GA_ACTIVE,mond.delete_old_agents);
 
     /* No agent saved */
     if (!mond.agents) {
@@ -50,6 +50,24 @@ void monitor_agents()
                         LOCALFILE_MQ) < 0) {
                 merror(QUEUE_SEND);
             }
+
+            if(mond.delete_old_agents > 0) {
+
+                /* Delete old agent if time has passed */
+                char *agent_id = get_agent_id_from_name(*cr_agents);
+
+                if(agent_id) {
+                    if(!delete_old_agent(agent_id)) {
+                        
+                        /* Send removed message */
+                        snprintf(str, OS_SIZE_1024 - 1, OS_AG_REMOVED, *cr_agents);
+                        if (SendMSG(mond.a_queue, str, ARGV0,
+                                    LOCALFILE_MQ) < 0) {
+                            merror(QUEUE_SEND);
+                        }
+                    }
+                }
+            }
         }
 
         cr_agents++;
@@ -61,3 +79,18 @@ void monitor_agents()
     return;
 }
 
+int delete_old_agent(const char *agent_id){
+    int sock;
+    int json_output = 1;
+    int val = 0;
+
+    if (sock = auth_connect(), sock < 0) {
+        mdebug1("Monitord could not connecto to Authd socket. Is Authd running?");
+        val = -1;
+        return val;
+    }
+    val = auth_remove_agent(sock, agent_id, json_output);   
+
+    auth_close(sock);
+    return val;
+}
