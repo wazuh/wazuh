@@ -717,8 +717,12 @@ class AWSCustomBucket(AWSBucket):
 
 
 class WazuhIntegration:
-
-    sql_db_optimize = "PRAGMA optimize;"
+    """
+    Class with common methods to interact with databases
+    :param kwargs['db_name']: database name
+    :param kwargs['table_name']: table name
+    :param kwargs['sql_create_table']: SQL query to create a new table
+    """
 
     sql_find_table_names = """
                             SELECT
@@ -728,23 +732,20 @@ class WazuhIntegration:
                             WHERE
                                 type='table';"""
 
-    
+    sql_db_optimize = "PRAGMA optimize;"
 
     def __init__(self, **kwargs):
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.db_name = kwargs['db_name']
-        self.db_table_name = kwargs['sql_table_name']  ## kwarg
-        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)  ## kwarg
+        self.sql_create_table = kwargs['sql_create_table']
+        self.db_table_name = kwargs['table_name']
+        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
         self.db_connector = sqlite3.connect(self.db_path)
         self.db_cursor = self.db_connector.cursor()
         self.msg_header = "1:Wazuh-AWS:"
-        #### SQL queries
-        self.sql_create_table = kwargs['sql_create_table']  ## kwarg
-        ### executions
         self.init_db()
-
 
     def send_msg(self, msg):
         """
@@ -785,12 +786,23 @@ class WazuhIntegration:
         except Exception as e:
             print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
-        # DB does exist yet
+        # if table does not exist, create a new table
         if self.db_table_name not in tables:
             self.create_table()
 
+    def close_db(self):
+        self.db_connector.commit()
+        self.db_connector.execute(WazuhIntegration.sql_db_optimize)
+        self.db_connector.close()
+
 
 class AWSInspector:
+    """
+    Class for getting AWS Inspector logs
+    :param access_key: AWS access key id
+    :param secret_key: AWS secret access key
+    :param profile: AWS profile
+    """
 
     sql_inspector_create_table = """
                                     CREATE TABLE
@@ -813,7 +825,7 @@ class AWSInspector:
                             LIMIT 1;"""
 
     def __init__(self, **kwargs):
-        self.wazuh_integration = WazuhIntegration(db_name='s3_inspector', sql_table_name='inspector',
+        self.wazuh_integration = WazuhIntegration(db_name='s3_inspector', table_name='inspector',
             sql_create_table=AWSInspector.sql_inspector_create_table)
         ## it is necessary to pass region_name as argument
         self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=kwargs['access_key'],
@@ -834,31 +846,30 @@ class AWSInspector:
 
     def get_alerts(self):
         try:
+            # if DB is empty write first date
             self.wazuh_integration.db_cursor.execute("INSERT INTO inspector (scan_date) VALUES ('1970-01-01 00:00:00.0');")
             self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
             last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
         except sqlite3.IntegrityError:
             self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
             last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
-            
-        self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
+
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
         # get current time
-        current_time = datetime.today()
+        datetime_current = datetime.today()
         # describe_findings only retrieves 100 results per call
         response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
-            {'beginDate': datetime_last_scan, 'endDate': current_time}})
+            {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
         self.send_describe_findings(response['findingArns'])
         # iterate if there are more elements
         while 'nextToken' in response:
             response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'], filter={'creationTimeRange':
-            {'beginDate': datetime_last_scan, 'endDate': current_time}})
+            {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
             self.send_describe_findings(response['findingArns'])
-        #### insert last scan in DB
-        self.wazuh_integration.db_cursor.execute(("INSERT INTO inspector (scan_date) VALUES ('{}');").format(current_time))
-        self.wazuh_integration.db_connector.commit()
-        self.wazuh_integration.db_connector.execute(WazuhIntegration.sql_db_optimize)
-        self.wazuh_integration.db_connector.close()
+        # insert last scan in DB
+        self.wazuh_integration.db_cursor.execute(("INSERT INTO inspector (scan_date) VALUES ('{}');").format(datetime_current))
+        # close connection with DB
+        self.wazuh_integration.close_db()
 
 
 ################################################################################
