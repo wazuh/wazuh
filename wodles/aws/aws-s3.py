@@ -830,8 +830,7 @@ class AWSInspector:
             debug('+++ Processing new events...', 1)
             response = self.client.describe_findings(findingArns=arn_list)['findings']
             for elem in response:
-                #self.wazuh_integration.send_msg(self.format_message(elem))
-                pass
+                self.wazuh_integration.send_msg(self.format_message(elem))
 
     def get_alerts(self):
         try:
