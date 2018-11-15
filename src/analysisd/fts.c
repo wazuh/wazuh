@@ -335,6 +335,7 @@ char * FTS(Eventinfo *lf)
     }
 
     if (OSHash_Add_ex(fts_store, line_for_list, line_for_list) != 2) {
+        free(line_for_list);
         free(_line);
         return NULL;
     }
