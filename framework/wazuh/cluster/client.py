@@ -93,6 +93,15 @@ class EchoClientProtocol(common.Handler):
             logging.info("Received size: {} // Time: {}".format(len(result), after - before))
             await asyncio.sleep(3)
 
+    async def concurrency_test_client(self, n_msgs):
+        while not self.on_con_lost.done():
+            before = time.time()
+            for i in range(n_msgs):
+                result = await self.send_request('echo', 'concurrency {}'.format(i))
+            after = time.time()
+            logging.info("Time sending {} messages: {}".format(n_msgs, after - before))
+            await asyncio.sleep(10)
+
 
 async def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
@@ -100,6 +109,8 @@ async def main():
     parser.add_argument('-n', '--name', help="Client's name", type=str, dest='name', required=True)
     parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
                         help="Perform a performance test against server. Number of bytes to test with.")
+    parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
+                        help="Perform a concurrency test against server. Number of messages to send in a row.")
     args = parser.parse_args()
 
     # Get a reference to the event loop as we plan to use
@@ -118,7 +129,9 @@ async def main():
     # Wait until the protocol signals that the connection
     # is lost and close the transport.
     try:
-        await asyncio.gather(on_con_lost, protocol.client_echo() if not args.performance_test else protocol.performance_test_client(args.performance_test))
+        await asyncio.gather(on_con_lost, protocol.performance_test_client(args.performance_test) if
+                                        args.performance_test else (protocol.concurrency_test_client(
+                                        args.concurrency_test) if args.concurrency_test else protocol.client_echo()))
     finally:
         transport.close()
 
