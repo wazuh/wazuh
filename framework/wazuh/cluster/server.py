@@ -1,6 +1,10 @@
 import asyncio
+import time
+
 import common
 import logging
+import argparse
+
 
 class EchoServerHandler(common.Handler):
     """
@@ -93,14 +97,24 @@ class EchoServer:
     """
     Defines an asynchronous echo server.
     """
-    def __init__(self):
+    def __init__(self, performance_test):
         self.clients = {}
+        self.performance = performance_test
 
     async def echo(self):
         while True:
             for client_name, client in self.clients.items():
                 logging.debug("Sending echo to client {}".format(client_name))
                 logging.info(await client.send_request('echo-m', 'hello {} from server'.format(client_name)))
+            await asyncio.sleep(3)
+
+    async def performance_test(self):
+        while True:
+            for client_name, client in self.clients.items():
+                before = time.time()
+                response = await client.send_request('echo', 'a'*self.performance)
+                after = time.time()
+                logging.info("Received size: {} // Time: {}".format(len(response), after - before))
             await asyncio.sleep(3)
 
     async def start(self):
@@ -113,13 +127,18 @@ class EchoServer:
 
         async with server:
             # use asyncio.gather to run both tasks in parallel
-            await asyncio.gather(server.serve_forever(), self.echo())
+            await asyncio.gather(server.serve_forever(), self.echo() if not self.performance else self.performance_test())
 
 
 async def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
-    server = EchoServer()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
+                        help="Perform a performance test against all clients. Number of bytes to test with.")
+    args = parser.parse_args()
+
+    server = EchoServer(args.performance_test)
     await server.start()
 
 try:

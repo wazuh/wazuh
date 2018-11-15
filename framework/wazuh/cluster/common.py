@@ -222,7 +222,7 @@ class Handler(asyncio.Protocol):
         :return:
         """
         if command == 'ok':
-            return "Sucessful response: {}".format(payload)
+            return payload
         elif command == 'err':
             return self.process_error_from_peer(payload)
         else:

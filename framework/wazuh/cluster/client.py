@@ -79,11 +79,18 @@ class EchoClientProtocol(common.Handler):
         return 'ok-c', data
 
 
-    @asyncio.coroutine
     async def client_echo(self):
         while not self.on_con_lost.done():
             result = await self.send_request('echo-c','hello from client')
             logging.info(result)
+            await asyncio.sleep(3)
+
+    async def performance_test_client(self, test_size):
+        while not self.on_con_lost.done():
+            before = time.time()
+            result = await self.send_request('echo', 'a'*test_size)
+            after = time.time()
+            logging.info("Received size: {} // Time: {}".format(len(result), after - before))
             await asyncio.sleep(3)
 
 
@@ -91,6 +98,8 @@ async def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name', help="Client's name", type=str, dest='name', required=True)
+    parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
+                        help="Perform a performance test against server. Number of bytes to test with.")
     args = parser.parse_args()
 
     # Get a reference to the event loop as we plan to use
@@ -100,7 +109,7 @@ async def main():
 
     while True:
         try:
-            transport, protocol = await loop.create_connection(lambda: EchoClientProtocol(loop, on_con_lost, args.name), '127.0.0.1', 8888)
+            transport, protocol = await loop.create_connection(lambda: EchoClientProtocol(loop, on_con_lost, args.name), '172.17.0.101', 8888)
             break
         except ConnectionRefusedError:
             logging.error("Could not connect to server. Trying again in 10 seconds.")
@@ -109,7 +118,7 @@ async def main():
     # Wait until the protocol signals that the connection
     # is lost and close the transport.
     try:
-        await asyncio.gather(on_con_lost, protocol.client_echo())
+        await asyncio.gather(on_con_lost, protocol.client_echo() if not args.performance_test else protocol.performance_test_client(args.performance_test))
     finally:
         transport.close()
 
