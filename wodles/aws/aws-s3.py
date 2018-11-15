@@ -859,7 +859,7 @@ class AWSInspector:
             last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
 
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
-        # get current time
+        # get current time (UTC)
         datetime_current = datetime.utcnow()
         # describe_findings only retrieves 100 results per call
         response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
