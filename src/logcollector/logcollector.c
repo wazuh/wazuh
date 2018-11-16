@@ -297,7 +297,10 @@ void LogCollectorStart()
                     tf = fopen(current->file, "r");
                     if(tf == NULL) {
                         if (errno == ENOENT) {
-                            minfo(FORGET_FILE, current->file);
+                            if(current->exists==1){
+                                minfo(FORGET_FILE, current->file);
+                                current->exists = 0;
+                            }
                             // Only expanded files that have been deleted will be forgotten
                             if (j >= 0) {
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
@@ -349,6 +352,8 @@ void LogCollectorStart()
                     else if (current->fd != tmp_stat.st_ino)
 #endif
                     {
+                        current->exists = 1;
+
                         char msg_alert[512 + 1];
 
                         snprintf(msg_alert, 512, "ossec: File rotated (inode "
@@ -381,6 +386,7 @@ void LogCollectorStart()
                     else if (current->size > tmp_stat.st_size)
 #endif
                     {
+                        current->exists=1;
                         char msg_alert[512 + 1];
 
                         snprintf(msg_alert, 512, "ossec: File size reduced "
@@ -412,6 +418,7 @@ void LogCollectorStart()
                         /* Update file size */
                         current->size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
 #else
+                        current->exists=1;
                         current->size = tmp_stat.st_size;
 #endif
                     }
