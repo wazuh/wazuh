@@ -188,14 +188,17 @@ class WazuhIntegration:
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
-        self.db_name = kwargs['db_name']
-        self.sql_create_table = kwargs['sql_create_table']
-        self.db_table_name = kwargs['table_name']
-        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
-        self.db_connector = sqlite3.connect(self.db_path)
-        self.db_cursor = self.db_connector.cursor()
-        self.msg_header = "1:Wazuh-AWS:"
-        self.init_db()
+        self.from_class = kwargs['from_class']
+        # only for AWSInspector class
+        if self.from_class == AWSInspector:
+            self.db_name = self.from_class.db_name
+            self.sql_create_table = self.from_class.sql_create_table
+            self.db_table_name = self.from_class.table_name
+            self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
+            self.db_connector = sqlite3.connect(self.db_path)
+            self.db_cursor = self.db_connector.cursor()
+            self.msg_header = "1:Wazuh-AWS:"
+            self.init_db()
 
     def send_msg(self, msg):
         """
@@ -252,7 +255,6 @@ class AWSBucket:
 
     This is an abstract class
     """
-
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
                  max_queue_buffer, prefix, delete_file):
@@ -279,11 +281,7 @@ class AWSBucket:
         self.legacy_db_table_name = 'log_progress'
         self.db_table_name = 'trail_progress'
         self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
-
-        self.wazuh_integration = WazuhIntegration(db_name='s3_cloudtrail',
-            table_name=self.db_table_name, sql_create_table=AWSInspector.sql_inspector_create_table)
-
-
+        self.wazuh_integration = WazuhIntegration(from_class=AWSBucket)
         self.db_connector = sqlite3.connect(self.db_path)
         self.retain_db_records = 5000
         self.reparse = reparse
@@ -785,13 +783,13 @@ class AWSInspector:
     :param profile: AWS profile
     """
 
-    sql_inspector_create_table = """
+    sql_create_table = """
                                     CREATE TABLE
                                         inspector (
                                             scan_date 'text' NOT NULL,
                                             PRIMARY KEY (scan_date));"""
     
-    sql_inspector_insert_value = """
+    sql_insert_value = """
                                     INSERT INTO 
                                         inspector (scan_date)
                                     VALUES
@@ -806,6 +804,9 @@ class AWSInspector:
                                 scan_date DESC
                             LIMIT 1;"""
 
+    db_name = 's3_inspector'
+    table_name = 'inspector'
+
     def __init__(self, access_key, secret_key, aws_profile=None, iam_role_arn=None,
         only_logs_after=None, skip_on_error=None, aws_account_alias=None,
         region='us-east-1'):
@@ -819,8 +820,7 @@ class AWSInspector:
         self.region = region
         self.db_name = 's3_inspector'
         self.table_name = 'inspector'
-        self.wazuh_integration = WazuhIntegration(db_name=self.db_name,
-            table_name=self.table_name, sql_create_table=AWSInspector.sql_inspector_create_table)
+        self.wazuh_integration = WazuhIntegration(from_class=AWSInspector)
         ## it is necessary to pass region_name as argument
         self.client = boto3.client('inspector', region_name=self.region, aws_access_key_id=self.access_key,
             aws_secret_access_key=self.secret_key)
@@ -843,7 +843,7 @@ class AWSInspector:
             m=self.only_logs_after[4:6], d=self.only_logs_after[6:8])
         try:
             # if DB is empty write initial date
-            self.wazuh_integration.db_cursor.execute(AWSInspector.sql_inspector_insert_value.format(initial_date))
+            self.wazuh_integration.db_cursor.execute(AWSInspector.sql_insert_value.format(initial_date))
             self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
             last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
         except sqlite3.IntegrityError:
@@ -862,7 +862,7 @@ class AWSInspector:
             {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
             self.send_describe_findings(response['findingArns'])
         # insert last scan in DB
-        self.wazuh_integration.db_cursor.execute(AWSInspector.sql_inspector_insert_value.format(datetime_current))
+        self.wazuh_integration.db_cursor.execute(AWSInspector.sql_insert_value.format(datetime_current))
         # close connection with DB
         self.wazuh_integration.close_db()
 
