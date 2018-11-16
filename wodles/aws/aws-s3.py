@@ -826,7 +826,8 @@ class AWSInspector:
                             LIMIT 1;"""
 
     def __init__(self, access_key, secret_key, aws_profile=None, iam_role_arn=None,
-        only_logs_after=None, skip_on_error=None, aws_account_alias=None):
+        only_logs_after=None, skip_on_error=None, aws_account_alias=None,
+        region='us-east-1'):
         self.access_key = access_key
         self.secret_key = secret_key
         self.aws_profile = aws_profile
@@ -834,12 +835,13 @@ class AWSInspector:
         self.only_logs_after = only_logs_after
         self.skip_on_error = skip_on_error
         self.aws_account_alias = aws_account_alias
+        self.region = region
         self.db_name = 's3_inspector'
         self.table_name = 'inspector'
         self.wazuh_integration = WazuhIntegration(db_name=self.db_name,
             table_name=self.table_name, sql_create_table=AWSInspector.sql_inspector_create_table)
         ## it is necessary to pass region_name as argument
-        self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=self.access_key,
+        self.client = boto3.client('inspector', region_name=self.region, aws_access_key_id=self.access_key,
             aws_secret_access_key=self.secret_key)
         self.get_alerts()
 
@@ -1016,10 +1018,12 @@ def main(argv):
                 service_type = AWSInspector
             else:
                 raise Exception("Invalid type of service")
-            service = service_type(access_key=options.access_key, secret_key=options.secret_key,
-                        aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
-                        only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
-                        aws_account_alias=options.aws_account_alias)
+            # iterate if there are two regions or more
+            for region in options.regions:
+                service = service_type(access_key=options.access_key, secret_key=options.secret_key,
+                            aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
+                            only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
+                            aws_account_alias=options.aws_account_alias, region=region)
     except Exception as err:
         debug("+++ Error: {}".format(err.message), 2)
         print("ERROR: {}".format(err.message))
