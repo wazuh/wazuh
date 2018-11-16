@@ -126,12 +126,17 @@ async def main():
             logging.error("Could not connect to server. Trying again in 10 seconds.")
             await asyncio.sleep(10)
 
+    if args.performance_test:
+        task, task_args = protocol.performance_test_client, (args.performance_test,)
+    elif args.concurrency_test:
+        task, task_args = protocol.concurrency_test_client, (args.concurrency_test,)
+    else:
+        task, task_args = protocol.client_echo, tuple()
+
     # Wait until the protocol signals that the connection
     # is lost and close the transport.
     try:
-        await asyncio.gather(on_con_lost, protocol.performance_test_client(args.performance_test) if
-                                        args.performance_test else (protocol.concurrency_test_client(
-                                        args.concurrency_test) if args.concurrency_test else protocol.client_echo()))
+        await asyncio.gather(on_con_lost, task(*task_args))
     finally:
         transport.close()
 
