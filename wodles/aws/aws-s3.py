@@ -856,16 +856,16 @@ class AWSInspector:
                 self.wazuh_integration.send_msg(self.format_message(elem))
 
     def get_alerts(self):
+        initial_date = '{Y}-{m}-{d} 00:00:00.0'.format(Y=self.only_logs_after[0:4],
+            m=self.only_logs_after[4:6], d=self.only_logs_after[6:8])
         try:
-            # if DB is empty write first date
-            initial_date = '1970-01-01 00:00:00.0'
+            # if DB is empty write initial date
             self.wazuh_integration.db_cursor.execute(AWSInspector.sql_inspector_insert_value.format(initial_date))
             self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
             last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
         except sqlite3.IntegrityError:
             self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
             last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
-
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
         # get current time (UTC)
         datetime_current = datetime.utcnow()
