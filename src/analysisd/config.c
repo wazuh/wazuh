@@ -97,8 +97,8 @@ int GlobalConf(const char *cfgfile)
         ReadConfig(CLABELS, cfgfile, &Config.labels, NULL) < 0) {
         return (OS_INVALID);
     }
-    int current_label = 0;
-    for (current_label; Config.labels[current_label].key != NULL; current_label++){
+    int current_label;
+    for (current_label = 0; Config.labels[current_label].key != NULL; current_label++){
       char * auto_label = parse_environment_labels(Config.labels[current_label]);
       free(Config.labels[current_label].value);
       Config.labels[current_label].value = auto_label;
