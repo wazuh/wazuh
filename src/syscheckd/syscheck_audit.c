@@ -625,7 +625,7 @@ void audit_parse(char *buffer) {
             free(p_dir);
 
         }
-        //Fallthrow
+        // Fallthrough
     case 2:
         if (psuccess = strstr(buffer,"success=yes"), psuccess) {
 
