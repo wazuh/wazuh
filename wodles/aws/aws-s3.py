@@ -825,14 +825,22 @@ class AWSInspector:
                                 scan_date DESC
                             LIMIT 1;"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, access_key, secret_key, aws_profile=None, iam_role_arn=None,
+        only_logs_after=None, skip_on_error=None, aws_account_alias=None):
+        self.access_key = access_key
+        self.secret_key = secret_key
+        self.aws_profile = aws_profile
+        self.iam_role_arn = iam_role_arn
+        self.only_logs_after = only_logs_after
+        self.skip_on_error = skip_on_error
+        self.aws_account_alias = aws_account_alias
         self.db_name = 's3_inspector'
         self.table_name = 'inspector'
         self.wazuh_integration = WazuhIntegration(db_name=self.db_name,
             table_name=self.table_name, sql_create_table=AWSInspector.sql_inspector_create_table)
         ## it is necessary to pass region_name as argument
-        self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=kwargs['access_key'],
-            aws_secret_access_key=kwargs['secret_key'])
+        self.client = boto3.client('inspector', region_name='us-east-1', aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key)
         self.get_alerts()
 
     def format_message(self, msg):
