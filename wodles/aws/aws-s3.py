@@ -165,6 +165,87 @@ sql_db_optimize = "PRAGMA optimize;"
 # Classes
 ################################################################################
 
+
+class WazuhIntegration:
+    """
+    Class with common methods to interact with databases
+    :param kwargs['db_name']: database name
+    :param kwargs['table_name']: table name
+    :param kwargs['sql_create_table']: SQL query to create a new table
+    """
+
+    sql_find_table_names = """
+                            SELECT
+                                tbl_name
+                            FROM
+                                sqlite_master
+                            WHERE
+                                type='table';"""
+
+    sql_db_optimize = "PRAGMA optimize;"
+
+    def __init__(self, **kwargs):
+        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
+        self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
+        self.db_name = kwargs['db_name']
+        self.sql_create_table = kwargs['sql_create_table']
+        self.db_table_name = kwargs['table_name']
+        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
+        self.db_connector = sqlite3.connect(self.db_path)
+        self.db_cursor = self.db_connector.cursor()
+        self.msg_header = "1:Wazuh-AWS:"
+        self.init_db()
+
+    def send_msg(self, msg):
+        """
+        Sends an AWS event to the Wazuh Queue
+
+        :param msg: JSON message to be sent.
+        """
+        try:
+            json_msg = json.dumps(msg, default=str)
+            debug(json_msg, 3)
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            s.connect(self.wazuh_queue)
+            s.send("{header}{msg}".format(header=self.msg_header,
+                                          msg=json_msg).encode())
+            s.close()
+        except socket.error as e:
+            if e.errno == 111:
+                print("ERROR: Wazuh must be running.")
+                sys.exit(11)
+            else:
+                print("ERROR: Error sending message to wazuh: {}".format(e))
+                sys.exit(13)
+        except Exception as e:
+            print("ERROR: Error sending message to wazuh: {}".format(e))
+            sys.exit(13)
+
+    def create_table(self):
+        try:
+            debug('+++ Table does not exist; create', 1)
+            self.db_connector.execute(self.sql_create_table)
+        except Exception as e:
+            print("ERROR: Unable to create SQLite DB: {}".format(e))
+            sys.exit(6)
+
+    def init_db(self):
+        try:
+            tables = set(map(operator.itemgetter(0), self.db_connector.execute(sql_find_table_names)))
+        except Exception as e:
+            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
+            sys.exit(5)
+        # if table does not exist, create a new table
+        if self.db_table_name not in tables:
+            self.create_table()
+
+    def close_db(self):
+        self.db_connector.commit()
+        self.db_connector.execute(WazuhIntegration.sql_db_optimize)
+        self.db_connector.close()
+
+
 class AWSBucket:
     """
     Represents a bucket with events on the inside.
@@ -198,6 +279,11 @@ class AWSBucket:
         self.legacy_db_table_name = 'log_progress'
         self.db_table_name = 'trail_progress'
         self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
+
+        self.wazuh_integration = WazuhIntegration(db_name='s3_cloudtrail',
+            table_name=self.db_table_name, sql_create_table=AWSInspector.sql_inspector_create_table)
+
+
         self.db_connector = sqlite3.connect(self.db_path)
         self.retain_db_records = 5000
         self.reparse = reparse
@@ -237,31 +323,6 @@ class AWSBucket:
             print("ERROR: Bucket {} access error: {}".format(self.bucket, e))
             sys.exit(3)
         return s3_client
-
-    def send_msg(self, msg):
-        """
-        Sends an AWS event to the Wazuh Queue
-
-        :param msg: JSON message to be sent.
-        """
-        try:
-            json_msg = json.dumps(msg)
-            debug(json_msg, 3)
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            s.connect(self.wazuh_queue)
-            s.send("{header}{msg}".format(header=self.msg_header,
-                                          msg=json_msg).encode())
-            s.close()
-        except socket.error as e:
-            if e.errno == 111:
-                print('ERROR: Wazuh must be running.')
-                sys.exit(11)
-            else:
-                print("ERROR: Error sending message to wazuh: {}".format(e))
-                sys.exit(13)
-        except Exception as e:
-            print("ERROR: Error sending message to wazuh: {}".format(e))
-            sys.exit(13)
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(sql_already_processed.format(
@@ -464,7 +525,7 @@ class AWSBucket:
                                                    log_key,
                                                    None,
                                                    error_txt)
-                    self.send_msg(error_msg)
+                    self.wazuh_integration.send_msg(error_msg)
                 except:
                     debug("++ Failed to send message to Wazuh", 1)
             else:
@@ -498,7 +559,7 @@ class AWSBucket:
                 # Change dynamic fields to strings; truncate values as needed
                 event_msg = self.reformat_msg(event_msg)
                 # Send the message
-                self.send_msg(event_msg)
+                self.wazuh_integration.send_msg(event_msg)
 
     def iter_files_in_bucket(self, aws_account_id, aws_region):
         try:
@@ -714,86 +775,6 @@ class AWSCustomBucket(AWSBucket):
         # would prevent to loose lots of logs from different buckets.
         self.iter_files_in_bucket('', self.bucket)
         self.db_maintenance('', self.bucket)
-
-
-class WazuhIntegration:
-    """
-    Class with common methods to interact with databases
-    :param kwargs['db_name']: database name
-    :param kwargs['table_name']: table name
-    :param kwargs['sql_create_table']: SQL query to create a new table
-    """
-
-    sql_find_table_names = """
-                            SELECT
-                                tbl_name
-                            FROM
-                                sqlite_master
-                            WHERE
-                                type='table';"""
-
-    sql_db_optimize = "PRAGMA optimize;"
-
-    def __init__(self, **kwargs):
-        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
-        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
-        self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
-        self.db_name = kwargs['db_name']
-        self.sql_create_table = kwargs['sql_create_table']
-        self.db_table_name = kwargs['table_name']
-        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
-        self.db_connector = sqlite3.connect(self.db_path)
-        self.db_cursor = self.db_connector.cursor()
-        self.msg_header = "1:Wazuh-AWS:"
-        self.init_db()
-
-    def send_msg(self, msg):
-        """
-        Sends an AWS event to the Wazuh Queue
-
-        :param msg: JSON message to be sent.
-        """
-        try:
-            json_msg = json.dumps(msg, default=str)
-            debug(json_msg, 3)
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            s.connect(self.wazuh_queue)
-            s.send("{header}{msg}".format(header=self.msg_header,
-                                          msg=json_msg).encode())
-            s.close()
-        except socket.error as e:
-            if e.errno == 111:
-                print("ERROR: Wazuh must be running.")
-                sys.exit(11)
-            else:
-                print("ERROR: Error sending message to wazuh: {}".format(e))
-                sys.exit(13)
-        except Exception as e:
-            print("ERROR: Error sending message to wazuh: {}".format(e))
-            sys.exit(13)
-
-    def create_table(self):
-        try:
-            debug('+++ Table does not exist; create', 1)
-            self.db_connector.execute(self.sql_create_table)
-        except Exception as e:
-            print("ERROR: Unable to create SQLite DB: {}".format(e))
-            sys.exit(6)
-
-    def init_db(self):
-        try:
-            tables = set(map(operator.itemgetter(0), self.db_connector.execute(sql_find_table_names)))
-        except Exception as e:
-            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
-            sys.exit(5)
-        # if table does not exist, create a new table
-        if self.db_table_name not in tables:
-            self.create_table()
-
-    def close_db(self):
-        self.db_connector.commit()
-        self.db_connector.execute(WazuhIntegration.sql_db_optimize)
-        self.db_connector.close()
 
 
 class AWSInspector:
