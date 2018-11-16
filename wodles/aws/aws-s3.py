@@ -184,21 +184,20 @@ class WazuhIntegration:
 
     sql_db_optimize = "PRAGMA optimize;"
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
-        self.from_class = kwargs['from_class']
-        # only for AWSInspector class
-        if self.from_class == AWSInspector:
-            self.db_name = self.from_class.db_name
-            self.sql_create_table = self.from_class.sql_create_table
-            self.db_table_name = self.from_class.table_name
-            self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
-            self.db_connector = sqlite3.connect(self.db_path)
-            self.db_cursor = self.db_connector.cursor()
-            self.msg_header = "1:Wazuh-AWS:"
-            self.init_db()
+
+    def prepare_db(self, db_name, table_name, sql_create_table):
+        self.db_name = db_name
+        self.db_table_name = table_name
+        self.sql_create_table = sql_create_table
+        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
+        self.db_connector = sqlite3.connect(self.db_path)
+        self.db_cursor = self.db_connector.cursor()
+        self.msg_header = "1:Wazuh-AWS:"
+        self.init_db()
 
     def send_msg(self, msg):
         """
@@ -281,7 +280,7 @@ class AWSBucket:
         self.legacy_db_table_name = 'log_progress'
         self.db_table_name = 'trail_progress'
         self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
-        self.wazuh_integration = WazuhIntegration(from_class=AWSBucket)
+        self.wazuh_integration = WazuhIntegration()
         self.db_connector = sqlite3.connect(self.db_path)
         self.retain_db_records = 5000
         self.reparse = reparse
@@ -820,7 +819,9 @@ class AWSInspector:
         self.region = region
         self.db_name = 's3_inspector'
         self.table_name = 'inspector'
-        self.wazuh_integration = WazuhIntegration(from_class=AWSInspector)
+        self.wazuh_integration = WazuhIntegration()
+        self.wazuh_integration.prepare_db(db_name=AWSInspector.db_name,
+            table_name=AWSInspector.table_name, sql_create_table=AWSInspector.sql_create_table)
         ## it is necessary to pass region_name as argument
         self.client = boto3.client('inspector', region_name=self.region, aws_access_key_id=self.access_key,
             aws_secret_access_key=self.secret_key)
