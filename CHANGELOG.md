@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.7.0]
 
 ### Added
+
 - Adding feature to **remotely query agent configuration on demand.** ([#548](https://github.com/wazuh/wazuh/pull/548))
 - **Boost Analysisd performance with multithreading.** ([#1039](https://github.com/wazuh/wazuh/pull/1039))
 - Adding feature to **let agents belong to multiple groups.** ([#1135](https://github.com/wazuh/wazuh/pull/1135))
@@ -17,8 +18,10 @@ All notable changes to this project will be documented in this file.
 - Disconnect manager nodes in cluster if no keep alive is received or sent during two minutes. ([#1482](https://github.com/wazuh/wazuh/pull/1482))
 - API requests are forwarded to the proper manager node in cluster. ([#885](https://github.com/wazuh/wazuh/pull/885))
 - Centralized configuration pushed from manager overwrite the configuration of directories that exist with the same path in ossec.conf. ([#1740](https://github.com/wazuh/wazuh/pull/1740))
+- New feature: Automatic labels ([1340](https://github.com/wazuh/wazuh/pull/1340))
 
 ### Changed
+
 - Refactor Python framework code to standardize database requests and support queries. ([#921](https://github.com/wazuh/wazuh/pull/921))
 - Replaced the `execvpe` function by `execvp` for the Wazuh modules. ([#1207](https://github.com/wazuh/wazuh/pull/1207))
 - Avoid the use of reference ID in Syscollector network tables. ([#1315](https://github.com/wazuh/wazuh/pull/1315))
@@ -63,8 +66,6 @@ All notable changes to this project will be documented in this file.
 - Set new agent.conf template when creating new groups. ([#1647](https://github.com/wazuh/wazuh/pull/1647))
 - Fix bug in Wazuh Modules that tried to delete PID folders if a subprocess call failed. ([#1836](https://github.com/wazuh/wazuh/pull/1836))
 
-
-## [v3.6.2]
 
 ## [v3.6.1] 2018-09-07
 
