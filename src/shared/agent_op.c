@@ -759,7 +759,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 
         char **parts;
 
-        parts = OS_StrBreak(' ',buffer,OS_SIZE_65536);
+        parts = OS_StrBreak(' ',buffer,4);
 
         if(!parts) {
             continue;
@@ -767,11 +767,9 @@ char * get_agent_id_from_name(const char *agent_name) {
 
         // Make sure we have 4 parts
         int count = 0;
-        char **p = parts;
-
-        while(p){
+        int j;
+        for (j = 0; parts[j]; j++) {
             count++;
-            p++;
         }
 
         if(count < 3) {
@@ -782,11 +780,12 @@ char * get_agent_id_from_name(const char *agent_name) {
         }
 
         // If the agent name is the same, return its ID
-        if(strncmp(parts[1],agent_name,OS_SIZE_65536) == 0){
+        if(strcmp(parts[1],agent_name) == 0){
+            char *id = strdup(parts[0]);
             fclose(fp);
             free_strarray(parts);
             os_free(buffer);
-            return strdup(parts[0]);
+            return id;
         }
     }
 

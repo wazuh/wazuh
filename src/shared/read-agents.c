@@ -1306,14 +1306,16 @@ char **get_agents(int flag,int mon_time)
                 continue;
             }
 
-            if (file_status.st_mtime > (time(0) - DISCON_TIME) || (file_status.st_mtime > (time(0) - mon_time) && mon_time)) {
-                status = 1;
-                if (flag == GA_NOTACTIVE) {
-                    continue;
-                }
-            } else {
-                if (flag == GA_ACTIVE) {
-                    continue;
+            if( !(flag == GA_NOTACTIVE && (file_status.st_mtime < (time(0) - (mon_time * 60)) && mon_time > 0))) {
+                if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
+                    status = 1;
+                    if (flag == GA_NOTACTIVE) {
+                        continue;
+                    }
+                } else {
+                    if (flag == GA_ACTIVE) {
+                        continue;
+                    }
                 }
             }
         }
