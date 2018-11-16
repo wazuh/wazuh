@@ -743,9 +743,11 @@ out_free:
     return ret;
 }
 
-int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
+    int j = 0;
+    xml_node **children = NULL;
 
     /* XML Definitions */
     const char *xml_directories = "directories";
@@ -772,6 +774,8 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_both = "both";
     const char *xml_tag = "tags";
 #endif
+    const char *xml_whodata_options = "whodata";
+    const char *xml_audit_extra_key = "audit_extra_key";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1212,6 +1216,39 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 merror(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
+        }
+        /* Whodata options */
+        else if (strcmp(node[i]->element, xml_whodata_options) == 0) {
+
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                continue;
+            }
+
+            for (j = 0; children[j]; j++) {
+                /* Listen another audit keys */
+                if (strcmp(children[j]->element, xml_audit_extra_key) == 0) {
+                    int keyit = 0;
+                    char delim = ',';
+                    char *key;
+                    os_calloc(1, sizeof(char *), syscheck->audit_extra_key);
+                    syscheck->audit_extra_key[keyit] = NULL;
+                    key = strtok(children[j]->content, &delim);
+
+                    while (key) {
+                        if (*key) {
+                            syscheck->audit_extra_key[keyit] = check_ascci_hex(key);
+                            os_realloc(syscheck->audit_extra_key, (keyit + 2) * sizeof(char *), syscheck->audit_extra_key);
+                            syscheck->audit_extra_key[keyit + 1] = NULL;
+                            key = strtok(NULL, &delim);
+                            keyit++;
+                        }
+                    }
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -1379,4 +1416,29 @@ void Free_Syscheck(syscheck_config * config) {
         }
         free(config->prefilter_cmd);
     }
+}
+
+char* check_ascci_hex (char *input) {
+    unsigned int j = 0;
+    int hex = 0;
+    char outhex[OS_SIZE_256];
+
+    for (j = 0; j < strlen(input); j++) {
+        snprintf(outhex + j*2, OS_SIZE_256, "%hhX", input[j]);
+        if ((unsigned int)input[j] > 126 ||
+                (unsigned int)input[j] == 32 ||
+                (unsigned int)input[j] == 34) {
+            hex = 1;
+        }
+    }
+
+    char *output;
+    if (hex) {
+        os_calloc(strlen(outhex) + 1, sizeof(char *), output);
+        os_strdup(outhex, output);
+    } else {
+        os_calloc(strlen(input) + 1, sizeof(char *), output);
+        os_strdup(input, output);
+    }
+    return output;
 }
