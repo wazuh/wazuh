@@ -298,7 +298,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Shared config directory */
 #ifndef WIN32
-#define SHAREDCFG_DIR   "/etc/shared"
+#define SHAREDCFG_DIR      "/etc/shared"
+#define GROUPCONTENT_DIR   "/var/groups"
 #else
 #define SHAREDCFG_DIR   "shared"
 #endif

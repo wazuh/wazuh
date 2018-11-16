@@ -912,7 +912,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
                         }
 
-                        snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : DEFAULTDIR SHAREDCFG_DIR"/%s", group);
+                        snprintf(dir, PATH_MAX + 1,isChroot() ? GROUPCONTENT_DIR"/%s" : DEFAULTDIR GROUPCONTENT_DIR"/%s", group);
 
                         dp = opendir(dir);
 

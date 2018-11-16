@@ -420,9 +420,9 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
             /* Now for each group copy the files to the multi-group folder */
             char dir[PATH_MAX + 1] = {0};
 
-            snprintf(dir, PATH_MAX + 1, "%s/%s", SHAREDCFG_DIR, group);
+            snprintf(dir, PATH_MAX + 1, "%s/%s", GROUPCONTENT_DIR, group);
 
-            dp = opendir(SHAREDCFG_DIR);
+            dp = opendir(GROUPCONTENT_DIR);
 
             if (!dp) {
                 mdebug2("Opening directory: '%s': %s", dir, strerror(errno));
@@ -455,7 +455,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
                 char source_path[PATH_MAX + 1] = {0};
                 char agent_conf_chunck_message[PATH_MAX + 1]= {0};
 
-                snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
+                snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", GROUPCONTENT_DIR, group, files[i]);
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, hash_multigroup, files[i]);
 
                 /* If the file is agent.conf, append */
@@ -555,13 +555,13 @@ static void c_files()
 
     // Scan directory, look for groups (subdirectories)
 
-    dp = opendir(SHAREDCFG_DIR);
+    dp = opendir(GROUPCONTENT_DIR);
 
     if (!dp) {
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
 
-        mdebug1("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
+        mdebug1("Opening directory: '%s': %s", GROUPCONTENT_DIR, strerror(errno));
         return;
     }
 
@@ -571,7 +571,7 @@ static void c_files()
             continue;
         }
 
-        if (snprintf(path, PATH_MAX + 1, SHAREDCFG_DIR "/%s", entry->d_name) > PATH_MAX) {
+        if (snprintf(path, PATH_MAX + 1, GROUPCONTENT_DIR "/%s", entry->d_name) > PATH_MAX) {
             merror("At c_files(): path too long.");
             break;
         }
@@ -589,7 +589,7 @@ static void c_files()
         os_calloc(1, sizeof(group_t), groups[p_size]);
         groups[p_size]->group = strdup(entry->d_name);
         groups[p_size + 1] = NULL;
-        c_group(entry->d_name, subdir, &groups[p_size]->f_sum,SHAREDCFG_DIR);
+        c_group(entry->d_name, subdir, &groups[p_size]->f_sum,GROUPCONTENT_DIR);
         free_strarray(subdir);
         p_size++;
     }
@@ -936,7 +936,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 if(multi_group) {
                     strcpy(sharedcfg_dir,MULTIGROUPS_DIR);
                 } else {
-                    strcpy(sharedcfg_dir,SHAREDCFG_DIR);
+                    strcpy(sharedcfg_dir,GROUPCONTENT_DIR);
                 }
 
                 if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum,sharedcfg_dir) < 0) {
@@ -979,7 +979,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             if(multi_group) {
                 strcpy(sharedcfg_dir,MULTIGROUPS_DIR);
             } else {
-                strcpy(sharedcfg_dir,SHAREDCFG_DIR);
+                strcpy(sharedcfg_dir,GROUPCONTENT_DIR);
             }
 
             if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum,sharedcfg_dir) < 0) {

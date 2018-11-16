@@ -45,6 +45,12 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global shared_path
     shared_path = "{0}/etc/shared".format(ossec_path)
 
+    global groups_content_path
+    groups_content_path = "{0}/var/groups".format(ossec_path)
+
+    global no_prefix_group_path
+    no_prefix_group_path = "var/groups"
+
     global backup_path
     backup_path = "{0}/backup".format(ossec_path)
 

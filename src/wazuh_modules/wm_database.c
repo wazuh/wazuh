@@ -172,7 +172,7 @@ void* wm_database_main(wm_database *data) {
                 wm_check_agents();
                 wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
                 wm_scan_directory(DEFAULTDIR GROUPS_DIR);
-                wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
+                wm_sync_multi_groups(DEFAULTDIR GROUPCONTENT_DIR);
             }
 #endif
             if (data->sync_syscheck) {
@@ -709,7 +709,7 @@ int wm_sync_shared_group(const char *fname) {
     DIR *dp;
     clock_t clock0 = clock();
 
-    snprintf(path,PATH_MAX, "%s/%s",DEFAULTDIR SHAREDCFG_DIR,fname);
+    snprintf(path,PATH_MAX, "%s/%s",DEFAULTDIR GROUPCONTENT_DIR,fname);
 
     dp = opendir(path);
 
@@ -789,7 +789,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
     } else if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
         type = WDB_GROUPS;
-    } else if (!strcmp(dirname, DEFAULTDIR SHAREDCFG_DIR)) {
+    } else if (!strcmp(dirname, DEFAULTDIR GROUPCONTENT_DIR)) {
         type = WDB_SHARED_GROUPS;
     } else {
         mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
@@ -1338,13 +1338,13 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
 
-        if ((wd_shared_groups = inotify_add_watch(inotify_fd, DEFAULTDIR SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
+        if ((wd_shared_groups = inotify_add_watch(inotify_fd, DEFAULTDIR GROUPCONTENT_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
 
         wm_sync_agents();
-        wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
+        wm_sync_multi_groups(DEFAULTDIR GROUPCONTENT_DIR);
         wdb_agent_belongs_first_time();
         wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
     }
@@ -1427,7 +1427,7 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                     } else if (event->wd == wd_groups) {
                         dirname = DEFAULTDIR GROUPS_DIR;
                     } else if (event->wd == wd_shared_groups) {
-                        dirname = DEFAULTDIR SHAREDCFG_DIR;
+                        dirname = DEFAULTDIR GROUPCONTENT_DIR;
                     } else
 #endif
                     if (event->wd == wd_syscheck) {

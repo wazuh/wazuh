@@ -463,7 +463,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
         if not Agent.group_exists(group_id):
             raise WazuhException(1710, group_id)
 
-        agent_conf = "{0}/{1}".format(common.shared_path, group_id)
+        agent_conf = "{0}/{1}".format(common.groups_content_path, group_id)
 
     if filename:
         agent_conf_name = filename

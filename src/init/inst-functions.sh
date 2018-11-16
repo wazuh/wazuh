@@ -899,8 +899,12 @@ InstallServer(){
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/cluster
 
     ${INSTALL} -d -m 760 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/vulnerabilities
-    # ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
-    ln -s ${PREFIX}/var/groups/default ${PREFIX}/etc/shared/default
+
+    # Create symbolic link to the default group folder
+    if [ ! -d ${PREFIX}/etc/shared/default ]; then
+        ln -s ../../var/groups/default ${PREFIX}/etc/shared/default
+    fi
+
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
     ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/var/groups/default
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
@@ -929,7 +933,6 @@ InstallServer(){
 
     if [ ! -f ${PREFIX}/var/groups/agent-template.conf ]; then
         ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/var/groups/agent-template.conf
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/agent-template.conf
     fi
 
     GenerateAuthCert

@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta
 from base64 import b64encode
 from shutil import copyfile, move, copytree, rmtree
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk, geteuid
+from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk, geteuid, symlink
 from time import time, sleep
 import socket
 import hashlib
@@ -816,8 +816,14 @@ class Agent:
         ids = list(map(operator.itemgetter('id'), Agent.get_agent_group(group_id=group_id, limit=None)['items']))
 
         # Remove group directory
-        group_path = "{0}/{1}".format(common.shared_path, group_id)
+        group_path = "{0}/{1}".format(common.groups_content_path, group_id)
+        symlink_path = "{0}/{1}".format(common.shared_path, group_id)
         group_backup = "{0}/groups/{1}_{2}".format(common.backup_path, group_id, int(time()))
+
+        # Delete first the symlink
+        if path.exists(symlink_path):
+            remove(symlink_path)
+
         if path.exists(group_path):
             move(group_path, group_backup)
 
@@ -1307,8 +1313,8 @@ class Agent:
 
             # Group names
             data = []
-            for entry in listdir(common.shared_path):
-                full_entry = path.join(common.shared_path, entry)
+            for entry in listdir(common.groups_content_path):
+                full_entry = path.join(common.groups_content_path, entry)
                 if not path.isdir(full_entry):
                     continue
 
@@ -1389,7 +1395,7 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhException(1722)
 
-        if path.exists("{0}/{1}".format(common.shared_path, group_id)):
+        if path.exists("{0}/{1}".format(common.groups_content_path, group_id)):
             return True
         else:
             return False
@@ -1420,7 +1426,7 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         # check whether the group exists or not
-        if group_id != 'null' and not glob("{}/{}".format(common.shared_path, group_id)) and not glob("{}/{}".format(common.multi_groups_path, group_id)):
+        if group_id != 'null' and not glob("{}/{}".format(common.groups_content_path, group_id)) and not glob("{}/{}".format(common.multi_groups_path, group_id)):
             raise WazuhException(1710, group_id)
 
         db_query = WazuhDBQueryMultigroups(group_id=group_id, offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters,
@@ -1458,11 +1464,11 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
 
-        group_path = common.shared_path
+        group_path = common.groups_content_path
         if group_id:
             if not Agent.group_exists(group_id):
                 raise WazuhException(1710, group_id)
-            group_path = "{0}/{1}".format(common.shared_path, group_id)
+            group_path = "{0}/{1}".format(common.groups_content_path, group_id)
 
         if not path.exists(group_path):
             raise WazuhException(1006, group_path)
@@ -1512,19 +1518,27 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhException(1722)
 
-        group_path = "{0}/{1}".format(common.shared_path, group_id)
+        group_path = "{0}/{1}".format(common.groups_content_path, group_id)
+        symlink_path = "../../{0}/{1}".format(common.no_prefix_group_path, group_id)
+        links_path = "{0}/{1}".format(common.shared_path, group_id)
 
-        if group_id.lower() == "default" or path.exists(group_path):
+        if group_id.lower() == "default" or (path.exists(group_path) and path.exists(links_path)):
             raise WazuhException(1711, group_id)
 
-        # Create group in /etc/shared
-        group_def_path = "{0}/agent-template.conf".format(common.shared_path)
+        # If link was deleted, create it again
+        if path.exists(group_path) and not path.exists(links_path):
+            symlink(symlink_path, links_path)
+            print("No link found for group '{0}', generating a new one.").format(group_id)
+            return
+        # Create group in /var/groups
+        group_def_path = "{0}/agent-template.conf".format(common.groups_content_path)
         try:
             mkdir_with_mode(group_path)
             copyfile(group_def_path, group_path + "/agent.conf")
             chown_r(group_path, common.ossec_uid, common.ossec_gid)
             chmod_r(group_path, 0o660)
             chmod(group_path, 0o770)
+            symlink(symlink_path, links_path)
             msg = "Group '{0}' created.".format(group_id)
         except Exception as e:
             raise WazuhException(1005, str(e))
@@ -1737,7 +1751,7 @@ class Agent:
         # Assign group in /queue/agent-groups
         Agent.set_agent_group_file(agent_id, group_id)
 
-        # Create group in /etc/shared
+        # Create group in /var/groups
         if not Agent.group_exists(group_id):
             Agent.create_group(group_id)
 
@@ -2613,7 +2627,7 @@ class Agent:
                     multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
                     agent_group_merged_path = "{0}/{1}/merged.mg".format(common.multi_groups_path, multi_group)
                 else:
-                    agent_group_merged_path = "{0}/{1}/merged.mg".format(common.shared_path, agent_info['group'][0])
+                    agent_group_merged_path = "{0}/{1}/merged.mg".format(common.groups_content_path, agent_info['group'][0])
 
                 return {'synced': md5(agent_group_merged_path) == agent_info['mergedSum']}
             except (IOError, KeyError):
