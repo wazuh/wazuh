@@ -930,10 +930,14 @@ def arg_valid_regions(arg_string):
 
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
-                                     description="Wazuh wodle for monitoring of AWS logs in S3 bucket",
+                                     description="Wazuh wodle for monitoring AWS",
                                      formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS logs',
-                        action='store', required=True)
+    # only one must be present (bucket or service)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS logs',
+                        action='store')
+    group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
+                        action='store')
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
                         help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
@@ -984,30 +988,34 @@ def main(argv):
         debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
 
     try:
-        if options.type.lower() == 'cloudtrail':
-            bucket_type = AWSCloudTrailBucket
-        elif options.type.lower() == 'config':
-            bucket_type = AWSConfigBucket
-        elif options.type.lower() == 'custom':
-            bucket_type = AWSCustomBucket
-        elif options.type.lower() == 'inspector':
-            bucket_type = AWSInspector
-        else:
-            raise Exception("Invalid type of bucket")
-    except Exception as err:
-        debug("+++ Error: {}".format(err.message), 2)
-        print("ERROR: {}".format(err.message))
-        sys.exit(12)
-
-    if options.type.lower() != 'inspector':
-        bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
+        if options.logBucket:
+            if options.type.lower() == 'cloudtrail':
+                bucket_type = AWSCloudTrailBucket
+            elif options.type.lower() == 'config':
+                bucket_type = AWSConfigBucket
+            elif options.type.lower() == 'custom':
+                bucket_type = AWSCustomBucket
+            else:
+                raise Exception("Invalid type of bucket")
+            bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
                             options.aws_profile, options.iam_role_arn, options.logBucket,
                             options.only_logs_after, options.skip_on_error,
                             options.aws_account_alias, max_queue_buffer,
                             options.trail_prefix, options.deleteFile)
-        bucket.iter_bucket(options.aws_account_id, options.regions)
-    else:
-        bucket = bucket_type(access_key=options.access_key, secret_key=options.secret_key)
+            bucket.iter_bucket(options.aws_account_id, options.regions)
+        elif options.service:
+            if options.service.lower() == 'inspector':
+                service_type = AWSInspector
+            else:
+                raise Exception("Invalid type of service")
+            service = service_type(access_key=options.access_key, secret_key=options.secret_key,
+                        aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
+                        only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
+                        aws_account_alias=options.aws_account_alias)
+    except Exception as err:
+        debug("+++ Error: {}".format(err.message), 2)
+        print("ERROR: {}".format(err.message))
+        sys.exit(12)
 
 
 if __name__ == '__main__':
