@@ -382,7 +382,7 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def get_hash(filename, hash_algorithm='md5'):
+def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
     try:
         algorithm_list = hashlib.algorithms_available
@@ -392,7 +392,11 @@ def get_hash(filename, hash_algorithm='md5'):
     if not hash_algorithm in algorithm_list:
         raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
 
-    hashing = hashlib.new(hash_algorithm)
+    return hashlib.new(hash_algorithm)
+
+
+def get_hash(filename, hash_algorithm='md5'):
+    hashing = _get_hashing_algorithm(hash_algorithm)
 
     try:
         with open(filename, 'rb') as f:
@@ -400,6 +404,12 @@ def get_hash(filename, hash_algorithm='md5'):
     except IOError:
         return None
 
+    return hashing.hexdigest()
+
+
+def get_hash_str(my_str, hash_algorithm='md5'):
+    hashing = _get_hashing_algorithm(hash_algorithm)
+    hashing.update(my_str.encode())
     return hashing.hexdigest()
 
 

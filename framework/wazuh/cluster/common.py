@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import logging
 import random
 import struct
@@ -85,7 +86,7 @@ class Handler(asyncio.Protocol):
         # stores incoming file information from file commands
         self.in_file = {'filename': '', 'fd': None}
         # stores incoming string information from string commands
-        self.in_str = ''
+        self.in_str = InBuffer()
 
 
     def push(self, message):
@@ -190,6 +191,27 @@ class Handler(asyncio.Protocol):
         return 'ok ', 'File sent'
 
 
+    async def send_string(self, my_str, chunk=10000):
+        """
+        Sends a large string to peer.
+
+        :param my_str: String to send.
+        :param chunk: number of elements each slide will have
+        :return: whether sending was successful or not.
+        """
+        response = await self.send_request(command='new_str', data=str(len(my_str)))
+        logging.debug("Response new_str: {}".format(response))
+        for chunk in itertools.zip_longest(*[iter(my_str)]*chunk, fillvalue=''):
+            # >>> list(itertools.zip_longest(*[iter("test_")]*2, fillvalue=''))
+            # [('t', 'e'), ('s', 't'), ('_', '')]
+            response = await self.send_request(command='str_upd', data=''.join(chunk))
+            logging.debug("Response str_upd: {}".format(response))
+        response = await self.send_request(command='str_end', data=utils.get_hash_str(my_str, 'sha256'))
+        logging.debug("Response str_end: {}".format(response))
+        return "ok", "String correctly sent"
+
+
+
     def data_received(self, message):
         """
         Handles received data from other peer.
@@ -215,7 +237,7 @@ class Handler(asyncio.Protocol):
         try:
             command, payload = self.process_request(command, payload)
         except Exception as e:
-            logging.error("Error processing request: {}".format(e))
+            logging.error("Error processing request '{}': {}".format(command, e))
             command, payload = 'err ', str(e)
 
         self.push(self.msg_build(command, counter, payload))
@@ -233,10 +255,16 @@ class Handler(asyncio.Protocol):
             return self.echo(data)
         elif command == 'new_file':
             return self.receive_file(data)
+        elif command == 'new_str':
+            return self.receive_str(data)
         elif command == 'file_upd':
             return self.update_file(data)
+        elif command == 'str_upd':
+            return self.str_upd(data)
         elif command == "file_end":
             return self.end_file(data)
+        elif command == 'str_end':
+            return self.str_end(data)
         else:
             return self.process_unknown_cmd(command)
 
@@ -305,6 +333,44 @@ class Handler(asyncio.Protocol):
         else:
             self.in_file = {'filename': '', 'fd': None}
             return "err ", "File wasn't correctly received"
+
+
+    def receive_str(self, data):
+        """
+        Defines behaviour of command "recv_str". This behaviour is to append to resize a bytearray with the string size.
+
+        :param data: Request data: string size
+        :return: Message
+        """
+        self.in_str.total = int(data)
+        self.in_str.payload = bytearray(self.in_str.total)
+        return "ok", "Ready to receive string"
+
+
+    def str_upd(self, data):
+        """
+        Defines behaviour of command "str_upd". This behaviour is to update string contents.
+
+        :param data: String contents
+        :return: Message
+        """
+        self.in_str.receive_data(data.encode())
+        return "ok", "Chunk received"
+
+
+    def str_end(self, data):
+        """
+        Defines behaviour of command "str_end". Which is checking the received string's checksum.
+
+        :param data: string checksum sha256
+        :return: Message
+        """
+        if utils.get_hash_str(my_str=self.in_str.payload.decode(), hash_algorithm='sha256') == data:
+            self.in_str = InBuffer()
+            return "ok", "String correctly received."
+        else:
+            self.in_str = InBuffer()
+            return "err", "String wasn't correctly received"
 
 
     def process_unknown_cmd(self, command):
