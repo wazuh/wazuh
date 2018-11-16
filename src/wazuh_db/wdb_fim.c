@@ -132,7 +132,7 @@ int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, co
         snprintf(perm, 7, "%06o", sum->perm);
 
         sqlite3_bind_int64(stmt, 4, atol(sum->size));
-        sqlite3_bind_text(stmt, 5, perm, -1, NULL);
+        sqlite3_bind_text(stmt, 5, (!sum->win_perm) ? perm : sum->win_perm, -1, NULL);
 
         // UID and GID from Windows is 0. It should be NULL
         sqlite3_bind_int(stmt, 6, atoi(sum->uid));
@@ -254,6 +254,7 @@ void wdb_delete_fim_all() {
 int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size) {
     sqlite3_stmt * stmt;
     sk_sum_t sum;
+    char *str_perm;
 
     memset(&sum, 0, sizeof(sk_sum_t));
 
@@ -279,7 +280,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
 
         sum.changes = (long)sqlite3_column_int64(stmt, 0);
         sum.size = (char *)sqlite3_column_text(stmt, 1);
-        sum.perm = strtol((char *)sqlite3_column_text(stmt, 2), NULL, 8);
+        str_perm = (char *)sqlite3_column_text(stmt, 2);
         sum.uid = (char *)sqlite3_column_text(stmt, 3);
         sum.gid = (char *)sqlite3_column_text(stmt, 4);
         sum.md5 = (char *)sqlite3_column_text(stmt, 5);
@@ -291,6 +292,12 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         sum.sha256 = (char *)sqlite3_column_text(stmt, 11);
         sum.date_alert = (long)sqlite3_column_int64(stmt, 12);
         sum.attrs = (unsigned int)sqlite3_column_int(stmt, 13);
+
+        if (*str_perm != '|') {
+            sum.perm = strtol(str_perm, NULL, 8);
+        } else {
+            sum.win_perm = str_perm;
+        }
 
         output[size - 1] = '\0';
         return sk_build_sum(&sum, output, size);
@@ -408,7 +415,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     sqlite3_bind_text(stmt, 1, file, -1, NULL);
     sqlite3_bind_text(stmt, 2, s_ftype, -1, NULL);
     sqlite3_bind_text(stmt, 3, sum->size, -1, NULL);
-    sqlite3_bind_text(stmt, 4, s_perm, -1, NULL);
+    sqlite3_bind_text(stmt, 4, (!sum->win_perm) ? s_perm : sum->win_perm, -1, NULL);
     sqlite3_bind_text(stmt, 5, sum->uid, -1, NULL);
     sqlite3_bind_text(stmt, 6, sum->gid, -1, NULL);
     sqlite3_bind_text(stmt, 7, sum->md5, -1, NULL);
@@ -443,7 +450,7 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
 
     sqlite3_bind_int64(stmt, 1, sum->changes);
     sqlite3_bind_text(stmt, 2, sum->size, -1, NULL);
-    sqlite3_bind_text(stmt, 3, s_perm, -1, NULL);
+    sqlite3_bind_text(stmt, 3, (!sum->win_perm) ? s_perm : sum->win_perm, -1, NULL);
     sqlite3_bind_text(stmt, 4, sum->uid, -1, NULL);
     sqlite3_bind_text(stmt, 5, sum->gid, -1, NULL);
     sqlite3_bind_text(stmt, 6, sum->md5, -1, NULL);

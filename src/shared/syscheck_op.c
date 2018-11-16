@@ -506,7 +506,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 
     r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
             sum->size,
-            s_perm,
+            (!sum->win_perm) ? s_perm : sum->win_perm,
             sum->uid,
             sum->gid,
             sum->md5,
@@ -604,7 +604,7 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq) {
     long mask;
 
     if (seq) {
-        writted = snprintf(str, 50, "========~~~=====");
+        writted = snprintf(str, 50, "========~~~~=====");
     } else {
         perm_it = raw_perm;
         while (perm_it = strchr(perm_it, '|'), perm_it) {
@@ -952,6 +952,7 @@ int copy_ace_info(void *ace, char *perm, int perm_size) {
         mdebug2("Invalid ACE type.");
         return 0;
     }
+
 
     if (!IsValidSid(sid)) {
         mdebug2("Invalid SID found in ACE.");
