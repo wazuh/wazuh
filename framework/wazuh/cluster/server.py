@@ -138,8 +138,7 @@ class EchoServer:
 
         async with server:
             # use asyncio.gather to run both tasks in parallel
-            await asyncio.gather(server.serve_forever(), self.performance_test() if self.performance else
-                                            (self.concurrency_test() if self.concurrency else self.echo()))
+            await server.serve_forever()
 
 
 async def main():

@@ -181,17 +181,14 @@ class Handler(asyncio.Protocol):
         :return: whether sending was successful or not
         """
         response = await self.send_request(command='new_file', data=filename)
-        logging.debug("Response new_file: {}".format(response))
         with open(filename, 'r') as f:
-            for chunk in iter(lambda: f.read(1), ''):
+            for chunk in iter(lambda: f.read(10000000), ''):
                 response = await self.send_request(command='file_upd', data=chunk)
-                logging.debug("Response file_upd: {}".format(response))
         response = await self.send_request(command='file_end', data=utils.get_hash(filename, 'sha256'))
-        logging.debug("Respnse file_end: {}".format(response))
         return 'ok ', 'File sent'
 
 
-    async def send_string(self, my_str, chunk=10000):
+    async def send_string(self, my_str, chunk=10000000):
         """
         Sends a large string to peer.
 
@@ -199,15 +196,10 @@ class Handler(asyncio.Protocol):
         :param chunk: number of elements each slide will have
         :return: whether sending was successful or not.
         """
-        response = await self.send_request(command='new_str', data=str(len(my_str)))
-        logging.debug("Response new_str: {}".format(response))
-        for chunk in itertools.zip_longest(*[iter(my_str)]*chunk, fillvalue=''):
-            # >>> list(itertools.zip_longest(*[iter("test_")]*2, fillvalue=''))
-            # [('t', 'e'), ('s', 't'), ('_', '')]
-            response = await self.send_request(command='str_upd', data=''.join(chunk))
-            logging.debug("Response str_upd: {}".format(response))
-        response = await self.send_request(command='str_end', data=utils.get_hash_str(my_str, 'sha256'))
-        logging.debug("Response str_end: {}".format(response))
+        total = len(my_str)
+        response = await self.send_request(command='new_str', data=str(total))
+        for c in range(0, total, chunk):
+            response = await self.send_request(command='str_upd', data=my_str[c:c+chunk])
         return "ok", "String correctly sent"
 
 

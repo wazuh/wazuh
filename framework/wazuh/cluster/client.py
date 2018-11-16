@@ -103,12 +103,18 @@ class EchoClientProtocol(common.Handler):
             await asyncio.sleep(10)
 
     async def send_file_task(self, filename):
+        before = time.time()
         response = await self.send_file(filename)
+        after = time.time()
         logging.debug(response)
+        logging.debug("Time: {}".format(after - before))
 
     async def send_string_task(self, string_size):
+        before = time.time()
         response = await self.send_string(my_str='a'*string_size)
+        after = time.time()
         logging.debug(response)
+        logging.debug("Time: {}".format(after - before))
 
 
 async def main():
