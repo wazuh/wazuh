@@ -84,7 +84,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
         if (recv = OS_RecvUnix(sock, OS_MAXSTR, buffer),recv) {
 
             if(OSHash_Get_ex(request_hash,buffer)){
-                mdebug1("Request already being processed. Discarting...");
+                mdebug1("Request '%s' already being processed. Discarting...",buffer);
                 continue;
             }
 
@@ -95,6 +95,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
             if(queue_full(request_queue)){
                 mdebug1("Request queue is full. Discarting...");
                 os_free(copy);
+                OSHash_Delete_ex(request_hash,buffer);
                 continue;
             }
 
@@ -103,6 +104,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
             if(result < 0){
                 mdebug1("Request queue is full. Discarting...");
                 os_free(copy);
+                OSHash_Delete_ex(request_hash,buffer);
                 continue;
             }
         }
@@ -128,6 +130,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         type = W_TYPE_ID;
     } else {
         mdebug1("Wrong type of request");
+        OSHash_Delete_ex(request_hash,buffer);
         return;
     }
 
@@ -138,6 +141,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
 
             if(strlen(request) > 5) {
                 mdebug1(" Agent ID is too long");
+                OSHash_Delete_ex(request_hash,buffer);
                 return;
             }
             break;
@@ -148,12 +152,14 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
 
             if(strlen(request) > 15) {
                 mdebug1("Agent IP is too long");
+                OSHash_Delete_ex(request_hash,buffer);
                 return;
             }
             break;
 
         default:
             mdebug1("Invalid request");
+            OSHash_Delete_ex(request_hash,buffer);
             return;
     }
 
@@ -166,12 +172,14 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     if(snprintf(command,OS_MAXSTR,"%s %s",data->script,request) > OS_MAXSTR) {
         mdebug1("Request is too long.");
         os_free(command);
+        OSHash_Delete_ex(request_hash,buffer);
         return;
     }
 
     if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
         mdebug1("At wm_key_request_dispatch(): Error executing script [%s]", data->script);
         os_free(command);
+        OSHash_Delete_ex(request_hash,buffer);
         return;
     } else {
         agent_infoJSON = cJSON_Parse(output);
@@ -192,6 +200,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 mdebug1("Agent ID not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
                 return;
             }
 
@@ -200,6 +209,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 mdebug1("Agent name not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
                 return;
             }
 
@@ -208,6 +218,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 mdebug1("Agent address not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
                 return;
             }
 
@@ -216,6 +227,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 mdebug1("Agent key not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
                 return;
             }
 
@@ -225,11 +237,11 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 auth_add_agent(sock,id,agent_name,agent_address,agent_key,1,1,agent_id);
             }
 
-            OSHash_Delete_ex(request_hash,buffer);
             cJSON_Delete(agent_infoJSON);
         }
         os_free(output);
     }
+    OSHash_Delete_ex(request_hash,buffer);
     os_free(command);
 }
 
