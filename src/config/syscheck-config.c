@@ -625,6 +625,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         /* Add directory - look for the last available */
         j = 0;
+        int overwrite = 0;
         while (syscheck->dir && syscheck->dir[j]) {
             char expandedpath[OS_MAXSTR];
             char *ptfile;
@@ -655,7 +656,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 mdebug2("Overwriting the file entry %s", expandedpath);
                 dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, j);
                 ret = 1;
-                goto out_free;
+                overwrite = 1;
             }
 
             j++;
@@ -685,17 +686,23 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
 
             while (g.gl_pathv[gindex]) {
-                dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+                if(overwrite == 0) {
+                    dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+                }
                 gindex++;
             }
 
             globfree(&g);
         }
         else {
-            dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+            if(overwrite == 0) {
+                dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+            }
         }
 #else
-	    dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+        if(overwrite == 0) {
+            dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+        }
 #endif
 
         if (restrictfile) {
