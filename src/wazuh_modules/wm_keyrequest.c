@@ -235,6 +235,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 mdebug1("Could not connect to authd socket. Is authd running?");
             } else {
                 auth_add_agent(sock,id,agent_name,agent_address,agent_key,1,1,agent_id);
+                close(sock);
             }
 
             cJSON_Delete(agent_infoJSON);

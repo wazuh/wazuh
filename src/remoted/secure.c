@@ -519,13 +519,15 @@ void * w_key_request_thread(__attribute__((unused)) void * args) {
     int socket = key_request_connect();
 
     int times = 4;
-    while(times > 0) {
-        if (socket = key_request_connect(), socket < 0) { 
-            sleep(1);
-        } else {
-            break;
+    if (socket < 0) { 
+        while(times > 0) {
+            if (socket = key_request_connect(), socket < 0) { 
+                sleep(1);
+            } else {
+                break;
+            }
+            times--;
         }
-        times--;
     }
 
     while(1) {
@@ -556,7 +558,6 @@ send:
                     }
                     times--;
                 }
-
             }
             os_free(msg);
         }
