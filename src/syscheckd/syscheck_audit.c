@@ -571,7 +571,6 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 
 
 void audit_parse(char *buffer) {
-    int pkey;
     char *psuccess;
     char *pconfig;
     char *pdelete;
@@ -593,9 +592,9 @@ void audit_parse(char *buffer) {
     whodata_evt *w_evt;
     unsigned int items = 0;
 
-    pkey = filterkey_audit_events(buffer); // Checks if the key obtained is one of those configured to monitor
-
-    if (pkey) {
+    // Checks if the key obtained is one of those configured to monitor
+    switch(filterkey_audit_events(buffer)) {
+    case 1:
         if ((pconfig = strstr(buffer,"type=CONFIG_CHANGE"), pconfig)
         && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
             (pdelete = strstr(buffer,"op=\"remove_rule\""), pdelete))) { // Detect rules modification.
@@ -625,7 +624,10 @@ void audit_parse(char *buffer) {
 
             free(p_dir);
 
-        } else if (psuccess = strstr(buffer,"success=yes"), psuccess) {
+        }
+        //Fallthrow
+    case 2:
+        if (psuccess = strstr(buffer,"success=yes"), psuccess) {
 
             os_calloc(1, sizeof(whodata_evt), w_evt);
 
@@ -1023,7 +1025,7 @@ int filterkey_audit_events(char *buffer) {
         snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_extra_key[i]);
         if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
             mdebug2("Match audit_extra_key: '%s'", logkey1);
-            return 1;
+            return 2;
         }
         i++;
     }
