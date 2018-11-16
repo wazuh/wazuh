@@ -591,12 +591,15 @@ void audit_parse(char *buffer) {
     char *file_path = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
+    unsigned int filter_key;
 
     // Checks if the key obtained is one of those configured to monitor
-    switch(filterkey_audit_events(buffer)) {
-    case 1:
+    filter_key = filterkey_audit_events(buffer);
+
+    switch (filter_key) {
+    case 1: // "wazuh_fim"
         if ((pconfig = strstr(buffer,"type=CONFIG_CHANGE"), pconfig)
-        && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
+            && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
             (pdelete = strstr(buffer,"op=\"remove_rule\""), pdelete))) { // Detect rules modification.
 
             // Filter rule removed
@@ -623,7 +626,6 @@ void audit_parse(char *buffer) {
             }
 
             free(p_dir);
-
         }
         // Fallthrough
     case 2:
@@ -1015,7 +1017,7 @@ int filterkey_audit_events(char *buffer) {
     char logkey2[OS_SIZE_256];
 
     snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_KEY);
-    if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
+    if (strstr(buffer, logkey1)) {
         mdebug2("Match audit_key: '%s'", logkey1);
         return 1;
     }
