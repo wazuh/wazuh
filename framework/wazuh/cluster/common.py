@@ -2,7 +2,7 @@ import asyncio
 import logging
 import random
 import struct
-
+from wazuh import utils
 
 class Response:
     """
@@ -82,6 +82,10 @@ class Handler(asyncio.Protocol):
         self.in_buffer = b''
         # stores last received message
         self.in_msg = InBuffer()
+        # stores incoming file information from file commands
+        self.in_file = {'filename': '', 'fd': None}
+        # stores incoming string information from string commands
+        self.in_str = ''
 
 
     def push(self, message):
@@ -158,7 +162,7 @@ class Handler(asyncio.Protocol):
 
         :param command: command to send
         :param data: data to send
-        :return: whether sending was successful or not
+        :return: response from peer.
         """
         response = Response()
         msg_counter = self.next_counter()
@@ -166,6 +170,24 @@ class Handler(asyncio.Protocol):
         self.push(self.msg_build(command, msg_counter, data))
         response_data = await response.read()
         return response_data
+
+
+    async def send_file(self, filename):
+        """
+        Sends a file to peer.
+
+        :param filename: File path to send
+        :return: whether sending was successful or not
+        """
+        response = await self.send_request(command='new_file', data=filename)
+        logging.debug("Response new_file: {}".format(response))
+        with open(filename, 'r') as f:
+            for chunk in iter(lambda: f.read(1), ''):
+                response = await self.send_request(command='file_upd', data=chunk)
+                logging.debug("Response file_upd: {}".format(response))
+        response = await self.send_request(command='file_end', data=utils.get_hash(filename, 'sha256'))
+        logging.debug("Respnse file_end: {}".format(response))
+        return 'ok ', 'File sent'
 
 
     def data_received(self, message):
@@ -194,7 +216,7 @@ class Handler(asyncio.Protocol):
             command, payload = self.process_request(command, payload)
         except Exception as e:
             logging.error("Error processing request: {}".format(e))
-            command, payload = 'err', str(e)
+            command, payload = 'err ', str(e)
 
         self.push(self.msg_build(command, counter, payload))
 
@@ -209,6 +231,12 @@ class Handler(asyncio.Protocol):
         """
         if command == 'echo':
             return self.echo(data)
+        elif command == 'new_file':
+            return self.receive_file(data)
+        elif command == 'file_upd':
+            return self.update_file(data)
+        elif command == "file_end":
+            return self.end_file(data)
         else:
             return self.process_unknown_cmd(command)
 
@@ -239,6 +267,46 @@ class Handler(asyncio.Protocol):
         return 'ok ', data
 
 
+    def receive_file(self, data):
+        """
+        Defines behaviour of command "new_file". This behaviour is to create a file descriptor to store the incoming
+        file.
+
+        :param data: File name
+        :return: Message
+        """
+        self.in_file['fd'] = open(data, 'w+')
+        self.in_file['filename'] = data
+        return "ok ", "Ready to receive new file"
+
+
+    def update_file(self, data):
+        """
+        Defines behaviour of command "file_upd" which consists in updating file contents.
+
+        :param data: file content
+        :return: Message
+        """
+        self.in_file['fd'].write(data)
+        return "ok ", "File updated"
+
+
+    def end_file(self, data):
+        """
+        Defines behaviour of command "end_file" which consists in closing file descriptor and check its md5.
+
+        :param data: file sha256
+        :return: Message
+        """
+        self.in_file['fd'].close()
+        if utils.get_hash(self.in_file['filename'], hash_algorithm='sha256') == data:
+            self.in_file = {'filename': '', 'fd': None}
+            return "ok ", "File received correctly"
+        else:
+            self.in_file = {'filename': '', 'fd': None}
+            return "err ", "File wasn't correctly received"
+
+
     def process_unknown_cmd(self, command):
         """
         Defines message when an unknown command is received
@@ -246,7 +314,7 @@ class Handler(asyncio.Protocol):
         :param command: command received from peer
         :return: message to send
         """
-        return 'err', "unknown command '{}'".format(command)
+        return 'err ', "unknown command '{}'".format(command)
 
 
     def process_error_from_peer(self, data):
@@ -257,4 +325,4 @@ class Handler(asyncio.Protocol):
         :return: Nothing
         """
         logging.error("Peer reported an error: {}".format(data))
-        return None
+        raise Exception(data)

@@ -102,6 +102,10 @@ class EchoClientProtocol(common.Handler):
             logging.info("Time sending {} messages: {}".format(n_msgs, after - before))
             await asyncio.sleep(10)
 
+    async def send_file_task(self, filename):
+        response = await self.send_file(filename)
+        logging.debug(response)
+
 
 async def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
@@ -111,6 +115,7 @@ async def main():
                         help="Perform a performance test against server. Number of bytes to test with.")
     parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
                         help="Perform a concurrency test against server. Number of messages to send in a row.")
+    parser.add_argument('-f', '--file', help="Send file to server", type=str, dest='send_file')
     args = parser.parse_args()
 
     # Get a reference to the event loop as we plan to use
@@ -130,6 +135,8 @@ async def main():
         task, task_args = protocol.performance_test_client, (args.performance_test,)
     elif args.concurrency_test:
         task, task_args = protocol.concurrency_test_client, (args.concurrency_test,)
+    elif args.send_file:
+        task, task_args = protocol.send_file_task, (args.send_file,)
     else:
         task, task_args = protocol.client_echo, tuple()
 
