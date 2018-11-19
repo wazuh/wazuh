@@ -185,6 +185,40 @@ class WazuhIntegration:
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
+        self.msg_header = "1:Wazuh-AWS:"
+
+    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, region_name=None, bucket=None):
+        conn_args = {}
+
+        if access_key is not None and secret_key is not None:
+            conn_args['aws_access_key_id'] = access_key
+            conn_args['aws_secret_access_key'] = secret_key
+            if region_name:
+                conn_args['region_name'] = region_name
+
+        if profile is not None:
+            conn_args['profile_name'] = profile
+
+        boto_session = boto3.Session(**conn_args)
+
+        # If using a role, create session using that
+        try:
+            if iam_role_arn:
+                sts_client = boto_session.client('sts')
+                sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
+                                                             RoleSessionName='WazuhLogParsing')
+                sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
+                                            aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
+                                            aws_session_token=sts_role_assumption['Credentials']['SessionToken'])
+                client = sts_session.client(service_name=service_name)
+            else:
+                client = boto_session.client(service_name=service_name)
+                if bucket:
+                    client.head_bucket(Bucket=bucket)
+        except botocore.exceptions.ClientError as e:
+            print("ERROR: Access error: {}".format(e))
+            sys.exit(3)
+        return client
 
     def prepare_db(self, db_name, table_name, sql_create_table):
         """
@@ -199,7 +233,6 @@ class WazuhIntegration:
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
         self.db_connector = sqlite3.connect(self.db_path)
         self.db_cursor = self.db_connector.cursor()
-        self.msg_header = "1:Wazuh-AWS:"
         self.init_db()
 
     def send_msg(self, msg):
@@ -288,41 +321,15 @@ class AWSBucket:
         self.retain_db_records = 5000
         self.reparse = reparse
         self.bucket = bucket
-        self.client = self.get_s3_client(access_key, secret_key, profile, iam_role_arn)
+        self.client = self.wazuh_integration.get_client(access_key=access_key,
+            secret_key=secret_key, profile=profile, iam_role_arn=iam_role_arn,
+            service_name='s3', bucket=bucket)
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
         self.skip_on_error = skip_on_error
         self.account_alias = account_alias
         self.max_queue_buffer = max_queue_buffer
         self.prefix = prefix
         self.delete_file = delete_file
-
-    def get_s3_client(self, access_key, secret_key, profile, iam_role_arn):
-        conn_args = {}
-        if access_key is not None and secret_key is not None:
-            conn_args['aws_access_key_id'] = access_key
-            conn_args['aws_secret_access_key'] = secret_key
-        if profile is not None:
-            conn_args['profile_name'] = profile
-
-        boto_session = boto3.Session(**conn_args)
-
-        # If using a role, create session using that
-        try:
-            if iam_role_arn:
-                sts_client = boto_session.client('sts')
-                sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
-                                                             RoleSessionName='WazuhLogParsing')
-                sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
-                                            aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
-                                            aws_session_token=sts_role_assumption['Credentials']['SessionToken'])
-                s3_client = sts_session.client(service_name='s3')
-            else:
-                s3_client = boto_session.client(service_name='s3')
-                s3_client.head_bucket(Bucket=self.bucket)
-        except botocore.exceptions.ClientError as e:
-            print("ERROR: Bucket {} access error: {}".format(self.bucket, e))
-            sys.exit(3)
-        return s3_client
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(sql_already_processed.format(
@@ -826,8 +833,13 @@ class AWSInspector:
         self.wazuh_integration.prepare_db(db_name=AWSInspector.db_name,
             table_name=AWSInspector.table_name, sql_create_table=AWSInspector.sql_create_table)
         ## it is necessary to pass region_name as argument
-        self.client = boto3.client('inspector', region_name=self.region, aws_access_key_id=self.access_key,
-            aws_secret_access_key=self.secret_key)
+        #self.client = boto3.client('inspector', region_name=self.region, aws_access_key_id=self.access_key,
+        #    aws_secret_access_key=self.secret_key)
+
+        self.client = self.wazuh_integration.get_client(access_key=self.access_key,
+            secret_key=self.secret_key, profile=self.aws_profile, iam_role_arn=self.iam_role_arn,
+            service_name='inspector', region_name=self.region)
+
         self.get_alerts()
 
     def format_message(self, msg):
