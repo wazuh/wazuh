@@ -136,7 +136,7 @@ int main(int argc, char **argv)
 
     switch (is_worker){
         case -1:
-            merror("Cannot read cluster config %s", strerror(errno));
+            merror("Cluster node type is not valid [client/worker/master]. Cluster not configured %s (%d)", strerror(errno), errno);
             break;
         case 1:
             mdebug1("Cluster client node: Disabling the merged.mg creation");
