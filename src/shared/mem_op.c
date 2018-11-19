@@ -9,19 +9,6 @@
 
 #include "mem_op.h"
 #include "shared.h"
-#include <pthread.h>
-
-static pthread_mutex_t inet_ntoa_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/* Atomic call to inet_ntoa to avoid static memory conflicts */
-char *w_inet_ntoa(struct in_addr inet) {
-    char *intoa_ret_v;
-
-    w_mutex_lock(&inet_ntoa_mutex);
-    intoa_ret_v = strdup(inet_ntoa(inet));
-    w_mutex_unlock(&inet_ntoa_mutex);
-    return intoa_ret_v;
-}
 
 /* Add pointer to array */
 void **os_AddPtArray(void *pt, void **array)
