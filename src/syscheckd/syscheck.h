@@ -95,6 +95,8 @@ int audit_add_rule(const char *path, const char *key);
 int audit_delete_rule(const char *path, const char *key);
 void *audit_main(int *audit_sock);
 void clean_rules(void);
+int filterkey_audit_events(char *buffer);
+int filterpath_audit_events(char *path);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
 extern pthread_mutex_t audit_mutex;
