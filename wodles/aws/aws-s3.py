@@ -169,9 +169,6 @@ sql_db_optimize = "PRAGMA optimize;"
 class WazuhIntegration:
     """
     Class with common methods to interact with databases
-    :param kwargs['db_name']: database name
-    :param kwargs['table_name']: table name
-    :param kwargs['sql_create_table']: SQL query to create a new table
     """
 
     sql_find_table_names = """
@@ -190,6 +187,12 @@ class WazuhIntegration:
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
 
     def prepare_db(self, db_name, table_name, sql_create_table):
+        """
+        Connects with a database and create it if it is necessary
+        :param db_name: database name
+        :param table_name: table name
+        :param sql_create_table: SQL query to create a new table
+        """
         self.db_name = db_name
         self.db_table_name = table_name
         self.sql_create_table = sql_create_table
