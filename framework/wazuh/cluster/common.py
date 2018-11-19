@@ -1,9 +1,8 @@
 import asyncio
-import itertools
+import hashlib
 import logging
 import random
 import struct
-from wazuh import utils
 
 class Response:
     """
@@ -45,7 +44,7 @@ class InBuffer:
         :return: updated buffer
         """
         self.total, self.counter, cmd = struct.unpack(header_format, header[:header_size])
-        self.cmd = cmd.decode().split(' ')[0]
+        self.cmd = cmd.split(b' ')[0]
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -84,7 +83,7 @@ class Handler(asyncio.Protocol):
         # stores last received message
         self.in_msg = InBuffer()
         # stores incoming file information from file commands
-        self.in_file = {'filename': '', 'fd': None}
+        self.in_file = {'filename': '', 'fd': None, 'checksum': None}
         # stores incoming string information from string commands
         self.in_str = InBuffer()
 
@@ -115,14 +114,18 @@ class Handler(asyncio.Protocol):
         :param data: data to send
         :return: built message
         """
+        # make sure payload is bytes
+        if not isinstance(data, bytes):
+            raise Exception("Payload for request '{}' must be bytes".format(command))
+
         cmd_len = len(command)
         if cmd_len > self.cmd_len:
             raise Exception("Length of command '{}' exceeds limit ({}/{})".format(command, cmd_len, self.cmd_len))
 
         # adds - to command until it reaches cmd length
-        command = '{} {}'.format(command, '-'*(self.cmd_len - cmd_len - 1))
+        command = command + b' ' + b'-'*(self.cmd_len - cmd_len - 1)
 
-        return struct.pack(self.header_format, len(data), counter, command.encode()) + data.encode()
+        return struct.pack(self.header_format, len(data), counter, command) + data
 
 
     def msg_parse(self):
@@ -150,7 +153,7 @@ class Handler(asyncio.Protocol):
             # logging.debug("Received message: {} / {}".format(self.in_msg['received'], self.in_msg['total_size']))
             if self.in_msg.received == self.in_msg.total:
                 # the message was correctly received
-                yield self.in_msg.cmd, self.in_msg.counter, self.in_msg.payload.decode()
+                yield self.in_msg.cmd, self.in_msg.counter, bytes(self.in_msg.payload)
                 self.in_msg = InBuffer()
             else:
                 break
@@ -180,12 +183,14 @@ class Handler(asyncio.Protocol):
         :param filename: File path to send
         :return: whether sending was successful or not
         """
-        response = await self.send_request(command='new_file', data=filename)
-        with open(filename, 'r') as f:
-            for chunk in iter(lambda: f.read(10000000), ''):
-                response = await self.send_request(command='file_upd', data=chunk)
-        response = await self.send_request(command='file_end', data=utils.get_hash(filename, 'sha256'))
-        return 'ok ', 'File sent'
+        response = await self.send_request(command=b'new_file', data=filename.encode())
+        file_hash = hashlib.sha256()
+        with open(filename, 'rb') as f:
+            for chunk in iter(lambda: f.read(33554431), b''):  # 33554431 = 2^24
+                response = await self.send_request(command=b'file_upd', data=chunk)
+                file_hash.update(chunk)
+        response = await self.send_request(command=b'file_end', data=file_hash.digest())
+        return b'ok ', b'File sent'
 
 
     async def send_string(self, my_str, chunk=10000000):
@@ -197,10 +202,10 @@ class Handler(asyncio.Protocol):
         :return: whether sending was successful or not.
         """
         total = len(my_str)
-        response = await self.send_request(command='new_str', data=str(total))
+        response = await self.send_request(command=b'new_str', data=str(total))
         for c in range(0, total, chunk):
-            response = await self.send_request(command='str_upd', data=my_str[c:c+chunk])
-        return "ok", "String correctly sent"
+            response = await self.send_request(command=b'str_upd', data=my_str[c:c+chunk])
+        return b"ok", b"String correctly sent"
 
 
 
@@ -230,7 +235,7 @@ class Handler(asyncio.Protocol):
             command, payload = self.process_request(command, payload)
         except Exception as e:
             logging.error("Error processing request '{}': {}".format(command, e))
-            command, payload = 'err ', str(e)
+            command, payload = b'err ', str(e).encode()
 
         self.push(self.msg_build(command, counter, payload))
 
@@ -243,19 +248,19 @@ class Handler(asyncio.Protocol):
         :param data: Received data from other peer.
         :return: message to send.
         """
-        if command == 'echo':
+        if command == b'echo':
             return self.echo(data)
-        elif command == 'new_file':
+        elif command == b'new_file':
             return self.receive_file(data)
-        elif command == 'new_str':
+        elif command == b'new_str':
             return self.receive_str(data)
-        elif command == 'file_upd':
+        elif command == b'file_upd':
             return self.update_file(data)
-        elif command == 'str_upd':
+        elif command == b'str_upd':
             return self.str_upd(data)
-        elif command == "file_end":
+        elif command == b"file_end":
             return self.end_file(data)
-        elif command == 'str_end':
+        elif command == b'str_end':
             return self.str_end(data)
         else:
             return self.process_unknown_cmd(command)
@@ -269,12 +274,12 @@ class Handler(asyncio.Protocol):
         :param payload: data received
         :return:
         """
-        if command == 'ok':
+        if command == b'ok':
             return payload
-        elif command == 'err':
+        elif command == b'err':
             return self.process_error_from_peer(payload)
         else:
-            return "Unkown response command received: '{}'".format(command)
+            return b"Unkown response command received: " + command
 
 
     def echo(self, data):
@@ -284,7 +289,7 @@ class Handler(asyncio.Protocol):
         :param data: message to echo
         :return: message to send
         """
-        return 'ok ', data
+        return b'ok ', data
 
 
     def receive_file(self, data):
@@ -295,9 +300,10 @@ class Handler(asyncio.Protocol):
         :param data: File name
         :return: Message
         """
-        self.in_file['fd'] = open(data, 'w+')
+        self.in_file['fd'] = open(data, 'wb+')
         self.in_file['filename'] = data
-        return "ok ", "Ready to receive new file"
+        self.in_file['checksum'] = hashlib.sha256()
+        return b"ok ", b"Ready to receive new file"
 
 
     def update_file(self, data):
@@ -308,7 +314,8 @@ class Handler(asyncio.Protocol):
         :return: Message
         """
         self.in_file['fd'].write(data)
-        return "ok ", "File updated"
+        self.in_file['checksum'].update(data)
+        return b"ok ", b"File updated"
 
 
     def end_file(self, data):
@@ -319,12 +326,12 @@ class Handler(asyncio.Protocol):
         :return: Message
         """
         self.in_file['fd'].close()
-        if utils.get_hash(self.in_file['filename'], hash_algorithm='sha256') == data:
-            self.in_file = {'filename': '', 'fd': None}
-            return "ok ", "File received correctly"
+        if self.in_file['checksum'].digest() == data:
+            self.in_file = {'filename': '', 'fd': None, 'checksum': None}
+            return b"ok ", b"File received correctly"
         else:
-            self.in_file = {'filename': '', 'fd': None}
-            return "err ", "File wasn't correctly received"
+            self.in_file = {'filename': '', 'fd': None, 'checksum': None}
+            return b"err ", b"File wasn't correctly received"
 
 
     def receive_str(self, data):
@@ -336,7 +343,7 @@ class Handler(asyncio.Protocol):
         """
         self.in_str.total = int(data)
         self.in_str.payload = bytearray(self.in_str.total)
-        return "ok", "Ready to receive string"
+        return b"ok", b"Ready to receive string"
 
 
     def str_upd(self, data):
@@ -346,8 +353,8 @@ class Handler(asyncio.Protocol):
         :param data: String contents
         :return: Message
         """
-        self.in_str.receive_data(data.encode())
-        return "ok", "Chunk received"
+        self.in_str.receive_data(data)
+        return b"ok", b"Chunk received"
 
 
     def str_end(self, data):
@@ -357,12 +364,12 @@ class Handler(asyncio.Protocol):
         :param data: string checksum sha256
         :return: Message
         """
-        if utils.get_hash_str(my_str=self.in_str.payload.decode(), hash_algorithm='sha256') == data:
+        if utils.get_hash_str(my_str=self.in_str.payload, hash_algorithm='sha256') == data:
             self.in_str = InBuffer()
-            return "ok", "String correctly received."
+            return b"ok", b"String correctly received."
         else:
             self.in_str = InBuffer()
-            return "err", "String wasn't correctly received"
+            return b"err", b"String wasn't correctly received"
 
 
     def process_unknown_cmd(self, command):
@@ -372,7 +379,7 @@ class Handler(asyncio.Protocol):
         :param command: command received from peer
         :return: message to send
         """
-        return 'err ', "unknown command '{}'".format(command)
+        return b'err ', "unknown command '{}'".format(command).encode()
 
 
     def process_error_from_peer(self, data):

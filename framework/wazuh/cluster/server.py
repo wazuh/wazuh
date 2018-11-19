@@ -1,6 +1,5 @@
 import asyncio
 import time
-
 import common
 import logging
 import argparse
@@ -36,16 +35,16 @@ class EchoServerHandler(common.Handler):
         :param data: Received data from client.
         :return: message to send
         """
-        if command == "echo-c":
+        if command == b"echo-c":
             return self.echo_master(data)
-        elif command == 'hello':
+        elif command == b'hello':
             return self.hello(data)
         else:
             return super().process_request(command, data)
 
 
     def echo_master(self, data):
-        return 'ok-m ', data
+        return b'ok-m ', data
 
 
     def hello(self, data):
@@ -58,11 +57,11 @@ class EchoServerHandler(common.Handler):
         if data in self.server.clients:
             logging.error("Client {} already present".format(data))
             self.transport.close()
-            return 'err', 'Client already present'
+            return b'err', b'Client already present'
         else:
             self.server.clients[data] = self
             self.name = data
-            return 'ok', 'Client {} added'.format(data)
+            return b'ok', 'Client {} added'.format(data).encode()
 
 
     def process_response(self, command, payload):
@@ -73,8 +72,8 @@ class EchoServerHandler(common.Handler):
         :param payload: data received
         :return:
         """
-        if command == 'ok-c':
-            return "Sucessful response from client: {}".format(payload)
+        if command == b'ok-c':
+            return b"Sucessful response from client: " + payload
         else:
             return super().process_response(command, payload)
 
@@ -106,14 +105,14 @@ class EchoServer:
         while True:
             for client_name, client in self.clients.items():
                 logging.debug("Sending echo to client {}".format(client_name))
-                logging.info(await client.send_request('echo-m', 'hello {} from server'.format(client_name)))
+                logging.info(await client.send_request(b'echo-m', 'hello {} from server'.format(client_name).encode()))
             await asyncio.sleep(3)
 
     async def performance_test(self):
         while True:
             for client_name, client in self.clients.items():
                 before = time.time()
-                response = await client.send_request('echo', 'a'*self.performance)
+                response = await client.send_request(b'echo', b'a'*self.performance)
                 after = time.time()
                 logging.info("Received size: {} // Time: {}".format(len(response), after - before))
             await asyncio.sleep(3)
@@ -123,7 +122,7 @@ class EchoServer:
             for i in range(self.concurrency):
                 before = time.time()
                 for client_name, client in self.clients.items():
-                    response = await client.send_request('echo', 'concurrency {} client {}'.format(i, client_name))
+                    response = await client.send_request(b'echo', 'concurrency {} client {}'.format(i, client_name).encode())
                 after = time.time()
                 logging.info("Time sending {} messages: {}".format(self.concurrency, after - before))
                 await asyncio.sleep(10)
@@ -138,7 +137,7 @@ class EchoServer:
 
         async with server:
             # use asyncio.gather to run both tasks in parallel
-            await server.serve_forever()
+            await asyncio.gather(server.serve_forever(), self.echo())
 
 
 async def main():

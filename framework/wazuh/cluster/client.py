@@ -28,8 +28,8 @@ class EchoClientProtocol(common.Handler):
         :param transport: socket to write data on
         """
         self.transport = transport
-        asyncio.gather(self.send_request(command='hello', data=self.name))
-        logging.info('Data sent: {!r}'.format('Hello world!'))
+        asyncio.gather(self.send_request(command=b'hello', data=self.name.encode()))
+        logging.info('Client info sent to server.')
 
 
     def connection_lost(self, exc):
@@ -55,8 +55,8 @@ class EchoClientProtocol(common.Handler):
         :param payload: data received
         :return:
         """
-        if command == 'ok-m':
-            return "Sucessful response from master: {}".format(payload)
+        if command == b'ok-m':
+            return b"Sucessful response from master: " + payload
         else:
             return super().process_response(command, payload)
 
@@ -69,26 +69,26 @@ class EchoClientProtocol(common.Handler):
         :param data: Received data from client.
         :return: message to send
         """
-        if command == "echo-m":
+        if command == b"echo-m":
             return self.echo_client(data)
         else:
             return super().process_request(command, data)
 
 
     def echo_client(self, data):
-        return 'ok-c', data
+        return b'ok-c', data
 
 
     async def client_echo(self):
         while not self.on_con_lost.done():
-            result = await self.send_request('echo-c','hello from client')
+            result = await self.send_request(b'echo-c', b'hello from client')
             logging.info(result)
             await asyncio.sleep(3)
 
     async def performance_test_client(self, test_size):
         while not self.on_con_lost.done():
             before = time.time()
-            result = await self.send_request('echo', 'a'*test_size)
+            result = await self.send_request(b'echo', b'a'*test_size)
             after = time.time()
             logging.info("Received size: {} // Time: {}".format(len(result), after - before))
             await asyncio.sleep(3)
@@ -97,7 +97,7 @@ class EchoClientProtocol(common.Handler):
         while not self.on_con_lost.done():
             before = time.time()
             for i in range(n_msgs):
-                result = await self.send_request('echo', 'concurrency {}'.format(i))
+                result = await self.send_request(b'echo', 'concurrency {}'.format(i).encode())
             after = time.time()
             logging.info("Time sending {} messages: {}".format(n_msgs, after - before))
             await asyncio.sleep(10)
@@ -111,7 +111,7 @@ class EchoClientProtocol(common.Handler):
 
     async def send_string_task(self, string_size):
         before = time.time()
-        response = await self.send_string(my_str='a'*string_size)
+        response = await self.send_string(my_str=b'a'*string_size)
         after = time.time()
         logging.debug(response)
         logging.debug("Time: {}".format(after - before))
