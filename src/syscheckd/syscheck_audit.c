@@ -29,6 +29,8 @@
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 6144
 #define AUDIT_KEY "wazuh_fim"
+#define RELOAD_RULES_INTERVAL 20 // Seconds to re-add Audit rules
+#define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 
 // Global variables
 W_Vector *audit_added_rules;
@@ -36,6 +38,7 @@ W_Vector *audit_added_dirs;
 pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 int auid_err_reported;
+static unsigned int count_reload_retries;
 
 #ifdef ENABLE_AUDIT
 
@@ -218,10 +221,10 @@ int set_auditd_config(void) {
     }
 
     if (syscheck.restart_audit) {
-        minfo("Audisp configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
+        minfo("Audit plugin configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
         return audit_restart();
     } else {
-        mwarn("Audisp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
+        mwarn("Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled.");
         return 1;
     }
 }
@@ -642,18 +645,33 @@ void audit_parse(char *buffer) {
             }
 
             if (p_dir && *p_dir != '\0') {
-                mwarn("Monitored directory '%s' was removed: Audit rule removed.", p_dir);
+                minfo("Monitored directory '%s' was removed: Audit rule removed.", p_dir);
                 // Send alert
                 char msg_alert[512 + 1];
                 snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
             } else {
-                audit_thread_active = 0;
                 mwarn("Detected Audit rules manipulation: Audit rules removed.");
                 // Send alert
                 char msg_alert[512 + 1];
                 snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Audit rules removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+
+                count_reload_retries++;
+
+                if (count_reload_retries < AUDIT_LOAD_RETRIES) {
+                    // Reload rules
+                    mdebug1("Reloading Audit rules...");
+                    int rules_added = add_audit_rules_syscheck();
+                    mdebug1("Audit rules reloaded: %i", rules_added);
+                } else {
+                    // Send alert
+                    char msg_alert[512 + 1];
+                    snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+                    SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+                    // Stop thread
+                    audit_thread_active = 0;
+                }
             }
 
             free(p_dir);
@@ -933,6 +951,26 @@ void audit_parse(char *buffer) {
     }
 }
 
+void *audit_reload_thread(void) {
+    struct timespec spec0;
+    struct timespec spec1;
+
+    gettime(&spec0);
+
+    while (audit_thread_active) {
+        // Reload rules
+        gettime(&spec1);
+        if (spec1.tv_sec - spec0.tv_sec >= RELOAD_RULES_INTERVAL) {
+            mdebug1("Reloading Audit rules...");
+            gettime(&spec0);
+            int rules_added = add_audit_rules_syscheck();
+            mdebug1("Audit rules reloaded: %i", rules_added);
+        }
+    }
+
+    return NULL;
+}
+
 
 void * audit_main(int * audit_sock) {
     size_t byteRead;
@@ -945,6 +983,7 @@ void * audit_main(int * audit_sock) {
     size_t len;
     fd_set fdset;
     struct timeval timeout;
+    count_reload_retries = 0;
 
     char *buffer;
     buffer = malloc(BUF_SIZE * sizeof(char));
@@ -955,6 +994,9 @@ void * audit_main(int * audit_sock) {
     w_cond_signal(&audit_thread_started);
     w_cond_wait(&audit_db_consistency, &audit_mutex);
     w_mutex_unlock(&audit_mutex);
+
+    // Start rules reloading thread
+    w_create_thread(audit_reload_thread, NULL);
 
     minfo("Starting FIM Whodata engine...");
 
@@ -1052,6 +1094,7 @@ void * audit_main(int * audit_sock) {
         } else {
             buffer_i = 0;
         }
+
     }
 
     // Auditd is not runnig or socket closed.
@@ -1131,6 +1174,7 @@ int filterkey_audit_events(char *buffer) {
     }
     return 0;
 }
+
 
 int filterpath_audit_events(char *path) {
     int i = 0;
