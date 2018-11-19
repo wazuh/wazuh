@@ -49,11 +49,11 @@ int w_is_worker(void) {
                     free(cl_type);
                 }
             } else if (strcmp(cl_status, "yes")){
-                is_worker = -1;
+                is_worker = 2;
             }
             free(cl_status);
         } else {
-            is_worker = -1;
+            is_worker = 2;
         }
     }
     OS_ClearXML(&xml);
