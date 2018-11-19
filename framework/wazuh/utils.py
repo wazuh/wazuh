@@ -400,7 +400,8 @@ def get_hash(filename, hash_algorithm='md5', return_hex=True):
 
     try:
         with open(filename, 'rb') as f:
-            hashing.update(f.read())
+            for chunk in iter(lambda: f.read(65536), b""):
+                hashing.update(chunk)
     except IOError:
         return None
 
