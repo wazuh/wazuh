@@ -301,6 +301,7 @@ void LogCollectorStart()
                                 minfo(FORGET_FILE, current->file);
                                 current->exists = 0;
                             }
+                            current->ign++;
                             // Only expanded files that have been deleted will be forgotten
                             if (j >= 0) {
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
@@ -386,7 +387,7 @@ void LogCollectorStart()
                     else if (current->size > tmp_stat.st_size)
 #endif
                     {
-                        current->exists=1;
+                        current->exists = 1;
                         char msg_alert[512 + 1];
 
                         snprintf(msg_alert, 512, "ossec: File size reduced "
@@ -418,12 +419,11 @@ void LogCollectorStart()
                         /* Update file size */
                         current->size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
 #else
-                        current->exists=1;
+                        current->exists = 1;
                         current->size = tmp_stat.st_size;
 #endif
                     }
                 }
-
 
                 /* Too many errors for the file */
                 if (current->ign > open_file_attempts) {
@@ -558,8 +558,9 @@ int handle_file(int i, int j, int do_fseek, int do_log)
 #ifndef WIN32
     lf->fp = fopen(lf->file, "r");
     if (!lf->fp) {
-        if (do_log == 1) {
+        if (do_log == 1 && lf->exists == 1) {
             merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
+            lf->exists = 0;
         }
         return (-1);
     }
@@ -701,6 +702,7 @@ int update_current(logreader **current, int *i, int *j)
 void set_read(logreader *current, int i, int j) {
     int tg;
     current->command = NULL;
+    current->ign = 0;
     minfo(READING_FILE, current->file);
     /* Initialize the files */
     if (current->ffile) {
