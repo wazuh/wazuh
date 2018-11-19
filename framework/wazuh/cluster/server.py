@@ -1,4 +1,5 @@
 import asyncio
+import uvloop
 import time
 import common
 import logging
@@ -130,6 +131,7 @@ class EchoServer:
     async def start(self):
         # Get a reference to the event loop as we plan to use
         # low-level APIs.
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
 
         server = await loop.create_server(lambda: EchoServerHandler(server=self, loop=loop), '0.0.0.0', 8888)

@@ -1,4 +1,5 @@
 import asyncio
+import uvloop
 import common
 import logging
 import argparse
@@ -132,6 +133,7 @@ async def main():
 
     # Get a reference to the event loop as we plan to use
     # low-level APIs.
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     loop = asyncio.get_running_loop()
     on_con_lost = loop.create_future()
 
