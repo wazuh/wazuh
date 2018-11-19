@@ -11,9 +11,13 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Improve Remoted performance by reducing interaction between threads. ([#1902](https://github.com/wazuh/wazuh/pull/1902))
+
 ### Fixed
 
 - Fix to overwrite FIM configuration when directories come in the same tag separated by commas. ([#1886](https://github.com/wazuh/wazuh/pull/1886))
+- Fix race condition hazard in Remoted when handling control messages. ([#1902](https://github.com/wazuh/wazuh/pull/1902))
+
 
 ## [v3.7.0] - 2018-11-10
 
