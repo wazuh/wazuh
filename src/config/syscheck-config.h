@@ -209,6 +209,8 @@ typedef struct _config {
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
 #endif
 
+    char **audit_extra_key;                // Listen audit keys
+
     OSHash *fp;
     OSHash *last_check;
     OSHash *local_hash;
@@ -227,6 +229,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts);
 
 /* Frees the Syscheck struct  */
 void Free_Syscheck(syscheck_config * config);
+char* check_ascci_hex (char *input);
 
 void log_realtime_status(int);
 

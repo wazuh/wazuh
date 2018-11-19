@@ -172,7 +172,7 @@ class AWSBucket:
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
-                 max_queue_buffer, prefix, delete_file):
+                 prefix, delete_file):
         """
         AWS Bucket constructor.
 
@@ -185,7 +185,6 @@ class AWSBucket:
         :param only_logs_after: Date after which obtain logs.
         :param skip_on_error: Wether to continue processing logs or stop when an error takes place
         :param account_alias: Alias of the AWS account where the bucket is.
-        :param max_queue_buffer: Maximum event length
         :param prefix: Prefix to filter files in bucket
         :param delete_file: Wether to delete an already processed file from a bucket or not
         """
@@ -204,7 +203,6 @@ class AWSBucket:
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
         self.skip_on_error = skip_on_error
         self.account_alias = account_alias
-        self.max_queue_buffer = max_queue_buffer
         self.prefix = prefix
         self.delete_file = delete_file
 
@@ -778,10 +776,6 @@ def main(argv):
     # Parse arguments
     options = get_script_arguments()
 
-    # Get socket buffer size
-    with open('/proc/sys/net/core/rmem_max', 'r') as kernel_param:
-        max_queue_buffer = int(kernel_param.read().strip())
-
     if int(options.debug) > 0:
         global debug_level
         debug_level = int(options.debug)
@@ -791,8 +785,7 @@ def main(argv):
     bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
                          options.aws_profile, options.iam_role_arn, options.logBucket,
                          options.only_logs_after, options.skip_on_error,
-                         options.aws_account_alias, max_queue_buffer,
-                         options.trail_prefix, options.deleteFile)
+                         options.aws_account_alias, options.trail_prefix, options.deleteFile)
     bucket.iter_bucket(options.aws_account_id, options.regions)
 
 

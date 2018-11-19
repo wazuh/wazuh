@@ -1,6 +1,18 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.7.1]
+
+### Added
+
+- Added option to configure anothers audit keys to monitor. ([#1882](https://github.com/wazuh/wazuh/pull/1882))
+
+### Changed
+
+### Fixed
+
+- Fix to overwrite FIM configuration when directories come in the same tag separated by commas. ([#1886](https://github.com/wazuh/wazuh/pull/1886))
+
 ## [v3.7.0]
 
 ### Added

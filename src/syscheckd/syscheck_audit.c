@@ -599,7 +599,6 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 
 
 void audit_parse(char *buffer) {
-    char *pkey;
     char *psuccess;
     char *pconfig;
     char *pdelete;
@@ -623,11 +622,15 @@ void audit_parse(char *buffer) {
     whodata_evt *w_evt;
     unsigned int items = 0;
     char *inode_temp;
+    unsigned int filter_key;
 
-    if (pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) { // Parse only 'wazuh_fim' events.
+    // Checks if the key obtained is one of those configured to monitor
+    filter_key = filterkey_audit_events(buffer);
 
+    switch (filter_key) {
+    case 1: // "wazuh_fim"
         if ((pconfig = strstr(buffer,"type=CONFIG_CHANGE"), pconfig)
-        && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
+            && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
             (pdelete = strstr(buffer,"op=\"remove_rule\""), pdelete))) { // Detect rules modification.
 
             // Filter rule removed
@@ -654,8 +657,10 @@ void audit_parse(char *buffer) {
             }
 
             free(p_dir);
-
-        } else if (psuccess = strstr(buffer,"success=yes"), psuccess) {
+        }
+        // Fallthrough
+    case 2:
+        if (psuccess = strstr(buffer,"success=yes"), psuccess) {
 
             os_calloc(1, sizeof(whodata_evt), w_evt);
 
@@ -784,7 +789,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode){
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -809,7 +814,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode){
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -848,14 +853,13 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode){
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
                                 }
                             }
-
                             free(file_path1);
                             w_evt->path = NULL;
                         }
@@ -875,7 +879,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode){
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -909,7 +913,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode){
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -1102,6 +1106,42 @@ void clean_rules(void) {
         audit_added_rules = NULL;
     }
     w_mutex_unlock(&audit_mutex);
+}
+
+
+int filterkey_audit_events(char *buffer) {
+    int i = 0;
+    char logkey1[OS_SIZE_256];
+    char logkey2[OS_SIZE_256];
+
+    snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_KEY);
+    if (strstr(buffer, logkey1)) {
+        mdebug2("Match audit_key: '%s'", logkey1);
+        return 1;
+    }
+
+    while (syscheck.audit_extra_key[i]) {
+        snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.audit_extra_key[i]);
+        snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_extra_key[i]);
+        if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
+            mdebug2("Match audit_extra_key: '%s'", logkey1);
+            return 2;
+        }
+        i++;
+    }
+    return 0;
+}
+
+int filterpath_audit_events(char *path) {
+    int i = 0;
+
+    for(i = 0; i < W_Vector_length(audit_added_dirs); i++) {
+        if (strstr(path, W_Vector_get(audit_added_dirs, i))) {
+            mdebug2("Found '%s' in '%s'", W_Vector_get(audit_added_dirs, i), path);
+            return 1;
+        }
+    }
+    return 0;
 }
 #endif
 #endif
