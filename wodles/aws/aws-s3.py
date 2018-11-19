@@ -84,7 +84,16 @@ debug_level = 0
 
 class WazuhIntegration:
     """
-    Class with common methods to interact with databases
+    Class with common methods
+    :param access_key: AWS access key id
+    :param secret_key: AWS secret access key
+    :param aws_profile: AWS profile
+    :param iam_role_arn: IAM Role
+    :param service name: Name of the service (s3 for services which stores logs in buckets)
+    :param region: Region of service
+    :param bucket: Bucket name to extract logs from
+    :param db_name: Name of the DB file
+    :param table_name: Name of the table
     """
 
     sql_find_table_names = """
@@ -97,13 +106,23 @@ class WazuhIntegration:
 
     sql_db_optimize = "PRAGMA optimize;"
 
-    def __init__(self):
+    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
+             service_name, region=None, bucket=None, db_name=None, table_name=None):
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
+        self.client = WazuhIntegration.get_client(access_key=access_key, secret_key=secret_key,
+            profile=aws_profile, iam_role_arn=iam_role_arn, service_name=service_name,
+            region_name=region, bucket=bucket)
+        self.db_name = db_name
+        self.db_table_name = table_name
+        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
+        self.db_connector = sqlite3.connect(self.db_path)
+        self.db_cursor = self.db_connector.cursor()
 
-    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, region_name=None, bucket=None):
+    @staticmethod
+    def get_client(access_key, secret_key, profile, iam_role_arn, service_name, region_name=None, bucket=None):
         conn_args = {}
 
         if access_key is not None and secret_key is not None:
@@ -136,33 +155,21 @@ class WazuhIntegration:
             sys.exit(3)
         return client
 
-    def prepare_db(self, db_name, table_name, sql_create_table):
-        """
-        Connects with a database and create it if it is necessary
-        :param db_name: database name
-        :param table_name: table name
-        :param sql_create_table: SQL query to create a new table
-        """
-        self.db_name = db_name
-        self.db_table_name = table_name
-        self.sql_create_table = sql_create_table
-        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
-        self.db_connector = sqlite3.connect(self.db_path)
-        self.db_cursor = self.db_connector.cursor()
-        self.init_db()
-
-    def send_msg(self, msg):
+    @staticmethod
+    def send_msg(msg, wazuh_queue, msg_header):
         """
         Sends an AWS event to the Wazuh Queue
 
         :param msg: JSON message to be sent.
+        :param wazuh_queue: Wazuh queue path.
+        :param msg_header: Msg header.
         """
         try:
             json_msg = json.dumps(msg, default=str)
             debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            s.connect(self.wazuh_queue)
-            s.send("{header}{msg}".format(header=self.msg_header,
+            s.connect(wazuh_queue)
+            s.send("{header}{msg}".format(header=msg_header,
                                           msg=json_msg).encode())
             s.close()
         except socket.error as e:
@@ -176,15 +183,21 @@ class WazuhIntegration:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
-    def create_table(self):
+    def create_table(self, sql_create_table):
+        """
+        :param sql_create_table: SQL query to create the table
+        """
         try:
             debug('+++ Table does not exist; create', 1)
-            self.db_connector.execute(self.sql_create_table)
+            self.db_connector.execute(sql_create_table)
         except Exception as e:
             print("ERROR: Unable to create SQLite DB: {}".format(e))
             sys.exit(6)
 
-    def init_db(self):
+    def init_db(self, sql_create_table):
+        """
+        :param sql_create_table: SQL query to create the table
+        """
         try:
             tables = set(map(operator.itemgetter(0), self.db_connector.execute(WazuhIntegration.sql_find_table_names)))
         except Exception as e:
@@ -192,7 +205,7 @@ class WazuhIntegration:
             sys.exit(5)
         # if table does not exist, create a new table
         if self.db_table_name not in tables:
-            self.create_table()
+            self.create_table(sql_create_table)
 
     def close_db(self):
         self.db_connector.commit()
@@ -306,12 +319,11 @@ class AWSBucket:
         self.legacy_db_table_name = 'log_progress'
         self.db_table_name = 'trail_progress'
         self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
-        self.wazuh_integration = WazuhIntegration()
         self.db_connector = sqlite3.connect(self.db_path)
         self.retain_db_records = 5000
         self.reparse = reparse
         self.bucket = bucket
-        self.client = self.wazuh_integration.get_client(access_key=access_key,
+        self.client = WazuhIntegration.get_client(access_key=access_key,
             secret_key=secret_key, profile=profile, iam_role_arn=iam_role_arn,
             service_name='s3', bucket=bucket)
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
@@ -522,7 +534,8 @@ class AWSBucket:
                                                    log_key,
                                                    None,
                                                    error_txt)
-                    self.wazuh_integration.send_msg(error_msg)
+                    WazuhIntegration.send_msg(error_msg,
+                        self.wazuh_queue, self.msg_header)
                 except:
                     debug("++ Failed to send message to Wazuh", 1)
             else:
@@ -556,7 +569,7 @@ class AWSBucket:
                 # Change dynamic fields to strings; truncate values as needed
                 event_msg = self.reformat_msg(event_msg)
                 # Send the message
-                self.wazuh_integration.send_msg(event_msg)
+                WazuhIntegration.send_msg(event_msg, self.wazuh_queue, self.msg_header)
 
     def iter_files_in_bucket(self, aws_account_id, aws_region):
         try:
@@ -782,6 +795,7 @@ class AWSInspector(WazuhIntegration):
     :param profile: AWS profile
     :param iam_role_arn: IAM Role
     :param only_logs_after: Date after which obtain logs.
+    :param region: Region of service
     """
 
     sql_create_table = """
@@ -809,24 +823,16 @@ class AWSInspector(WazuhIntegration):
     table_name = 'inspector'
 
     def __init__(self, access_key, secret_key, aws_profile=None, iam_role_arn=None,
-        only_logs_after=None, skip_on_error=None, aws_account_alias=None,
-        region='us-east-1'):
-        self.access_key = access_key
-        self.secret_key = secret_key
-        self.aws_profile = aws_profile
-        self.iam_role_arn = iam_role_arn
+        only_logs_after=None, region='us-east-1'):
+
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
+            aws_profile=aws_profile, iam_role_arn=iam_role_arn, service_name='inspector',
+            region=region, db_name=AWSInspector.db_name, table_name=AWSInspector.table_name)
+
         self.only_logs_after = only_logs_after
-        self.skip_on_error = skip_on_error
-        self.aws_account_alias = aws_account_alias
         self.region = region
         self.db_name = 's3_inspector'
         self.table_name = 'inspector'
-        self.wazuh_integration = WazuhIntegration()
-        self.wazuh_integration.prepare_db(db_name=AWSInspector.db_name,
-            table_name=AWSInspector.table_name, sql_create_table=AWSInspector.sql_create_table)
-        self.client = self.wazuh_integration.get_client(access_key=self.access_key,
-            secret_key=self.secret_key, profile=self.aws_profile, iam_role_arn=self.iam_role_arn,
-            service_name='inspector', region_name=self.region)
 
     def format_message(self, msg):
         return {'integration': 'aws', 'aws': msg}
@@ -838,7 +844,7 @@ class AWSInspector(WazuhIntegration):
             debug('+++ Processing new events...', 1)
             response = self.client.describe_findings(findingArns=arn_list)['findings']
             for elem in response:
-                self.wazuh_integration.send_msg(self.format_message(elem))
+                self.send_msg(self.format_message(elem), self.wazuh_queue, self.msg_header)
 
     def get_last_log_date(self):
         return '{Y}-{m}-{d} 00:00:00.0'.format(Y=self.only_logs_after[0:4],
@@ -846,14 +852,15 @@ class AWSInspector(WazuhIntegration):
 
     def get_alerts(self):
         initial_date = self.get_last_log_date()
+        self.init_db(AWSInspector.sql_create_table)
         try:
             # if DB is empty write initial date
-            self.wazuh_integration.db_cursor.execute(AWSInspector.sql_insert_value.format(initial_date))
-            self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
-            last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
+            self.db_cursor.execute(AWSInspector.sql_insert_value.format(initial_date))
+            self.db_cursor.execute(AWSInspector.sql_find_last_scan)
+            last_scan = self.db_cursor.fetchone()[0]
         except sqlite3.IntegrityError:
-            self.wazuh_integration.db_cursor.execute(AWSInspector.sql_find_last_scan)
-            last_scan = self.wazuh_integration.db_cursor.fetchone()[0]
+            self.db_cursor.execute(AWSInspector.sql_find_last_scan)
+            last_scan = self.db_cursor.fetchone()[0]
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
         # get current time (UTC)
         datetime_current = datetime.utcnow()
@@ -867,9 +874,9 @@ class AWSInspector(WazuhIntegration):
             {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
             self.send_describe_findings(response['findingArns'])
         # insert last scan in DB
-        self.wazuh_integration.db_cursor.execute(AWSInspector.sql_insert_value.format(datetime_current))
+        self.db_cursor.execute(AWSInspector.sql_insert_value.format(datetime_current))
         # close connection with DB
-        self.wazuh_integration.close_db()
+        self.close_db()
 
 
 ################################################################################
@@ -1008,8 +1015,7 @@ def main(argv):
             for region in options.regions:
                 service = service_type(access_key=options.access_key, secret_key=options.secret_key,
                             aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
-                            only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
-                            aws_account_alias=options.aws_account_alias, region=region)
+                            only_logs_after=options.only_logs_after, region=region)
                 service.get_alerts()
     except Exception as err:
         debug("+++ Error: {}".format(err.message), 2)
