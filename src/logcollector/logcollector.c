@@ -425,6 +425,10 @@ void LogCollectorStart()
                     }
                 }
 
+                /* If open_file_attempts is at 0 the files aren't forgotted ever*/
+                if(open_file_attempts == 0){
+                    current->ign = -1;
+                }
                 /* Too many errors for the file */
                 if (current->ign > open_file_attempts) {
                     /* 999 Maximum ignore */
