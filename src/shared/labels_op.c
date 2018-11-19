@@ -206,8 +206,11 @@ char * parse_environment_labels(const wlabel_t label) {
     cJSON *ipv4;
     cJSON *ipv6;
     char timezone_number[25];
-    int i;
     int automatic_label ;
+    
+    #ifndef WIN32
+        int i;
+    #endif 
 
     #ifdef WIN32
     #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
@@ -224,7 +227,6 @@ char * parse_environment_labels(const wlabel_t label) {
 
     char * windows_net_info;
     PIP_ADAPTER_ADDRESSES currentAddress = NULL;
-    DWORD dwRetVal = 0;
     ULONG flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS;
     ULONG outBufLen = 0;
     outBufLen = WORKING_BUFFER_SIZE;
@@ -274,7 +276,7 @@ char * parse_environment_labels(const wlabel_t label) {
               network_info = getNetworkIfaces_bsd();
               iface = cJSON_GetArrayItem(network_info, default_network_iface);
             #elif defined  WIN32
-              dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
+              GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
               windows_net_info = _get_network_win(currentAddress, 0, NULL);
               FREE(currentAddress);
               network_info = cJSON_Parse(windows_net_info);
@@ -294,7 +296,7 @@ char * parse_environment_labels(const wlabel_t label) {
               network_info = getNetworkIfaces_bsd();
               iface = cJSON_GetArrayItem(network_info, default_network_iface);
             #elif defined WIN32
-              dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
+              GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
               windows_net_info = _get_network_win(currentAddress, 0, NULL);
               FREE(currentAddress);
               network_info = cJSON_Parse(windows_net_info);
@@ -314,7 +316,7 @@ char * parse_environment_labels(const wlabel_t label) {
             cJSON *ipv4_addresses = cJSON_CreateArray();
           
           #if defined  WIN32
-            dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
+            GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
             if (currentAddress->Next) {
               currentAddress = currentAddress->Next;
               while(currentAddress) {
@@ -364,7 +366,7 @@ char * parse_environment_labels(const wlabel_t label) {
 
 
           #if defined  WIN32
-          dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
+          GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
           if (currentAddress->Next) {
             currentAddress = currentAddress->Next;
             while(currentAddress ) {
@@ -408,7 +410,7 @@ char * parse_environment_labels(const wlabel_t label) {
 
         }else if (!strcmp(var, "mac.primary")) {
           #ifdef WIN32
-            dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
+            GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
             windows_net_info = _get_network_win(currentAddress, 0, NULL);
             FREE(currentAddress);
             network_info = cJSON_Parse(windows_net_info);
@@ -429,7 +431,7 @@ char * parse_environment_labels(const wlabel_t label) {
           cJSON *mac_addresses = cJSON_CreateArray();
 
           #ifdef WIN32
-          dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
+          GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
           if (currentAddress->Next) {
             currentAddress = currentAddress->Next;
             while(currentAddress ) {
