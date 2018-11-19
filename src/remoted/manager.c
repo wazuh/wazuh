@@ -898,8 +898,10 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'",agent_id,group,file,md5);
         if (!f_sum) {
-            if (f_sum = find_group(file, md5, group), !f_sum) {
+            if (!guess_agent_group || (f_sum = find_group(file, md5, group), !f_sum)) {
                 // If the group could not be guessed, set to "default"
+                // or if the user requested not to guess the group, through the internal
+                // option 'guess_agent_group', set to "default"
                 strncpy(group, "default", OS_SIZE_65536);
 
                 if (f_sum = find_sum(group), !f_sum) {

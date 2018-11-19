@@ -150,5 +150,6 @@ extern rlim_t nofile;
 extern unsigned int _s_comp_print;
 extern unsigned int _s_recv_flush;
 extern int _s_verify_counter;
+extern int guess_agent_group;
 
 #endif /* __LOGREMOTE_H */
