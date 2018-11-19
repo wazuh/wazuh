@@ -395,7 +395,7 @@ def _get_hashing_algorithm(hash_algorithm):
     return hashlib.new(hash_algorithm)
 
 
-def get_hash(filename, hash_algorithm='md5'):
+def get_hash(filename, hash_algorithm='md5', return_hex=True):
     hashing = _get_hashing_algorithm(hash_algorithm)
 
     try:
@@ -404,7 +404,7 @@ def get_hash(filename, hash_algorithm='md5'):
     except IOError:
         return None
 
-    return hashing.hexdigest()
+    return hashing.hexdigest() if return_hex else hashing.digest()
 
 
 def get_hash_str(my_str, hash_algorithm='md5'):
