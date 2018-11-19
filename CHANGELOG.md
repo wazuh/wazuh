@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix bug in Remoted that truncated control messages to 1024 bytes. ([#1847](https://github.com/wazuh/wazuh/pull/1847))
 - Fix to overwrite FIM configuration when directories come in the same tag separated by commas. ([#1886](https://github.com/wazuh/wazuh/pull/1886))
 
 ## [v3.7.0] - 2018-11-10
