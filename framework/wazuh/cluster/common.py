@@ -202,7 +202,7 @@ class Handler(asyncio.Protocol):
         :return: whether sending was successful or not.
         """
         total = len(my_str)
-        response = await self.send_request(command=b'new_str', data=str(total))
+        response = await self.send_request(command=b'new_str', data=str(total).encode())
         for c in range(0, total, chunk):
             response = await self.send_request(command=b'str_upd', data=my_str[c:c+chunk])
         return b"ok", b"String correctly sent"
@@ -260,8 +260,6 @@ class Handler(asyncio.Protocol):
             return self.str_upd(data)
         elif command == b"file_end":
             return self.end_file(data)
-        elif command == b'str_end':
-            return self.str_end(data)
         else:
             return self.process_unknown_cmd(command)
 
@@ -354,22 +352,8 @@ class Handler(asyncio.Protocol):
         :return: Message
         """
         self.in_str.receive_data(data)
+        logging.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
         return b"ok", b"Chunk received"
-
-
-    def str_end(self, data):
-        """
-        Defines behaviour of command "str_end". Which is checking the received string's checksum.
-
-        :param data: string checksum sha256
-        :return: Message
-        """
-        if utils.get_hash_str(my_str=self.in_str.payload, hash_algorithm='sha256') == data:
-            self.in_str = InBuffer()
-            return b"ok", b"String correctly received."
-        else:
-            self.in_str = InBuffer()
-            return b"err", b"String wasn't correctly received"
 
 
     def process_unknown_cmd(self, command):
