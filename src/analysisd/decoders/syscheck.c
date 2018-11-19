@@ -550,8 +550,10 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
                     changes = 1;
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
-                    //snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from ");
-                    snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed.\n");
+                    if (!decode_win_permissions(localsdb->perm, OS_FLSIZE, newsum->win_perm, 1, NULL)) {
+                        localsdb->perm[0] = '\0';
+                    }
+
                     lf->win_perm_before = oldsum->win_perm;
                 }
             }

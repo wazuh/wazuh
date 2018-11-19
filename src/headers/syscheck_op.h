@@ -192,8 +192,9 @@ void normalize_path(char *path);
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
 const char* get_group(int gid);
 void decode_win_attributes(char *str, unsigned int attrs, char seq);
-int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq);
-cJSON *attrs_to_array(unsigned int attributes);
+int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
+cJSON *attrs_to_json(unsigned int attributes);
+cJSON *perm_to_json(char *permissions);
 
 #else
 

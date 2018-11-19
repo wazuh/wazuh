@@ -523,6 +523,9 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             perm_esc = wstr_replace(perm_unescaped, ":", "\\:");
             str_perm = wstr_replace(perm_esc, "!", "\\!");
             free(perm_esc);
+            perm_esc = wstr_replace(str_perm, " ", "\\ ");
+            free(str_perm);
+            str_perm = perm_esc;
         }
     }
 

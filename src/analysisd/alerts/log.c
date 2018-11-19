@@ -196,7 +196,7 @@ void OS_LogOutput(Eventinfo *lf)
             char *permissions_list;
             int size;
             os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
-            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0), size > 1) {
+            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
                 os_realloc(permissions_list, size + 1, permissions_list);
                 printf(" - Permissions: \n%s", permissions_list);
                 free(permissions_list);
@@ -381,7 +381,7 @@ void OS_Log(Eventinfo *lf)
             char *permissions_list;
             int size;
             os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
-            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0), size > 1) {
+            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
                 os_realloc(permissions_list, size + 1, permissions_list);
                 fprintf(_aflog, " - Permissions: \n%s", permissions_list);
                 free(permissions_list);

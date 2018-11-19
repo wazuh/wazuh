@@ -172,12 +172,26 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddStringToObject(file_diff, "size_after", lf->size_after);
             }
         }
-        if (lf->perm_before) {
+        if (lf->win_perm_before && *lf->win_perm_before != '\0') {
+            cJSON *old_perm;
+            if (old_perm = perm_to_json(lf->win_perm_before), old_perm) {
+                cJSON_AddItemToObject(file_diff, "win_perm_before", old_perm);
+            } else {
+                merror("The old permissions could not be added to the JSON alert.");
+            }
+        } else if (lf->perm_before) {
             char perm[7];
             snprintf(perm, 7, "%6o", lf->perm_before);
             cJSON_AddStringToObject(file_diff, "perm_before", perm);
         }
-        if (lf->perm_after) {
+        if (lf->win_perm_after && *lf->win_perm_after != '\0') {
+            cJSON *new_perm;
+            if (new_perm = perm_to_json(lf->win_perm_after), new_perm) {
+                cJSON_AddItemToObject(file_diff, "win_perm_after", new_perm);
+            } else {
+                merror("The new permissions could not be added to the JSON alert.");
+            }
+        } else if (lf->perm_after) {
             char perm[7];
             snprintf(perm, 7, "%6o", lf->perm_after);
             cJSON_AddStringToObject(file_diff, "perm_after", perm);
@@ -235,20 +249,20 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->attrs_before) {
             if (lf->attrs_before != 0) {
                 cJSON *old_attrs;
-                if (old_attrs = attrs_to_array(lf->attrs_before), old_attrs) {
+                if (old_attrs = attrs_to_json(lf->attrs_before), old_attrs) {
                     cJSON_AddItemToObject(file_diff, "attrs_before", old_attrs);
                 } else {
-                    merror("The array of old attributes could not be created.");
+                    merror("The old attributes could not be added to the JSON alert.");
                 }
             }
         }
         if(lf->attrs_after) {
             if (lf->attrs_after != 0) {
                 cJSON *new_attrs;
-                if (new_attrs = attrs_to_array(lf->attrs_after), new_attrs) {
+                if (new_attrs = attrs_to_json(lf->attrs_after), new_attrs) {
                     cJSON_AddItemToObject(file_diff, "attrs_after", new_attrs);
                 } else {
-                    merror("The array of new attributes could not be created.");
+                    merror("The new attributes could not be added to the JSON alert.");
                 }
             }
         }
