@@ -16,6 +16,7 @@
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
 #include "syscheck.h"
+#include "syscheck_op.h"
 
 /* Prototypes */
 static int read_file(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth)  __attribute__((nonnull(1)));
@@ -185,8 +186,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char *c_sum = NULL;
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 #ifdef WIN32
-    const char *user = NULL;
     char *sid = NULL;
+    const char *user = NULL;
     char *str_perm = NULL;
 #else
     char str_owner[50], str_group[50], str_perm[50];
@@ -301,27 +302,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
         }
 
-#ifdef WIN32
-        // Get the user name and its id
-        if (opts & CHECK_OWNER) {
-            user = get_user(file_name, statbuf.st_uid, &sid);
-        }
-
-        // Get the file permissions
-        if (opts & CHECK_PERM) {
-            int error;
-            char perm_unescaped[OS_SIZE_6144 + 1];
-            if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-                merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
-            } else {
-                char *perm_esc;
-                perm_esc = wstr_replace(perm_unescaped, ":", "\\:");
-                str_perm = wstr_replace(perm_esc, "!", "\\!");
-                free(perm_esc);
-            }
-        }
-#endif
-
         if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
 
@@ -331,6 +311,22 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 alertdump = seechanges_addfile(file_name);
             }
 #ifdef WIN32
+            // Get the user name and its id
+            if (opts & CHECK_OWNER) {
+                user = get_user(file_name, statbuf.st_uid, &sid);
+            }
+
+            // Get the file permissions
+            if (opts & CHECK_PERM) {
+                int error;
+                char perm_unescaped[OS_SIZE_6144 + 1];
+                if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+                    merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
+                } else {
+                    str_perm = escape_perm_sum(perm_unescaped);
+                }
+            }
+
             if (opts & CHECK_SIZE) {
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
             } else {
@@ -667,10 +663,13 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 
     if (!dp) {
         if (errno == ENOTDIR) {
+
             if (read_file(dir_name, dir_position, evt, max_depth) == 0) {
+
                 free(f_name);
                 return (0);
             }
+
         }
 
 #ifdef WIN32
@@ -749,7 +748,9 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         str_lowercase(f_name);
 #endif
         /* Check integrity of the file */
+
         read_file(f_name, dir_position, NULL, max_depth);
+
     }
 
     free(f_name);

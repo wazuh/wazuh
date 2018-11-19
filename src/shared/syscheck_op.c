@@ -809,6 +809,20 @@ cJSON *attrs_to_json(unsigned int attributes) {
 
 #else
 
+char *escape_perm_sum(char *sum) {
+    char *esc_it;
+
+    if (*sum != '\0' ) {
+        esc_it = wstr_replace(sum, "!", "\\!");
+        sum = wstr_replace(esc_it, ":", "\\:");
+        free(esc_it);
+        esc_it = wstr_replace(sum, " ", "\\ ");
+        free(sum);
+        return esc_it;
+    }
+    return NULL;
+}
+
 const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
 {
     DWORD dwRtnCode = 0;

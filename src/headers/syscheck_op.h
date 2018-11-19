@@ -202,6 +202,7 @@ const char *get_user(const char *path, __attribute__((unused)) int uid, char **s
 unsigned int w_get_file_attrs(const char *file_path);
 int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 const char *get_group(__attribute__((unused)) int gid);
+char *escape_perm_sum(char *sum);
 
 #endif
 

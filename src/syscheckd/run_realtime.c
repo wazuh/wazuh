@@ -51,10 +51,13 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[0] = '\0';
         c_sum[OS_MAXSTR] = '\0';
 
+
         // If it returns < 0, we've already alerted the deleted file
         if (c_read_file(file_name, buf, c_sum, evt) < 0) {
+
             return (0);
         }
+
 
         c_sum_size = strlen(buf + SK_DB_NATTR);
         if (strncmp(c_sum, buf + SK_DB_NATTR, c_sum_size)) {
