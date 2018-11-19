@@ -423,8 +423,6 @@ ConfigureClient()
             ;;
     esac
 
-    UseSSLCert
-
     # Set up CA store
     catMsg "0x109-castore"
     AddCAStore
