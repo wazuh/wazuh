@@ -203,14 +203,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             ww++;
         }
     }
-    /* Needed tags */
-    if(Config){
-        Config->jsonout_output = 1;
-        Config->alerts_log = 1;
-        Config->logall = 0;
-        Config->logall_json = 0;
-    }
-    
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
