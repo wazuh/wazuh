@@ -787,7 +787,7 @@ class AWSCustomBucket(AWSBucket):
         self.db_maintenance('', self.bucket)
 
 
-class AWSInspector(WazuhIntegration):
+class AWSService(WazuhIntegration):
     """
     Class for getting AWS Inspector logs
     :param access_key: AWS access key id
@@ -798,41 +798,19 @@ class AWSInspector(WazuhIntegration):
     :param region: Region of service
     """
 
-    sql_create_table = """
-                            CREATE TABLE
-                                inspector (
-                                    scan_date 'text' NOT NULL,
-                                    PRIMARY KEY (scan_date));"""
-    
-    sql_insert_value = """
-                            INSERT INTO 
-                                inspector (scan_date)
-                            VALUES
-                                ('{}');"""
-    
-    sql_find_last_scan = """
-                            SELECT
-                                scan_date
-                            FROM
-                                inspector
-                            ORDER BY
-                                scan_date DESC
-                            LIMIT 1;"""
-
-    db_name = 's3_inspector'
-    table_name = 'inspector'
-
-    def __init__(self, access_key, secret_key, aws_profile=None, iam_role_arn=None,
-        only_logs_after=None, region='us-east-1'):
+    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
+        service_name, only_logs_after, region, db_name, table_name, classname):
 
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-            aws_profile=aws_profile, iam_role_arn=iam_role_arn, service_name='inspector',
-            region=region, db_name=AWSInspector.db_name, table_name=AWSInspector.table_name)
-
+            aws_profile=aws_profile, iam_role_arn=iam_role_arn,
+            service_name=service_name, region=region, db_name=db_name,
+            table_name=table_name)
         self.only_logs_after = only_logs_after
         self.region = region
-        self.db_name = 's3_inspector'
-        self.table_name = 'inspector'
+        self.db_name = db_name
+        self.table_name = table_name
+        # for having access to SQL queries of each class
+        self.classname = classname
 
     def format_message(self, msg):
         return {'integration': 'aws', 'aws': msg}
@@ -852,14 +830,14 @@ class AWSInspector(WazuhIntegration):
 
     def get_alerts(self):
         initial_date = self.get_last_log_date()
-        self.init_db(AWSInspector.sql_create_table)
+        self.init_db(self.classname.sql_create_table)
         try:
             # if DB is empty write initial date
-            self.db_cursor.execute(AWSInspector.sql_insert_value.format(initial_date))
-            self.db_cursor.execute(AWSInspector.sql_find_last_scan)
+            self.db_cursor.execute(self.classname.sql_insert_value.format(initial_date))
+            self.db_cursor.execute(self.classname.sql_find_last_scan)
             last_scan = self.db_cursor.fetchone()[0]
         except sqlite3.IntegrityError:
-            self.db_cursor.execute(AWSInspector.sql_find_last_scan)
+            self.db_cursor.execute(self.classname.sql_find_last_scan)
             last_scan = self.db_cursor.fetchone()[0]
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
         # get current time (UTC)
@@ -874,9 +852,53 @@ class AWSInspector(WazuhIntegration):
             {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
             self.send_describe_findings(response['findingArns'])
         # insert last scan in DB
-        self.db_cursor.execute(AWSInspector.sql_insert_value.format(datetime_current))
+        self.db_cursor.execute(self.classname.sql_insert_value.format(datetime_current))
         # close connection with DB
         self.close_db()
+
+
+class AWSInspector(AWSService):
+    """
+    Class for getting AWS Inspector logs
+    :param access_key: AWS access key id
+    :param secret_key: AWS secret access key
+    :param profile: AWS profile
+    :param iam_role_arn: IAM Role
+    :param only_logs_after: Date after which obtain logs.
+    :param region: Region of service
+    """
+
+    sql_create_table = """
+                            CREATE TABLE
+                                inspector (
+                                    scan_date 'text' NOT NULL,
+                                    PRIMARY KEY (scan_date));"""
+
+    sql_insert_value = """
+                            INSERT INTO
+                                inspector (scan_date)
+                            VALUES
+                                ('{}');"""
+
+    sql_find_last_scan = """
+                            SELECT
+                                scan_date
+                            FROM
+                                inspector
+                            ORDER BY
+                                scan_date DESC
+                            LIMIT 1;"""
+
+    db_name = 's3_inspector'
+    table_name = 'inspector'
+
+    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
+        only_logs_after, region='us-east-1'):
+
+        AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
+            aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
+            service_name='inspector', region=region, db_name=AWSInspector.db_name,
+            table_name=AWSInspector.table_name, classname=AWSInspector)
 
 
 ################################################################################
