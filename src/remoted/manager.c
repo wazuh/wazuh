@@ -1003,12 +1003,9 @@ static void read_controlmsg(const char *agent_id, char *msg)
  */
 void *wait_for_msgs(__attribute__((unused)) void *none)
 {
-    char msg[OS_SIZE_1024 + 2];
+    char * msg;
     char agent_id[9];
     pending_data_t *data;
-
-    /* Initialize the memory */
-    memset(msg, '\0', OS_SIZE_1024 + 2);
 
     /* Should never leave this loop */
     while (1) {
@@ -1023,7 +1020,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         /* Pop data from queue */
         if ((data = OSHash_Get(pending_data, pending_queue[queue_j]))) {
             strncpy(agent_id, pending_queue[queue_j], 8);
-            strncpy(msg, data->message, OS_SIZE_1024);
+            os_strdup(data->message, msg);
         } else {
             merror("Couldn't get pending data from hash table for agent ID '%s'.", pending_queue[queue_j]);
             *agent_id = '\0';
@@ -1043,6 +1040,8 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         w_mutex_lock(&lastmsg_mutex);
         data->changed = 0;
         w_mutex_unlock(&lastmsg_mutex);
+
+        free(msg);
     }
 
     return (NULL);
