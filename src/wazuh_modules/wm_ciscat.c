@@ -186,7 +186,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
             // On first run, take into account the interval of time specified
             time_sleep = ciscat->state.next_time == 0 ?
-                         ciscat->interval :
+                         (time_t)ciscat->interval :
                          ciscat->state.next_time - time_start;
 
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");

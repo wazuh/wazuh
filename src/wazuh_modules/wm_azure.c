@@ -91,7 +91,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
             // On first run, take into account the interval of time specified
             time_sleep = azure_config->state.next_time == 0 ?
-                         azure_config->interval :
+                         (time_t)azure_config->interval :
                          azure_config->state.next_time - time_start;
 
             mtinfo(WM_AZURE_LOGTAG, "Waiting for turn to evaluate.");
