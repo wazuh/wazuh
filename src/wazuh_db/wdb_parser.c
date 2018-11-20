@@ -854,9 +854,9 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
 			iface = NULL;
 
 		if (next = strchr(curr, '|'), !next) {
-			mdebug1("Invalid netproto query syntax.");
-			mdebug2("netproto query: %s", iface);
-			snprintf(output, OS_MAXSTR + 1, "err Invalid netproto query syntax, near '%.32s'", iface);
+			mdebug1("Invalid netaddr query syntax.");
+			mdebug2("netaddr query: %s", iface);
+			snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", iface);
 			return -1;
 		}
 

@@ -174,7 +174,7 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
 }
 
 // Save IPv4/IPv6 address info into DB.
-int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast) {
+int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netaddr_save(): cannot begin transaction");
@@ -183,6 +183,7 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * 
 
     if (wdb_netaddr_insert(wdb,
         scan_id,
+		iface
         proto,
         address,
         netmask,
@@ -207,7 +208,7 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
     stmt = wdb->stmt[WDB_STMT_ADDR_INSERT];
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
-    sqlite3_bind_text(stmt, 2, key, -1, NULL);
+    sqlite3_bind_text(stmt, 2, iface, -1, NULL);
 
     if (proto == WDB_NETADDR_IPV4)
         sqlite3_bind_text(stmt, 3, "ipv4", -1, NULL);

@@ -72,7 +72,7 @@ CREATE INDEX IF NOT EXISTS netproto_id ON sys_netproto (scan_id);
 
 CREATE TABLE IF NOT EXISTS sys_netaddr (
     scan_id INTEGER REFERENCES sys_netproto (scan_id),
-    iface TEXT REFERENCES sys_netproto (iface),
+    iface TEXT REFERENCES sys_netproto (name),
     proto TEXT REFERENCES sys_netproto (type),
     address TEXT,
     netmask TEXT,

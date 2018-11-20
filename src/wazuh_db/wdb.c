@@ -44,7 +44,7 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sys_processes WHERE scan_id != ?;",
     "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "INSERT INTO sys_netproto (scan_id, iface, type, gateway, dhcp) VALUES (?, ?, ?, ?, ?);",
-    "INSERT INTO sys_netaddr (scan_id, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netaddr (scan_id, iface proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
     "DELETE FROM sys_netproto WHERE scan_id != ?;",
     "DELETE FROM sys_netaddr WHERE scan_id != ?;",
