@@ -94,6 +94,9 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys_network_linux(queue_fd, WM_SYS_LOCATION);
             #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
                 sys_network_bsd(queue_fd, WM_SYS_LOCATION);
+            #else
+                sys->flags.netinfo = 0;
+                mtwarn(WM_SYS_LOGTAG, "Network inventory is not available for this OS version.");
             #endif
         }
 

@@ -211,8 +211,13 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     switch (wm_exec(command, &output, &status, eval->timeout, NULL)) {
     case 0:
         if (status > 0) {
-            mtwarn(WM_OSCAP_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-            mtdebug2(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+            if (status != 2) {
+                mtwarn(WM_OSCAP_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                mtdebug2(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+            } else {
+                mterror(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+                pthread_exit(NULL);
+            }
             eval->flags.error = 1;
         }
 

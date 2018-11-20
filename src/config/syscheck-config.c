@@ -775,7 +775,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_tag = "tags";
 #endif
     const char *xml_whodata_options = "whodata";
-    const char *xml_audit_extra_key = "audit_extra_key";
+    const char *xml_audit_key = "audit_key";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1226,19 +1226,19 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             for (j = 0; children[j]; j++) {
                 /* Listen another audit keys */
-                if (strcmp(children[j]->element, xml_audit_extra_key) == 0) {
+                if (strcmp(children[j]->element, xml_audit_key) == 0) {
                     int keyit = 0;
                     char delim = ',';
                     char *key;
-                    os_calloc(1, sizeof(char *), syscheck->audit_extra_key);
-                    syscheck->audit_extra_key[keyit] = NULL;
+                    os_calloc(1, sizeof(char *), syscheck->audit_key);
+                    syscheck->audit_key[keyit] = NULL;
                     key = strtok(children[j]->content, &delim);
 
                     while (key) {
                         if (*key) {
-                            syscheck->audit_extra_key[keyit] = check_ascci_hex(key);
-                            os_realloc(syscheck->audit_extra_key, (keyit + 2) * sizeof(char *), syscheck->audit_extra_key);
-                            syscheck->audit_extra_key[keyit + 1] = NULL;
+                            syscheck->audit_key[keyit] = check_ascci_hex(key);
+                            os_realloc(syscheck->audit_key, (keyit + 2) * sizeof(char *), syscheck->audit_key);
+                            syscheck->audit_key[keyit + 1] = NULL;
                             key = strtok(NULL, &delim);
                             keyit++;
                         }
