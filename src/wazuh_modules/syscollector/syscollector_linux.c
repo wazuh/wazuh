@@ -980,9 +980,7 @@ cJSON * getNetworkIfaces_linux( ){
     }
 
     /* Collect all information for each interface */
-
     for (i=0; i<j; i++){
-
         cJSON *interface = cJSON_CreateObject();
         cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
@@ -1213,7 +1211,7 @@ cJSON * getNetworkIfaces_linux( ){
             cJSON_Delete(ipv6_broadcast);
             cJSON_Delete(ipv6);
         }
-
+        
         cJSON_AddItemToArray(ifaces_list_json,interface);
 
     }
@@ -1233,7 +1231,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
-    char * string;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -1255,18 +1252,27 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
      /* Send interface data in JSON format */
      int i;
-    for (i = 0; i < cJSON_GetArraySize(ifaces_list_json); ++i){
-        cJSON* object = cJSON_GetArrayItem(ifaces_list_json,i);
+    for (i = 0; i < cJSON_GetArraySize(ifaces_list_json); i++){
+        char *string;
+        cJSON* object = cJSON_CreateObject();
+        cJSON* iface = cJSON_GetArrayItem(ifaces_list_json,i);
+        
         cJSON_AddStringToObject(object, "type", "network");
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
+        cJSON_AddItemReferenceToObject(object,"iface",iface);
+        
         string = cJSON_PrintUnformatted(object);
         mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        
+        cJSON_Delete(object);
+        cJSON_Delete(iface);
+        free(string);
     }
     cJSON_Delete(ifaces_list_json);
 
-
+    char *string;
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");
     cJSON_AddNumberToObject(object, "ID", random_id);
