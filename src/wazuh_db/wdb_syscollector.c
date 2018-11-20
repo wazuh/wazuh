@@ -183,7 +183,7 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int 
 
     if (wdb_netaddr_insert(wdb,
         scan_id,
-		iface
+		iface,
         proto,
         address,
         netmask,
