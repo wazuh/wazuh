@@ -161,15 +161,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_mailmaxperhour = "email_maxperhour";
     const char * xml_queue_size = "queue_size";
 
-    /* Needed tags */
-    static char tags_present[MAX_NEEDED_TAGS] = {0};
-    char tag_list[MAX_NEEDED_TAGS][25] = {
-                                        "<jsonout_output>",
-                                        "<alerts_log>",
-                                        "<logall>",
-                                        "<logall_json>"
-                                        };
-
 #ifdef LIBGEOIP_ENABLED
     const char *xml_geoip_db_path = "geoip_db_path";
     const char *xml_geoip6_db_path = "geoip6_db_path";
@@ -310,7 +301,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         /* jsonout output */
         else if (strcmp(node[i]->element, xml_jsonout_output) == 0) {
-            tags_present[JSONOUT_OUTPUT] = 1;
             if (strcmp(node[i]->content, "yes") == 0) {
                 if (Config) {
                     Config->jsonout_output = 1;
@@ -326,7 +316,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         /* Standard alerts output */
         else if (strcmp(node[i]->element, xml_alerts_log) == 0) {
-            tags_present[ALERTS_LOG] = 1;
             if (strcmp(node[i]->content, "yes") == 0) {
                 if (Config) {
                     Config->alerts_log = 1;
@@ -342,7 +331,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         /* Log all */
         else if (strcmp(node[i]->element, xml_logall) == 0) {
-            tags_present[LOGALL] = 1;
             if (strcmp(node[i]->content, "yes") == 0) {
                 if (Config) {
                     Config->logall = 1;
@@ -358,7 +346,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         /* Log all JSON*/
         else if (strcmp(node[i]->element, xml_logall_json) == 0) {
-            tags_present[LOGALL_JSON] = 1;
             if (strcmp(node[i]->content, "yes") == 0) {
                 if (Config) {
                     Config->logall_json = 1;
@@ -667,14 +654,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             return (OS_INVALID);
         }
         i++;
-    }
-
-    /* Check if mandatory tags are present */
-    int k;
-    for(k = 0; k < MAX_NEEDED_TAGS;k++){
-        if(tags_present[k] == 0) {
-            merror_exit("Label %s not defined",tag_list[k]);
-        }
     }
 
     return (0);
