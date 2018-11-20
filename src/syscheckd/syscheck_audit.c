@@ -360,13 +360,13 @@ int add_audit_rules_syscheck(void) {
                 if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
                     mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
                     w_mutex_lock(&audit_rules_mutex);
-                    W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                    W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
                 } else if (abs(retval) == 17) {
                     mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
                     w_mutex_lock(&audit_rules_mutex);
-                    W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                    W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
                 } else {
