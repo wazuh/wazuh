@@ -190,6 +190,7 @@
 #define FORGET_FILE     "(1959): File '%s' does not exist."
 #define FILE_LIMIT      "(1960): File limit has been reached (%d). Please reduce the number of files or increase \"logcollector.max_files\"."
 #define CURRENT_FILES   "(1961): Files being monitored: %i/%i."
+#define OPEN_ATTEMPT    "(1962): Unable to open file '%s'. Remaining attempts: %d"
 
 
 /* Encryption/auth errors */
