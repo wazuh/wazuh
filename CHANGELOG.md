@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add options to detect changes attributes and file permissions for Windows. ([#1918](https://github.com/wazuh/wazuh/pull/1918))
+
+### Changed
+
+### Fixed
+
+
+## [v3.7.0]
+
+### Added
+
 - Adding feature to **remotely query agent configuration on demand.** ([#548](https://github.com/wazuh/wazuh/pull/548))
 - **Boost Analysisd performance with multithreading.** ([#1039](https://github.com/wazuh/wazuh/pull/1039))
 - Adding feature to **let agents belong to multiple groups.** ([#1135](https://github.com/wazuh/wazuh/pull/1135))
