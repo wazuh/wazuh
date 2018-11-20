@@ -187,9 +187,10 @@
 #define REM_ERROR       "(1956): Error removing '%s' file."
 #define NEW_GLOB_FILE   "(1957): New file that matches the '%s' pattern: '%s'."
 #define DUP_FILE        "(1958): Log file '%s' is duplicated."
-#define FORGET_FILE     "(1959): File '%s' does not exist. Forgetting."
+#define FORGET_FILE     "(1959): File '%s' does not exist."
 #define FILE_LIMIT      "(1960): File limit has been reached (%d). Please reduce the number of files or increase \"logcollector.max_files\"."
 #define CURRENT_FILES   "(1961): Files being monitored: %i/%i."
+#define OPEN_ATTEMPT    "(1962): Unable to open file '%s'. Remaining attempts: %d"
 
 
 /* Encryption/auth errors */

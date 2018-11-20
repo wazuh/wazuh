@@ -47,8 +47,18 @@ static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Initialize the necessary information to process the syscheck information
 void fim_init(void) {
+    //Create hash table for agent information
+    fim_agentinfo = OSHash_Create();
+}
+
+// Initialize the necessary information to process the syscheck information
+void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
+    localsdb->db_err = 0;
+    localsdb->socket = -1;
+
+    sdb_clean(localsdb);
+
     // Create decoder
-    os_calloc(1, sizeof(OSDecoderInfo), fim_decoder);
     fim_decoder->id = getDecoderfromlist(SYSCHECK_MOD);
     fim_decoder->name = SYSCHECK_MOD;
     fim_decoder->type = OSSEC_RL;
@@ -81,17 +91,6 @@ void fim_init(void) {
     fim_decoder->fields[SK_PPID] = "ppid";
     fim_decoder->fields[SK_PROC_ID] = "process_id";
     fim_decoder->fields[SK_TAG] = "tag";
-
-    //Create hash table for agent information
-    fim_agentinfo = OSHash_Create();
-}
-
-// Initialize the necessary information to process the syscheck information
-void sdb_init(_sdb *localsdb) {
-    localsdb->db_err = 0;
-    localsdb->socket = -1;
-
-    sdb_clean(localsdb);
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -136,8 +135,10 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      * 'checksum'!'extradata' 'filename'
      * or
-     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tag filename\nreportdiff"
-     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^ filename\n^^^diff^^^'
+     *                                             |v2.1       v3.4   |v3.4         v3.6  |
+     *                                             |->         |->    |->           |->   |
+     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags filename\nreportdiff"
+     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
      */
     sdb_clean(sdb);
     f_name = wstr_chr(lf->log, ' ');
@@ -373,7 +374,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     /* Dyanmic Fields */
     lf->nfields = SK_NFIELDS;
     for (i = 0; i < SK_NFIELDS; i++) {
-        os_strdup(fim_decoder->fields[i], lf->fields[i].key);
+        os_strdup(lf->decoder_info->fields[i], lf->fields[i].key);
     }
 
     if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
@@ -493,19 +494,26 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     int comment_buf = 0;
     char msg_type[OS_FLSIZE];
 
-    // Set decoder
-    lf->decoder_info = fim_decoder;
     switch (lf->event_type) {
         case FIM_DELETED:
             snprintf(msg_type, sizeof(msg_type), "was deleted.");
+            lf->decoder_info->id = getDecoderfromlist(SYSCHECK_DEL);
+            lf->decoder_syscheck_id = lf->decoder_info->id;
+            lf->decoder_info->name = SYSCHECK_MOD;
             changes=1;
             break;
         case FIM_ADDED:
             snprintf(msg_type, sizeof(msg_type), "was added.");
+            lf->decoder_info->id = getDecoderfromlist(SYSCHECK_NEW);
+            lf->decoder_syscheck_id = lf->decoder_info->id;
+            lf->decoder_info->name = SYSCHECK_NEW;
             changes=1;
             break;
         case FIM_MODIFIED:
             snprintf(msg_type, sizeof(msg_type), "checksum changed.");
+            lf->decoder_info->id = getDecoderfromlist(SYSCHECK_MOD);
+            lf->decoder_syscheck_id = lf->decoder_info->id;
+            lf->decoder_info->name = SYSCHECK_MOD;
             if (oldsum->size && newsum->size) {
                 if (strcmp(oldsum->size, newsum->size) == 0) {
                     localsdb->size[0] = '\0';

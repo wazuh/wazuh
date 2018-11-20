@@ -182,11 +182,16 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
             wm_delay(1000 * time_sleep);
 
-        } else if (ciscat->state.next_time > time_start) {
+        } else if (ciscat->state.next_time == 0 || ciscat->state.next_time > time_start) {
+
+            // On first run, take into account the interval of time specified
+            time_sleep = ciscat->state.next_time == 0 ?
+                         (time_t)ciscat->interval :
+                         ciscat->state.next_time - time_start;
 
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", (long)(ciscat->state.next_time - time_start));
-            wm_delay(1000 * ciscat->state.next_time - time_start);
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", (long)time_sleep);
+            wm_delay(1000 * time_sleep);
 
         }
     }
@@ -247,6 +252,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             }
         }
 
+        wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
         mtinfo(WM_CISCAT_LOGTAG, "Evaluation finished.");
@@ -327,7 +333,7 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        sleep(WM_MAX_WAIT);
+        wm_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_CISCAT_LOGTAG, "Can't connect to queue.");
