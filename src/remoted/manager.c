@@ -71,7 +71,7 @@ static int reported_non_existing_group = 0;
  * read_controlmsg (other thread) is going to deal with it
  * (only if message changed)
  */
-void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
+void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
 {
     char msg_ack[OS_FLSIZE + 1];
     char *end;
@@ -99,10 +99,10 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
 
     /* Reply to the agent */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-    send_msg(keys.keyentries[agentid]->id, msg_ack, -1);
+    send_msg(key->id, msg_ack, -1);
 
     if (strcmp(r_msg, HC_STARTUP) == 0) {
-        mdebug1("Agent %s sent HC_STARTUP from %s.", keys.keyentries[agentid]->name, inet_ntoa(keys.keyentries[agentid]->peer_info.sin_addr));
+        mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
         is_startup = 1;
     } else {
         /* Clean uname and shared files (remove random string) */
@@ -113,7 +113,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
             for (r_msg++; (end = strchr(r_msg, '\n')); r_msg = end + 1);
             *r_msg = '\0';
         } else {
-            mwarn("Invalid message from agent id: '%d'(uname)", agentid);
+            mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
             return;
         }
     }
@@ -122,14 +122,14 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
     w_mutex_lock(&lastmsg_mutex)
 
     /* Check if there is a keep alive already for this agent */
-    if (data = OSHash_Get(pending_data, keys.keyentries[agentid]->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
+    if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && strcmp(data->message, uname) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
         utimes(data->keep_alive, NULL);
     } else {
         if (!data) {
             os_calloc(1, sizeof(pending_data_t), data);
 
-            if (OSHash_Add(pending_data, keys.keyentries[agentid]->id, data) != 2) {
+            if (OSHash_Add(pending_data, key->id, data) != 2) {
                 merror("Couldn't add pending data into hash table.");
 
                 /* Unlock mutex */
@@ -146,8 +146,8 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
             /* Write to the agent file */
             snprintf(agent_file, PATH_MAX, "%s/%s-%s",
                      AGENTINFO_DIR,
-                     keys.keyentries[agentid]->name,
-                     keys.keyentries[agentid]->ip->ip);
+                     key->name,
+                     key->ip->ip);
 
             os_strdup(agent_file, data->keep_alive);
         }
@@ -175,7 +175,7 @@ void save_controlmsg(unsigned int agentid, char *r_msg, size_t msg_length)
                 if (full(queue_i, queue_j)) {
                     merror("Pending message queue full.");
                 } else {
-                    strncpy(pending_queue[queue_i], keys.keyentries[agentid]->id, 8);
+                    strncpy(pending_queue[queue_i], key->id, 8);
                     forward(queue_i);
 
                     /* Signal that new data is available */
