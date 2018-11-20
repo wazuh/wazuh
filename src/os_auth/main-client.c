@@ -26,7 +26,6 @@
 #include "check_cert.h"
 #include <openssl/ssl.h>
 #include "auth.h"
-#include "os_regex/os_regex.h"
 
 #undef ARGV0
 #define ARGV0 "agent-auth"
@@ -369,7 +368,7 @@ int main(int argc, char **argv)
 
     if(sender_ip){
 		/* Check if this is strictly an IP address using a regex */
-		if (OS_Regex("^\\d+.\\d+.\\d+.\\d+$", sender_ip))
+		if (OS_IsValidIP(sender_ip, NULL))
 		{
 			char opt_buf[256] = {0};
 			snprintf(opt_buf,254," IP:'%s'",sender_ip);
@@ -429,7 +428,7 @@ int main(int argc, char **argv)
                     *tmpstr = '\0';
                     entry = OS_StrBreak(' ', key, 4);
                     if (!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
-                            !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3])) {
+                            !OS_IsValidIP(entry[2], NULL) || !OS_IsValidName(entry[3])) {
                         printf("ERROR: Invalid key received (2). Closing connection.\n");
                         free(buf);
                         exit(1);
