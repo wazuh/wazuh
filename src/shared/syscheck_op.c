@@ -643,6 +643,23 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
 
         if (perm_array) {
             cJSON *a_found = NULL;
+            char *perm_type_str;
+
+
+            perm_type_str = (a_type == '0') ? str_a : str_d;
+            for (json_it = perm_array->child; json_it; json_it = json_it->next) {
+                cJSON *obj;
+                if (obj = cJSON_GetObjectItem(json_it, str_n), obj) {
+                    if (!strcmp(obj->valuestring, account_name)) {
+                        if (obj = cJSON_GetObjectItem(json_it, perm_type_str), obj) {
+                            mdebug2("ACL [%s] fragmented. All permissions may not be displayed.", raw_perm);
+                            goto next_it;
+                        }
+                        a_found = json_it;
+                        break;
+                    }
+                }
+            }
 
             if (perm_type = cJSON_CreateArray(), !perm_type) {
                 goto error;
@@ -663,25 +680,15 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
             if (mask & WRITE_OWNER) cJSON_AddItemToArray(perm_type, cJSON_CreateString("WRITE_OWNER"));
             if (mask & SYNCHRONIZE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("SYNCHRONIZE"));
 
-            for (json_it = perm_array->child; json_it; json_it = json_it->next) {
-                cJSON *obj;
-                if (obj = cJSON_GetObjectItem(json_it, str_n), obj) {
-                    if (!strcmp(obj->valuestring, account_name)) {
-                        a_found = json_it;
-                        break;
-                    }
-                }
-            }
-
             if (!a_found) {
                 if (a_found = cJSON_CreateObject(), !a_found) {
                     goto error;
                 }
                 cJSON_AddStringToObject(a_found, str_n, account_name);
+                cJSON_AddItemToArray(perm_array, a_found);
             }
 
-            cJSON_AddItemToObject(a_found, (a_type == '0') ? str_a : str_d, perm_type);
-            cJSON_AddItemToArray(perm_array, a_found);
+            cJSON_AddItemToObject(a_found, perm_type_str, perm_type);
             perm_type = NULL;
             writted = 1;
         } else if (seq) {
@@ -709,6 +716,7 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
             str += size;
         }
 
+next_it:
         os_free(account_name);
         if (!perm_it) {
             break;
