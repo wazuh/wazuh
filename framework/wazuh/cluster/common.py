@@ -193,7 +193,7 @@ class Handler(asyncio.Protocol):
         return b'ok ', b'File sent'
 
 
-    async def send_string(self, my_str, chunk=10000000):
+    async def send_string(self, my_str, chunk=500000):
         """
         Sends a large string to peer.
 
