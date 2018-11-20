@@ -1221,6 +1221,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_whodata_options) == 0) {
 
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                i++;
                 continue;
             }
 
