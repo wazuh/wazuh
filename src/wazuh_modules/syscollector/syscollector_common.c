@@ -301,20 +301,20 @@ int getDefaultNetworkIface(){
         i++;
     }
     #elif defined(__linux__)
-     char * gateway;
+     char *gateway;
+     char *name;
      network_info = getNetworkIfaces_linux();
      int i = 0;
      default_network_iface = 0;
      for (i = 0; i < cJSON_GetArraySize(network_info);i++) {
         iface = cJSON_GetArrayItem(network_info,i);
-        ipv4 = cJSON_GetObjectItem(iface,"ipv4");
-        if (ipv4) {
-            gateway = cJSON_Print(cJSON_GetObjectItem(ipv4,"gateway"));
-            if (strcmp(gateway,"unknown")) {
-                default_network_iface = i;
-            }
+        name = cJSON_Print(cJSON_GetObjectItem(iface,"name"));
+        gateway = get_default_gateway(name);
+        if(gateway){
+            default_network_iface = i;
         }
-    }
+     }
+    
     #endif
 
     cJSON_Delete(network_info);

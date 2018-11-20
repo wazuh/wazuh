@@ -1267,7 +1267,6 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
         
         cJSON_Delete(object);
-        cJSON_Delete(iface);
         free(string);
     }
     cJSON_Delete(ifaces_list_json);
