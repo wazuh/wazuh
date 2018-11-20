@@ -41,11 +41,8 @@ class EchoClientProtocol(common.Handler):
         :return:
         """
         logging.info('The server closed the connection')
-        logging.info('Stopping tasks')
-        self.on_con_lost.set_result(True)
-        for task in asyncio.Task.all_tasks():
-            task.cancel()
-        logging.info('Stop the event loop')
+        if not self.on_con_lost.done():
+            self.on_con_lost.set_result(True)
 
 
     def process_response(self, command, payload):
