@@ -55,6 +55,11 @@ void* wm_sys_main(wm_sys_t *sys) {
     if (!sys->flags.scan_on_start) {
         time_start = time(NULL);
 
+        // On first run, take into account the interval of time specified
+        if (sys->state.next_time == 0) {
+            sys->state.next_time = time_start + sys->interval;
+        }
+
         if (sys->state.next_time > time_start) {
             mtinfo(WM_SYS_LOGTAG, "Waiting for turn to evaluate.");
             wm_delay(1000 * (sys->state.next_time - time_start));
