@@ -252,6 +252,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             }
         }
 
+        wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
         mtinfo(WM_CISCAT_LOGTAG, "Evaluation finished.");

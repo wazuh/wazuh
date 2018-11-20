@@ -136,6 +136,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
         mtinfo(WM_AZURE_LOGTAG, "Fetching logs finished.");
 
+        wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
         if (azure_config->scan_day) {
