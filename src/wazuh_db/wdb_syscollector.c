@@ -195,7 +195,7 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * 
 }
 
 // Insert IPv4/IPv6 address info tuple. Return 0 on success or -1 on error.
-int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast) {
+int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -207,15 +207,16 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char 
     stmt = wdb->stmt[WDB_STMT_ADDR_INSERT];
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, key, -1, NULL);
 
     if (proto == WDB_NETADDR_IPV4)
-        sqlite3_bind_text(stmt, 2, "ipv4", -1, NULL);
+        sqlite3_bind_text(stmt, 3, "ipv4", -1, NULL);
     else
-        sqlite3_bind_text(stmt, 2, "ipv6", -1, NULL);
+        sqlite3_bind_text(stmt, 3, "ipv6", -1, NULL);
 
-    sqlite3_bind_text(stmt, 3, address, -1, NULL);
-    sqlite3_bind_text(stmt, 4, netmask, -1, NULL);
-    sqlite3_bind_text(stmt, 5, broadcast, -1, NULL);
+    sqlite3_bind_text(stmt, 4, address, -1, NULL);
+    sqlite3_bind_text(stmt, 5, netmask, -1, NULL);
+    sqlite3_bind_text(stmt, 6, broadcast, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
