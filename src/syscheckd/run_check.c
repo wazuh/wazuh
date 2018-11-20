@@ -546,6 +546,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         str_inode,
         sha256sum  == 0 ? "" : sf256_sum);
 
+        os_free(user);
         if (sid) {
             LocalFree(sid);
         }

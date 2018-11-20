@@ -80,6 +80,7 @@ int intcheck_file(const char *file_name, const char *dir)
             dir,
             file_name);
 
+    os_free(user);
     if (sid) {
         LocalFree(sid);
     }

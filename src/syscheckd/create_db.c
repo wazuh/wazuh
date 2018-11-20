@@ -357,6 +357,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "");
 
+                os_free(user);
                 if (sid) {
                      LocalFree(sid);
                  }
@@ -493,6 +494,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
+
+            os_free(user);
             if (sid) {
                 LocalFree(sid);
             }
