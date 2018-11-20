@@ -507,18 +507,19 @@ const char* get_group(int gid) {
 
 #else
 
-const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
+char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
 {
     DWORD dwRtnCode = 0;
     PSID pSidOwner = NULL;
     BOOL bRtnBool = TRUE;
-    static char AcctName[BUFFER_LEN];
+    char AcctName[BUFFER_LEN];
     char DomainName[BUFFER_LEN];
     DWORD dwAcctName = BUFFER_LEN;
     DWORD dwDomainName = BUFFER_LEN;
     SID_NAME_USE eUse = SidTypeUnknown;
     HANDLE hFile;
     PSECURITY_DESCRIPTOR pSD = NULL;
+    char *result;
 
     // Get the handle of the file object.
     hFile = CreateFile(
@@ -613,7 +614,10 @@ end:
     if (pSD) {
         LocalFree(pSD);
     }
-    return AcctName;
+
+    result = wstr_replace(&AcctName, " ", "\\ ");
+
+    return result;
 }
 
 const char *get_group(__attribute__((unused)) int gid) {

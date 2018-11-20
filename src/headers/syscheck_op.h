@@ -153,7 +153,7 @@ const char* get_group(int gid);
 
 #else
 
-const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
+char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
 const char *get_group(__attribute__((unused)) int gid);
 
 #endif
