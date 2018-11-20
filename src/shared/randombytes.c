@@ -36,6 +36,8 @@ void randombytes(void *ptr, size_t length)
                     failed = 1;
                 }
             }else if(GetLastError() == (DWORD)NTE_KEYSET_ENTRY_BAD){
+                mwarn("The agent's RSA key container for the random generator is corrupt. Resetting container...");
+
                 if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, CRYPT_DELETEKEYSET)){
                     merror("CryptAcquireContext Flag: DeleteKeySet: (%lx)", GetLastError());
                     failed = 1;
