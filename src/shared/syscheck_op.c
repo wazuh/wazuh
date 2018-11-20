@@ -14,11 +14,10 @@
 #include <sddl.h>
 int copy_ace_info(void *ace, char *perm, int perm_size);
 int w_get_account_info(SID *sid, char **account_name, char **account_domain);
-#else
+#elif !CLIENT
 static char *unescape_whodata_sum(char *sum);
 static char *unescape_perm_sum(char *sum);
 #endif
-
 int delete_target_file(const char *path) {
     char full_path[PATH_MAX] = "\0";
     snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
@@ -961,7 +960,7 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
         }
     }
 
-    if (s_desc = HeapAlloc(GetProcessHeap(), 0, size), !s_desc) {
+    if (s_desc = win_alloc(size), !s_desc) {
         return GetLastError();
     }
 
@@ -1012,9 +1011,9 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
 
     mdebug2("The ACL extracted from '%s' is [%s].", file_path, permissions);
 end:
-    HeapFree(GetProcessHeap(), 0, s_desc);
+    win_free(s_desc);
     if (f_acl) {
-        HeapFree(GetProcessHeap(), 0, f_acl);
+        win_free(f_acl);
     }
     return retval;
 }

@@ -153,7 +153,7 @@ int set_winsacl(const char *dir, int position) {
     // Set the new ACL size
     new_sacl_size = old_sacl_info.AclBytesInUse + sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(unsigned long);
 
-    if (new_sacl = (PACL)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, new_sacl_size), !new_sacl) {
+    if (new_sacl = (PACL)win_alloc(new_sacl_size), !new_sacl) {
         merror("No memory could be reserved for the new SACL of '%s'.", dir);
         goto end;
     }
@@ -180,7 +180,7 @@ int set_winsacl(const char *dir, int position) {
         }
     }
     // Build the new ACE
-    if (ace = (SYSTEM_AUDIT_ACE *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD)), !ace) {
+    if (ace = (SYSTEM_AUDIT_ACE *)win_alloc(sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD)), !ace) {
         merror("No memory could be reserved for the new ACE of '%s'.", dir);
         goto end;
     }
