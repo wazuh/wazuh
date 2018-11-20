@@ -669,8 +669,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 changes = 1;
                 os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_before);
                 os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_after);
-                decode_win_attributes(str_attr_before, oldsum->attrs, 1);
-                decode_win_attributes(str_attr_after, newsum->attrs, 1);
+                decode_win_attributes(str_attr_before, oldsum->attrs);
+                decode_win_attributes(str_attr_after, newsum->attrs);
                 wm_strcat(&lf->fields[SK_ATTRS].value, "attributes", ',');
                 snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", str_attr_before, str_attr_after);
                 lf->attrs_before = oldsum->attrs;

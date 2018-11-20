@@ -427,7 +427,7 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     if(sum->attrs) {
         lf->attrs_after = sum->attrs;
         os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->fields[SK_ATTRS].value);
-        decode_win_attributes(lf->fields[SK_ATTRS].value, lf->attrs_after, 1);
+        decode_win_attributes(lf->fields[SK_ATTRS].value, lf->attrs_after);
     }
 
     if(sum->wdata.user_id) {
@@ -543,56 +543,31 @@ const char* get_group(int gid) {
     return group ? group->gr_name : "";
 }
 
-void decode_win_attributes(char *str, unsigned int attrs, char seq) {
+    void decode_win_attributes(char *str, unsigned int attrs) {
     size_t size;
 
-    if (seq) {
-        size = snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
-                        attrs & FILE_ATTRIBUTE_ARCHIVE ? "ARCHIVE," : "",
-                        attrs & FILE_ATTRIBUTE_COMPRESSED ? "COMPRESSED," : "",
-                        attrs & FILE_ATTRIBUTE_DEVICE ? "DEVICE," : "",
-                        attrs & FILE_ATTRIBUTE_DIRECTORY ? "DIRECTORY," : "",
-                        attrs & FILE_ATTRIBUTE_ENCRYPTED ? "ENCRYPTED," : "",
-                        attrs & FILE_ATTRIBUTE_HIDDEN ? "HIDDEN," : "",
-                        attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "INTEGRITY_STREAM," : "",
-                        attrs & FILE_ATTRIBUTE_NORMAL ? "NORMAL," : "",
-                        attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "NOT_CONTENT_INDEXED," : "",
-                        attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "NO_SCRUB_DATA," : "",
-                        attrs & FILE_ATTRIBUTE_OFFLINE ? "OFFLINE," : "",
-                        attrs & FILE_ATTRIBUTE_READONLY ? "READONLY," : "",
-                        attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "RECALL_ON_DATA_ACCESS," : "",
-                        attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "RECALL_ON_OPEN," : "",
-                        attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "REPARSE_POINT," : "",
-                        attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "SPARSE_FILE," : "",
-                        attrs & FILE_ATTRIBUTE_SYSTEM ? "SYSTEM," : "",
-                        attrs & FILE_ATTRIBUTE_TEMPORARY ? "TEMPORARY," : "",
-                        attrs & FILE_ATTRIBUTE_VIRTUAL ? "VIRTUAL," : ""
-        );
-        if (size > 1) {
-            str[size - 1] = '\0';
-        }
-    } else {
-        snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
-                attrs & FILE_ATTRIBUTE_ARCHIVE ? "  + ARCHIVE\n" : "",
-                attrs & FILE_ATTRIBUTE_COMPRESSED ? "  + COMPRESSED\n" : "",
-                attrs & FILE_ATTRIBUTE_DEVICE ? "  + DEVICE\n" : "",
-                attrs & FILE_ATTRIBUTE_DIRECTORY ? "  + DIRECTORY\n" : "",
-                attrs & FILE_ATTRIBUTE_ENCRYPTED ? "  + ENCRYPTED\n" : "",
-                attrs & FILE_ATTRIBUTE_HIDDEN ? "  + HIDDEN\n" : "",
-                attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "  + INTEGRITY_STREAM\n" : "",
-                attrs & FILE_ATTRIBUTE_NORMAL ? "  + NORMAL\n" : "",
-                attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "  + NOT_CONTENT_INDEXED\n" : "",
-                attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "  + NO_SCRUB_DATA\n" : "",
-                attrs & FILE_ATTRIBUTE_OFFLINE ? "  + OFFLINE\n" : "",
-                attrs & FILE_ATTRIBUTE_READONLY ? "  + READONLY\n" : "",
-                attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "  + RECALL_ON_DATA_ACCESS\n" : "",
-                attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "  + RECALL_ON_OPEN\n" : "",
-                attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "  + REPARSE_POINT\n" : "",
-                attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "  + SPARSE_FILE\n" : "",
-                attrs & FILE_ATTRIBUTE_SYSTEM ? "  + SYSTEM\n" : "",
-                attrs & FILE_ATTRIBUTE_TEMPORARY ? "  + TEMPORARY\n" : "",
-                attrs & FILE_ATTRIBUTE_VIRTUAL ? "  + VIRTUAL\n" : ""
-        );
+    size = snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                    attrs & FILE_ATTRIBUTE_ARCHIVE ? "ARCHIVE, " : "",
+                    attrs & FILE_ATTRIBUTE_COMPRESSED ? "COMPRESSED, " : "",
+                    attrs & FILE_ATTRIBUTE_DEVICE ? "DEVICE, " : "",
+                    attrs & FILE_ATTRIBUTE_DIRECTORY ? "DIRECTORY, " : "",
+                    attrs & FILE_ATTRIBUTE_ENCRYPTED ? "ENCRYPTED, " : "",
+                    attrs & FILE_ATTRIBUTE_HIDDEN ? "HIDDEN, " : "",
+                    attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "INTEGRITY_STREAM, " : "",
+                    attrs & FILE_ATTRIBUTE_NORMAL ? "NORMAL, " : "",
+                    attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "NOT_CONTENT_INDEXED, " : "",
+                    attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "NO_SCRUB_DATA, " : "",
+                    attrs & FILE_ATTRIBUTE_OFFLINE ? "OFFLINE, " : "",
+                    attrs & FILE_ATTRIBUTE_READONLY ? "READONLY, " : "",
+                    attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "RECALL_ON_DATA_ACCESS, " : "",
+                    attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "RECALL_ON_OPEN, " : "",
+                    attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "REPARSE_POINT, " : "",
+                    attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "SPARSE_FILE, " : "",
+                    attrs & FILE_ATTRIBUTE_SYSTEM ? "SYSTEM, " : "",
+                    attrs & FILE_ATTRIBUTE_TEMPORARY ? "TEMPORARY, " : "",
+                    attrs & FILE_ATTRIBUTE_VIRTUAL ? "VIRTUAL, " : "");
+    if (size > 2) {
+        str[size - 2] = '\0';
     }
 }
 
@@ -692,26 +667,29 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
             perm_type = NULL;
             writted = 1;
         } else if (seq) {
-            writted = snprintf(str, 50, "Permissions changed.");
+            writted = snprintf(str, 50, "Permissions changed.\n");
         } else {
-            size = snprintf(str, str_size, "  [%s]  (%s)\n%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+            size = snprintf(str, str_size, "   %s  (%s) -%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                             account_name,
                             a_type == '0' ? "ALLOWED" : "DENIED",
-                            mask & FILE_READ_DATA ? "  + FILE_READ_DATA\n" : "",
-                            mask & FILE_WRITE_DATA ? "  + FILE_WRITE_DATA\n" : "",
-                            mask & FILE_APPEND_DATA ? "  + FILE_APPEND_DATA\n" : "",
-                            mask & FILE_READ_EA ? "  + FILE_READ_EA\n" : "",
-                            mask & FILE_WRITE_EA ? "  + FILE_WRITE_EA\n" : "",
-                            mask & FILE_EXECUTE ? "  + FILE_EXECUTE\n" : "",
-                            mask & FILE_READ_ATTRIBUTES ? "  + FILE_READ_ATTRIBUTES\n" : "",
-                            mask & FILE_WRITE_ATTRIBUTES ? "  + FILE_WRITE_ATTRIBUTES\n" : "",
-                            mask & FILE_DELETE_CHILD ? "  + FILE_DELETE\n" : "",
-                            mask & DELETE ? "  + DELETE\n" : "",
-                            mask & READ_CONTROL ? "  + READ_CONTROL\n" : "",
-                            mask & WRITE_DAC ? "  + WRITE_DAC\n" : "",
-                            mask & WRITE_OWNER ? "  + WRITE_OWNER\n" : "",
-                            mask & SYNCHRONIZE ? "  + SYNCHRONIZE\n" : ""
+                            mask & FILE_READ_DATA ? " FILE_READ_DATA," : "",
+                            mask & FILE_WRITE_DATA ? " FILE_WRITE_DATA," : "",
+                            mask & FILE_APPEND_DATA ? " FILE_APPEND_DATA," : "",
+                            mask & FILE_READ_EA ? " FILE_READ_EA," : "",
+                            mask & FILE_WRITE_EA ? " FILE_WRITE_EA," : "",
+                            mask & FILE_EXECUTE ? " FILE_EXECUTE," : "",
+                            mask & FILE_READ_ATTRIBUTES ? " FILE_READ_ATTRIBUTES," : "",
+                            mask & FILE_WRITE_ATTRIBUTES ? " FILE_WRITE_ATTRIBUTES," : "",
+                            mask & FILE_DELETE_CHILD ? " FILE_DELETE," : "",
+                            mask & DELETE ? " DELETE," : "",
+                            mask & READ_CONTROL ? " READ_CONTROL," : "",
+                            mask & WRITE_DAC ? " WRITE_DAC," : "",
+                            mask & WRITE_OWNER ? " WRITE_OWNER," : "",
+                            mask & SYNCHRONIZE ? " SYNCHRONIZE," : ""
             );
+            if (size > 1) {
+                str[size - 1] = '\n';
+            }
             writted += size;
             str += size;
         }

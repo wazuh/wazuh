@@ -190,19 +190,6 @@ void OS_LogOutput(Eventinfo *lf)
             printf(" - Size: %s\n", lf->size_after);
         }
 
-        if (lf->perm_after){
-            printf(" - Permissions: %6o\n", lf->perm_after);
-        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
-            char *permissions_list;
-            int size;
-            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
-            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
-                os_realloc(permissions_list, size + 1, permissions_list);
-                printf(" - Permissions: \n%s", permissions_list);
-                free(permissions_list);
-            }
-        }
-
         if (lf->mtime_after) {
             printf(" - Date: %s", ctime(&lf->mtime_after));
         }
@@ -244,9 +231,22 @@ void OS_LogOutput(Eventinfo *lf)
         if (lf->attrs_after != 0) {
             char *attributes_list;
             os_calloc(OS_SIZE_256 + 1, sizeof(char), attributes_list);
-            decode_win_attributes(attributes_list, lf->attrs_after, 0);
-            printf(" - File attributes: \n%s", attributes_list);
+            decode_win_attributes(attributes_list, lf->attrs_after);
+            printf(" - File attributes: %s\n", attributes_list);
             free(attributes_list);
+        }
+
+        if (lf->perm_after){
+            printf(" - Permissions: %6o\n", lf->perm_after);
+        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
+            char *permissions_list;
+            int size;
+            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
+            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
+                os_realloc(permissions_list, size + 1, permissions_list);
+                printf(" - Permissions: \n%s", permissions_list);
+                free(permissions_list);
+            }
         }
     }
 
@@ -375,19 +375,6 @@ void OS_Log(Eventinfo *lf)
             fprintf(_aflog, " - Size: %s\n", lf->size_after);
         }
 
-        if (lf->perm_after) {
-            fprintf(_aflog, " - Permissions: %6o\n", lf->perm_after);
-        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
-            char *permissions_list;
-            int size;
-            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
-            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
-                os_realloc(permissions_list, size + 1, permissions_list);
-                fprintf(_aflog, " - Permissions: \n%s", permissions_list);
-                free(permissions_list);
-            }
-        }
-
         if (lf->mtime_after) {
             fprintf(_aflog, " - Date: %s", ctime(&lf->mtime_after));
         }
@@ -425,9 +412,22 @@ void OS_Log(Eventinfo *lf)
         if (lf->attrs_after != 0) {
             char *attributes_list;
             os_calloc(OS_SIZE_256 + 1, sizeof(char), attributes_list);
-            decode_win_attributes(attributes_list, lf->attrs_after, 0);
-            fprintf(_aflog, " - File attributes: \n%s", attributes_list);
+            decode_win_attributes(attributes_list, lf->attrs_after);
+            fprintf(_aflog, " - File attributes: %s\n", attributes_list);
             free(attributes_list);
+        }
+
+        if (lf->perm_after) {
+            fprintf(_aflog, " - Permissions: %6o\n", lf->perm_after);
+        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
+            char *permissions_list;
+            int size;
+            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
+            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
+                os_realloc(permissions_list, size + 1, permissions_list);
+                fprintf(_aflog, " - Permissions: \n%s", permissions_list);
+                free(permissions_list);
+            }
         }
     }
 
