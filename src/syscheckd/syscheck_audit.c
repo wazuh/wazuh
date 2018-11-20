@@ -31,6 +31,7 @@
 #define AUDIT_KEY "wazuh_fim"
 #define RELOAD_RULES_INTERVAL 20 // Seconds to re-add Audit rules
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
+#define MAX_CONN_RETRIES 5
 
 // Global variables
 W_Vector *audit_added_rules;
@@ -984,6 +985,7 @@ void * audit_main(int * audit_sock) {
     fd_set fdset;
     struct timeval timeout;
     count_reload_retries = 0;
+    int conn_retries;
 
     char *buffer;
     buffer = malloc(BUF_SIZE * sizeof(char));
@@ -1033,6 +1035,20 @@ void * audit_main(int * audit_sock) {
         if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), !byteRead) {
             // Connection closed
             mwarn("Audit: connection closed.");
+            // Reconnect
+            conn_retries = 0;
+            sleep(1);
+            minfo("Audit: reconnecting... (%i)", ++conn_retries);
+            *audit_sock = init_auditd_socket();
+            while (conn_retries < MAX_CONN_RETRIES && *audit_sock < 0) {
+                minfo("Audit: reconnecting... (%i)", ++conn_retries);
+                sleep(1);
+                *audit_sock = init_auditd_socket();
+            }
+            if (*audit_sock >= 0) {
+                minfo("Audit: connected.");
+                continue;
+            }
             // Send alert
             char msg_alert[512 + 1];
             snprintf(msg_alert, 512, "ossec: Audit: Connection closed");
