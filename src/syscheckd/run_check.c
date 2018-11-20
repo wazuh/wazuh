@@ -551,6 +551,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         if (sid) {
             LocalFree(sid);
         }
+        free(str_perm);
 #endif
 
     return (0);

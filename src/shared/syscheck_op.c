@@ -528,6 +528,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 void sk_sum_clean(sk_sum_t * sum) {
     os_free(sum->wdata.user_name);
     os_free(sum->wdata.process_name);
+    os_free(sum->win_perm);
 }
 
 #endif
@@ -960,7 +961,7 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
         }
     }
 
-    if (s_desc = win_alloc(size), !s_desc) {
+    if (os_calloc(size, 1, s_desc), !s_desc) {
         return GetLastError();
     }
 
@@ -1011,17 +1012,14 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
 
     mdebug2("The ACL extracted from '%s' is [%s].", file_path, permissions);
 end:
-    win_free(s_desc);
-    if (f_acl) {
-        win_free(f_acl);
-    }
+    free(s_desc);
     return retval;
 }
 
 int copy_ace_info(void *ace, char *perm, int perm_size) {
     SID *sid;
-    char *account_name;
-    char *domain_name;
+    char *account_name = NULL;
+    char *domain_name = NULL;
     int mask;
     int ace_type;
     int written = 0;
@@ -1050,13 +1048,16 @@ int copy_ace_info(void *ace, char *perm, int perm_size) {
 
     if (error = w_get_account_info(sid, &account_name, &domain_name), error) {
         mdebug2("No information could be extracted from the account linked to the SID. Error: %d.", error);
-        return 0;
+        goto end;
     }
 
     if (written + 1 < perm_size) {
         written = snprintf(perm, perm_size, "|%s,%d,%d", account_name, ace_type, mask);
     }
 
+end:
+    free(account_name);
+    free(domain_name);
     return written;
 }
 
