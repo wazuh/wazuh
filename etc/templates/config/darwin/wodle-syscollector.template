@@ -3,11 +3,10 @@
     <disabled>no</disabled>
     <interval>1h</interval>
     <scan_on_start>yes</scan_on_start>
-    <hardware>no</hardware>
+    <hardware>yes</hardware>
     <os>yes</os>
-    <network>no</network>
-    <packages>no</packages>
+    <network>yes</network>
+    <packages>yes</packages>
     <ports all="no">no</ports>
     <processes>no</processes>
   </wodle>
- 

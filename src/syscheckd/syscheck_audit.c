@@ -1179,11 +1179,11 @@ int filterkey_audit_events(char *buffer) {
         return 1;
     }
 
-    while (syscheck.audit_extra_key[i]) {
-        snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.audit_extra_key[i]);
-        snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_extra_key[i]);
+    while (syscheck.audit_key[i]) {
+        snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.audit_key[i]);
+        snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_key[i]);
         if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
-            mdebug2("Match audit_extra_key: '%s'", logkey1);
+            mdebug2("Match audit_key: '%s'", logkey1);
             return 2;
         }
         i++;
