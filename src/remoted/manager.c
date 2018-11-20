@@ -65,6 +65,8 @@ static int poll_interval_time = 0;
 /* Message reporting */
 static int reported_metadata_not_exists = 0;
 
+static int reported_non_existing_group = 0;
+
 /* Save a control message received from an agent
  * read_controlmsg (other thread) is going to deal with it
  * (only if message changed)
@@ -429,11 +431,15 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
             if (files = wreaddir(dir), !files) {
                 if (errno != ENOTDIR) {
-                    mdebug2("At c_multi_group(): Could not open directory '%s'", dir);
-                    closedir(dp);
-                    return;
+                    mdebug1("At c_multi_group(): Could not open directory '%s'. %s. Ignoring this group.", dir,strerror(errno));
+                    if((reported_non_existing_group % 100) == 0){
+                        mwarn("Could not open directory '%s'. %s. Ignoring this group.", dir,strerror(errno));
+                    }
+                    reported_non_existing_group++;
+
+                    goto next;
                 }
-                continue;
+                goto next;
             }
 
             unsigned int i;
@@ -462,6 +468,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
                 }
 
             }
+next:
             group = strtok(NULL, delim);
             free_strarray(files);
             closedir(dp);
@@ -506,6 +513,8 @@ static void c_files()
     struct dirent *entry;
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
+    int oldmask;
+    int retval;
 
     mdebug2("Updating shared files sums.");
 
@@ -622,7 +631,7 @@ static void c_files()
         }
 
         os_sha256 multi_group_hash;
-        char _hash[9];
+        char _hash[9] = {0};
         char *multi_group_hash_pt = NULL;
 
         if(multi_group_hash_pt = OSHash_Get(m_hash,multi_group),multi_group_hash_pt){
@@ -645,13 +654,27 @@ static void c_files()
             }
         }
 
-
         // Try to open directory, avoid TOCTOU hazard
         if (subdir = wreaddir(path), !subdir) {
-            if (errno != ENOTDIR) {
-                mdebug1("At c_files(): Could not open directory '%s'", path);
+            switch (errno) {
+            case ENOENT:
+                mdebug1("Making multi-group directory: %s", path);
+
+                oldmask = umask(0006);
+                retval = mkdir(path, 0770);
+                umask(oldmask);
+
+                if (retval < 0) {
+                    merror("Cannot create multigroup directory '%s': %s (%d)", path, strerror(errno), errno);
+                    continue;
+                }
+
+                break;
+
+            default:
+                merror("Cannot open multigroup directory '%s': %s (%d)", path, strerror(errno), errno);
+                continue;
             }
-            continue;
         }
 
         os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
@@ -693,10 +716,12 @@ file_sum ** find_group(const char * file, const char * md5, char group[OS_SIZE_6
     for (i = 0; groups[i]; i++) {
         f_sum = groups[i]->f_sum;
 
-        for (j = 0; f_sum[j]; j++) {
-            if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                strncpy(group, groups[i]->group, OS_SIZE_65536);
-                return f_sum;
+        if(f_sum) {
+            for (j = 0; f_sum[j]; j++) {
+                if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
+                    strncpy(group, groups[i]->group, OS_SIZE_65536);
+                    return f_sum;
+                }
             }
         }
     }
@@ -721,12 +746,12 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     if(strchr(group,MULTIGROUP_SEPARATOR)){
 
         if(multi_group_hash_pt = OSHash_Get(m_hash,group),multi_group_hash_pt){
-            mdebug1("At send_file_toagent(): Hash is '%s'",multi_group_hash);
+            mdebug1("At send_file_toagent(): Hash is '%s'",multi_group_hash_pt);
             snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash_pt, name);
         }
         else{
             OS_SHA256_String(group,multi_group_hash);
-            char _hash[9];
+            char _hash[9] = {0};
             strncpy(_hash,multi_group_hash,8);
             OSHash_Add(m_hash,group,strdup(_hash));
 
@@ -748,8 +773,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n",
              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
-    if (send_msg(agent_id, buf, -1) == -1) {
-        merror(SEC_ERROR);
+    if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
         return (-1);
     }
@@ -758,8 +782,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
 
-        if (send_msg(agent_id, buf, -1) == -1) {
-            merror(SEC_ERROR);
+        if (send_msg(agent_id, buf, -1) < 0) {
             fclose(fp);
             return (-1);
         }
@@ -777,8 +800,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     /* Send the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
 
-    if (send_msg(agent_id, buf, -1) == -1) {
-        merror(SEC_ERROR);
+    if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
         return (-1);
     }
@@ -876,8 +898,10 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'",agent_id,group,file,md5);
         if (!f_sum) {
-            if (f_sum = find_group(file, md5, group), !f_sum) {
+            if (!guess_agent_group || (f_sum = find_group(file, md5, group), !f_sum)) {
                 // If the group could not be guessed, set to "default"
+                // or if the user requested not to guess the group, through the internal
+                // option 'guess_agent_group', set to "default"
                 strncpy(group, "default", OS_SIZE_65536);
 
                 if (f_sum = find_sum(group), !f_sum) {
@@ -918,7 +942,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
                 }
 
                 if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum,sharedcfg_dir) < 0) {
-                    merror(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
+                    mwarn(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
                 }
 
                 mdebug2("End sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
@@ -961,7 +985,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             if (send_file_toagent(agent_id, group, f_sum[i]->name, f_sum[i]->sum,sharedcfg_dir) < 0) {
-                merror(SHARED_ERROR, f_sum[i]->name, agent_id);
+                mwarn(SHARED_ERROR, f_sum[i]->name, agent_id);
             }
         }
 

@@ -515,7 +515,7 @@ size_t wcom_upgrade_result(char ** output){
         fclose(result_file);
     }
     *output = strdup("err Cannot read upgrade_result file.");
-    merror("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
+    mdebug1("At WCOM upgrade_result: Cannot read file '%s'.", PATH);
     return strlen(*output);
 }
 
@@ -646,7 +646,7 @@ void * wcom_main(__attribute__((unused)) void * arg) {
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(DEFAULTDIR COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': '%s'. Closing local server.", COM_LOCAL_SOCK, strerror(errno));
+        merror("Unable to bind to socket '%s': (%d) %s.", COM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 

@@ -106,7 +106,7 @@ void * mailcom_main(__attribute__((unused)) void * arg) {
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s'. Closing local server.", MAIL_LOCAL_SOCK);
+        merror("Unable to bind to socket '%s': (%d) %s.", MAIL_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 

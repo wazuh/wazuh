@@ -42,7 +42,7 @@ ID: 87900 - 87999
 
     <rule id="87905" level="3">
         <if_sid>87900</if_sid>
-        <field name="docker.status">pause</field>
+        <field name="docker.status">^pause</field>
         <description>Container $(docker.Actor.Attributes.name) paused</description>
     </rule>
 

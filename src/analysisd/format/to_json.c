@@ -13,6 +13,7 @@
 #include "rules.h"
 #include "cJSON.h"
 #include "config.h"
+#include "wazuh_modules/wmodules.h"
 
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
@@ -94,14 +95,24 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->frequency){
             cJSON_AddNumberToObject(rule, "frequency", lf->generated_rule->frequency);
         }
-        if(lf->generated_rule->firedtimes && !(lf->generated_rule->alert_opts & NO_COUNTER)) {
-            cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->firedtimes);
+        if(lf->r_firedtimes != -1 && !(lf->generated_rule->alert_opts & NO_COUNTER)) {
+            cJSON_AddNumberToObject(rule, "firedtimes", lf->r_firedtimes);
         }
         cJSON_AddItemToObject(rule, "mail", cJSON_CreateBool(lf->generated_rule->alert_opts & DO_MAILALERT));
 
-        if (lf->last_events && lf->last_events[0] && lf->last_events[1] && *lf->last_events[1] != '\0') {
-            cJSON_AddStringToObject(root, "previous_output", lf->last_events[1]);
+        char *previous_events = NULL;
+        if (lf->last_events && lf->last_events[0]) {
+            char **lasts = lf->last_events;
+            while (*lasts) {
+                wm_strcat(&previous_events, *lasts, '\n');
+                lasts++;
+            }
         }
+
+        if (lf->last_events && lf->last_events[0] && lf->last_events[1] && *lf->last_events[1] != '\0') {
+            cJSON_AddStringToObject(root, "previous_output", previous_events);
+        }
+        os_free(previous_events);
     }
 
     if(lf->protocol) {

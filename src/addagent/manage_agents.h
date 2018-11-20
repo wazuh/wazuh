@@ -47,7 +47,6 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 void OS_RemoveAgentTimestamp(const char *id);
 void OS_RemoveAgentGroup(const char *id);
 void FormatID(char *id);
-void w_remove_multigroup(const char *group);
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect();

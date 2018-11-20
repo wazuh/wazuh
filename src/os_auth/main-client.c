@@ -43,8 +43,10 @@ static void help_agent_auth()
     print_out("                can be specified multiple times");
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
+#ifndef WIN32
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+#endif
     print_out("    -m <addr>   Manager IP address");
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
     print_out("    -A <name>   Agent name (default: hostname)");
@@ -69,12 +71,12 @@ int main(int argc, char **argv)
     int auto_method = 0;
 #ifndef WIN32
     gid_t gid = 0;
+    const char *group = GROUPGLOBAL;
 #endif
 
     int sock = 0, port = DEFAULT_PORT, ret = 0;
     char *ciphers = DEFAULT_CIPHERS;
     const char *dir = DEFAULTDIR;
-    const char *group = GROUPGLOBAL;
     char *authpass = NULL;
     const char *manager = NULL;
     const char *ipaddress = NULL;
@@ -100,7 +102,11 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "VdhtgG:m:p:A:c:v:x:k:D:P:a:I:i")) != -1) {
+    while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:a:I:i"
+#ifndef WIN32
+    "g:D:"
+#endif
+    )) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -112,6 +118,7 @@ int main(int argc, char **argv)
                 debug_level = 1;
                 nowDebug();
                 break;
+#ifndef WIN32
             case 'g':
                 if (!optarg) {
                     merror_exit("-g needs an argument");
@@ -119,11 +126,12 @@ int main(int argc, char **argv)
                 group = optarg;
                 break;
             case 'D':
-            if (!optarg) {
-                merror_exit("-g needs an argument");
-            }
-            dir = optarg;
-            break;
+                if (!optarg) {
+                    merror_exit("-g needs an argument");
+                }
+                dir = optarg;
+                break;
+#endif
             case 't':
                 test_config = 1;
                 break;
@@ -211,6 +219,16 @@ int main(int argc, char **argv)
         }
     }
 
+    /* Exit here if test config is set */
+    if (test_config) {
+        exit(0);
+    }
+
+    if (sender_ip && use_src_ip) {
+        merror("Options '-I' and '-i' are uncompatible.");
+        exit(1);
+    }
+
     /* Start daemon */
     mdebug1(STARTED_MSG);
 
@@ -219,16 +237,6 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, "", group);
-    }
-
-    if (sender_ip && use_src_ip) {
-        merror("Options '-I' and '-i' are uncompatible.");
-        exit(1);
-    }
-
-    /* Exit here if test config is set */
-    if (test_config) {
-        exit(0);
     }
 
     /* Privilege separation */
@@ -310,7 +318,7 @@ int main(int argc, char **argv)
         }
     }
     if (!authpass) {
-        printf("WARN: No authentication password provided.\n");
+        printf("INFO: No authentication password provided.\n");
     }
 
     /* Connect via TCP */

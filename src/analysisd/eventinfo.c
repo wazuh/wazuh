@@ -200,6 +200,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 {
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
+    Eventinfo *first_lf;
     int frequency_count = 0;
     OSList *list = rule->group_search;
 
@@ -228,6 +229,9 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         lf = NULL;
         goto end;
     }
+
+    first_lf = (Eventinfo *)lf_node->data;
+
     do {
         lf = (Eventinfo *)lf_node->data;
 
@@ -349,6 +353,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
+        first_lf->matched = rule->level;
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -606,6 +611,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->process_id = NULL;
     lf->is_a_copy = 0;
     lf->last_events = NULL;
+    lf->r_firedtimes = -1;
     lf->queue_added = 0;
     lf->rootcheck_fts = 0;
     lf->decoder_syscheck_id = 0;
@@ -658,7 +664,7 @@ void Free_Eventinfo(Eventinfo *lf)
             i = 0;
             // Remove the node from all lists
             while (i < lf->generated_rule->group_prev_matched_sz) {
-                while (lf->generated_rule->group_prev_matched[i]->count);
+                while (lf->generated_rule->group_prev_matched[i]->count > 0);
                 OSList_DeleteThisNode(lf->generated_rule->group_prev_matched[i],
                                         lf->group_node_to_delete[i]);
                 // Unblock the list
@@ -1237,6 +1243,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     lf_cpy->mtime_after = lf->mtime_after;
     lf_cpy->inode_before = lf->inode_before;
     lf_cpy->inode_after = lf->inode_after;
+    lf_cpy->r_firedtimes = lf->r_firedtimes;
 
 
     if(lf->diff){

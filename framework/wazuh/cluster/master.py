@@ -207,9 +207,9 @@ class MasterManagerHandler(ServerHandler):
         if sum(n_errors['warnings'].values()) > 0:
             for key, value in n_errors['warnings'].items():
                 if key == '/queue/agent-info/':
-                    logger.warning("Received {} agent statuses for non-existent agents. Skipping.".format(value))
+                    logger.debug2("Received {} agent statuses for non-existent agents. Skipping.".format(value))
                 elif key == '/queue/agent-groups/':
-                    logger.warning("Received {} group assignments for non-existent agents. Skipping.".format(value))
+                    logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
 
         # Save info for healthcheck
         self.manager.set_worker_status(worker_id=self.name, key=cluster_control_key, subkey=cluster_control_subkey, status=n_merged_files)

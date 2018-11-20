@@ -39,6 +39,9 @@ def distribute_function(input_json, pretty=False, debug=False):
         is_dapi_enabled = cluster.get_cluster_items()['distributed_api']['enabled']
         logger.debug("[Cluster] [D API        ] Distributed API is {}.".format("enabled" if is_dapi_enabled else "disabled"))
 
+        if 'wait_for_complete' not in input_json['arguments']:
+            input_json['arguments']['wait_for_complete'] = False
+
         # First case: execute the request local.
         # If the distributed api is not enabled
         # If the cluster is disabled or the request type is local_any
