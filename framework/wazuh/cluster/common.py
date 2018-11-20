@@ -86,6 +86,10 @@ class Handler(asyncio.Protocol):
         self.in_file = {'filename': '', 'fd': None, 'checksum': None}
         # stores incoming string information from string commands
         self.in_str = InBuffer()
+        # maximum message length to send in a single request
+        self.request_chunk = 524288
+        # stores message to be sent
+        self.out_msg = bytearray(self.header_len + self.request_chunk)
 
 
     def push(self, message):
@@ -124,8 +128,10 @@ class Handler(asyncio.Protocol):
 
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-'*(self.cmd_len - cmd_len - 1)
+        self.out_msg[:self.header_len] = struct.pack(self.header_format, len(data), counter, command)
+        self.out_msg[self.header_len:self.header_len + len(data)] = data
 
-        return struct.pack(self.header_format, len(data), counter, command) + data
+        return self.out_msg[:self.header_len + len(data)]
 
 
     def msg_parse(self):
@@ -168,6 +174,10 @@ class Handler(asyncio.Protocol):
         :param data: data to send
         :return: response from peer.
         """
+        if len(data) > self.request_chunk:
+            raise Exception("Max msg length exceeded. Maximum allowed: {} / Message length: {}".format(
+                self.request_chunk, len(data)))
+
         response = Response()
         msg_counter = self.next_counter()
         self.box[msg_counter] = response
@@ -186,14 +196,13 @@ class Handler(asyncio.Protocol):
         response = await self.send_request(command=b'new_file', data=filename.encode())
         file_hash = hashlib.sha256()
         with open(filename, 'rb') as f:
-            for chunk in iter(lambda: f.read(33554431), b''):  # 33554431 = 2^24
+            for chunk in iter(lambda: f.read(self.request_chunk), b''):
                 response = await self.send_request(command=b'file_upd', data=chunk)
                 file_hash.update(chunk)
         response = await self.send_request(command=b'file_end', data=file_hash.digest())
         return b'ok ', b'File sent'
 
-
-    async def send_string(self, my_str, chunk=500000):
+    async def send_string(self, my_str):
         """
         Sends a large string to peer.
 
@@ -203,8 +212,8 @@ class Handler(asyncio.Protocol):
         """
         total = len(my_str)
         response = await self.send_request(command=b'new_str', data=str(total).encode())
-        for c in range(0, total, chunk):
-            response = await self.send_request(command=b'str_upd', data=my_str[c:c+chunk])
+        for c in range(0, total, self.request_chunk):
+            response = await self.send_request(command=b'str_upd', data=my_str[c:c+self.request_chunk])
         return b"ok", b"String correctly sent"
 
 
