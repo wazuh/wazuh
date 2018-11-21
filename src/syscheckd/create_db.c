@@ -274,13 +274,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         strncpy(sf256_sum, "", 1);
 
         /* Generate checksums */
+        struct stat *statbuf_lnk = NULL;
         if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) || (opts & CHECK_SHA256SUM)) {
             /* If it is a link, check if dest is valid */
 #ifndef WIN32
             if (S_ISLNK(statbuf.st_mode)) {
-                struct stat statbuf_lnk;
-                if (stat(file_name, &statbuf_lnk) == 0) {
-                    if (S_ISREG(statbuf_lnk.st_mode)) {
+                os_calloc(1, sizeof(struct stat), statbuf_lnk);
+                if (stat(file_name, statbuf_lnk) == 0) {
+                    if (S_ISREG(statbuf_lnk->st_mode)) {
                         if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
                             strncpy(mf_sum, "n/a", 4);
                             strncpy(sf_sum, "n/a", 4);
@@ -367,19 +368,31 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_PERM) {
-                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+                if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
+                    sprintf(str_perm,"%d",(int)statbuf_lnk->st_mode);
+                } else {
+                    sprintf(str_perm,"%d",(int)statbuf.st_mode);
+                }
             } else {
                 *str_perm = '\0';
             }
 
             if (opts & CHECK_OWNER) {
-                sprintf(str_owner,"%d",(int)statbuf.st_uid);
+                if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
+                    sprintf(str_owner,"%d",(int)statbuf_lnk->st_uid);
+                } else {
+                    sprintf(str_owner,"%d",(int)statbuf.st_uid);
+                }
             } else {
                 *str_owner = '\0';
             }
 
             if (opts & CHECK_GROUP) {
-                sprintf(str_group,"%d",(int)statbuf.st_gid);
+                if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
+                    sprintf(str_group,"%d",(int)statbuf_lnk->st_gid);
+                } else {
+                    sprintf(str_group,"%d",(int)statbuf.st_gid);
+                }
             } else {
                 *str_group = '\0';
             }
@@ -491,19 +504,31 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_PERM) {
-                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+                if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
+                    sprintf(str_perm,"%d",(int)statbuf_lnk->st_mode);
+                } else {
+                    sprintf(str_perm,"%d",(int)statbuf.st_mode);
+                }
             } else {
                 *str_perm = '\0';
             }
 
             if (opts & CHECK_OWNER) {
-                sprintf(str_owner,"%d",(int)statbuf.st_uid);
+                if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
+                    sprintf(str_owner,"%d",(int)statbuf_lnk->st_uid);
+                } else {
+                    sprintf(str_owner,"%d",(int)statbuf.st_uid);
+                }
             } else {
                 *str_owner = '\0';
             }
 
             if (opts & CHECK_GROUP) {
-                sprintf(str_group,"%d",(int)statbuf.st_gid);
+                if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
+                    sprintf(str_group,"%d",(int)statbuf_lnk->st_gid);
+                } else {
+                    sprintf(str_group,"%d",(int)statbuf.st_gid);
+                }
             } else {
                 *str_group = '\0';
             }
@@ -544,6 +569,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
             free(alert_msg);
             free(alertdump);
+            if (statbuf_lnk) {
+                free(statbuf_lnk);
+                statbuf_lnk = NULL;
+            }
+
         } else {
             char *alert_msg = NULL;
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
