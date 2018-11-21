@@ -416,6 +416,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     /* Generate new checksum */
     newsum[0] = '\0';
     newsum[OS_MAXSTR] = '\0';
+    struct stat *statbuf_lnk = NULL;
     if (S_ISREG(statbuf.st_mode))
     {
         if (sha1sum || md5sum || sha256sum) {
@@ -431,9 +432,9 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 #ifndef WIN32
     /* If it is a link, check if the actual file is valid */
     else if (S_ISLNK(statbuf.st_mode)) {
-        struct stat statbuf_lnk;
-        if (stat(file_name, &statbuf_lnk) == 0) {
-            if (S_ISREG(statbuf_lnk.st_mode)) {
+        os_calloc(1, sizeof(struct stat), statbuf_lnk);
+        if (stat(file_name, statbuf_lnk) == 0) {
+            if (S_ISREG(statbuf_lnk->st_mode)) {
                 if (sha1sum || md5sum || sha256sum) {
                     /* Generate checksums of the file */
                     if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
@@ -455,19 +456,31 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     if (perm == 0){
         *str_perm = '\0';
     } else {
-        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+        if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
+            sprintf(str_perm,"%ld",(long)statbuf_lnk->st_mode);
+        } else {
+            sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+        }
     }
 
     if (owner == 0){
         *str_owner = '\0';
     } else {
-        sprintf(str_owner, "%ld", (long)statbuf.st_uid);
+        if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
+            sprintf(str_owner,"%ld",(long)statbuf_lnk->st_uid);
+        } else {
+            sprintf(str_owner, "%ld", (long)statbuf.st_uid);
+        }
     }
 
     if (group == 0){
         *str_group = '\0';
     } else {
-        sprintf(str_group, "%ld", (long)statbuf.st_gid);
+        if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
+            sprintf(str_group,"%ld",(long)statbuf_lnk->st_gid);
+        } else {
+            sprintf(str_group, "%ld", (long)statbuf.st_gid);
+        }
     }
 
     if (mtime == 0){
@@ -537,6 +550,10 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             LocalFree(sid);
         }
 #endif
+    if (statbuf_lnk) {
+        free(statbuf_lnk);
+        statbuf_lnk = NULL;
+    }
 
     return (0);
 }
