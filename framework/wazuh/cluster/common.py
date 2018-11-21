@@ -3,6 +3,8 @@ import hashlib
 import logging
 import random
 import struct
+import traceback
+
 
 class Response:
     """
@@ -367,5 +369,17 @@ class Handler(asyncio.Protocol):
         :param data: error message from peer
         :return: Nothing
         """
-        logging.error("Peer reported an error: {}".format(data))
-        raise Exception(data)
+        return b"The request could not be correctly processed: " + data
+
+
+def asyncio_exception_handler(loop, context):
+    """
+    Exception handler used in the protocol. Asyncio's default raises an exception and closes the transport.
+    The desired behaviour in this case is just to show the error in the logs.
+
+    :param loop: Event loop
+    :param context: A dictionary containing fields explained in
+                    https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler
+    """
+    logging.error("Unhandled exception: " + str(context['exception']))
+    logging.debug(traceback.format_exc())

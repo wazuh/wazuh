@@ -129,6 +129,7 @@ async def main():
     # low-level APIs.
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     loop = asyncio.get_running_loop()
+    loop.set_exception_handler(common.asyncio_exception_handler)
     on_con_lost = loop.create_future()
 
     while True:
