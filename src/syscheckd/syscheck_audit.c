@@ -29,9 +29,9 @@
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
 #define BUF_SIZE 6144
 #define AUDIT_KEY "wazuh_fim"
-#define RELOAD_RULES_INTERVAL 20 // Seconds to re-add Audit rules
+#define RELOAD_RULES_INTERVAL 30 // Seconds to reload Audit rules
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
-#define MAX_CONN_RETRIES 5
+#define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 
 // Global variables
 W_Vector *audit_added_rules;
@@ -662,9 +662,7 @@ void audit_parse(char *buffer) {
 
                 if (count_reload_retries < AUDIT_LOAD_RETRIES) {
                     // Reload rules
-                    mdebug1("Reloading Audit rules...");
-                    int rules_added = add_audit_rules_syscheck();
-                    mdebug1("Audit rules reloaded: %i", rules_added);
+                    audit_reload_rules();
                 } else {
                     // Send alert
                     char msg_alert[512 + 1];
@@ -952,6 +950,14 @@ void audit_parse(char *buffer) {
     }
 }
 
+
+void audit_reload_rules(void) {
+    mdebug1("Reloading Audit rules...");
+    int rules_added = add_audit_rules_syscheck();
+    mdebug1("Audit rules reloaded: %i", rules_added);
+}
+
+
 void *audit_reload_thread(void) {
     struct timespec spec0;
     struct timespec spec1;
@@ -962,10 +968,8 @@ void *audit_reload_thread(void) {
         // Reload rules
         gettime(&spec1);
         if (spec1.tv_sec - spec0.tv_sec >= RELOAD_RULES_INTERVAL) {
-            mdebug1("Reloading Audit rules...");
+            audit_reload_rules();
             gettime(&spec0);
-            int rules_added = add_audit_rules_syscheck();
-            mdebug1("Audit rules reloaded: %i", rules_added);
         }
     }
 
@@ -1047,6 +1051,8 @@ void * audit_main(int * audit_sock) {
             }
             if (*audit_sock >= 0) {
                 minfo("Audit: connected.");
+                // Reload rules
+                audit_reload_rules();
                 continue;
             }
             // Send alert
