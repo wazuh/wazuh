@@ -189,7 +189,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     c_sum = lf->log;
 
     // Get w_sum
-    if (w_sum = strchr(c_sum, '!'), w_sum) {
+    if (w_sum = wstr_chr(c_sum, '!'), w_sum) {
         *(w_sum++) = '\0';
     }
 
@@ -234,7 +234,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         os_free(lf->data);
         goto exit_fail;
     }
-    check_sum = strchr(response, ' ');
+    check_sum = wstr_chr(response, ' ');
     *(check_sum++) = '\0';
 
     //extract changes and date_alert fields only available from wazuh_db
