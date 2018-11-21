@@ -428,6 +428,12 @@ int decode_netinfo(char *agent_id, cJSON * logJSON,int *socket) {
                             wm_strcat(&msg, "NULL", ' ');
                         }
 
+                        if (name) {
+                            wm_strcat(&msg, name->valuestring, '|');
+                        } else {
+                            wm_strcat(&msg, "NULL", '|');
+                        }
+
                         // Information about an IPv6 address
                         wm_strcat(&msg, "1", '|');
 
