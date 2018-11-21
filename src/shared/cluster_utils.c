@@ -47,9 +47,9 @@ int w_is_worker(void) {
                             } else {
                                 is_worker = 0;
                             }
-                		} else {
-                			is_worker = 0;
-                		}
+                        } else {
+                            is_worker = 0;
+                        }
                 	} else {
                         if (!strcmp(cl_type, "client") || !strcmp(cl_type, "worker")) {
                             is_worker = 1;
