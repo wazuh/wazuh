@@ -97,6 +97,8 @@ class Handler(asyncio.Protocol):
         self.request_chunk = 524288
         # stores message to be sent
         self.out_msg = bytearray(self.header_len + self.request_chunk)
+        # defines timeout for each request in seconds
+        self.request_timeout = 10
 
     def push(self, message: bytes):
         """
@@ -180,7 +182,10 @@ class Handler(asyncio.Protocol):
         msg_counter = self.next_counter()
         self.box[msg_counter] = response
         self.push(self.msg_build(command, msg_counter, data))
-        response_data = await response.read()
+        try:
+            response_data = await asyncio.wait_for(response.read(), timeout=self.request_timeout)
+        except asyncio.TimeoutError:
+            return b'Error sending request: timeout expired.'
         return response_data
 
     async def send_file(self, filename: str) -> bytes:
