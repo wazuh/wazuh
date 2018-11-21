@@ -268,7 +268,7 @@ start()
     incompatible=false
 
     if [ $USE_JSON = false ]; then
-        echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
+        echo "Starting $NAME $VERSION..."
     fi
 
     TEST=$(${DIR}/bin/ossec-logtest -t  2>&1 | grep "ERROR")

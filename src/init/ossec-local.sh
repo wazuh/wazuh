@@ -204,7 +204,7 @@ testconfig()
 
 start()
 {
-    echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
+    echo "Starting $NAME $VERSION..."
     TEST=$(${DIR}/bin/ossec-logtest -t  2>&1)
     echo $TEST
     if [ ! -z "$TEST" ]; then
