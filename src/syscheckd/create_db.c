@@ -685,13 +685,27 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #else
         if (defaultfilesn[di] == NULL) {
 #endif
-            mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
+            switch (errno) {
+            case ENOENT:
+                mwarn("Cannot open '%s': it was removed during scan.", dir_name);
+                break;
+            default:
+                mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
+            }
+
         } else {
             free(f_name);
             return 0;
         }
 #else
-        mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
+        switch (errno) {
+        case ENOENT:
+            mwarn("Cannot open '%s': it was removed during scan.", dir_name);
+            break;
+        default:
+            mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
+        }
+
 #endif /* WIN32 */
         free(f_name);
         return (-1);

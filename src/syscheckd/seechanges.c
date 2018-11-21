@@ -326,11 +326,10 @@ char *seechanges_addfile(const char *filename)
         if (seechanges_dupfile(filename, old_location) != 1) {
             switch (errno) {
                 case ENOENT:
-                    minfo(RENAME_ERROR, filename, old_location, errno, strerror(errno));
+                    mwarn("Cannot create a snapshot of file '%s': it was removed during scan.", filename);
                     break;
                 default:
                     merror(RENAME_ERROR, filename, old_location, errno, strerror(errno));
-                }
             }
         }
         return (NULL);
