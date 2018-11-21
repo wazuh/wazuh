@@ -24,7 +24,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     modules |= CSYSCHECK;
 
     syscheck.rootcheck      = 0;
-    syscheck.disabled       = 1;
+    syscheck.disabled       = SK_CONF_UNPARSED;
     syscheck.skip_nfs       = 1;
     syscheck.scan_on_start  = 1;
     syscheck.time           = 43200;
@@ -65,6 +65,14 @@ int Read_Syscheck_Config(const char *cfgfile)
     modules |= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
+
+    switch (syscheck.disabled) {
+    case SK_CONF_UNPARSED:
+        syscheck.disabled = 1;
+        break;
+    case SK_CONF_UNDEFINED:
+        syscheck.disabled = 0;
+    }
 
 #ifndef WIN32
     /* We must have at least one directory to check */
