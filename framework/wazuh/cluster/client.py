@@ -5,6 +5,7 @@ import logging
 import argparse
 import time
 
+
 class EchoClientProtocol(common.Handler):
     """
     Defines a echo client protocol
@@ -32,7 +33,6 @@ class EchoClientProtocol(common.Handler):
         asyncio.gather(self.send_request(command=b'hello', data=self.name.encode()))
         logging.info('Client info sent to server.')
 
-
     def connection_lost(self, exc):
         """
         Defines process of closing connection with the server
@@ -58,7 +58,6 @@ class EchoClientProtocol(common.Handler):
         else:
             return super().process_response(command, payload)
 
-
     def process_request(self, command, data):
         """
         Defines commands for clients
@@ -72,10 +71,8 @@ class EchoClientProtocol(common.Handler):
         else:
             return super().process_request(command, data)
 
-
     def echo_client(self, data):
         return b'ok-c', data
-
 
     async def client_echo(self):
         while not self.on_con_lost.done():
@@ -86,7 +83,7 @@ class EchoClientProtocol(common.Handler):
     async def performance_test_client(self, test_size):
         while not self.on_con_lost.done():
             before = time.time()
-            result = await self.send_request(b'echo', b'a'*test_size)
+            result = await self.send_request(b'echo', b'a' * test_size)
             after = time.time()
             logging.info("Received size: {} // Time: {}".format(len(result), after - before))
             await asyncio.sleep(3)
@@ -109,7 +106,7 @@ class EchoClientProtocol(common.Handler):
 
     async def send_string_task(self, string_size):
         before = time.time()
-        response = await self.send_string(my_str=b'a'*string_size)
+        response = await self.send_string(my_str=b'a' * string_size)
         after = time.time()
         logging.debug(response)
         logging.debug("Time: {}".format(after - before))
@@ -136,8 +133,9 @@ async def main():
 
     while True:
         try:
-            transport, protocol = await loop.create_connection(lambda: EchoClientProtocol(loop, on_con_lost, args.name), '172.17.0.101', 8888)
             break
+            transport, protocol = await loop.create_connection(lambda: EchoClientProtocol(loop, on_con_lost, args.name),
+                                                               '172.17.0.101', 8888)
         except ConnectionRefusedError:
             logging.error("Could not connect to server. Trying again in 10 seconds.")
             await asyncio.sleep(10)

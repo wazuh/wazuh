@@ -10,6 +10,7 @@ class EchoServerHandler(common.Handler):
     """
     Defines echo server protocol
     """
+
     def __init__(self, server, loop):
         super().__init__()
         self.server = server
@@ -27,7 +28,6 @@ class EchoServerHandler(common.Handler):
         self.transport = transport
         self.name = None
 
-
     def process_request(self, command, data):
         """
         Defines commands for servers
@@ -43,10 +43,8 @@ class EchoServerHandler(common.Handler):
         else:
             return super().process_request(command, data)
 
-
     def echo_master(self, data):
         return b'ok-m ', data
-
 
     def hello(self, data):
         """
@@ -64,7 +62,6 @@ class EchoServerHandler(common.Handler):
             self.name = data
             return b'ok', 'Client {} added'.format(data).encode()
 
-
     def process_response(self, command, payload):
         """
         Defines response commands for servers
@@ -77,7 +74,6 @@ class EchoServerHandler(common.Handler):
             return b"Sucessful response from client: " + payload
         else:
             return super().process_response(command, payload)
-
 
     def connection_lost(self, exc):
         """
@@ -97,6 +93,7 @@ class EchoServer:
     """
     Defines an asynchronous echo server.
     """
+
     def __init__(self, performance_test, concurrency_test):
         self.clients = {}
         self.performance = performance_test
@@ -113,7 +110,7 @@ class EchoServer:
         while True:
             for client_name, client in self.clients.items():
                 before = time.time()
-                response = await client.send_request(b'echo', b'a'*self.performance)
+                response = await client.send_request(b'echo', b'a' * self.performance)
                 after = time.time()
                 logging.info("Received size: {} // Time: {}".format(len(response), after - before))
             await asyncio.sleep(3)
@@ -123,7 +120,8 @@ class EchoServer:
             for i in range(self.concurrency):
                 before = time.time()
                 for client_name, client in self.clients.items():
-                    response = await client.send_request(b'echo', 'concurrency {} client {}'.format(i, client_name).encode())
+                    response = await client.send_request(b'echo',
+                                                         'concurrency {} client {}'.format(i, client_name).encode())
                 after = time.time()
                 logging.info("Time sending {} messages: {}".format(self.concurrency, after - before))
                 await asyncio.sleep(10)
@@ -149,11 +147,13 @@ async def main():
     parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
                         help="Perform a performance test against all clients. Number of bytes to test with.")
     parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
-                        help="Perform a concurrency test against all clients. Number of messages to send in a row to each client.")
+                        help="Perform a concurrency test against all clients. Number of messages to send in a row to "
+                             "each client.")
     args = parser.parse_args()
 
     server = EchoServer(args.performance_test, args.concurrency_test)
     await server.start()
+
 
 try:
     asyncio.run(main())
