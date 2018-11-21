@@ -23,6 +23,7 @@ class EchoClientProtocol(common.Handler):
         self.loop = loop
         self.name = name
         self.on_con_lost = on_con_lost
+        self.connected = False
 
     def connection_made(self, transport):
         """
@@ -30,9 +31,18 @@ class EchoClientProtocol(common.Handler):
 
         :param transport: socket to write data on
         """
+        def connection_result(future_result):
+            response_msg = future_result.result()[0]
+            if response_msg.startswith(b'Error'):
+                logging.error("Could not connect to server: {}.".format(response_msg))
+                self.transport.close()
+            else:
+                logging.info("Sucessfully connected to server.")
+                self.connected = True
+
         self.transport = transport
-        asyncio.gather(self.send_request(command=b'hello', data=self.name.encode()))
-        logging.info('Client info sent to server.')
+        future_response = asyncio.gather(self.send_request(command=b'hello', data=self.name.encode()))
+        future_response.add_done_callback(connection_result)
 
     def connection_lost(self, exc):
         """
@@ -79,9 +89,16 @@ class EchoClientProtocol(common.Handler):
         return b'ok-c', data
 
     async def client_echo(self):
+        n_attemps = 0  # number of failed attempts to send a keep alive to server
         while not self.on_con_lost.done():
-            result = await self.send_request(b'echo-c', b'hello from client')
-            logging.info(result)
+            if self.connected:
+                result = await self.send_request(b'echo-c', b'keepalive')
+                if result.startswith(b'Error'):
+                    n_attemps += 1
+                    if n_attemps >= 3:
+                        logging.error("Maximum number of failed keep alives reached. Disconnecting.")
+                        self.transport.close()
+                logging.info(result)
             await asyncio.sleep(3)
 
     async def performance_test_client(self, test_size):
@@ -89,7 +106,10 @@ class EchoClientProtocol(common.Handler):
             before = time.time()
             result = await self.send_request(b'echo', b'a' * test_size)
             after = time.time()
-            logging.info("Received size: {} // Time: {}".format(len(result), after - before))
+            if len(result) != test_size:
+                logging.error(result)
+            else:
+                logging.info("Received size: {} // Time: {}".format(len(result), after - before))
             await asyncio.sleep(3)
 
     async def concurrency_test_client(self, n_msgs):
@@ -142,6 +162,10 @@ async def main():
                                                                '172.17.0.101', 8888)
         except ConnectionRefusedError:
             logging.error("Could not connect to server. Trying again in 10 seconds.")
+            await asyncio.sleep(10)
+            continue
+        except OSError as e:
+            logging.error("Could not connect to server: {}. Trying again in 10 seconds.".format(e))
             await asyncio.sleep(10)
             continue
 

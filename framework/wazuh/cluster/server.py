@@ -16,6 +16,7 @@ class EchoServerHandler(common.Handler):
         super().__init__()
         self.server = server
         self.loop = loop
+        self.last_keepalive = time.time()
 
     def connection_made(self, transport):
         """
@@ -45,6 +46,7 @@ class EchoServerHandler(common.Handler):
             return super().process_request(command, data)
 
     def echo_master(self, data: bytes) -> Tuple[bytes, bytes]:
+        self.last_keepalive = time.time()
         return b'ok-m ', data
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -56,7 +58,6 @@ class EchoServerHandler(common.Handler):
         """
         if data in self.server.clients:
             logging.error("Client {} already present".format(data))
-            self.transport.close()
             return b'err', b'Client already present'
         else:
             self.server.clients[data] = self
@@ -100,11 +101,24 @@ class EchoServer:
         self.performance = performance_test
         self.concurrency = concurrency_test
 
+    async def check_clients_keepalive(self):
+        """
+        Task to check the date of the last received keep alives from clients.
+        """
+        while True:
+            curr_timestamp = time.time()
+            for client_name, client in self.clients.items():
+                if curr_timestamp - client.last_keepalive > 30:
+                    logging.error("No keep alives have been received from {} in the last minute. Disconnecting".format(
+                        client_name))
+                    client.transport.close()
+            await asyncio.sleep(30)
+
     async def echo(self):
         while True:
             for client_name, client in self.clients.items():
                 logging.debug("Sending echo to client {}".format(client_name))
-                logging.info(await client.send_request(b'echo-m', 'hello {} from server'.format(client_name).encode()))
+                logging.info(await client.send_request(b'echo-m', b'keepalive ' + client_name))
             await asyncio.sleep(3)
 
     async def performance_test(self):
@@ -134,12 +148,17 @@ class EchoServer:
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(common.asyncio_exception_handler)
 
-        server = await loop.create_server(lambda: EchoServerHandler(server=self, loop=loop), '0.0.0.0', 8888)
+        try:
+            server = await loop.create_server(lambda: EchoServerHandler(server=self, loop=loop), '0.0.0.0', 8888)
+        except OSError as e:
+            logging.error("Could not create server: {}".format(e))
+            raise KeyboardInterrupt
+
         logging.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
         async with server:
             # use asyncio.gather to run both tasks in parallel
-            await asyncio.gather(server.serve_forever(), self.echo())
+            await asyncio.gather(server.serve_forever(), self.check_clients_keepalive())
 
 
 async def main():
