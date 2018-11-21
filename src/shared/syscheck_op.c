@@ -500,7 +500,7 @@ const char *get_user(__attribute__((unused)) const char *path, int uid, __attrib
     return user ? user->pw_name : "";
 }
 
-const char* get_group(int gid) {
+const char *get_group(int gid) {
     struct group *group = getgrgid(gid);
     return group ? group->gr_name : "";
 }
@@ -615,7 +615,7 @@ end:
         LocalFree(pSD);
     }
 
-    result = wstr_replace(&AcctName, " ", "\\ ");
+    result = wstr_replace((const char*)&AcctName, " ", "\\ ");
 
     return result;
 }
