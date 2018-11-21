@@ -62,6 +62,7 @@ const char *vu_dist_tag[] = {
     "DEBIAN",
     "REDHAT",
     "CENTOS",
+    "AMAZLINUX",
     "WINDOWS",
     "MACOS",
     "PRECISE",
@@ -93,6 +94,7 @@ const char *vu_dist_ext[] = {
     "Debian",
     "Red Hat",
     "CentOS",
+    "Amazon Linux",
     "Microsoft Windows",
     "Apple Mac OS",
     "Ubuntu Precise",
@@ -2473,6 +2475,9 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
             } else {
                 dist_error = DIS_CENTOS;
             }
+            agent_dist = DIS_REDHAT;
+        } else if (strcasestr(os_name, vu_dist_ext[DIS_AMAZL])) {
+            agent_os = vu_dist_tag[DIS_RHEL7];
             agent_dist = DIS_REDHAT;
         } else {
             // Operating system not supported in any of its versions

@@ -71,6 +71,7 @@ typedef enum distribution{
     DIS_DEBIAN,
     DIS_REDHAT,
     DIS_CENTOS,
+    DIS_AMAZL,
     DIS_WINDOWS,
     DIS_MACOS,
     // Ubuntu versions
