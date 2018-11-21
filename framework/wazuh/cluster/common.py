@@ -191,16 +191,25 @@ class Handler(asyncio.Protocol):
         Sends a file to peer.
 
         :param filename: File path to send
-        :return: whether sending was successful or not
+        :return: response message.
         """
         response = await self.send_request(command=b'new_file', data=filename.encode())
+        if response.startswith(b"Error"):
+            return response
+
         file_hash = hashlib.sha256()
         with open(filename, 'rb') as f:
             for chunk in iter(lambda: f.read(self.request_chunk), b''):
                 response = await self.send_request(command=b'file_upd', data=chunk)
+                if response.startswith(b"Error"):
+                    return response
                 file_hash.update(chunk)
+
         response = await self.send_request(command=b'file_end', data=file_hash.digest())
-        return b'ok ', b'File sent'
+        if response.startswith(b"Error"):
+            return response
+
+        return b'File sent'
 
     async def send_string(self, my_str):
         """
@@ -212,9 +221,15 @@ class Handler(asyncio.Protocol):
         """
         total = len(my_str)
         response = await self.send_request(command=b'new_str', data=str(total).encode())
+        if response.startswith("Error"):
+            return response
+
         for c in range(0, total, self.request_chunk):
             response = await self.send_request(command=b'str_upd', data=my_str[c:c + self.request_chunk])
-        return b"ok", b"String correctly sent"
+            if response.startswith("Error"):
+                return response
+
+        return b"String correctly sent"
 
     def data_received(self, message):
         """
@@ -324,12 +339,12 @@ class Handler(asyncio.Protocol):
         :return: Message
         """
         self.in_file['fd'].close()
-        if self.in_file['checksum'].digest() == data:
+        if self.in_file['checksum'].digest() != data:
             self.in_file = {'filename': '', 'fd': None, 'checksum': None}
             return b"ok ", b"File received correctly"
         else:
             self.in_file = {'filename': '', 'fd': None, 'checksum': None}
-            return b"err ", b"File wasn't correctly received"
+            return b"err ", b"File wasn't correctly received. Checksums aren't equal."
 
     def receive_str(self, data):
         """
@@ -369,7 +384,7 @@ class Handler(asyncio.Protocol):
         :param data: error message from peer
         :return: Nothing
         """
-        return b"The request could not be correctly processed: " + data
+        return b"Error processing request: " + data
 
 
 def asyncio_exception_handler(loop, context):
