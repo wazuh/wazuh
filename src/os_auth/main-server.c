@@ -157,7 +157,7 @@ int main(int argc, char **argv)
     const char *dir  = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     char buf[4096 + 1];
-    struct sockaddr_in _nc;
+    struct sockaddr_storage _nc;
     struct timeval timeout;
     socklen_t _ncl;
     pthread_t thread_dispatcher;
@@ -451,7 +451,7 @@ int main(int argc, char **argv)
     }
 
     /* Connect via TCP */
-    remote_sock = OS_Bindporttcp(config.port, NULL, 0);
+    remote_sock = OS_Bindporttcp(config.port, NULL, config.flags.ipv6);
     if (remote_sock <= 0) {
         merror(BIND_ERROR, config.port, errno, strerror(errno));
         exit(1);
@@ -561,7 +561,7 @@ int main(int argc, char **argv)
                 close(client_sock);
             } else {
                 pool[pool_i].socket = client_sock;
-                pool[pool_i].addr = _nc.sin_addr;
+                pool[pool_i].addr = _nc;
                 forward(pool_i);
                 w_cond_signal(&cond_new_client);
             }
@@ -629,7 +629,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         if (!running)
             break;
 
-        strncpy(srcip, inet_ntoa(client.addr), IPSIZE - 1);
+        strncpy(srcip, OS_GetAddress(client.addr), IPSIZE - 1);
         ssl = SSL_new(ctx);
         SSL_set_fd(ssl, client.socket);
         ret = SSL_accept(ssl);

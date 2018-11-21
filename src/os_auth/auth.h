@@ -51,7 +51,7 @@ extern BIO *bio_err;
 
 struct client {
     int socket;
-    struct in_addr addr;
+    struct sockaddr_storage addr;
 };
 
 struct keynode {

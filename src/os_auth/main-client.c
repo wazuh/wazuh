@@ -94,6 +94,7 @@ int main(int argc, char **argv)
     BIO *sbio;
     bio_err = 0;
     int debug_level = 0;
+    int ipv6 = 0;
 
 #ifdef WIN32
     WSADATA wsaData;
@@ -107,7 +108,7 @@ int main(int argc, char **argv)
 
     while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:a:I:i"
 #ifndef WIN32
-    "g:D:"
+    "g:D:46"
 #endif
     )) != -1) {
         switch (c) {
@@ -207,6 +208,14 @@ int main(int argc, char **argv)
             case 'i':
                 use_src_ip = 1;
                 break;
+#ifndef WIN32
+            case '4':
+                ipv6 = 0;
+                break;
+            case '6':
+                ipv6 = 1;
+                break;
+#endif
             default:
                 help_agent_auth();
                 break;
@@ -326,7 +335,7 @@ int main(int argc, char **argv)
     }
 
     /* Connect via TCP */
-    sock = OS_ConnectTCP(port, ipaddress, 0);
+    sock = OS_ConnectTCP(port, ipaddress, ipv6);
     if (sock <= 0) {
         merror("Unable to connect to %s:%d", ipaddress, port);
         free(buf);
