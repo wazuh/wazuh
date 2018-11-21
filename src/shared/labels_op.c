@@ -260,14 +260,14 @@ char * parse_environment_labels(const wlabel_t label) {
 
             os_info = getunameJSON();
             field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_name"));
-            #if !defined(__MACH__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
+            #ifdef WIN32
                 cJSON_Delete(os_info);
             #endif
 
         } else if (!strcmp(var, "os.version")) {
             os_info = getunameJSON();
             field = cJSON_Print(cJSON_GetObjectItem(os_info,"os_version"));
-            #if !defined(__MACH__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
+            #ifdef WIN32
                 cJSON_Delete(os_info);
             #endif
 
@@ -491,7 +491,7 @@ char * parse_environment_labels(const wlabel_t label) {
         }else if (!strcmp(var,"hostname")) {
           os_info = getunameJSON();
           field = cJSON_Print(cJSON_GetObjectItem(os_info,"hostname"));
-          #if !defined(__MACH__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)
+          #ifdef WIN32
             cJSON_Delete(os_info);
           #endif
 
