@@ -21,7 +21,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
     } else {
         pl = overwrite;
     }
-    
+
     if (reg == 1) {
 #ifdef WIN32
         if (syscheck->registry == NULL) {
@@ -786,6 +786,10 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     syscheck_config *syscheck;
     syscheck = (syscheck_config *)configp;
     unsigned int nodiff_size = 0;
+
+    if (syscheck->disabled == SK_CONF_UNPARSED) {
+        syscheck->disabled = SK_CONF_UNDEFINED;
+    }
 
     while (node && node[i]) {
         if (!node[i]->element) {

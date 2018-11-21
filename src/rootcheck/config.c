@@ -30,6 +30,14 @@ int Read_Rootcheck_Config(const char *cfgfile)
     ReadConfig(modules, AGENTCONFIG, &rootcheck, NULL);
 #endif
 
+    switch (rootcheck.disabled) {
+    case RK_CONF_UNPARSED:
+        rootcheck.disabled = 1;
+        break;
+    case RK_CONF_UNDEFINED:
+        rootcheck.disabled = 0;
+    }
+
     return (0);
 }
 

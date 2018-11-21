@@ -50,6 +50,9 @@
 #define WD_IGNORE_REST      0x0000008
 #endif
 
+#define SK_CONF_UNPARSED -2
+#define SK_CONF_UNDEFINED -1
+
 //Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
 
