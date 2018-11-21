@@ -97,6 +97,9 @@ int main(int argc, char **argv)
 
 #ifdef WIN32
     WSADATA wsaData;
+
+    // Move to the directory where this executable lives in
+    w_ch_exec_dir();
 #endif
 
     /* Set the name */
@@ -256,6 +259,7 @@ int main(int argc, char **argv)
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
         merror_exit("WSAStartup() failed");
     }
+
 #endif /* WIN32 */
 
     /* Start up message */
