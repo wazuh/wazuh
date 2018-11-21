@@ -21,7 +21,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
     } else {
         pl = overwrite;
     }
-    
+
     if (reg == 1) {
 #ifdef WIN32
         if (syscheck->registry == NULL) {
@@ -787,15 +787,11 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     syscheck = (syscheck_config *)configp;
     unsigned int nodiff_size = 0;
 
-    /* If no options are defined, disable it */
-    if (!node) {
-        syscheck->disabled = 1;
-        return 0;
-    } else {
-        syscheck->disabled = 0;
+    if (syscheck->disabled == SK_CONF_UNPARSED) {
+        syscheck->disabled = SK_CONF_UNDEFINED;
     }
 
-    while (node[i]) {
+    while (node && node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
             return (OS_INVALID);
@@ -1221,6 +1217,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_whodata_options) == 0) {
 
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                i++;
                 continue;
             }
 

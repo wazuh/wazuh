@@ -11,7 +11,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Change errors messages to descriptive warnings in Syscheck when a files is not reachable. ([#1730](https://github.com/wazuh/wazuh/pull/1730))
 - Add default values to global options to let the manager start. ([#1894](https://github.com/wazuh/wazuh/pull/1894))
+- Improve Remoted performance by reducing interaction between threads. ([#1902](https://github.com/wazuh/wazuh/pull/1902))
 
 ### Fixed
 
@@ -24,9 +26,21 @@ All notable changes to this project will be documented in this file.
 - Fixed id's and description of FIM alerts. ([#1891](https://github.com/wazuh/wazuh/pull/1891))
 - Fix log flooding by Logcollector when monitored files disappear. ([#1893](https://github.com/wazuh/wazuh/pull/1893))
 - Let the Windows agent reset the random generator context if it's corrupt. ([#1898](https://github.com/wazuh/wazuh/pull/1898))
+- Fix race condition hazard in Remoted when handling control messages. ([#1902](https://github.com/wazuh/wazuh/pull/1902))
 
 
 ## [v3.7.0] - 2018-11-10
+
+### Added
+
+### Changed
+
+### Fixed
+
+ - Fix bug configuring empty blocks in FIM. ([#1897](https://github.com/wazuh/wazuh/pull/1897))
+
+
+## [v3.7.0]
 
 ### Added
 
