@@ -337,6 +337,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     char s_perm[16];
     char s_mtime[16];
     char s_inode[16];
+    char *username;
 
     if(sum->perm) {
         snprintf(s_perm, sizeof(s_perm), "%d", sum->perm);
@@ -346,14 +347,18 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     snprintf(s_mtime, sizeof(s_mtime), "%ld", sum->mtime);
     snprintf(s_inode, sizeof(s_inode), "%ld", sum->inode);
 
-    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
+    username = wstr_replace((const char*)sum->uname, " ", "\\ ");
+
+    // size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!changes:date_alert
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^
+    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%d:%ld",
             sum->size,
             s_perm,
             sum->uid,
             sum->gid,
             sum->md5,
             sum->sha1,
-            sum->uname? sum->uname : "",
+            sum->uname? username : "",
             sum->gname? sum->gname : "",
             sum->mtime? s_mtime : "",
             sum->inode? s_inode : "",
