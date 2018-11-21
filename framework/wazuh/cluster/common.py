@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import logging
+import os
 import random
 import struct
 import traceback
@@ -123,7 +124,7 @@ class Handler(asyncio.Protocol):
         """
         cmd_len = len(command)
         if cmd_len > self.cmd_len:
-            raise Exception("Length of command '{}' exceeds limit ({}/{})".format(command, cmd_len, self.cmd_len))
+            return b"Length of command '" + command + b"' exceeds limit."
 
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
@@ -173,8 +174,7 @@ class Handler(asyncio.Protocol):
         :return: response from peer.
         """
         if len(data) > self.request_chunk:
-            raise Exception("Max msg length exceeded. Maximum allowed: {} / Message length: {}".format(
-                self.request_chunk, len(data)))
+            return b"Error: Max msg length exceeded."
 
         response = Response()
         msg_counter = self.next_counter()
@@ -190,23 +190,29 @@ class Handler(asyncio.Protocol):
         :param filename: File path to send
         :return: response message.
         """
-        response = await self.send_request(command=b'new_file', data=filename.encode())
-        if response.startswith(b"Error"):
-            return response
+        try:
+            if not os.path.exists(filename):
+                return "File {} not found.".format(filename).encode()
 
-        file_hash = hashlib.sha256()
-        with open(filename, 'rb') as f:
-            for chunk in iter(lambda: f.read(self.request_chunk), b''):
-                response = await self.send_request(command=b'file_upd', data=chunk)
-                if response.startswith(b"Error"):
-                    return response
-                file_hash.update(chunk)
+            response = await self.send_request(command=b'new_file', data=filename.encode())
+            if response.startswith(b"Error"):
+                return response
 
-        response = await self.send_request(command=b'file_end', data=file_hash.digest())
-        if response.startswith(b"Error"):
-            return response
+            file_hash = hashlib.sha256()
+            with open(filename, 'rb') as f:
+                for chunk in iter(lambda: f.read(self.request_chunk), b''):
+                    response = await self.send_request(command=b'file_upd', data=chunk)
+                    if response.startswith(b"Error"):
+                        return response
+                    file_hash.update(chunk)
 
-        return b'File sent'
+            response = await self.send_request(command=b'file_end', data=file_hash.digest())
+            if response.startswith(b"Error"):
+                return response
+
+            return b'File sent'
+        except Exception as e:
+            return str(e).encode()
 
     async def send_string(self, my_str: bytes) -> bytes:
         """
@@ -216,17 +222,20 @@ class Handler(asyncio.Protocol):
         :param chunk: number of elements each slide will have
         :return: whether sending was successful or not.
         """
-        total = len(my_str)
-        response = await self.send_request(command=b'new_str', data=str(total).encode())
-        if response.startswith("Error"):
-            return response
-
-        for c in range(0, total, self.request_chunk):
-            response = await self.send_request(command=b'str_upd', data=my_str[c:c + self.request_chunk])
-            if response.startswith("Error"):
+        try:
+            total = len(my_str)
+            response = await self.send_request(command=b'new_str', data=str(total).encode())
+            if response.startswith(b"Error"):
                 return response
 
-        return b"String correctly sent"
+            for c in range(0, total, self.request_chunk):
+                response = await self.send_request(command=b'str_upd', data=my_str[c:c + self.request_chunk])
+                if response.startswith(b"Error"):
+                    return response
+
+            return b"String correctly sent"
+        except Exception as e:
+            return str(e).encode()
 
     def data_received(self, message: bytes) -> None:
         """
