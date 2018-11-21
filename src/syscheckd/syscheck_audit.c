@@ -351,6 +351,43 @@ int audit_delete_rule(const char *path, const char *key) {
 }
 
 
+// Check if exists rule '-a task,never'
+int audit_check_lock_output(void) {
+    int retval;
+    int audit_handler;
+
+    int flags = AUDIT_FILTER_TASK;
+
+    audit_handler = audit_open();
+    if (audit_handler < 0) {
+        return (-1);
+    }
+
+    struct audit_rule_data *myrule = NULL;
+    myrule = malloc(sizeof(struct audit_rule_data));
+    memset(myrule, 0, sizeof(struct audit_rule_data));
+
+    retval = audit_add_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
+
+    if (retval == -17) {
+        audit_rule_free_data(myrule);
+        audit_close(audit_handler);
+        return 1;
+    } else {
+        // Delete if it was inserted
+        retval = audit_delete_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
+        audit_rule_free_data(myrule);
+        audit_close(audit_handler);
+        if (retval < 0) {
+            mdebug2("audit_delete_rule_data = (%i) %s", retval, audit_errno_to_name(abs(retval)));
+            merror("Error removing test rule. Audit output is blocked.");
+            return 1;
+        }
+        return 0;
+    }
+}
+
+
 int add_audit_rules_syscheck(void) {
     unsigned int i = 0;
     unsigned int rules_added = 0;
@@ -504,6 +541,17 @@ int audit_init(void) {
     // Initialize Audit socket
     static int audit_socket;
     audit_socket = init_auditd_socket();
+
+    // Check if there's a blockig rule
+    if (audit_check_lock_output()) {
+        mwarn("Audit rule '-a never,task' is blocking the audit output. Whodata cannot start.");
+        // Send alert
+        char msg_alert[512 + 1];
+        snprintf(msg_alert, 512, "ossec: Audit: Rule is blocking the audit output: Whodata cannot start");
+        SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+        return (-1);
+    }
+
 
     if (audit_socket >= 0) {
 
