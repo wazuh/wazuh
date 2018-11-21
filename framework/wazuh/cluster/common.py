@@ -4,6 +4,7 @@ import logging
 import random
 import struct
 import traceback
+from typing import Tuple, Dict
 
 
 class Response:
@@ -17,7 +18,7 @@ class Response:
         # Response content
         self.content = None
 
-    async def read(self):
+    async def read(self) -> bytes:
         await self.received_response.wait()
         return self.content
 
@@ -38,7 +39,7 @@ class InBuffer:
         self.cmd = ''  # request's command in header
         self.counter = 0  # request's counter in the box
 
-    def get_info_from_header(self, header, header_format, header_size):
+    def get_info_from_header(self, header: bytes, header_format: str, header_size: int) -> bytes:
         """
         Gets information contained in the request's header
 
@@ -52,7 +53,7 @@ class InBuffer:
         self.payload = bytearray(self.total)
         return header[header_size:]
 
-    def receive_data(self, data):
+    def receive_data(self, data: bytes) -> bytes:
         """
         Adds received data to payload bytearray
 
@@ -96,7 +97,7 @@ class Handler(asyncio.Protocol):
         # stores message to be sent
         self.out_msg = bytearray(self.header_len + self.request_chunk)
 
-    def push(self, message):
+    def push(self, message: bytes):
         """
         Sends a message to peer
 
@@ -104,14 +105,14 @@ class Handler(asyncio.Protocol):
         """
         self.transport.write(message)
 
-    def next_counter(self):
+    def next_counter(self) -> int:
         """
         Increases the message ID counter
         """
         self.counter = (self.counter + 1) % (2 ** 32)
         return self.counter
 
-    def msg_build(self, command, counter, data):
+    def msg_build(self, command: bytes, counter: int, data: bytes) -> bytes:
         """
         Builds a message with header + payload
 
@@ -120,10 +121,6 @@ class Handler(asyncio.Protocol):
         :param data: data to send
         :return: built message
         """
-        # make sure payload is bytes
-        if not isinstance(data, bytes):
-            raise Exception("Payload for request '{}' must be bytes".format(command))
-
         cmd_len = len(command)
         if cmd_len > self.cmd_len:
             raise Exception("Length of command '{}' exceeds limit ({}/{})".format(command, cmd_len, self.cmd_len))
@@ -135,7 +132,7 @@ class Handler(asyncio.Protocol):
 
         return self.out_msg[:self.header_len + len(data)]
 
-    def msg_parse(self):
+    def msg_parse(self) -> bool:
         """
         Parses an incoming message
 
@@ -154,7 +151,7 @@ class Handler(asyncio.Protocol):
         else:
             return False
 
-    def get_messages(self):
+    def get_messages(self) -> Tuple[bytes, int, bytes]:
         parsed = self.msg_parse()
 
         while parsed:
@@ -167,7 +164,7 @@ class Handler(asyncio.Protocol):
                 break
             parsed = self.msg_parse()
 
-    async def send_request(self, command, data):
+    async def send_request(self, command: bytes, data: bytes) -> bytes:
         """
         Sends a request to peer
 
@@ -186,7 +183,7 @@ class Handler(asyncio.Protocol):
         response_data = await response.read()
         return response_data
 
-    async def send_file(self, filename):
+    async def send_file(self, filename: str) -> bytes:
         """
         Sends a file to peer.
 
@@ -211,7 +208,7 @@ class Handler(asyncio.Protocol):
 
         return b'File sent'
 
-    async def send_string(self, my_str):
+    async def send_string(self, my_str: bytes) -> bytes:
         """
         Sends a large string to peer.
 
@@ -231,7 +228,7 @@ class Handler(asyncio.Protocol):
 
         return b"String correctly sent"
 
-    def data_received(self, message):
+    def data_received(self, message: bytes) -> None:
         """
         Handles received data from other peer.
 
@@ -244,7 +241,7 @@ class Handler(asyncio.Protocol):
             else:
                 self.dispatch(command, counter, payload)
 
-    def dispatch(self, command, counter, payload):
+    def dispatch(self, command: bytes, counter: int, payload: bytes) -> None:
         """
         Processes a received message and sends a response
 
@@ -256,11 +253,11 @@ class Handler(asyncio.Protocol):
             command, payload = self.process_request(command, payload)
         except Exception as e:
             logging.error("Error processing request '{}': {}".format(command, e))
-            command, payload = b'err ', str(e).encode()
+            command, payload = b'err', str(e).encode()
 
         self.push(self.msg_build(command, counter, payload))
 
-    def process_request(self, command, data):
+    def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines commands for both master and clients.
 
@@ -283,7 +280,7 @@ class Handler(asyncio.Protocol):
         else:
             return self.process_unknown_cmd(command)
 
-    def process_response(self, command, payload):
+    def process_response(self, command: bytes, payload: bytes) -> bytes:
         """
         Defines response commands for both master and client
 
@@ -298,16 +295,16 @@ class Handler(asyncio.Protocol):
         else:
             return b"Unkown response command received: " + command
 
-    def echo(self, data):
+    def echo(self, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines command "echo"
 
         :param data: message to echo
         :return: message to send
         """
-        return b'ok ', data
+        return b'ok', data
 
-    def receive_file(self, data):
+    def receive_file(self, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines behaviour of command "new_file". This behaviour is to create a file descriptor to store the incoming
         file.
@@ -315,12 +312,12 @@ class Handler(asyncio.Protocol):
         :param data: File name
         :return: Message
         """
-        self.in_file['fd'] = open(data, 'wb+')
+        self.in_file['fd'] = open(data, 'wb')
         self.in_file['filename'] = data
         self.in_file['checksum'] = hashlib.sha256()
         return b"ok ", b"Ready to receive new file"
 
-    def update_file(self, data):
+    def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines behaviour of command "file_upd" which consists in updating file contents.
 
@@ -329,9 +326,9 @@ class Handler(asyncio.Protocol):
         """
         self.in_file['fd'].write(data)
         self.in_file['checksum'].update(data)
-        return b"ok ", b"File updated"
+        return b"ok", b"File updated"
 
-    def end_file(self, data):
+    def end_file(self, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines behaviour of command "end_file" which consists in closing file descriptor and check its md5.
 
@@ -341,12 +338,12 @@ class Handler(asyncio.Protocol):
         self.in_file['fd'].close()
         if self.in_file['checksum'].digest() != data:
             self.in_file = {'filename': '', 'fd': None, 'checksum': None}
-            return b"ok ", b"File received correctly"
+            return b"ok", b"File received correctly"
         else:
             self.in_file = {'filename': '', 'fd': None, 'checksum': None}
-            return b"err ", b"File wasn't correctly received. Checksums aren't equal."
+            return b"err", b"File wasn't correctly received. Checksums aren't equal."
 
-    def receive_str(self, data):
+    def receive_str(self, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines behaviour of command "recv_str". This behaviour is to append to resize a bytearray with the string size.
 
@@ -357,7 +354,7 @@ class Handler(asyncio.Protocol):
         self.in_str.payload = bytearray(self.in_str.total)
         return b"ok", b"Ready to receive string"
 
-    def str_upd(self, data):
+    def str_upd(self, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines behaviour of command "str_upd". This behaviour is to update string contents.
 
@@ -368,16 +365,16 @@ class Handler(asyncio.Protocol):
         logging.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
         return b"ok", b"Chunk received"
 
-    def process_unknown_cmd(self, command):
+    def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:
         """
         Defines message when an unknown command is received
 
         :param command: command received from peer
         :return: message to send
         """
-        return b'err ', "unknown command '{}'".format(command).encode()
+        return b'err', "unknown command '{}'".format(command).encode()
 
-    def process_error_from_peer(self, data):
+    def process_error_from_peer(self, data: bytes) -> bytes:
         """
         Handles errors in requests
 
@@ -387,7 +384,7 @@ class Handler(asyncio.Protocol):
         return b"Error processing request: " + data
 
 
-def asyncio_exception_handler(loop, context):
+def asyncio_exception_handler(loop, context: Dict):
     """
     Exception handler used in the protocol. Asyncio's default raises an exception and closes the transport.
     The desired behaviour in this case is just to show the error in the logs.

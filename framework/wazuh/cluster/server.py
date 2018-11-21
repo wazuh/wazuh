@@ -4,6 +4,7 @@ import time
 import common
 import logging
 import argparse
+from typing import Tuple
 
 
 class EchoServerHandler(common.Handler):
@@ -28,7 +29,7 @@ class EchoServerHandler(common.Handler):
         self.transport = transport
         self.name = None
 
-    def process_request(self, command, data):
+    def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines commands for servers
 
@@ -43,10 +44,10 @@ class EchoServerHandler(common.Handler):
         else:
             return super().process_request(command, data)
 
-    def echo_master(self, data):
+    def echo_master(self, data: bytes) -> Tuple[bytes, bytes]:
         return b'ok-m ', data
 
-    def hello(self, data):
+    def hello(self, data: bytes) -> Tuple[bytes, bytes]:
         """
         Adds a client's data to global clients dictionary
 
@@ -62,7 +63,7 @@ class EchoServerHandler(common.Handler):
             self.name = data
             return b'ok', 'Client {} added'.format(data).encode()
 
-    def process_response(self, command, payload):
+    def process_response(self, command: bytes, payload: bytes) -> bytes:
         """
         Defines response commands for servers
 

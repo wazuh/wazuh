@@ -1,4 +1,5 @@
 import asyncio
+from typing import Tuple
 import uvloop
 import common
 import logging
@@ -11,7 +12,7 @@ class EchoClientProtocol(common.Handler):
     Defines a echo client protocol
     """
 
-    def __init__(self, loop, on_con_lost, name):
+    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str):
         """
         Class constructor
 
@@ -37,16 +38,18 @@ class EchoClientProtocol(common.Handler):
         """
         Defines process of closing connection with the server
 
-        :param exc:
-        :return:
+        :param exc: either an exception object or None. The latter means a regular EOF is received, or the connection
+                    was aborted or closed by this side of the connection.
         """
-        logging.info('The server closed the connection')
+        logging.info('The server closed the connection' if exc is None
+                     else "Connection closed due to an unhandled error")
+
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
         for task in asyncio.Task.all_tasks():
             task.cancel()
 
-    def process_response(self, command, payload):
+    def process_response(self, command: bytes, payload: bytes) -> bytes:
         """
         Defines response commands for clients
 
@@ -59,7 +62,7 @@ class EchoClientProtocol(common.Handler):
         else:
             return super().process_response(command, payload)
 
-    def process_request(self, command, data):
+    def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines commands for clients
 
@@ -72,7 +75,7 @@ class EchoClientProtocol(common.Handler):
         else:
             return super().process_request(command, data)
 
-    def echo_client(self, data):
+    def echo_client(self, data: bytes) -> Tuple[bytes, bytes]:
         return b'ok-c', data
 
     async def client_echo(self):
