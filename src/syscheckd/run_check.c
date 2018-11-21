@@ -318,7 +318,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     char str_owner[50], str_group[50];
 #else
     char *sid = NULL;
-    const char *user;
+    char *user;
 #endif
 
     /* Clean sums */

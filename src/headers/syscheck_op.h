@@ -149,7 +149,7 @@ void normalize_path(char *path);
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
-const char* get_group(int gid);
+const char *get_group(int gid);
 
 #else
 

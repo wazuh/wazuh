@@ -185,7 +185,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifndef WIN32
     char str_owner[50], str_group[50];
 #else
-    const char *user;
+    char *user;
     char *sid = NULL;
 #endif
 
