@@ -43,7 +43,8 @@ class EchoClientProtocol(common.Handler):
         logging.info('The server closed the connection')
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
-
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
 
     def process_response(self, command, payload):
         """
@@ -134,30 +135,34 @@ async def main():
 
     while True:
         try:
-            break
             transport, protocol = await loop.create_connection(lambda: EchoClientProtocol(loop, on_con_lost, args.name),
                                                                '172.17.0.101', 8888)
         except ConnectionRefusedError:
             logging.error("Could not connect to server. Trying again in 10 seconds.")
             await asyncio.sleep(10)
+            continue
 
-    if args.performance_test:
-        task, task_args = protocol.performance_test_client, (args.performance_test,)
-    elif args.concurrency_test:
-        task, task_args = protocol.concurrency_test_client, (args.concurrency_test,)
-    elif args.send_file:
-        task, task_args = protocol.send_file_task, (args.send_file,)
-    elif args.send_string:
-        task, task_args = protocol.send_string_task, (args.send_string,)
-    else:
-        task, task_args = protocol.client_echo, tuple()
+        if args.performance_test:
+            task, task_args = protocol.performance_test_client, (args.performance_test,)
+        elif args.concurrency_test:
+            task, task_args = protocol.concurrency_test_client, (args.concurrency_test,)
+        elif args.send_file:
+            task, task_args = protocol.send_file_task, (args.send_file,)
+        elif args.send_string:
+            task, task_args = protocol.send_string_task, (args.send_string,)
+        else:
+            task, task_args = protocol.client_echo, tuple()
 
-    # Wait until the protocol signals that the connection
-    # is lost and close the transport.
-    try:
-        await asyncio.gather(on_con_lost, task(*task_args))
-    finally:
-        transport.close()
+        # Wait until the protocol signals that the connection
+        # is lost and close the transport.
+        try:
+            await asyncio.gather(on_con_lost, task(*task_args))
+        finally:
+            transport.close()
+
+        logging.info("The connection has ben closed. Reconnecting in 10 seconds.")
+        await asyncio.sleep(10)
+
 
 try:
     while True:
