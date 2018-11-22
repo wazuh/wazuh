@@ -50,7 +50,6 @@ static pthread_mutex_t win_el_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
 
-
 static char *rand_keepalive_str(char *dst, int size)
 {
     static const char text[] = "abcdefghijklmnopqrstuvwxyz"
@@ -159,9 +158,18 @@ void LogCollectorStart()
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
-        }
+        } else if (!strcmp(current->logformat, "eventchannel-json")) {
+#ifdef WIN32
 
-        else if (strcmp(current->logformat, "command") == 0) {
+#ifdef EVENTCHANNEL_SUPPORT
+            minfo(READING_EVTLOG, current->file);
+            win_start_eventchannel_json(current->file, current->future, current->query);
+#else
+            mwarn("eventchannel not available on this version of OSSEC");
+#endif
+
+#endif
+        } else if (strcmp(current->logformat, "command") == 0) {
             current->file = NULL;
             current->fp = NULL;
             current->size = 0;

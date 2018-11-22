@@ -63,6 +63,9 @@ typedef struct _os_channel {
     char bookmark_filename[OS_MAXSTR];
 } os_channel;
 
+static char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
+static EVT_HANDLE read_bookmark(os_channel *channel);
+static int update_bookmark(EVT_HANDLE evt, os_channel *channel);
 
 void free_event(os_event *event)
 {
@@ -789,6 +792,372 @@ void win_start_event_channel(char *evt_log, char future, char *query)
                               NULL,
                               channel,
                               (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
+                              EvtSubscribeToFutureEvents);
+    }
+
+    if (result == NULL) {
+        mferror(
+            "Could not EvtSubscribe() for (%s) which returned (%lu)",
+            channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    /* Success */
+    status = 1;
+
+cleanup:
+    free(wchannel);
+    free(wquery);
+    free(filtered_query);
+
+    if (status == 0) {
+        free(channel->bookmark_name);
+        free(channel);
+
+        if (result != NULL) {
+            EvtClose(result);
+        }
+    }
+
+    if (bookmark != NULL) {
+        EvtClose(bookmark);
+    }
+
+    return;
+}
+
+void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
+{
+    DWORD buffer_length = 0;
+    PEVT_VARIANT properties_values = NULL;
+    DWORD count = 0;
+    int result = 0;
+    int level_n;
+    int keywords_n; 
+    cJSON *json_event = cJSON_CreateObject();
+    cJSON *json_system_in = cJSON_CreateObject();
+    cJSON *json_eventdata_in = cJSON_CreateObject();
+    OS_XML xml;
+    XML_NODE node, child;
+    char *level = NULL, *keywords = NULL, *canal = NULL, *provider_name = NULL,
+        *my_msg = NULL, *str_i = NULL, *message = NULL, *category = NULL, *my_event = NULL;
+
+    result = EvtRender(NULL,
+                       evt,
+                       EvtRenderEventXml,
+                       0,
+                       NULL,
+                       &buffer_length,
+                       &count);
+    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+        mferror(
+            "Could not EvtRender() to determine buffer size for (%s) which returned (%lu)",
+            channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    if ((properties_values = (PEVT_VARIANT) malloc(buffer_length)) == NULL) {
+        mferror(
+            "Could not malloc() memory to process event (%s) which returned [(%d)-(%s)]",
+            channel->evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    if (!EvtRender(NULL,
+                   evt,
+                   EvtRenderEventXml,
+                   buffer_length,
+                   properties_values,
+                   &buffer_length,
+                   &count)) {
+        mferror(
+            "Could not EvtRender() for (%s) which returned (%lu)",
+            channel->evt_log,
+            GetLastError());
+        goto cleanup;
+    }
+
+    message = convert_windows_string((LPCWSTR) properties_values);
+
+    //merror("CADENA: %s", message);
+
+    if ((my_msg = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageEvent)) == NULL) {
+        mferror(
+            "Could not get message for (%s)",
+            channel->evt_log);
+    } else {
+        /* Format message */
+        win_format_event_string(my_msg);
+    }
+
+    if (OS_ReadXMLString(message, &xml) < 0){
+        merror("error xml file not read");
+    }
+
+    node = OS_GetElementsbyNode(&xml, NULL);
+    int i = 0, l=0;
+    if (node && node[i]) {
+
+        child = OS_GetElementsbyNode(&xml, node[i]);
+        int j = 0;
+
+        while (child && child[j]){
+           
+            XML_NODE child_attr = NULL;
+            child_attr = OS_GetElementsbyNode(&xml, child[j]);
+            int p = 0;
+
+            while (child_attr && child_attr[p]){
+
+                if(child[j]->element && !strcmp(child[j]->element, "System") && child_attr[p]->element){
+
+                    if (!strcmp(child_attr[p]->element, "Provider")) {
+                        while(child_attr[p]->attributes[l]){
+                            if (!strcmp(child_attr[p]->attributes[l], "Name")){
+                                os_strdup(child_attr[p]->values[l], provider_name);
+                                //merror("PROVIDER NAME: %s", provider_name);//////////////////////////////////////////////////////
+                                cJSON_AddStringToObject(json_system_in, "ProviderName", child_attr[p]->values[l]);
+                            } else if (!strcmp(child_attr[p]->attributes[l], "Guid")){
+                                cJSON_AddStringToObject(json_system_in, "ProviderGuid", child_attr[p]->values[l]);
+                            } else if (!strcmp(child_attr[p]->attributes[l], "EventSourceName")){
+                                cJSON_AddStringToObject(json_system_in, "EventSourceName", child_attr[p]->values[l]);
+                            }
+                            l++;
+                        }
+                    } else if (!strcmp(child_attr[p]->element, "TimeCreated")) {
+                        if(!strcmp(child_attr[p]->attributes[0], "SystemTime")){
+                            cJSON_AddStringToObject(json_system_in, "SystemTime", child_attr[p]->values[0]);
+                        }
+                    } else if (!strcmp(child_attr[p]->element, "Execution")) {
+                        if(!strcmp(child_attr[p]->attributes[0], "ProcessID")){
+                            cJSON_AddStringToObject(json_system_in, "ProcessID", child_attr[p]->values[0]);
+                        }
+                        if(!strcmp(child_attr[p]->attributes[1], "ThreadID")){
+                            cJSON_AddStringToObject(json_system_in, "ThreadID", child_attr[p]->values[1]);
+                        }
+                    } else if (!strcmp(child_attr[p]->element, "Channel")) {
+                        os_strdup(child_attr[p]->content, canal);
+                        cJSON_AddStringToObject(json_system_in, "Channel", child_attr[p]->content);
+                        if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
+                            cJSON_AddStringToObject(json_system_in, "UserID", child_attr[p]->values[0]);
+                        }
+                    } else if (!strcmp(child_attr[p]->element, "Security")) {
+                        if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
+                            cJSON_AddStringToObject(json_system_in, "Security UserID", child_attr[p]->values[0]);
+                        }
+                    } else {
+                        cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
+                    }
+                    
+                } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
+                    if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values){
+                        for (l = 0; child_attr[p]->attributes[l]; l++) {
+                            if (!strcmp(child_attr[p]->attributes[l], "Name")) {
+                                cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], child_attr[p]->content);
+                                break;
+                            } else {
+                                mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
+                            }
+                        }
+                    } else {
+                        cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, child_attr[p]->content);
+                    }
+                } else {
+                    mdebug1("Unexpected element (%s).", child[j]->element);
+                }
+                p++;
+            }
+ 
+            OS_ClearNode(child_attr);
+
+            j++;
+        }
+
+        OS_ClearNode(child);
+    }
+
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
+
+    level_n = strtol(level, &str_i, 10);
+    keywords_n = strtol(keywords, &str_i, 16);
+
+    switch (level_n) {
+        case WINEVENT_CRITICAL:
+            category = "CRITICAL";
+            break;
+        case WINEVENT_ERROR:
+            category = "ERROR";
+            break;
+        case WINEVENT_WARNING:
+            category = "WARNING";
+            break;
+        case WINEVENT_INFORMATION:
+            category = "INFORMATION";
+            break;
+        case WINEVENT_VERBOSE:
+            category = "DEBUG";
+            break;
+        case WINEVENT_AUDIT:
+            if (keywords_n & WINEVENT_AUDIT_FAILURE) {
+                category = "AUDIT_FAILURE";
+                break;
+            } else if (keywords_n & WINEVENT_AUDIT_SUCCESS) {
+                category = "AUDIT_SUCCESS";
+                break;
+            }
+            // fall through
+        default:
+            category = "Unknown";
+            break;
+    }
+
+    //cJSON_AddStringToObject(json_system_in, "Message", my_msg);////////////////////////////////////////////////
+    cJSON_AddStringToObject(json_system_in, "SeverityValue", category);
+
+    cJSON_AddItemToObject(json_event, "System", json_system_in);
+    cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
+    my_event = cJSON_PrintUnformatted(json_event);
+    //merror("JSON EVENT: %s", my_event);//////////////////////////////////////////////////////////
+    
+    if (SendMSG(logr_queue, my_event, "WinEvtChannelJSON", LOCALFILE_MQ) < 0) {
+        merror(QUEUE_SEND);
+    }
+
+    if (channel->bookmark_enabled) {
+        update_bookmark(evt, channel);
+    }
+
+cleanup:
+    free(properties_values);
+    free(level);
+    free(keywords);
+    free(canal);
+    free(provider_name);
+    free(my_msg);
+    free(str_i);
+    free(message);
+    free(category);
+    free(my_event);
+    OS_ClearNode(node);
+    OS_ClearNode(child);
+    OS_ClearXML(&xml);
+
+    return;
+}
+
+DWORD WINAPI event_channel_json_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel *channel, EVT_HANDLE evt)
+{
+    if (action == EvtSubscribeActionDeliver) {
+        send_channel_event_json(evt, channel);
+    }
+
+    return (0);
+}
+
+void win_start_eventchannel_json(char *evt_log, char future, char *query)
+{
+    wchar_t *wchannel = NULL;
+    wchar_t *wquery = NULL;
+    char *filtered_query = NULL;
+    os_channel *channel = NULL;
+    DWORD flags = EvtSubscribeToFutureEvents;
+    EVT_HANDLE bookmark = NULL;
+    EVT_HANDLE result = NULL;
+    int status = 0;
+
+    if ((channel = calloc(1, sizeof(os_channel))) == NULL) {
+        mferror(
+            "Could not calloc() memory for channel to start reading (%s) which returned [(%d)-(%s)]",
+            evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    channel->evt_log = evt_log;
+
+    /* Create copy of event log string */
+    if ((channel->bookmark_name = strdup(channel->evt_log)) == NULL) {
+        mferror(
+            "Could not strdup() event log name to start reading (%s) which returned [(%d)-(%s)]",
+            channel->evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    /* Replace '/' with '_' */
+    if (strchr(channel->bookmark_name, '/')) {
+        *(strrchr(channel->bookmark_name, '/')) = '_';
+    }
+
+    /* Convert evt_log to Windows string */
+    if ((wchannel = convert_unix_string(channel->evt_log)) == NULL) {
+        mferror(
+            "Could not convert_unix_string() evt_log for (%s) which returned [(%d)-(%s)]",
+            channel->evt_log,
+            errno,
+            strerror(errno));
+        goto cleanup;
+    }
+
+    /* Convert query to Windows string */
+    if (query) {
+        if ((filtered_query = filter_special_chars(query)) == NULL) {
+            mferror(
+                "Could not filter_special_chars() query for (%s) which returned [(%d)-(%s)]",
+                channel->evt_log,
+                errno,
+                strerror(errno));
+            goto cleanup;
+        }
+
+        if ((wquery = convert_unix_string(filtered_query)) == NULL) {
+            mferror(
+                "Could not convert_unix_string() query for (%s) which returned [(%d)-(%s)]",
+                channel->evt_log,
+                errno,
+                strerror(errno));
+            goto cleanup;
+        }
+    }
+
+    channel->bookmark_enabled = !future;
+
+    if (channel->bookmark_enabled) {
+        /* Create bookmark file name */
+        snprintf(channel->bookmark_filename,
+                 sizeof(channel->bookmark_filename), "%s/%s", BOOKMARKS_DIR,
+                 channel->bookmark_name);
+
+        /* Try to read existing bookmark */
+        if ((bookmark = read_bookmark(channel)) != NULL) {
+            flags = EvtSubscribeStartAfterBookmark;
+        }
+    }
+
+    result = EvtSubscribe(NULL,
+                          NULL,
+                          wchannel,
+                          wquery,
+                          bookmark,
+                          channel,
+                          (EVT_SUBSCRIBE_CALLBACK)event_channel_json_callback,
+                          flags);
+
+    if (result == NULL && flags == EvtSubscribeStartAfterBookmark) {
+        result = EvtSubscribe(NULL,
+                              NULL,
+                              wchannel,
+                              wquery,
+                              NULL,
+                              channel,
+                              (EVT_SUBSCRIBE_CALLBACK)event_channel_json_callback,
                               EvtSubscribeToFutureEvents);
     }
 
