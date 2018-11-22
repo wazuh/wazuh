@@ -396,16 +396,15 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
                     version_found = 3;
                 } else if (!isdigit(version_it[i])) {
                     if (i) {
+                        // There is a number to compare
                         version_found = 1;
                     } else {
                         if (isalpha(version_it[i]) && !isalpha(version_it[i + 1])) {
+                            // There is an individual letter to compare
                             version_found = 2;
                         } else {
-                            if (*version_it == '.') {
-                                version_it++;
-                            } else {
-                                for (; *version_it != '\0' && !isdigit(*version_it); version_it++);
-                            }
+                            // Skip characters that are not comparable
+                            for (; *version_it != '\0' && !isdigit(*version_it); version_it++);
                             i = 0;
                         }
                     }
@@ -419,16 +418,15 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
                     cversion_found = 3;
                 } else if (!isdigit(cversion_it[j])) {
                     if (j) {
+                        // There is a number to compare
                         cversion_found = 1;
                     } else {
                         if (isalpha(cversion_it[j]) && !isalpha(cversion_it[j + 1])) {
+                            // There is an individual letter to compare
                             cversion_found = 2;
                         } else {
-                            if (*cversion_it == '.') {
-                                cversion_it++;
-                            } else {
-                                for (; *cversion_it != '\0' && !isdigit(*cversion_it); cversion_it++);
-                            }
+                            // Skip characters that are not comparable
+                            for (; *cversion_it != '\0' && !isdigit(*cversion_it); cversion_it++);
                             j = 0;
                         }
                     }
@@ -463,8 +461,8 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
                 }
                 version_found = 0;
                 cversion_found = 0;
-                version_it = &version_it[i];
-                cversion_it = &cversion_it[j];
+                version_it = &version_it[i ? i : 1];
+                cversion_it = &cversion_it[j ? j : 1];
                 i = 0;
                 j = 0;
             }
