@@ -12,14 +12,14 @@ class EchoClientProtocol(common.Handler):
     Defines a echo client protocol
     """
 
-    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str):
+    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str):
         """
         Class constructor
 
         :param name: client's name
         :param loop: asyncio loop
         """
-        super().__init__()
+        super().__init__(fernet_key=fernet_key)
         self.loop = loop
         self.name = name
         self.on_con_lost = on_con_lost
@@ -140,6 +140,7 @@ async def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name', help="Client's name", type=str, dest='name', required=True)
+    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', required=True)
     parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
                         help="Perform a performance test against server. Number of bytes to test with.")
     parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
@@ -158,7 +159,8 @@ async def main():
 
     while True:
         try:
-            transport, protocol = await loop.create_connection(lambda: EchoClientProtocol(loop, on_con_lost, args.name),
+            transport, protocol = await loop.create_connection(lambda: EchoClientProtocol(loop, on_con_lost, args.name,
+                                                                                          args.key),
                                                                '172.17.0.101', 8888)
         except ConnectionRefusedError:
             logging.error("Could not connect to server. Trying again in 10 seconds.")

@@ -1,10 +1,12 @@
 import asyncio
+import base64
 import hashlib
 import logging
 import os
 import random
 import struct
 import traceback
+import cryptography.fernet
 from typing import Tuple, Dict
 
 
@@ -72,7 +74,12 @@ class Handler(asyncio.Protocol):
     Defines common methods for echo clients and servers
     """
 
-    def __init__(self):
+    def __init__(self, fernet_key: str):
+        """
+        Class constructor
+
+        :param fernet_key: 32 length string used as key to initialize cryptography's Fernet.
+        """
         super().__init__()
         # The counter is used to identify each message. If an incoming request has a known ID,
         # it is processed as a response
@@ -96,9 +103,11 @@ class Handler(asyncio.Protocol):
         # maximum message length to send in a single request
         self.request_chunk = 524288
         # stores message to be sent
-        self.out_msg = bytearray(self.header_len + self.request_chunk)
+        self.out_msg = bytearray(self.header_len + self.request_chunk*2)
         # defines timeout for each request in seconds
         self.request_timeout = 10
+        # object use to encrypt and decrypt requests
+        self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode()))
 
     def push(self, message: bytes):
         """
@@ -130,10 +139,11 @@ class Handler(asyncio.Protocol):
 
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
-        self.out_msg[:self.header_len] = struct.pack(self.header_format, len(data), counter, command)
-        self.out_msg[self.header_len:self.header_len + len(data)] = data
+        encrypted_data = self.my_fernet.encrypt(data)
+        self.out_msg[:self.header_len] = struct.pack(self.header_format, len(encrypted_data), counter, command)
+        self.out_msg[self.header_len:self.header_len + len(encrypted_data)] = encrypted_data
 
-        return self.out_msg[:self.header_len + len(data)]
+        return self.out_msg[:self.header_len + len(encrypted_data)]
 
     def msg_parse(self) -> bool:
         """
@@ -161,7 +171,9 @@ class Handler(asyncio.Protocol):
             # logging.debug("Received message: {} / {}".format(self.in_msg['received'], self.in_msg['total_size']))
             if self.in_msg.received == self.in_msg.total:
                 # the message was correctly received
-                yield self.in_msg.cmd, self.in_msg.counter, bytes(self.in_msg.payload)
+                # decrypt received message
+                decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload))
+                yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload
                 self.in_msg = InBuffer()
             else:
                 break

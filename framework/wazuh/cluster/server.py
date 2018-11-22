@@ -12,8 +12,8 @@ class EchoServerHandler(common.Handler):
     Defines echo server protocol
     """
 
-    def __init__(self, server, loop):
-        super().__init__()
+    def __init__(self, server, loop, fernet_key):
+        super().__init__(fernet_key=fernet_key)
         self.server = server
         self.loop = loop
         self.last_keepalive = time.time()
@@ -25,7 +25,6 @@ class EchoServerHandler(common.Handler):
         :param transport: socket to write data on
         """
         peername = transport.get_extra_info('peername')
-        logging.info("SSL cipher: {}".format(transport.get_extra_info('cipher')))
         logging.info('Connection from {}'.format(peername))
         self.transport = transport
         self.name = None
@@ -96,10 +95,11 @@ class EchoServer:
     Defines an asynchronous echo server.
     """
 
-    def __init__(self, performance_test, concurrency_test):
+    def __init__(self, performance_test, concurrency_test, fernet_key: str):
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
+        self.fernet_key = fernet_key
 
     async def check_clients_keepalive(self):
         """
@@ -149,7 +149,8 @@ class EchoServer:
         loop.set_exception_handler(common.asyncio_exception_handler)
 
         try:
-            server = await loop.create_server(lambda: EchoServerHandler(server=self, loop=loop), '0.0.0.0', 8888)
+            server = await loop.create_server(lambda: EchoServerHandler(server=self, loop=loop,
+                                                                        fernet_key=self.fernet_key), '0.0.0.0', 8888)
         except OSError as e:
             logging.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt
@@ -170,9 +171,11 @@ async def main():
     parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
                         help="Perform a concurrency test against all clients. Number of messages to send in a row to "
                              "each client.")
+    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', required=True)
+
     args = parser.parse_args()
 
-    server = EchoServer(args.performance_test, args.concurrency_test)
+    server = EchoServer(args.performance_test, args.concurrency_test, args.key)
     await server.start()
 
 
