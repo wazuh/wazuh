@@ -13,27 +13,11 @@
 
 #include "syscollector.h"
 
-typedef struct RawSMBIOSData
-{
-    BYTE    Used20CallingMethod;
-    BYTE    SMBIOSMajorVersion;
-    BYTE    SMBIOSMinorVersion;
-    BYTE    DmiRevision;
-    DWORD    Length;
-    BYTE    SMBIOSTableData[];
-} RawSMBIOSData, *PRawSMBIOSData;
-
-typedef struct SMBIOSStructureHeader {
-	BYTE Type;
-	BYTE FormattedAreaLength;
-	WORD Handle;
-} SMBIOSStructureHeader;
-
-static LPCTSTR priv = "SeDebugPrivilege";
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
+typedef int (*CallFunc2)(char **serial);
 
 #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
 #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
@@ -186,9 +170,9 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 	int privilege_enabled = 0;
 	
 	/* Enable debug privilege */
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle))
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hdle))
 	{
-		if (!set_token_privilege(hdle, priv, TRUE))
+		if (!set_token_privilege(hdle, SE_DEBUG_NAME, TRUE))
 		{
 			privilege_enabled = 1;
 		} else {
@@ -568,7 +552,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 	/* Disable debug privilege */
 	if (privilege_enabled)
 	{
-		if (set_token_privilege(hdle, priv, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process. Error '%ld'.", GetLastError());
+		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process. Error '%ld'.", GetLastError());
 	}
 	
 	if (hdle) CloseHandle(hdle);
@@ -1003,84 +987,6 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     RegCloseKey(program_key);
 }
 
-/* Reference: https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_2.6.0.pdf */
-char* get_smbios_baseboard_serial(BYTE* rawData, DWORD rawDataSize){
-	DWORD pos = 0;
-	SMBIOSStructureHeader *header;
-	char *serialNumber = NULL, *tmp = NULL;
-	BYTE serialNumberStrNum = 0, curStrNum = 0;
-	
-	if (rawData == NULL || !rawDataSize) return NULL;
-	
-	while(pos < rawDataSize)
-	{
-		/* Get structure header */
-		header = (SMBIOSStructureHeader*)(rawData + pos);
-		
-		/* Check if this SMBIOS structure represents the Base Board Information */
-		if (header->Type == 2)
-		{
-			/* Check if the Base Board Serial Number string is actually available */
-			if ((BYTE)rawData[pos + 7] > 0)
-			{
-				serialNumberStrNum = (BYTE)rawData[pos + 7];
-			} else {
-				/* No need to keep looking for the serial number */
-				break;
-			}
-		}
-		
-		/* Skip formatted area length */
-		pos += header->FormattedAreaLength;
-		
-		/* Reset current string number */
-		curStrNum = 0;
-		
-		/* Read unformatted area */
-		/* This area is formed by NULL-terminated strings */
-		/* The area itself ends with an additional NULL terminator */
-		while(pos < rawDataSize)
-		{
-			tmp = (char*)(rawData + pos);
-			
-			/* Check if we found a NULL terminator */
-			if (tmp[0] == 0)
-			{
-				/* Check if there's another NULL terminator */
-				/* If so, we reached the end of this structure */
-				if (tmp[1] == 0)
-				{
-					/* Prepare position for the next structure */
-					pos += 2;
-					break;
-				} else {
-					/* Only found a single NULL terminator */
-					/* Increase both the position and the pointer */
-					pos++;
-					tmp++;
-				}
-			}
-			
-			/* Increase current string number */
-			curStrNum++;
-			
-			/* Check if we reached the Serial Number */
-			if (header->Type == 2 && curStrNum == serialNumberStrNum)
-			{
-				serialNumber = strdup(tmp);
-				break;
-			}
-			
-			/* Prepare position to access the next string */
-			pos += (DWORD)strlen(tmp);
-		}
-		
-		if (serialNumber) break;
-	}
-	
-	return serialNumber;
-}
-
 void sys_hw_windows(const char* LOCATION){
     // Set timestamp
 
@@ -1118,49 +1024,51 @@ void sys_hw_windows(const char* LOCATION){
     cJSON_AddStringToObject(object, "timestamp", timestamp);
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
-    /* Base Board Serial Number variables */
+    /* Call get_baseboard_serial function through syscollector DLL */
     char *serial = NULL;
-	DWORD smbios_size = 0;
-	PRawSMBIOSData smbios = NULL;
-	
-	DWORD Signature = 0;
-	const BYTE byteSignature[] = { 'B', 'M', 'S', 'R' }; // "RSMB" (little endian)
-	memcpy(&Signature, byteSignature, 4);
-	
-	/* Get raw SMBIOS firmware table size */
-	/* Reference: https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/nf-sysinfoapi-getsystemfirmwaretable */
-	smbios_size = GetSystemFirmwareTable(Signature, 0, NULL, 0);
-	if (smbios_size)
-	{
-		smbios = (PRawSMBIOSData)MALLOC(smbios_size);
-		if (smbios)
-		{
-			/* Get raw SMBIOS firmware table */
-			if (GetSystemFirmwareTable(Signature, 0, smbios, smbios_size) == smbios_size)
-			{
-				/* Parse SMBIOS structures */
-				/* We need to look for a Type 2 SMBIOS structure (Base Board Information) */
-				serial = get_smbios_baseboard_serial(smbios->SMBIOSTableData, smbios_size);
-				if (!serial)
-				{
-					mtwarn(WM_SYS_LOGTAG, "Serial Number not available in SMBIOS firmware table.");
-					serial = strdup("unknown");
-				}
-			} else {
-				mtwarn(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
-				serial = strdup("unknown");
-			}
-			
-			FREE(smbios);
-		} else {
-			mtwarn(WM_SYS_LOGTAG, "Unable to allocate %lu byte(s) for the SMBIOS firmware table.", smbios_size);
-			serial = strdup("unknown");
-		}
-	} else {
-		mtwarn(WM_SYS_LOGTAG, "Unable to get raw SMBIOS firmware table size.");
-		serial = strdup("unknown");
-	}
-	
+    CallFunc2 _get_baseboard_serial;
+    HINSTANCE sys_library = LoadLibrary("syscollector_win_ext.dll");
+    if (sys_library == NULL)
+    {
+        DWORD error = GetLastError();
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
+        
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
+        
+        if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
+        
+        mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll: %s (%lu)", messageBuffer, error);
+        LocalFree(messageBuffer);
+        
+        serial = strdup("unknown");
+    } else {
+        _get_baseboard_serial = (CallFunc2)GetProcAddress(sys_library, "get_baseboard_serial");
+        if (!_get_baseboard_serial) {
+            mterror(WM_SYS_LOGTAG, "Unable to access 'get_baseboard_serial' on syscollector_win_ext.dll.");
+            serial = strdup("unknown");
+        } else {
+            int ret = _get_baseboard_serial(&serial);
+            switch(ret)
+            {
+                case 1:
+                    mterror(WM_SYS_LOGTAG, "Unable to get raw SMBIOS firmware table size.");
+                    break;
+                case 2:
+                    mterror(WM_SYS_LOGTAG, "Unable to allocate memory for the SMBIOS firmware table.");
+                    break;
+                case 3:
+                    mterror(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
+                    break;
+                case 4:
+                    mterror(WM_SYS_LOGTAG, "Serial Number not available in SMBIOS firmware table.");
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    
 	cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     free(serial);
 
@@ -1591,9 +1499,9 @@ void sys_proc_windows(const char* LOCATION) {
 	int privilege_enabled = 0;
 	
 	/* Enable debug privilege */
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle))
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hdle))
 	{
-		if (!set_token_privilege(hdle, priv, TRUE))
+		if (!set_token_privilege(hdle, SE_DEBUG_NAME, TRUE))
 		{
 			privilege_enabled = 1;
 		} else {
@@ -1740,7 +1648,7 @@ void sys_proc_windows(const char* LOCATION) {
 	/* Disable debug privilege */
 	if (privilege_enabled)
 	{
-		if (set_token_privilege(hdle, priv, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process. Error '%ld'.", GetLastError());
+		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process. Error '%ld'.", GetLastError());
 	}
 	
 	if (hdle) CloseHandle(hdle);
@@ -1762,27 +1670,44 @@ void sys_proc_windows(const char* LOCATION) {
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 	TOKEN_PRIVILEGES tp;
 	LUID pr_uid;
+    TOKEN_PRIVILEGES tpPrevious;
+    DWORD cbPrevious = sizeof(TOKEN_PRIVILEGES);
+    DWORD errorInfo;
 
 	// Get the privilege UID
 	if (!LookupPrivilegeValue(NULL, privilege, &pr_uid)) {
 		merror("Could not find the '%s' privilege. Error: %lu", privilege, GetLastError());
 		return 1;
 	}
-
+    
+    // Get current privilege setting
 	tp.PrivilegeCount = 1;
 	tp.Privileges[0].Luid = pr_uid;
-
-	if (enable) {
-		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-	} else {
-		tp.Privileges[0].Attributes = 0;
-	}
-
-    // Set the privilege to the process
-	if (!AdjustTokenPrivileges(hdle, 0, &tp, sizeof(TOKEN_PRIVILEGES), (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL)) {
-		merror("AdjustTokenPrivileges() failed. Error: '%lu'", GetLastError());
+    tp.Privileges[0].Attributes = 0;
+    
+    AdjustTokenPrivileges(hdle, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &tpPrevious, &cbPrevious);
+    errorInfo = GetLastError();
+    if (errorInfo != ERROR_SUCCESS) {
+		merror("AdjustTokenPrivileges() failed (first call). Error: '%lu'", errorInfo);
 		return 1;
+    }
+    
+    // Set privilege based on previous setting
+    tpPrevious.PrivilegeCount = 1;
+    tpPrevious.Privileges[0].Luid = pr_uid;
+    
+    if (enable) {
+        tpPrevious.Privileges[0].Attributes |= (SE_PRIVILEGE_ENABLED);
+	} else {
+        tpPrevious.Privileges[0].Attributes ^= (SE_PRIVILEGE_ENABLED & tpPrevious.Privileges[0].Attributes);
 	}
+    
+    AdjustTokenPrivileges(hdle, FALSE, &tpPrevious, cbPrevious, NULL, NULL);
+    errorInfo = GetLastError();
+    if (errorInfo != ERROR_SUCCESS) {
+		merror("AdjustTokenPrivileges() failed (second call). Error: '%lu'", errorInfo);
+		return 1;
+    }
 
     if (enable) {
         mdebug2("The '%s' privilege has been added.", privilege);
