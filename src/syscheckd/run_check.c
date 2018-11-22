@@ -502,8 +502,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         str_group,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
-        group == 0 ? "" : get_group(statbuf.st_gid),
+        owner == 0 ? "" : get_user(file_name, statbuf_lnk ? statbuf_lnk->st_uid : statbuf.st_uid, NULL),
+        group == 0 ? "" : get_group(statbuf_lnk ? statbuf_lnk->st_gid : statbuf.st_gid),
         str_mtime,
         str_inode,
         sha256sum  == 0 ? "" : sf256_sum);
