@@ -45,21 +45,28 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             merror(XML_VALUENULL, node[i]->element);
             return OS_INVALID;
         } else if (!strcmp(node[i]->element, cluster_name)) {
-            if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content))
-            {
+            if (!strlen(node[i]->content)) {
+                merror("Cluster name is empty in configuration");
+                return OS_INVALID;
+            } else if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content)) {
                 merror("Detected a not allowed character in cluster name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
                 return OS_INVALID;
             }
             os_strdup(node[i]->content, Config->cluster_name);
         } else if (!strcmp(node[i]->element, node_name)) {
-            if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content))
-            {
+            if (!strlen(node[i]->content)) {
+                merror("Node name is empty in configuration");
+                return OS_INVALID;
+            } else if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content)) {
                 merror("Detected a not allowed character in node name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
                 return OS_INVALID;
             }
             os_strdup(node[i]->content, Config->node_name);
         } else if (!strcmp(node[i]->element, node_type)) {
-            if (strcmp(node[i]->content, "worker") && strcmp(node[i]->content, "client") && strcmp(node[i]->content, "master")) {
+            if (!strlen(node[i]->content)) {
+                merror("Node type is empty in configuration");
+                return OS_INVALID;
+            } else if (strcmp(node[i]->content, "worker") && strcmp(node[i]->content, "client") && strcmp(node[i]->content, "master")) {
                 merror("Detected a not allowed node type '%s'. Valid types are 'master' and 'worker'.", node[i]->content);
                 return OS_INVALID;
             }
