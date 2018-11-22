@@ -309,6 +309,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
+    struct stat statbuf_lnk;
     os_md5 mf_sum;
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
@@ -416,7 +417,6 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     /* Generate new checksum */
     newsum[0] = '\0';
     newsum[OS_MAXSTR] = '\0';
-    struct stat *statbuf_lnk = NULL;
     if (S_ISREG(statbuf.st_mode))
     {
         if (sha1sum || md5sum || sha256sum) {
@@ -432,9 +432,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 #ifndef WIN32
     /* If it is a link, check if the actual file is valid */
     else if (S_ISLNK(statbuf.st_mode)) {
-        os_calloc(1, sizeof(struct stat), statbuf_lnk);
-        if (stat(file_name, statbuf_lnk) == 0) {
-            if (S_ISREG(statbuf_lnk->st_mode)) {
+        if (stat(file_name, &statbuf_lnk) == 0) {
+            if (S_ISREG(statbuf_lnk.st_mode)) {
                 if (sha1sum || md5sum || sha256sum) {
                     /* Generate checksums of the file */
                     if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
@@ -456,8 +455,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     if (perm == 0){
         *str_perm = '\0';
     } else {
-        if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
-            sprintf(str_perm,"%ld",(long)statbuf_lnk->st_mode);
+        if (S_ISLNK(statbuf.st_mode)) {
+            sprintf(str_perm,"%ld",(long)statbuf_lnk.st_mode);
         } else {
             sprintf(str_perm, "%ld", (long)statbuf.st_mode);
         }
@@ -466,8 +465,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     if (owner == 0){
         *str_owner = '\0';
     } else {
-        if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
-            sprintf(str_owner,"%ld",(long)statbuf_lnk->st_uid);
+        if (S_ISLNK(statbuf.st_mode)) {
+            sprintf(str_owner,"%ld",(long)statbuf_lnk.st_uid);
         } else {
             sprintf(str_owner, "%ld", (long)statbuf.st_uid);
         }
@@ -476,8 +475,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     if (group == 0){
         *str_group = '\0';
     } else {
-        if (S_ISLNK(statbuf.st_mode) && statbuf_lnk) {
-            sprintf(str_group,"%ld",(long)statbuf_lnk->st_gid);
+        if (S_ISLNK(statbuf.st_mode)) {
+            sprintf(str_group,"%ld",(long)statbuf_lnk.st_gid);
         } else {
             sprintf(str_group, "%ld", (long)statbuf.st_gid);
         }
@@ -502,8 +501,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         str_group,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, statbuf_lnk ? statbuf_lnk->st_uid : statbuf.st_uid, NULL),
-        group == 0 ? "" : get_group(statbuf_lnk ? statbuf_lnk->st_gid : statbuf.st_gid),
+        owner == 0 ? "" : get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL),
+        group == 0 ? "" : get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid),
         str_mtime,
         str_inode,
         sha256sum  == 0 ? "" : sf256_sum);
@@ -550,10 +549,6 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             LocalFree(sid);
         }
 #endif
-    if (statbuf_lnk) {
-        free(statbuf_lnk);
-        statbuf_lnk = NULL;
-    }
 
     return (0);
 }
