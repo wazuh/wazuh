@@ -100,17 +100,17 @@ ID: 80200 - 80499
     <rule id="80301" level="3">
         <if_sid>80300</if_sid>
         <field name="aws.severity">0|1|2|3</field>
-        <description>Guard Duty Finding with a low level: $(aws.description)</description>
+        <description>Guard Duty Finding with a low level: $(aws.title)</description>
     </rule>
     <rule id="80302" level="6">
         <if_sid>80300</if_sid>
         <field name="aws.severity">4|5|6</field>
-        <description>Guard Duty Finding with a medium level: $(aws.description)</description>
+        <description>Guard Duty Finding with a medium level: $(aws.title)</description>
     </rule>
     <rule id="80303" level="10">
         <if_sid>80300</if_sid>
         <field name="aws.severity">7|8|9</field>
-        <description>Guard Duty Finding with a high level: $(aws.description)</description>
+        <description>Guard Duty Finding with a high level: $(aws.title)</description>
     </rule>
 
     <!-- Macie Alerts -->
