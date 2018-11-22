@@ -426,8 +426,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     str_group,
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
-                    opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
-                    opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                    opts & CHECK_OWNER ? get_user(file_name, statbuf_lnk ? statbuf_lnk->st_uid : statbuf.st_uid, NULL) : "",
+                    opts & CHECK_GROUP ? get_group(statbuf_lnk ? statbuf_lnk->st_gid : statbuf.st_gid) : "",
                     str_mtime,
                     str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "");
@@ -552,8 +552,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 str_group,
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
-                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
-                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                opts & CHECK_OWNER ? get_user(file_name, statbuf_lnk ? statbuf_lnk->st_uid : statbuf.st_uid, NULL) : "",
+                opts & CHECK_GROUP ? get_group(statbuf_lnk ? statbuf_lnk->st_gid : statbuf.st_gid) : "",
                 str_mtime,
                 str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -569,10 +569,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
             free(alert_msg);
             free(alertdump);
-            if (statbuf_lnk) {
-                free(statbuf_lnk);
-                statbuf_lnk = NULL;
-            }
 
         } else {
             char *alert_msg = NULL;
@@ -627,6 +623,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
             free(alert_msg);
             free(c_sum);
+        }
+        if (statbuf_lnk) {
+            free(statbuf_lnk);
+            statbuf_lnk = NULL;
         }
 
         /* Sleep here too */
