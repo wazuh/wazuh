@@ -2231,24 +2231,10 @@ int w_ref_parent_folder(const char * path) {
 cJSON* getunameJSON()
 {
     os_info *read_info;
-    /*#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-        static cJSON* root = NULL;
-        if(!root){
-            root = cJSON_CreateObject();
-        }
-        else{
-            return root;
-        }
-    #else
-        cJSON* root=cJSON_CreateObject();
-    #endif*/
-    
-    #ifndef WIN32
-        static cJSON* root= NULL;
-    #else
-        cJSON * root;
-    #endif
+    static cJSON* root= NULL;
+
     if(!root){
+        
     #ifndef WIN32
         if (read_info = get_unix_version(), read_info) {
     #else

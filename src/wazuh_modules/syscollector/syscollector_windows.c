@@ -1122,6 +1122,7 @@ void sys_os_windows(const char* LOCATION){
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
     SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_DetachItemFromObject(object,"inventory");
     cJSON_Delete(object);
 
     free(string);

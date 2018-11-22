@@ -279,48 +279,78 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     return root;
 }
 
-#ifndef WIN32
+//#ifndef WIN32
 /* Get the Default Network Interface */
 int getDefaultNetworkIface(){
     int default_network_iface = 0;
     cJSON * iface = cJSON_CreateArray();
-    cJSON * ipv4 = cJSON_CreateArray();
+    cJSON * ipv4 = cJSON_CreateObject();
     cJSON * network_info;
+    int i = 0;
 
     /*  Set the primary network interface */
     
     #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-     default_network_iface = -1;
-     network_info = getNetworkIfaces_bsd();
-     int i=0;
-     while(default_network_iface == -1 && i < cJSON_GetArraySize(network_info)){
-        iface = cJSON_GetArrayItem(network_info,i);
-        ipv4 = cJSON_GetObjectItem(iface,"ipv4");
-        if (ipv4)
-        default_network_iface = i;
-        i++;
-    }
-    #elif defined(__linux__)
-     char *gateway;
-     char *name;
-     network_info = getNetworkIfaces_linux();
-     int i = 0;
-     default_network_iface = 0;
-     for (i = 0; i < cJSON_GetArraySize(network_info);i++) {
-        iface = cJSON_GetArrayItem(network_info,i);
-        name = cJSON_Print(cJSON_GetObjectItem(iface,"name"));
-        gateway = get_default_gateway(name);
-        if(gateway){
+        default_network_iface = -1;
+        network_info = getNetworkIfaces_bsd();
+        while(default_network_iface == -1 && i < cJSON_GetArraySize(network_info)){
+            iface = cJSON_GetArrayItem(network_info,i);
+            ipv4 = cJSON_GetObjectItem(iface,"ipv4");
+            if (ipv4)
             default_network_iface = i;
+            i++;
         }
-     }
-    
+    #elif defined(__linux__)
+        char *gateway;
+        char *name;
+        network_info = getNetworkIfaces_linux();
+        for (i = 0; i < cJSON_GetArraySize(network_info);i++) {
+            iface = cJSON_GetArrayItem(network_info,i);
+            name = cJSON_Print(cJSON_GetObjectItem(iface,"name"));
+            gateway = get_default_gateway(name);
+            if(gateway){
+                default_network_iface = i;
+            }
+        }
+    #elif defined WIN32
+        #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+        #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+        typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
+
+        cJSON *gateway = cJSON_CreateObject();
+        CallFunc _get_network_win;
+        
+        /* Load DLL with network inventory functions */
+        HINSTANCE sys_library = LoadLibrary("syscollector_win_ext.dll");
+        if (sys_library != NULL){
+            _get_network_win = (CallFunc)GetProcAddress(sys_library, "get_network");
+        }
+
+        char * windows_net_info;
+        PIP_ADAPTER_ADDRESSES currentAddress = NULL;
+        ULONG flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS;
+        ULONG outBufLen = 0;
+        outBufLen = WORKING_BUFFER_SIZE;
+        currentAddress = (IP_ADAPTER_ADDRESSES *) MALLOC(outBufLen);
+
+        GetAdaptersAddresses(AF_UNSPEC, flags, NULL, currentAddress, &outBufLen);
+        windows_net_info = _get_network_win(currentAddress, 0, NULL);
+        FREE(currentAddress);
+        network_info = cJSON_Parse(windows_net_info);
+        for (i = 0; i < cJSON_GetArraySize(network_info);i++) {
+            iface = cJSON_GetArrayItem(network_info,i);
+            ipv4 = cJSON_GetObjectItem(iface,"ipv4");
+            gateway = cJSON_GetObjectItem(ipv4,"gateway");
+            if(gateway){
+                default_network_iface = i;
+            }
+        }
     #endif
 
     cJSON_Delete(network_info);
     return default_network_iface;
 }
-#endif
+//#endif
 
 void wm_sys_destroy(wm_sys_t *sys) {
     free(sys);
