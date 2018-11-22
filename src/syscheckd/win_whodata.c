@@ -727,7 +727,7 @@ add_whodata_evt:
                             if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
                                 int depth = syscheck.recursion_level[pos] - diff;
-                                read_dir(w_evt->path, pos, w_evt, depth);
+                                read_dir(w_evt->path, pos, NULL, depth);
                             }
 
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
@@ -962,6 +962,7 @@ void send_whodata_del(whodata_evt *w_evt) {
     if (s_node = OSHash_Delete_ex(syscheck.fp, w_evt->path), !s_node) {
         return;
     }
+
     free(s_node->checksum);
     free(s_node);
 

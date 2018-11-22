@@ -124,7 +124,7 @@ testconfig()
 # Start function
 start()
 {
-    echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
+    echo "Starting $NAME $VERSION..."
     checkpid;
 
     # Delete all files in temporary folder

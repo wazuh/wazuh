@@ -184,6 +184,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 #ifndef WIN32
     char str_owner[50], str_group[50];
+    char *hash_file_name;
 #else
     char *user;
     char *sid = NULL;
@@ -210,9 +211,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         switch (errno) {
         case ENOENT:
             mwarn("Cannot access '%s': it was removed during scan.", file_name);
-            free(alert_msg);
-            free(wd_sum);
-            return (-1);
+            /* Fallthrough */
 
         case ENOTDIR:
             /*Deletion message sending*/
@@ -443,7 +442,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 free(s_node);
                 merror("Unable to add file to db: %s", file_name);
             }
-
+#ifndef WIN32
+            hash_file_name = strdup(file_name);
+            if (OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name) != 2) {
+                free(hash_file_name);
+                mwarn("Unable to add inode to db: %s (%s) ", file_name, str_inode);
+            }
+#endif
             /* Send the new checksum to the analysis server */
             alert_msg[OS_MAXSTR] = '\0';
 
@@ -684,7 +689,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     }
 
     if (!dp) {
-        if (errno == ENOTDIR) {
+        if (errno == ENOTDIR || errno == ENOENT) {
             if (read_file(dir_name, dir_position, evt, max_depth) == 0) {
                 free(f_name);
                 return (0);
@@ -738,6 +743,11 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         free(f_name);
         return (-1);
     }
+    else if (evt) {
+        free(f_name);
+        closedir(dp);
+        return (0);
+    }
 
     /* Check for real time flag */
     if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
@@ -781,7 +791,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         str_lowercase(f_name);
 #endif
         /* Check integrity of the file */
-        read_file(f_name, dir_position, NULL, max_depth);
+        read_file(f_name, dir_position, evt, max_depth);
     }
 
     free(f_name);
@@ -879,6 +889,12 @@ int create_db()
         merror(LIST_ERROR);
         return (0);
     }
+#ifndef WIN32
+    if (!OSHash_setSize(syscheck.inode_hash, 2048)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+#endif
 
     if ((syscheck.dir == NULL) || (syscheck.dir[0] == NULL)) {
         merror("No directories to check.");

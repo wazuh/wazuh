@@ -33,5 +33,6 @@ int W_Vector_length(W_Vector *v);
 
 void W_Vector_free(W_Vector *v);
 
+void W_Vector_insert_unique(W_Vector *v, const char *element);
 
 #endif /* __VECTOR_OP_H */
