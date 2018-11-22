@@ -24,6 +24,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_inode;
     char *tag;
     int retval = 0;
+    char *username_esc;
 
     if (c_sum[0] == '-' && c_sum[1] == '1') {
         retval = 1;
@@ -65,6 +66,10 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
                 return -1;
 
             *(sum->gname++) = '\0';
+
+            if (username_esc = os_strip_char(sum->uname, '\\'), username_esc) {
+                sum->uname = username_esc;
+            }
 
             if (!(c_mtime = strchr(sum->gname, ':')))
                 return -1;
@@ -427,6 +432,7 @@ int delete_target_file(const char *path) {
 void sk_sum_clean(sk_sum_t * sum) {
     os_free(sum->wdata.user_name);
     os_free(sum->wdata.process_name);
+    os_free(sum->uname);
 }
 
 int fim_find_child_depth(const char *parent, const char *child) {
