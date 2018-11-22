@@ -54,7 +54,6 @@ OSHash *OSHash_Create()
 /* Set the pointer to the function to free the memory data */
 int OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *))
 {
-    if (!self) return (0);
     self->free_data_function = free_data_function;
     return (1);
 }
