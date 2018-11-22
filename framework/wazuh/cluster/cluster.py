@@ -111,7 +111,7 @@ def read_config():
     try:
         config_cluster = get_ossec_conf('cluster')
     except WazuhException as e:
-        if e.code == 1102:
+        if e.code == 1106:
             # if no cluster configuration is present in ossec.conf, return default configuration but disabling it.
             cluster_default_configuration['disabled'] = 'yes'
             return cluster_default_configuration
