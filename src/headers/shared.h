@@ -72,7 +72,7 @@
 /* The mingw32 builder used by travis.ci can't find glob.h
  * Yet glob must work on actual win32.
  */
-#ifndef __MINGW32__
+#if (!defined(__MINGW32__) && !defined(_MSC_VER))
 #include <glob.h>
 #endif
 

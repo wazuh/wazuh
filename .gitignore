@@ -64,6 +64,7 @@ src/win32/route-null-2012.cmd
 src/win32/netsh.cmd
 src/win32/VERSION
 src/win32/REVISION
+src/win32/icofile.aps
 
 # Eclipse files
 .cproject
