@@ -820,9 +820,7 @@ int run_dbcheck()
         OSHash_Free(last_backup);
 
         // Check and delete backup local/diff
-        if (syscheck.remove_old_diff) {
-            remove_local_diff();
-        }
+        remove_local_diff();
     }
 
     free(alert_msg);
@@ -887,9 +885,7 @@ int create_db()
         i++;
     } while (syscheck.dir[i] != NULL);
 
-    if(syscheck.remove_old_diff) {
-        remove_local_diff();
-    }
+    remove_local_diff();
 
     w_mutex_lock(&lastcheck_mutex);
     OSHash_Free(syscheck.last_check);
