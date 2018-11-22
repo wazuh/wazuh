@@ -17,6 +17,7 @@
 #define VU_WM_NAME "vulnerability-detector"
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
 #define WM_VULNDETECTOR_DEFAULT_INTERVAL 300 // 5 minutes
+#define WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL 3600 // 1 hour
 #define WM_VULNDETECTOR_RETRY_UPDATE  300 // 5 minutes
 #define VU_DEF_IGNORE_TIME 21600 // 6 hours
 #define CVE_TEMP_FILE "tmp/cve"
