@@ -247,6 +247,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
+            } else if (strcmp(logf[pl].logformat, EVENTCHANNEL_JSON) == 0) {
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
