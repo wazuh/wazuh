@@ -68,7 +68,7 @@ from datetime import datetime
 from os import path
 import operator
 from datetime import datetime
-from copy import deepcopy
+
 
 ################################################################################
 # Constants
@@ -787,32 +787,24 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             for event in event_list:
                 # Parse out all the values of 'None'
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
-                # Split messages
-                event_list = self.reformat_msg(event_msg)
-                # Send the message
-                for msg in event_list:
+                # Send the message (splitted if it is necessary)
+                for msg in self.reformat_msg(event_msg):
                     self.send_msg(msg)
 
     def reformat_msg(self, event):
-        event_list = []
-
         if event['aws']['source'] == 'guardduty' and 'service' in event['aws'] and \
             'action' in event['aws']['service'] and \
             'portProbeAction' in event['aws']['service']['action'] and \
-            'portProbeDetails' in event['aws']['service']['action']['portProbeAction']:
+            'portProbeDetails' in event['aws']['service']['action']['portProbeAction'] and \
+            len(event['aws']['service']['action']['portProbeAction']['portProbeDetails']) > 1:
             
-            for i in range(len(event['aws']['service']['action']['portProbeAction']['portProbeDetails'])):
-                # deep copy is needed
-                event_aux = deepcopy(event)
-                # clean list elements
-                del event_aux['aws']['service']['action']['portProbeAction']['portProbeDetails']
-                event_aux['aws']['service']['action']['portProbeAction']['portProbeDetails'] = \
-                        event['aws']['service']['action']['portProbeAction']['portProbeDetails'][i]
-                event_list.append(event_aux)
-            return event_list
+            port_probe_details = event['aws']['service']['action']['portProbeAction']['portProbeDetails']
+            for detail in port_probe_details:
+                event['aws']['service']['action']['portProbeAction']['portProbeDetails'] = detail
+                yield event
         else:
-            event_list.append(event)
-            return event_list
+            AWSBucket.reformat_msg(self, event)
+            yield event
 
 
 class AWSService(WazuhIntegration):
