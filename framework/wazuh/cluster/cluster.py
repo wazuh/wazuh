@@ -145,19 +145,7 @@ def check_cluster_status():
     """
     Function to check if cluster is enabled
     """
-    # for python 2/3 compatibility
-    # the osec directory is the first line of ossec-init.conf
-    try:
-        with open("/etc/ossec-init.conf") as f:
-            directory = f.readline().split("=")[1][:-1].replace('"', "")
-    except UnicodeDecodeError:
-        with open("/etc/ossec-init.conf", encoding='utf-8') as f:
-            directory = f.readline().split("=")[1][:-1].replace('"', "")
-
-    try:
-        return read_config()['disabled'] == 'no'
-    except:
-        return False
+    return read_config()['disabled'] != 'yes'
 
 
 def get_status_json():
