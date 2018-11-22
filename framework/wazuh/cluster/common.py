@@ -350,7 +350,7 @@ class Handler(asyncio.Protocol):
         :return: Message
         """
         self.in_file['fd'].close()
-        if self.in_file['checksum'].digest() != data:
+        if self.in_file['checksum'].digest() == data:
             self.in_file = {'filename': '', 'fd': None, 'checksum': None}
             return b"ok", b"File received correctly"
         else:
