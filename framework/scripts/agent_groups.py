@@ -166,7 +166,7 @@ def usage():
     \t-c -g group_id                        # List configuration files in group
     \t
     \t-a -i agent_id -g group_id [-q] [-f]  # Add group to agent
-    \t-r -i agent_id [-q] [-g]              # Remove all groups from agent
+    \t-r -i agent_id [-q] [-g group_id]     # Remove all groups from agent [or single group]
     \t-s -i agent_id                        # Show group of agent
     \t-S -i agent_id                        # Show sync status of agent
     \t
