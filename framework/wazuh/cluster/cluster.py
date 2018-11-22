@@ -80,6 +80,9 @@ def check_cluster_config(config):
     if len(invalid_elements) != 0:
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
+    if not isinstance(config['port'], int) and not config['port'].isdigit():
+        raise WazuhException(3004, "Cluster port must be an integer.")
+
 
 def get_cluster_items():
     try:
