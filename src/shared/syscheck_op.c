@@ -24,6 +24,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_inode;
     char *tag;
     int retval = 0;
+    char *username_esc;
 
     if (c_sum[0] == '-' && c_sum[1] == '1') {
         retval = 1;
@@ -65,6 +66,10 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
                 return -1;
 
             *(sum->gname++) = '\0';
+
+            if (username_esc = os_strip_char(sum->uname, '\\'), username_esc) {
+                sum->uname = username_esc;
+            }
 
             if (!(c_mtime = strchr(sum->gname, ':')))
                 return -1;
@@ -337,6 +342,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     char s_perm[16];
     char s_mtime[16];
     char s_inode[16];
+    char *username;
 
     if(sum->perm) {
         snprintf(s_perm, sizeof(s_perm), "%d", sum->perm);
@@ -346,14 +352,18 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
     snprintf(s_mtime, sizeof(s_mtime), "%ld", sum->mtime);
     snprintf(s_inode, sizeof(s_inode), "%ld", sum->inode);
 
-    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%d:%ld", // format: c:h:e:c:k:s:u:m!extra:data
+    username = wstr_replace((const char*)sum->uname, " ", "\\ ");
+
+    // size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!changes:date_alert
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^
+    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%d:%ld",
             sum->size,
             s_perm,
             sum->uid,
             sum->gid,
             sum->md5,
             sum->sha1,
-            sum->uname? sum->uname : "",
+            sum->uname? username : "",
             sum->gname? sum->gname : "",
             sum->mtime? s_mtime : "",
             sum->inode? s_inode : "",
@@ -422,6 +432,7 @@ int delete_target_file(const char *path) {
 void sk_sum_clean(sk_sum_t * sum) {
     os_free(sum->wdata.user_name);
     os_free(sum->wdata.process_name);
+    os_free(sum->uname);
 }
 
 int fim_find_child_depth(const char *parent, const char *child) {
@@ -500,25 +511,26 @@ const char *get_user(__attribute__((unused)) const char *path, int uid, __attrib
     return user ? user->pw_name : "";
 }
 
-const char* get_group(int gid) {
+const char *get_group(int gid) {
     struct group *group = getgrgid(gid);
     return group ? group->gr_name : "";
 }
 
 #else
 
-const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
+char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
 {
     DWORD dwRtnCode = 0;
     PSID pSidOwner = NULL;
     BOOL bRtnBool = TRUE;
-    static char AcctName[BUFFER_LEN];
+    char AcctName[BUFFER_LEN];
     char DomainName[BUFFER_LEN];
     DWORD dwAcctName = BUFFER_LEN;
     DWORD dwDomainName = BUFFER_LEN;
     SID_NAME_USE eUse = SidTypeUnknown;
     HANDLE hFile;
     PSECURITY_DESCRIPTOR pSD = NULL;
+    char *result;
 
     // Get the handle of the file object.
     hFile = CreateFile(
@@ -613,7 +625,10 @@ end:
     if (pSD) {
         LocalFree(pSD);
     }
-    return AcctName;
+
+    result = wstr_replace((const char*)&AcctName, " ", "\\ ");
+
+    return result;
 }
 
 const char *get_group(__attribute__((unused)) int gid) {
