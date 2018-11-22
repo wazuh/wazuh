@@ -68,6 +68,7 @@ from datetime import datetime
 from os import path
 import operator
 from datetime import datetime
+from copy import deepcopy
 
 ################################################################################
 # Constants
@@ -776,6 +777,44 @@ class AWSCustomBucket(AWSBucket):
         self.db_maintenance('', self.bucket)
 
 
+class AWSGuardDutyBucket(AWSCustomBucket):
+
+    def __init__(self, *args):
+        AWSBucket.__init__(self, *args)
+
+    def iter_events(self, event_list, log_key, aws_account_id):
+        if event_list is not None:
+            for event in event_list:
+                # Parse out all the values of 'None'
+                event_msg = self.get_alert_msg(aws_account_id, log_key, event)
+                # Split messages
+                event_list = self.reformat_msg(event_msg)
+                # Send the message
+                for msg in event_list:
+                    self.send_msg(msg)
+
+    def reformat_msg(self, event):
+        event_list = []
+
+        if event['aws']['source'] == 'guardduty' and 'service' in event['aws'] and \
+            'action' in event['aws']['service'] and \
+            'portProbeAction' in event['aws']['service']['action'] and \
+            'portProbeDetails' in event['aws']['service']['action']['portProbeAction']:
+            
+            for i in range(len(event['aws']['service']['action']['portProbeAction']['portProbeDetails'])):
+                # deep copy is needed
+                event_aux = deepcopy(event)
+                # clean list elements
+                del event_aux['aws']['service']['action']['portProbeAction']['portProbeDetails']
+                event_aux['aws']['service']['action']['portProbeAction']['portProbeDetails'] = \
+                        event['aws']['service']['action']['portProbeAction']['portProbeDetails'][i]
+                event_list.append(event_aux)
+            return event_list
+        else:
+            event_list.append(event)
+            return event_list
+
+
 class AWSService(WazuhIntegration):
     """
     Class for getting AWS Inspector logs
@@ -1000,7 +1039,8 @@ def main(argv):
             elif options.type.lower() == 'config':
                 bucket_type = AWSConfigBucket
             elif options.type.lower() == 'custom':
-                bucket_type = AWSCustomBucket
+                #bucket_type = AWSCustomBucket
+                bucket_type = AWSGuardDutyBucket
             else:
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
