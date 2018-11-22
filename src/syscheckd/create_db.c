@@ -179,7 +179,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char *buf;
     syscheck_node *s_node;
     struct stat statbuf;
-    struct stat statbuf_lnk;
     char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
     char *wd_sum = NULL;
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
@@ -261,6 +260,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifdef WIN32
     if (S_ISREG(statbuf.st_mode))
 #else
+    struct stat statbuf_lnk;
+
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {

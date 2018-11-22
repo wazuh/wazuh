@@ -309,7 +309,6 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
-    struct stat statbuf_lnk;
     os_md5 mf_sum;
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
@@ -331,6 +330,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 #ifdef WIN32
     if (stat(file_name, &statbuf) < 0)
 #else
+    struct stat statbuf_lnk;
+
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
