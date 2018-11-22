@@ -90,7 +90,7 @@ static void send_sk_db(int first_start)
     if(first_start) {
         send_syscheck_msg(HC_FIM_DB_EFS);
 #ifndef WIN32
-        w_cond_signal(&audit_db_consistency);
+        audit_set_db_consistency();
 #endif
     } else {
         send_syscheck_msg(HC_FIM_DB_ES);

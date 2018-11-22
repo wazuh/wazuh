@@ -580,6 +580,12 @@ int audit_init(void) {
     }
 }
 
+void audit_set_db_consistency(void) {
+    w_mutex_lock(&audit_mutex);
+    audit_db_consistency_flag = 1;
+    w_cond_signal(&audit_db_consistency);
+    w_mutex_unlock(&audit_mutex);
+}
 
 // Extract id: node=... type=CWD msg=audit(1529332881.955:3867): cwd="..."
 char * audit_get_id(const char * event) {
@@ -1046,7 +1052,11 @@ void * audit_main(int * audit_sock) {
     w_mutex_lock(&audit_mutex);
     audit_thread_active = 1;
     w_cond_signal(&audit_thread_started);
-    w_cond_wait(&audit_db_consistency, &audit_mutex);
+
+    while (!audit_db_consistency_flag) {
+        w_cond_wait(&audit_db_consistency, &audit_mutex);
+    }
+
     w_mutex_unlock(&audit_mutex);
 
     // Start rules reloading thread

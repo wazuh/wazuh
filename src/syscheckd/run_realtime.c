@@ -20,6 +20,7 @@
 
 volatile int audit_thread_active;
 volatile int whodata_alerts;
+volatile int audit_db_consistency_flag;
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
