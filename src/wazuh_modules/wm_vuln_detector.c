@@ -275,9 +275,13 @@ int wm_checks_package_vulnerability(char *version, const char *operation, char *
         }
 
         // Check version
-        v_result = wm_vulnerability_detector_compare(version_it, cversion_it);
+        if (v_result = wm_vulnerability_detector_compare(version_it, cversion_it), v_result == VU_ERROR_CMP) {
+            return VU_ERROR_CMP;
+        }
         // Check release
-        r_result = wm_vulnerability_detector_compare(release_it, crelease_it);
+        if (r_result = wm_vulnerability_detector_compare(release_it, crelease_it), r_result == VU_ERROR_CMP) {
+            return VU_ERROR_CMP;
+        }
 
         if (!strcmp(operation, "less than")) {
             if (epoch > c_epoch) {
@@ -353,7 +357,7 @@ int wm_checks_package_vulnerability(char *version, const char *operation, char *
 
 int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     char *found;
-    int i, j;
+    int i, j, it;
     int version_found, cversion_found;
     int version_value, cversion_value;
 
@@ -386,7 +390,7 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
 
     // Check version
     if (strcmp(version_it, cversion_it)) {
-        for (i = 0, j = 0, version_found = 0, cversion_found = 0;;) {
+        for (it = 0, i = 0, j = 0, version_found = 0, cversion_found = 0; it < VU_MAX_VER_COMP_IT; it++) {
             if (!version_found) {
                 if (version_it[i] == '\0') {
                     version_found = 3;
@@ -465,6 +469,9 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
                 j = 0;
             }
         }
+        if (it == VU_MAX_VER_COMP_IT) {
+            return VU_ERROR_CMP;
+        }
     }
 
     return VU_EQUAL;
@@ -474,7 +481,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     sqlite3_stmt *stmt = NULL;
     char alert_msg[OS_MAXSTR];
     char header[OS_SIZE_256];
-    char condition[OS_SIZE_1024];
+    char condition[OS_SIZE_1024 + 1];
     const char *query;
     agent_software *agents_it;
     cJSON *alert = NULL;
@@ -566,6 +573,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 updated = published;
             }
 
+            *condition = '\0';
             if (pending) {
                 snprintf(state, 30, "Pending confirmation");
             } else {
@@ -578,6 +586,9 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 } else if (v_type == VU_NOT_VULNERABLE) {
                     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
                     continue;
+                } else if (v_type == VU_ERROR_CMP) {
+                    mdebug1("The '%s' and '%s' versions of '%s' package could not be compared. Possible false positive.", version, operation_value, package);
+                    snprintf(condition, OS_SIZE_1024, "Could not compare package versions (%s %s).", operation, operation_value);
                 } else {
                     snprintf(state, 15, "Fixed");
                     if (!second_operation || *second_operation == '0') {
@@ -625,7 +636,9 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                     cJSON_AddStringToObject(jPackage, "patch", patch);
                 }
                 if (!pending) {
-                    if (operation_value) {
+                    if (*condition != '\0') {
+                        cJSON_AddStringToObject(jPackage, "condition", condition);
+                    } else if (operation_value) {
                         snprintf(condition, OS_SIZE_1024, "%s %s", operation, operation_value);
                         cJSON_AddStringToObject(jPackage, "condition", condition);
                     } else {
