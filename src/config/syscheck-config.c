@@ -759,7 +759,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_registry_ignore = "registry_ignore";
     const char *xml_auto_ignore = "auto_ignore";
     const char *xml_alert_new_files = "alert_new_files";
-    const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.7.1
+    const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";
     const char *xml_scan_on_start = "scan_on_start";
     const char *xml_prefilter_cmd = "prefilter_cmd";
@@ -1194,7 +1194,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
             }
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
-            //Deprecated since 3.7.1, aplied by default...
+            // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
             if(strcmp(node[i]->content, "yes") == 0)
                 syscheck->restart_audit = 1;
