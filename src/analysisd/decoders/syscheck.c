@@ -382,6 +382,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         goto exit_ok;
     }
     sk_sum_clean(&newsum);
+    sk_sum_clean(&oldsum);
     os_free(response);
     os_free(new_check_sum);
     os_free(old_check_sum);
@@ -390,6 +391,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
 exit_ok:
     sk_sum_clean(&newsum);
+    sk_sum_clean(&oldsum);
     os_free(response);
     os_free(new_check_sum);
     os_free(old_check_sum);
@@ -398,6 +400,7 @@ exit_ok:
 
 exit_fail:
     sk_sum_clean(&newsum);
+    sk_sum_clean(&oldsum);
     os_free(response);
     os_free(new_check_sum);
     os_free(old_check_sum);
