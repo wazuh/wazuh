@@ -127,6 +127,7 @@ void OS_ClearXML(OS_XML *_lxml)
 int ParseXML(OS_XML *_lxml){
     int r;
     unsigned int i;
+    char *str_base = _lxml->string;
 
     /* Zero the line */
     _lxml->line = 1;
@@ -139,10 +140,10 @@ int ParseXML(OS_XML *_lxml){
 
             if(_lxml->fp){
                 fclose(_lxml->fp);
-            } else if (_lxml->string){
-                free(_lxml->string);
+            } else if (str_base){
+                free(str_base);
             }
-            
+
             return (-1);
         }
     }
@@ -153,8 +154,8 @@ int ParseXML(OS_XML *_lxml){
 
             if(_lxml->fp){
                 fclose(_lxml->fp);
-            } else if (_lxml->string){
-                free(_lxml->string);
+            } else if (str_base){
+                free(str_base);
             }
 
             return (-1);
@@ -163,8 +164,8 @@ int ParseXML(OS_XML *_lxml){
 
     if(_lxml->fp){
         fclose(_lxml->fp);
-    } else if (_lxml->string){
-        free(_lxml->string);
+    } else if (str_base){
+        free(str_base);
     }
 
     return (0);
@@ -195,7 +196,7 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
     }
     _lxml->fp = fp;
     _lxml->string = NULL;
-  
+
     return ParseXML(_lxml);
 }
 

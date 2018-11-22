@@ -691,14 +691,14 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     DWORD count = 0;
     int result = 0;
     int level_n;
-    int keywords_n; 
+    int keywords_n;
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
     cJSON *json_eventdata_in = cJSON_CreateObject();
     OS_XML xml;
     XML_NODE node, child;
     char *level = NULL, *keywords = NULL, *canal = NULL, *provider_name = NULL,
-        *my_msg = NULL, *str_i = NULL, *message = NULL, *category = NULL, *my_event = NULL;
+        *my_msg = NULL, *str_i = NULL, *message = NULL, *category, *my_event = NULL;
 
     result = EvtRender(NULL,
                        evt,
@@ -740,8 +740,6 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
 
     message = convert_windows_string((LPCWSTR) properties_values);
 
-    //merror("CADENA: %s", message);
-
     if ((my_msg = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageEvent)) == NULL) {
         mferror(
             "Could not get message for (%s)",
@@ -757,13 +755,11 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
 
     node = OS_GetElementsbyNode(&xml, NULL);
     int i = 0, l=0;
-    if (node && node[i]) {
-
-        child = OS_GetElementsbyNode(&xml, node[i]);
+    if (node && node[i] && (child = OS_GetElementsbyNode(&xml, node[i]))) {
         int j = 0;
 
         while (child && child[j]){
-           
+
             XML_NODE child_attr = NULL;
             child_attr = OS_GetElementsbyNode(&xml, child[j]);
             int p = 0;
@@ -776,7 +772,6 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
                         while(child_attr[p]->attributes[l]){
                             if (!strcmp(child_attr[p]->attributes[l], "Name")){
                                 os_strdup(child_attr[p]->values[l], provider_name);
-                                //merror("PROVIDER NAME: %s", provider_name);//////////////////////////////////////////////////////
                                 cJSON_AddStringToObject(json_system_in, "ProviderName", child_attr[p]->values[l]);
                             } else if (!strcmp(child_attr[p]->attributes[l], "Guid")){
                                 cJSON_AddStringToObject(json_system_in, "ProviderGuid", child_attr[p]->values[l]);
@@ -809,7 +804,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
                     } else {
                         cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                     }
-                    
+
                 } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
                     if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values){
                         for (l = 0; child_attr[p]->attributes[l]; l++) {
@@ -828,7 +823,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
                 }
                 p++;
             }
- 
+
             OS_ClearNode(child_attr);
 
             j++;
@@ -873,14 +868,12 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
             break;
     }
 
-    //cJSON_AddStringToObject(json_system_in, "Message", my_msg);////////////////////////////////////////////////
     cJSON_AddStringToObject(json_system_in, "SeverityValue", category);
 
     cJSON_AddItemToObject(json_event, "System", json_system_in);
     cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
     my_event = cJSON_PrintUnformatted(json_event);
-    //merror("JSON EVENT: %s", my_event);//////////////////////////////////////////////////////////
-    
+
     if (SendMSG(logr_queue, my_event, "WinEvtChannelJSON", LOCALFILE_MQ) < 0) {
         merror(QUEUE_SEND);
     }
@@ -898,10 +891,7 @@ cleanup:
     free(my_msg);
     free(str_i);
     free(message);
-    free(category);
     free(my_event);
-    OS_ClearNode(node);
-    OS_ClearNode(child);
     OS_ClearXML(&xml);
 
     return;
