@@ -27,9 +27,6 @@
     <ClCompile Include="..\include\external\cJSON\cJSON.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\sys\time.c">
-      <Filter>Archivos de origen</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\icofile.rc">

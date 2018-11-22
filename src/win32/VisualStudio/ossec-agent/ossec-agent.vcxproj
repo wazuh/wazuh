@@ -209,7 +209,6 @@
     <ClCompile Include="..\..\win_agent.c" />
     <ClCompile Include="..\..\win_service.c" />
     <ClCompile Include="..\include\external\cJSON\cJSON.c" />
-    <ClCompile Include="..\include\sys\time.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\icofile.rc" />
