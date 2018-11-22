@@ -149,7 +149,7 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
-            win_start_event_channel(current->file, current->future, current->query);
+            win_start_event_channel(current->file, current->future, 0, current->query);
 #else
             mwarn("eventchannel not available on this version of OSSEC");
 #endif
@@ -163,7 +163,7 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
-            win_start_eventchannel_json(current->file, current->future, current->query);
+            win_start_event_channel(current->file, current->future, 1, current->query);
 #else
             mwarn("eventchannel not available on this version of OSSEC");
 #endif

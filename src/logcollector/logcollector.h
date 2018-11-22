@@ -87,9 +87,8 @@ void *read_json(logreader *lf, int *rc, int drop_it);
 void win_startel();
 void win_readel();
 void win_read_vista_sec();
-void win_start_event_channel(char *evt_log, char future, char *query);
+void win_start_event_channel(char *evt_log, char future, char json, char *query);
 void win_format_event_string(char *string);
-void win_start_eventchannel_json(char *evt_log, char future, char *query);
 #endif
 
 #ifndef WIN32

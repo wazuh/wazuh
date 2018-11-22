@@ -684,149 +684,6 @@ cleanup:
     return;
 }
 
-DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel *channel, EVT_HANDLE evt)
-{
-    if (action == EvtSubscribeActionDeliver) {
-        send_channel_event(evt, channel);
-    }
-
-    return (0);
-}
-
-void win_start_event_channel(char *evt_log, char future, char *query)
-{
-    wchar_t *wchannel = NULL;
-    wchar_t *wquery = NULL;
-    char *filtered_query = NULL;
-    os_channel *channel = NULL;
-    DWORD flags = EvtSubscribeToFutureEvents;
-    EVT_HANDLE bookmark = NULL;
-    EVT_HANDLE result = NULL;
-    int status = 0;
-
-    if ((channel = calloc(1, sizeof(os_channel))) == NULL) {
-        mferror(
-            "Could not calloc() memory for channel to start reading (%s) which returned [(%d)-(%s)]",
-            evt_log,
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    channel->evt_log = evt_log;
-
-    /* Create copy of event log string */
-    if ((channel->bookmark_name = strdup(channel->evt_log)) == NULL) {
-        mferror(
-            "Could not strdup() event log name to start reading (%s) which returned [(%d)-(%s)]",
-            channel->evt_log,
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    /* Replace '/' with '_' */
-    if (strchr(channel->bookmark_name, '/')) {
-        *(strrchr(channel->bookmark_name, '/')) = '_';
-    }
-
-    /* Convert evt_log to Windows string */
-    if ((wchannel = convert_unix_string(channel->evt_log)) == NULL) {
-        mferror(
-            "Could not convert_unix_string() evt_log for (%s) which returned [(%d)-(%s)]",
-            channel->evt_log,
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    /* Convert query to Windows string */
-    if (query) {
-        if ((filtered_query = filter_special_chars(query)) == NULL) {
-            mferror(
-                "Could not filter_special_chars() query for (%s) which returned [(%d)-(%s)]",
-                channel->evt_log,
-                errno,
-                strerror(errno));
-            goto cleanup;
-        }
-
-        if ((wquery = convert_unix_string(filtered_query)) == NULL) {
-            mferror(
-                "Could not convert_unix_string() query for (%s) which returned [(%d)-(%s)]",
-                channel->evt_log,
-                errno,
-                strerror(errno));
-            goto cleanup;
-        }
-    }
-
-    channel->bookmark_enabled = !future;
-
-    if (channel->bookmark_enabled) {
-        /* Create bookmark file name */
-        snprintf(channel->bookmark_filename,
-                 sizeof(channel->bookmark_filename), "%s/%s", BOOKMARKS_DIR,
-                 channel->bookmark_name);
-
-        /* Try to read existing bookmark */
-        if ((bookmark = read_bookmark(channel)) != NULL) {
-            flags = EvtSubscribeStartAfterBookmark;
-        }
-    }
-
-    result = EvtSubscribe(NULL,
-                          NULL,
-                          wchannel,
-                          wquery,
-                          bookmark,
-                          channel,
-                          (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
-                          flags);
-
-    if (result == NULL && flags == EvtSubscribeStartAfterBookmark) {
-        result = EvtSubscribe(NULL,
-                              NULL,
-                              wchannel,
-                              wquery,
-                              NULL,
-                              channel,
-                              (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
-                              EvtSubscribeToFutureEvents);
-    }
-
-    if (result == NULL) {
-        mferror(
-            "Could not EvtSubscribe() for (%s) which returned (%lu)",
-            channel->evt_log,
-            GetLastError());
-        goto cleanup;
-    }
-
-    /* Success */
-    status = 1;
-
-cleanup:
-    free(wchannel);
-    free(wquery);
-    free(filtered_query);
-
-    if (status == 0) {
-        free(channel->bookmark_name);
-        free(channel);
-
-        if (result != NULL) {
-            EvtClose(result);
-        }
-    }
-
-    if (bookmark != NULL) {
-        EvtClose(bookmark);
-    }
-
-    return;
-}
-
 void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
 {
     DWORD buffer_length = 0;
@@ -1050,6 +907,15 @@ cleanup:
     return;
 }
 
+DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel *channel, EVT_HANDLE evt)
+{
+    if (action == EvtSubscribeActionDeliver) {
+        send_channel_event(evt, channel);
+    }
+
+    return (0);
+}
+
 DWORD WINAPI event_channel_json_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel *channel, EVT_HANDLE evt)
 {
     if (action == EvtSubscribeActionDeliver) {
@@ -1059,16 +925,23 @@ DWORD WINAPI event_channel_json_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_
     return (0);
 }
 
-void win_start_eventchannel_json(char *evt_log, char future, char *query)
+void win_start_event_channel(char *evt_log, char future, char json, char *query)
 {
     wchar_t *wchannel = NULL;
     wchar_t *wquery = NULL;
     char *filtered_query = NULL;
     os_channel *channel = NULL;
+    EVT_SUBSCRIBE_CALLBACK callback;
     DWORD flags = EvtSubscribeToFutureEvents;
     EVT_HANDLE bookmark = NULL;
     EVT_HANDLE result = NULL;
     int status = 0;
+
+    if (json) {
+        callback = (EVT_SUBSCRIBE_CALLBACK)event_channel_json_callback;
+    } else {
+        callback = (EVT_SUBSCRIBE_CALLBACK)event_channel_callback;
+    }
 
     if ((channel = calloc(1, sizeof(os_channel))) == NULL) {
         mferror(
@@ -1147,7 +1020,7 @@ void win_start_eventchannel_json(char *evt_log, char future, char *query)
                           wquery,
                           bookmark,
                           channel,
-                          (EVT_SUBSCRIBE_CALLBACK)event_channel_json_callback,
+                          callback,
                           flags);
 
     if (result == NULL && flags == EvtSubscribeStartAfterBookmark) {
@@ -1157,7 +1030,7 @@ void win_start_eventchannel_json(char *evt_log, char future, char *query)
                               wquery,
                               NULL,
                               channel,
-                              (EVT_SUBSCRIBE_CALLBACK)event_channel_json_callback,
+                              callback,
                               EvtSubscribeToFutureEvents);
     }
 
