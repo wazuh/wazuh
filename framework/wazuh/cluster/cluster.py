@@ -53,6 +53,10 @@ except:
 logger = logging.getLogger(__name__)
 
 
+def get_localhost_ips():
+    return set(check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1])
+
+
 def check_cluster_config(config):
     iv = InputValidator()
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
@@ -79,6 +83,9 @@ def check_cluster_config(config):
 
     if len(invalid_elements) != 0:
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
+
+    if config['node_type'] == 'master' and config['nodes'][0] not in get_localhost_ips():
+        raise WazuhException(3004, "Master IP not valid. Valid ones are: {}".format(', '.join(get_localhost_ips())))
 
     if not isinstance(config['port'], int) and not config['port'].isdigit():
         raise WazuhException(3004, "Cluster port must be an integer.")
@@ -446,7 +453,7 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
                                        offset=offset)
     return agents
 
-  
+
 def _check_removed_agents(new_client_keys):
     """
     Function to delete agents that have been deleted in a synchronized
