@@ -912,7 +912,6 @@ cleanup:
     free(str_i);
     free(message);
     free(my_event);
-    free(avoid_dup);
     free(filtered_msg);
     free(wprovider_name);
     OS_ClearXML(&xml);
