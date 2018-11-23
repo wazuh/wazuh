@@ -15,7 +15,6 @@ All notable changes to this project will be documented in this file.
 - Change errors messages to descriptive warnings in Syscheck when a files is not reachable. ([#1730](https://github.com/wazuh/wazuh/pull/1730))
 - Add default values to global options to let the manager start. ([#1894](https://github.com/wazuh/wazuh/pull/1894))
 - Improve Remoted performance by reducing interaction between threads. ([#1902](https://github.com/wazuh/wazuh/pull/1902))
-- Deprecated the Syscheck option `<remove_old_diff>` by making it mandatory. ([#1915](https://github.com/wazuh/wazuh/pull/1915))
 
 ### Fixed
 
