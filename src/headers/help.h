@@ -12,6 +12,8 @@
 #ifndef __HELP_H
 #define __HELP_H
 
+#include "shared.h"
+
 void print_header(void);
 void print_version(void) __attribute__((noreturn));
 

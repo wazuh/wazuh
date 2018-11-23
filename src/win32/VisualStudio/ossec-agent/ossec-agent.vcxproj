@@ -104,10 +104,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;ARGV0=R"?(ossec-agent)?";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4244</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -116,10 +117,10 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_libcjson.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Retrieve cJSON</Message>
+      <Message>Get dependencies</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -128,10 +129,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;ARGV0=R"?(ossec-agent)?";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4244</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -140,10 +142,10 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_libcjson.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Retrieve cJSON</Message>
+      <Message>Get dependencies</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -154,10 +156,11 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;ARGV0=R"?(ossec-agent)?";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4244</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -168,10 +171,10 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_libcjson.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Retrieve cJSON</Message>
+      <Message>Get dependencies</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -182,10 +185,11 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;ARGV0=R"?(ossec-agent)?";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4244</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -196,25 +200,114 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_libcjson.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Retrieve cJSON</Message>
+      <Message>Get dependencies</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\client-agent\agcom.c" />
+    <ClCompile Include="..\..\..\client-agent\buffer.c" />
+    <ClCompile Include="..\..\..\client-agent\config.c" />
+    <ClCompile Include="..\..\..\client-agent\intcheck_op.c" />
+    <ClCompile Include="..\..\..\client-agent\notify.c" />
+    <ClCompile Include="..\..\..\client-agent\receiver-win.c" />
+    <ClCompile Include="..\..\..\client-agent\receiver.c" />
+    <ClCompile Include="..\..\..\client-agent\request.c" />
+    <ClCompile Include="..\..\..\client-agent\restart_agent.c" />
+    <ClCompile Include="..\..\..\client-agent\rotate_log.c" />
+    <ClCompile Include="..\..\..\client-agent\sendmsg.c" />
+    <ClCompile Include="..\..\..\client-agent\start_agent.c" />
+    <ClCompile Include="..\..\..\client-agent\state.c" />
+    <ClCompile Include="..\..\..\logcollector\config.c" />
+    <ClCompile Include="..\..\..\logcollector\lccom.c" />
+    <ClCompile Include="..\..\..\logcollector\logcollector.c" />
+    <ClCompile Include="..\..\..\logcollector\read_audit.c" />
+    <ClCompile Include="..\..\..\logcollector\read_command.c" />
+    <ClCompile Include="..\..\..\logcollector\read_djb_multilog.c" />
+    <ClCompile Include="..\..\..\logcollector\read_fullcommand.c" />
+    <ClCompile Include="..\..\..\logcollector\read_json.c" />
+    <ClCompile Include="..\..\..\logcollector\read_mssql_log.c" />
+    <ClCompile Include="..\..\..\logcollector\read_multiline.c" />
+    <ClCompile Include="..\..\..\logcollector\read_mysql_log.c" />
+    <ClCompile Include="..\..\..\logcollector\read_nmapg.c" />
+    <ClCompile Include="..\..\..\logcollector\read_ossecalert.c" />
+    <ClCompile Include="..\..\..\logcollector\read_postgresql_log.c" />
+    <ClCompile Include="..\..\..\logcollector\read_snortfull.c" />
+    <ClCompile Include="..\..\..\logcollector\read_syslog.c" />
+    <ClCompile Include="..\..\..\logcollector\read_win_el.c" />
+    <ClCompile Include="..\..\..\logcollector\read_win_event_channel.c" />
+    <ClCompile Include="..\..\..\monitord\compress_log.c" />
+    <ClCompile Include="..\..\..\monitord\rotate_log.c" />
+    <ClCompile Include="..\..\..\os_execd\config.c" />
+    <ClCompile Include="..\..\..\os_execd\exec.c" />
+    <ClCompile Include="..\..\..\os_execd\execd.c" />
+    <ClCompile Include="..\..\..\os_execd\wcom.c" />
+    <ClCompile Include="..\..\..\os_execd\win_execd.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_open_ports.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_rc_dev.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_rc_files.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_rc_if.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_rc_pids.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_rc_policy.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_rc_ports.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_rc_readproc.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_rc_sys.c" />
+    <ClCompile Include="..\..\..\rootcheck\check_rc_trojans.c" />
+    <ClCompile Include="..\..\..\rootcheck\common.c" />
+    <ClCompile Include="..\..\..\rootcheck\common_rcl.c" />
+    <ClCompile Include="..\..\..\rootcheck\config.c" />
+    <ClCompile Include="..\..\..\rootcheck\os_string.c" />
+    <ClCompile Include="..\..\..\rootcheck\rootcheck-config.c" />
+    <ClCompile Include="..\..\..\rootcheck\rootcheck.c" />
+    <ClCompile Include="..\..\..\rootcheck\run_rk_check.c" />
+    <ClCompile Include="..\..\..\rootcheck\unix-process.c" />
+    <ClCompile Include="..\..\..\rootcheck\win-common.c" />
+    <ClCompile Include="..\..\..\rootcheck\win-process.c" />
+    <ClCompile Include="..\..\..\syscheckd\config.c" />
+    <ClCompile Include="..\..\..\syscheckd\create_db.c" />
+    <ClCompile Include="..\..\..\syscheckd\run_check.c" />
+    <ClCompile Include="..\..\..\syscheckd\run_realtime.c" />
+    <ClCompile Include="..\..\..\syscheckd\seechanges.c" />
+    <ClCompile Include="..\..\..\syscheckd\syscheck.c" />
+    <ClCompile Include="..\..\..\syscheckd\syscheck_audit.c" />
+    <ClCompile Include="..\..\..\syscheckd\syscom.c" />
+    <ClCompile Include="..\..\..\syscheckd\win-registry.c" />
+    <ClCompile Include="..\..\..\syscheckd\win_whodata.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_bsd.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_common.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_linux.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_windows.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_win_ext.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wmcom.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wmodules.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_aws.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_azure.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_ciscat.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_command.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_database.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_docker.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_download.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_exec.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_oscap.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_osquery_monitor.c" />
+    <ClCompile Include="..\..\..\wazuh_modules\wm_vuln_detector.c" />
     <ClCompile Include="..\..\win_agent.c" />
     <ClCompile Include="..\..\win_service.c" />
     <ClCompile Include="..\include\external\cJSON\cJSON.c" />
+    <ClCompile Include="..\include\libgen.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\icofile.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\dirent.h" />
     <ClInclude Include="..\include\external\cJSON\cJSON.h" />
+    <ClInclude Include="..\include\libgen.h" />
     <ClInclude Include="..\include\sys\param.h" />
     <ClInclude Include="..\include\sys\time.h" />
     <ClInclude Include="..\include\unistd.h" />
@@ -227,6 +320,7 @@
     <Import Project="..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets" Condition="Exists('..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets')" />
     <Import Project="..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets" Condition="Exists('..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets')" />
     <Import Project="..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets" Condition="Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets')" />
+    <Import Project="..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets" Condition="Exists('..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -239,5 +333,6 @@
     <Error Condition="!Exists('..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets'))" />
     <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props'))" />
     <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets'))" />
+    <Error Condition="!Exists('..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets'))" />
   </Target>
 </Project>

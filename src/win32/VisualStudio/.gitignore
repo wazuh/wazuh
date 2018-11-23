@@ -1,8 +1,10 @@
+include/external
+include/dirent.h
+include/unistd.h
 .vs
 Build
-packages/*
-include/external
 ossec-agent/Win32
 ossec-agent/x64
 syscollector_win_ext/Win32
 syscollector_win_ext/x64
+packages

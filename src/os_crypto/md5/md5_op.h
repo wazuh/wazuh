@@ -16,6 +16,8 @@
 
 #include <sys/types.h>
 
+#include "shared.h"
+
 typedef char os_md5[33];
 
 int OS_MD5_File(const char *fname, os_md5 output, int mode) __attribute((nonnull));

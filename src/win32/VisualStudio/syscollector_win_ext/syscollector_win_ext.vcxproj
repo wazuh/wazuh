@@ -114,10 +114,10 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_libcjson.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Retrieve cJSON</Message>
+      <Message>Get dependencies</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -138,10 +138,10 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_libcjson.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Retrieve cJSON</Message>
+      <Message>Get dependencies</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -166,10 +166,10 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_libcjson.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Retrieve cJSON</Message>
+      <Message>Get dependencies</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -194,10 +194,10 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_libcjson.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Retrieve cJSON</Message>
+      <Message>Get dependencies</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

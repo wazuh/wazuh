@@ -12,7 +12,11 @@
 #ifndef URL_GET_H_
 #define URL_GET_H_
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#include <curl/curl.h>
+#else
 #include <external/curl/include/curl/curl.h>
+#endif
 
 #define WURL_WRITE_FILE_ERROR "Failed opening file '%s'"
 #define WURL_DOWNLOAD_FILE_ERROR "Failed to download file '%s' from url: %s"

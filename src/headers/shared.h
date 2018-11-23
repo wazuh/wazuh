@@ -34,6 +34,11 @@
 #define _FILE_OFFSET_BITS 64
 #endif
 
+#ifndef __GNUC__
+#define __attribute__(x)
+#define __attribute(x)
+#endif
+
 /* Global headers */
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -140,11 +145,18 @@ typedef int sock2len_t;
 #endif
 
 #ifdef WIN32
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#define strdup _strdup
+#ifdef wreaddir
+#undef wreaddir
+#endif
+#else
+#define srandom(x) srand(x)
+#endif
 typedef int uid_t;
 typedef int gid_t;
 typedef int socklen_t;
 #define sleep(x) Sleep(x * 1000)
-#define srandom(x) srand(x)
 #define lstat(x,y) stat(x,y)
 #define CloseSocket(x) closesocket(x)
 void WinSetError();
@@ -157,7 +169,7 @@ typedef uint8_t u_int8_t;
 #ifndef PROCESSOR_ARCHITECTURE_AMD64
 #define PROCESSOR_ARCHITECTURE_AMD64 9
 #endif
-#endif /* WIN32 */
+#endif /* defined(WIN32) && !defined(_MSC_VER) */
 
 #ifdef AIX
 #define MSG_DONTWAIT MSG_NONBLOCK

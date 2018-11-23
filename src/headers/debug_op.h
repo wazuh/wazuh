@@ -18,9 +18,7 @@
 #ifndef __DEBUG_H
 #define __DEBUG_H
 
-#ifndef __GNUC__
-#define __attribute__(x)
-#endif
+#include "shared.h"
 
 #include <external/cJSON/cJSON.h>
 /* For internal logs */

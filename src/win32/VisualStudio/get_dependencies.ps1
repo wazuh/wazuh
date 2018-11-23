@@ -50,7 +50,7 @@ function createDestDir
 }
 
 # Download file from a GitHub release
-function getGitHubRepoFile
+function getFileFromGitHubRelease
 {
     [cmdletbinding()]
     param
@@ -89,36 +89,91 @@ function getGitHubRepoFile
     Write-Host "File `"$fileToGet`" downloaded to `"$destDir\$fileToGet`"."
 }
 
-# GitHub repository details
-$repo = "DaveGamble/cJSON"
+# Download file to a specific path
+function downloadFile
+{
+    [cmdletbinding()]
+    param
+    (
+        [Parameter(
+            Mandatory=$true,
+            Position=0,
+            ValueFromPipeline=$true)]
+        [string] $fileUrl,
+        [Parameter(
+            Mandatory=$true,
+            Position=1,
+            ValueFromPipeline=$true)]
+        [string] $destPath
+    )
+    
+    Write-Host "Downloading `"$fileUrl`"..."
+    
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest $fileUrl -Out "$destPath"
+    
+    Write-Host "File downloaded to `"$destPath`"."
+}
 
-# Destination directory prefix
-$dir_prefix = "..\include\external\cJSON"
+# Set destination directory prefix
+$dir_prefix = "..\include"
 
 # Convert relative path to absolute path
 $dir_prefix = Resolve-FullPath($dir_prefix)
 
+# libcJSON variables
+$cjson_repo = "DaveGamble/cJSON"
+$cjson_dir = "$dir_prefix\external\cJSON"
+
+# dirent.h variables
+$dirent_url = "https://raw.githubusercontent.com/tronkko/dirent/master/include/dirent.h"
+$dirent_path = "$dir_prefix\dirent.h"
+
+#unistd.h variables
+$unistd_url = "https://gist.githubusercontent.com/mbikovitsky/39224cf521bfea7eabe9/raw/69e4852c06452a368a174ca1f0f33ce87bb52985/unistd.h"
+$unistd_path = "$dir_prefix\unistd.h"
+
 # Create directories if necessary
-createDestDir($dir_prefix)
+createDestDir($cjson_dir)
 
 # Check if the necessary files are already available
 
-$cjson_c = (Test-Path -Path "$dir_prefix\cJSON.c" -PathType Leaf)
+$cjson_c = (Test-Path -Path "$cjson_dir\cJSON.c" -PathType Leaf)
 if ($cjson_c -eq $False)
 {
     # Download cJSON.c
     Write-Host "File `"cJSON.c`" not available."
-    getGitHubRepoFile $repo "cJSON.c" $dir_prefix
+    getFileFromGitHubRelease $cjson_repo "cJSON.c" "$cjson_dir"
 } else {
-    Write-Host "cJSON.c already available."
+    Write-Host "File `"cJSON.c`" already available."
 }
 
-$cjson_h = (Test-Path -Path "$dir_prefix\cJSON.h" -PathType Leaf)
+$cjson_h = (Test-Path -Path "$cjson_dir\cJSON.h" -PathType Leaf)
 if ($cjson_h -eq $False)
 {
     # Download cJSON.h
     Write-Host "File `"cJSON.h`" not available."
-    getGitHubRepoFile $repo "cJSON.h" $dir_prefix
+    getFileFromGitHubRelease $cjson_repo "cJSON.h" "$cjson_dir"
 } else {
-    Write-Host "cJSON.h already available."
+    Write-Host "File `"cJSON.h`" already available."
+}
+
+$dirent_h = (Test-Path -Path "$dirent_path" -PathType Leaf)
+if ($dirent_h -eq $False)
+{
+    # Download dirent.h
+    Write-Host "File `"dirent.h`" not available."
+    downloadFile $dirent_url "$dirent_path"
+} else {
+    Write-Host "File `"dirent.h`" already available."
+}
+
+$unistd_h = (Test-Path -Path "$unistd_path" -PathType Leaf)
+if ($unistd_h -eq $False)
+{
+    # Download unistd.h
+    Write-Host "File `"unistd.h`" not available."
+    downloadFile $unistd_url "$unistd_path"
+} else {
+    Write-Host "File `"unistd.h`" already available."
 }

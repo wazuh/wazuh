@@ -13,6 +13,8 @@
 #include <time.h>
 #include <pthread.h>
 
+#include "shared.h"
+
 typedef enum _crypt_method{
     W_METH_BLOWFISH,W_METH_AES
 } crypt_method;
