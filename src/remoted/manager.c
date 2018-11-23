@@ -1003,12 +1003,13 @@ static void read_controlmsg(const char *agent_id, char *msg)
  */
 void *wait_for_msgs(__attribute__((unused)) void *none)
 {
-    char * msg;
     char agent_id[9];
     pending_data_t *data;
 
     /* Should never leave this loop */
     while (1) {
+        char * msg;
+
         /* Lock mutex */
         w_mutex_lock(&lastmsg_mutex);
 
