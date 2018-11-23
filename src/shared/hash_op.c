@@ -517,3 +517,66 @@ OSHash *OSHash_Duplicate_ex(const OSHash *hash) {
 
     return result;
 }
+
+
+OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i){
+
+    OSHashNode *curr_node;
+    *i = 0;
+
+    while (*i <= self->rows) {
+        curr_node = self->table[*i];
+        if (curr_node && curr_node->key) {
+            return curr_node;
+        }
+        (*i)++;
+    }
+
+    return NULL;
+}
+
+OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current){
+
+    if(current && current->next){
+        return current->next;
+    }
+
+    (*i)++;
+
+    while (*i <= self->rows) {
+        current = self->table[*i];
+        if (current && current->key) {
+            return current;
+        }
+        (*i)++;
+    }
+
+    return NULL;
+}
+
+void *OSHash_Clean(OSHash *self){
+    unsigned int i = 0;
+    OSHashNode *curr_node;
+    OSHashNode *next_node;
+
+    /* Free each entry */
+    while (i <= self->rows) {
+        curr_node = self->table[i];
+        next_node = curr_node;
+        while (next_node) {
+            next_node = next_node->next;
+            if(curr_node->data)
+                free(curr_node->data);
+            if(curr_node->key)
+                free(curr_node->key);
+            if(curr_node)
+                free(curr_node);
+            curr_node = next_node;
+        }
+        i++;
+    }
+
+    /* Free the hash table */
+    pthread_rwlock_destroy(&self->mutex);
+    return (NULL);
+}
