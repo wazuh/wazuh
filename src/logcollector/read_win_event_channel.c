@@ -795,6 +795,9 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
                         if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
                             cJSON_AddStringToObject(json_system_in, "Security UserID", child_attr[p]->values[0]);
                         }
+                    } else if (!strcmp(child_attr[p]->element, "Level")) {
+                        os_strdup(child_attr[p]->content, level);
+                        cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                     } else {
                         cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                     }
@@ -867,12 +870,9 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
         mferror(
             "Could not get message for (%s)",
             channel->evt_log);
-    } else {
-        /* Format message */
-        win_format_event_string(my_msg);
     }
 
-    avoid_dup = strstr(my_msg, " Subject");
+    avoid_dup = strchr(my_msg, '\r');
     os_malloc(OS_MAXSTR, filtered_msg);
 
     if (avoid_dup){
@@ -886,8 +886,12 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
 
     cJSON_AddStringToObject(json_system_in, "SeverityValue", category);
 
-    cJSON_AddItemToObject(json_event, "System", json_system_in);
-    cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
+    if(json_system_in){
+        cJSON_AddItemToObject(json_event, "System", json_system_in);
+    }
+    if (json_eventdata_in){
+        cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
+    }
     my_event = cJSON_PrintUnformatted(json_event);
 
     if (SendMSG(logr_queue, my_event, "WinEvtChannelJSON", LOCALFILE_MQ) < 0) {
