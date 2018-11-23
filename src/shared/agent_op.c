@@ -323,55 +323,6 @@ int set_agent_multigroup(char * group){
     /* Remove multigroup if it's not used on any other agent */
     w_remove_multigroup(group);
 
-    FILE *fp_metadata;
-    char metadata_path[PATH_MAX + 1] = {0};
-    snprintf(metadata_path,PATH_MAX,"%s",isChroot() ?  METADATA_FILE :  DEFAULTDIR METADATA_FILE);
-
-    oldmask = umask(0002);
-    fp_metadata = fopen(metadata_path,"a+");
-    umask(oldmask);
-
-    if (!fp_metadata) {
-        merror(FOPEN_ERROR, metadata_path, errno, strerror(errno));
-        return -1;
-    }
-
-    if (fseek(fp_metadata, 0, SEEK_SET) < 0) {
-        merror(FSEEK_ERROR, metadata_path, errno, strerror(errno));
-        fclose(fp_metadata);
-        return -1;
-    }
-
-    os_calloc(OS_SIZE_65536 + 1, sizeof(char), buffer);
-
-    int found = 0;
-    while (fgets(buffer, OS_SIZE_65536 + 1, fp_metadata) != NULL) {
-        char *endl = strchr(buffer, '\n');
-
-        if (endl) {
-            *endl = '\0';
-        } else {
-            static int reported = 0;
-            if (!reported) {
-                mdebug1("File '%s' is corrupted: line too long.", metadata_path);
-                reported = 1;
-            }
-        }
-
-        if(strncmp(buffer,group,OS_SIZE_65536) == 0){
-            found = 1;
-            break;
-        }
-    }
-
-    free(buffer);
-
-    if(!found){
-        fprintf(fp_metadata, "%s\n", group);
-    }
-
-    fclose(fp_metadata);
-
     /* Check if the multigroup dir is created */
     os_sha256 multi_group_hash;
     char multigroup_path[PATH_MAX + 1] = {0};
@@ -596,22 +547,12 @@ int w_validate_group_name(const char *group){
 void w_remove_multigroup(const char *group){
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char path[PATH_MAX + 1] = {0};
-    char metadata_file[PATH_MAX + 1] = {0};
     int line = 0;
 
     if(multigroup){
         sprintf(path,"%s",isChroot() ?  GROUPS_DIR :  DEFAULTDIR GROUPS_DIR);
 
         if(wstr_find_in_folder(path,group,1) < 0){
-            sprintf(metadata_file,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR, ".metadata");
-
-            line = wstr_find_line_in_file(metadata_file,group,1);
-
-            if(line >= 0){
-                /* Remove line from file */
-                w_remove_line_from_file(metadata_file,line);
-            }
-
             /* Remove the DIR */
             os_sha256 multi_group_hash;
             OS_SHA256_String(group,multi_group_hash);

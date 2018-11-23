@@ -306,7 +306,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Multi-groups directory */
 #define MULTIGROUPS_DIR   "/var/multigroups"
-#define METADATA_FILE MULTIGROUPS_DIR "/.metadata"
+// #define METADATA_FILE MULTIGROUPS_DIR "/.metadata"
 #define MAX_GROUP_NAME 255
 #define MULTIGROUP_SEPARATOR ','
 #define MAX_GROUPS_PER_MULTIGROUP 256

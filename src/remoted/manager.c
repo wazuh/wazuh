@@ -554,6 +554,7 @@ static void c_files()
             groups = NULL;
         }
 
+        merror("cleaning...");
         // Clean hash table
         OSHash_Free(m_hash);
         m_hash = OSHash_Create();
