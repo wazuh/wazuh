@@ -22,7 +22,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
                                int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
 #endif /* !WIN32*/
 
-static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2, 3)));
+static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id) __attribute__((nonnull(2, 3)));
 static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));
 static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2, 3)));
 
@@ -974,10 +974,44 @@ char *agent_file_perm(mode_t mode)
 #endif /* !WIN32 */
 
 /* Internal function. Extract last time of scan from rootcheck/syscheck. */
-static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info)
+static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id)
 {
     FILE *fp;
     char buf[1024 + 1];
+    time_t fim_start;
+    time_t fim_end;
+    char *timestamp;
+    char *tmp_str = NULL;
+
+    fim_start = scantime_fim(agent_id, "start_scan");
+    fim_end = scantime_fim(agent_id, "end_scan");
+    if (fim_start < 0) {
+        os_strdup("Unknown", agt_info->syscheck_time);
+    } else if (fim_start > fim_end){
+        os_strdup(ctime(&fim_start), timestamp);
+
+        /* Remove newline */
+        tmp_str = strchr(timestamp, '\n');
+        if (tmp_str) {
+            *tmp_str = '\0';
+        }
+        os_calloc(OS_SIZE_128, sizeof(char), agt_info->syscheck_time);
+        snprintf(agt_info->syscheck_time, OS_SIZE_128, "%s (Scan in progress)", timestamp);
+        os_free(timestamp);
+    } else {
+        os_strdup(ctime(&fim_start), agt_info->syscheck_time);
+
+        /* Remove newline */
+        tmp_str = strchr(agt_info->syscheck_time, '\n');
+        if (tmp_str) {
+            *tmp_str = '\0';
+        }
+    }
+    if (fim_end < 0) {
+        os_strdup("Unknown", agt_info->syscheck_endtime);
+    } else {
+        os_strdup(ctime(&fim_end), agt_info->syscheck_endtime);
+    }
 
     /* Agent name of null, means it is the server info */
     if (agent_name == NULL) {
@@ -993,53 +1027,16 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     if (!fp) {
         os_strdup("Unknown", agt_info->rootcheck_time);
         os_strdup("Unknown", agt_info->rootcheck_endtime);
-        os_strdup("Unknown", agt_info->syscheck_time);
-        os_strdup("Unknown", agt_info->syscheck_endtime);
         return (0);
     }
 
     while (fgets(buf, 1024, fp) != NULL) {
-        char *tmp_str = NULL;
+        tmp_str = NULL;
 
         /* Remove newline */
         tmp_str = strchr(buf, '\n');
         if (tmp_str) {
             *tmp_str = '\0';
-        }
-
-        tmp_str = strstr(buf, "Starting syscheck scan");
-        if (tmp_str) {
-            time_t s_time = 0;
-            tmp_str = buf + 1;
-
-            s_time = (time_t)atoi(tmp_str);
-            os_strdup(ctime(&s_time), agt_info->syscheck_time);
-
-            /* Remove newline */
-            tmp_str = strchr(agt_info->syscheck_time, '\n');
-            if (tmp_str) {
-                *tmp_str = '\0';
-            }
-
-            continue;
-        }
-
-        tmp_str = strstr(buf, "Ending syscheck scan");
-        if (tmp_str) {
-            time_t s_time = 0;
-            tmp_str = buf + 1;
-
-            s_time = (time_t)atoi(tmp_str);
-
-            os_strdup(ctime(&s_time), agt_info->syscheck_endtime);
-
-            /* Remove newline */
-            tmp_str = strchr(agt_info->syscheck_endtime, '\n');
-            if (tmp_str) {
-                *tmp_str = '\0';
-            }
-
-            continue;
         }
 
         tmp_str = strstr(buf, "Starting rootcheck scan");
@@ -1083,12 +1080,6 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     }
     if (!agt_info->rootcheck_endtime) {
         os_strdup("Unknown", agt_info->rootcheck_endtime);
-    }
-    if (!agt_info->syscheck_time) {
-        os_strdup("Unknown", agt_info->syscheck_time);
-    }
-    if (!agt_info->syscheck_endtime) {
-        os_strdup("Unknown", agt_info->syscheck_endtime);
     }
 
     fclose(fp);
@@ -1199,7 +1190,7 @@ static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_inf
 }
 
 /* Get information from an agent */
-agent_info *get_agent_info(const char *agent_name, const char *agent_ip)
+agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id)
 {
     char *agent_ip_pt = NULL;
     char *tmp_str = NULL;
@@ -1216,7 +1207,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip)
 
     /* Get information about the OS */
     _get_agent_os(agent_name, agent_ip, agt_info);
-    _get_time_rkscan(agent_name, agent_ip, agt_info);
+    _get_time_rkscan(agent_name, agent_ip, agt_info, agent_id);
     agt_info->last_keepalive = _get_agent_keepalive(agent_name, agent_ip);
 
     /* Remove newline from keepalive */
@@ -1346,4 +1337,126 @@ char **get_agents(int flag)
 
     closedir(dp);
     return (f_files);
+}
+
+
+int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) {
+    char response[OS_SIZE_6144];
+    fd_set fdset;
+    struct timeval timeout = {0, 1000};
+    int wdb_socket = -1;
+    int size = strlen(wazuhdb_query);
+    int retval = -2;
+
+    // Connect to socket
+    if (wdb_socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144),
+            wdb_socket < 0) {
+        switch (errno) {
+        case ENOENT:
+            merror("%s: Cannot find '%s'.", source, WDB_LOCAL_SOCK);
+            break;
+        default:
+            merror("%s: Cannot connect to '%s': %s (%d).",
+                    source, WDB_LOCAL_SOCK, strerror(errno), errno);
+        }
+        return -2;
+    }
+
+    // Send query to Wazuh DB
+    if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query) != 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            merror("%s: database socket is full", source);
+        } else if (errno == EPIPE) {
+            // Retry to connect
+            mwarn("%s: Connection with wazuh-db lost. Reconnecting.", source);
+            close(wdb_socket);
+
+            if (wdb_socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144),
+                    wdb_socket < 0) {
+                switch (errno) {
+                case ENOENT:
+                    merror("%s: Cannot find '%s'. Please check that Wazuh DB is running.",
+                            source, WDB_LOCAL_SOCK);
+                    break;
+                default:
+                    merror("%s: Cannot connect to '%s': %s (%d)",
+                            source, WDB_LOCAL_SOCK, strerror(errno), errno);
+                }
+                return (-2);
+            }
+
+            if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query)) {
+                merror("%s: in send reattempt (%d) '%s'.", source, errno, strerror(errno));
+                return (-2);
+            }
+        } else {
+            merror("%s: in send (%d) '%s'.", source, errno, strerror(errno));
+        }
+    }
+
+    // Wait for socket
+    FD_ZERO(&fdset);
+    FD_SET(wdb_socket, &fdset);
+
+    if (select(wdb_socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
+        merror("%s: in select (%d) '%s'.", source, errno, strerror(errno));
+        return (-2);
+    }
+
+    // Receive response from socket
+    if (OS_RecvSecureTCP(wdb_socket, response, OS_SIZE_6144 - 1) > 0) {
+        os_strdup(response, *output);
+
+        if (response[0] == 'o' && response[1] == 'k') {
+            retval = 0;
+        } else {
+            merror("%s: Bad response '%s'.", source, response);
+            return retval;
+        }
+    } else {
+        merror("%s: no response from wazuh-db.", source);
+        return retval;
+    }
+
+    return retval;
+}
+
+time_t scantime_fim (const char *agent_id, const char *scan) {
+    char *wazuhdb_query = NULL;
+    char *response = NULL;
+    char *output;
+    int db_result;
+    time_t ts;
+
+    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
+
+    snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_get %s",
+            agent_id, scan
+    );
+
+    db_result = query_wazuhdb(wazuhdb_query, "Read Agents", &response);
+
+    switch (db_result) {
+    case -2:
+        merror("FIM decoder: Bad result getting scan date '%s'.", wazuhdb_query);
+        // Fallthrough
+    case -1:
+        os_free(wazuhdb_query);
+        os_free(response);
+        return (-1);
+    }
+
+    output = strchr(response, ' ');
+    if(output) {
+        ts = atol(output);
+        *(output++) = '\0';
+    } else {
+        ts = -1;
+    }
+
+    mdebug2("Agent '%s' FIM '%s' timestamp:'%ld'", agent_id, scan, ts);
+
+    os_free(wazuhdb_query);
+    os_free(response);
+    return (ts);
 }
