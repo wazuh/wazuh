@@ -97,29 +97,30 @@ void sdb_init(_sdb *localsdb) {
 
 // Initialize the necessary information to process the syscheck information
 void sdb_clean(_sdb *localsdb) {
-    memset(localsdb->comment, '\0', OS_MAXSTR + 1);
-    memset(localsdb->size, '\0', OS_FLSIZE + 1);
-    memset(localsdb->perm, '\0', OS_SIZE_20480 + 1);
-    memset(localsdb->owner, '\0', OS_FLSIZE + 1);
-    memset(localsdb->gowner, '\0', OS_FLSIZE + 1);
-    memset(localsdb->md5, '\0', OS_FLSIZE + 1);
-    memset(localsdb->sha1, '\0', OS_FLSIZE + 1);
-    memset(localsdb->sha256, '\0', OS_FLSIZE + 1);
-    memset(localsdb->mtime, '\0', OS_FLSIZE + 1);
-    memset(localsdb->inode, '\0', OS_FLSIZE + 1);
+    *localsdb->comment = '\0';
+    *localsdb->size = '\0';
+    *localsdb->perm = '\0';
+    *localsdb->attrs = '\0';
+    *localsdb->owner = '\0';
+    *localsdb->gowner = '\0';
+    *localsdb->md5 = '\0';
+    *localsdb->sha1 = '\0';
+    *localsdb->sha256 = '\0';
+    *localsdb->mtime = '\0';
+    *localsdb->inode = '\0';
 
     // Whodata fields
-    memset(localsdb->user_id, '\0', OS_FLSIZE + 1);
-    memset(localsdb->user_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->group_id, '\0', OS_FLSIZE + 1);
-    memset(localsdb->group_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->process_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->audit_uid, '\0', OS_FLSIZE + 1);
-    memset(localsdb->audit_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->effective_uid, '\0', OS_FLSIZE + 1);
-    memset(localsdb->effective_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->ppid, '\0', OS_FLSIZE + 1);
-    memset(localsdb->process_id, '\0', OS_FLSIZE + 1);
+    *localsdb->user_id = '\0';
+    *localsdb->user_name = '\0';
+    *localsdb->group_id = '\0';
+    *localsdb->group_name = '\0';
+    *localsdb->process_name = '\0';
+    *localsdb->audit_uid = '\0';
+    *localsdb->audit_name = '\0';
+    *localsdb->effective_uid = '\0';
+    *localsdb->effective_name = '\0';
+    *localsdb->ppid = '\0';
+    *localsdb->process_id = '\0';
 }
 
 /* Special decoder for syscheck
