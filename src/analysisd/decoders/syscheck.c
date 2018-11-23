@@ -189,7 +189,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     c_sum = lf->log;
 
     // Get w_sum
-    if (w_sum = strchr(c_sum, '!'), w_sum) {
+    if (w_sum = wstr_chr(c_sum, '!'), w_sum) {
         *(w_sum++) = '\0';
     }
 
@@ -234,7 +234,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         os_free(lf->data);
         goto exit_fail;
     }
-    check_sum = strchr(response, ' ');
+    check_sum = wstr_chr(response, ' ');
     *(check_sum++) = '\0';
 
     //extract changes and date_alert fields only available from wazuh_db
@@ -382,6 +382,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         goto exit_ok;
     }
     sk_sum_clean(&newsum);
+    sk_sum_clean(&oldsum);
     os_free(response);
     os_free(new_check_sum);
     os_free(old_check_sum);
@@ -390,6 +391,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
 exit_ok:
     sk_sum_clean(&newsum);
+    sk_sum_clean(&oldsum);
     os_free(response);
     os_free(new_check_sum);
     os_free(old_check_sum);
@@ -398,6 +400,7 @@ exit_ok:
 
 exit_fail:
     sk_sum_clean(&newsum);
+    sk_sum_clean(&oldsum);
     os_free(response);
     os_free(new_check_sum);
     os_free(old_check_sum);
@@ -537,11 +540,15 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
                     char opstr[10];
                     char npstr[10];
+                    char *old_perm =  agent_file_perm(oldsum->perm);
+                    char *new_perm =  agent_file_perm(newsum->perm);
 
-                    strncpy(opstr, agent_file_perm(oldsum->perm), sizeof(opstr) - 1);
-                    strncpy(npstr, agent_file_perm(newsum->perm), sizeof(npstr) - 1);
+                    strncpy(opstr, old_perm, sizeof(opstr) - 1);
+                    strncpy(npstr, new_perm, sizeof(npstr) - 1);
+                    free(old_perm);
+                    free(new_perm);
+
                     opstr[9] = npstr[9] = '\0';
-
                     snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
                              "'%9.9s' to '%9.9s'\n", opstr, npstr);
 

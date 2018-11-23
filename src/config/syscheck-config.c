@@ -791,6 +791,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         syscheck->disabled = SK_CONF_UNDEFINED;
     }
 
+    os_calloc(1, sizeof(char *), syscheck->audit_key);
+
     while (node && node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -1227,7 +1229,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     int keyit = 0;
                     char delim = ',';
                     char *key;
-                    os_calloc(1, sizeof(char *), syscheck->audit_key);
                     syscheck->audit_key[keyit] = NULL;
                     key = strtok(children[j]->content, &delim);
 
@@ -1412,6 +1413,8 @@ void Free_Syscheck(syscheck_config * config) {
             free(config->realtime);
         }
         free(config->prefilter_cmd);
+
+        free_strarray(config->audit_key);
     }
 }
 

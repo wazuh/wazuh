@@ -84,6 +84,7 @@ typedef struct whodata_evt {
     char *audit_name;  // Linux
     char *effective_uid;  // Linux
     char *effective_name;  // Linux
+    char *inode;  // Linux
     int ppid;  // Linux
 #ifndef WIN32
     unsigned int process_id;
@@ -216,6 +217,7 @@ typedef struct _config {
     OSHash *fp;
     OSHash *last_check;
     OSHash *local_hash;
+    OSHash *inode_hash;
 
     rtfim *realtime;
 

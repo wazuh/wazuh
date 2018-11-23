@@ -134,6 +134,7 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->group_id) free(w_evt->group_id);
     if (w_evt->path) free(w_evt->path);
     if (w_evt->process_name) free(w_evt->process_name);
+    if (w_evt->inode) free(w_evt->inode);
     free(w_evt);
 }
 
@@ -175,6 +176,9 @@ cJSON *getSyscheckConfig(void) {
             cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
             cJSON_AddNumberToObject(pair,"recursion_level",syscheck.recursion_level[i]);
+            if (syscheck.filerestrict && syscheck.filerestrict[i]) {
+                cJSON_AddStringToObject(pair,"restrict",syscheck.filerestrict[i]->raw);
+            }
             if (syscheck.tag && syscheck.tag[i]) {
                 cJSON_AddStringToObject(pair,"tags",syscheck.tag[i]);
             }

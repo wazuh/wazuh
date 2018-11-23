@@ -88,19 +88,25 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
 
 #ifdef __linux__
 int audit_init(void);
+void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
 int set_auditd_config(void);
 int init_auditd_socket(void);
 int audit_add_rule(const char *path, const char *key);
 int audit_delete_rule(const char *path, const char *key);
 void *audit_main(int *audit_sock);
+void *audit_reload_thread(void);
+void audit_reload_rules(void);
 void clean_rules(void);
 int filterkey_audit_events(char *buffer);
 int filterpath_audit_events(char *path);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
+extern volatile int whodata_alerts;
+extern volatile int audit_db_consistency_flag;
 extern pthread_mutex_t audit_mutex;
 extern pthread_cond_t audit_thread_started;
+extern pthread_cond_t audit_db_consistency;
 #elif WIN32
 int whodata_audit_start();
 int set_winsacl(const char *dir, int position);
