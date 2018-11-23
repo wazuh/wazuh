@@ -68,7 +68,7 @@ from datetime import datetime
 from os import path
 import operator
 from datetime import datetime
-import itertools
+
 
 ################################################################################
 # Constants
@@ -777,9 +777,39 @@ class AWSCustomBucket(AWSBucket):
         self.db_maintenance('', self.bucket)
 
 
+class AWSGuardDutyBucket(AWSCustomBucket):
+
+    def __init__(self, *args):
+        AWSBucket.__init__(self, *args)
+
+    def iter_events(self, event_list, log_key, aws_account_id):
+        if event_list is not None:
+            for event in event_list:
+                # Parse out all the values of 'None'
+                event_msg = self.get_alert_msg(aws_account_id, log_key, event)
+                # Send the message (splitted if it is necessary)
+                for msg in self.reformat_msg(event_msg):
+                    self.send_msg(msg)
+
+    def reformat_msg(self, event):
+        if event['aws']['source'] == 'guardduty' and 'service' in event['aws'] and \
+            'action' in event['aws']['service'] and \
+            'portProbeAction' in event['aws']['service']['action'] and \
+            'portProbeDetails' in event['aws']['service']['action']['portProbeAction'] and \
+            len(event['aws']['service']['action']['portProbeAction']['portProbeDetails']) > 1:
+
+            port_probe_details = event['aws']['service']['action']['portProbeAction']['portProbeDetails']
+            for detail in port_probe_details:
+                event['aws']['service']['action']['portProbeAction']['portProbeDetails'] = detail
+                yield event
+        else:
+            AWSBucket.reformat_msg(self, event)
+            yield event
+
+
 class AWSService(WazuhIntegration):
     """
-    Class for getting AWS Services logs from API
+    Class for getting AWS Services logs from API calls
     :param access_key: AWS access key id
     :param secret_key: AWS secret access key
     :param profile: AWS profile
@@ -1002,6 +1032,8 @@ def main(argv):
                 bucket_type = AWSConfigBucket
             elif options.type.lower() == 'custom':
                 bucket_type = AWSCustomBucket
+            elif options.type.lower() == 'guardduty':
+                bucket_type = AWSGuardDutyBucket
             else:
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
