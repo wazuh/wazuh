@@ -296,11 +296,9 @@ int getDefaultNetworkIface(){
             iface = cJSON_GetArrayItem(network_info,i);
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
             if (ipv4)
-            default_network_iface = i;
+                default_network_iface = i;
             i++;
-            cJSON_Delete(iface);
         }
-        cJSON_Delete(ipv4);
     #elif defined(__linux__)
         char *gateway;
         char *name;
