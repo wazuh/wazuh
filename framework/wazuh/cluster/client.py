@@ -99,7 +99,7 @@ class EchoClientProtocol(common.Handler):
                         logging.error("Maximum number of failed keep alives reached. Disconnecting.")
                         self.transport.close()
                 logging.info(result)
-            await asyncio.sleep(3)
+            await asyncio.sleep(29)
 
     async def performance_test_client(self, test_size):
         while not self.on_con_lost.done():
@@ -185,7 +185,7 @@ async def main():
         # Wait until the protocol signals that the connection
         # is lost and close the transport.
         try:
-            await asyncio.gather(on_con_lost, task(*task_args))
+            await asyncio.gather(on_con_lost, protocol.client_echo(), task(*task_args))
         finally:
             transport.close()
 
