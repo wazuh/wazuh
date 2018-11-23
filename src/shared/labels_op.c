@@ -269,7 +269,6 @@ char * parse_environment_labels(const wlabel_t label) {
 
             #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
               network_info = getNetworkIfaces_bsd();
-              iface = cJSON_GetArrayItem(network_info, default_network_iface);
             
             #elif defined  WIN32
               currentAddress = (IP_ADAPTER_ADDRESSES *) MALLOC(outBufLen);
@@ -277,14 +276,13 @@ char * parse_environment_labels(const wlabel_t label) {
               windows_net_info = _get_network_win(currentAddress, 0, NULL);
               FREE(currentAddress);
               network_info = cJSON_Parse(windows_net_info);
-              iface = cJSON_GetArrayItem(network_info, 2);
             
             #else
               network_info = getNetworkIfaces_linux();
-              iface = cJSON_GetArrayItem(network_info, default_network_iface);
             
             #endif
 
+            iface = cJSON_GetArrayItem(network_info, default_network_iface);
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
             field = cJSON_Print(cJSON_GetObjectItem(ipv4,"address"));
             
@@ -294,7 +292,6 @@ char * parse_environment_labels(const wlabel_t label) {
 
             #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
               network_info = getNetworkIfaces_bsd();
-              iface = cJSON_GetArrayItem(network_info, default_network_iface);
             
             #elif defined WIN32
               currentAddress = (IP_ADAPTER_ADDRESSES *) MALLOC(outBufLen);
@@ -302,14 +299,13 @@ char * parse_environment_labels(const wlabel_t label) {
               windows_net_info = _get_network_win(currentAddress, 0, NULL);
               FREE(currentAddress);
               network_info = cJSON_Parse(windows_net_info);
-              iface = cJSON_GetArrayItem(network_info, 2);
             
             #else
               network_info = getNetworkIfaces_linux();
-              iface = cJSON_GetArrayItem(network_info, default_network_iface);
             
             #endif
 
+            iface = cJSON_GetArrayItem(network_info, default_network_iface);
             ipv6 = cJSON_GetObjectItem(iface,"ipv6");
             field = cJSON_Print(cJSON_GetObjectItem(ipv6,"address"));
 
@@ -431,17 +427,18 @@ char * parse_environment_labels(const wlabel_t label) {
             windows_net_info = _get_network_win(currentAddress, 0, NULL);
             FREE(currentAddress);
             network_info = cJSON_Parse(windows_net_info);
-            iface = cJSON_GetArrayItem(network_info, 2);
           
           #else
+
             #if defined (__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
             network_info = getNetworkIfaces_bsd();
             #else
             network_info = getNetworkIfaces_linux();
             #endif
-            iface = cJSON_GetArrayItem(network_info, default_network_iface);
+
           #endif
 
+            iface = cJSON_GetArrayItem(network_info, default_network_iface);
             field = cJSON_Print(cJSON_GetObjectItem(iface,"mac"));
             cJSON_Delete(network_info);
 
@@ -518,7 +515,7 @@ char * parse_environment_labels(const wlabel_t label) {
           
           os_info = getunameJSON();
           field = cJSON_Print(cJSON_GetObjectItem(os_info,"hostname"));
-          
+
         }
         else{
             mwarn("Unrecognized label '%s'", var);

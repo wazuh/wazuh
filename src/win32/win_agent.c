@@ -539,6 +539,8 @@ void send_win32_info(time_t curr_time)
         }
     }
 
+    default_network_iface = getDefaultNetworkIface();
+
     /* Format labeled data */
 
     if (!tmp_labels[0] && labels_format(agt->labels, tmp_labels, OS_MAXSTR - OS_HEADER_SIZE) < 0) {

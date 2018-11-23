@@ -308,7 +308,7 @@ int getDefaultNetworkIface(){
             iface = cJSON_GetArrayItem(network_info,i);
             name = cJSON_Print(cJSON_GetObjectItem(iface,"name"));
             gateway = get_default_gateway(name);
-            if(gateway){
+            if(strcmp(gateway,"unknown")){
                 default_network_iface = i;
             }
         }
