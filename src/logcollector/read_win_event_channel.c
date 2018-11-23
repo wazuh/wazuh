@@ -696,9 +696,12 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     cJSON *json_system_in = cJSON_CreateObject();
     cJSON *json_eventdata_in = cJSON_CreateObject();
     OS_XML xml;
+    size_t num;
+    wchar_t *wprovider_name;
     XML_NODE node, child;
     char *level = NULL, *keywords = NULL, *canal = NULL, *provider_name = NULL,
-        *my_msg = NULL, *str_i = NULL, *message = NULL, *category, *my_event = NULL;
+        *my_msg = NULL, *str_i = NULL, *message = NULL, *category, *my_event = NULL,
+        *filtered_msg = NULL, *avoid_dup = NULL;
 
     result = EvtRender(NULL,
                        evt,
@@ -739,15 +742,6 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     }
 
     message = convert_windows_string((LPCWSTR) properties_values);
-
-    if ((my_msg = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageEvent)) == NULL) {
-        mferror(
-            "Could not get message for (%s)",
-            channel->evt_log);
-    } else {
-        /* Format message */
-        win_format_event_string(my_msg);
-    }
 
     if (OS_ReadXMLString(message, &xml) < 0){
         merror("error xml file not read");
@@ -868,6 +862,28 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
             break;
     }
 
+    wprovider_name = convert_unix_string(provider_name);
+    if ((my_msg = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+        mferror(
+            "Could not get message for (%s)",
+            channel->evt_log);
+    } else {
+        /* Format message */
+        win_format_event_string(my_msg);
+    }
+
+    avoid_dup = strstr(my_msg, " Subject");
+    os_malloc(OS_MAXSTR, filtered_msg);
+
+    if (avoid_dup){
+        num = avoid_dup - my_msg;
+        memcpy(filtered_msg, my_msg, num);
+        filtered_msg[num] = '\0';
+        cJSON_AddStringToObject(json_system_in, "Message", filtered_msg);
+    } else {
+        cJSON_AddStringToObject(json_system_in, "Message", my_msg);
+    }
+
     cJSON_AddStringToObject(json_system_in, "SeverityValue", category);
 
     cJSON_AddItemToObject(json_event, "System", json_system_in);
@@ -892,6 +908,9 @@ cleanup:
     free(str_i);
     free(message);
     free(my_event);
+    free(avoid_dup);
+    free(filtered_msg);
+    free(wprovider_name);
     OS_ClearXML(&xml);
 
     return;
