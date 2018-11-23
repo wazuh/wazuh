@@ -353,7 +353,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         add_json_field(group_sect, "name", lf->group_name, "");
 
         // Process section
-        add_json_field(process_sect, "id", lf->process_id, "0");
+        add_json_field(process_sect, "id", lf->process_id, "");
         add_json_field(process_sect, "name", lf->process_name, "");
         add_json_field(process_sect, "ppid", lf->ppid, "");
 
