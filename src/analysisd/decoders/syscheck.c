@@ -73,6 +73,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[SK_MD5] = "md5";
     fim_decoder->fields[SK_SHA1] = "sha1";
     fim_decoder->fields[SK_SHA256] = "sha256";
+    fim_decoder->fields[SK_ATTRS] = "attributes";
     fim_decoder->fields[SK_UNAME] = "uname";
     fim_decoder->fields[SK_GNAME] = "gname";
     fim_decoder->fields[SK_INODE] = "inode";
@@ -95,29 +96,30 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
 
 // Initialize the necessary information to process the syscheck information
 void sdb_clean(_sdb *localsdb) {
-    memset(localsdb->comment, '\0', OS_MAXSTR + 1);
-    memset(localsdb->size, '\0', OS_FLSIZE + 1);
-    memset(localsdb->perm, '\0', OS_FLSIZE + 1);
-    memset(localsdb->owner, '\0', OS_FLSIZE + 1);
-    memset(localsdb->gowner, '\0', OS_FLSIZE + 1);
-    memset(localsdb->md5, '\0', OS_FLSIZE + 1);
-    memset(localsdb->sha1, '\0', OS_FLSIZE + 1);
-    memset(localsdb->sha256, '\0', OS_FLSIZE + 1);
-    memset(localsdb->mtime, '\0', OS_FLSIZE + 1);
-    memset(localsdb->inode, '\0', OS_FLSIZE + 1);
+    *localsdb->comment = '\0';
+    *localsdb->size = '\0';
+    *localsdb->perm = '\0';
+    *localsdb->attrs = '\0';
+    *localsdb->owner = '\0';
+    *localsdb->gowner = '\0';
+    *localsdb->md5 = '\0';
+    *localsdb->sha1 = '\0';
+    *localsdb->sha256 = '\0';
+    *localsdb->mtime = '\0';
+    *localsdb->inode = '\0';
 
     // Whodata fields
-    memset(localsdb->user_id, '\0', OS_FLSIZE + 1);
-    memset(localsdb->user_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->group_id, '\0', OS_FLSIZE + 1);
-    memset(localsdb->group_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->process_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->audit_uid, '\0', OS_FLSIZE + 1);
-    memset(localsdb->audit_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->effective_uid, '\0', OS_FLSIZE + 1);
-    memset(localsdb->effective_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->ppid, '\0', OS_FLSIZE + 1);
-    memset(localsdb->process_id, '\0', OS_FLSIZE + 1);
+    *localsdb->user_id = '\0';
+    *localsdb->user_name = '\0';
+    *localsdb->group_id = '\0';
+    *localsdb->group_name = '\0';
+    *localsdb->process_name = '\0';
+    *localsdb->audit_uid = '\0';
+    *localsdb->audit_name = '\0';
+    *localsdb->effective_uid = '\0';
+    *localsdb->effective_name = '\0';
+    *localsdb->ppid = '\0';
+    *localsdb->process_id = '\0';
 }
 
 /* Special decoder for syscheck
@@ -189,7 +191,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     c_sum = lf->log;
 
     // Get w_sum
-    if (w_sum = strchr(c_sum, '!'), w_sum) {
+    if (w_sum = wstr_chr(c_sum, '!'), w_sum) {
         *(w_sum++) = '\0';
     }
 
@@ -537,15 +539,31 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
                     char opstr[10];
                     char npstr[10];
+                    char *old_perm =  agent_file_perm(oldsum->perm);
+                    char *new_perm =  agent_file_perm(newsum->perm);
 
-                    strncpy(opstr, agent_file_perm(oldsum->perm), sizeof(opstr) - 1);
-                    strncpy(npstr, agent_file_perm(newsum->perm), sizeof(npstr) - 1);
+                    strncpy(opstr, old_perm, sizeof(opstr) - 1);
+                    strncpy(npstr, new_perm, sizeof(npstr) - 1);
+                    free(old_perm);
+                    free(new_perm);
+
                     opstr[9] = npstr[9] = '\0';
-
                     snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
                              "'%9.9s' to '%9.9s'\n", opstr, npstr);
 
                     lf->perm_before = oldsum->perm;
+                }
+            } else if (oldsum->win_perm && newsum->win_perm) { // Check for Windows permissions
+                if (!strcmp(oldsum->win_perm, newsum->win_perm)) {
+                    localsdb->perm[0] = '\0';
+                } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
+                    changes = 1;
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
+                    if (!decode_win_permissions(localsdb->perm, OS_FLSIZE, newsum->win_perm, 1, NULL)) {
+                        localsdb->perm[0] = '\0';
+                    }
+
+                    lf->win_perm_before = oldsum->win_perm;
                 }
             }
 
@@ -652,6 +670,25 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             } else {
                 localsdb->inode[0] = '\0';
             }
+
+            /* Attributes message */
+            if (oldsum->attrs && newsum->attrs && oldsum->attrs != newsum->attrs) {
+                char *str_attr_before;
+                char *str_attr_after;
+                changes = 1;
+                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_before);
+                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_after);
+                decode_win_attributes(str_attr_before, oldsum->attrs);
+                decode_win_attributes(str_attr_after, newsum->attrs);
+                wm_strcat(&lf->fields[SK_ATTRS].value, "attributes", ',');
+                snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", str_attr_before, str_attr_after);
+                lf->attrs_before = oldsum->attrs;
+                free(str_attr_before);
+                free(str_attr_after);
+            } else {
+                localsdb->attrs[0] = '\0';
+            }
+
             break;
         default:
             return (-1);
@@ -676,6 +713,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             "%s"
             "%s"
             "%s"
+            "%s"
             "%s",
             f_name,
             msg_type,
@@ -686,6 +724,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             localsdb->md5,
             localsdb->sha1,
             localsdb->sha256,
+            localsdb->attrs,
             localsdb->mtime,
             localsdb->inode,
             localsdb->user_name,

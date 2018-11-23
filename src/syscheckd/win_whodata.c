@@ -27,6 +27,8 @@
 #define WPOL_RESTORE_COMMAND "auditpol /restore /file:\"%s\""
 #define WPOL_BACKUP_FILE "tmp\\backup-policies"
 #define WPOL_NEW_FILE "tmp\\new-policies"
+#define modify_criteria (FILE_WRITE_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES)
+#define criteria (DELETE | modify_criteria)
 
 // Variables whodata
 static PSID everyone_sid = NULL;
@@ -47,7 +49,6 @@ static const wchar_t* event_fields[] = {
 static unsigned int fields_number = sizeof(event_fields) / sizeof(LPWSTR);
 static const unsigned __int64 AUDIT_SUCCESS = 0x20000000000000;
 static LPCTSTR priv = "SeSecurityPrivilege";
-static unsigned int criteria = FILE_WRITE_DATA | DELETE;
 static int restore_policies = 0;
 
 // Whodata function headers
@@ -152,7 +153,7 @@ int set_winsacl(const char *dir, int position) {
     // Set the new ACL size
     new_sacl_size = old_sacl_info.AclBytesInUse + sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(unsigned long);
 
-    if (new_sacl = (PACL)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, new_sacl_size), !new_sacl) {
+    if (new_sacl = (PACL)win_alloc(new_sacl_size), !new_sacl) {
         merror("No memory could be reserved for the new SACL of '%s'.", dir);
         goto end;
     }
@@ -179,7 +180,7 @@ int set_winsacl(const char *dir, int position) {
         }
     }
     // Build the new ACE
-    if (ace = (SYSTEM_AUDIT_ACE *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD)), !ace) {
+    if (ace = (SYSTEM_AUDIT_ACE *)win_alloc(sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD)), !ace) {
         merror("No memory could be reserved for the new ACE of '%s'.", dir);
         goto end;
     }
@@ -259,7 +260,7 @@ int is_valid_sacl(PACL sacl, int is_file) {
 
         if ((is_file || (ace->Header.AceFlags & inherit_flag)) && // Check folder and subfolders
             (ace->Header.AceFlags & SUCCESSFUL_ACCESS_ACE_FLAG) && // Check successful attemp
-            ((ace->Mask & (criteria)) == criteria) && // Check write and delete permission
+            ((ace->Mask & (criteria)) == criteria) && // Check write, delete, change_permissions and change_attributes permission
             (EqualSid((PSID)&ace->SidStart, everyone_sid))) { // Check everyone user
             return 1;
         }
@@ -645,6 +646,7 @@ add_whodata_evt:
                     if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                         w_evt->mask |= mask;
                         str_lowercase(path);
+                        // Check if it is a rename or copy event
                         if (w_evt->scan_directory && (mask & FILE_WRITE_DATA)) {
                             if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, path), w_dir) {
                                 // Get the event time
@@ -708,12 +710,12 @@ add_whodata_evt:
                         if (w_evt->deleted) {
                             // Check if the file has been deleted
                             send_whodata_del(w_evt);
-                        } else if (mask & FILE_WRITE_DATA) {
-                            // Check if the file has been written
-                            realtime_checksumfile(w_evt->path, w_evt);
                         } else if (mask & DELETE) {
                             // The file has been moved or renamed
                             send_whodata_del(w_evt);
+                        } else if (mask & modify_criteria) {
+                            // Check if the file has been modified
+                            realtime_checksumfile(w_evt->path, w_evt);
                         } else {
                             // At this point the file can be new or cleaned
                             w_evt->ignore_not_exist = 1;
@@ -1069,7 +1071,7 @@ void set_subscription_query(wchar_t *query) {
                                         ") " \
                                     "]",
             AUDIT_SUCCESS, // Only successful events
-            criteria); // For 4663 and 4656, write and delete events only
+            criteria); // For 4663 and 4656 events need write, delete, change_attributes or change_permissions accesss
 }
 
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time) {

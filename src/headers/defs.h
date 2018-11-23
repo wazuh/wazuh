@@ -24,6 +24,7 @@
 /* Size limit control */
 #define OS_SIZE_65536   65536
 #define OS_SIZE_61440   61440
+#define OS_SIZE_20480   20480
 #define OS_SIZE_8192    8192
 #define OS_SIZE_6144    6144
 #define OS_SIZE_4096    4096
