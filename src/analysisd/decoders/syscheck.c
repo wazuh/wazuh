@@ -540,11 +540,15 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
                     char opstr[10];
                     char npstr[10];
+                    char *old_perm =  agent_file_perm(oldsum->perm);
+                    char *new_perm =  agent_file_perm(newsum->perm);
 
-                    strncpy(opstr, agent_file_perm(oldsum->perm), sizeof(opstr) - 1);
-                    strncpy(npstr, agent_file_perm(newsum->perm), sizeof(npstr) - 1);
+                    strncpy(opstr, old_perm, sizeof(opstr) - 1);
+                    strncpy(npstr, new_perm, sizeof(npstr) - 1);
+                    free(old_perm);
+                    free(new_perm);
+
                     opstr[9] = npstr[9] = '\0';
-
                     snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
                              "'%9.9s' to '%9.9s'\n", opstr, npstr);
 

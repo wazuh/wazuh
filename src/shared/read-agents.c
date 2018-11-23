@@ -57,6 +57,7 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, _
                                     cJSON *json_output, int is_win, int number_of_changes)
 {
     const char *p_size, *size;
+    char *file_perm;
     char *p_perm, *p_uid, *p_gid, *p_md5, *p_sha1;
     char *perm, *uid, *gid, *md5, *sha1;
     mode_t mode;
@@ -139,7 +140,9 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, _
     perm_str[35] = '\0';
     /* octal or decimal */
     mode = (mode_t) strtoul(perm, 0, strlen(perm) == 3 ? 8 : 10);
-    snprintf(perm_str, 35, "%9.9s", agent_file_perm(mode));
+    file_perm = agent_file_perm(mode);
+    snprintf(perm_str, 35, "%9.9s", file_perm);
+    free(file_perm);
 
     if (json_output) {
         cJSON_AddStringToObject(json_output, "size", size);
@@ -948,23 +951,24 @@ int connect_to_remoted()
     return (arq);
 }
 
-const char *agent_file_perm(mode_t mode)
+char *agent_file_perm(mode_t mode)
 {
-	/* rwxrwxrwx0 -> 10 */
-	static char permissions[10];
+    /* rwxrwxrwx0 -> 10 */
+    char *permissions;
 
-	permissions[0] = (mode & S_IRUSR) ? 'r' : '-';
-	permissions[1] = (mode & S_IWUSR) ? 'w' : '-';
-	permissions[2] = (mode & S_ISUID) ? 's' : (mode & S_IXUSR) ? 'x' : '-';
-	permissions[3] = (mode & S_IRGRP) ? 'r' : '-';
-	permissions[4] = (mode & S_IWGRP) ? 'w' : '-';
-	permissions[5] = (mode & S_ISGID) ? 's' : (mode & S_IXGRP) ? 'x' : '-';
-	permissions[6] = (mode & S_IROTH) ? 'r' : '-';
-	permissions[7] = (mode & S_IWOTH) ? 'w' : '-';
-	permissions[8] = (mode & S_ISVTX) ? 't' : (mode & S_IXOTH) ? 'x' : '-';
+    os_calloc(10, sizeof(char), permissions);
+    permissions[0] = (mode & S_IRUSR) ? 'r' : '-';
+    permissions[1] = (mode & S_IWUSR) ? 'w' : '-';
+    permissions[2] = (mode & S_ISUID) ? 's' : (mode & S_IXUSR) ? 'x' : '-';
+    permissions[3] = (mode & S_IRGRP) ? 'r' : '-';
+    permissions[4] = (mode & S_IWGRP) ? 'w' : '-';
+    permissions[5] = (mode & S_ISGID) ? 's' : (mode & S_IXGRP) ? 'x' : '-';
+    permissions[6] = (mode & S_IROTH) ? 'r' : '-';
+    permissions[7] = (mode & S_IWOTH) ? 'w' : '-';
+    permissions[8] = (mode & S_ISVTX) ? 't' : (mode & S_IXOTH) ? 'x' : '-';
     permissions[9] = '\0';
 
-	return &permissions[0];
+    return permissions;
 }
 
 #endif /* !WIN32 */
