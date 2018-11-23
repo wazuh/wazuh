@@ -243,4 +243,41 @@ ID: 80200 - 80499
         <group>aws_trusted_advisor, aws_trusted_advisor_ok,</group>
     </rule>
 
+    <!-- AWS Inspector -->
+    <!-- Documentation: https://docs.aws.amazon.com/inspector/latest/userguide/inspector_introduction.html -->
+
+    <rule id="80495" level="0">
+        <field name="aws.service">Inspector</field>
+        <description>AWS Inspector - Network assesment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
+    <rule id="80496" level="10">
+        <if_sid>80495</if_sid>
+        <field name="aws.severity">High</field>
+        <description>AWS Inspector - Network assesment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
+    <rule id="80497" level="7">
+        <if_sid>80495</if_sid>
+        <field name="aws.severity">Medium</field>
+        <description>AWS Inspector - Network assesment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
+    <rule id="80498" level="4">
+        <if_sid>80495</if_sid>
+        <field name="aws.severity">Low</field>
+        <description>AWS Inspector - Network assesment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
+    <rule id="80499" level="3">
+        <if_sid>80495</if_sid>
+        <field name="aws.severity">Informational</field>
+        <description>AWS Inspector - Network assesment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
 </group>

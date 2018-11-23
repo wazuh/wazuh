@@ -67,6 +67,8 @@ import io
 from datetime import datetime
 from os import path
 import operator
+from datetime import datetime
+import itertools
 
 ################################################################################
 # Constants
@@ -75,8 +77,148 @@ import operator
 # Enable/disable debug mode
 debug_level = 0
 
-# DB Query SQL
-sql_already_processed = """
+
+################################################################################
+# Classes
+################################################################################
+
+
+class WazuhIntegration:
+    """
+    Class with common methods
+    :param access_key: AWS access key id
+    :param secret_key: AWS secret access key
+    :param aws_profile: AWS profile
+    :param iam_role_arn: IAM Role
+    :param service name: Name of the service (s3 for services which stores logs in buckets)
+    :param region: Region of service
+    :param bucket: Bucket name to extract logs from
+    """
+
+    sql_find_table_names = """
+                            SELECT
+                                tbl_name
+                            FROM
+                                sqlite_master
+                            WHERE
+                                type='table';"""
+
+    sql_db_optimize = "PRAGMA optimize;"
+
+    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
+             service_name=None, region=None, bucket=None):
+        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
+        self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
+        self.msg_header = "1:Wazuh-AWS:"
+        self.client = self.get_client(access_key=access_key, secret_key=secret_key,
+            profile=aws_profile, iam_role_arn=iam_role_arn, service_name=service_name,
+            region_name=region, bucket=bucket)
+        # db_name is an instance variable of subclass
+        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
+        self.db_connector = sqlite3.connect(self.db_path)
+        self.db_cursor = self.db_connector.cursor()
+        if bucket:
+            self.bucket = bucket
+
+    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, region_name, bucket):
+        conn_args = {}
+
+        if access_key is not None and secret_key is not None:
+            conn_args['aws_access_key_id'] = access_key
+            conn_args['aws_secret_access_key'] = secret_key
+            if region_name:
+                conn_args['region_name'] = region_name
+
+        if profile is not None:
+            conn_args['profile_name'] = profile
+
+        boto_session = boto3.Session(**conn_args)
+
+        # If using a role, create session using that
+        try:
+            if iam_role_arn:
+                sts_client = boto_session.client('sts')
+                sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
+                                                             RoleSessionName='WazuhLogParsing')
+                sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
+                                            aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
+                                            aws_session_token=sts_role_assumption['Credentials']['SessionToken'])
+                client = sts_session.client(service_name=service_name)
+            else:
+                client = boto_session.client(service_name=service_name)
+                if bucket:
+                    client.head_bucket(Bucket=bucket)
+        except botocore.exceptions.ClientError as e:
+            print("ERROR: Access error: {}".format(e))
+            sys.exit(3)
+        return client
+
+    def send_msg(self, msg):
+        """
+        Sends an AWS event to the Wazuh Queue
+
+        :param msg: JSON message to be sent.
+        :param wazuh_queue: Wazuh queue path.
+        :param msg_header: Msg header.
+        """
+        try:
+            json_msg = json.dumps(msg, default=str)
+            debug(json_msg, 3)
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            s.connect(self.wazuh_queue)
+            s.send("{header}{msg}".format(header=self.msg_header,
+                                          msg=json_msg).encode())
+            s.close()
+        except socket.error as e:
+            if e.errno == 111:
+                print("ERROR: Wazuh must be running.")
+                sys.exit(11)
+            else:
+                print("ERROR: Error sending message to wazuh: {}".format(e))
+                sys.exit(13)
+        except Exception as e:
+            print("ERROR: Error sending message to wazuh: {}".format(e))
+            sys.exit(13)
+
+    def create_table(self, sql_create_table):
+        """
+        :param sql_create_table: SQL query to create the table
+        """
+        try:
+            debug('+++ Table does not exist; create', 1)
+            self.db_connector.execute(sql_create_table)
+        except Exception as e:
+            print("ERROR: Unable to create SQLite DB: {}".format(e))
+            sys.exit(6)
+
+    def init_db(self, sql_create_table):
+        """
+        :param sql_create_table: SQL query to create the table
+        """
+        try:
+            tables = set(map(operator.itemgetter(0), self.db_connector.execute(WazuhIntegration.sql_find_table_names)))
+        except Exception as e:
+            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
+            sys.exit(5)
+        # if table does not exist, create a new table
+        if self.db_table_name not in tables:
+            self.create_table(sql_create_table)
+
+    def close_db(self):
+        self.db_connector.commit()
+        self.db_connector.execute(WazuhIntegration.sql_db_optimize)
+        self.db_connector.close()
+
+
+class AWSBucket(WazuhIntegration):
+    """
+    Represents a bucket with events on the inside.
+
+    This is an abstract class
+    """
+
+    sql_already_processed = """
                           SELECT
                             count(*)
                           FROM
@@ -86,90 +228,68 @@ sql_already_processed = """
                             aws_region='{aws_region}' AND
                             log_key='{log_name}'"""
 
-sql_mark_complete = """
-                      INSERT INTO trail_progress (
-                        aws_account_id,
-                        aws_region,
-                        log_key,
-                        processed_date,
-                        created_date) VALUES (
-                        '{aws_account_id}',
-                        '{aws_region}',
-                        '{log_key}',
-                        DATETIME('now'),
-                        '{created_date}')"""
+    sql_mark_complete = """
+                        INSERT INTO trail_progress (
+                            aws_account_id,
+                            aws_region,
+                            log_key,
+                            processed_date,
+                            created_date) VALUES (
+                            '{aws_account_id}',
+                            '{aws_region}',
+                            '{log_key}',
+                            DATETIME('now'),
+                            '{created_date}')"""
 
-sql_select_migrate_legacy = """
-                               SELECT
-                                 log_name,
-                                 processed_date
-                               FROM
-                                 log_progress;"""
+    sql_select_migrate_legacy = """
+                                SELECT
+                                    log_name,
+                                    processed_date
+                                FROM
+                                    log_progress;"""
 
-sql_rename_migrate_legacy = """
-                              ALTER TABLE log_progress
-                                RENAME TO legacy_log_progress;"""
+    sql_rename_migrate_legacy = """
+                                ALTER TABLE log_progress
+                                    RENAME TO legacy_log_progress;"""
 
-sql_find_table_names = """
-                           SELECT
-                             tbl_name
-                           FROM
-                             sqlite_master
-                           WHERE
-                             type='table';"""
+    sql_create_table = """
+                        CREATE TABLE
+                            trail_progress (
+                            aws_account_id 'text' NOT NULL,
+                            aws_region 'text' NOT NULL,
+                            log_key 'text' NOT NULL,
+                            processed_date 'text' NOT NULL,
+                            created_date 'integer' NOT NULL,
+                            PRIMARY KEY (aws_account_id, aws_region, log_key));"""
 
-sql_create_table = """
-                      CREATE TABLE
-                        trail_progress (
-                          aws_account_id 'text' NOT NULL,
-                          aws_region 'text' NOT NULL,
-                          log_key 'text' NOT NULL,
-                          processed_date 'text' NOT NULL,
-                          created_date 'integer' NOT NULL,
-                          PRIMARY KEY (aws_account_id, aws_region, log_key));"""
+    sql_find_last_log_processed = """
+                                    SELECT
+                                        created_date
+                                    FROM
+                                        trail_progress
+                                    WHERE
+                                        aws_account_id='{aws_account_id}' AND
+                                        aws_region = '{aws_region}'
+                                    ORDER BY
+                                        created_date DESC
+                                    LIMIT 1;"""
 
-sql_find_last_log_processed = """
-                                  SELECT
-                                    created_date
-                                  FROM
-                                    trail_progress
-                                  WHERE
-                                    aws_account_id='{aws_account_id}' AND
-                                    aws_region = '{aws_region}'
-                                  ORDER BY
-                                    created_date DESC
-                                  LIMIT 1;"""
-
-sql_db_maintenance = """DELETE
-                       FROM
-                         trail_progress
-                       WHERE
-                         aws_account_id='{aws_account_id}' AND
-                         aws_region='{aws_region}' AND
-                         rowid NOT IN
-                           (SELECT ROWID
-                            FROM
-                              trail_progress
-                            WHERE
-                              aws_account_id='{aws_account_id}' AND
-                              aws_region='{aws_region}'
-                            ORDER BY
-                              ROWID DESC
-                            LIMIT {retain_db_records})"""
-
-sql_db_optimize = "PRAGMA optimize;"
-
-
-################################################################################
-# Classes
-################################################################################
-
-class AWSBucket:
-    """
-    Represents a bucket with events on the inside.
-
-    This is an abstract class
-    """
+    sql_db_maintenance = """DELETE
+                        FROM
+                            trail_progress
+                        WHERE
+                            aws_account_id='{aws_account_id}' AND
+                            aws_region='{aws_region}' AND
+                            rowid NOT IN
+                            (SELECT ROWID
+                                FROM
+                                trail_progress
+                                WHERE
+                                aws_account_id='{aws_account_id}' AND
+                                aws_region='{aws_region}'
+                                ORDER BY
+                                ROWID DESC
+                                LIMIT {retain_db_records})"""
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
@@ -190,18 +310,13 @@ class AWSBucket:
         :param prefix: Prefix to filter files in bucket
         :param delete_file: Wether to delete an already processed file from a bucket or not
         """
-        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
-        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
-        self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
-        self.msg_header = "1:Wazuh-AWS:"
-        self.legacy_db_table_name = 'log_progress'
+        self.db_name = 's3_cloudtrail'
         self.db_table_name = 'trail_progress'
-        self.db_path = "{0}/s3_cloudtrail.db".format(self.wazuh_wodle)
-        self.db_connector = sqlite3.connect(self.db_path)
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
+            aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
+        self.legacy_db_table_name = 'log_progress'
         self.retain_db_records = 5000
         self.reparse = reparse
-        self.bucket = bucket
-        self.client = self.get_s3_client(access_key, secret_key, profile, iam_role_arn)
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
         self.skip_on_error = skip_on_error
         self.account_alias = account_alias
@@ -209,61 +324,8 @@ class AWSBucket:
         self.prefix = prefix
         self.delete_file = delete_file
 
-    def get_s3_client(self, access_key, secret_key, profile, iam_role_arn):
-        conn_args = {}
-        if access_key is not None and secret_key is not None:
-            conn_args['aws_access_key_id'] = access_key
-            conn_args['aws_secret_access_key'] = secret_key
-        if profile is not None:
-            conn_args['profile_name'] = profile
-
-        boto_session = boto3.Session(**conn_args)
-
-        # If using a role, create session using that
-        try:
-            if iam_role_arn:
-                sts_client = boto_session.client('sts')
-                sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
-                                                             RoleSessionName='WazuhLogParsing')
-                sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
-                                            aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
-                                            aws_session_token=sts_role_assumption['Credentials']['SessionToken'])
-                s3_client = sts_session.client(service_name='s3')
-            else:
-                s3_client = boto_session.client(service_name='s3')
-                s3_client.head_bucket(Bucket=self.bucket)
-        except botocore.exceptions.ClientError as e:
-            print("ERROR: Bucket {} access error: {}".format(self.bucket, e))
-            sys.exit(3)
-        return s3_client
-
-    def send_msg(self, msg):
-        """
-        Sends an AWS event to the Wazuh Queue
-
-        :param msg: JSON message to be sent.
-        """
-        try:
-            json_msg = json.dumps(msg)
-            debug(json_msg, 3)
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            s.connect(self.wazuh_queue)
-            s.send("{header}{msg}".format(header=self.msg_header,
-                                          msg=json_msg).encode())
-            s.close()
-        except socket.error as e:
-            if e.errno == 111:
-                print('ERROR: Wazuh must be running.')
-                sys.exit(11)
-            else:
-                print("ERROR: Error sending message to wazuh: {}".format(e))
-                sys.exit(13)
-        except Exception as e:
-            print("ERROR: Error sending message to wazuh: {}".format(e))
-            sys.exit(13)
-
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
-        cursor = self.db_connector.execute(sql_already_processed.format(
+        cursor = self.db_connector.execute(AWSBucket.sql_already_processed.format(
             aws_account_id=aws_account_id,
             aws_region=aws_region,
             log_name=downloaded_file
@@ -281,7 +343,7 @@ class AWSBucket:
                     2)
         else:
             try:
-                self.db_connector.execute(sql_mark_complete.format(
+                self.db_connector.execute(AWSBucket.sql_mark_complete.format(
                     aws_account_id=aws_account_id,
                     aws_region=aws_region,
                     log_key=log_file['Key'],
@@ -292,26 +354,26 @@ class AWSBucket:
                 raise e
 
     def migrate_legacy_table(self):
-        for row in filter(lambda x: x[0] != '', self.db_connector.execute(sql_select_migrate_legacy)):
+        for row in filter(lambda x: x[0] != '', self.db_connector.execute(AWSBucket.sql_select_migrate_legacy)):
             try:
                 aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
                 self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
             except Exception as e:
                 debug("++ Error parsing log file name ({}): {}".format(row[0], e), 1)
         # rename log_progress table to legacy_log_progress
-        self.db_connector.execute(sql_rename_migrate_legacy)
+        self.db_connector.execute(AWSBucket.sql_rename_migrate_legacy)
 
     def create_table(self):
         try:
             debug('+++ Table does not exist; create', 1)
-            self.db_connector.execute(sql_create_table)
+            self.db_connector.execute(AWSBucket.sql_create_table)
         except Exception as e:
             print("ERROR: Unable to create SQLite DB: {}".format(e))
             sys.exit(6)
 
     def init_db(self):
         try:
-            tables = set(map(operator.itemgetter(0), self.db_connector.execute(sql_find_table_names)))
+            tables = set(map(operator.itemgetter(0), self.db_connector.execute(WazuhIntegration.sql_find_table_names)))
         except Exception as e:
             print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
@@ -327,7 +389,7 @@ class AWSBucket:
     def db_maintenance(self, aws_account_id, aws_region):
         debug("+++ DB Maintenance", 1)
         try:
-            self.db_connector.execute(sql_db_maintenance.format(
+            self.db_connector.execute(AWSBucket.sql_db_maintenance.format(
                 aws_account_id=aws_account_id,
                 aws_region=aws_region,
                 retain_db_records=self.retain_db_records
@@ -382,7 +444,7 @@ class AWSBucket:
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
         else:
             # Where did we end last run thru on this account/region?
-            query_results = self.db_connector.execute(sql_find_last_log_processed.format(aws_account_id=aws_account_id,
+            query_results = self.db_connector.execute(AWSBucket.sql_find_last_log_processed.format(aws_account_id=aws_account_id,
                                                                                          aws_region=aws_region))
             try:
                 created_date = query_results.fetchone()[0]
@@ -483,7 +545,7 @@ class AWSBucket:
         self.init_db()
         self.iter_regions_and_accounts(account_id, regions)
         self.db_connector.commit()
-        self.db_connector.execute(sql_db_optimize)
+        self.db_connector.execute(WazuhIntegration.sql_db_optimize)
         self.db_connector.close()
 
     def iter_regions_and_accounts(self, account_id, regions):
@@ -660,6 +722,7 @@ class AWSConfigBucket(AWSLogsBucket):
 
 
 class AWSCustomBucket(AWSBucket):
+
     def __init__(self, *args):
         AWSBucket.__init__(self, *args)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
@@ -713,6 +776,112 @@ class AWSCustomBucket(AWSBucket):
         self.iter_files_in_bucket('', self.bucket)
         self.db_maintenance('', self.bucket)
 
+
+class AWSService(WazuhIntegration):
+    """
+    Class for getting AWS Services logs from API
+    :param access_key: AWS access key id
+    :param secret_key: AWS secret access key
+    :param profile: AWS profile
+    :param iam_role_arn: IAM Role
+    :param only_logs_after: Date after which obtain logs.
+    :param region: Region of service
+    """
+    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
+        service_name, only_logs_after, region):
+
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
+            aws_profile=aws_profile, iam_role_arn=iam_role_arn,
+            service_name=service_name, region=region)
+
+        self.only_logs_after = only_logs_after
+        self.region = region
+
+    def format_message(self, msg):
+        return {'integration': 'aws', 'aws': msg}
+
+    def get_last_log_date(self):
+        return '{Y}-{m}-{d} 00:00:00.0'.format(Y=self.only_logs_after[0:4],
+            m=self.only_logs_after[4:6], d=self.only_logs_after[6:8])
+
+
+class AWSInspector(AWSService):
+    """
+    Class for getting AWS Inspector logs
+    :param access_key: AWS access key id
+    :param secret_key: AWS secret access key
+    :param profile: AWS profile
+    :param iam_role_arn: IAM Role
+    :param only_logs_after: Date after which obtain logs.
+    :param region: Region of service
+    """
+    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
+        only_logs_after, region='us-east-1'):
+        # SQL queries
+        self.sql_create_table = """
+                            CREATE TABLE
+                                inspector (
+                                    scan_date 'text' NOT NULL,
+                                    PRIMARY KEY (scan_date));"""
+
+        self.sql_insert_value = """
+                                INSERT INTO
+                                    inspector (scan_date)
+                                VALUES
+                                    ('{}');"""
+
+        self.sql_find_last_scan = """
+                                SELECT
+                                    scan_date
+                                FROM
+                                    inspector
+                                ORDER BY
+                                    scan_date DESC
+                                LIMIT 1;"""
+        # DB and table names
+        self.db_name = 's3_inspector'
+        self.db_table_name = 'inspector'
+
+        AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
+            aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
+            service_name='inspector', region=region)
+
+    def send_describe_findings(self, arn_list):
+        if len(arn_list) == 0:
+            debug('+++ There are not new events', 1)
+        else:
+            debug('+++ Processing new events...', 1)
+            response = self.client.describe_findings(findingArns=arn_list)['findings']
+            for elem in response:
+                self.send_msg(self.format_message(elem))
+
+    def get_alerts(self):
+        initial_date = self.get_last_log_date()
+        self.init_db(self.sql_create_table)
+        try:
+            # if DB is empty write initial date
+            self.db_cursor.execute(self.sql_insert_value.format(initial_date))
+            self.db_cursor.execute(self.sql_find_last_scan)
+            last_scan = self.db_cursor.fetchone()[0]
+        except sqlite3.IntegrityError:
+            self.db_cursor.execute(self.sql_find_last_scan)
+            last_scan = self.db_cursor.fetchone()[0]
+        datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
+        # get current time (UTC)
+        datetime_current = datetime.utcnow()
+        # describe_findings only retrieves 100 results per call
+        response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
+            {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
+        self.send_describe_findings(response['findingArns'])
+        # iterate if there are more elements
+        while 'nextToken' in response:
+            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
+                filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
+            self.send_describe_findings(response['findingArns'])
+        # insert last scan in DB
+        self.db_cursor.execute(self.sql_insert_value.format(datetime_current))
+        # close connection with DB
+        self.close_db()
 
 ################################################################################
 # Functions
@@ -768,10 +937,14 @@ def arg_valid_regions(arg_string):
 
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
-                                     description="Wazuh wodle for monitoring of AWS logs in S3 bucket",
+                                     description="Wazuh wodle for monitoring AWS",
                                      formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS logs',
-                        action='store', required=True)
+    # only one must be present (bucket or service)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS logs',
+                        action='store')
+    group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
+                        action='store')
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
                         help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
@@ -822,25 +995,36 @@ def main(argv):
         debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
 
     try:
-        if options.type.lower() == 'cloudtrail':
-            bucket_type = AWSCloudTrailBucket
-        elif options.type.lower() == 'config':
-            bucket_type = AWSConfigBucket
-        elif options.type.lower() == 'custom':
-            bucket_type = AWSCustomBucket
-        else:
-            raise Exception("Invalid type of bucket")
+        if options.logBucket:
+            if options.type.lower() == 'cloudtrail':
+                bucket_type = AWSCloudTrailBucket
+            elif options.type.lower() == 'config':
+                bucket_type = AWSConfigBucket
+            elif options.type.lower() == 'custom':
+                bucket_type = AWSCustomBucket
+            else:
+                raise Exception("Invalid type of bucket")
+            bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
+                            options.aws_profile, options.iam_role_arn, options.logBucket,
+                            options.only_logs_after, options.skip_on_error,
+                            options.aws_account_alias, max_queue_buffer,
+                            options.trail_prefix, options.deleteFile)
+            bucket.iter_bucket(options.aws_account_id, options.regions)
+        elif options.service:
+            if options.service.lower() == 'inspector':
+                service_type = AWSInspector
+            else:
+                raise Exception("Invalid type of service")
+            # iterate if there are two regions or more
+            for region in options.regions:
+                service = service_type(access_key=options.access_key, secret_key=options.secret_key,
+                            aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
+                            only_logs_after=options.only_logs_after, region=region)
+                service.get_alerts()
     except Exception as err:
         debug("+++ Error: {}".format(err.message), 2)
         print("ERROR: {}".format(err.message))
         sys.exit(12)
-
-    bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
-                         options.aws_profile, options.iam_role_arn, options.logBucket,
-                         options.only_logs_after, options.skip_on_error,
-                         options.aws_account_alias, max_queue_buffer,
-                         options.trail_prefix, options.deleteFile)
-    bucket.iter_bucket(options.aws_account_id, options.regions)
 
 
 if __name__ == '__main__':
