@@ -282,7 +282,7 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
 /* Get the Default Network Interface */
 int getDefaultNetworkIface(){
     int default_network_iface = 0;
-    cJSON * iface = cJSON_CreateArray();
+    cJSON * iface;
     cJSON * network_info;
     int i = 0;
 
@@ -298,6 +298,7 @@ int getDefaultNetworkIface(){
             if (ipv4)
             default_network_iface = i;
             i++;
+            cJSON_Delete(iface);
         }
         cJSON_Delete(ipv4);
     #elif defined(__linux__)
@@ -311,11 +312,8 @@ int getDefaultNetworkIface(){
             if(strcmp(gateway,"unknown")){
                 default_network_iface = i;
             }
-        }
-        if(name){
+            cJSON_Delete(iface);
             free(name);
-        }
-        if(gateway){
             free(gateway);
         }
     #elif defined WIN32
@@ -324,6 +322,7 @@ int getDefaultNetworkIface(){
         typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 
         cJSON *gateway = cJSON_CreateObject();
+        cJSON * ipv4 = cJSON_CreateObject();
         CallFunc _get_network_win;
         
         /* Load DLL with network inventory functions */
@@ -350,12 +349,12 @@ int getDefaultNetworkIface(){
             if(gateway){
                 default_network_iface = i;
             }
+            cJSON_Delete(iface);
         }
         cJSON_Delete(gateway);
     #endif
 
     cJSON_Delete(network_info);
-    cJSON_Delete(iface);
     return default_network_iface;
 }
 

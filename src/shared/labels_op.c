@@ -90,8 +90,10 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
 
         if (z >= size)
             return -1;
+
+        free(value_label);
+
     }
-    free(value_label);
     return 0;
 }
 
