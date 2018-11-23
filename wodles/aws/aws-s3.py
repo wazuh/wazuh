@@ -874,8 +874,9 @@ class AWSInspector(AWSService):
             {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
         self.send_describe_findings(response['findingArns'])
         # iterate if there are more elements
-        for response in itertools.takewhile(lambda x: x['nextToken'], \
-            self.client.list_findings(maxResults=100, filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})):
+        while 'nextToken' in response:
+            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
+                filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
             self.send_describe_findings(response['findingArns'])
         # insert last scan in DB
         self.db_cursor.execute(self.sql_insert_value.format(datetime_current))
