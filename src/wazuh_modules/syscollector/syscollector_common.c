@@ -285,13 +285,13 @@ int getDefaultNetworkIface(){
     cJSON * iface;
     cJSON * network_info;
     int i = 0;
+    cJSON * ipv4;
 
     /*  Set the primary network interface */
     
     #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
         default_network_iface = -1;
         network_info = getNetworkIfaces_bsd();
-        cJSON * ipv4 = cJSON_CreateObject();
         while(default_network_iface == -1 && i < cJSON_GetArraySize(network_info)){
             iface = cJSON_GetArrayItem(network_info,i);
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
@@ -301,17 +301,14 @@ int getDefaultNetworkIface(){
         }
     #elif defined(__linux__)
         char *gateway;
-        char *name;
         network_info = getNetworkIfaces_linux();
         for (i = 0; i < cJSON_GetArraySize(network_info);i++) {
             iface = cJSON_GetArrayItem(network_info,i);
-            name = cJSON_Print(cJSON_GetObjectItem(iface,"name"));
-            gateway = get_default_gateway(name);
+            ipv4 = cJSON_GetObjectItem(iface,"ipv4");
+            gateway = cJSON_Print(cJSON_GetObjectItem(ipv4,"gateway"));
             if(strcmp(gateway,"unknown")){
                 default_network_iface = i;
             }
-            cJSON_Delete(iface);
-            free(name);
             free(gateway);
         }
     #elif defined WIN32
@@ -320,7 +317,6 @@ int getDefaultNetworkIface(){
         typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 
         cJSON *gateway = cJSON_CreateObject();
-        cJSON * ipv4 = cJSON_CreateObject();
         CallFunc _get_network_win;
         
         /* Load DLL with network inventory functions */
