@@ -140,7 +140,7 @@ async def main():
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name', help="Client's name", type=str, dest='name', required=True)
-    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', required=True)
+    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', default='')
     parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
                         help="Perform a performance test against server. Number of bytes to test with.")
     parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',

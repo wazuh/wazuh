@@ -107,7 +107,7 @@ class Handler(asyncio.Protocol):
         # defines timeout for each request in seconds
         self.request_timeout = 10
         # object use to encrypt and decrypt requests
-        self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode()))
+        self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
 
     def push(self, message: bytes):
         """
@@ -139,7 +139,7 @@ class Handler(asyncio.Protocol):
 
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
-        encrypted_data = self.my_fernet.encrypt(data)
+        encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
         self.out_msg[:self.header_len] = struct.pack(self.header_format, len(encrypted_data), counter, command)
         self.out_msg[self.header_len:self.header_len + len(encrypted_data)] = encrypted_data
 
@@ -172,7 +172,8 @@ class Handler(asyncio.Protocol):
             if self.in_msg.received == self.in_msg.total:
                 # the message was correctly received
                 # decrypt received message
-                decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload))
+                decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
+                                                                                       else bytes(self.in_msg.payload)
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload
                 self.in_msg = InBuffer()
             else:
@@ -388,7 +389,7 @@ class Handler(asyncio.Protocol):
         :return: Message
         """
         self.in_str.receive_data(data)
-        logging.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
+        # logging.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
         return b"ok", b"Chunk received"
 
     def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:

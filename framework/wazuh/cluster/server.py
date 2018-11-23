@@ -171,7 +171,7 @@ async def main():
     parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
                         help="Perform a concurrency test against all clients. Number of messages to send in a row to "
                              "each client.")
-    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', required=True)
+    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', default='')
 
     args = parser.parse_args()
 
