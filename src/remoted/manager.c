@@ -515,6 +515,9 @@ static void c_files()
     char path[PATH_MAX + 1];
     int oldmask;
     int retval;
+    FILE *fp;
+    char groups_info[OS_SIZE_65536 + 1] = {0};
+    char *key;
 
     mdebug2("Updating shared files sums.");
 
@@ -526,6 +529,8 @@ static void c_files()
         int i;
         int j;
         file_sum **f_sum;
+        DIR *dp;
+        struct dirent *entry;
 
         if (groups) {
             for (i = 0; groups[i]; i++) {
@@ -548,6 +553,30 @@ static void c_files()
             free(groups);
             groups = NULL;
         }
+
+        // Clean hash table
+        OSHash_Free(m_hash);
+        m_hash = OSHash_Create();
+
+        dp = opendir(MULTIGROUPS_DIR);
+
+        if (!dp) {
+            /* Unlock mutex */
+            w_mutex_unlock(&files_mutex);
+            mdebug1("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
+            return;
+        }
+
+        // Clean all multigroups files
+        while (entry = readdir(dp), entry) {
+            // Skip "." and ".."
+            if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
+                continue;
+            }
+            rmdir_ex(entry->d_name);
+        }
+
+        closedir(dp);
     }
 
     // Initialize main groups structure
@@ -593,104 +622,100 @@ static void c_files()
         free_strarray(subdir);
         p_size++;
     }
+
+    path[0] = '\0';
     closedir(dp);
 
-    dp = opendir(MULTIGROUPS_DIR);
+    dp = opendir(GROUPS_DIR);
 
     if (!dp) {
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
 
-        merror("Opening directory: '%s': %s", MULTIGROUPS_DIR, strerror(errno));
+        mdebug1("Opening directory: '%s': %s", GROUPS_DIR, strerror(errno));
         return;
     }
-
-    /* Read multigroups from .metatada file */
-    FILE *fp;
-    char metadata_path[PATH_MAX + 1] = {0};
-    char multi_group[OS_SIZE_65536 + 1] = {0};
-    snprintf(metadata_path,PATH_MAX,"%s/%s",MULTIGROUPS_DIR,".metadata");
-
-    fp = fopen(metadata_path,"r");
-
-    if(!fp){
-        if(!reported_metadata_not_exists){
-            mdebug1("At c_files(): Could not find '%s' file. It will be generated when an agent connects",metadata_path);
-            reported_metadata_not_exists = 1;
+    
+    while (entry = readdir(dp), entry) {
+        // Skip "." and ".."
+        if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
+            continue;
         }
-        w_mutex_unlock(&files_mutex);
-        closedir(dp);
-        return;
+
+        if (snprintf(path, PATH_MAX + 1, GROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
+            merror("At c_files(): path too long.");
+            break;
+        }
+
+        fp = fopen(path,"r");
+
+        if(!fp) {
+            mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+        }
+        else if (fgets(groups_info, OS_SIZE_65536, fp)!=NULL ) {
+            fclose(fp);
+            fp = NULL;
+            if(OSHash_Add(m_hash, groups_info,(void*)1) != 2){
+                mdebug1("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
+            }
+        }
     }
 
-    while (fgets(multi_group, OS_SIZE_65536, fp) != NULL) {
-        char *endl = strchr(multi_group, '\n');
+    OSHashNode *my_node;
+    unsigned int *i;
+    os_calloc(1, sizeof(unsigned int *), i);
 
-        if (endl) {
-            *endl = '\0';
-        }
+    os_sha256 multi_group_hash;
+    char _hash[9] = {0};
 
-        os_sha256 multi_group_hash;
-        char _hash[9] = {0};
-        char *multi_group_hash_pt = NULL;
+    for (my_node = OSHash_Begin(m_hash, i); my_node; my_node = OSHash_Next(m_hash, i, my_node)) {
+        os_strdup(my_node->key, key);
 
-        if(multi_group_hash_pt = OSHash_Get(m_hash,multi_group),multi_group_hash_pt){
+        OS_SHA256_String(key,multi_group_hash);
+        strncpy(_hash,multi_group_hash,8);
 
-            strncpy(_hash,multi_group_hash_pt,8);
-            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
-                merror("At c_files(): path '%s' too long.",path);
-                break;
-            }
-
-        } else {
-
-            OS_SHA256_String(multi_group,multi_group_hash);
-            strncpy(_hash,multi_group_hash,8);
-            OSHash_Add(m_hash,multi_group,strdup(_hash));
-
-            if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
-                merror("At c_files(): path '%s' too long.",path);
-                break;
-            }
+        
+        if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
+            merror("At c_files(): path '%s' too long.",path);
+            break;
         }
 
         // Try to open directory, avoid TOCTOU hazard
         if (subdir = wreaddir(path), !subdir) {
             switch (errno) {
-            case ENOENT:
-                mdebug1("Making multi-group directory: %s", path);
+                case ENOENT:
+                    mdebug1("Making multi-group directory: %s", path);
 
-                oldmask = umask(0006);
-                retval = mkdir(path, 0770);
-                umask(oldmask);
+                    oldmask = umask(0006);
+                    retval = mkdir(path, 0770);
+                    umask(oldmask);
 
-                if (retval < 0) {
-                    merror("Cannot create multigroup directory '%s': %s (%d)", path, strerror(errno), errno);
+                    if (retval < 0) {
+                        merror("Cannot create multigroup directory '%s': %s (%d)", path, strerror(errno), errno);
+                        continue;
+                    }
+
+                    break;
+
+                default:
+                    merror("Cannot open multigroup directory '%s': %s (%d)", path, strerror(errno), errno);
                     continue;
-                }
-
-                break;
-
-            default:
-                merror("Cannot open multigroup directory '%s': %s (%d)", path, strerror(errno), errno);
-                continue;
             }
         }
 
         os_realloc(groups, (p_size + 2) * sizeof(group_t *), groups);
         os_calloc(1, sizeof(group_t), groups[p_size]);
-        groups[p_size]->group = strdup(multi_group);
+        groups[p_size]->group = strdup(my_node->key);
         groups[p_size + 1] = NULL;
-        c_multi_group(multi_group,&groups[p_size]->f_sum,_hash);
+        c_multi_group(key,&groups[p_size]->f_sum,_hash);
         free_strarray(subdir);
+        free(key);
         p_size++;
     }
 
-    fclose(fp);
-
+    os_free(i);
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
-
     closedir(dp);
     mdebug2("End updating shared files sums.");
 }
@@ -753,8 +778,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
             OS_SHA256_String(group,multi_group_hash);
             char _hash[9] = {0};
             strncpy(_hash,multi_group_hash,8);
-            OSHash_Add(m_hash,group,strdup(_hash));
-
+            OSHash_Add_ex(m_hash,group,strdup(_hash));
             snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, _hash, name);
         }
     }
