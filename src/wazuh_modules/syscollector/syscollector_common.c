@@ -284,7 +284,6 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
 int getDefaultNetworkIface(){
     int default_network_iface = 0;
     cJSON * iface = cJSON_CreateArray();
-    cJSON * ipv4 = cJSON_CreateObject();
     cJSON * network_info;
     int i = 0;
 
@@ -293,6 +292,7 @@ int getDefaultNetworkIface(){
     #if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
         default_network_iface = -1;
         network_info = getNetworkIfaces_bsd();
+        cJSON * ipv4 = cJSON_CreateObject();
         while(default_network_iface == -1 && i < cJSON_GetArraySize(network_info)){
             iface = cJSON_GetArrayItem(network_info,i);
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
@@ -300,6 +300,7 @@ int getDefaultNetworkIface(){
             default_network_iface = i;
             i++;
         }
+        cJSON_Delete(ipv4);
     #elif defined(__linux__)
         char *gateway;
         char *name;
@@ -311,6 +312,12 @@ int getDefaultNetworkIface(){
             if(strcmp(gateway,"unknown")){
                 default_network_iface = i;
             }
+        }
+        if(name){
+            free(name);
+        }
+        if(gateway){
+            free(gateway);
         }
     #elif defined WIN32
         #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
@@ -345,9 +352,11 @@ int getDefaultNetworkIface(){
                 default_network_iface = i;
             }
         }
+        cJSON_Delete(gateway);
     #endif
 
     cJSON_Delete(network_info);
+    cJSON_Delete(iface);
     return default_network_iface;
 }
 //#endif
