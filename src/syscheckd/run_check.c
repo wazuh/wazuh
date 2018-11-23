@@ -418,7 +418,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 #endif
 
     /* Report changes */
-    if (oldsum[10] == '-') {
+    if (oldsum[SK_DB_REPORT_CHANG] == '-') {
         delete_target_file(file_name);
     }
 

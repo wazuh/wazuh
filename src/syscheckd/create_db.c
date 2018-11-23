@@ -574,7 +574,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 /* Send the new checksum to the analysis server */
                 alert_msg[OS_MAXSTR] = '\0';
                 char *fullalert = NULL;
-                if (buf[9] == '+') {
+                if (buf[SK_DB_REPORT_CHANG] == '+') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
                         snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s",

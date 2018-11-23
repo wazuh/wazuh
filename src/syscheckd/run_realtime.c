@@ -79,7 +79,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             alert_msg[OS_MAXSTR] = '\0';
             char *fullalert = NULL;
 
-            if (buf[9] == '+') {
+            if (buf[SK_DB_REPORT_CHANG] == '+') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
                     snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name, fullalert);
