@@ -36,6 +36,7 @@ static const char *LEGACY_AWS_ACCOUNT_ALIAS = "LEGACY";
 static const char *CLOUDTRAIL_BUCKET_TYPE = "cloudtrail";
 static const char *CONFIG_BUCKET_TYPE = "config";
 static const char *CUSTOM_BUCKET_TYPE = "custom";
+static const char *GUARDDUTY_BUCKET_TYPE = "guardduty";
 static const char *INSPECTOR_SERVICE_TYPE = "inspector";
 
 // Parse XML
@@ -175,11 +176,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 // type is an attribute of the bucket tag
                 if (!strcmp(*nodes[i]->attributes, XML_BUCKET_TYPE)) {
                     if (!strcmp(*nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CONFIG_BUCKET_TYPE)
-                        || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE)) {
+                        || !strcmp(*nodes[i]->values, CUSTOM_BUCKET_TYPE) || !strcmp(*nodes[i]->values, GUARDDUTY_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
-                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s' or '%s'", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE,
-                            CONFIG_BUCKET_TYPE, CUSTOM_BUCKET_TYPE);
+                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s' or '%s'.", *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE,
+                            CONFIG_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
@@ -302,7 +303,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 if (!strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_service->type);
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid one is '%s'", *nodes[i]->values, INSPECTOR_SERVICE_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid one is '%s'.", *nodes[i]->values, INSPECTOR_SERVICE_TYPE);
                     OS_ClearNode(children);
                     return OS_INVALID;
                 }

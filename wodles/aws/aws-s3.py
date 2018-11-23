@@ -797,7 +797,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             'portProbeAction' in event['aws']['service']['action'] and \
             'portProbeDetails' in event['aws']['service']['action']['portProbeAction'] and \
             len(event['aws']['service']['action']['portProbeAction']['portProbeDetails']) > 1:
-            
+
             port_probe_details = event['aws']['service']['action']['portProbeAction']['portProbeDetails']
             for detail in port_probe_details:
                 event['aws']['service']['action']['portProbeAction']['portProbeDetails'] = detail
@@ -1031,7 +1031,8 @@ def main(argv):
             elif options.type.lower() == 'config':
                 bucket_type = AWSConfigBucket
             elif options.type.lower() == 'custom':
-                #bucket_type = AWSCustomBucket
+                bucket_type = AWSCustomBucket
+            elif options.type.lower() == 'guardduty':
                 bucket_type = AWSGuardDutyBucket
             else:
                 raise Exception("Invalid type of bucket")
