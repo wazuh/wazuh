@@ -279,7 +279,6 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     return root;
 }
 
-//#ifndef WIN32
 /* Get the Default Network Interface */
 int getDefaultNetworkIface(){
     int default_network_iface = 0;
@@ -359,7 +358,6 @@ int getDefaultNetworkIface(){
     cJSON_Delete(iface);
     return default_network_iface;
 }
-//#endif
 
 void wm_sys_destroy(wm_sys_t *sys) {
     free(sys);
