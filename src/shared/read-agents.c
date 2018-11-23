@@ -20,12 +20,10 @@ static int _do_print_syscheck(FILE *fp, int all_files, int csv_output, cJSON *js
 static void _do_get_rootcheckscan(FILE *fp, time_t values[2]) __attribute__((nonnull));
 static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
                                int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
-#endif /* !WIN32*/
-
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id) __attribute__((nonnull(2, 3)));
 static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));
 static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2, 3)));
-
+#endif /* !WIN32*/
 
 /* Free the agent list in memory */
 void free_agents(char **agent_list)
@@ -971,7 +969,6 @@ char *agent_file_perm(mode_t mode)
     return permissions;
 }
 
-#endif /* !WIN32 */
 
 /* Internal function. Extract last time of scan from rootcheck/syscheck. */
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id)
@@ -1086,6 +1083,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     return (0);
 }
 
+
 /* Internal function. Extract last time of scan from rootcheck/syscheck. */
 static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
 {
@@ -1189,6 +1187,7 @@ static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_inf
     return (0);
 }
 
+
 /* Get information from an agent */
 agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id)
 {
@@ -1223,6 +1222,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
 
     return (agt_info);
 }
+#endif
 
 /* Gets the status of an agent, based on the name / IP address */
 agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
@@ -1339,7 +1339,7 @@ char **get_agents(int flag)
     return (f_files);
 }
 
-
+#ifndef WIN32
 int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) {
     char response[OS_SIZE_6144];
     fd_set fdset;
@@ -1460,3 +1460,4 @@ time_t scantime_fim (const char *agent_id, const char *scan) {
     os_free(response);
     return (ts);
 }
+#endif
