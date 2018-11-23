@@ -1226,7 +1226,7 @@ cJSON * getNetworkIfaces_linux( ){
 void sys_network_linux(int queue_fd, const char* LOCATION){
 
 
-    cJSON * ifaces_list_json = cJSON_CreateObject();
+    cJSON * ifaces_list_json;
     int random_id = os_random();
     char *timestamp;
     time_t now;
