@@ -79,7 +79,7 @@ ID: 80200 - 80499
         <description>Amazon: $(aws.eventSource) - $(aws.eventName) - User Login failed.</description>
         <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
-    
+
     <rule id="80255" level="10" frequency="6" timeframe="360">
         <if_matched_sid>80254</if_matched_sid>
         <description>Amazon: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
@@ -213,6 +213,36 @@ ID: 80200 - 80499
         <group>aws_config_snapshot,aws_config_snapshot_compliance,</group>
     </rule>
 
+    <!-- AWS Trusted Advisor -->
+    <!-- Documentation: https://docs.aws.amazon.com/awssupport/latest/user/trustedadvisor.html -->
+    <rule id="80480" level="0">
+        <decoded_as>json</decoded_as>
+        <field name="aws.source">trustedadvisor</field>
+        <description>AWS Trusted Advisor</description>
+        <group>aws_trusted_advisor,</group>
+    </rule>
+
+    <rule id="80481" level="5">
+        <if_sid>80480</if_sid>
+        <field name="aws.status">ERROR</field>
+        <description>AWS Trusted Advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status)</description>
+        <group>aws_trusted_advisor, aws_trusted_advisor_error,</group>
+    </rule>
+
+    <rule id="80482" level="4">
+        <if_sid>80480</if_sid>
+        <field name="aws.status">WARN</field>
+        <description>AWS Trusted Advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status)</description>
+        <group>aws_trusted_advisor, aws_trusted_advisor_warn,</group>
+    </rule>
+
+    <rule id="80483" level="3">
+        <if_sid>80480</if_sid>
+        <field name="aws.status">OK</field>
+        <description>AWS Trusted Advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status)</description>
+        <group>aws_trusted_advisor, aws_trusted_advisor_ok,</group>
+    </rule>
+
     <!-- AWS KMS (Key Management Service) -->
     <!-- Documentation: https://docs.aws.amazon.com/kms/latest/developerguide/overview.html -->
     <rule id="80490" level="3">
@@ -258,5 +288,5 @@ ID: 80200 - 80499
         <description>AWS Inspector - Network assesment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
         <group>aws_inspector,</group>
     </rule>
-  
+
 </group>

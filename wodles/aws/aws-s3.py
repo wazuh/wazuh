@@ -68,6 +68,7 @@ from datetime import datetime
 from os import path
 import operator
 from datetime import datetime
+import itertools
 
 ################################################################################
 # Constants
@@ -778,7 +779,7 @@ class AWSCustomBucket(AWSBucket):
 
 class AWSService(WazuhIntegration):
     """
-    Class for getting AWS Inspector logs
+    Class for getting AWS Services logs from API
     :param access_key: AWS access key id
     :param secret_key: AWS secret access key
     :param profile: AWS profile
@@ -799,46 +800,9 @@ class AWSService(WazuhIntegration):
     def format_message(self, msg):
         return {'integration': 'aws', 'aws': msg}
 
-    def send_describe_findings(self, arn_list):
-        if len(arn_list) == 0:
-            debug('+++ There are not new events', 1)
-        else:
-            debug('+++ Processing new events...', 1)
-            response = self.client.describe_findings(findingArns=arn_list)['findings']
-            for elem in response:
-                self.send_msg(self.format_message(elem))
-
     def get_last_log_date(self):
         return '{Y}-{m}-{d} 00:00:00.0'.format(Y=self.only_logs_after[0:4],
             m=self.only_logs_after[4:6], d=self.only_logs_after[6:8])
-
-    def get_alerts(self):
-        initial_date = self.get_last_log_date()
-        self.init_db(self.sql_create_table)
-        try:
-            # if DB is empty write initial date
-            self.db_cursor.execute(self.sql_insert_value.format(initial_date))
-            self.db_cursor.execute(self.sql_find_last_scan)
-            last_scan = self.db_cursor.fetchone()[0]
-        except sqlite3.IntegrityError:
-            self.db_cursor.execute(self.sql_find_last_scan)
-            last_scan = self.db_cursor.fetchone()[0]
-        datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
-        # get current time (UTC)
-        datetime_current = datetime.utcnow()
-        # describe_findings only retrieves 100 results per call
-        response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
-            {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
-        self.send_describe_findings(response['findingArns'])
-        # iterate if there are more elements
-        while 'nextToken' in response:
-            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'], filter={'creationTimeRange':
-            {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
-            self.send_describe_findings(response['findingArns'])
-        # insert last scan in DB
-        self.db_cursor.execute(self.sql_insert_value.format(datetime_current))
-        # close connection with DB
-        self.close_db()
 
 
 class AWSInspector(AWSService):
@@ -882,6 +846,42 @@ class AWSInspector(AWSService):
             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
             service_name='inspector', region=region)
 
+    def send_describe_findings(self, arn_list):
+        if len(arn_list) == 0:
+            debug('+++ There are not new events', 1)
+        else:
+            debug('+++ Processing new events...', 1)
+            response = self.client.describe_findings(findingArns=arn_list)['findings']
+            for elem in response:
+                self.send_msg(self.format_message(elem))
+
+    def get_alerts(self):
+        initial_date = self.get_last_log_date()
+        self.init_db(self.sql_create_table)
+        try:
+            # if DB is empty write initial date
+            self.db_cursor.execute(self.sql_insert_value.format(initial_date))
+            self.db_cursor.execute(self.sql_find_last_scan)
+            last_scan = self.db_cursor.fetchone()[0]
+        except sqlite3.IntegrityError:
+            self.db_cursor.execute(self.sql_find_last_scan)
+            last_scan = self.db_cursor.fetchone()[0]
+        datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
+        # get current time (UTC)
+        datetime_current = datetime.utcnow()
+        # describe_findings only retrieves 100 results per call
+        response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
+            {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
+        self.send_describe_findings(response['findingArns'])
+        # iterate if there are more elements
+        while 'nextToken' in response:
+            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
+                filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
+            self.send_describe_findings(response['findingArns'])
+        # insert last scan in DB
+        self.db_cursor.execute(self.sql_insert_value.format(datetime_current))
+        # close connection with DB
+        self.close_db()
 
 ################################################################################
 # Functions
