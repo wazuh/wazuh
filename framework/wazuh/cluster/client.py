@@ -1,4 +1,5 @@
 import asyncio
+import ssl
 from typing import Tuple
 import uvloop
 import common
@@ -148,6 +149,7 @@ async def main():
     parser.add_argument('-f', '--file', help="Send file to server", type=str, dest='send_file')
     parser.add_argument('-s', '--string', help="Send a large string to the server. Specify string size.",
                         type=int, dest='send_string')
+    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl')
     args = parser.parse_args()
 
     # Get a reference to the event loop as we plan to use
@@ -156,12 +158,15 @@ async def main():
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(common.asyncio_exception_handler)
     on_con_lost = loop.create_future()
+    ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH) if args.ssl else None
 
     while True:
         try:
-            transport, protocol = await loop.create_connection(lambda: EchoClientProtocol(loop, on_con_lost, args.name,
-                                                                                          args.key),
-                                                               '172.17.0.101', 8888)
+            transport, protocol = await loop.create_connection(protocol_factory=lambda: EchoClientProtocol(loop,
+                                                                                                           on_con_lost,
+                                                                                                           args.name,
+                                                                                                           args.key),
+                                                               host='172.17.0.101', port=8888, ssl=ssl_context)
         except ConnectionRefusedError:
             logging.error("Could not connect to server. Trying again in 10 seconds.")
             await asyncio.sleep(10)

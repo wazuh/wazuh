@@ -1,4 +1,5 @@
 import asyncio
+import ssl
 import uvloop
 import time
 import common
@@ -95,11 +96,12 @@ class EchoServer:
     Defines an asynchronous echo server.
     """
 
-    def __init__(self, performance_test, concurrency_test, fernet_key: str):
+    def __init__(self, performance_test, concurrency_test, fernet_key: str, enable_ssl: bool):
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
         self.fernet_key = fernet_key
+        self.enable_ssl = enable_ssl
 
     async def check_clients_keepalive(self):
         """
@@ -148,9 +150,17 @@ class EchoServer:
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(common.asyncio_exception_handler)
 
+        if self.enable_ssl:
+            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+            ssl_context.load_cert_chain(certfile='{}/etc/sslmanager.cert'.format('/var/ossec'),
+                                        keyfile='{}/etc/sslmanager.key'.format('/var/ossec'))
+        else:
+            ssl_context = None
+
         try:
-            server = await loop.create_server(lambda: EchoServerHandler(server=self, loop=loop,
-                                                                        fernet_key=self.fernet_key), '0.0.0.0', 8888)
+            server = await loop.create_server(protocol_factory=lambda: EchoServerHandler(server=self, loop=loop,
+                                                                                         fernet_key=self.fernet_key),
+                                              host='0.0.0.0', port=8888, ssl=ssl_context)
         except OSError as e:
             logging.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt
@@ -172,10 +182,11 @@ async def main():
                         help="Perform a concurrency test against all clients. Number of messages to send in a row to "
                              "each client.")
     parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', default='')
+    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl')
 
     args = parser.parse_args()
 
-    server = EchoServer(args.performance_test, args.concurrency_test, args.key)
+    server = EchoServer(args.performance_test, args.concurrency_test, args.key, args.ssl)
     await server.start()
 
 
