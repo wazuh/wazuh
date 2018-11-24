@@ -372,6 +372,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
             sum->date_alert
     );
 
+    free(username);
     return r < (int)size ? 0 : -1;
 }
 
