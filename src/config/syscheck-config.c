@@ -1425,7 +1425,7 @@ char* check_ascci_hex (char *input) {
     char outhex[OS_SIZE_256];
 
     for (j = 0; j < strlen(input); j++) {
-        snprintf(outhex + j*2, OS_SIZE_256, "%hhX", input[j]);
+        snprintf(outhex + j*2, OS_SIZE_256 - j * 2, "%hhX", input[j]);
         if ((unsigned int)input[j] > 126 ||
                 (unsigned int)input[j] == 32 ||
                 (unsigned int)input[j] == 34) {
@@ -1435,10 +1435,8 @@ char* check_ascci_hex (char *input) {
 
     char *output;
     if (hex) {
-        os_calloc(strlen(outhex) + 1, sizeof(char *), output);
         os_strdup(outhex, output);
     } else {
-        os_calloc(strlen(input) + 1, sizeof(char *), output);
         os_strdup(input, output);
     }
     return output;
