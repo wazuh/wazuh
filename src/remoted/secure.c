@@ -36,7 +36,7 @@ void HandleSecure()
     ssize_t recv_b;
     uint32_t length;
     struct sockaddr_in peer_info;
-    wnotify_t * notify;
+    wnotify_t * notify = NULL;
 
     /* Initialize manager */
     manager_init();
