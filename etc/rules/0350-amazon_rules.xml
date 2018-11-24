@@ -100,17 +100,39 @@ ID: 80200 - 80499
     <rule id="80301" level="3">
         <if_sid>80300</if_sid>
         <field name="aws.severity">0|1|2|3</field>
-        <description>Guard Duty Finding with a low level: $(aws.description)</description>
+        <description>Guard Duty Finding - $(aws.service.action.actionType): $(aws.title)</description>
     </rule>
     <rule id="80302" level="6">
         <if_sid>80300</if_sid>
         <field name="aws.severity">4|5|6</field>
-        <description>Guard Duty Finding with a medium level: $(aws.description)</description>
+        <description>Guard Duty Finding - $(aws.service.action.actionType): $(aws.title)</description>
     </rule>
     <rule id="80303" level="10">
         <if_sid>80300</if_sid>
         <field name="aws.severity">7|8|9</field>
-        <description>Guard Duty Finding with a high level: $(aws.description)</description>
+        <description>Guard Duty Finding - $(aws.service.action.actionType): $(aws.title)</description>
+    </rule>
+
+    <!-- PORT_PROBE rules -->
+    <rule id="80305" level="3">
+        <if_sid>80301</if_sid>
+        <field name="aws.service.action.actionType">PORT_PROBE</field>
+        <description>Guard Duty Finding - $(aws.service.action.actionType): $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)]
+         [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+    </rule>
+
+    <rule id="80306" level="6">
+        <if_sid>80302</if_sid>
+        <field name="aws.service.action.actionType">PORT_PROBE</field>
+        <description>Guard Duty Finding - $(aws.service.action.actionType): $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)]
+         [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+    </rule>
+
+    <rule id="80307" level="10">
+        <if_sid>80303</if_sid>
+        <field name="aws.service.action.actionType">PORT_PROBE</field>
+        <description>Guard Duty Finding - $(aws.service.action.actionType): $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)]
+         [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
     </rule>
 
     <!-- Macie Alerts -->
