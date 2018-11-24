@@ -1387,6 +1387,7 @@ int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) 
 
             if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query)) {
                 merror("%s: in send reattempt (%d) '%s'.", source, errno, strerror(errno));
+                close(wdb_socket);
                 return (-2);
             }
         } else {
@@ -1400,6 +1401,7 @@ int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) 
 
     if (select(wdb_socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
         merror("%s: in select (%d) '%s'.", source, errno, strerror(errno));
+        close(wdb_socket);
         return (-2);
     }
 
@@ -1411,13 +1413,12 @@ int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) 
             retval = 0;
         } else {
             merror("%s: Bad response '%s'.", source, response);
-            return retval;
         }
     } else {
         merror("%s: no response from wazuh-db.", source);
-        return retval;
     }
 
+    close(wdb_socket);
     return retval;
 }
 
