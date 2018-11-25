@@ -146,7 +146,7 @@ ifeq (${uname_S},OpenBSD)
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+		OSSEC_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../lib'
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -763,7 +763,11 @@ $(EXTERNAL_CURL)Makefile:
 	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl --disable-ldap --without-libidn2
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
+ifeq (${uname_S},Linux)
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2
+else
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --without-libidn2
+endif
 endif
 
 
