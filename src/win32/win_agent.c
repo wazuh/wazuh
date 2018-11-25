@@ -292,7 +292,6 @@ int local_start()
 
     /* Send integrity message for agent configs */
     intcheck_file(cfg, "");
-    intcheck_file(OSSEC_DEFINES, "");
 
     req_init();
 

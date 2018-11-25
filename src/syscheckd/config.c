@@ -11,6 +11,7 @@
 #include "syscheck.h"
 #include "config/config.h"
 #include "rootcheck/rootcheck.h"
+#include "config/internal-options.h"
 
 #ifdef WIN32
 static char *SYSCHECK_EMPTY[] = { NULL };
@@ -96,7 +97,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     }
     syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
 #endif
-
+    
     return (0);
 }
 
