@@ -8,6 +8,7 @@ import argparse
 from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, server, local_server, client
 from wazuh import common
 
+
 #
 # Aux functions
 #
@@ -15,7 +16,7 @@ def set_logging(foreground_mode=False, debug_mode=0):
     logger = logging.getLogger()
     # configure logger
     fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
-    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] %(message)s')
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
@@ -23,6 +24,8 @@ def set_logging(foreground_mode=False, debug_mode=0):
         ch = logging.StreamHandler()
         ch.setFormatter(formatter)
         logger.addHandler(ch)
+
+    logger.addFilter(cluster.ClusterFilter(tag='Main'))
 
     # add a new debug level
     logging.DEBUG2 = 5
@@ -36,12 +39,7 @@ def set_logging(foreground_mode=False, debug_mode=0):
             kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
             self._log(logging.ERROR, msg, args, **kws)
 
-    logging.addLevelName(logging.INFO, "INFO    ")
-    logging.addLevelName(logging.WARNING, "WARNING ")
-    logging.addLevelName(logging.ERROR, "ERROR   ")
-    # logging.addLevelName(logging.CRITICAL, "CRITICAL")
-    logging.addLevelName(logging.DEBUG, "DEBUG   ")
-    logging.addLevelName(logging.DEBUG2, "DEBUG2  ")
+    logging.addLevelName(logging.DEBUG2, "DEBUG2")
 
     logging.Logger.debug2 = debug2
     logging.Logger.error = error
@@ -60,24 +58,28 @@ def print_version():
 #
 # Master main
 #
-async def master_main(args, logger):
-    my_server = server.AbstractServer(args.performance_test, args.concurrency_test, args.key, args.ssl, logger)
-    my_local_server = local_server.LocalServer(args.performance_test, args.concurrency_test, args.key, args.ssl, logger)
+async def master_main(args):
+    my_server = server.AbstractServer(args.performance_test, args.concurrency_test, args.key, args.ssl)
+    my_local_server = local_server.LocalServer(performance_test=args.performance_test,
+                                               concurrency_test=args.concurrency_test, fernet_key=args.key,
+                                               enable_ssl=args.ssl)
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
 #
 # Worker main
 #
-async def worker_main(args, logger):
-    my_local_server = local_server.LocalServer(args.performance_test, args.concurrency_test, args.key, args.ssl, logger)
+async def worker_main(args):
+    my_local_server = local_server.LocalServer(performance_test=args.performance_test,
+                                               concurrency_test=args.concurrency_test, fernet_key=args.key,
+                                               enable_ssl=args.ssl)
     while True:
         my_client = client.AbstractClientManager(args.name, args.key, args.ssl, args.performance_test,
-                                                 args.concurrency_test, args.send_file, args.send_string, logger)
+                                                 args.concurrency_test, args.send_file, args.send_string)
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
-            logger.info("Connection with server has been lost. Reconnecting in 10 seconds.")
+            logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
             await asyncio.sleep(10)
 
 
@@ -85,7 +87,7 @@ async def worker_main(args, logger):
 # Main
 #
 async def main():
-    logger = set_logging(True, 0)
+    logger = set_logging(True, 2)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
@@ -104,7 +106,7 @@ async def main():
 
     args = parser.parse_args()
     main_function = master_main if args.type == 'master' else worker_main
-    await main_function(args, logger)
+    await main_function(args)
 
 try:
     asyncio.run(main())

@@ -8,6 +8,7 @@ import struct
 import traceback
 import cryptography.fernet
 from typing import Tuple, Dict
+from wazuh.cluster import cluster
 
 
 class Response:
@@ -74,11 +75,12 @@ class Handler(asyncio.Protocol):
     Defines common methods for echo clients and servers
     """
 
-    def __init__(self, fernet_key: str, logger: logging.Logger):
+    def __init__(self, fernet_key: str, tag: str = "Handler"):
         """
         Class constructor
 
         :param fernet_key: 32 length string used as key to initialize cryptography's Fernet.
+        :param tag: logging tag to use
         """
         super().__init__()
         # The counter is used to identify each message. If an incoming request has a known ID,
@@ -109,7 +111,11 @@ class Handler(asyncio.Protocol):
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # logging.Logger object used to write logs
-        self.logger = logger
+        self.logger = logging.getLogger(tag)
+        # logging tag
+        self.tag = tag
+        self.logger_filter = cluster.ClusterFilter(tag=self.tag)
+        self.logger.addFilter(self.logger_filter)
 
 
     def push(self, message: bytes):

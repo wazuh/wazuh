@@ -2,7 +2,7 @@ import asyncio
 import ssl
 from typing import Tuple
 import uvloop
-from wazuh.cluster import common
+from wazuh.cluster import common, cluster
 import logging
 import time
 
@@ -12,15 +12,14 @@ class AbstractClient(common.Handler):
     Defines a client protocol. Handles connection with server.
     """
 
-    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
-                 logger: logging.Logger):
+    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str):
         """
         Class constructor
 
         :param name: client's name
         :param loop: asyncio loop
         """
-        super().__init__(fernet_key=fernet_key, logger=logger)
+        super().__init__(fernet_key=fernet_key, tag="Client {}".format(name))
         self.loop = loop
         self.name = name
         self.on_con_lost = on_con_lost
@@ -142,7 +141,7 @@ class AbstractClientManager:
     Defines an abstract client. Manages connection with server.
     """
     def __init__(self, name: str, key: str, ssl: bool, performance_test: int, concurrency_test: int, file: str,
-                 string: int, logger: logging.Logger):
+                 string: int):
         """
         Class constructor
 
@@ -162,7 +161,10 @@ class AbstractClientManager:
         self.concurrency_test = concurrency_test
         self.file = file
         self.string = string
-        self.logger = logger
+        self.logger = logging.getLogger('AbstractClientManager')
+        # logging tag
+        self.tag = "Client Manager"
+        self.logger.addFilter(cluster.ClusterFilter(tag=self.tag))
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -176,8 +178,7 @@ class AbstractClientManager:
         while True:
             try:
                 transport, protocol = await loop.create_connection(
-                                    protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key,
-                                                                            self.logger),
+                                    protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key),
                                     host='172.17.0.101', port=8888, ssl=ssl_context)
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to server. Trying again in 10 seconds.")

@@ -2,9 +2,10 @@ import asyncio
 import ssl
 import uvloop
 import time
-from wazuh.cluster import common
+from wazuh.cluster import common, cluster
 import logging
 from typing import Tuple
+import random
 
 
 class AbstractServerHandler(common.Handler):
@@ -12,11 +13,13 @@ class AbstractServerHandler(common.Handler):
     Defines abstract server protocol. Handles communication with a single client.
     """
 
-    def __init__(self, server, loop, fernet_key, logger):
-        super().__init__(fernet_key=fernet_key, logger=logger)
+    def __init__(self, server, loop, fernet_key):
+        super().__init__(fernet_key=fernet_key, tag="Handler {}".format(random.randint(0, 1000)))
         self.server = server
         self.loop = loop
         self.last_keepalive = time.time()
+        self.tag = "Server Handler"
+        self.logger_filter.update_tag(self.tag)
 
     def connection_made(self, transport):
         """
@@ -59,9 +62,11 @@ class AbstractServerHandler(common.Handler):
             self.logger.error("Client {} already present".format(data))
             return b'err', b'Client already present'
         else:
-            self.server.clients[data] = self
-            self.name = data
-            return b'ok', 'Client {} added'.format(data).encode()
+            self.name = data.decode()
+            self.server.clients[self.name] = self
+            self.tag = "Handler " + self.name
+            self.logger_filter.update_tag(self.tag)
+            return b'ok', 'Client {} added'.format(self.name).encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """
@@ -95,13 +100,16 @@ class AbstractServer:
     Defines an asynchronous server. Handles connections from all clients.
     """
 
-    def __init__(self, performance_test, concurrency_test, fernet_key: str, enable_ssl: bool, logger: logging.Logger):
+    def __init__(self, performance_test, concurrency_test, fernet_key: str, enable_ssl: bool,
+                 tag: str = "Abstract Server"):
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
         self.fernet_key = fernet_key
         self.enable_ssl = enable_ssl
-        self.logger = logger
+        self.logger = logging.getLogger(tag)
+        # logging tag
+        self.logger.addFilter(cluster.ClusterFilter(tag=tag))
 
     async def check_clients_keepalive(self):
         """
@@ -159,8 +167,7 @@ class AbstractServer:
 
         try:
             server = await loop.create_server(
-                    protocol_factory=lambda: AbstractServerHandler(server=self, loop=loop, fernet_key=self.fernet_key,
-                                                                   logger=self.logger),
+                    protocol_factory=lambda: AbstractServerHandler(server=self, loop=loop, fernet_key=self.fernet_key),
                     host='0.0.0.0', port=8888, ssl=ssl_context)
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))
