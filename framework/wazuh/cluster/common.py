@@ -74,7 +74,7 @@ class Handler(asyncio.Protocol):
     Defines common methods for echo clients and servers
     """
 
-    def __init__(self, fernet_key: str):
+    def __init__(self, fernet_key: str, logger: logging.Logger):
         """
         Class constructor
 
@@ -108,6 +108,9 @@ class Handler(asyncio.Protocol):
         self.request_timeout = 10
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
+        # logging.Logger object used to write logs
+        self.logger = logger
+
 
     def push(self, message: bytes):
         """
@@ -168,7 +171,7 @@ class Handler(asyncio.Protocol):
         parsed = self.msg_parse()
 
         while parsed:
-            # logging.debug("Received message: {} / {}".format(self.in_msg['received'], self.in_msg['total_size']))
+            # self.logger.debug("Received message: {} / {}".format(self.in_msg['received'], self.in_msg['total_size']))
             if self.in_msg.received == self.in_msg.total:
                 # the message was correctly received
                 # decrypt received message
@@ -279,7 +282,7 @@ class Handler(asyncio.Protocol):
         try:
             command, payload = self.process_request(command, payload)
         except Exception as e:
-            logging.error("Error processing request '{}': {}".format(command, e))
+            self.logger.error("Error processing request '{}': {}".format(command, e))
             command, payload = b'err', str(e).encode()
 
         self.push(self.msg_build(command, counter, payload))
@@ -389,7 +392,7 @@ class Handler(asyncio.Protocol):
         :return: Message
         """
         self.in_str.receive_data(data)
-        # logging.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
+        # self.logger.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
         return b"ok", b"Chunk received"
 
     def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:

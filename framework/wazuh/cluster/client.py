@@ -2,7 +2,7 @@ import asyncio
 import ssl
 from typing import Tuple
 import uvloop
-import common
+from wazuh.cluster import common
 import logging
 import time
 
@@ -12,14 +12,15 @@ class AbstractClient(common.Handler):
     Defines a client protocol. Handles connection with server.
     """
 
-    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str):
+    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
+                 logger: logging.Logger):
         """
         Class constructor
 
         :param name: client's name
         :param loop: asyncio loop
         """
-        super().__init__(fernet_key=fernet_key)
+        super().__init__(fernet_key=fernet_key, logger=logger)
         self.loop = loop
         self.name = name
         self.on_con_lost = on_con_lost
@@ -34,10 +35,10 @@ class AbstractClient(common.Handler):
         def connection_result(future_result):
             response_msg = future_result.result()[0]
             if response_msg.startswith(b'Error'):
-                logging.error("Could not connect to server: {}.".format(response_msg))
+                self.logger.error("Could not connect to server: {}.".format(response_msg))
                 self.transport.close()
             else:
-                logging.info("Sucessfully connected to server.")
+                self.logger.info("Sucessfully connected to server.")
                 self.connected = True
 
         self.transport = transport
@@ -51,8 +52,8 @@ class AbstractClient(common.Handler):
         :param exc: either an exception object or None. The latter means a regular EOF is received, or the connection
                     was aborted or closed by this side of the connection.
         """
-        logging.info('The server closed the connection' if exc is None
-                     else "Connection closed due to an unhandled error")
+        self.logger.info('The server closed the connection' if exc is None
+                         else "Connection closed due to an unhandled error")
 
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
@@ -96,9 +97,9 @@ class AbstractClient(common.Handler):
                 if result.startswith(b'Error'):
                     n_attemps += 1
                     if n_attemps >= 3:
-                        logging.error("Maximum number of failed keep alives reached. Disconnecting.")
+                        self.logger.error("Maximum number of failed keep alives reached. Disconnecting.")
                         self.transport.close()
-                logging.info(result)
+                self.logger.info(result)
             await asyncio.sleep(29)
 
     async def performance_test_client(self, test_size):
@@ -107,9 +108,9 @@ class AbstractClient(common.Handler):
             result = await self.send_request(b'echo', b'a' * test_size)
             after = time.time()
             if len(result) != test_size:
-                logging.error(result)
+                self.logger.error(result)
             else:
-                logging.info("Received size: {} // Time: {}".format(len(result), after - before))
+                self.logger.info("Received size: {} // Time: {}".format(len(result), after - before))
             await asyncio.sleep(3)
 
     async def concurrency_test_client(self, n_msgs):
@@ -118,29 +119,42 @@ class AbstractClient(common.Handler):
             for i in range(n_msgs):
                 result = await self.send_request(b'echo', 'concurrency {}'.format(i).encode())
             after = time.time()
-            logging.info("Time sending {} messages: {}".format(n_msgs, after - before))
+            self.logger.info("Time sending {} messages: {}".format(n_msgs, after - before))
             await asyncio.sleep(10)
 
     async def send_file_task(self, filename):
         before = time.time()
         response = await self.send_file(filename)
         after = time.time()
-        logging.debug(response)
-        logging.debug("Time: {}".format(after - before))
+        self.logger.debug(response)
+        self.logger.debug("Time: {}".format(after - before))
 
     async def send_string_task(self, string_size):
         before = time.time()
         response = await self.send_string(my_str=b'a' * string_size)
         after = time.time()
-        logging.debug(response)
-        logging.debug("Time: {}".format(after - before))
+        self.logger.debug(response)
+        self.logger.debug("Time: {}".format(after - before))
 
 
 class AbstractClientManager:
     """
     Defines an abstract client. Manages connection with server.
     """
-    def __init__(self, name, key, ssl, performance_test, concurrency_test, file, string):
+    def __init__(self, name: str, key: str, ssl: bool, performance_test: int, concurrency_test: int, file: str,
+                 string: int, logger: logging.Logger):
+        """
+        Class constructor
+
+        :param name: Name of the client.
+        :param key: Fernet key to encrypt communications
+        :param ssl: Whether to use SSL encryption or not
+        :param performance_test: Value for the performance test function
+        :param concurrency_test: Value for the concurrency test function
+        :param file: File path for the send file test function
+        :param string: String size for the send string test function
+        :param logger: logging logger
+        """
         self.name = name
         self.key = key
         self.ssl = ssl
@@ -148,6 +162,7 @@ class AbstractClientManager:
         self.concurrency_test = concurrency_test
         self.file = file
         self.string = string
+        self.logger = logger
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -161,14 +176,15 @@ class AbstractClientManager:
         while True:
             try:
                 transport, protocol = await loop.create_connection(
-                                    protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key),
+                                    protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key,
+                                                                            self.logger),
                                     host='172.17.0.101', port=8888, ssl=ssl_context)
             except ConnectionRefusedError:
-                logging.error("Could not connect to server. Trying again in 10 seconds.")
+                self.logger.error("Could not connect to server. Trying again in 10 seconds.")
                 await asyncio.sleep(10)
                 continue
             except OSError as e:
-                logging.error("Could not connect to server: {}. Trying again in 10 seconds.".format(e))
+                self.logger.error("Could not connect to server: {}. Trying again in 10 seconds.".format(e))
                 await asyncio.sleep(10)
                 continue
 
@@ -190,5 +206,5 @@ class AbstractClientManager:
             finally:
                 transport.close()
 
-            logging.info("The connection has ben closed. Reconnecting in 10 seconds.")
+            self.logger.info("The connection has ben closed. Reconnecting in 10 seconds.")
             await asyncio.sleep(10)

@@ -1,12 +1,10 @@
 import asyncio
 import uvloop
-import server
-import common
 import logging
 from typing import Tuple
 import json
-import cluster
 import random
+from wazuh.cluster import server, common, cluster
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -18,7 +16,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         :param transport: socket to write data on
         """
         self.name = random.SystemRandom().randint(0, 2 ** 32 - 1)
-        logging.info('Connection received in local server. Client name: {}'.format(self.name))
+        self.logger.info('Connection received in local server. Client name: {}'.format(self.name))
         self.transport = transport
         self.server.clients[self.name] = self
 
@@ -42,13 +40,15 @@ class LocalServer(server.AbstractServer):
         loop.set_exception_handler(common.asyncio_exception_handler)
 
         try:
-            server = await loop.create_unix_server(protocol_factory=lambda: LocalServerHandler(server=self, loop=loop, fernet_key=None),
+            server = await loop.create_unix_server(protocol_factory=lambda: LocalServerHandler(server=self, loop=loop,
+                                                                                               fernet_key='',
+                                                                                               logger=self.logger),
                                                    path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
         except OSError as e:
-            logging.error("Could not create server: {}".format(e))
+            self.logger.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt
 
-        logging.info('Serving on {}'.format(server.sockets[0].getsockname()))
+        self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
         async with server:
             # use asyncio.gather to run both tasks in parallel

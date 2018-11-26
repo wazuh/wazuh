@@ -10,7 +10,7 @@ class LocalClient(AbstractClientManager):
 
     async def get_config(self):
         response = await self.client.send_request(b'get_config', b'')
-        logging.info("Response: {}".format(response))
+        self.logger.info("Response: {}".format(response))
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -21,13 +21,13 @@ class LocalClient(AbstractClientManager):
 
         try:
             transport, protocol = await loop.create_unix_connection(
-                                protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key),
+                                protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key, self.logger),
                                 path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
         except ConnectionRefusedError:
-            logging.error("Could not connect to server.")
+            self.logger.error("Could not connect to server.")
             return
         except OSError as e:
-            logging.error("Could not connect to server: {}.".format(e))
+            self.logger.error("Could not connect to server: {}.".format(e))
             return
 
         self.client = protocol
@@ -44,7 +44,7 @@ async def main():
     parser.add_argument('-n', '--name', help="Client's name", type=str, dest='name', required=True)
     args = parser.parse_args()
 
-    client = LocalClient(args.name, None, False, 0, 0, '', 0)
+    client = LocalClient(args.name, None, False, 0, 0, '', 0, logging.getLogger())
 
     await client.start()
 

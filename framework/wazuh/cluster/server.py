@@ -2,7 +2,7 @@ import asyncio
 import ssl
 import uvloop
 import time
-import common
+from wazuh.cluster import common
 import logging
 from typing import Tuple
 
@@ -12,8 +12,8 @@ class AbstractServerHandler(common.Handler):
     Defines abstract server protocol. Handles communication with a single client.
     """
 
-    def __init__(self, server, loop, fernet_key):
-        super().__init__(fernet_key=fernet_key)
+    def __init__(self, server, loop, fernet_key, logger):
+        super().__init__(fernet_key=fernet_key, logger=logger)
         self.server = server
         self.loop = loop
         self.last_keepalive = time.time()
@@ -25,7 +25,7 @@ class AbstractServerHandler(common.Handler):
         :param transport: socket to write data on
         """
         peername = transport.get_extra_info('peername')
-        logging.info('Connection from {}'.format(peername))
+        self.logger.info('Connection from {}'.format(peername))
         self.transport = transport
         self.name = None
 
@@ -56,7 +56,7 @@ class AbstractServerHandler(common.Handler):
         :return: successful result
         """
         if data in self.server.clients:
-            logging.error("Client {} already present".format(data))
+            self.logger.error("Client {} already present".format(data))
             return b'err', b'Client already present'
         else:
             self.server.clients[data] = self
@@ -84,10 +84,10 @@ class AbstractServerHandler(common.Handler):
         :return:
         """
         if self.name:
-            logging.info("The client '{}' closed the connection".format(self.name))
+            self.logger.info("The client '{}' closed the connection".format(self.name))
             del self.server.clients[self.name]
         else:
-            logging.error("Error during handshake with incoming client: {}".format(exc))
+            self.logger.error("Error during handshake with incoming client: {}".format(exc))
 
 
 class AbstractServer:
@@ -95,12 +95,13 @@ class AbstractServer:
     Defines an asynchronous server. Handles connections from all clients.
     """
 
-    def __init__(self, performance_test, concurrency_test, fernet_key: str, enable_ssl: bool):
+    def __init__(self, performance_test, concurrency_test, fernet_key: str, enable_ssl: bool, logger: logging.Logger):
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
         self.fernet_key = fernet_key
         self.enable_ssl = enable_ssl
+        self.logger = logger
 
     async def check_clients_keepalive(self):
         """
@@ -110,7 +111,7 @@ class AbstractServer:
             curr_timestamp = time.time()
             for client_name, client in self.clients.items():
                 if curr_timestamp - client.last_keepalive > 30:
-                    logging.error("No keep alives have been received from {} in the last minute. Disconnecting".format(
+                    self.logger.error("No keep alives have been received from {} in the last minute. Disconnecting".format(
                         client_name))
                     client.transport.close()
             await asyncio.sleep(30)
@@ -118,8 +119,8 @@ class AbstractServer:
     async def echo(self):
         while True:
             for client_name, client in self.clients.items():
-                logging.debug("Sending echo to client {}".format(client_name))
-                logging.info(await client.send_request(b'echo-m', b'keepalive ' + client_name))
+                self.logger.debug("Sending echo to client {}".format(client_name))
+                self.logger.info(await client.send_request(b'echo-m', b'keepalive ' + client_name))
             await asyncio.sleep(3)
 
     async def performance_test(self):
@@ -128,7 +129,7 @@ class AbstractServer:
                 before = time.time()
                 response = await client.send_request(b'echo', b'a' * self.performance)
                 after = time.time()
-                logging.info("Received size: {} // Time: {}".format(len(response), after - before))
+                self.logger.info("Received size: {} // Time: {}".format(len(response), after - before))
             await asyncio.sleep(3)
 
     async def concurrency_test(self):
@@ -139,7 +140,7 @@ class AbstractServer:
                     response = await client.send_request(b'echo',
                                                          'concurrency {} client {}'.format(i, client_name).encode())
                 after = time.time()
-                logging.info("Time sending {} messages: {}".format(self.concurrency, after - before))
+                self.logger.info("Time sending {} messages: {}".format(self.concurrency, after - before))
                 await asyncio.sleep(10)
 
     async def start(self):
@@ -158,13 +159,14 @@ class AbstractServer:
 
         try:
             server = await loop.create_server(
-                    protocol_factory=lambda: AbstractServerHandler(server=self, loop=loop, fernet_key=self.fernet_key),
+                    protocol_factory=lambda: AbstractServerHandler(server=self, loop=loop, fernet_key=self.fernet_key,
+                                                                   logger=self.logger),
                     host='0.0.0.0', port=8888, ssl=ssl_context)
         except OSError as e:
-            logging.error("Could not create server: {}".format(e))
+            self.logger.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt
 
-        logging.info('Serving on {}'.format(server.sockets[0].getsockname()))
+        self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
         async with server:
             # use asyncio.gather to run both tasks in parallel
