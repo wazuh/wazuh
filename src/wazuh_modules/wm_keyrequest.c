@@ -36,7 +36,7 @@ static OSHash *request_hash = NULL;
 const char *script_params[2] = { "id", "ip" };
 
 const wm_context WM_KEY_REQUEST_CONTEXT = {
-    "key-request",
+    "key-polling",
     (wm_routine)wm_key_request_main,
     (wm_routine)wm_key_request_destroy,
     (cJSON * (*)(const void *))wm_key_request_dump
@@ -322,7 +322,7 @@ cJSON *wm_key_request_dump(const wm_krequest_t *data) {
         cJSON_AddNumberToObject(wm_wd,"queue_size",data->queue_size);
     }
 
-    cJSON_AddItemToObject(root,"key-request",wm_wd);
+    cJSON_AddItemToObject(root,"key-polling",wm_wd);
     return root;
 }
 

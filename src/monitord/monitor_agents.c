@@ -65,7 +65,7 @@ void monitor_agents()
         cr_agents++;
     }
 
-    /* Delete old agents when using key-request module */
+    /* Delete old agents when using key-polling module */
     if(mond.delete_old_agents > 0) {
         char **na_agents;
         na_agents = get_agents(GA_NOTACTIVE,mond.delete_old_agents);
