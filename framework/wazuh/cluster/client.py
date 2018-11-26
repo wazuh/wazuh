@@ -4,13 +4,12 @@ from typing import Tuple
 import uvloop
 import common
 import logging
-import argparse
 import time
 
 
-class EchoClientProtocol(common.Handler):
+class AbstractClient(common.Handler):
     """
-    Defines a echo client protocol
+    Defines a client protocol. Handles connection with server.
     """
 
     def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str):
@@ -137,7 +136,10 @@ class EchoClientProtocol(common.Handler):
         logging.debug("Time: {}".format(after - before))
 
 
-class EchoClient:
+class AbstractClientManager:
+    """
+    Defines an abstract client. Manages connection with server.
+    """
     def __init__(self, name, key, ssl, performance_test, concurrency_test, file, string):
         self.name = name
         self.key = key
@@ -158,11 +160,9 @@ class EchoClient:
 
         while True:
             try:
-                transport, protocol = await loop.create_connection(protocol_factory=lambda: EchoClientProtocol(loop,
-                                                                                                               on_con_lost,
-                                                                                                               self.name,
-                                                                                                               self.key),
-                                                                   host='172.17.0.101', port=8888, ssl=ssl_context)
+                transport, protocol = await loop.create_connection(
+                                    protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key),
+                                    host='172.17.0.101', port=8888, ssl=ssl_context)
             except ConnectionRefusedError:
                 logging.error("Could not connect to server. Trying again in 10 seconds.")
                 await asyncio.sleep(10)

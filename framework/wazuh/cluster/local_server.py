@@ -9,7 +9,7 @@ import cluster
 import random
 
 
-class LocalServerHandler(server.EchoServerHandler):
+class LocalServerHandler(server.AbstractServerHandler):
 
     def connection_made(self, transport):
         """
@@ -32,7 +32,7 @@ class LocalServerHandler(server.EchoServerHandler):
         return b'ok', json.dumps(cluster.read_config()).encode()
 
 
-class LocalServer(server.EchoServer):
+class LocalServer(server.AbstractServer):
 
     async def start(self):
         # Get a reference to the event loop as we plan to use

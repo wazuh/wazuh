@@ -7,9 +7,9 @@ import logging
 from typing import Tuple
 
 
-class EchoServerHandler(common.Handler):
+class AbstractServerHandler(common.Handler):
     """
-    Defines echo server protocol
+    Defines abstract server protocol. Handles communication with a single client.
     """
 
     def __init__(self, server, loop, fernet_key):
@@ -90,9 +90,9 @@ class EchoServerHandler(common.Handler):
             logging.error("Error during handshake with incoming client: {}".format(exc))
 
 
-class EchoServer:
+class AbstractServer:
     """
-    Defines an asynchronous echo server.
+    Defines an asynchronous server. Handles connections from all clients.
     """
 
     def __init__(self, performance_test, concurrency_test, fernet_key: str, enable_ssl: bool):
@@ -157,9 +157,9 @@ class EchoServer:
             ssl_context = None
 
         try:
-            server = await loop.create_server(protocol_factory=lambda: EchoServerHandler(server=self, loop=loop,
-                                                                                         fernet_key=self.fernet_key),
-                                              host='0.0.0.0', port=8888, ssl=ssl_context)
+            server = await loop.create_server(
+                    protocol_factory=lambda: AbstractServerHandler(server=self, loop=loop, fernet_key=self.fernet_key),
+                    host='0.0.0.0', port=8888, ssl=ssl_context)
         except OSError as e:
             logging.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt

@@ -1,12 +1,12 @@
 import asyncio
 import logging
 import argparse
-from client import EchoClient, EchoClientProtocol
+from client import AbstractClient, AbstractClientManager
 import time
 import uvloop
 
 
-class LocalClient(EchoClient):
+class LocalClient(AbstractClientManager):
 
     async def get_config(self):
         response = await self.client.send_request(b'get_config', b'')
@@ -21,7 +21,7 @@ class LocalClient(EchoClient):
 
         try:
             transport, protocol = await loop.create_unix_connection(
-                                protocol_factory=lambda: EchoClientProtocol(loop, on_con_lost, self.name, self.key),
+                                protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key),
                                 path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
         except ConnectionRefusedError:
             logging.error("Could not connect to server.")
