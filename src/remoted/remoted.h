@@ -48,6 +48,7 @@ typedef struct remoted_state_t {
     unsigned int evt_count;
     unsigned int ctrl_msg_count;
     unsigned int msg_sent;
+    unsigned long recv_bytes;
 } remoted_state_t;
 
 /* Network buffer structure */
@@ -140,6 +141,7 @@ void rem_inc_evt();
 void rem_inc_ctrl_msg();
 void rem_inc_msg_sent();
 void rem_inc_discarded();
+void rem_add_recv(unsigned long bytes);
 
 // Read config
 size_t rem_getconfig(const char * section, char ** output);

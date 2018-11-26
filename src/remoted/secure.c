@@ -170,7 +170,7 @@ void HandleSecure()
                 } else {
                     sock_client = fd;
 
-                    switch (nb_recv(&netbuffer, sock_client)) {
+                    switch (recv_b = nb_recv(&netbuffer, sock_client), recv_b) {
                     case -2:
                         mwarn("Too big message size from %s [%d].", inet_ntoa(peer_info.sin_addr), sock_client);
                         _close_sock(&keys, sock_client);
@@ -196,7 +196,8 @@ void HandleSecure()
                         _close_sock(&keys, sock_client);
                         continue;
 
-                    default: ;
+                    default:
+                        rem_add_recv((unsigned long)recv_b);
                     }
                 }
             }
@@ -208,6 +209,7 @@ void HandleSecure()
                 continue;
             } else {
                 rem_msgpush(buffer, recv_b, &peer_info, -1);
+                rem_add_recv((unsigned long)recv_b);
             }
         }
     }
