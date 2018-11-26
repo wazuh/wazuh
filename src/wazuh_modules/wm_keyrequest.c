@@ -33,6 +33,8 @@ static w_queue_t * request_queue;
 
 static OSHash *request_hash = NULL;
 
+const char *script_params[2] = { "id", "ip" };
+
 const wm_context WM_KEY_REQUEST_CONTEXT = {
     "key-request",
     (wm_routine)wm_key_request_main,
@@ -169,7 +171,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     char *command = NULL;
     os_calloc(OS_MAXSTR + 1,sizeof(char),command);
 
-    if(snprintf(command,OS_MAXSTR,"%s %s",data->script,request) > OS_MAXSTR) {
+    if(snprintf(command,OS_MAXSTR,"%s %s %s",data->script,script_params[type],request) > OS_MAXSTR) {
         mdebug1("Request is too long.");
         os_free(command);
         OSHash_Delete_ex(request_hash,buffer);
@@ -189,52 +191,100 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         } else {
 
             int sock;
-            char *agent_id = NULL;
-            char *agent_name = NULL;
-            char *agent_address = NULL;
-            char *agent_key = NULL;
+            int error = 0;
+            cJSON *error_message = NULL;
+            cJSON *data = NULL;
+            cJSON *agent_id = NULL;
+            cJSON *agent_name = NULL;
+            cJSON *agent_address = NULL;
+            cJSON *agent_key = NULL;
             char id[257 + 1] = { '\0' };
 
-            agent_id = cJSON_GetObjectItem(agent_infoJSON, "id")->valuestring;
+            cJSON *json_field;
+
+            if (json_field = cJSON_GetObjectItem(agent_infoJSON,"error"), !json_field) {
+                mdebug1("Malformed JSON output received. No 'error' field found");
+                cJSON_Delete (agent_infoJSON);
+                os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
+                os_free(output);
+                return;
+            }
+
+            error = json_field->valueint;
+
+            if(error) {
+                error_message = cJSON_GetObjectItem(agent_infoJSON, "message");
+                if (!error_message) {
+                    mdebug1("Malformed JSON output received. No 'message' field found");
+                    cJSON_Delete (agent_infoJSON);
+                    os_free(command);
+                    OSHash_Delete_ex(request_hash,buffer);
+                    os_free(output);
+                    return;
+                }
+                merror("%s",error_message->valuestring);
+                cJSON_Delete (agent_infoJSON);
+                os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
+                os_free(output);
+                return;
+            }
+
+            data = cJSON_GetObjectItem(agent_infoJSON, "data");
+            if (!data) {
+                mdebug1("Agent data not found.");
+                cJSON_Delete (agent_infoJSON);
+                os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
+                os_free(output);
+                return;
+            }
+
+            agent_id = cJSON_GetObjectItem(data, "id");
             if (!agent_id) {
                 mdebug1("Agent ID not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
+                os_free(output);
                 return;
             }
 
-            agent_name = cJSON_GetObjectItem(agent_infoJSON, "name")->valuestring;
+            agent_name = cJSON_GetObjectItem(data, "name");
             if (!agent_name) {
                 mdebug1("Agent name not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
+                os_free(output);
                 return;
             }
 
-            agent_address = cJSON_GetObjectItem(agent_infoJSON, "address")->valuestring;
+            agent_address = cJSON_GetObjectItem(data, "ip");
             if (!agent_address) {
                 mdebug1("Agent address not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
+                os_free(output);
                 return;
             }
 
-            agent_key = cJSON_GetObjectItem(agent_infoJSON, "key")->valuestring;
+            agent_key = cJSON_GetObjectItem(data, "key");
             if (!agent_key) {
                 mdebug1("Agent key not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
+                os_free(output);
                 return;
             }
 
             if (sock = auth_connect(), sock < 0) { 
                 mdebug1("Could not connect to authd socket. Is authd running?");
             } else {
-                auth_add_agent(sock,id,agent_name,agent_address,agent_key,1,1,agent_id);
+                auth_add_agent(sock,id,agent_name->valuestring,agent_address->valuestring,agent_key->valuestring,1,1,agent_id->valuestring);
                 close(sock);
             }
 
