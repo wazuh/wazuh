@@ -51,7 +51,7 @@ class InBuffer:
         :param header_size: Size in bytes of the header
         :return: updated buffer
         """
-        self.total, self.counter, cmd = struct.unpack(header_format, header[:header_size])
+        self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
         self.cmd = cmd.split(b' ')[0]
         self.payload = bytearray(self.total)
         return header[header_size:]
@@ -87,7 +87,7 @@ class Handler(asyncio.Protocol):
         # The box stores all sent messages IDs
         self.box = {}
         # defines command length
-        self.cmd_len = 10
+        self.cmd_len = 12
         # defines header length
         self.header_len = self.cmd_len + 8  # 4 bytes of counter and 4 bytes of message size
         # defines header format
@@ -140,7 +140,7 @@ class Handler(asyncio.Protocol):
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
         encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
-        self.out_msg[:self.header_len] = struct.pack(self.header_format, len(encrypted_data), counter, command)
+        self.out_msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
         self.out_msg[self.header_len:self.header_len + len(encrypted_data)] = encrypted_data
 
         return self.out_msg[:self.header_len + len(encrypted_data)]
