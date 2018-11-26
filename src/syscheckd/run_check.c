@@ -89,7 +89,7 @@ static void send_sk_db(int first_start)
     /* Send end scan control message */
     if(first_start) {
         send_syscheck_msg(HC_FIM_DB_EFS);
-#ifndef WIN32
+#ifdef ENABLE_AUDIT
         audit_set_db_consistency();
 #endif
     } else {
