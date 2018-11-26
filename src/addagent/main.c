@@ -83,9 +83,6 @@ int main(int argc, char **argv)
     gid_t gid;
 #else
     FILE *fp;
-    TCHAR path[2048];
-    DWORD last_error;
-    int ret;
 #endif
 
     /* Set the name */
@@ -238,33 +235,8 @@ int main(int argc, char **argv)
     /* Start signal handler */
     StartSIG2(ARGV0, manage_shutdown);
 #else
-    /* Get full path to the directory this executable lives in */
-    ret = GetModuleFileName(NULL, path, sizeof(path));
 
-    /* Check for errors */
-    if (!ret) {
-        merror_exit(GMF_ERROR);
-    }
-
-    /* Get last error */
-    last_error = GetLastError();
-
-    /* Look for errors */
-    if (last_error != ERROR_SUCCESS) {
-        if (last_error == ERROR_INSUFFICIENT_BUFFER) {
-            merror_exit(GMF_BUFF_ERROR, ret, sizeof(path));
-        } else {
-            merror_exit(GMF_UNKN_ERROR, last_error);
-        }
-    }
-
-    /* Remove file name from path */
-    PathRemoveFileSpec(path);
-
-    /* Move to correct directory */
-    if (chdir(path)) {
-        merror_exit(CHDIR_ERROR, path, errno, strerror(errno));
-    }
+    w_ch_exec_dir();
 
     /* Check permissions */
     fp = fopen(OSSECCONF, "r");

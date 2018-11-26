@@ -47,8 +47,18 @@ static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Initialize the necessary information to process the syscheck information
 void fim_init(void) {
+    //Create hash table for agent information
+    fim_agentinfo = OSHash_Create();
+}
+
+// Initialize the necessary information to process the syscheck information
+void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
+    localsdb->db_err = 0;
+    localsdb->socket = -1;
+
+    sdb_clean(localsdb);
+
     // Create decoder
-    os_calloc(1, sizeof(OSDecoderInfo), fim_decoder);
     fim_decoder->id = getDecoderfromlist(SYSCHECK_MOD);
     fim_decoder->name = SYSCHECK_MOD;
     fim_decoder->type = OSSEC_RL;
@@ -63,6 +73,7 @@ void fim_init(void) {
     fim_decoder->fields[SK_MD5] = "md5";
     fim_decoder->fields[SK_SHA1] = "sha1";
     fim_decoder->fields[SK_SHA256] = "sha256";
+    fim_decoder->fields[SK_ATTRS] = "attributes";
     fim_decoder->fields[SK_UNAME] = "uname";
     fim_decoder->fields[SK_GNAME] = "gname";
     fim_decoder->fields[SK_INODE] = "inode";
@@ -81,44 +92,34 @@ void fim_init(void) {
     fim_decoder->fields[SK_PPID] = "ppid";
     fim_decoder->fields[SK_PROC_ID] = "process_id";
     fim_decoder->fields[SK_TAG] = "tag";
-
-    //Create hash table for agent information
-    fim_agentinfo = OSHash_Create();
-}
-
-// Initialize the necessary information to process the syscheck information
-void sdb_init(_sdb *localsdb) {
-    localsdb->db_err = 0;
-    localsdb->socket = -1;
-
-    sdb_clean(localsdb);
 }
 
 // Initialize the necessary information to process the syscheck information
 void sdb_clean(_sdb *localsdb) {
-    memset(localsdb->comment, '\0', OS_MAXSTR + 1);
-    memset(localsdb->size, '\0', OS_FLSIZE + 1);
-    memset(localsdb->perm, '\0', OS_FLSIZE + 1);
-    memset(localsdb->owner, '\0', OS_FLSIZE + 1);
-    memset(localsdb->gowner, '\0', OS_FLSIZE + 1);
-    memset(localsdb->md5, '\0', OS_FLSIZE + 1);
-    memset(localsdb->sha1, '\0', OS_FLSIZE + 1);
-    memset(localsdb->sha256, '\0', OS_FLSIZE + 1);
-    memset(localsdb->mtime, '\0', OS_FLSIZE + 1);
-    memset(localsdb->inode, '\0', OS_FLSIZE + 1);
+    *localsdb->comment = '\0';
+    *localsdb->size = '\0';
+    *localsdb->perm = '\0';
+    *localsdb->attrs = '\0';
+    *localsdb->owner = '\0';
+    *localsdb->gowner = '\0';
+    *localsdb->md5 = '\0';
+    *localsdb->sha1 = '\0';
+    *localsdb->sha256 = '\0';
+    *localsdb->mtime = '\0';
+    *localsdb->inode = '\0';
 
     // Whodata fields
-    memset(localsdb->user_id, '\0', OS_FLSIZE + 1);
-    memset(localsdb->user_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->group_id, '\0', OS_FLSIZE + 1);
-    memset(localsdb->group_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->process_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->audit_uid, '\0', OS_FLSIZE + 1);
-    memset(localsdb->audit_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->effective_uid, '\0', OS_FLSIZE + 1);
-    memset(localsdb->effective_name, '\0', OS_FLSIZE + 1);
-    memset(localsdb->ppid, '\0', OS_FLSIZE + 1);
-    memset(localsdb->process_id, '\0', OS_FLSIZE + 1);
+    *localsdb->user_id = '\0';
+    *localsdb->user_name = '\0';
+    *localsdb->group_id = '\0';
+    *localsdb->group_name = '\0';
+    *localsdb->process_name = '\0';
+    *localsdb->audit_uid = '\0';
+    *localsdb->audit_name = '\0';
+    *localsdb->effective_uid = '\0';
+    *localsdb->effective_name = '\0';
+    *localsdb->ppid = '\0';
+    *localsdb->process_id = '\0';
 }
 
 /* Special decoder for syscheck
@@ -136,8 +137,10 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      * 'checksum'!'extradata' 'filename'
      * or
-     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tag filename\nreportdiff"
-     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^ filename\n^^^diff^^^'
+     *                                             |v2.1       v3.4   |v3.4         v3.6  |
+     *                                             |->         |->    |->           |->   |
+     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags filename\nreportdiff"
+     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
      */
     sdb_clean(sdb);
     f_name = wstr_chr(lf->log, ' ');
@@ -188,7 +191,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     c_sum = lf->log;
 
     // Get w_sum
-    if (w_sum = strchr(c_sum, '!'), w_sum) {
+    if (w_sum = wstr_chr(c_sum, '!'), w_sum) {
         *(w_sum++) = '\0';
     }
 
@@ -233,7 +236,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         os_free(lf->data);
         goto exit_fail;
     }
-    check_sum = strchr(response, ' ');
+    check_sum = wstr_chr(response, ' ');
     *(check_sum++) = '\0';
 
     //extract changes and date_alert fields only available from wazuh_db
@@ -373,7 +376,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     /* Dyanmic Fields */
     lf->nfields = SK_NFIELDS;
     for (i = 0; i < SK_NFIELDS; i++) {
-        os_strdup(fim_decoder->fields[i], lf->fields[i].key);
+        os_strdup(lf->decoder_info->fields[i], lf->fields[i].key);
     }
 
     if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
@@ -381,6 +384,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         goto exit_ok;
     }
     sk_sum_clean(&newsum);
+    sk_sum_clean(&oldsum);
     os_free(response);
     os_free(new_check_sum);
     os_free(old_check_sum);
@@ -389,6 +393,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
 exit_ok:
     sk_sum_clean(&newsum);
+    sk_sum_clean(&oldsum);
     os_free(response);
     os_free(new_check_sum);
     os_free(old_check_sum);
@@ -397,6 +402,7 @@ exit_ok:
 
 exit_fail:
     sk_sum_clean(&newsum);
+    sk_sum_clean(&oldsum);
     os_free(response);
     os_free(new_check_sum);
     os_free(old_check_sum);
@@ -452,7 +458,7 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
                 return (-2);
             }
 
-            if (!OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
+            if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
                 mterror(ARGV0, "FIM decoder: in send reattempt (%d) '%s'.", errno, strerror(errno));
                 return (-2);
             }
@@ -493,19 +499,26 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     int comment_buf = 0;
     char msg_type[OS_FLSIZE];
 
-    // Set decoder
-    lf->decoder_info = fim_decoder;
     switch (lf->event_type) {
         case FIM_DELETED:
             snprintf(msg_type, sizeof(msg_type), "was deleted.");
+            lf->decoder_info->id = getDecoderfromlist(SYSCHECK_DEL);
+            lf->decoder_syscheck_id = lf->decoder_info->id;
+            lf->decoder_info->name = SYSCHECK_MOD;
             changes=1;
             break;
         case FIM_ADDED:
             snprintf(msg_type, sizeof(msg_type), "was added.");
+            lf->decoder_info->id = getDecoderfromlist(SYSCHECK_NEW);
+            lf->decoder_syscheck_id = lf->decoder_info->id;
+            lf->decoder_info->name = SYSCHECK_NEW;
             changes=1;
             break;
         case FIM_MODIFIED:
             snprintf(msg_type, sizeof(msg_type), "checksum changed.");
+            lf->decoder_info->id = getDecoderfromlist(SYSCHECK_MOD);
+            lf->decoder_syscheck_id = lf->decoder_info->id;
+            lf->decoder_info->name = SYSCHECK_MOD;
             if (oldsum->size && newsum->size) {
                 if (strcmp(oldsum->size, newsum->size) == 0) {
                     localsdb->size[0] = '\0';
@@ -529,15 +542,31 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
                     char opstr[10];
                     char npstr[10];
+                    char *old_perm =  agent_file_perm(oldsum->perm);
+                    char *new_perm =  agent_file_perm(newsum->perm);
 
-                    strncpy(opstr, agent_file_perm(oldsum->perm), sizeof(opstr) - 1);
-                    strncpy(npstr, agent_file_perm(newsum->perm), sizeof(npstr) - 1);
+                    strncpy(opstr, old_perm, sizeof(opstr) - 1);
+                    strncpy(npstr, new_perm, sizeof(npstr) - 1);
+                    free(old_perm);
+                    free(new_perm);
+
                     opstr[9] = npstr[9] = '\0';
-
                     snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
                              "'%9.9s' to '%9.9s'\n", opstr, npstr);
 
                     lf->perm_before = oldsum->perm;
+                }
+            } else if (oldsum->win_perm && newsum->win_perm) { // Check for Windows permissions
+                if (!strcmp(oldsum->win_perm, newsum->win_perm)) {
+                    localsdb->perm[0] = '\0';
+                } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
+                    changes = 1;
+                    wm_strcat(&lf->fields[SK_CHFIELDS].value, "perm", ',');
+                    if (!decode_win_permissions(localsdb->perm, OS_FLSIZE, newsum->win_perm, 1, NULL)) {
+                        localsdb->perm[0] = '\0';
+                    }
+
+                    lf->win_perm_before = oldsum->win_perm;
                 }
             }
 
@@ -644,6 +673,25 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             } else {
                 localsdb->inode[0] = '\0';
             }
+
+            /* Attributes message */
+            if (oldsum->attrs && newsum->attrs && oldsum->attrs != newsum->attrs) {
+                char *str_attr_before;
+                char *str_attr_after;
+                changes = 1;
+                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_before);
+                os_calloc(OS_SIZE_256 + 1, sizeof(char), str_attr_after);
+                decode_win_attributes(str_attr_before, oldsum->attrs);
+                decode_win_attributes(str_attr_after, newsum->attrs);
+                wm_strcat(&lf->fields[SK_ATTRS].value, "attributes", ',');
+                snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", str_attr_before, str_attr_after);
+                lf->attrs_before = oldsum->attrs;
+                free(str_attr_before);
+                free(str_attr_after);
+            } else {
+                localsdb->attrs[0] = '\0';
+            }
+
             break;
         default:
             return (-1);
@@ -668,6 +716,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             "%s"
             "%s"
             "%s"
+            "%s"
             "%s",
             f_name,
             msg_type,
@@ -678,6 +727,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             localsdb->md5,
             localsdb->sha1,
             localsdb->sha256,
+            localsdb->attrs,
             localsdb->mtime,
             localsdb->inode,
             localsdb->user_name,

@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "3.7.0"
-!define REVISION "3717"
+!define VERSION "3.8.0"
+!define REVISION "3800"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -33,7 +33,7 @@
 Var is_upgrade
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2017 Wazuh Inc."
+BrandingText "Copyright (C) 2018 Wazuh Inc."
 OutFile "${OutFile}"
 
 VIProductVersion "3.7.0.0"

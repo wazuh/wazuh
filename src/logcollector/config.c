@@ -38,7 +38,7 @@ int LogCollectorConfig(const char *cfgfile)
 
     /* Get loop timeout */
     loop_timeout = getDefine_Int("logcollector", "loop_timeout", 1, 120);
-    open_file_attempts = getDefine_Int("logcollector", "open_attempts", 2, 998);
+    open_file_attempts = getDefine_Int("logcollector", "open_attempts", 0, 998);
     vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
     maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
     maximum_files = getDefine_Int("logcollector", "max_files", 1, 100000);

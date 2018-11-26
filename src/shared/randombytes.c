@@ -32,11 +32,22 @@ void randombytes(void *ptr, size_t length)
                 mdebug1("No default container was found. Attempting to create default container.");
 
                 if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
-                    merror("CryptAcquireContext: (%lx)", GetLastError());
+                    merror("CryptAcquireContext Flag: NewKeySet (1): (%lx)", GetLastError());
+                    failed = 1;
+                }
+            }else if(GetLastError() == (DWORD)NTE_KEYSET_ENTRY_BAD){
+                mwarn("The agent's RSA key container for the random generator is corrupt. Resetting container...");
+
+                if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, CRYPT_DELETEKEYSET)){
+                    merror("CryptAcquireContext Flag: DeleteKeySet: (%lx)", GetLastError());
+                    failed = 1;
+                }
+                if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
+                    merror("CryptAcquireContext Flag: NewKeySet (2): (%lx)", GetLastError());
                     failed = 1;
                 }
             } else {
-                merror("CryptAcquireContext: (%lx)", GetLastError());
+                merror("CryptAcquireContext no Flag: (%lx)", GetLastError());
                 failed = 1;
             }
         }
