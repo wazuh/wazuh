@@ -50,6 +50,20 @@ typedef struct remoted_state_t {
     unsigned int msg_sent;
 } remoted_state_t;
 
+/* Network buffer structure */
+
+typedef struct sockbuffer_t {
+    struct sockaddr_in peer_info;
+    char * data;
+    unsigned long data_size;
+    unsigned long data_len;
+} sockbuffer_t;
+
+typedef struct netbuffer_t {
+    int max_fd;
+    sockbuffer_t * buffers;
+} netbuffer_t;
+
 /** Function prototypes **/
 
 /* Read remoted config */
@@ -131,6 +145,12 @@ void rem_inc_discarded();
 size_t rem_getconfig(const char * section, char ** output);
 cJSON *getRemoteConfig(void);
 cJSON *getRemoteInternalConfig(void);
+
+/* Network buffer */
+
+void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info);
+int nb_close(netbuffer_t * buffer, int sock);
+int nb_recv(netbuffer_t * buffer, int sock);
 
 /** Global variables **/
 
