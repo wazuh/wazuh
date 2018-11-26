@@ -2,6 +2,7 @@ import asyncio
 import logging
 import argparse
 from client import EchoClient
+from local_server import LocalServer
 import time
 
 
@@ -22,8 +23,9 @@ async def main():
 
     client = EchoClient(args.name, args.key, args.ssl, args.performance_test, args.concurrency_test, args.send_file,
                         args.send_string)
+    local_server = LocalServer(args.performance_test, args.concurrency_test, args.key, args.ssl)
 
-    await client.start()
+    await asyncio.gather(client.start(), local_server.start())
 
 
 try:

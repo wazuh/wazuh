@@ -2,6 +2,7 @@ import asyncio
 import logging
 import argparse
 from server import EchoServer
+from local_server import LocalServer
 
 
 async def main():
@@ -19,7 +20,8 @@ async def main():
     args = parser.parse_args()
 
     server = EchoServer(args.performance_test, args.concurrency_test, args.key, args.ssl)
-    await server.start()
+    local_server = LocalServer(args.performance_test, args.concurrency_test, args.key, args.ssl)
+    await asyncio.gather(server.start(), local_server.start())
 
 
 try:
