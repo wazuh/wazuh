@@ -197,7 +197,7 @@ void normalize_path(char *path);
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
-const char* get_group(int gid);
+const char *get_group(int gid);
 void decode_win_attributes(char *str, unsigned int attrs);
 int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
 cJSON *attrs_to_json(unsigned int attributes);
@@ -205,7 +205,7 @@ cJSON *perm_to_json(char *permissions);
 
 #else
 
-const char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
+char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
 unsigned int w_get_file_attrs(const char *file_path);
 int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 const char *get_group(__attribute__((unused)) int gid);

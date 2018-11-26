@@ -91,15 +91,22 @@ about: Test suite for Syscheck
 - [ ] Check syscheck alert for moving a file
 - [ ] Check syscheck alert for modifying a file
 - [ ] Check syscheck alert for deleting a file
+- [ ] Check syscheck alert for deleting a folder
 - [ ] Check syscheck alert for changing file permissions
 - [ ] Check syscheck alert for changing owner of file
 - [ ] Check syscheck alert for changing group of file
+- [ ] Check recursive commands.
 - [ ] Check audit rules added (auditctl -l)
 - [ ] Check audit rules removed (auditctl -l)
-- [ ] Remove audit rule manually and check if Syscheck changes to realtime
-- [ ] Remove monitored folder and check if an alert is received
-- [ ] Check modifications in a file changed from whodata to realtime
-- [ ] After delete, readd file with de same name to view re-added file alert
+- [ ] Remove audit rule manually and check if the rule is reloaded. (Auto-reload each 30 seconds)
+- [ ] Remove rules 5 times and check if whodata stops and realtime is started. (Check alert)
+- [ ] Remove monitored folder and check if the rule is removed and re-add the folder. The rule must be re-added.
+- [ ] Add blocking rule in audit and check whodata logs and alert. (auditctl -a never,task)
+- [ ] Restart auditd. Check whodata connection retries.
+- [ ] Stop auditd. Move to realtime.
+- [ ] Check modifications in a file changed from whodata to realtime.
+- [ ] After delete, readd file with de same name to view re-added file alert.
+- [ ] Check whodata in Amazon Linux.
 
 ### Windows
 

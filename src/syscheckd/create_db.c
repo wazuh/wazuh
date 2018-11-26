@@ -87,7 +87,7 @@ static int read_dir_diff(char *dir_name) {
         if (strcmp(DIFF_LAST_FILE, s_name) == 0) {
             memset(file_name, 0, strlen(file_name));
             memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
-            if (ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL), ret_add < 2) {
+            if (ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL), ret_add != 2) {
                 merror("Unable to add file to db: %s", file_name);
             }
         } else {
@@ -187,10 +187,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 #ifdef WIN32
     char *sid = NULL;
-    const char *user = NULL;
+    char *user = NULL;
     char *str_perm = NULL;
 #else
     char str_owner[50], str_group[50], str_perm[50];
+    char *hash_file_name;
 #endif
 
     opts = syscheck.opts[dir_position];
@@ -213,9 +214,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         switch (errno) {
         case ENOENT:
             mwarn("Cannot access '%s': it was removed during scan.", file_name);
-            os_free(alert_msg);
-            os_free(wd_sum);
-            return (-1);
+            /* Fallthrough */
 
         case ENOTDIR:
             /*Deletion message sending*/
@@ -263,6 +262,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifdef WIN32
     if (S_ISREG(statbuf.st_mode))
 #else
+    struct stat statbuf_lnk;
+
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
@@ -281,7 +282,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             /* If it is a link, check if dest is valid */
 #ifndef WIN32
             if (S_ISLNK(statbuf.st_mode)) {
-                struct stat statbuf_lnk;
                 if (stat(file_name, &statbuf_lnk) == 0) {
                     if (S_ISREG(statbuf_lnk.st_mode)) {
                         if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
@@ -368,6 +368,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0);
+
+            os_free(user);
 #else
             if (opts & CHECK_SIZE) {
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
@@ -376,19 +378,31 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_PERM) {
-                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_perm,"%d",(int)statbuf_lnk.st_mode);
+                } else {
+                    sprintf(str_perm,"%d",(int)statbuf.st_mode);
+                }
             } else {
                 *str_perm = '\0';
             }
 
             if (opts & CHECK_OWNER) {
-                sprintf(str_owner,"%d",(int)statbuf.st_uid);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_owner,"%d",(int)statbuf_lnk.st_uid);
+                } else {
+                    sprintf(str_owner,"%d",(int)statbuf.st_uid);
+                }
             } else {
                 *str_owner = '\0';
             }
 
             if (opts & CHECK_GROUP) {
-                sprintf(str_group,"%d",(int)statbuf.st_gid);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_group,"%d",(int)statbuf_lnk.st_gid);
+                } else {
+                    sprintf(str_group,"%d",(int)statbuf.st_gid);
+                }
             } else {
                 *str_group = '\0';
             }
@@ -423,8 +437,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     str_group,
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
-                    opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
-                    opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                    opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
+                    opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
                     str_mtime,
                     str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -435,12 +449,18 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             s_node->checksum = strdup(alert_msg);
             s_node->dir_position = dir_position;
 
-            if (OSHash_Add_ex(syscheck.fp, file_name, s_node) <= 0) {
+            if (OSHash_Add_ex(syscheck.fp, file_name, s_node) != 2) {
                 os_free(s_node->checksum);
                 os_free(s_node);
                 merror("Unable to add file to db: %s", file_name);
             }
-
+#ifndef WIN32
+            hash_file_name = strdup(file_name);
+            if (OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name) != 2) {
+                free(hash_file_name);
+                mwarn("Unable to add inode to db: %s (%s) ", file_name, str_inode);
+            }
+#endif
             /* Send the new checksum to the analysis server */
             alert_msg[OS_MAXSTR] = '\0';
 
@@ -485,6 +505,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
+
+            os_free(user);
 #else
             if (opts & CHECK_SIZE) {
                 sprintf(str_size,"%ld",(long)statbuf.st_size);
@@ -493,19 +515,31 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_PERM) {
-                sprintf(str_perm,"%d",(int)statbuf.st_mode);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_perm,"%d",(int)statbuf_lnk.st_mode);
+                } else {
+                    sprintf(str_perm,"%d",(int)statbuf.st_mode);
+                }
             } else {
                 *str_perm = '\0';
             }
 
             if (opts & CHECK_OWNER) {
-                sprintf(str_owner,"%d",(int)statbuf.st_uid);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_owner,"%d",(int)statbuf_lnk.st_uid);
+                } else {
+                    sprintf(str_owner,"%d",(int)statbuf.st_uid);
+                }
             } else {
                 *str_owner = '\0';
             }
 
             if (opts & CHECK_GROUP) {
-                sprintf(str_group,"%d",(int)statbuf.st_gid);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_group,"%d",(int)statbuf_lnk.st_gid);
+                } else {
+                    sprintf(str_group,"%d",(int)statbuf.st_gid);
+                }
             } else {
                 *str_group = '\0';
             }
@@ -529,8 +563,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 str_group,
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
-                opts & CHECK_OWNER ? get_user(file_name, statbuf.st_uid, NULL) : "",
-                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+                opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
+                opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
                 str_mtime,
                 str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -662,7 +696,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     }
 
     if (!dp) {
-        if (errno == ENOTDIR) {
+        if (errno == ENOTDIR || errno == ENOENT) {
 
             if (read_file(dir_name, dir_position, evt, max_depth) == 0) {
 
@@ -719,6 +753,11 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         free(f_name);
         return (-1);
     }
+    else if (evt) {
+        free(f_name);
+        closedir(dp);
+        return (0);
+    }
 
     /* Check for real time flag */
     if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
@@ -763,8 +802,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #endif
         /* Check integrity of the file */
 
-        read_file(f_name, dir_position, NULL, max_depth);
-
+        read_file(f_name, dir_position, evt, max_depth);
     }
 
     free(f_name);
@@ -860,6 +898,12 @@ int create_db()
         merror(LIST_ERROR);
         return (0);
     }
+#ifndef WIN32
+    if (!OSHash_setSize(syscheck.inode_hash, 2048)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+#endif
 
     if ((syscheck.dir == NULL) || (syscheck.dir[0] == NULL)) {
         merror("No directories to check.");

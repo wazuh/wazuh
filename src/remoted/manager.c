@@ -1003,12 +1003,13 @@ static void read_controlmsg(const char *agent_id, char *msg)
  */
 void *wait_for_msgs(__attribute__((unused)) void *none)
 {
-    char * msg;
     char agent_id[9];
     pending_data_t *data;
 
     /* Should never leave this loop */
     while (1) {
+        char * msg = NULL;
+
         /* Lock mutex */
         w_mutex_lock(&lastmsg_mutex);
 
@@ -1024,7 +1025,6 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         } else {
             merror("Couldn't get pending data from hash table for agent ID '%s'.", pending_queue[queue_j]);
             *agent_id = '\0';
-            *msg = '\0';
         }
 
         forward(queue_j);
@@ -1032,7 +1032,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         /* Unlock mutex */
         w_mutex_unlock(&lastmsg_mutex);
 
-        if (*agent_id) {
+        if (msg && *agent_id) {
             read_controlmsg(agent_id, msg);
         }
 

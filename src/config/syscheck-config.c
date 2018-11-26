@@ -805,6 +805,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         syscheck->disabled = SK_CONF_UNDEFINED;
     }
 
+    os_calloc(1, sizeof(char *), syscheck->audit_key);
+
     while (node && node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -1234,7 +1236,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     int keyit = 0;
                     char delim = ',';
                     char *key;
-                    os_calloc(1, sizeof(char *), syscheck->audit_key);
                     syscheck->audit_key[keyit] = NULL;
                     key = strtok(children[j]->content, &delim);
 
@@ -1253,6 +1254,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -1421,6 +1423,8 @@ void Free_Syscheck(syscheck_config * config) {
             free(config->realtime);
         }
         free(config->prefilter_cmd);
+
+        free_strarray(config->audit_key);
     }
 }
 
@@ -1430,7 +1434,7 @@ char* check_ascci_hex (char *input) {
     char outhex[OS_SIZE_256];
 
     for (j = 0; j < strlen(input); j++) {
-        snprintf(outhex + j*2, OS_SIZE_256, "%hhX", input[j]);
+        snprintf(outhex + j*2, OS_SIZE_256 - j * 2, "%hhX", input[j]);
         if ((unsigned int)input[j] > 126 ||
                 (unsigned int)input[j] == 32 ||
                 (unsigned int)input[j] == 34) {
@@ -1440,10 +1444,8 @@ char* check_ascci_hex (char *input) {
 
     char *output;
     if (hex) {
-        os_calloc(strlen(outhex) + 1, sizeof(char *), output);
         os_strdup(outhex, output);
     } else {
-        os_calloc(strlen(input) + 1, sizeof(char *), output);
         os_strdup(input, output);
     }
     return output;
