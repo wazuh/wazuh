@@ -410,7 +410,7 @@ class AWSBucket(WazuhIntegration):
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
         def remove_none_fields(event):
-            for key,value in event.items():
+            for key,value in list(event.items()):
                 if isinstance(value, dict):
                     remove_none_fields(event[key])
                 elif value is None:
@@ -468,7 +468,7 @@ class AWSBucket(WazuhIntegration):
 
     def reformat_msg(self, event):
         def single_element_list_to_dictionary(my_event):
-            for name, value in my_event.items():
+            for name, value in list(my_event.items()):
                 if isinstance(value, list) and len(value) == 1:
                     my_event[name] = value[0]
                 elif isinstance(value, dict):
