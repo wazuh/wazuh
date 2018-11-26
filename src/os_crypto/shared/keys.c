@@ -544,14 +544,14 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
 int OS_WriteKeys(const keystore *keys) {
     unsigned int i;
     File file;
-    char cidr[20];
+    char cidr[IPSIZE + 1];
 
     if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0)
         return -1;
 
     for (i = 0; i < keys->keysize; i++) {
         keyentry *entry = keys->keyentries[i];
-        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key);
+        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, sizeof(cidr)) ? entry->ip->ip : cidr, entry->key);
     }
 
     /* Write saved removed keys */
