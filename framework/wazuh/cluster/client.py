@@ -137,73 +137,58 @@ class EchoClientProtocol(common.Handler):
         logging.debug("Time: {}".format(after - before))
 
 
-async def main():
-    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--name', help="Client's name", type=str, dest='name', required=True)
-    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', default='')
-    parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
-                        help="Perform a performance test against server. Number of bytes to test with.")
-    parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
-                        help="Perform a concurrency test against server. Number of messages to send in a row.")
-    parser.add_argument('-f', '--file', help="Send file to server", type=str, dest='send_file')
-    parser.add_argument('-s', '--string', help="Send a large string to the server. Specify string size.",
-                        type=int, dest='send_string')
-    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl')
-    args = parser.parse_args()
+class EchoClient:
+    def __init__(self, name, key, ssl, performance_test, concurrency_test, file, string):
+        self.name = name
+        self.key = key
+        self.ssl = ssl
+        self.performance_test = performance_test
+        self.concurrency_test = concurrency_test
+        self.file = file
+        self.string = string
 
-    # Get a reference to the event loop as we plan to use
-    # low-level APIs.
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    loop = asyncio.get_running_loop()
-    loop.set_exception_handler(common.asyncio_exception_handler)
-    on_con_lost = loop.create_future()
-    ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH) if args.ssl else None
+    async def start(self):
+        # Get a reference to the event loop as we plan to use
+        # low-level APIs.
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        loop = asyncio.get_running_loop()
+        loop.set_exception_handler(common.asyncio_exception_handler)
+        on_con_lost = loop.create_future()
+        ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH) if self.ssl else None
 
-    while True:
-        try:
-            transport, protocol = await loop.create_connection(protocol_factory=lambda: EchoClientProtocol(loop,
-                                                                                                           on_con_lost,
-                                                                                                           args.name,
-                                                                                                           args.key),
-                                                               host='172.17.0.101', port=8888, ssl=ssl_context)
-        except ConnectionRefusedError:
-            logging.error("Could not connect to server. Trying again in 10 seconds.")
+        while True:
+            try:
+                transport, protocol = await loop.create_connection(protocol_factory=lambda: EchoClientProtocol(loop,
+                                                                                                               on_con_lost,
+                                                                                                               self.name,
+                                                                                                               self.key),
+                                                                   host='172.17.0.101', port=8888, ssl=ssl_context)
+            except ConnectionRefusedError:
+                logging.error("Could not connect to server. Trying again in 10 seconds.")
+                await asyncio.sleep(10)
+                continue
+            except OSError as e:
+                logging.error("Could not connect to server: {}. Trying again in 10 seconds.".format(e))
+                await asyncio.sleep(10)
+                continue
+
+            if self.performance_test:
+                task, task_args = protocol.performance_test_client, (self.performance_test,)
+            elif self.concurrency_test:
+                task, task_args = protocol.concurrency_test_client, (self.concurrency_test,)
+            elif self.file:
+                task, task_args = protocol.send_file_task, (self.file,)
+            elif self.string:
+                task, task_args = protocol.send_string_task, (self.string,)
+            else:
+                task, task_args = protocol.client_echo, tuple()
+
+            # Wait until the protocol signals that the connection
+            # is lost and close the transport.
+            try:
+                await asyncio.gather(on_con_lost, protocol.client_echo(), task(*task_args))
+            finally:
+                transport.close()
+
+            logging.info("The connection has ben closed. Reconnecting in 10 seconds.")
             await asyncio.sleep(10)
-            continue
-        except OSError as e:
-            logging.error("Could not connect to server: {}. Trying again in 10 seconds.".format(e))
-            await asyncio.sleep(10)
-            continue
-
-        if args.performance_test:
-            task, task_args = protocol.performance_test_client, (args.performance_test,)
-        elif args.concurrency_test:
-            task, task_args = protocol.concurrency_test_client, (args.concurrency_test,)
-        elif args.send_file:
-            task, task_args = protocol.send_file_task, (args.send_file,)
-        elif args.send_string:
-            task, task_args = protocol.send_string_task, (args.send_string,)
-        else:
-            task, task_args = protocol.client_echo, tuple()
-
-        # Wait until the protocol signals that the connection
-        # is lost and close the transport.
-        try:
-            await asyncio.gather(on_con_lost, protocol.client_echo(), task(*task_args))
-        finally:
-            transport.close()
-
-        logging.info("The connection has ben closed. Reconnecting in 10 seconds.")
-        await asyncio.sleep(10)
-
-
-try:
-    while True:
-        try:
-            asyncio.run(main())
-        except asyncio.CancelledError:
-            logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
-            time.sleep(10)
-except KeyboardInterrupt:
-    logging.info("SIGINT received. Bye!")

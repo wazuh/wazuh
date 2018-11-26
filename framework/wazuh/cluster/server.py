@@ -4,7 +4,6 @@ import uvloop
 import time
 import common
 import logging
-import argparse
 from typing import Tuple
 
 
@@ -88,7 +87,7 @@ class EchoServerHandler(common.Handler):
             logging.info("The client '{}' closed the connection".format(self.name))
             del self.server.clients[self.name]
         else:
-            logging.error("Error during handshake with incoming client.")
+            logging.error("Error during handshake with incoming client: {}".format(exc))
 
 
 class EchoServer:
@@ -170,27 +169,3 @@ class EchoServer:
         async with server:
             # use asyncio.gather to run both tasks in parallel
             await asyncio.gather(server.serve_forever(), self.check_clients_keepalive())
-
-
-async def main():
-    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
-                        help="Perform a performance test against all clients. Number of bytes to test with.")
-    parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
-                        help="Perform a concurrency test against all clients. Number of messages to send in a row to "
-                             "each client.")
-    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', default='')
-    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl')
-
-    args = parser.parse_args()
-
-    server = EchoServer(args.performance_test, args.concurrency_test, args.key, args.ssl)
-    await server.start()
-
-
-try:
-    asyncio.run(main())
-except KeyboardInterrupt:
-    logging.info("SIGINT received. Bye!")
