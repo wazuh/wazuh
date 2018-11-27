@@ -85,14 +85,16 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         // Create stdout pipe and make it inheritable
 
         if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
-            merror("CreatePipe()");
+            int winerror = GetLastError();
+            merror("at wm_exec(): CreatePipe(%ld): %s", winerror, win_strerror(winerror));
             return -1;
         }
 
         sinfo.hStdError = sinfo.hStdOutput;
 
         if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
-            merror("SetHandleInformation()");
+            int winerror = GetLastError();
+            merror("at wm_exec(): SetHandleInformation(%ld): %s", winerror, win_strerror(winerror));
             return -1;
         }
     }
@@ -106,7 +108,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
                       IDLE_PRIORITY_CLASS;
 
     if (!CreateProcess(NULL, command, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
-        merror("CreateProcess(): %ld", GetLastError());
+        int winerror = GetLastError();
+        merror("at wm_exec(): CreateProcess(%ld): %s", winerror, win_strerror(winerror));
         return -1;
     }
 
@@ -118,8 +121,9 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         hThread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
 
         if (!hThread) {
-            merror("CreateThread(): %ld", GetLastError());
-            return -1;
+            int winerror = GetLastError();
+            merror("at wm_exec(): CreateThread(%ld): %s", winerror, win_strerror(winerror));
+            return -1
         }
     }
 
@@ -139,7 +143,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         break;
 
     default:
-        merror("WaitForSingleObject()");
+        int winerror = GetLastError();
+        merror("at wm_exec(): WaitForSingleObject(%ld): %s", winerror, win_strerror(winerror));
         TerminateProcess(pinfo.hProcess, 1);
         retval = -1;
     }
