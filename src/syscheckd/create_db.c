@@ -446,7 +446,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             hash_file_name = strdup(file_name);
             if (OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name) != 2) {
                 free(hash_file_name);
-                mwarn("Unable to add inode to db: %s (%s) ", file_name, str_inode);
+                mdebug2("Unable to add inode to db: %s (%s) ", file_name, str_inode);
             }
 #endif
             /* Send the new checksum to the analysis server */
