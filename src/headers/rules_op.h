@@ -151,7 +151,6 @@ typedef struct _RuleInfo {
 
 } RuleInfo;
 
-void _OS_FreeRule(RuleInfo *ruleinfo);
 int OS_ReadXMLRules(const char *rulefile, void *(*ruleact_function)(RuleInfo *rule_1, void *data_1), void *data) __attribute__((nonnull(1, 2)));
 
 #endif

@@ -1895,6 +1895,56 @@ static void printRuleinfo(const RuleInfo *rule, int node)
            rule->ignore_time);
 }
 
+/* Free rule data. Copied from rules_op.c */
+void _OS_FreeRule(RuleInfo *ruleinfo) {
+    int i;
+
+    if (!ruleinfo)
+        return;
+
+    free(ruleinfo->group);
+    free(ruleinfo->match);
+    free(ruleinfo->regex);
+    free(ruleinfo->day_time);
+    free(ruleinfo->week_day);
+
+    if (ruleinfo->srcip) {
+        for (i = 0; ruleinfo->srcip[i]; i++) {
+            free(ruleinfo->srcip[i]);
+        }
+
+        free(ruleinfo->srcip);
+    }
+
+    if (ruleinfo->dstip) {
+        for (i = 0; ruleinfo->dstip[i]; i++) {
+            free(ruleinfo->dstip[i]);
+        }
+
+        free(ruleinfo->dstip);
+    }
+
+    free(ruleinfo->srcport);
+    free(ruleinfo->dstport);
+    free(ruleinfo->user);
+    free(ruleinfo->url);
+    free(ruleinfo->id);
+    free(ruleinfo->status);
+    free(ruleinfo->hostname);
+    free(ruleinfo->program_name);
+    free(ruleinfo->location);
+    free(ruleinfo->extra_data);
+    free(ruleinfo->action);
+    free(ruleinfo->comment);
+    free(ruleinfo->info);
+    free(ruleinfo->cve);
+    free(ruleinfo->if_sid);
+    free(ruleinfo->if_level);
+    free(ruleinfo->if_group);
+
+    free(ruleinfo);
+}
+
 /* Add rule to hash */
 int AddHash_Rule(RuleNode *node)
 {

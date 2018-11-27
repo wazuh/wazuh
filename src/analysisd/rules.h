@@ -224,6 +224,8 @@ void Rules_OP_CreateRules(void);
 
 int Rules_OP_ReadRules(const char *rulefile);
 
+void _OS_FreeRule(RuleInfo *ruleinfo);
+
 int AddHash_Rule(RuleNode *node);
 
 int _setlevels(RuleNode *node, int nnode);
