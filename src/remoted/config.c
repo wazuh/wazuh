@@ -29,6 +29,7 @@ rlim_t nofile;
 unsigned int _s_comp_print;
 unsigned int _s_recv_flush;
 int _s_verify_counter;
+int guess_agent_group;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
@@ -142,6 +143,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"shared_reload",INTERVAL);
     cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
     cJSON_AddNumberToObject(remoted,"merge_shared",logr.nocmerged);
+    cJSON_AddNumberToObject(remoted,"guess_agent_group",guess_agent_group);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);

@@ -270,6 +270,14 @@ UseSyscollector()
      fi
 }
 
+UseSSLCert()
+{
+    if [ "X${USER_CREATE_SSL_CERT}" = "Xn" ]; then
+        SSL_CERT="no"
+    else
+        SSL_CERT="yes"
+    fi
+}
 
 ##########
 # EnableAuthd()
@@ -567,6 +575,8 @@ ConfigureServer()
       # Configuring remote connections
       SLOG="yes"
     fi
+
+    UseSSLCert
 
     # Setting up the auth daemon & logs
     if [ "X$INSTYPE" = "Xserver" ]; then
@@ -1129,6 +1139,8 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

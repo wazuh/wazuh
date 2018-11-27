@@ -12,6 +12,11 @@
 
 #include <stdlib.h>
 
+#ifdef WIN32
+#define win_alloc(x) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (x))
+#define win_free(x) HeapFree(GetProcessHeap(), 0, (x))
+#endif
+
 #define w_FreeArray(x) if (x) {char **x_it = x; for (; *x_it; (x_it)++) {free(*x_it); *x_it = NULL;}}
 void **os_AddPtArray(void *pt, void **array);
 char **os_AddStrArray(const char *str, char **array);

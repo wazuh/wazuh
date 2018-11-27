@@ -96,6 +96,9 @@ int w_copy_file(const char *src, const char *dst,char mode,char * message);
 int checkVista();
 int isVista;
 int get_creation_date(char *dir, SYSTEMTIME *utc);
+
+// Move to the directory where this executable lives in
+void w_ch_exec_dir();
 #endif
 
 /* Delete directory recursively */

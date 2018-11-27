@@ -74,7 +74,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         }
     }
 
-    mdebug2("%s(): path = '%s', command = '%s'", __func__, path, lpCommandLine);
+    mdebug2("path = '%s', command = '%s'", path, lpCommandLine);
 
     if (!CreateProcess(path, lpCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
         mdebug1("CreateProcess(): %ld", GetLastError());

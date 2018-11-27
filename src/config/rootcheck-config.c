@@ -61,7 +61,9 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     rootcheck = (rkconfig *)configp;
 
     /* If rootcheck is defined, enable it by default */
-    rootcheck->disabled = 0;
+    if (rootcheck->disabled == RK_CONF_UNPARSED) {
+        rootcheck->disabled = RK_CONF_UNDEFINED;
+    }
 
     if (!node)
         return 0;
