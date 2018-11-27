@@ -12,6 +12,7 @@
 #define __SHA256_OP_H
 
 #include <sys/types.h>
+#include "shared.h"
 
 typedef char os_sha256[65];
 

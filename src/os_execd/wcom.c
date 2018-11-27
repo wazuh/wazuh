@@ -15,11 +15,16 @@
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/signature/signature.h"
 #include "wazuh_modules/wmodules.h"
-#include "external/zlib/zlib.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
 #include "syscheckd/syscheck.h"
 #include "rootcheck/rootcheck.h"
+
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#include <zlib.h>
+#else
+#include "external/zlib/zlib.h"
+#endif
 
 // Current opened file
 

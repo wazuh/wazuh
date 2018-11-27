@@ -11,6 +11,7 @@
 #define H_STRINGOP_OS
 
 #include <external/cJSON/cJSON.h>
+#include "shared.h"
 
 #ifdef WIN32
 #include <winsock2.h>

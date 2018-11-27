@@ -293,7 +293,8 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 
         while (fgets(buffer, sizeof(buffer), wfd->file)) {
             // Filter Bash colors: \e[*m
-            text = buffer[0] == '\e' && buffer[1] == '[' && (end = strchr(buffer + 2, 'm'), end) ? end + 1 : buffer;
+            // '\e' -> 0x1B
+            text = buffer[0] == 0x1B && buffer[1] == '[' && (end = strchr(buffer + 2, 'm'), end) ? end + 1 : buffer;
 
             // Remove newline
             if (end = strchr(text, '\n'), end) {

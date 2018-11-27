@@ -11,10 +11,6 @@
 #include "agentd.h"
 #include "monitord/monitord.h"
 
-#ifdef WIN32
-#define localtime_r(x, y) localtime_s(y, x)
-#endif
-
 int log_compress;
 int keep_log_days;
 int day_wait;

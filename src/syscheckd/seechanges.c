@@ -11,10 +11,6 @@
 #include "os_crypto/md5/md5_op.h"
 #include "syscheck.h"
 
-#ifdef WIN32
-#define unlink(x) _unlink(x)
-#endif
-
 /* Prototypes */
 static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attribute__((nonnull));
 static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
@@ -268,11 +264,7 @@ static int seechanges_createpath(const char *filename)
     while (next = strtok(NULL, "/"), next) {
 #endif
         if (IsDir(newdir) != 0) {
-#ifndef WIN32
             if (mkdir(newdir, 0770) == -1)
-#else
-            if (mkdir(newdir) == -1)
-#endif
             {
                 merror(MKDIR_ERROR, newdir, errno, strerror(errno));
                 free(buffer);

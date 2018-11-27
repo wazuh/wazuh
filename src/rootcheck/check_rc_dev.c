@@ -7,8 +7,9 @@
  * Foundation
  */
 
-#ifndef WIN32
 #include "shared.h"
+
+#ifndef WIN32
 #include "rootcheck.h"
 
 /* Prototypes */

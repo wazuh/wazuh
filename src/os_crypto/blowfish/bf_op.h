@@ -14,6 +14,8 @@
 #ifndef __BF_OP_H
 #define __BF_OP_H
 
+#include "shared.h"
+
 #define OS_ENCRYPT      1
 #define OS_DECRYPT      0
 

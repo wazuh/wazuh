@@ -11,6 +11,7 @@
 #define __MEM_H
 
 #include <stdlib.h>
+#include "shared.h"
 
 #define w_FreeArray(x) if (x) {char **x_it = x; for (; *x_it; (x_it)++) {free(*x_it); *x_it = NULL;}}
 void **os_AddPtArray(void *pt, void **array);

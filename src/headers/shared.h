@@ -147,11 +147,24 @@ typedef int sock2len_t;
 #ifdef WIN32
 #if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
 #define strdup _strdup
+#define close _close
+#define __typeof__(x) void*
+#define getpid _getpid
+#define popen _popen
+#define pclose _pclose
+#define umask _umask
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#define open _open
+#define read _read
+#define chmod _chmod
 #ifdef wreaddir
 #undef wreaddir
 #endif
+typedef int mode_t;
 #else
 #define srandom(x) srand(x)
+#define unlink(x) _unlink(x)
 #endif
 typedef int uid_t;
 typedef int gid_t;
@@ -159,6 +172,8 @@ typedef int socklen_t;
 #define sleep(x) Sleep(x * 1000)
 #define lstat(x,y) stat(x,y)
 #define CloseSocket(x) closesocket(x)
+#define localtime_r(x, y) localtime_s(y, x)
+#define mkdir(x, y) _mkdir(x)
 void WinSetError();
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;

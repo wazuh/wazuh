@@ -12,6 +12,8 @@
 #ifndef __OS_XML_H
 #define __OS_XML_H
 
+#include "shared.h"
+
 /* XML Node structure */
 typedef struct _xml_node {
     unsigned int key;

@@ -16,6 +16,10 @@
 #include "os_net.h"
 #include "wazuh_modules/wmodules.h"
 
+#define SECURETCP_BUF_SIZE          512
+#define SECURECLUSTER_CMD_SIZE      12
+#define SECURECLUSTER_HEADER_SIZE   (8 + SECURECLUSTER_CMD_SIZE)
+
 /* Prototypes */
 static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6);
 static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6);
@@ -529,7 +533,7 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
 
     os_malloc(bufsz, buffer);
     *(uint32_t *)buffer = wnet_order(size);
-    memcpy(buffer + sizeof(uint32_t), msg, size);
+    memcpy((uint32_t*)buffer + sizeof(uint32_t), msg, size);
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
 
     free(buffer);
@@ -576,11 +580,10 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
 ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
     ssize_t recvval, recvmsg = 0;
     char *dyn_buffer;
-    const size_t bufsz = 512;
-    char static_buf[bufsz+1];
+    char static_buf[SECURETCP_BUF_SIZE + 1];
     uint64_t msgsize;
 
-    recvval = recv(sock, static_buf, bufsz, 0);
+    recvval = recv(sock, static_buf, SECURETCP_BUF_SIZE, 0);
 
     switch(recvval){
 
@@ -761,12 +764,10 @@ int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload
  */
 int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
     int recvval;
-    const unsigned CMD_SIZE = 12;
-    const uint32_t HEADER_SIZE = 8 + CMD_SIZE;
     uint32_t size = 0;
-    char buffer[HEADER_SIZE];
+    char buffer[SECURECLUSTER_HEADER_SIZE];
 
-    recvval = recv(sock, buffer, HEADER_SIZE, MSG_WAITALL);
+    recvval = recv(sock, buffer, SECURECLUSTER_HEADER_SIZE, MSG_WAITALL);
 
     switch(recvval){
         case -1:
@@ -778,7 +779,7 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
             break;
 
         default:
-            if ((uint32_t)recvval != HEADER_SIZE) {
+            if ((uint32_t)recvval != SECURECLUSTER_HEADER_SIZE) {
                 return -1;
             }
     }

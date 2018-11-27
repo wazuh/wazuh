@@ -11,6 +11,7 @@
 #define __SHA1_OP_H
 
 #include <sys/types.h>
+#include "shared.h"
 
 typedef char os_sha1[65];
 

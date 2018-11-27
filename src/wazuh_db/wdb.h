@@ -14,9 +14,14 @@
 
 #include <shared.h>
 #include <pthread.h>
-#include "external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
+
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#include <sqlite3.h>
+#else
+#include "external/sqlite/sqlite3.h"
+#endif
 
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1

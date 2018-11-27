@@ -9,8 +9,12 @@
 
 #include "shared.h"
 #include "monitord.h"
-#include "../external/zlib/zlib.h"
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#include <zlib.h>
+#else
+#include "../external/zlib/zlib.h"
+#endif
 
 /* gzip a log file */
 void OS_CompressLog(const char *logfile)

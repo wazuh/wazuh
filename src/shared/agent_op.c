@@ -386,11 +386,7 @@ int set_agent_multigroup(char * group){
     if(!dp){
         if (errno == ENOENT) {
             oldmask = umask(0002);
-#ifndef WIN32
             int retval = mkdir(multigroup_path, 0770);
-#else
-            int retval = mkdir(multigroup_path); 
-#endif
             umask(oldmask);
 
             if (retval == -1) {

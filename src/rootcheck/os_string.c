@@ -29,6 +29,8 @@
  * SUCH DAMAGE.
  */
 
+#include "shared.h"
+
 #ifndef WIN32
 #include <sys/types.h>
 

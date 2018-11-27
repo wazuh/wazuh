@@ -15,6 +15,7 @@
 /* size_t */
 #include <stddef.h>
 #include <pthread.h>
+#include "shared.h"
 
 /* OSRegex_Compile flags */
 #define OS_RETURN_SUBSTRING     0000200

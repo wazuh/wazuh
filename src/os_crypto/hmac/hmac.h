@@ -11,6 +11,8 @@
 #ifndef __HMAC_H
 #define __HMAC_H
 
+#include "shared.h"
+
 #define HMAC_SHA1_BLOCKSIZE 64
 
 int OS_HMAC_SHA1_Str(const char *key, const char *text, os_sha1 output) __attribute((nonnull));

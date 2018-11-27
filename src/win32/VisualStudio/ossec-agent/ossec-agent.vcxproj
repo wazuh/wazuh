@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props" Condition="Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props')" />
+  <Import Project="..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.props" Condition="Exists('..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -104,17 +105,19 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
-      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)%(Directory)</ObjectFileName>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <PreBuildEvent>
       <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
@@ -129,17 +132,19 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
-      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)%(Directory)</ObjectFileName>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <PreBuildEvent>
       <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
@@ -156,19 +161,21 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
-      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)%(Directory)</ObjectFileName>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <PreBuildEvent>
       <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
@@ -185,19 +192,21 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
-      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
+      <ObjectFileName>$(IntDir)%(Directory)</ObjectFileName>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <PreBuildEvent>
       <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
@@ -223,6 +232,37 @@
     <ClCompile Include="..\..\..\client-agent\sendmsg.c" />
     <ClCompile Include="..\..\..\client-agent\start_agent.c" />
     <ClCompile Include="..\..\..\client-agent\state.c" />
+    <ClCompile Include="..\..\..\config\active-response.c" />
+    <ClCompile Include="..\..\..\config\agentlessd-config.c" />
+    <ClCompile Include="..\..\..\config\alerts-config.c" />
+    <ClCompile Include="..\..\..\config\authd-config.c" />
+    <ClCompile Include="..\..\..\config\buffer-config.c" />
+    <ClCompile Include="..\..\..\config\client-config.c" />
+    <ClCompile Include="..\..\..\config\cluster-config.c" />
+    <ClCompile Include="..\..\..\config\config.c" />
+    <ClCompile Include="..\..\..\config\csyslogd-config.c" />
+    <ClCompile Include="..\..\..\config\dbd-config.c" />
+    <ClCompile Include="..\..\..\config\email-alerts-config.c" />
+    <ClCompile Include="..\..\..\config\global-config.c" />
+    <ClCompile Include="..\..\..\config\integrator-config.c" />
+    <ClCompile Include="..\..\..\config\labels-config.c" />
+    <ClCompile Include="..\..\..\config\localfile-config.c" />
+    <ClCompile Include="..\..\..\config\remote-config.c" />
+    <ClCompile Include="..\..\..\config\reports-config.c" />
+    <ClCompile Include="..\..\..\config\rootcheck-config.c" />
+    <ClCompile Include="..\..\..\config\rules-config.c" />
+    <ClCompile Include="..\..\..\config\socket-config.c" />
+    <ClCompile Include="..\..\..\config\syscheck-config.c" />
+    <ClCompile Include="..\..\..\config\wmodules-aws.c" />
+    <ClCompile Include="..\..\..\config\wmodules-azure.c" />
+    <ClCompile Include="..\..\..\config\wmodules-ciscat.c" />
+    <ClCompile Include="..\..\..\config\wmodules-command.c" />
+    <ClCompile Include="..\..\..\config\wmodules-config.c" />
+    <ClCompile Include="..\..\..\config\wmodules-docker.c" />
+    <ClCompile Include="..\..\..\config\wmodules-oscap.c" />
+    <ClCompile Include="..\..\..\config\wmodules-osquery-monitor.c" />
+    <ClCompile Include="..\..\..\config\wmodules-vuln-detector.c" />
+    <ClCompile Include="..\..\..\config\wmodules_syscollector.c" />
     <ClCompile Include="..\..\..\logcollector\config.c" />
     <ClCompile Include="..\..\..\logcollector\lccom.c" />
     <ClCompile Include="..\..\..\logcollector\logcollector.c" />
@@ -243,11 +283,42 @@
     <ClCompile Include="..\..\..\logcollector\read_win_event_channel.c" />
     <ClCompile Include="..\..\..\monitord\compress_log.c" />
     <ClCompile Include="..\..\..\monitord\rotate_log.c" />
+    <ClCompile Include="..\..\..\os_crypto\aes\aes_op.c" />
+    <ClCompile Include="..\..\..\os_crypto\blowfish\bf_op.c" />
+    <ClCompile Include="..\..\..\os_crypto\hmac\hmac.c" />
+    <ClCompile Include="..\..\..\os_crypto\md5\md5_op.c" />
+    <ClCompile Include="..\..\..\os_crypto\md5_sha1\md5_sha1_op.c" />
+    <ClCompile Include="..\..\..\os_crypto\md5_sha1_sha256\md5_sha1_sha256_op.c" />
+    <ClCompile Include="..\..\..\os_crypto\sha1\sha1_op.c" />
+    <ClCompile Include="..\..\..\os_crypto\sha256\sha256_op.c" />
+    <ClCompile Include="..\..\..\os_crypto\shared\keys.c" />
+    <ClCompile Include="..\..\..\os_crypto\shared\msgs.c" />
+    <ClCompile Include="..\..\..\os_crypto\signature\signature.c" />
     <ClCompile Include="..\..\..\os_execd\config.c" />
     <ClCompile Include="..\..\..\os_execd\exec.c" />
     <ClCompile Include="..\..\..\os_execd\execd.c" />
     <ClCompile Include="..\..\..\os_execd\wcom.c" />
     <ClCompile Include="..\..\..\os_execd\win_execd.c" />
+    <ClCompile Include="..\..\..\os_net\os_net.c" />
+    <ClCompile Include="..\..\..\os_regex\os_match.c" />
+    <ClCompile Include="..\..\..\os_regex\os_match_compile.c" />
+    <ClCompile Include="..\..\..\os_regex\os_match_execute.c" />
+    <ClCompile Include="..\..\..\os_regex\os_match_free_pattern.c" />
+    <ClCompile Include="..\..\..\os_regex\os_regex.c" />
+    <ClCompile Include="..\..\..\os_regex\os_regex_compile.c" />
+    <ClCompile Include="..\..\..\os_regex\os_regex_execute.c" />
+    <ClCompile Include="..\..\..\os_regex\os_regex_free_pattern.c" />
+    <ClCompile Include="..\..\..\os_regex\os_regex_maps.c" />
+    <ClCompile Include="..\..\..\os_regex\os_regex_match.c" />
+    <ClCompile Include="..\..\..\os_regex\os_regex_startswith.c" />
+    <ClCompile Include="..\..\..\os_regex\os_regex_str.c" />
+    <ClCompile Include="..\..\..\os_regex\os_regex_strbreak.c" />
+    <ClCompile Include="..\..\..\os_xml\os_xml.c" />
+    <ClCompile Include="..\..\..\os_xml\os_xml_access.c" />
+    <ClCompile Include="..\..\..\os_xml\os_xml_node_access.c" />
+    <ClCompile Include="..\..\..\os_xml\os_xml_variables.c" />
+    <ClCompile Include="..\..\..\os_xml\os_xml_writer.c" />
+    <ClCompile Include="..\..\..\os_zlib\os_zlib.c" />
     <ClCompile Include="..\..\..\rootcheck\check_open_ports.c" />
     <ClCompile Include="..\..\..\rootcheck\check_rc_dev.c" />
     <ClCompile Include="..\..\..\rootcheck\check_rc_files.c" />
@@ -268,6 +339,46 @@
     <ClCompile Include="..\..\..\rootcheck\unix-process.c" />
     <ClCompile Include="..\..\..\rootcheck\win-common.c" />
     <ClCompile Include="..\..\..\rootcheck\win-process.c" />
+    <ClCompile Include="..\..\..\shared\agent_op.c" />
+    <ClCompile Include="..\..\..\shared\cluster_utils.c" />
+    <ClCompile Include="..\..\..\shared\custom_output_search_replace.c" />
+    <ClCompile Include="..\..\..\shared\debug_op.c" />
+    <ClCompile Include="..\..\..\shared\dirtree_op.c" />
+    <ClCompile Include="..\..\..\shared\exec_op.c" />
+    <ClCompile Include="..\..\..\shared\file-queue.c" />
+    <ClCompile Include="..\..\..\shared\file_op.c" />
+    <ClCompile Include="..\..\..\shared\fs_op.c" />
+    <ClCompile Include="..\..\..\shared\hash_op.c" />
+    <ClCompile Include="..\..\..\shared\help.c" />
+    <ClCompile Include="..\..\..\shared\json-queue.c" />
+    <ClCompile Include="..\..\..\shared\json_op.c" />
+    <ClCompile Include="..\..\..\shared\labels_op.c" />
+    <ClCompile Include="..\..\..\shared\list_op.c" />
+    <ClCompile Include="..\..\..\shared\math_op.c" />
+    <ClCompile Include="..\..\..\shared\mem_op.c" />
+    <ClCompile Include="..\..\..\shared\mq_op.c" />
+    <ClCompile Include="..\..\..\shared\notify_op.c" />
+    <ClCompile Include="..\..\..\shared\privsep_op.c" />
+    <ClCompile Include="..\..\..\shared\pthreads_op.c" />
+    <ClCompile Include="..\..\..\shared\queue_op.c" />
+    <ClCompile Include="..\..\..\shared\randombytes.c" />
+    <ClCompile Include="..\..\..\shared\read-agents.c" />
+    <ClCompile Include="..\..\..\shared\read-alert.c" />
+    <ClCompile Include="..\..\..\shared\regex_op.c" />
+    <ClCompile Include="..\..\..\shared\report_op.c" />
+    <ClCompile Include="..\..\..\shared\request_op.c" />
+    <ClCompile Include="..\..\..\shared\rootcheck_op.c" />
+    <ClCompile Include="..\..\..\shared\rules_op.c" />
+    <ClCompile Include="..\..\..\shared\sig_op.c" />
+    <ClCompile Include="..\..\..\shared\store_op.c" />
+    <ClCompile Include="..\..\..\shared\string_op.c" />
+    <ClCompile Include="..\..\..\shared\syscheck_op.c" />
+    <ClCompile Include="..\..\..\shared\time_op.c" />
+    <ClCompile Include="..\..\..\shared\url.c" />
+    <ClCompile Include="..\..\..\shared\validate_op.c" />
+    <ClCompile Include="..\..\..\shared\vector_op.c" />
+    <ClCompile Include="..\..\..\shared\version_op.c" />
+    <ClCompile Include="..\..\..\shared\wait_op.c" />
     <ClCompile Include="..\..\..\syscheckd\config.c" />
     <ClCompile Include="..\..\..\syscheckd\create_db.c" />
     <ClCompile Include="..\..\..\syscheckd\run_check.c" />
@@ -278,6 +389,15 @@
     <ClCompile Include="..\..\..\syscheckd\syscom.c" />
     <ClCompile Include="..\..\..\syscheckd\win-registry.c" />
     <ClCompile Include="..\..\..\syscheckd\win_whodata.c" />
+    <ClCompile Include="..\..\..\wazuh_db\wdb.c" />
+    <ClCompile Include="..\..\..\wazuh_db\wdb_agent.c" />
+    <ClCompile Include="..\..\..\wazuh_db\wdb_ciscat.c" />
+    <ClCompile Include="..\..\..\wazuh_db\wdb_fim.c" />
+    <ClCompile Include="..\..\..\wazuh_db\wdb_metadata.c" />
+    <ClCompile Include="..\..\..\wazuh_db\wdb_parser.c" />
+    <ClCompile Include="..\..\..\wazuh_db\wdb_pm.c" />
+    <ClCompile Include="..\..\..\wazuh_db\wdb_scan_info.c" />
+    <ClCompile Include="..\..\..\wazuh_db\wdb_syscollector.c" />
     <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_bsd.c" />
     <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_common.c" />
     <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_linux.c" />
@@ -300,6 +420,8 @@
     <ClCompile Include="..\..\win_service.c" />
     <ClCompile Include="..\include\external\cJSON\cJSON.c" />
     <ClCompile Include="..\include\libgen.c" />
+    <ClCompile Include="..\include\schemas.c" />
+    <ClCompile Include="..\include\sys\time.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\icofile.rc" />
@@ -316,11 +438,14 @@
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets" Condition="Exists('..\packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets')" />
     <Import Project="..\packages\pthreads.2.9.1.4\build\native\pthreads.targets" Condition="Exists('..\packages\pthreads.2.9.1.4\build\native\pthreads.targets')" />
-    <Import Project="..\packages\zeroc.openssl.v140.1.0.2.5\build\native\zeroc.openssl.v140.targets" Condition="Exists('..\packages\zeroc.openssl.v140.1.0.2.5\build\native\zeroc.openssl.v140.targets')" />
     <Import Project="..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets" Condition="Exists('..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets')" />
     <Import Project="..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets" Condition="Exists('..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets')" />
-    <Import Project="..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets" Condition="Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets')" />
     <Import Project="..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets" Condition="Exists('..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets')" />
+    <Import Project="..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.targets" Condition="Exists('..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.targets')" />
+    <Import Project="..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets" Condition="Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets')" />
+    <Import Project="..\packages\fix8.dependencies.getopt.redist.1.0.20140509.1\build\native\fix8.dependencies.getopt.redist.targets" Condition="Exists('..\packages\fix8.dependencies.getopt.redist.1.0.20140509.1\build\native\fix8.dependencies.getopt.redist.targets')" />
+    <Import Project="..\packages\fix8.dependencies.getopt.symbols.1.0.20140509.1\build\native\fix8.dependencies.getopt.symbols.targets" Condition="Exists('..\packages\fix8.dependencies.getopt.symbols.1.0.20140509.1\build\native\fix8.dependencies.getopt.symbols.targets')" />
+    <Import Project="..\packages\sqlite3.3.8.8.3\build\native\sqlite3.targets" Condition="Exists('..\packages\sqlite3.3.8.8.3\build\native\sqlite3.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -328,11 +453,15 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets'))" />
     <Error Condition="!Exists('..\packages\pthreads.2.9.1.4\build\native\pthreads.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\pthreads.2.9.1.4\build\native\pthreads.targets'))" />
-    <Error Condition="!Exists('..\packages\zeroc.openssl.v140.1.0.2.5\build\native\zeroc.openssl.v140.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zeroc.openssl.v140.1.0.2.5\build\native\zeroc.openssl.v140.targets'))" />
     <Error Condition="!Exists('..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets'))" />
     <Error Condition="!Exists('..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets'))" />
+    <Error Condition="!Exists('..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets'))" />
+    <Error Condition="!Exists('..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.props'))" />
+    <Error Condition="!Exists('..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.targets'))" />
     <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props'))" />
     <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets'))" />
-    <Error Condition="!Exists('..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets'))" />
+    <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.redist.1.0.20140509.1\build\native\fix8.dependencies.getopt.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.redist.1.0.20140509.1\build\native\fix8.dependencies.getopt.redist.targets'))" />
+    <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.symbols.1.0.20140509.1\build\native\fix8.dependencies.getopt.symbols.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.symbols.1.0.20140509.1\build\native\fix8.dependencies.getopt.symbols.targets'))" />
+    <Error Condition="!Exists('..\packages\sqlite3.3.8.8.3\build\native\sqlite3.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\sqlite3.3.8.8.3\build\native\sqlite3.targets'))" />
   </Target>
 </Project>

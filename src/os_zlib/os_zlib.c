@@ -9,7 +9,11 @@
 
 #include "os_zlib.h"
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#include <zlib.h>
+#else
 #include "../external/zlib/zlib.h"
+#endif
 
 unsigned long int os_zlib_compress(const char *src, char *dst,
                                    unsigned long int src_size,

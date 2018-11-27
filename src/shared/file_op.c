@@ -373,7 +373,9 @@
 #endif
 
 #define mkstemp(x) 0
-#define mkdir(x, y) mkdir(x)
+
+#define REG_VALUE_SIZE_1    1024
+#define REG_VALUE_SIZE_2    30
 #endif /* WIN32 */
 
 const char *__local_name = "unset";
@@ -1540,9 +1542,8 @@ const char *getuname()
                 // Read Windows Version from registry
                 DWORD dwRet;
                 HKEY RegistryKey;
-                const DWORD size = 1024;
-                TCHAR value[size];
-                DWORD dwCount = size;
+                TCHAR value[REG_VALUE_SIZE_1];
+                DWORD dwCount = REG_VALUE_SIZE_1;
                 add_infoEx = 0;
 
                 if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"), 0, KEY_READ | KEY_WOW64_64KEY , &RegistryKey) != ERROR_SUCCESS) {
@@ -1756,12 +1757,11 @@ const char *getuname()
                 memset(__wp, '\0', 64);
                 DWORD dwRet;
                 HKEY RegistryKey;
-                const DWORD size = 30;
-                TCHAR winver[size];
-                TCHAR wincomp[size];
+                TCHAR winver[REG_VALUE_SIZE_2];
+                TCHAR wincomp[REG_VALUE_SIZE_2];
                 DWORD winMajor = 0;
                 DWORD winMinor = 0;
-                DWORD dwCount = size;
+                DWORD dwCount = REG_VALUE_SIZE_2;
                 unsigned long type=REG_DWORD;
 
                 if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"), 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS) {
@@ -1771,13 +1771,13 @@ const char *getuname()
                 // Windows 10
                 dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentMajorVersionNumber"), NULL, &type, (LPBYTE)&winMajor, &dwCount);
                 if (dwRet == ERROR_SUCCESS) {
-                    dwCount = size;
+                    dwCount = REG_VALUE_SIZE_2;
                     dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentMinorVersionNumber"), NULL, &type, (LPBYTE)&winMinor, &dwCount);
                     if (dwRet != ERROR_SUCCESS) {
                         merror("Error reading 'CurrentMinorVersionNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
                     }
                     else {
-                        dwCount = size;
+                        dwCount = REG_VALUE_SIZE_2;
                         dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
                         if (dwRet != ERROR_SUCCESS) {
                             merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
@@ -1797,7 +1797,7 @@ const char *getuname()
                         snprintf(__wp, 63, " [Ver: 6.2]");
                     }
                     else {
-                        dwCount = size;
+                        dwCount = REG_VALUE_SIZE_2;
                         dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
                         if (dwRet != ERROR_SUCCESS) {
                             merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);

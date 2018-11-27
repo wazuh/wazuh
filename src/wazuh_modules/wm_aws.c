@@ -18,7 +18,7 @@ static int queue_fd;                                    // Output queue file des
 
 static void* wm_aws_main(wm_aws *aws_config);           // Module main function. It won't return
 static void wm_aws_setup(wm_aws *_aws_config);          // Setup module
-static void wm_aws_cleanup();                           // Cleanup function, doesn't overwrite wm_cleanup
+static void wm_aws_cleanup(void);                       // Cleanup function, doesn't overwrite wm_cleanup
 static void wm_aws_check();                             // Check configuration, disable flag
 static void wm_aws_run_s3(wm_aws_bucket *bucket);       // Run a s3
 static void wm_aws_destroy(wm_aws *aws_config);         // Destroy data

@@ -26,7 +26,7 @@ OSList *timeout_list;
 OSListNode *timeout_node;
 
 /* Shut down win-execd properly */
-static void WinExecd_Shutdown()
+static void WinExecd_Shutdown(void)
 {
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
