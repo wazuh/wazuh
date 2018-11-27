@@ -15,6 +15,7 @@ from wazuh import common, configuration, pyDaemonModule
 # Aux functions
 #
 def set_logging(foreground_mode=False, debug_mode=0):
+    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
     logger = logging.getLogger()
     # configure logger
     fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
