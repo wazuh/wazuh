@@ -1,6 +1,6 @@
 import asyncio
 import ssl
-from typing import Tuple
+from typing import Tuple, Dict
 import uvloop
 from wazuh.cluster import common, cluster
 import logging
@@ -140,23 +140,21 @@ class AbstractClientManager:
     """
     Defines an abstract client. Manages connection with server.
     """
-    def __init__(self, name: str, key: str, ssl: bool, performance_test: int, concurrency_test: int, file: str,
-                 string: int):
+    def __init__(self, configuration: Dict, enable_ssl: bool, performance_test: int, concurrency_test: int,
+                 file: str, string: int):
         """
         Class constructor
 
-        :param name: Name of the client.
-        :param key: Fernet key to encrypt communications
-        :param ssl: Whether to use SSL encryption or not
+        :param configuration: client configuration
+        :param enable_ssl: Whether to use SSL encryption or not
         :param performance_test: Value for the performance test function
         :param concurrency_test: Value for the concurrency test function
         :param file: File path for the send file test function
         :param string: String size for the send string test function
-        :param logger: logging logger
         """
-        self.name = name
-        self.key = key
-        self.ssl = ssl
+        self.name = configuration['node_name']
+        self.configuration = configuration
+        self.ssl = enable_ssl
         self.performance_test = performance_test
         self.concurrency_test = concurrency_test
         self.file = file
@@ -178,8 +176,10 @@ class AbstractClientManager:
         while True:
             try:
                 transport, protocol = await loop.create_connection(
-                                    protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key),
-                                    host='172.17.0.101', port=8888, ssl=ssl_context)
+                                    protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name,
+                                                                            self.configuration['key']),
+                                    host=self.configuration['nodes'][0], port=self.configuration['port'],
+                                    ssl=ssl_context)
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to server. Trying again in 10 seconds.")
                 await asyncio.sleep(10)

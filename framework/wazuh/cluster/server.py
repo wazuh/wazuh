@@ -4,7 +4,7 @@ import uvloop
 import time
 from wazuh.cluster import common, cluster
 import logging
-from typing import Tuple
+from typing import Tuple, Dict
 import random
 
 
@@ -100,12 +100,12 @@ class AbstractServer:
     Defines an asynchronous server. Handles connections from all clients.
     """
 
-    def __init__(self, performance_test, concurrency_test, fernet_key: str, enable_ssl: bool,
+    def __init__(self, performance_test, concurrency_test, configuration: Dict, enable_ssl: bool,
                  tag: str = "Abstract Server"):
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
-        self.fernet_key = fernet_key
+        self.configuration = configuration
         self.enable_ssl = enable_ssl
         self.logger = logging.getLogger(tag)
         # logging tag
@@ -142,14 +142,14 @@ class AbstractServer:
 
     async def concurrency_test(self):
         while True:
+            before = time.time()
             for i in range(self.concurrency):
-                before = time.time()
                 for client_name, client in self.clients.items():
                     response = await client.send_request(b'echo',
                                                          'concurrency {} client {}'.format(i, client_name).encode())
-                after = time.time()
-                self.logger.info("Time sending {} messages: {}".format(self.concurrency, after - before))
-                await asyncio.sleep(10)
+            after = time.time()
+            self.logger.info("Time sending {} messages: {}".format(self.concurrency, after - before))
+            await asyncio.sleep(10)
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -167,8 +167,9 @@ class AbstractServer:
 
         try:
             server = await loop.create_server(
-                    protocol_factory=lambda: AbstractServerHandler(server=self, loop=loop, fernet_key=self.fernet_key),
-                    host='0.0.0.0', port=8888, ssl=ssl_context)
+                    protocol_factory=lambda: AbstractServerHandler(server=self, loop=loop,
+                                                                   fernet_key=self.configuration['key']),
+                    host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt
