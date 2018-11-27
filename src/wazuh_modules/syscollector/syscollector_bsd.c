@@ -950,10 +950,10 @@ cJSON * getNetworkIfaces_bsd(){
           cJSON_AddItemToArray(ifaces_list_json,interface);
 
     }
+    freeifaddrs(ifaddrs_ptr);
     for (i=0; ifaces_list[i]; i++){
         free(ifaces_list[i]);
     }
-    freeifaddrs(ifaddrs_ptr);
     free(ifaces_list);
 
     return ifaces_list_json;
@@ -963,7 +963,7 @@ cJSON * getNetworkIfaces_bsd(){
 
 void sys_network_bsd(int queue_fd, const char* LOCATION){
 
-    cJSON * ifaces_list_json = cJSON_CreateObject();
+    cJSON * ifaces_list_json;
     int random_id = os_random();
     char *timestamp;
     time_t now;

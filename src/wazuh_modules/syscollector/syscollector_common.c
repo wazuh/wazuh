@@ -303,8 +303,9 @@ int getDefaultNetworkIface(){
         while(default_network_iface == -1 && i < cJSON_GetArraySize(network_info)){
             iface = cJSON_GetArrayItem(network_info,i);
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
-            if (ipv4)
+            if (ipv4){
                 default_network_iface = i;
+            }
             i++;
         }
     #elif defined(__linux__)
@@ -313,11 +314,13 @@ int getDefaultNetworkIface(){
         for (i = 0; i < cJSON_GetArraySize(network_info);i++) {
             iface = cJSON_GetArrayItem(network_info,i);
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
-            gateway = cJSON_Print(cJSON_GetObjectItem(ipv4,"gateway"));
-            if(strcmp(gateway,"\\unknown\\")){
-                default_network_iface = i;
+            if(ipv4){
+                gateway = cJSON_Print(cJSON_GetObjectItem(ipv4,"gateway"));
+                if(strcmp(gateway,"\\unknown\\")){
+                    default_network_iface = i;
+                }
+                free(gateway);
             }
-            free(gateway);
         }
     #elif defined WIN32
         #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
@@ -347,9 +350,11 @@ int getDefaultNetworkIface(){
         for (i = 0; i < cJSON_GetArraySize(network_info);i++) {
             iface = cJSON_GetArrayItem(network_info,i);
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
-            gateway = cJSON_GetObjectItem(ipv4,"gateway");
-            if(gateway){
-                default_network_iface = i;
+            if(ipv4){
+                gateway = cJSON_GetObjectItem(ipv4,"gateway");
+                if(gateway){
+                    default_network_iface = i;
+                }
             }
             cJSON_Delete(iface);
         }
