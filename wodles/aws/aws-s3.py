@@ -462,7 +462,8 @@ class AWSBucket(WazuhIntegration):
             'Prefix': self.get_full_prefix(aws_account_id, aws_region)
         }
         if next_token:
-            filter_args['ContinuationToken'] = next_token
+            filter_args['StartAfter'] = next_token
+            return filter_args
         if filter_marker:
             filter_args['StartAfter'] = filter_marker
             debug('+++ Marker: {0}'.format(filter_marker), 2)
