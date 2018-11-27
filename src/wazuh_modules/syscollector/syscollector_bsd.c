@@ -1006,9 +1006,9 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         cJSON_Delete(object);
         free(string);
     }
-
     cJSON_Delete(ifaces_list_json);
 
+    char *string;
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");
     cJSON_AddNumberToObject(object, "ID", random_id);
