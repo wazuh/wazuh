@@ -674,7 +674,7 @@ hw_info *get_system_bsd(){
 //Get network inventory in JSON
 cJSON * getNetworkIfaces_bsd(){
 
-      cJSON * ifaces_list_json;
+      cJSON * ifaces_list_json = NULL;
       char ** ifaces_list;
       int i = 0, j = 0, found;
       struct ifaddrs *ifaddrs_ptr, *ifa;
@@ -722,7 +722,7 @@ cJSON * getNetworkIfaces_bsd(){
       }
 
       for (i=0; i<j; i++){
-          
+
           cJSON *interface = cJSON_CreateObject();
           cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
@@ -964,7 +964,6 @@ cJSON * getNetworkIfaces_bsd(){
 void sys_network_bsd(int queue_fd, const char* LOCATION){
 
     cJSON * ifaces_list_json = cJSON_CreateObject();
-    char * string;
     int random_id = os_random();
     char *timestamp;
     time_t now;
@@ -991,7 +990,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     int i;
 
     for (i = 0; i < cJSON_GetArraySize(ifaces_list_json); ++i){
-        
+        char *string;
         cJSON *object = cJSON_CreateObject();
         cJSON* iface = cJSON_GetArrayItem(ifaces_list_json,i);        
         
