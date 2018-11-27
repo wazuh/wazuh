@@ -172,5 +172,7 @@ extern int INTERVAL;
 extern rlim_t nofile;
 extern int guess_agent_group;
 extern int group_data_flush;
+extern unsigned receive_chunk;
+extern int buffer_relax;
 
 #endif /* __LOGREMOTE_H */

@@ -14,8 +14,6 @@
 #include <os_net/os_net.h>
 #include "remoted.h"
 
-#define BUF_SIZE 4096
-
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info) {
     if (sock >= buffer->max_fd) {
         os_realloc(buffer->buffers, sizeof(sockbuffer_t) * (sock + 1), buffer->buffers);
@@ -46,7 +44,7 @@ int nb_close(netbuffer_t * buffer, int sock) {
 */
 int nb_recv(netbuffer_t * buffer, int sock) {
     sockbuffer_t * sockbuf = &buffer->buffers[sock];
-    unsigned long data_ext = sockbuf->data_len + BUF_SIZE;
+    unsigned long data_ext = sockbuf->data_len + receive_chunk;
     long recv_len;
     unsigned long i;
     unsigned long cur_offset;
@@ -61,7 +59,7 @@ int nb_recv(netbuffer_t * buffer, int sock) {
 
     // Receive and append
 
-    recv_len = recv(sock, sockbuf->data + sockbuf->data_len, BUF_SIZE, 0);
+    recv_len = recv(sock, sockbuf->data + sockbuf->data_len, receive_chunk, 0);
 
     if (recv_len <= 0) {
         return recv_len;
@@ -95,6 +93,28 @@ int nb_recv(netbuffer_t * buffer, int sock) {
         }
 
         sockbuf->data_len -= i;
+
+        switch (buffer_relax) {
+        case 0:
+            // Do not deallocate memory.
+            break;
+
+        case 1:
+            // Shrink memory to fit the current buffer or the receive chunk.
+            sockbuf->data_size = sockbuf->data_len > receive_chunk ? sockbuf->data_len : receive_chunk;
+            os_realloc(sockbuf->data, sockbuf->data_size, sockbuf->data);
+            break;
+
+        default:
+            // Full memory deallocation.
+            sockbuf->data_size = sockbuf->data_len;
+
+            if (sockbuf->data_size) {
+                os_realloc(sockbuf->data, sockbuf->data_size, sockbuf->data);
+            } else {
+                os_free(sockbuf->data);
+            }
+        }
     }
 
     return recv_len;
