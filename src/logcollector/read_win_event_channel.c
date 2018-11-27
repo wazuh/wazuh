@@ -692,6 +692,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     int result = 0;
     int level_n;
     int keywords_n;
+    cJSON *final_event = cJSON_CreateObject();
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
     cJSON *json_eventdata_in = cJSON_CreateObject();
@@ -892,9 +893,12 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     if (json_eventdata_in){
         cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
     }
-    my_event = cJSON_PrintUnformatted(json_event);
 
-    if (SendMSG(logr_queue, my_event, "WinEvtChannelJSON", LOCALFILE_MQ) < 0) {
+    cJSON_AddItemToObject(final_event, "WinEvtChannel", json_event);
+
+    my_event = cJSON_PrintUnformatted(final_event);
+
+    if (SendMSG(logr_queue, my_event, "WinEvtChannel", LOCALFILE_MQ) < 0) {
         merror(QUEUE_SEND);
     }
 
@@ -915,6 +919,7 @@ cleanup:
     free(filtered_msg);
     free(wprovider_name);
     OS_ClearXML(&xml);
+    cJSON_Delete(final_event);
 
     return;
 }
