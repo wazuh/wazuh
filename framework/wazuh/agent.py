@@ -792,20 +792,8 @@ class Agent:
         if path.exists(group_path):
             move(group_path, group_backup)
 
-        # for filename in listdir("{0}".format(common.groups_path)):
-        #     try:
-        #         file = open("{0}/{1}".format(common.groups_path,filename),"r")
-        #         group_readed = file.read()
-        #         print("BEFORE  " + group_readed)
-        #         if group_id in group_readed:
-        #             group_readed -= group_id
+        Agent.remove_multi_group({group_id.lower()})
 
-        #         print("AFTER  " + group_readed)
-        #         group_readed = group_readed.strip()
-        #         multi_group_list.append(group_readed)
-        #         file.close()
-        #     except Exception:
-        #         continue
 
         return 'Agent deleted successfully.'
 

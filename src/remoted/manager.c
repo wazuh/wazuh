@@ -554,7 +554,6 @@ static void c_files()
             groups = NULL;
         }
 
-        merror("cleaning...");
         // Clean hash table
         OSHash_Free(m_hash);
         m_hash = OSHash_Create();
@@ -571,10 +570,12 @@ static void c_files()
         // Clean all multigroups files
         while (entry = readdir(dp), entry) {
             // Skip "." and ".."
-            if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
+            if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
                 continue;
             }
-            rmdir_ex(entry->d_name);
+
+            snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", entry->d_name);
+            rmdir_ex(path);
         }
 
         closedir(dp);
