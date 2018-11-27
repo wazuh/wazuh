@@ -112,6 +112,7 @@ class AbstractServer:
         self.logger = logging.getLogger(tag)
         # logging tag
         self.logger.addFilter(cluster.ClusterFilter(tag=tag))
+        self.tasks = [self.check_clients_keepalive]
 
     async def check_clients_keepalive(self):
         """
@@ -177,7 +178,8 @@ class AbstractServer:
             raise KeyboardInterrupt
 
         self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))
+        self.tasks.append(server.serve_forever)
 
         async with server:
             # use asyncio.gather to run both tasks in parallel
-            await asyncio.gather(server.serve_forever(), self.check_clients_keepalive())
+            await asyncio.gather(*map(lambda x: x(), self.tasks))

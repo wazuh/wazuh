@@ -7,7 +7,7 @@ import asyncio
 import argparse
 import os
 import sys
-from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, server, local_server, client
+from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, master, local_server, client
 from wazuh import common, configuration, pyDaemonModule
 
 
@@ -62,7 +62,7 @@ def print_version():
 # Master main
 #
 async def master_main(args, cluster_config):
-    my_server = server.AbstractServer(args.performance_test, args.concurrency_test, cluster_config, args.ssl)
+    my_server = master.Master(args.performance_test, args.concurrency_test, cluster_config, args.ssl)
     my_local_server = local_server.LocalServer(performance_test=args.performance_test,
                                                concurrency_test=args.concurrency_test, configuration=cluster_config,
                                                enable_ssl=args.ssl)
