@@ -2,22 +2,24 @@ import asyncio
 import ssl
 import uvloop
 import time
-import common
+from wazuh.cluster import common, cluster
 import logging
-import argparse
 from typing import Tuple
+import random
 
 
-class EchoServerHandler(common.Handler):
+class AbstractServerHandler(common.Handler):
     """
-    Defines echo server protocol
+    Defines abstract server protocol. Handles communication with a single client.
     """
 
     def __init__(self, server, loop, fernet_key):
-        super().__init__(fernet_key=fernet_key)
+        super().__init__(fernet_key=fernet_key, tag="Handler {}".format(random.randint(0, 1000)))
         self.server = server
         self.loop = loop
         self.last_keepalive = time.time()
+        self.tag = "Server Handler"
+        self.logger_filter.update_tag(self.tag)
 
     def connection_made(self, transport):
         """
@@ -26,7 +28,7 @@ class EchoServerHandler(common.Handler):
         :param transport: socket to write data on
         """
         peername = transport.get_extra_info('peername')
-        logging.info('Connection from {}'.format(peername))
+        self.logger.info('Connection from {}'.format(peername))
         self.transport = transport
         self.name = None
 
@@ -57,12 +59,14 @@ class EchoServerHandler(common.Handler):
         :return: successful result
         """
         if data in self.server.clients:
-            logging.error("Client {} already present".format(data))
+            self.logger.error("Client {} already present".format(data))
             return b'err', b'Client already present'
         else:
-            self.server.clients[data] = self
-            self.name = data
-            return b'ok', 'Client {} added'.format(data).encode()
+            self.name = data.decode()
+            self.server.clients[self.name] = self
+            self.tag = "Handler " + self.name
+            self.logger_filter.update_tag(self.tag)
+            return b'ok', 'Client {} added'.format(self.name).encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """
@@ -85,23 +89,27 @@ class EchoServerHandler(common.Handler):
         :return:
         """
         if self.name:
-            logging.info("The client '{}' closed the connection".format(self.name))
+            self.logger.info("The client '{}' closed the connection".format(self.name))
             del self.server.clients[self.name]
         else:
-            logging.error("Error during handshake with incoming client.")
+            self.logger.error("Error during handshake with incoming client: {}".format(exc))
 
 
-class EchoServer:
+class AbstractServer:
     """
-    Defines an asynchronous echo server.
+    Defines an asynchronous server. Handles connections from all clients.
     """
 
-    def __init__(self, performance_test, concurrency_test, fernet_key: str, enable_ssl: bool):
+    def __init__(self, performance_test, concurrency_test, fernet_key: str, enable_ssl: bool,
+                 tag: str = "Abstract Server"):
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
         self.fernet_key = fernet_key
         self.enable_ssl = enable_ssl
+        self.logger = logging.getLogger(tag)
+        # logging tag
+        self.logger.addFilter(cluster.ClusterFilter(tag=tag))
 
     async def check_clients_keepalive(self):
         """
@@ -111,7 +119,7 @@ class EchoServer:
             curr_timestamp = time.time()
             for client_name, client in self.clients.items():
                 if curr_timestamp - client.last_keepalive > 30:
-                    logging.error("No keep alives have been received from {} in the last minute. Disconnecting".format(
+                    self.logger.error("No keep alives have been received from {} in the last minute. Disconnecting".format(
                         client_name))
                     client.transport.close()
             await asyncio.sleep(30)
@@ -119,8 +127,8 @@ class EchoServer:
     async def echo(self):
         while True:
             for client_name, client in self.clients.items():
-                logging.debug("Sending echo to client {}".format(client_name))
-                logging.info(await client.send_request(b'echo-m', b'keepalive ' + client_name))
+                self.logger.debug("Sending echo to client {}".format(client_name))
+                self.logger.info(await client.send_request(b'echo-m', b'keepalive ' + client_name))
             await asyncio.sleep(3)
 
     async def performance_test(self):
@@ -129,7 +137,7 @@ class EchoServer:
                 before = time.time()
                 response = await client.send_request(b'echo', b'a' * self.performance)
                 after = time.time()
-                logging.info("Received size: {} // Time: {}".format(len(response), after - before))
+                self.logger.info("Received size: {} // Time: {}".format(len(response), after - before))
             await asyncio.sleep(3)
 
     async def concurrency_test(self):
@@ -140,7 +148,7 @@ class EchoServer:
                     response = await client.send_request(b'echo',
                                                          'concurrency {} client {}'.format(i, client_name).encode())
                 after = time.time()
-                logging.info("Time sending {} messages: {}".format(self.concurrency, after - before))
+                self.logger.info("Time sending {} messages: {}".format(self.concurrency, after - before))
                 await asyncio.sleep(10)
 
     async def start(self):
@@ -158,39 +166,15 @@ class EchoServer:
             ssl_context = None
 
         try:
-            server = await loop.create_server(protocol_factory=lambda: EchoServerHandler(server=self, loop=loop,
-                                                                                         fernet_key=self.fernet_key),
-                                              host='0.0.0.0', port=8888, ssl=ssl_context)
+            server = await loop.create_server(
+                    protocol_factory=lambda: AbstractServerHandler(server=self, loop=loop, fernet_key=self.fernet_key),
+                    host='0.0.0.0', port=8888, ssl=ssl_context)
         except OSError as e:
-            logging.error("Could not create server: {}".format(e))
+            self.logger.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt
 
-        logging.info('Serving on {}'.format(server.sockets[0].getsockname()))
+        self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
         async with server:
             # use asyncio.gather to run both tasks in parallel
             await asyncio.gather(server.serve_forever(), self.check_clients_keepalive())
-
-
-async def main():
-    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
-                        help="Perform a performance test against all clients. Number of bytes to test with.")
-    parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
-                        help="Perform a concurrency test against all clients. Number of messages to send in a row to "
-                             "each client.")
-    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', default='')
-    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl')
-
-    args = parser.parse_args()
-
-    server = EchoServer(args.performance_test, args.concurrency_test, args.key, args.ssl)
-    await server.start()
-
-
-try:
-    asyncio.run(main())
-except KeyboardInterrupt:
-    logging.info("SIGINT received. Bye!")

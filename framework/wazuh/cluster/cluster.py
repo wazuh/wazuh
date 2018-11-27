@@ -612,3 +612,24 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
             mkdir_with_mode(log_path, 0o750)
 
         return '{}/cluster-{}.log.gz'.format(log_path, day)
+
+
+class ClusterFilter(logging.Filter):
+    """
+    Adds cluster related information into cluster logs.
+    """
+    def __init__(self, tag: str, name: str = ''):
+        """
+        Class constructor
+
+        :param handler: Handler object containing a tag attribute
+        """
+        super().__init__(name=name)
+        self.tag = tag
+
+    def filter(self, record):
+        record.tag = self.tag
+        return True
+
+    def update_tag(self, new_tag: str):
+        self.tag = new_tag

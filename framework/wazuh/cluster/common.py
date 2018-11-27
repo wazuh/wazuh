@@ -8,6 +8,7 @@ import struct
 import traceback
 import cryptography.fernet
 from typing import Tuple, Dict
+from wazuh.cluster import cluster
 
 
 class Response:
@@ -51,7 +52,7 @@ class InBuffer:
         :param header_size: Size in bytes of the header
         :return: updated buffer
         """
-        self.total, self.counter, cmd = struct.unpack(header_format, header[:header_size])
+        self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
         self.cmd = cmd.split(b' ')[0]
         self.payload = bytearray(self.total)
         return header[header_size:]
@@ -74,11 +75,12 @@ class Handler(asyncio.Protocol):
     Defines common methods for echo clients and servers
     """
 
-    def __init__(self, fernet_key: str):
+    def __init__(self, fernet_key: str, tag: str = "Handler"):
         """
         Class constructor
 
         :param fernet_key: 32 length string used as key to initialize cryptography's Fernet.
+        :param tag: logging tag to use
         """
         super().__init__()
         # The counter is used to identify each message. If an incoming request has a known ID,
@@ -87,7 +89,7 @@ class Handler(asyncio.Protocol):
         # The box stores all sent messages IDs
         self.box = {}
         # defines command length
-        self.cmd_len = 10
+        self.cmd_len = 12
         # defines header length
         self.header_len = self.cmd_len + 8  # 4 bytes of counter and 4 bytes of message size
         # defines header format
@@ -108,6 +110,13 @@ class Handler(asyncio.Protocol):
         self.request_timeout = 10
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
+        # logging.Logger object used to write logs
+        self.logger = logging.getLogger(tag)
+        # logging tag
+        self.tag = tag
+        self.logger_filter = cluster.ClusterFilter(tag=self.tag)
+        self.logger.addFilter(self.logger_filter)
+
 
     def push(self, message: bytes):
         """
@@ -140,7 +149,7 @@ class Handler(asyncio.Protocol):
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
         encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
-        self.out_msg[:self.header_len] = struct.pack(self.header_format, len(encrypted_data), counter, command)
+        self.out_msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
         self.out_msg[self.header_len:self.header_len + len(encrypted_data)] = encrypted_data
 
         return self.out_msg[:self.header_len + len(encrypted_data)]
@@ -168,7 +177,7 @@ class Handler(asyncio.Protocol):
         parsed = self.msg_parse()
 
         while parsed:
-            # logging.debug("Received message: {} / {}".format(self.in_msg['received'], self.in_msg['total_size']))
+            # self.logger.debug("Received message: {} / {}".format(self.in_msg['received'], self.in_msg['total_size']))
             if self.in_msg.received == self.in_msg.total:
                 # the message was correctly received
                 # decrypt received message
@@ -279,7 +288,7 @@ class Handler(asyncio.Protocol):
         try:
             command, payload = self.process_request(command, payload)
         except Exception as e:
-            logging.error("Error processing request '{}': {}".format(command, e))
+            self.logger.error("Error processing request '{}': {}".format(command, e))
             command, payload = b'err', str(e).encode()
 
         self.push(self.msg_build(command, counter, payload))
@@ -389,7 +398,7 @@ class Handler(asyncio.Protocol):
         :return: Message
         """
         self.in_str.receive_data(data)
-        # logging.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
+        # self.logger.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
         return b"ok", b"Chunk received"
 
     def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:
