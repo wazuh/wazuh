@@ -691,7 +691,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     DWORD count = 0;
     int result = 0;
     int level_n;
-    int keywords_n;
+    unsigned long long int keywords_n;
     cJSON *final_event = cJSON_CreateObject();
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
@@ -701,7 +701,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     wchar_t *wprovider_name;
     XML_NODE node, child;
     char *level = NULL, *keywords = NULL, *canal = NULL, *provider_name = NULL,
-        *my_msg = NULL, *str_i = NULL, *message = NULL, *category, *my_event = NULL,
+        *my_msg = NULL, *message = NULL, *category, *my_event = NULL,
         *filtered_msg = NULL, *avoid_dup = NULL;
 
     result = EvtRender(NULL,
@@ -799,6 +799,9 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
                     } else if (!strcmp(child_attr[p]->element, "Level")) {
                         os_strdup(child_attr[p]->content, level);
                         cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
+                    } else if (!strcmp(child_attr[p]->element, "Keywords")) {
+                        os_strdup(child_attr[p]->content, keywords);
+                        cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                     } else {
                         cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                     }
@@ -833,8 +836,8 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     OS_ClearNode(node);
     OS_ClearXML(&xml);
 
-    level_n = strtol(level, &str_i, 10);
-    keywords_n = strtol(keywords, &str_i, 16);
+    level_n = strtol(level, NULL, 10);
+    keywords_n = strtoull(keywords, NULL, 16);
 
     switch (level_n) {
         case WINEVENT_CRITICAL:
@@ -863,7 +866,6 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
             // fall through
         default:
             category = "Unknown";
-            break;
     }
 
     wprovider_name = convert_unix_string(provider_name);
@@ -913,7 +915,6 @@ cleanup:
     free(canal);
     free(provider_name);
     free(my_msg);
-    free(str_i);
     free(message);
     free(my_event);
     free(filtered_msg);
