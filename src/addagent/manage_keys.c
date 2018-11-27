@@ -459,7 +459,7 @@ int k_bulkload(const char *cmdbulk)
             fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
             fclose(fp);
         } else {
-            if (auth_add_agent(sock, id, name, ip, NULL, -1, 0,NULL) < 0) {
+            if (auth_add_agent(sock, id, name, ip, NULL, -1, 0,NULL,1) < 0) {
                 goto cleanup;
             }
         }

@@ -649,7 +649,7 @@ int auth_close(int sock) {
 }
 
 // Add agent. Returns 0 on success or -1 on error.
-int auth_add_agent(int sock, char *id, const char *name, const char *ip,const char *key, int force, int json_format,const char *agent_id) {
+int auth_add_agent(int sock, char *id, const char *name, const char *ip,const char *key, int force, int json_format,const char *agent_id,int exit_on_error) {
     char buffer[OS_MAXSTR + 1];
     char * output;
     int result;
@@ -682,29 +682,51 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
     output = cJSON_PrintUnformatted(request);
 
     if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
-        merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
+        if(exit_on_error){
+            merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
+        }
+        cJSON_Delete(request);
+        free(output);
+        result = -2;
+        return result;
     }
 
     cJSON_Delete(request);
     free(output);
 
     if (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length < 0) {
-        merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
+        if(exit_on_error){
+            merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
+        }
+        result = -1;
+        return result;
     } else if (length == 0) {
-        merror_exit("Empty message from local server.");
+        if(exit_on_error){
+            merror_exit("Empty message from local server.");
+        }
+        result = -1;
+        return result;
     } else {
         buffer[length] = '\0';
 
         // Decode response
 
         if (response = cJSON_Parse(buffer), !response) {
-            merror_exit("Parsing JSON response.");
+            if(exit_on_error){
+                merror_exit("Parsing JSON response.");
+            }
+            result = -1;
+            return result;
         }
 
         // Detect error condition
 
         if (error = cJSON_GetObjectItem(response, "error"), !error) {
-            merror_exit("No such status from response.");
+            if(exit_on_error){
+                merror_exit("No such status from response.");
+            }
+            result = -1;
+            return result;
         } else if (error->valueint > 0) {
             if (json_format) {
                 printf("%s", buffer);
@@ -716,11 +738,21 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
             result = -1;
         } else {
             if (data = cJSON_GetObjectItem(response, "data"), !data) {
-                merror_exit("No data received.");
+                if(exit_on_error){
+                    merror_exit("No data received.");
+                }
+                cJSON_Delete(response);
+                result = -1;
+                return result;
             }
 
             if (data_id = cJSON_GetObjectItem(data, "id"), !data) {
-                merror_exit("No id received.");
+                if(exit_on_error){
+                    merror_exit("No id received.");
+                }
+                cJSON_Delete(response);
+                result = -1;
+                return result;
             }
 
             strncpy(id, data_id->valuestring, FILE_SIZE);

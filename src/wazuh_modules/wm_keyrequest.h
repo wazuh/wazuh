@@ -1,7 +1,7 @@
 /*
  * Wazuh Module for remote key requests
  * Copyright (C) 2018 Wazuh Inc.
- * April 25, 2018.
+ * November 25, 2018.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,7 +12,7 @@
 #ifndef WM_KEY_REQUEST_H
 #define WM_KEY_REQUEST_H
 
-#define WM_KEY_REQUEST_LOGTAG ARGV0 ":keyrequest"
+#define WM_KEY_REQUEST_LOGTAG ARGV0 ":keypolling"
 
 typedef struct wm_krequest_t {
     unsigned int enabled:1;

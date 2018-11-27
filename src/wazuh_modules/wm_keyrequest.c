@@ -1,7 +1,7 @@
 /*
  * Wazuh Module for remote key requests
  * Copyright (C) 2018 Wazuh Inc.
- * April 25, 2018.
+ * November 25, 2018.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -26,7 +26,7 @@ cJSON *wm_key_request_dump(const wm_krequest_t * data);     // Read config
 void * w_request_thread(const wm_krequest_t *data);
 
 // Dispatch request. Write the output into the same input buffer.
-static void wm_key_request_dispatch(char * buffer,const wm_krequest_t * data);
+static int wm_key_request_dispatch(char * buffer,const wm_krequest_t * data);
 
 /* Decode rootcheck input queue */
 static w_queue_t * request_queue;
@@ -61,6 +61,9 @@ void * wm_key_request_main(wm_krequest_t * data) {
         minfo("Module disabled. Exiting.");
         pthread_exit(NULL);
     }
+
+    /* Ignore SIGPIPE, it will be detected on recv */
+    signal(SIGPIPE, SIG_IGN);
 
     /* Init the request hash table */
     request_hash = OSHash_Create();
@@ -114,7 +117,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
     return NULL;
 }
 
-void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
+int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     char * request;
     char * tmp_buffer;
     char *output;
@@ -133,7 +136,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     } else {
         mdebug1("Wrong type of request");
         OSHash_Delete_ex(request_hash,buffer);
-        return;
+        return -1;
     }
 
     switch (type) {
@@ -141,10 +144,10 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             tmp_buffer+=header_length;
             request = tmp_buffer;
 
-            if(strlen(request) > 5) {
+            if(strlen(request) > 8) {
                 mdebug1(" Agent ID is too long");
                 OSHash_Delete_ex(request_hash,buffer);
-                return;
+                return -1;
             }
             break;
 
@@ -152,17 +155,17 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             tmp_buffer+=3;
             request = tmp_buffer;
 
-            if(strlen(request) > 15) {
+            if(strlen(request) > 19) {
                 mdebug1("Agent IP is too long");
                 OSHash_Delete_ex(request_hash,buffer);
-                return;
+                return -1;
             }
             break;
 
         default:
             mdebug1("Invalid request");
             OSHash_Delete_ex(request_hash,buffer);
-            return;
+            return -1;
     }
 
     // Run external query
@@ -175,14 +178,14 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         mdebug1("Request is too long.");
         os_free(command);
         OSHash_Delete_ex(request_hash,buffer);
-        return;
+        return -1;
     }
 
     if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
         mdebug1("At wm_key_request_dispatch(): Error executing script [%s]", data->script);
         os_free(command);
         OSHash_Delete_ex(request_hash,buffer);
-        return;
+        return -1;
     } else {
         agent_infoJSON = cJSON_Parse(output);
 
@@ -190,10 +193,9 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
         } else {
 
-            int sock;
             int error = 0;
             cJSON *error_message = NULL;
-            cJSON *data = NULL;
+            cJSON *data_json = NULL;
             cJSON *agent_id = NULL;
             cJSON *agent_name = NULL;
             cJSON *agent_address = NULL;
@@ -208,7 +210,7 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
                 os_free(output);
-                return;
+                return -1;
             }
 
             error = json_field->valueint;
@@ -221,70 +223,71 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                     os_free(command);
                     OSHash_Delete_ex(request_hash,buffer);
                     os_free(output);
-                    return;
+                    return -1;
                 }
                 merror("%s",error_message->valuestring);
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
                 os_free(output);
-                return;
+                return -1;
             }
 
-            data = cJSON_GetObjectItem(agent_infoJSON, "data");
-            if (!data) {
+            data_json = cJSON_GetObjectItem(agent_infoJSON, "data");
+            if (!data_json) {
                 mdebug1("Agent data not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
                 os_free(output);
-                return;
+                return -1;
             }
 
-            agent_id = cJSON_GetObjectItem(data, "id");
+            agent_id = cJSON_GetObjectItem(data_json, "id");
             if (!agent_id) {
                 mdebug1("Agent ID not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
                 os_free(output);
-                return;
+                return -1;
             }
 
-            agent_name = cJSON_GetObjectItem(data, "name");
+            agent_name = cJSON_GetObjectItem(data_json, "name");
             if (!agent_name) {
                 mdebug1("Agent name not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
                 os_free(output);
-                return;
+                return -1;
             }
 
-            agent_address = cJSON_GetObjectItem(data, "ip");
+            agent_address = cJSON_GetObjectItem(data_json, "ip");
             if (!agent_address) {
                 mdebug1("Agent address not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
                 os_free(output);
-                return;
+                return -1;
             }
 
-            agent_key = cJSON_GetObjectItem(data, "key");
+            agent_key = cJSON_GetObjectItem(data_json, "key");
             if (!agent_key) {
                 mdebug1("Agent key not found.");
                 cJSON_Delete (agent_infoJSON);
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
                 os_free(output);
-                return;
+                return -1;
             }
 
+            int sock;
             if (sock = auth_connect(), sock < 0) { 
                 mdebug1("Could not connect to authd socket. Is authd running?");
             } else {
-                auth_add_agent(sock,id,agent_name->valuestring,agent_address->valuestring,agent_key->valuestring,1,1,agent_id->valuestring);
+                auth_add_agent(sock,id,agent_name->valuestring,agent_address->valuestring,agent_key->valuestring,1,1,agent_id->valuestring,0);
                 close(sock);
             }
 
@@ -294,6 +297,8 @@ void wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     }
     OSHash_Delete_ex(request_hash,buffer);
     os_free(command);
+
+    return 0;
 }
 
 // Destroy data
@@ -335,7 +340,9 @@ void * w_request_thread(const wm_krequest_t *data) {
         if (msg = queue_pop_ex(request_queue), msg) {
 
             /* Dispatch the request */
-            wm_key_request_dispatch(msg,data);
+            if(wm_key_request_dispatch(msg,data) < 0) {
+                mdebug1("At w_request_thread(): Error getting external key");
+            }
             os_free(msg);
         }
     }
