@@ -51,5 +51,6 @@
 #define VU_AGENT_START        "(5486): Starting vulnerability assessment for agent %s."
 #define VU_AGENT_FINISH       "(5487): Finished vulnerability assessment for agent %s."
 #define VU_AG_NEVER_CON       "(5488): Agent '%s' never connected."
+#define VU_API_REQ_RETRY      "(5490): There was no valid response to '%s'. Retrying in %d seconds..."
 
 #endif

@@ -24,7 +24,10 @@
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
 #define CANONICAL_REPO "https://people.canonical.com/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
 #define DEBIAN_REPO "https://www.debian.org/security/oval/oval-definitions-%s.xml"
-#define REDHAT_REPO "https://www.redhat.com/security/data/oval/Red_Hat_Enterprise_Linux_%s.xml"
+#define RED_HAT_REPO_MIN_YEAR 2010
+#define RED_HAT_REPO_MAX_ATTEMPTS 3
+#define RED_HAT_REPO_REQ_SIZE 1000
+#define RED_HAT_REPO "https://access.redhat.com/labs/securitydataapi/cve.json?after=%d-01-01&per_page=%d&page=%d"
 #define CISECURITY_REPO "oval.cisecurity.org"
 #define WINDOWS_OVAL "/repository/download/5.11.2/vulnerability/microsoft_windows_%s.xml"
 #define MACOSX_OVAL "/repository/download/5.11.2/vulnerability/apple_mac_os_%s.xml"
@@ -72,7 +75,7 @@ typedef enum vu_logic {
 typedef enum distribution{
     DIS_UBUNTU,
     DIS_DEBIAN,
-    DIS_REDHAT,
+    DIS_RED_HAT,
     DIS_CENTOS,
     DIS_AMAZL,
     DIS_WINDOWS,
@@ -86,10 +89,6 @@ typedef enum distribution{
     DIS_JESSIE,
     DIS_STRETCH,
     DIS_WHEEZY,
-    // RedHat versions
-    DIS_RHEL5,
-    DIS_RHEL6,
-    DIS_RHEL7,
     // Windows versions
     DIS_WXP,
     DIS_W7,
@@ -145,9 +144,7 @@ typedef enum {
     CVE_JESSIE,
     CVE_STRETCH,
     CVE_WHEEZY,
-    CVE_RHEL5,
-    CVE_RHEL6,
-    CVE_RHEL7,
+    CVE_REDHAT,
     CVE_WXP,
     CVE_W7,
     CVE_W8,
@@ -176,6 +173,7 @@ typedef struct update_node {
     char **allowed_OS_list;
     char **allowed_ver_list;
     unsigned int attempted:1;
+    unsigned int json_format:1;
 } update_node;
 
 typedef struct wm_vulnerability_detector_t {
@@ -235,24 +233,14 @@ typedef struct file_test {
 typedef struct info_cve {
     char *cveid;
     char *title;
-    // This value can be shared by several vulnerabilities when working with patches. That's why we use double pointer
-    // This will occur when a vulnerability extracted from a patch does not contain the 'impact' field
     char **severity;
     char *published;
     char *updated;
     char *reference;
     char *description;
-    char *cvss2;
-    char *cvss3;
     int flags;
     struct info_cve *prev;
 } info_cve;
-
-typedef struct patch {
-    char **patch_id;
-    info_cve *cve_ref; // A CVE sublist for each patch
-    struct patch *prev;
-} patch;
 
 typedef struct vulnerability {
     char *cve_id;
@@ -269,7 +257,6 @@ typedef struct wm_vulnerability_detector_db {
     file_test *file_tests;
     info_state *info_states;
     info_cve *info_cves;
-    patch *patches;
     oval_metadata metadata;
     char *OS;
 } wm_vulnerability_detector_db;

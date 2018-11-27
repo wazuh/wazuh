@@ -180,6 +180,8 @@ extern const char *__local_name;
 
 #define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
 
+#define w_fclose(x) if (x) { fclose(x); x=NULL; }
+
 #ifdef CLIENT
 #define isAgent 1
 #else
