@@ -30,7 +30,7 @@ class LocalServerHandler(server.AbstractServerHandler):
             return super().process_request(command, data)
 
     def get_config(self) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(cluster.read_config()).encode()
+        return b'ok', json.dumps(self.server.configuration).encode()
 
 
 class LocalServer(server.AbstractServer):
