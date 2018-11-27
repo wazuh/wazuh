@@ -633,6 +633,18 @@ ifeq (${MAKECMDGOALS},winagent-x64)
 $(error Do not use 'winagent-x64' directly, use 'TARGET=winagent-x64')
 endif
 
+WIN_ARCH:=
+WIN_INSTDIRPREFIX:=
+ifneq (,$(filter ${TARGET},winagent winagent-x64))
+ifeq (${TARGET},winagent)
+WIN_ARCH:=x86
+WIN_INSTDIRPREFIX:=PROGRAMFILES
+else
+WIN_ARCH:=x86_64
+WIN_INSTDIRPREFIX:=PROGRAMFILES64
+endif
+endif
+
 .PHONY: winagent winagent-x64
 winagent-x64: winagent
 winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
@@ -649,7 +661,7 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
-	cd win32/ && makensis ossec-installer.nsi
+	cd win32/ && makensis -DARCH=${WIN_ARCH} -DINSTDIRPREFIX=${WIN_INSTDIRPREFIX} ossec-installer.nsi
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@

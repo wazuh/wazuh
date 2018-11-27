@@ -1,3 +1,5 @@
+!include "x64.nsh"
+
 ; include Modern UI
 !include "MUI.nsh"
 
@@ -27,16 +29,17 @@
 
 ; output file
 !ifndef OutFile
-    !define OutFile "wazuh-agent-${VERSION}.exe"
+    !define OutFile "wazuh-agent-${VERSION}-${ARCH}.exe"
 !endif
 
 Var is_upgrade
+Var arch_error
 
 Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2018 Wazuh Inc."
 OutFile "${OutFile}"
 
-VIProductVersion "3.7.0.0"
+VIProductVersion "3.8.0.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
 VIAddVersionKey LegalCopyright "2018 - Wazuh Inc."
@@ -46,7 +49,7 @@ VIAddVersionKey ProductVersion "${VERSION}"
 VIAddVersionKey InternalName "Wazuh Agent"
 VIAddVersionKey OriginalFilename "${OutFile}"
 
-InstallDir "$PROGRAMFILES\ossec-agent"
+InstallDir "$${INSTDIRPREFIX}\ossec-agent"
 InstallDirRegKey HKLM Software\OSSEC ""
 
 ; show (un)installation details
@@ -93,6 +96,28 @@ ShowUninstDetails show
 ; function to stop OSSEC service if running
 Function .onInit
     StrCpy $is_upgrade "no"
+    StrCpy $arch_error "no"
+    
+    ; Check if a 64-bit installer is running under Win32 (or viceversa)
+    ${If} ${RunningX64}
+        ${If} ${ARCH} == "x86"
+            StrCpy $arch_error "yes"
+        ${Else}
+            ${EnableX64FSRedirection}
+        ${EndIf}
+    ${Else}
+        ${If} ${ARCH} == "x86_64"
+            StrCpy $arch_error "yes"
+        ${Else}
+            ${DisableX64FSRedirection}
+        ${EndIf}
+    ${EndIf}
+    
+    ${If} $arch_error == "yes"
+        MessageBox MB_OK|MB_ICONSTOP "This installer is designed to run under ${ARCH} versions of Windows."
+        SetErrorLevel 2
+        Abort
+    ${EndIf}
 
     ; stop service
     SimpleSC::ExistsService "${SERVICE}"
