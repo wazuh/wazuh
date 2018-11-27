@@ -458,12 +458,10 @@ class AWSBucket(WazuhIntegration):
                     filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
         filter_args = {
             'Bucket': self.bucket,
-            'MaxKeys': 50,
+            'MaxKeys': 5,
             'Prefix': self.get_full_prefix(aws_account_id, aws_region)
         }
-        if next_token:
-            filter_args['StartAfter'] = next_token
-            return filter_args
+
         if filter_marker:
             filter_args['StartAfter'] = filter_marker
             debug('+++ Marker: {0}'.format(filter_marker), 2)
@@ -564,39 +562,11 @@ class AWSBucket(WazuhIntegration):
                 # Send the message
                 self.send_msg(event_msg)
 
-    def process_files_in_bucket(self, aws_account_id, aws_region, next_token=None):
-        bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region, next_token))
-        if 'Contents' not in bucket_files:
-            debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
-            return
-
-        for bucket_file in bucket_files['Contents']:
-            if not bucket_file['Key']:
-                continue
-
-            if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
-                if self.reparse:
-                    debug("++ File previously processed, but reparse flag set: {file}".format(
-                        file=bucket_file['Key']), 1)
-                else:
-                    debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                    continue
-            debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-            # Get the log file from S3 and decompress it
-            log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-            self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-            # Remove file from S3 Bucket
-            if self.delete_file:
-                debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-            self.mark_complete(aws_account_id, aws_region, bucket_file)
-        # return next continuation token if is truncated
-        if bucket_files['IsTruncated']:
-            return bucket_files['NextContinuationToken']
-
     def iter_files_in_bucket(self, aws_account_id, aws_region):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
+            if 'NextContinuationToken' in bucket_files:
+                print("PRIMERA ITERACION continuation token -> " + bucket_files['NextContinuationToken'])
             if 'Contents' not in bucket_files:
                 debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                 return
@@ -604,7 +574,7 @@ class AWSBucket(WazuhIntegration):
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
-
+                
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
                         debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -612,6 +582,7 @@ class AWSBucket(WazuhIntegration):
                     else:
                         debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                         continue
+                
                 debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                 # Get the log file from S3 and decompress it
                 log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
@@ -623,11 +594,10 @@ class AWSBucket(WazuhIntegration):
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
-                #new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region)
-                #new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
-                #bucket_files = self.client.list_objects_v2(**new_s3_args)
-                bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, \
-                    aws_region, bucket_files['NextContinuationToken']))
+                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region)
+                new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
+                bucket_files = self.client.list_objects_v2(**new_s3_args)
+                
                 if 'Contents' not in bucket_files:
                     debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                     return
@@ -635,15 +605,13 @@ class AWSBucket(WazuhIntegration):
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
-
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
-                        print("ya procesado")
                         if self.reparse:
                             debug("++ File previously processed, but reparse flag set: {file}".format(
                                 file=bucket_file['Key']), 1)
                         else:
                             debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                            continue
+                            continue      
                     debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
