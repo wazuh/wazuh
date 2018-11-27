@@ -37,6 +37,13 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
 static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
 static void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup);
 static void c_files(void);
+
+/*
+ *  Read queue/agent-groups and delete this group for all the agents.
+ *  Returns 0 on success or -1 on error
+ */
+static int purge_group(char *group);
+
 static file_sum** find_sum(const char *group);
 static file_sum ** find_group(const char * file, const char * md5, char group[OS_SIZE_65536]);
 
@@ -62,9 +69,7 @@ OSHash *m_hash;
 /* Interval polling */
 static int poll_interval_time = 0;
 
-/* Message reporting */
-static int reported_metadata_not_exists = 0;
-
+/* This variable is used to prevent flooding when deleting manually groups folders */
 static int reported_non_existing_group = 0;
 
 /* Save a control message received from an agent
@@ -431,11 +436,10 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
             if (files = wreaddir(dir), !files) {
                 if (errno != ENOTDIR) {
-                    mdebug1("At c_multi_group(): Could not open directory '%s'. %s. Ignoring this group.", dir,strerror(errno));
-                    if((reported_non_existing_group % 100) == 0){
-                        mwarn("Could not open directory '%s'. %s. Ignoring this group.", dir,strerror(errno));
+                    if(!reported_non_existing_group){
+                        mwarn("Could not open directory '%s'. Group folder was deleted.", dir);
                     }
-                    reported_non_existing_group++;
+                    purge_group(group);
 
                     goto next;
                 }
@@ -558,6 +562,8 @@ static void c_files()
         OSHash_Free(m_hash);
         m_hash = OSHash_Create();
 
+        reported_non_existing_group = 0;
+
         dp = opendir(MULTIGROUPS_DIR);
 
         if (!dp) {
@@ -637,7 +643,7 @@ static void c_files()
         mdebug1("Opening directory: '%s': %s", GROUPS_DIR, strerror(errno));
         return;
     }
-    
+
     while (entry = readdir(dp), entry) {
         // Skip "." and ".."
         if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
@@ -655,10 +661,13 @@ static void c_files()
             mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
         }
         else if (fgets(groups_info, OS_SIZE_65536, fp)!=NULL ) {
+            // If it's not a multigroup, skip it
+            if(!strstr(groups_info, ",")){
+                continue;
+            }
             fclose(fp);
-            fp = NULL;
-            if(OSHash_Add(m_hash, groups_info,(void*)1) != 2){
-                mdebug1("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
+            if(OSHash_Add(m_hash, groups_info,(void*)1)!= 2){
+                mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
     }
@@ -676,7 +685,6 @@ static void c_files()
         OS_SHA256_String(key,multi_group_hash);
         strncpy(_hash,multi_group_hash,8);
 
-        
         if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
             merror("At c_files(): path '%s' too long.",path);
             break;
@@ -686,7 +694,7 @@ static void c_files()
         if (subdir = wreaddir(path), !subdir) {
             switch (errno) {
                 case ENOENT:
-                    mdebug1("Making multi-group directory: %s", path);
+                    mdebug2("Making multi-group directory: %s", path);
 
                     oldmask = umask(0006);
                     retval = mkdir(path, 0770);
@@ -1099,6 +1107,74 @@ void *update_shared_files(__attribute__((unused)) void *none) {
     }
 
     return NULL;
+}
+
+/*
+ *  Read queue/agent-groups and delete this group for all the agents.
+ *  Returns 0 on success or -1 on error
+ */
+int purge_group(char *group){
+
+    DIR *dp;
+    char path[PATH_MAX + 1];
+    struct dirent *entry;
+    FILE *fp;
+    char groups_info[OS_SIZE_65536 + 1] = {0};
+    char **groups;
+    char *new_groups = NULL;
+    unsigned int i;
+
+    dp = opendir(GROUPS_DIR);
+
+    if (!dp) {
+        mdebug1("on purge_group(): Opening directory: '%s': %s", GROUPS_DIR, strerror(errno));
+        return -1;
+    }
+
+    while (entry = readdir(dp), entry) {
+        // Skip "." and ".."
+        if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
+            continue;
+        }
+
+        new_groups = '\0';
+
+        if (snprintf(path, PATH_MAX + 1, GROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
+            merror("At purge_group(): path too long.");
+            break;
+        }
+
+        fp = fopen(path,"r+");
+
+        if(!fp) {
+            mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+            return -1;
+        }
+        else if (fgets(groups_info, OS_SIZE_65536, fp) !=NULL ) {
+            if(strstr(groups_info, group)){
+                fclose(fp);
+                fp = fopen(path,"w");
+                groups = OS_StrBreak(MULTIGROUP_SEPARATOR, groups_info, MAX_GROUPS_PER_MULTIGROUP);
+                for (i=0; groups[i] != NULL; i++) {
+                    if(!strcmp(groups[i], group)){
+                        continue;
+                    }
+                    wm_strcat(&new_groups, groups[i], MULTIGROUP_SEPARATOR);
+                }
+                if(new_groups) {
+                    fwrite(new_groups, 1, strlen(new_groups), fp);
+                }
+                free_strarray(groups);
+            }
+            fclose(fp);
+        }
+    }
+    if(!reported_non_existing_group) {
+        mdebug2("Group '%s' was deleted. Removing this group from all affected agents...", group);
+        reported_non_existing_group = 1;
+    }
+    os_free(new_groups);
+    return 0;
 }
 
 /* Should be called before anything here */

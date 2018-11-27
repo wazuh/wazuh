@@ -792,11 +792,6 @@ class Agent:
         if path.exists(group_path):
             move(group_path, group_backup)
 
-        Agent.remove_multi_group({group_id.lower()})
-
-
-        return 'Agent deleted successfully.'
-
         msg = "Group '{0}' removed.".format(group_id)
 
         return {'msg': msg, 'affected_agents': ids}
