@@ -314,7 +314,7 @@ int getDefaultNetworkIface(){
             iface = cJSON_GetArrayItem(network_info,i);
             ipv4 = cJSON_GetObjectItem(iface,"ipv4");
             gateway = cJSON_Print(cJSON_GetObjectItem(ipv4,"gateway"));
-            if(strcmp(gateway,"unknown")){
+            if(strcmp(gateway,"\\unknown\\")){
                 default_network_iface = i;
             }
             free(gateway);

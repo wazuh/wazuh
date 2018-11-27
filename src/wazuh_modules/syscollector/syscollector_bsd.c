@@ -674,7 +674,7 @@ hw_info *get_system_bsd(){
 //Get network inventory in JSON
 cJSON * getNetworkIfaces_bsd(){
 
-      cJSON * ifaces_list_json = cJSON_CreateArray();
+      cJSON * ifaces_list_json;
       char ** ifaces_list;
       int i = 0, j = 0, found;
       struct ifaddrs *ifaddrs_ptr, *ifa;
@@ -714,13 +714,16 @@ cJSON * getNetworkIfaces_bsd(){
 
       if(!ifaces_list[j-1]){
           mterror(WM_SYS_LOGTAG, "Not found any interface. Network inventory suspended.");
+          for (i=0; ifaces_list[i]; i++){
+            free(ifaces_list[i]);
+          }
+          free(ifaces_list);
           return ifaces_list_json;
       }
 
       for (i=0; i<j; i++){
-          cJSON *object = cJSON_CreateObject();
+          
           cJSON *interface = cJSON_CreateObject();
-          cJSON_AddItemToObject(object, "iface", interface);
           cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
           cJSON *ipv4 = cJSON_CreateObject();
@@ -988,12 +991,21 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     int i;
 
     for (i = 0; i < cJSON_GetArraySize(ifaces_list_json); ++i){
-        cJSON* object = cJSON_GetArrayItem(ifaces_list_json,i);
+        
+        cJSON *object = cJSON_CreateObject();
+        cJSON* iface = cJSON_GetArrayItem(ifaces_list_json,i);        
+        
+        cJSON_AddStringToObject(object, "type", "network");
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
+        cJSON_AddItemReferenceToObject(object,"iface",iface);
+        
         string = cJSON_PrintUnformatted(object);
         mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+
+        cJSON_Delete(object);
+        free(string);
     }
 
     cJSON_Delete(ifaces_list_json);

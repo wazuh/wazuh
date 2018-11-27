@@ -520,7 +520,8 @@ char * parse_environment_labels(const wlabel_t label) {
 
         }
         else{
-            mwarn("Unrecognized label '%s'", var);
+          mwarn("Unrecognized label '%s'", var);
+          automatic_label = 0;
         }
 
 
