@@ -1591,6 +1591,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->compiled_rule = NULL;
     ruleinfo_pt->lists = NULL;
 
+    ruleinfo_pt->prev_rule = NULL;
+
     return (ruleinfo_pt);
 }
 

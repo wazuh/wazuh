@@ -87,6 +87,8 @@ typedef struct _Eventinfo {
     char *sk_tag;
     int perm_before;
     int perm_after;
+    char *win_perm_before;
+    char *win_perm_after;
     char *md5_before;
     char *md5_after;
     char *sha1_before;
@@ -110,6 +112,8 @@ typedef struct _Eventinfo {
     char *diff;
     char *previous;
     wlabel_t *labels;
+    unsigned int attrs_before;
+    unsigned int attrs_after;
     // Whodata fields
     char *user_id;
     char *user_name;

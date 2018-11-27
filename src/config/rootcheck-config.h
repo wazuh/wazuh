@@ -12,6 +12,9 @@
 
 #include <stdio.h>
 
+#define RK_CONF_UNPARSED -2
+#define RK_CONF_UNDEFINED -1
+
 typedef struct _rkconfig {
     const char *workdir;
     char *basedir;

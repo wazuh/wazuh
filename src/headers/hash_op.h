@@ -51,6 +51,8 @@ int OSHash_Add_ex(OSHash *hash, const char *key, void *data) __attribute__((nonn
 int OSHash_Add_ins(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 int OSHash_Update(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 int OSHash_Update_ex(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
+int OSHash_Set(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
+int OSHash_Set_ex(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 void *OSHash_Delete(OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Numeric_Delete_ex(OSHash *self, int key) __attribute__((nonnull(1)));
 void *OSHash_Delete_ex(OSHash *self, const char *key) __attribute__((nonnull));

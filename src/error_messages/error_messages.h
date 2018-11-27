@@ -187,9 +187,10 @@
 #define REM_ERROR       "(1956): Error removing '%s' file."
 #define NEW_GLOB_FILE   "(1957): New file that matches the '%s' pattern: '%s'."
 #define DUP_FILE        "(1958): Log file '%s' is duplicated."
-#define FORGET_FILE     "(1959): File '%s' does not exist. Forgetting."
+#define FORGET_FILE     "(1959): File '%s' does not exist."
 #define FILE_LIMIT      "(1960): File limit has been reached (%d). Please reduce the number of files or increase \"logcollector.max_files\"."
 #define CURRENT_FILES   "(1961): Files being monitored: %i/%i."
+#define OPEN_ATTEMPT    "(1962): Unable to open file '%s'. Remaining attempts: %d"
 
 
 /* Encryption/auth errors */
@@ -359,5 +360,11 @@
 #define OS_WARN_BUFFER  "wazuh: Agent buffer: '%d%%'."
 #define OS_FULL_BUFFER  "wazuh: Agent buffer: 'full'."
 #define OS_FLOOD_BUFFER "wazuh: Agent buffer: 'flooded'."
+
+/* WIN32 errors */
+#define CONF_ERROR      "Could not read (%s) (Make sure config exists and executable is running with Administrative privileges)."
+#define GMF_ERROR       "Could not run GetModuleFileName."
+#define GMF_BUFF_ERROR  "Could not get path because it is too long and was shrunk by (%d) characters with a max of (%d)."
+#define GMF_UNKN_ERROR  "Could not run GetModuleFileName which returned (%ld)."
 
 #endif /* _ERROR_MESSAGES__H */

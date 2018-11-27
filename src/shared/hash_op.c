@@ -13,6 +13,7 @@
 
 static unsigned int _os_genhash(const OSHash *self, const char *key) __attribute__((nonnull));
 
+int _OSHash_Add(OSHash *self, const char *key, void *data, int update);
 
 /* Create hash
  * Returns NULL on error
@@ -232,7 +233,21 @@ int OSHash_Update_ex(OSHash *self, const char *key, void *data)
  * Returns 2 on success
  * Key must not be NULL.
  */
-int OSHash_Add(OSHash *self, const char *key, void *data)
+int OSHash_Add(OSHash *self, const char *key, void *data) {
+    return _OSHash_Add(self, key, data, 0);
+}
+
+/** int OSHash_Set(OSHash *self, char *key, void *data)
+ * Returns 0 on error.
+ * Returns 1 on duplicated key (updated)
+ * Returns 2 on success (added)
+ * Key must not be NULL.
+ */
+int OSHash_Set(OSHash *self, const char *key, void *data) {
+    return _OSHash_Add(self, key, data, 1);
+}
+
+int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
 {
     unsigned int hash_key;
     unsigned int index;
@@ -248,9 +263,11 @@ int OSHash_Add(OSHash *self, const char *key, void *data)
     /* Check for duplicated entries in the index */
     curr_node = self->table[index];
     while (curr_node) {
-        /* Checking for duplicated key -- not adding */
+        /* Checking for duplicated key */
         if (strcmp(curr_node->key, key) == 0) {
-            /* Not adding */
+            if (update) {
+                 curr_node->data = data;
+            }
             return (1);
         }
         curr_node = curr_node->next;
@@ -312,6 +329,22 @@ int OSHash_Add_ex(OSHash *self, const char *key, void *data)
     w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
     result = OSHash_Add(self,key,data);
     w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+    return result;
+}
+
+/** int OSHash_Set_ex(OSHash *self, char *key, void *data)
+ * Returns 0 on error.
+ * Returns 1 on duplicated key (updated)
+ * Returns 2 on success (added)
+ * Key must not be NULL.
+ */
+int OSHash_Set_ex(OSHash *self, const char *key, void *data)
+{
+    int result;
+    w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
+    result = OSHash_Set(self,key,data);
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
     return result;
 }
 

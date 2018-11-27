@@ -143,7 +143,7 @@ typedef int sock2len_t;
 typedef int uid_t;
 typedef int gid_t;
 typedef int socklen_t;
-#define sleep(x) Sleep(x * 1000)
+#define sleep(x) Sleep((x) * 1000)
 #define srandom(x) srand(x)
 #define lstat(x,y) stat(x,y)
 #define CloseSocket(x) closesocket(x)

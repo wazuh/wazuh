@@ -24,6 +24,7 @@
 /* Size limit control */
 #define OS_SIZE_65536   65536
 #define OS_SIZE_61440   61440
+#define OS_SIZE_20480   20480
 #define OS_SIZE_8192    8192
 #define OS_SIZE_6144    6144
 #define OS_SIZE_4096    4096
@@ -58,7 +59,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.7.1"
+#define __ossec_version "v3.8.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"

@@ -135,11 +135,11 @@ int main(int argc, char **argv)
     int is_worker = w_is_worker();
 
     switch (is_worker){
-        case -1:
-            merror("Cannot read cluster config %s", strerror(errno));
+        case 0:
+            mdebug1("This is not a worker");
             break;
         case 1:
-            mdebug1("Cluster client node: Disabling the merged.mg creation");
+            mdebug1("Cluster worker node: Disabling the merged.mg creation");
             logr.nocmerged = 1;
             break;
 }

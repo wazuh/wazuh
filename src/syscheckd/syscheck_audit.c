@@ -23,10 +23,15 @@
 #define ADD_RULE 1
 #define DELETE_RULE 2
 #define AUDIT_CONF_FILE DEFAULTDIR "/etc/af_wazuh.conf"
-#define AUDIT_CONF_LINK "/etc/audisp/plugins.d/af_wazuh.conf"
+#define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
+#define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
+#define AUDIT_CONF_LINK "af_wazuh.conf"
 #define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
-#define BUF_SIZE 4096
+#define BUF_SIZE 6144
 #define AUDIT_KEY "wazuh_fim"
+#define RELOAD_RULES_INTERVAL 30 // Seconds to reload Audit rules
+#define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
+#define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 
 // Global variables
 W_Vector *audit_added_rules;
@@ -34,6 +39,7 @@ W_Vector *audit_added_dirs;
 pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 int auid_err_reported;
+static unsigned int count_reload_retries;
 
 #ifdef ENABLE_AUDIT
 
@@ -49,7 +55,9 @@ static regex_t regexCompiled_path0;
 static regex_t regexCompiled_path1;
 static regex_t regexCompiled_path2;
 static regex_t regexCompiled_path3;
+static regex_t regexCompiled_path4;
 static regex_t regexCompiled_items;
+static regex_t regexCompiled_inode;
 static regex_t regexCompiled_dir;
 
 
@@ -142,10 +150,22 @@ int audit_restart(void) {
 int set_auditd_config(void) {
 
     FILE *fp;
+    char audit_path[50] = {0};
+
+    // Check audisp version
+    if (IsDir(PLUGINS_DIR_AUDIT_3) == 0) {
+        // Audit 3.X
+        snprintf(audit_path, sizeof(audit_path) - 1, "%s/%s", PLUGINS_DIR_AUDIT_3, AUDIT_CONF_LINK);
+    } else if (IsDir(PLUGINS_DIR_AUDIT_2) == 0) {
+        // Audit 2.X
+        snprintf(audit_path, sizeof(audit_path) - 1, "%s/%s", PLUGINS_DIR_AUDIT_2, AUDIT_CONF_LINK);
+    } else {
+        return 0;
+    }
 
     // Check that the plugin file is installed
 
-    if (!IsLink(AUDIT_CONF_LINK) && !IsFile(AUDIT_CONF_LINK)) {
+    if (!IsLink(audit_path) && !IsFile(audit_path)) {
         // Check that the socket exists
 
         if (!IsSocket(AUDIT_SOCKET)) {
@@ -181,31 +201,31 @@ int set_auditd_config(void) {
         return -1;
     }
 
-    if (symlink(AUDIT_CONF_FILE, AUDIT_CONF_LINK) < 0) {
+    if (symlink(AUDIT_CONF_FILE, audit_path) < 0) {
         switch (errno) {
         case EEXIST:
-            if (unlink(AUDIT_CONF_LINK) < 0) {
-                merror(UNLINK_ERROR, AUDIT_CONF_LINK, errno, strerror(errno));
+            if (unlink(audit_path) < 0) {
+                merror(UNLINK_ERROR, audit_path, errno, strerror(errno));
                 return -1;
             }
 
-            if (symlink(AUDIT_CONF_FILE, AUDIT_CONF_LINK) == 0) {
+            if (symlink(AUDIT_CONF_FILE, audit_path) == 0) {
                 break;
             }
 
             break;
 
         default: // Fallthrough
-            merror(LINK_ERROR, AUDIT_CONF_LINK, AUDIT_CONF_FILE, errno, strerror(errno));
+            merror(LINK_ERROR, audit_path, AUDIT_CONF_FILE, errno, strerror(errno));
             return -1;
         }
     }
 
     if (syscheck.restart_audit) {
-        minfo("Audisp configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
+        minfo("Audit plugin configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
         return audit_restart();
     } else {
-        mwarn("Audisp configuration was modified. You need to restart Auditd. Who-data will be disabled.");
+        mwarn("Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled.");
         return 1;
     }
 }
@@ -331,6 +351,43 @@ int audit_delete_rule(const char *path, const char *key) {
 }
 
 
+// Check if exists rule '-a task,never'
+int audit_check_lock_output(void) {
+    int retval;
+    int audit_handler;
+
+    int flags = AUDIT_FILTER_TASK;
+
+    audit_handler = audit_open();
+    if (audit_handler < 0) {
+        return (-1);
+    }
+
+    struct audit_rule_data *myrule = NULL;
+    myrule = malloc(sizeof(struct audit_rule_data));
+    memset(myrule, 0, sizeof(struct audit_rule_data));
+
+    retval = audit_add_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
+
+    if (retval == -17) {
+        audit_rule_free_data(myrule);
+        audit_close(audit_handler);
+        return 1;
+    } else {
+        // Delete if it was inserted
+        retval = audit_delete_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
+        audit_rule_free_data(myrule);
+        audit_close(audit_handler);
+        if (retval < 0) {
+            mdebug2("audit_delete_rule_data = (%i) %s", retval, audit_errno_to_name(abs(retval)));
+            merror("Error removing test rule. Audit output is blocked.");
+            return 1;
+        }
+        return 0;
+    }
+}
+
+
 int add_audit_rules_syscheck(void) {
     unsigned int i = 0;
     unsigned int rules_added = 0;
@@ -341,13 +398,13 @@ int add_audit_rules_syscheck(void) {
                 if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
                     mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
                     w_mutex_lock(&audit_rules_mutex);
-                    W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                    W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
                 } else if (abs(retval) == 17) {
                     mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
                     w_mutex_lock(&audit_rules_mutex);
-                    W_Vector_insert(audit_added_rules, syscheck.dir[i]);
+                    W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
                 } else {
@@ -396,6 +453,12 @@ int init_regex(void) {
         merror("Cannot compile ppid regular expression.");
         return -1;
     }
+    // static const char *pattern_inode = " inode=([0-9]*) ";
+    static const char *pattern_inode = " item=[0-9] name=.* inode=([0-9]*)";
+    if (regcomp(&regexCompiled_inode, pattern_inode, REG_EXTENDED)) {
+        merror("Cannot compile inode regular expression.");
+        return -1;
+    }
     static const char *pattern_pname = " exe=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
         merror("Cannot compile pname regular expression.");
@@ -424,6 +487,11 @@ int init_regex(void) {
     static const char *pattern_path3 = " item=3 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path3, pattern_path3, REG_EXTENDED)) {
         merror("Cannot compile path3 regular expression.");
+        return -1;
+    }
+    static const char *pattern_path4 = " item=4 name=\"([^ ]*)\"";
+    if (regcomp(&regexCompiled_path4, pattern_path4, REG_EXTENDED)) {
+        merror("Cannot compile path4 regular expression.");
         return -1;
     }
     static const char *pattern_items = " items=([0-9]*) ";
@@ -474,6 +542,17 @@ int audit_init(void) {
     static int audit_socket;
     audit_socket = init_auditd_socket();
 
+    // Check if there's a blockig rule
+    if (audit_check_lock_output()) {
+        mwarn("Audit rule '-a never,task' is blocking the audit output. Whodata cannot start.");
+        // Send alert
+        char msg_alert[512 + 1];
+        snprintf(msg_alert, 512, "ossec: Audit: Rule is blocking the audit output: Whodata cannot start");
+        SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+        return (-1);
+    }
+
+
     if (audit_socket >= 0) {
 
         mdebug1("Starting Auditd events reader thread...");
@@ -488,6 +567,7 @@ int audit_init(void) {
 
         // Start audit thread
         w_cond_init(&audit_thread_started, NULL);
+        w_cond_init(&audit_db_consistency, NULL);
         w_create_thread(audit_main, &audit_socket);
         w_mutex_lock(&audit_mutex);
         while (!audit_thread_active)
@@ -500,6 +580,12 @@ int audit_init(void) {
     }
 }
 
+void audit_set_db_consistency(void) {
+    w_mutex_lock(&audit_mutex);
+    audit_db_consistency_flag = 1;
+    w_cond_signal(&audit_db_consistency);
+    w_mutex_unlock(&audit_mutex);
+}
 
 // Extract id: node=... type=CWD msg=audit(1529332881.955:3867): cwd="..."
 char * audit_get_id(const char * event) {
@@ -571,7 +657,6 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 
 
 void audit_parse(char *buffer) {
-    char *pkey;
     char *psuccess;
     char *pconfig;
     char *pdelete;
@@ -588,15 +673,22 @@ void audit_parse(char *buffer) {
     char *path1 = NULL;
     char *path2 = NULL;
     char *path3 = NULL;
+    char *path4 = NULL;
     char *cwd = NULL;
     char *file_path = NULL;
+    char *inode = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
+    char *inode_temp;
+    unsigned int filter_key;
 
-    if (pkey = strstr(buffer,"key=\"wazuh_fim\""), pkey) { // Parse only 'wazuh_fim' events.
+    // Checks if the key obtained is one of those configured to monitor
+    filter_key = filterkey_audit_events(buffer);
 
+    switch (filter_key) {
+    case 1: // "wazuh_fim"
         if ((pconfig = strstr(buffer,"type=CONFIG_CHANGE"), pconfig)
-        && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
+            && ((pdelete = strstr(buffer,"op=remove_rule"), pdelete) ||
             (pdelete = strstr(buffer,"op=\"remove_rule\""), pdelete))) { // Detect rules modification.
 
             // Filter rule removed
@@ -608,23 +700,38 @@ void audit_parse(char *buffer) {
             }
 
             if (p_dir && *p_dir != '\0') {
-                mwarn("Monitored directory '%s' was removed: Audit rule removed.", p_dir);
+                minfo("Monitored directory '%s' was removed: Audit rule removed.", p_dir);
                 // Send alert
                 char msg_alert[512 + 1];
                 snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
             } else {
-                audit_thread_active = 0;
                 mwarn("Detected Audit rules manipulation: Audit rules removed.");
                 // Send alert
                 char msg_alert[512 + 1];
                 snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Audit rules removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+
+                count_reload_retries++;
+
+                if (count_reload_retries < AUDIT_LOAD_RETRIES) {
+                    // Reload rules
+                    audit_reload_rules();
+                } else {
+                    // Send alert
+                    char msg_alert[512 + 1];
+                    snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+                    SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+                    // Stop thread
+                    audit_thread_active = 0;
+                }
             }
 
             free(p_dir);
-
-        } else if (psuccess = strstr(buffer,"success=yes"), psuccess) {
+        }
+        // Fallthrough
+    case 2:
+        if (psuccess = strstr(buffer,"success=yes"), psuccess) {
 
             os_calloc(1, sizeof(whodata_evt), w_evt);
 
@@ -727,6 +834,14 @@ void audit_parse(char *buffer) {
                 os_malloc(match_size + 1, path1);
                 snprintf (path1, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             }
+            // inode
+            if(regexec(&regexCompiled_inode, buffer, 2, match, 0) == 0) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, inode);
+                snprintf (inode, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                w_evt->inode = strdup(inode);
+                free(inode);
+            }
 
             switch(items) {
 
@@ -734,16 +849,24 @@ void audit_parse(char *buffer) {
                     if (cwd && path0) {
                         if (file_path = gen_audit_path(cwd, path0, NULL), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            realtime_checksumfile(w_evt->path, w_evt);
+
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
                         }
                     }
                     break;
@@ -751,16 +874,24 @@ void audit_parse(char *buffer) {
                     if (cwd && path0 && path1) {
                         if (file_path = gen_audit_path(cwd, path0, path1), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
-                            realtime_checksumfile(w_evt->path, w_evt);
+
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
                         }
                     }
                     break;
@@ -782,17 +913,24 @@ void audit_parse(char *buffer) {
                         char *file_path1;
                         if (file_path1 = gen_audit_path(cwd, path0, path2), file_path1) {
                             w_evt->path = file_path1;
-                            mdebug2("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
                             free(file_path1);
                             w_evt->path = NULL;
                         }
@@ -801,30 +939,95 @@ void audit_parse(char *buffer) {
                         char *file_path2;
                         if (file_path2 = gen_audit_path(cwd, path1, path3), file_path2) {
                             w_evt->path = file_path2;
-                            mdebug2("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, path=%s, pname=%s",
+                            mdebug2("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
                                 (w_evt->group_name)?w_evt->group_name:"",
                                 w_evt->process_id,
                                 w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
                         }
                     }
                     free(path2);
                     free(path3);
                     break;
+                case 5:
+                    // path4
+                    if(regexec(&regexCompiled_path4, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        os_malloc(match_size + 1, path4);
+                        snprintf (path4, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                    }
+                    if (cwd && path1 && path4) {
+                        char *file_path;
+                        if (file_path = gen_audit_path(cwd, path1, path4), file_path) {
+                            w_evt->path = file_path;
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
+                                (w_evt->user_name)?w_evt->user_name:"",
+                                (w_evt->audit_name)?w_evt->audit_name:"",
+                                (w_evt->effective_name)?w_evt->effective_name:"",
+                                (w_evt->group_name)?w_evt->group_name:"",
+                                w_evt->process_id,
+                                w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
+                                (w_evt->path)?w_evt->path:"",
+                                (w_evt->process_name)?w_evt->process_name:"");
+
+                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
+                        }
+                    }
+                    free(path4);
+                    break;
             }
             free(cwd);
             free(path0);
             free(path1);
-
             free_whodata_event(w_evt);
         }
     }
+}
+
+
+void audit_reload_rules(void) {
+    mdebug1("Reloading Audit rules...");
+    int rules_added = add_audit_rules_syscheck();
+    mdebug1("Audit rules reloaded: %i", rules_added);
+}
+
+
+void *audit_reload_thread(void) {
+    struct timespec spec0;
+    struct timespec spec1;
+
+    gettime(&spec0);
+
+    while (audit_thread_active) {
+        // Reload rules
+        gettime(&spec1);
+        if (spec1.tv_sec - spec0.tv_sec >= RELOAD_RULES_INTERVAL) {
+            audit_reload_rules();
+            gettime(&spec0);
+        }
+    }
+
+    return NULL;
 }
 
 
@@ -839,6 +1042,8 @@ void * audit_main(int * audit_sock) {
     size_t len;
     fd_set fdset;
     struct timeval timeout;
+    count_reload_retries = 0;
+    int conn_retries;
 
     char *buffer;
     buffer = malloc(BUF_SIZE * sizeof(char));
@@ -847,7 +1052,15 @@ void * audit_main(int * audit_sock) {
     w_mutex_lock(&audit_mutex);
     audit_thread_active = 1;
     w_cond_signal(&audit_thread_started);
+
+    while (!audit_db_consistency_flag) {
+        w_cond_wait(&audit_db_consistency, &audit_mutex);
+    }
+
     w_mutex_unlock(&audit_mutex);
+
+    // Start rules reloading thread
+    w_create_thread(audit_reload_thread, NULL);
 
     minfo("Starting FIM Whodata engine...");
 
@@ -884,6 +1097,22 @@ void * audit_main(int * audit_sock) {
         if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), !byteRead) {
             // Connection closed
             mwarn("Audit: connection closed.");
+            // Reconnect
+            conn_retries = 0;
+            sleep(1);
+            minfo("Audit: reconnecting... (%i)", ++conn_retries);
+            *audit_sock = init_auditd_socket();
+            while (conn_retries < MAX_CONN_RETRIES && *audit_sock < 0) {
+                minfo("Audit: reconnecting... (%i)", ++conn_retries);
+                sleep(1);
+                *audit_sock = init_auditd_socket();
+            }
+            if (*audit_sock >= 0) {
+                minfo("Audit: connected.");
+                // Reload rules
+                audit_reload_rules();
+                continue;
+            }
             // Send alert
             char msg_alert[512 + 1];
             snprintf(msg_alert, 512, "ossec: Audit: Connection closed");
@@ -945,6 +1174,7 @@ void * audit_main(int * audit_sock) {
         } else {
             buffer_i = 0;
         }
+
     }
 
     // Auditd is not runnig or socket closed.
@@ -961,8 +1191,12 @@ void * audit_main(int * audit_sock) {
     regfree(&regexCompiled_cwd);
     regfree(&regexCompiled_path0);
     regfree(&regexCompiled_path1);
+    regfree(&regexCompiled_path2);
+    regfree(&regexCompiled_path3);
+    regfree(&regexCompiled_path4);
     regfree(&regexCompiled_pname);
     regfree(&regexCompiled_items);
+    regfree(&regexCompiled_inode);
     // Change Audit monitored folders to Inotify.
     int i;
     w_mutex_lock(&audit_rules_mutex);
@@ -995,6 +1229,43 @@ void clean_rules(void) {
         audit_added_rules = NULL;
     }
     w_mutex_unlock(&audit_mutex);
+}
+
+
+int filterkey_audit_events(char *buffer) {
+    int i = 0;
+    char logkey1[OS_SIZE_256];
+    char logkey2[OS_SIZE_256];
+
+    snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_KEY);
+    if (strstr(buffer, logkey1)) {
+        mdebug2("Match audit_key: '%s'", logkey1);
+        return 1;
+    }
+
+    while (syscheck.audit_key[i]) {
+        snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.audit_key[i]);
+        snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_key[i]);
+        if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
+            mdebug2("Match audit_key: '%s'", logkey1);
+            return 2;
+        }
+        i++;
+    }
+    return 0;
+}
+
+
+int filterpath_audit_events(char *path) {
+    int i = 0;
+
+    for(i = 0; i < W_Vector_length(audit_added_dirs); i++) {
+        if (strstr(path, W_Vector_get(audit_added_dirs, i))) {
+            mdebug2("Found '%s' in '%s'", W_Vector_get(audit_added_dirs, i), path);
+            return 1;
+        }
+    }
+    return 0;
 }
 #endif
 #endif

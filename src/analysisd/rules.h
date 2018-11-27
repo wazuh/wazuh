@@ -172,6 +172,9 @@ typedef struct _RuleInfo {
     pthread_mutex_t mutex;
 
     char *file;
+
+    /* Pointer to the previous rule matched */
+    void *prev_rule;
 } RuleInfo;
 
 

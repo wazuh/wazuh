@@ -1,7 +1,63 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.7.0]
+## [v3.8.0]
+
+### Added
+
+- Add options to detect changes attributes and file permissions for Windows. ([#1918](https://github.com/wazuh/wazuh/pull/1918))
+
+### Changed
+
+- Deprecated the Syscheck option `<remove_old_diff>` by making it mandatory. ([#1915](https://github.com/wazuh/wazuh/pull/1915))
+
+### Fixed
+
+
+## [v3.7.1]
+
+### Added
+
+- New internal option `remoted.guess_agent_group` allowing agent group guessing by Remoted to be optional. ([#1890](https://github.com/wazuh/wazuh/pull/1890))
+- Added option to configure another audit keys to monitor. ([#1882](https://github.com/wazuh/wazuh/pull/1882))
+- Added option to create the SSL certificate and key with the install.sh script. ([#1856](https://github.com/wazuh/wazuh/pull/1856))
+- Add IPv6 support to `host-deny.sh` script. (by @iasdeoupxe). ([#1583](https://github.com/wazuh/wazuh/pull/1583))
+- Added tracing information (PID, function, file and line number) to logs when debugging is enabled. ([#1866](https://github.com/wazuh/wazuh/pull/1866))
+
+### Changed
+
+- Change errors messages to descriptive warnings in Syscheck when a files is not reachable. ([#1730](https://github.com/wazuh/wazuh/pull/1730))
+- Add default values to global options to let the manager start. ([#1894](https://github.com/wazuh/wazuh/pull/1894))
+- Improve Remoted performance by reducing interaction between threads. ([#1902](https://github.com/wazuh/wazuh/pull/1902))
+
+### Fixed
+
+- Prevent duplicates entries for denied IP addresses by `host-deny.sh`. (by @iasdeoupxe). ([#1583](https://github.com/wazuh/wazuh/pull/1583))
+- Fix issue in Logcollector when reaching the file end before getting a full line. ([#1744](https://github.com/wazuh/wazuh/pull/1744))
+- Throw an error when a nonexistent CDB file is added in the ossec.conf file. ([#1783](https://github.com/wazuh/wazuh/pull/1783))
+- Fix bug in Remoted that truncated control messages to 1024 bytes. ([#1847](https://github.com/wazuh/wazuh/pull/1847))
+- Avoid that the attribute `ignore` of rules silence alerts. ([#1874](https://github.com/wazuh/wazuh/pull/1874))
+- Fix race condition when decoding file permissions. ([#1879](https://github.com/wazuh/wazuh/pull/1879)
+- Fix to overwrite FIM configuration when directories come in the same tag separated by commas. ([#1886](https://github.com/wazuh/wazuh/pull/1886))
+- Fixed issue with hash table handling in FTS and label management. ([#1889](https://github.com/wazuh/wazuh/pull/1889))
+- Fixed id's and description of FIM alerts. ([#1891](https://github.com/wazuh/wazuh/pull/1891))
+- Fix log flooding by Logcollector when monitored files disappear. ([#1893](https://github.com/wazuh/wazuh/pull/1893))
+- Fix bug configuring empty blocks in FIM. ([#1897](https://github.com/wazuh/wazuh/pull/1897))
+- Let the Windows agent reset the random generator context if it's corrupt. ([#1898](https://github.com/wazuh/wazuh/pull/1898))
+- Prevent Remoted from logging errors if the cluster configuration is missing or invalid. ([#1900](https://github.com/wazuh/wazuh/pull/1900))
+- Fix race condition hazard in Remoted when handling control messages. ([#1902](https://github.com/wazuh/wazuh/pull/1902))
+- Fix uncontrolled condition in the vulnerability-detector version checker. ([#1932](https://github.com/wazuh/wazuh/pull/1932))
+- Restore support for Amazon Linux in vulnerability-detector. ([#1932](https://github.com/wazuh/wazuh/pull/1932))
+- Fixed starting wodles after a delay specified in `interval` when `run_on_start` is set to `no`, on the first run of the agent. ([#1906](https://github.com/wazuh/wazuh/pull/1906))
+- Prevent `agent-auth` tool from creating the file _client.keys_ outside the agent's installation folder. ([#1924](https://github.com/wazuh/wazuh/pull/1924))
+- Fix symbolic links attributes reported by `syscheck` in the alerts. ([#1926](https://github.com/wazuh/wazuh/pull/1926))
+- Added some improvements and fixes in Whodata. ([#1929](https://github.com/wazuh/wazuh/pull/1929))
+- Fix FIM decoder to accept Windows user containing spaces. ([#1930](https://github.com/wazuh/wazuh/pull/1930))
+- Add missing field `restrict` when querying the FIM configuration remotely. ([#1931](https://github.com/wazuh/wazuh/pull/1931))
+- Fix values of FIM scan showed in agent_control info. ([#1940](https://github.com/wazuh/wazuh/pull/1940))
+
+
+## [v3.7.0] - 2018-11-10
 
 ### Added
 

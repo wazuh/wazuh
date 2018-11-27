@@ -115,8 +115,8 @@ int FTS_Init(int threads)
             merror(MEM_ERROR, errno, strerror(errno));
         } else {
             if (OSHash_Add(fts_store, tmp_s, tmp_s) != 2) {
-                merror("At FTS_Init(): OSHash_Add() failed");
                 free(tmp_s);
+                merror(LIST_ADD_ERROR);
             }
         }
         

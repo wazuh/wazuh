@@ -29,7 +29,4 @@
     <nodiff>/etc/ssl/private.key</nodiff>
 
     <skip_nfs>yes</skip_nfs>
-
-    <!-- Remove not monitored files -->
-    <remove_old_diff>yes</remove_old_diff>
   </syscheck>

@@ -21,7 +21,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
     } else {
         pl = overwrite;
     }
-    
+
     if (reg == 1) {
 #ifdef WIN32
         if (syscheck->registry == NULL) {
@@ -306,6 +306,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_check_perm = "check_perm";
     const char *xml_check_mtime = "check_mtime";
     const char *xml_check_inode = "check_inode";
+    const char *xml_check_attrs = "check_attrs";
     const char *xml_real_time = "realtime";
     const char *xml_report_changes = "report_changes";
     const char *xml_restrict = "restrict";
@@ -382,9 +383,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_GROUP;
                     opts |= CHECK_MTIME;
                     opts |= CHECK_INODE;
+                    opts |= CHECK_ATTRS;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM
-                            | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
+                            | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_ATTRS);
                 } else {
                     merror(SK_INV_OPT, *values, *attrs);
                     ret = 0;
@@ -525,6 +527,18 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     goto out_free;
                 }
             }
+            /* Check attributes */
+            else if (strcmp(*attrs, xml_check_attrs) == 0) {
+                if (strcmp(*values, "yes") == 0) {
+                    opts |= CHECK_ATTRS;
+                } else if (strcmp(*values, "no") == 0) {
+                    opts &= ~ CHECK_ATTRS;
+                } else {
+                    merror(SK_INV_OPT, *values, *attrs);
+                    ret = 0;
+                    goto out_free;
+                }
+            }
             /* Check real time */
             else if (strcmp(*attrs, xml_real_time) == 0) {
                 if (strcmp(*values, "yes") == 0) {
@@ -625,6 +639,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         /* Add directory - look for the last available */
         j = 0;
+        int overwrite = 0;
         while (syscheck->dir && syscheck->dir[j]) {
             char expandedpath[OS_MAXSTR];
             char *ptfile;
@@ -655,7 +670,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 mdebug2("Overwriting the file entry %s", expandedpath);
                 dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, j);
                 ret = 1;
-                goto out_free;
+                overwrite = 1;
             }
 
             j++;
@@ -685,17 +700,23 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
 
             while (g.gl_pathv[gindex]) {
-                dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+                if(overwrite == 0) {
+                    dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+                }
                 gindex++;
             }
 
             globfree(&g);
         }
         else {
-            dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+            if(overwrite == 0) {
+                dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+            }
         }
 #else
-	    dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+        if(overwrite == 0) {
+            dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+        }
 #endif
 
         if (restrictfile) {
@@ -736,9 +757,11 @@ out_free:
     return ret;
 }
 
-int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
+    int j = 0;
+    xml_node **children = NULL;
 
     /* XML Definitions */
     const char *xml_directories = "directories";
@@ -750,7 +773,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_registry_ignore = "registry_ignore";
     const char *xml_auto_ignore = "auto_ignore";
     const char *xml_alert_new_files = "alert_new_files";
-    const char *xml_remove_old_diff = "remove_old_diff";
+    const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";
     const char *xml_scan_on_start = "scan_on_start";
     const char *xml_prefilter_cmd = "prefilter_cmd";
@@ -765,6 +788,8 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     const char *xml_both = "both";
     const char *xml_tag = "tags";
 #endif
+    const char *xml_whodata_options = "whodata";
+    const char *xml_audit_key = "audit_key";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -776,15 +801,13 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     syscheck = (syscheck_config *)configp;
     unsigned int nodiff_size = 0;
 
-    /* If no options are defined, disable it */
-    if (!node) {
-        syscheck->disabled = 1;
-        return 0;
-    } else {
-        syscheck->disabled = 0;
+    if (syscheck->disabled == SK_CONF_UNPARSED) {
+        syscheck->disabled = SK_CONF_UNDEFINED;
     }
 
-    while (node[i]) {
+    os_calloc(1, sizeof(char *), syscheck->audit_key);
+
+    while (node && node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
             return (OS_INVALID);
@@ -1187,14 +1210,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 }
             }
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                syscheck->remove_old_diff = 1;
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                syscheck->remove_old_diff = 0;
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
+            // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
             if(strcmp(node[i]->content, "yes") == 0)
                 syscheck->restart_audit = 1;
@@ -1205,6 +1221,40 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 merror(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
+        }
+        /* Whodata options */
+        else if (strcmp(node[i]->element, xml_whodata_options) == 0) {
+
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                i++;
+                continue;
+            }
+
+            for (j = 0; children[j]; j++) {
+                /* Listen another audit keys */
+                if (strcmp(children[j]->element, xml_audit_key) == 0) {
+                    int keyit = 0;
+                    char delim = ',';
+                    char *key;
+                    syscheck->audit_key[keyit] = NULL;
+                    key = strtok(children[j]->content, &delim);
+
+                    while (key) {
+                        if (*key) {
+                            syscheck->audit_key[keyit] = check_ascci_hex(key);
+                            os_realloc(syscheck->audit_key, (keyit + 2) * sizeof(char *), syscheck->audit_key);
+                            syscheck->audit_key[keyit + 1] = NULL;
+                            key = strtok(NULL, &delim);
+                            keyit++;
+                        }
+                    }
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+            OS_ClearNode(children);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -1235,6 +1285,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         CHECK_MTIME,
         CHECK_INODE,
         CHECK_WHODATA,
+        CHECK_ATTRS,
 	0
 	};
     char *check_strings[] = {
@@ -1250,6 +1301,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "mtime",
         "inode",
         "whodata",
+        "attributes",
 	NULL
 	};
 
@@ -1371,5 +1423,30 @@ void Free_Syscheck(syscheck_config * config) {
             free(config->realtime);
         }
         free(config->prefilter_cmd);
+
+        free_strarray(config->audit_key);
     }
+}
+
+char* check_ascci_hex (char *input) {
+    unsigned int j = 0;
+    int hex = 0;
+    char outhex[OS_SIZE_256];
+
+    for (j = 0; j < strlen(input); j++) {
+        snprintf(outhex + j*2, OS_SIZE_256 - j * 2, "%hhX", input[j]);
+        if ((unsigned int)input[j] > 126 ||
+                (unsigned int)input[j] == 32 ||
+                (unsigned int)input[j] == 34) {
+            hex = 1;
+        }
+    }
+
+    char *output;
+    if (hex) {
+        os_strdup(outhex, output);
+    } else {
+        os_strdup(input, output);
+    }
+    return output;
 }
