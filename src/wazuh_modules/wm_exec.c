@@ -350,12 +350,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
         setsid();
         if (nice(wm_task_nice)) {}
-        if (execvp(argv[0], argv) < 0)
-            exit(EXECVE_ERROR);
+        execvp(argv[0], argv);
+        _exit(EXECVE_ERROR);
 
-        // Dead code
-        // ToDo: remove execvpe()
-        free_strarray(argv);
         break;
 
     default:
@@ -424,7 +421,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                     *exitcode = WEXITSTATUS(status);
             }
 
-        } else {
+        } else if (secs){
             // Kill and timeout
             retval = 0;
             sleep(1);
@@ -486,6 +483,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                             *exitcode = WEXITSTATUS(status);
                 }
             }
+        } else {
+            retval = 0;
         }
 
         wm_remove_sid(pid);

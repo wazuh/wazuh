@@ -15,19 +15,22 @@
 #include "labels.h"
 
 static OSHash *label_cache;
+static pthread_mutex_t label_mutex;
 
 /* Initialize label cache */
 void labels_init() {
     label_cache = OSHash_Create();
+    label_mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 }
 
 /* Find the label array for an agent. Returns NULL if no such agent file found. */
-const wlabel_t* labels_find(const Eventinfo *lf) {
+wlabel_t* labels_find(const Eventinfo *lf) {
     char path[PATH_MAX];
     char hostname[OS_MAXSTR];
     char *ip;
     char *end;
     wlabel_data_t *data;
+    wlabel_t *ret_labels;
 
     if (strcmp(lf->agent_id, "000") == 0) {
         return Config.labels;
@@ -55,6 +58,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         return NULL;
     }
 
+    w_mutex_lock(&label_mutex);
     if (data = (wlabel_data_t*)OSHash_Get(label_cache, path), !data) {
         // Data not cached
 
@@ -64,6 +68,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         if (!data->labels) {
             mdebug1("Couldn't parse labels for agent %s (%s). Info file may not exist.", hostname, ip);
             free(data);
+            w_mutex_unlock(&label_mutex);
             return NULL;
         }
 
@@ -73,13 +78,15 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
             merror("Getting stats for agent %s (%s). Cannot parse labels.", hostname, ip);
             labels_free(data->labels);
             free(data);
+            w_mutex_unlock(&label_mutex);
             return NULL;
         }
 
-        if (OSHash_Add(label_cache, path, data) < 2) {
+        if (OSHash_Add(label_cache, path, data) != 2) {
             merror("Couldn't store labels for agent %s (%s) on cache.", hostname, ip);
             labels_free(data->labels);
             free(data);
+            w_mutex_unlock(&label_mutex);
             return NULL;
         }
     } else {
@@ -104,6 +111,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
                 merror("Couldn't update labels for agent %s (%s) on cache.", hostname, ip);
                 labels_free(new_data->labels);
                 free(new_data);
+                w_mutex_unlock(&label_mutex);
                 return NULL;
             }
 
@@ -113,6 +121,8 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
             data->error_flag = 0;
         }
     }
+    ret_labels = labels_dup(data->labels);
+    w_mutex_unlock(&label_mutex);
 
-    return data->labels;
+    return ret_labels;
 }

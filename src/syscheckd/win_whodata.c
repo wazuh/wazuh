@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "hash_op.h"
 #include "syscheck.h"
+#include "syscheck_op.h"
 
 #ifdef WIN_WHODATA
 
@@ -722,7 +723,13 @@ add_whodata_evt:
                         // Check that a new file has been added
                         if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             GetSystemTime(&w_dir->timestamp);
-                            read_dir(w_evt->path, w_dir->position, NULL, 0);
+                            int pos;
+                            if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
+                                int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
+                                int depth = syscheck.recursion_level[pos] - diff;
+                                read_dir(w_evt->path, pos, NULL, depth);
+                            }
+
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
                         } else {
                             mdebug2("The '%s' directory has not been scanned because no new files have been detected. Mask: '%x'", w_evt->path, w_evt->mask);
@@ -955,6 +962,7 @@ void send_whodata_del(whodata_evt *w_evt) {
     if (s_node = OSHash_Delete_ex(syscheck.fp, w_evt->path), !s_node) {
         return;
     }
+
     free(s_node->checksum);
     free(s_node);
 

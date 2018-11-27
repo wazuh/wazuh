@@ -66,7 +66,7 @@ const char *print_agent_status(agent_status_t status);
 agent_status_t get_agent_status(const char *agent_name, const char *agent_ip);
 
 /* Get information from an agent */
-agent_info *get_agent_info(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));
+agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id) __attribute__((nonnull(2)));
 
 /* Connect to remoted to be able to send messages to the agents
  * Returns the socket on success or -1 on failure
@@ -77,13 +77,27 @@ int connect_to_remoted(void);
 /* Return the unix permission string
  * Returns a pointer to a local static array
  */
-const char *agent_file_perm(mode_t mode);
+char *agent_file_perm(mode_t mode);
 #endif
 
 /* Sends a message to an agent
  * Returns -1 on error
  */
 int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec) __attribute__((nonnull(2)));
+
+/*
+ * Send query to Wazuh-db
+ * Returns -1 on error
+ */
+int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output);
+
+/*
+ * Gets FIM scan-time
+ * Returns -1 on error
+ */
+time_t scantime_fim (const char *agent_id, const char *scan);
+
+
 
 #define GA_NOTACTIVE        2
 #define GA_ACTIVE           3

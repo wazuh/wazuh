@@ -38,14 +38,14 @@ int LogCollectorConfig(const char *cfgfile)
 
     /* Get loop timeout */
     loop_timeout = getDefine_Int("logcollector", "loop_timeout", 1, 120);
-    open_file_attempts = getDefine_Int("logcollector", "open_attempts", 2, 998);
+    open_file_attempts = getDefine_Int("logcollector", "open_attempts", 0, 998);
     vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
     maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
     maximum_files = getDefine_Int("logcollector", "max_files", 1, 100000);
     sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
     sample_log_length = getDefine_Int("logcollector", "sample_log_length", 1, 4096);
 #ifndef WIN32
-    nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, INT_MAX);
+    nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, 1048576);
 #endif
 
     if (maximum_lines > 0 && maximum_lines < 100) {

@@ -28,6 +28,8 @@ OSList *OSList_Create()
     my_list->cur_node = NULL;
     my_list->currently_size = 0;
     my_list->max_size = 0;
+    my_list->count = 0;
+    my_list->pending_remove = 0;
     my_list->free_data_function = NULL;
     my_list->wr_mutex = (pthread_rwlock_t)PTHREAD_RWLOCK_INITIALIZER;
     my_list->mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
@@ -93,7 +95,6 @@ OSListNode *OSList_GetLastNode(OSList *list)
 OSListNode *OSList_GetLastNode_group(OSList *list)
 {
     w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
-    w_mutex_lock((pthread_mutex_t *)&list->mutex);
     list->cur_node = list->last_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
     return (list->last_node);
@@ -264,9 +265,10 @@ void OSList_DeleteCurrentlyNode(OSList *list)
 /* Add data to the list
  * Returns 1 on success and 0 on failure
  */
-int OSList_AddData(OSList *list, void *data)
+void *OSList_AddData(OSList *list, void *data)
 {
     OSListNode *newnode;
+    OSListNode *ret;
 
     w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     w_mutex_lock((pthread_mutex_t *)&list->mutex);
@@ -277,7 +279,7 @@ int OSList_AddData(OSList *list, void *data)
         merror(MEM_ERROR, errno, strerror(errno));
         w_mutex_unlock((pthread_mutex_t *)&list->mutex);
         w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-        return (0);
+        return NULL;
     }
 
     newnode->prev = list->last_node;
@@ -325,10 +327,9 @@ int OSList_AddData(OSList *list, void *data)
             list->currently_size--;
         }
     }
-
+    ret = list->last_node;
     w_mutex_unlock((pthread_mutex_t *)&list->mutex);
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 
-    return (1);
+    return ret;
 }
-

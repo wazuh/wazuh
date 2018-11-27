@@ -216,7 +216,6 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         w_mutex_unlock(&mutex_pool);
 
         w_mutex_lock(&node->mutex);
-
 #ifdef WIN32
         // In Windows, forward request to target socket
         if (strncmp(node->target, "agent", 5) == 0) {
@@ -229,15 +228,17 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             length = syscom_dispatch(node->buffer, &buffer);
         } else if (strncmp(node->target, "wmodules", 8) == 0) {
             length = wmcom_dispatch(node->buffer, &buffer);
+        } else {
+            os_strdup("err Could not get requested section", buffer);
+            length = strlen(buffer);
         }
 #else
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
         // In Unix, forward request to target socket
         if (strncmp(node->target, "agent", 5) == 0) {
             length = agcom_dispatch(node->buffer, &buffer);
         }
         else {
-
+            os_calloc(OS_MAXSTR, sizeof(char), buffer);
             mdebug2("req_receiver(): sending '%s' to socket", node->buffer);
 
             // Send data
@@ -275,7 +276,6 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         }
 
 #endif
-
         if (length <= 0) {
             // Build error string
             strcpy(buffer,"err Disconnected");
@@ -339,6 +339,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         free(buffer);
         req_free(node);
     }
+
 
     return NULL;
 }

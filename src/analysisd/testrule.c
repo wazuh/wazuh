@@ -76,6 +76,8 @@ int main(int argc, char **argv)
     gid_t gid;
     struct sigaction action = { .sa_handler = onsignal };
     int quiet = 0;
+    num_rule_matching_threads = 1;
+    last_events_list = NULL;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -195,6 +197,11 @@ int main(int argc, char **argv)
     nowChroot();
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
+
+    if (!last_events_list) {
+        os_calloc(1, sizeof(EventList), last_events_list);
+        OS_CreateEventList(Config.memorysize, last_events_list);
+    }
 
     /*
      * Anonymous Section: Load rules, decoders, and lists
@@ -385,9 +392,6 @@ void OS_ReadMSG(char *ut_str)
     /* Null global pointer to current rule */
     currently_rule = NULL;
 
-    /* Create the event list */
-    OS_CreateEventList(Config.memorysize);
-
     /* Initiate the FTS list */
     if (!FTS_Init(1)) {
         merror_exit(FTS_LIST_ERROR);
@@ -443,6 +447,7 @@ void OS_ReadMSG(char *ut_str)
 
             /* Default values for the log info */
             Zero_Eventinfo(lf);
+            lf->tid = 0;
 
             /* Clean the msg appropriately */
             if (OS_CleanMSG(msg, lf) < 0) {
@@ -527,13 +532,13 @@ void OS_ReadMSG(char *ut_str)
                 /* Check ignore time */
                 if (currently_rule->ignore_time) {
                     if (currently_rule->time_ignored == 0) {
-                        currently_rule->time_ignored = lf->time.tv_sec;
+                        currently_rule->time_ignored = lf->generate_time;
                     }
                     /* If the current time - the time the rule was ignored
                      * is less than the time it should be ignored,
                      * do not alert again
                      */
-                    else if ((lf->time.tv_sec - currently_rule->time_ignored)
+                    else if ((lf->generate_time - currently_rule->time_ignored)
                              < currently_rule->ignore_time) {
                         break;
                     } else {
@@ -586,7 +591,7 @@ void OS_ReadMSG(char *ut_str)
                     }
                 }
 
-                OS_AddEvent(lf);
+                OS_AddEvent(lf, last_events_list);
                 break;
 
             } while ((rulenode_pt = rulenode_pt->next) != NULL);

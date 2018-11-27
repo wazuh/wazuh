@@ -27,9 +27,12 @@ class OssecSocket:
     def close(self):
         self.s.close()
 
-    def send(self, msg):
+    def send(self, msg_bytes):
+        if not isinstance(msg_bytes, bytes):
+            raise WazuhException(1104, "Type must be bytes")
+
         try:
-            sent = self.s.send(pack("<I", len(msg)) + msg)
+            sent = self.s.send(pack("<I", len(msg_bytes)) + msg_bytes)
             if sent == 0:
                 raise WazuhException(1014, self.path)
             return sent

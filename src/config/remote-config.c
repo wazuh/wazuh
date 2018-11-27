@@ -21,6 +21,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     unsigned int allow_size = 1;
     unsigned int deny_size = 1;
     remoted *logr;
+    int defined_queue_size = 0;
 
     /*** XML Definitions ***/
 
@@ -206,6 +207,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 merror("Invalid value for option '<%s>'", xml_queue_size);
                 return OS_INVALID;
             }
+            defined_queue_size = 1;
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -231,6 +233,12 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     /* Set default protocol */
     if (logr->proto[pl] == 0) {
         logr->proto[pl] = UDP_PROTO;
+    }
+
+    /* Queue_size is only for secure connections */
+    if (logr->conn[pl] == SYSLOG_CONN && defined_queue_size) {
+        merror("Invalid option <%s> for Syslog remote connection.", xml_queue_size);
+        return OS_INVALID;
     }
 
     return (0);

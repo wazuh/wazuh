@@ -60,8 +60,8 @@ int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
-// Init sdb struct
-void sdb_init(_sdb *localsdb);
+// Init sdb and decoder struct
+void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
 
 /* For stats */
 static void DumpLogstats(void);
@@ -81,7 +81,9 @@ char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 rlim_t nofile;
 int sys_debug_level;
-OSDecoderInfo *fim_decoder;
+int num_rule_matching_threads;
+EventList *last_events_list;
+time_t current_time;
 
 /* execd queue */
 static int execdq = 0;
@@ -137,11 +139,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id);
 
 /* Do log rotation thread */
 void * w_log_rotate_thread(__attribute__((unused)) void * args);
-
-/* CPU info */
-cpu_info *get_cpu_info();
-cpu_info *get_cpu_info_bsd();
-cpu_info *get_cpu_info_linux();
 
 typedef struct _clean_msg {
     Eventinfo *lf;
@@ -217,8 +214,6 @@ pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* Stats */
-static RuleInfo *stats_rule = NULL;
 
 /* To translate between month (int) to month (char) */
 static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -416,12 +411,23 @@ int main_analysisd(int argc, char **argv)
     // Set resource limit for file descriptors
 
     {
-        nofile = getDefine_Int("analysisd", "rlimit_nofile", 1024, INT_MAX);
+        nofile = getDefine_Int("analysisd", "rlimit_nofile", 1024, 1048576);
         struct rlimit rlimit = { nofile, nofile };
 
         if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
             merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
         }
+    }
+
+    /* Check the CPU INFO */
+    /* If we have the threads set to 0 on internal_options.conf, then */
+    /* we assign them automatically based on the number of cores */
+    cpu_information = get_cpu_info();
+
+    num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
+
+    if(num_rule_matching_threads == 0){
+        num_rule_matching_threads = cpu_information->cpu_cores;
     }
 
     /* Continuing in Daemon mode */
@@ -453,12 +459,6 @@ int main_analysisd(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-
-    /* Check the CPU INFO */
-    /* If we have the threads set to 0 on internal_options.conf, then */
-    /* we assign them automatically based on the number of cores */
-    cpu_information = get_cpu_info();
-
     /* Chroot */
     if (Privsep_Chroot(dir) < 0) {
         merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
@@ -466,6 +466,11 @@ int main_analysisd(int argc, char **argv)
     nowChroot();
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
+
+    if (!last_events_list) {
+        os_calloc(1, sizeof(EventList), last_events_list);
+        OS_CreateEventList(Config.memorysize, last_events_list);
+    }
 
     /*
      * Anonymous Section: Load rules, decoders, and lists
@@ -527,7 +532,7 @@ int main_analysisd(int argc, char **argv)
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
                     if (!test_config) {
-                        minfo("Reading loading the lists file: '%s'", *listfiles);
+                        minfo("Reading the lists file: '%s'", *listfiles);
                     }
                     if (Lists_OP_LoadList(*listfiles) < 0) {
                         merror_exit(LISTS_ERROR, *listfiles);
@@ -684,7 +689,7 @@ int main_analysisd(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     // Start com request thread
-    w_create_thread(syscom_main, NULL);
+    w_create_thread(asyscom_main, NULL);
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);
@@ -721,9 +726,6 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize host info */
     HostinfoInit();
-
-    /* Create the event list */
-    OS_CreateEventList(Config.memorysize);
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init()) {
@@ -784,22 +786,11 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Get current time before starting */
     gettime(&c_timespec);
+    Start_Time();
 
-    /* Start the hourly/weekly stats */
-    if (Start_Hour() < 0) {
+    /* Start the hourly/weekly stats directories*/
+    if(Init_Stats_Directories() < 0) {
         Config.stats = 0;
-    } else {
-        /* Initialize stats rules */
-        stats_rule = zerorulemember(
-                         STATS_MODULE,
-                         Config.stats,
-                         0, 0, 0, 0, 0, 0);
-
-        if (!stats_rule) {
-            merror_exit(MEM_ERROR, errno, strerror(errno));
-        }
-        stats_rule->group = "stats,";
-        stats_rule->comment = "Excessive number of events (above normal).";
     }
 
     /* Initialize the logs */
@@ -836,7 +827,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_syscollector_threads = getDefine_Int("analysisd", "syscollector_threads", 0, 32);
     int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
-    int num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_information->cpu_cores;
@@ -856,10 +846,6 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     if(num_decode_hostinfo_threads == 0){
         num_decode_hostinfo_threads = cpu_information->cpu_cores;
-    }
-
-    if(num_rule_matching_threads == 0){
-        num_rule_matching_threads = cpu_information->cpu_cores;
     }
 
     /* Initiate the FTS list */
@@ -1248,7 +1234,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             if(_line){
                 os_strdup(_line,_line_cpy);
                 free(_line);
-                queue_push_ex_block(writer_queue_log_fts,_line_cpy);
+                if (queue_push_ex_block(writer_queue_log_fts,_line_cpy) < 0) {
+                    free(_line_cpy);
+                }
             }
         } else {
             return (NULL);
@@ -1373,6 +1361,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
         if (!(rule->context_opts & SAME_DODIFF)) {
             if (rule->event_search) {
                 if (!rule->event_search(lf, rule, rule_match)) {
+                    w_FreeArray(lf->last_events);
                     return (NULL);
                 }
             }
@@ -1399,6 +1388,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
         while (child_node) {
             child_rule = OS_CheckIfRuleMatch(lf, child_node, rule_match);
             if (child_rule != NULL) {
+                if (!child_rule->prev_rule) {
+                    child_rule->prev_rule = rule;
+                }
                 return (child_rule);
             }
 
@@ -1414,7 +1406,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     w_mutex_lock(&hourly_alert_mutex);
     hourly_alerts++;
     w_mutex_unlock(&hourly_alert_mutex);
+    w_mutex_lock(&rule->mutex);
     rule->firedtimes++;
+    lf->r_firedtimes = rule->firedtimes;
+    w_mutex_unlock(&rule->mutex);
 
     return (rule); /* Matched */
 }
@@ -1519,6 +1514,9 @@ void * ad_input_main(void * args) {
         if (recv = OS_RecvUnix(m_queue, OS_MAXSTR, buffer),recv) {
             buffer[recv] = '\0';
             msg = buffer;
+
+            /* Get the time we received the event */
+            gettime(&c_timespec);
 
             /* Check for a valid message */
             if (strlen(msg) < 4) {
@@ -1676,29 +1674,33 @@ void * ad_input_main(void * args) {
     return NULL;
 }
 
-void w_free_event_info(Eventinfo *lf){
+void w_free_event_info(Eventinfo *lf) {
     /** Cleaning the memory **/
-
+    int force_remove = 1;
     /* Only clear the memory if the eventinfo was not
         * added to the stateful memory
         * -- message is free inside clean event --
     */
     if (lf->generated_rule == NULL) {
         Free_Eventinfo(lf);
+        force_remove = 0;
     } else if (lf->last_events) {
-        /* Free last_events struct */
-        char **last_event = lf->last_events;
-        char **lasts = lf->last_events;
-
-        while (*lasts) {
-            free(*lasts);
-            lasts++;
+        int i;
+        if (lf->queue_added) {
+            force_remove = 0;
         }
-        free(last_event);
+        if (lf->last_events) {
+            for (i = 0; lf->last_events[i]; i++) {
+                os_free(lf->last_events[i]);
+            }
+            os_free(lf->last_events);
+        }
+    } else if (lf->queue_added) {
+        force_remove = 0;
+    }
 
-        w_mutex_lock(&lf->generated_rule->mutex);
-        lf->generated_rule->last_events[0] = NULL;
-        w_mutex_unlock(&lf->generated_rule->mutex);
+    if (force_remove) {
+        Free_Eventinfo(lf);
     }
 }
 
@@ -1706,7 +1708,6 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
     Eventinfo *lf = NULL;
 
     while(1){
-
         /* Receive message from queue */
         if (lf = queue_pop_ex(writer_queue), lf) {
 
@@ -1720,11 +1721,8 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
                 jsonout_output_archive(lf);
             }
 
-            w_free_event_info(lf);
+            Free_Eventinfo(lf);
             w_mutex_unlock(&writer_threads_mutex);
-        } else {
-            free(lf->fields);
-            free(lf);
         }
     }
 }
@@ -1779,9 +1777,12 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char *msg = NULL;
     _sdb sdb;
+    OSDecoderInfo *fim_decoder = NULL;
+
+    os_calloc(1, sizeof(OSDecoderInfo), fim_decoder);
 
     /* Initialize the integrity database */
-    sdb_init(&sdb);
+    sdb_init(&sdb, fim_decoder);
 
     while(1){
 
@@ -1806,14 +1807,17 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
             w_inc_syscheck_decoded_events();
+            lf->decoder_info = fim_decoder;
 
-            if (!DecodeSyscheck(lf, &sdb)) {
+            if (DecodeSyscheck(lf, &sdb) != 1) {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
                 continue;
             }
             else{
-                queue_push_ex_block(decode_queue_event_output,lf);
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf);
+                }
             }
         }
     }
@@ -1853,7 +1857,9 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
                 w_free_event_info(lf);
             }
             else{
-                queue_push_ex_block(decode_queue_event_output,lf);
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf);
+                }
             }
 
             w_inc_syscollector_decoded_events();
@@ -1893,7 +1899,9 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
                 w_free_event_info(lf);
             }
             else{
-                queue_push_ex_block(decode_queue_event_output,lf);
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf);
+                }
             }
 
             w_inc_rootcheck_decoded_events();
@@ -1931,7 +1939,9 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
                 w_free_event_info(lf);
             }
             else{
-                queue_push_ex_block(decode_queue_event_output,lf);
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf);
+                }
             }
 
             w_inc_hostinfo_decoded_events();
@@ -1969,7 +1979,9 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 
             DecodeEvent(lf, &decoder_match);
 
-            queue_push_ex_block(decode_queue_event_output,lf);
+            if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                Free_Eventinfo(lf);
+            }
 
             w_inc_decoded_events();
         }
@@ -1979,20 +1991,45 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 void * w_process_event_thread(__attribute__((unused)) void * id){
 
     Eventinfo *lf = NULL;
-    RuleInfo *currently_rule = NULL;
+    RuleInfo *t_currently_rule = NULL;
     int result;
     int t_id = (intptr_t)id;
     regex_matching rule_match;
     memset(&rule_match, 0, sizeof(regex_matching));
+    Eventinfo *lf_cpy = NULL;
+    Eventinfo *lf_logall = NULL;
 
-    while(1){
+    /* Stats */
+    RuleInfo *stats_rule = NULL;
 
+    /* Start the hourly/weekly stats */
+    if (Start_Hour(t_id, num_rule_matching_threads) < 0) {
+        Config.stats = 0;
+    } else {
+        /* Initialize stats rules */
+        stats_rule = zerorulemember(
+                         STATS_MODULE,
+                         Config.stats,
+                         0, 0, 0, 0, 0, 0);
+
+        if (!stats_rule) {
+            merror_exit(MEM_ERROR, errno, strerror(errno));
+        }
+        stats_rule->group = "stats,";
+        stats_rule->comment = "Excessive number of events (above normal).";
+    }
+
+    while(1) {
         RuleNode *rulenode_pt;
+        lf_logall = NULL;
 
         /* Extract decoded event from the queue */
-        lf = queue_pop_ex(decode_queue_event_output);
+        if (lf = queue_pop_ex(decode_queue_event_output), !lf) {
+            continue;
+        }
 
-        currently_rule = NULL;
+        lf->tid = t_id;
+        t_currently_rule = NULL;
 
         lf->size = strlen(lf->log);
 
@@ -2017,12 +2054,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     continue;
                 }
 
-                Eventinfo *lf_cpy = NULL;
-
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
                 w_copy_event_for_log(lf,lf_cpy);
 
-                queue_push_ex_block(writer_queue_log_firewall, lf_cpy);
+                if (queue_push_ex_block(writer_queue_log_firewall, lf_cpy) < 0) {
+                    Free_Eventinfo(lf_cpy);
+                }
             }
         }
 
@@ -2041,12 +2078,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
                 /* Alert for statistical analysis */
                 if (stats_rule->alert_opts & DO_LOGALERT) {
-                    Eventinfo *lf_cpy = NULL;
-
                     os_calloc(1, sizeof(Eventinfo), lf_cpy);
                     w_copy_event_for_log(lf,lf_cpy);
 
-                    queue_push_ex_block(writer_queue_log_statistical, lf_cpy);
+                    if (queue_push_ex_block(writer_queue_log_statistical, lf_cpy) < 0) {
+                        Free_Eventinfo(lf_cpy);
+                    }
                 }
 
                 /* Set lf to the old values */
@@ -2073,77 +2110,83 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         do {
             if (lf->decoder_info->type == OSSEC_ALERT) {
                 if (!lf->generated_rule) {
-                    w_free_event_info(lf);
-                    continue;
+                    goto next_it;
                 }
 
                 /* Process the alert */
-                currently_rule = lf->generated_rule;
+                t_currently_rule = lf->generated_rule;
             }
             /* Categories must match */
             else if (rulenode_pt->ruleinfo->category !=
                         lf->decoder_info->type) {
                 continue;
             }
+
             /* Check each rule */
-            else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
+            else if ((t_currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
                         == NULL) {
                 continue;
             }
+
             /* Ignore level 0 */
-            if (currently_rule->level == 0) {
+            if (t_currently_rule->level == 0) {
                 break;
             }
 
             /* Check ignore time */
-            if (currently_rule->ignore_time) {
-                if (currently_rule->time_ignored == 0) {
-                    currently_rule->time_ignored = lf->time.tv_sec;
+            if (t_currently_rule->ignore_time) {
+                if (t_currently_rule->time_ignored == 0) {
+                    t_currently_rule->time_ignored = lf->generate_time;
                 }
                 /* If the current time - the time the rule was ignored
                     * is less than the time it should be ignored,
-                    * leave (do not alert again)
+                    * alert about the parent one instead
                     */
-                else if ((lf->time.tv_sec - currently_rule->time_ignored)
-                            < currently_rule->ignore_time) {
-                    break;
+                else if ((lf->generate_time - t_currently_rule->time_ignored)
+                            < t_currently_rule->ignore_time) {
+                    if (t_currently_rule->prev_rule) {
+                        t_currently_rule = (RuleInfo*)t_currently_rule->prev_rule;
+                        w_FreeArray(lf->last_events);
+                    } else {
+                        break;
+                    }
                 } else {
-                    currently_rule->time_ignored = lf->time.tv_sec;
+                    t_currently_rule->time_ignored = lf->generate_time;
                 }
             }
 
             /* Pointer to the rule that generated it */
-            lf->generated_rule = currently_rule;
+            lf->generated_rule = t_currently_rule;
 
             /* Check if we should ignore it */
-            if (currently_rule->ckignore && IGnore(lf, t_id)) {
+            if (t_currently_rule->ckignore && IGnore(lf, t_id)) {
                 /* Ignore rule */
                 lf->generated_rule = NULL;
                 break;
             }
 
             /* Check if we need to add to ignore list */
-            if (currently_rule->ignore) {
+            if (t_currently_rule->ignore) {
                 AddtoIGnore(lf, t_id);
             }
 
             /* Log the alert if configured to */
-            if (currently_rule->alert_opts & DO_LOGALERT) {
+            if (t_currently_rule->alert_opts & DO_LOGALERT) {
                 lf->comment = ParseRuleComment(lf);
-                Eventinfo *lf_cpy = NULL;
 
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
                 w_copy_event_for_log(lf,lf_cpy);
-
-                queue_push_ex_block(writer_queue_log, lf_cpy);
+                if (queue_push_ex_block(writer_queue_log, lf_cpy) < 0) {
+                    Free_Eventinfo(lf_cpy);
+                }
             }
 
             /* Execute an active response */
-            if (currently_rule->ar) {
+            if (t_currently_rule->ar) {
                 int do_ar;
                 active_response **rule_ar;
 
-                rule_ar = currently_rule->ar;
+                rule_ar = t_currently_rule->ar;
 
                 while (*rule_ar) {
                     do_ar = 1;
@@ -2178,81 +2221,79 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
             }
 
+
             /* Copy the structure to the state memory of if_matched_sid */
-            if (currently_rule->sid_prev_matched) {
-                if (!OSList_AddData(currently_rule->sid_prev_matched, lf)) {
+            if (t_currently_rule->sid_prev_matched) {
+                OSListNode *node;
+                w_mutex_lock(&t_currently_rule->mutex);
+                if (node = OSList_AddData(t_currently_rule->sid_prev_matched, lf), !node) {
                     merror("Unable to add data to sig list.");
                 } else {
-                    lf->sid_node_to_delete =
-                        currently_rule->sid_prev_matched->last_node;
+                    lf->sid_node_to_delete = node;
                 }
+                w_mutex_unlock(&t_currently_rule->mutex);
             }
             /* Group list */
-            else if (currently_rule->group_prev_matched) {
+            else if (t_currently_rule->group_prev_matched) {
                 unsigned int j = 0;
+                OSListNode *node;
 
-                while (j < currently_rule->group_prev_matched_sz) {
-                    if (!OSList_AddData(
-                                currently_rule->group_prev_matched[j],
-                                lf)) {
+                w_mutex_lock(&t_currently_rule->mutex);
+                os_calloc(t_currently_rule->group_prev_matched_sz, sizeof(OSListNode *), lf->group_node_to_delete);
+                while (j < t_currently_rule->group_prev_matched_sz) {
+                    if (node = OSList_AddData(t_currently_rule->group_prev_matched[j], lf), !node) {
                         merror("Unable to add data to grp list.");
+                    } else {
+                        lf->group_node_to_delete[j] = node;
                     }
                     j++;
                 }
+                w_mutex_unlock(&t_currently_rule->mutex);
             }
-            OS_AddEvent(lf);
 
+            lf->queue_added = 1;
+            os_calloc(1, sizeof(Eventinfo), lf_logall);
+            w_copy_event_for_log(lf, lf_logall);
+            w_free_event_info(lf);
+            OS_AddEvent(lf, last_events_list);
             break;
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
-        /* Copy last_events structure if we have matched a rule */
-        if(lf->generated_rule){
-            if (lf->generated_rule->last_events){
-                w_mutex_lock(&lf->generated_rule->mutex);
-                os_calloc(1,sizeof(char *),lf->last_events);
-                char **lasts = lf->generated_rule->last_events;
-                int index = 0;
-
-                while (*lasts) {
-                    os_realloc(lf->last_events, sizeof(char *) * (index + 2),lf->last_events);
-                    os_strdup(*lasts,lf->last_events[index]);
-                    lasts++;
-                    index++;
-                }
-                w_mutex_unlock(&lf->generated_rule->mutex);
-                lf->last_events[index] = NULL;
-            }
-        }
         w_inc_processed_events();
 
         if (Config.logall || Config.logall_json){
-
-            result = queue_push_ex(writer_queue, lf);
-
+            if (!lf_logall) {
+                os_calloc(1, sizeof(Eventinfo), lf_logall);
+                w_copy_event_for_log(lf, lf_logall);
+            }
+            result = queue_push_ex(writer_queue, lf_logall);
             if (result < 0) {
                 if(!reported_writer){
                     reported_writer = 1;
-                    mwarn("Archive writer queue is full.");
+                    mwarn("Archive writer queue is full. %d", t_id);
                 }
-                w_free_event_info(lf);
+                Free_Eventinfo(lf_logall);
             }
-            continue;
+        } else if (lf_logall) {
+            Free_Eventinfo(lf_logall);
         }
-
-        w_free_event_info(lf);
+next_it:
+        if (!lf->queue_added) {
+            w_free_event_info(lf);
+        }
     }
 }
 
 void * w_log_rotate_thread(__attribute__((unused)) void * args){
 
-    int day;
-    int year;
+    int day = 0;
+    int year = 0;
     struct tm *p;
-    char mon[4];
+    char mon[4] = {0};
 
     while(1){
-
+        time(&current_time);
         p = localtime(&c_time);
         day = p->tm_mday;
         year = p->tm_year + 1900;
@@ -2378,7 +2419,7 @@ void * w_writer_log_fts_thread(__attribute__((unused)) void * args ){
     char * line;
 
     while(1){
-            /* Receive message from queue */
+        /* Receive message from queue */
         if (line = queue_pop_ex(writer_queue_log_fts), line) {
 
             w_mutex_lock(&writer_threads_mutex);

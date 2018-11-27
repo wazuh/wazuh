@@ -11,6 +11,7 @@
 #include "config.h"
 #include "eventinfo.h"
 #include "compiled_rules/compiled_rules.h"
+#include "analysisd.h"
 
 /* Global definition */
 RuleInfo *currently_rule;
@@ -1305,20 +1306,6 @@ int Rules_OP_ReadRules(const char *rulefile)
 
             j++; /* next rule */
 
-            /* Create the last_events if necessary */
-            if (config_ruleinfo->context) {
-                int ii = 0;
-                os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *),
-                          config_ruleinfo->last_events);
-
-                /* Zero each entry */
-                for (; ii <= MAX_LAST_EVENTS; ii++) {
-                    w_mutex_lock(&config_ruleinfo->mutex);
-                    config_ruleinfo->last_events[ii] = NULL;
-                    w_mutex_unlock(&config_ruleinfo->mutex);
-                }
-            }
-
             /* Add the rule to the rules list.
              * Only the template rules are supposed
              * to be at the top level. All others
@@ -1359,6 +1346,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 if (!config_ruleinfo->group_search) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
+                //OSList_SetFreeDataPointer(config_ruleinfo->group_search, (void (*)(void *)) Free_Eventinfo);
 
                 /* Mark rules that match this group */
                 OS_MarkGroup(NULL, config_ruleinfo);
@@ -1528,8 +1516,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->firedtimes = 0;
     ruleinfo_pt->maxsize = maxsize;
     ruleinfo_pt->frequency = frequency;
-    if (ruleinfo_pt->frequency > _max_freq) {
-        _max_freq = ruleinfo_pt->frequency;
+    if (ruleinfo_pt->frequency > last_events_list->_max_freq) {
+        last_events_list->_max_freq = ruleinfo_pt->frequency;
     }
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;
@@ -1592,10 +1580,6 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->location = NULL;
     os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
 
-    /* Zero last matched events */
-    ruleinfo_pt->__frequency = 0;
-    ruleinfo_pt->last_events = NULL;
-
     /* Zeroing the list of previous matches */
     ruleinfo_pt->sid_prev_matched = NULL;
     ruleinfo_pt->group_prev_matched = NULL;
@@ -1606,6 +1590,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->event_search = NULL;
     ruleinfo_pt->compiled_rule = NULL;
     ruleinfo_pt->lists = NULL;
+
+    ruleinfo_pt->prev_rule = NULL;
 
     return (ruleinfo_pt);
 }

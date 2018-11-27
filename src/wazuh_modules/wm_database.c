@@ -83,6 +83,8 @@ static void wm_sync_agents();
 // Clean dangling database files
 static void wm_clean_dangling_db();
 
+static void wm_sync_multi_groups(const char *dirname);
+
 #endif // LOCAL
 
 static int wm_sync_agentinfo(int id_agent, const char *path);
@@ -90,7 +92,6 @@ static int wm_sync_agent_group(int id_agent, const char *fname);
 static int wm_sync_shared_group(const char *fname);
 static void wm_scan_directory(const char *dirname);
 static int wm_sync_file(const char *dirname, const char *path);
-static void wm_sync_multi_groups(const char *dirname);
 // Fill syscheck database from an offset. Returns offset at last successful read event, or -1 on error.
 static long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry);
 // Fill complete rootcheck database.
@@ -339,7 +340,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char path[PATH_MAX] = "";
-    char group[PATH_MAX + 1] = {0};
+    char * group;
     char cidr[20];
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
@@ -355,6 +356,8 @@ void wm_sync_agents() {
     OS_PassEmptyKeyfile();
     OS_ReadKeys(&keys, 0, 0, 0);
 
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
+
     /* Insert new entries */
 
     for (i = 0; i < keys.keysize; i++) {
@@ -368,8 +371,7 @@ void wm_sync_agents() {
             continue;
         }
 
-        group[0] = '\0';
-        get_agent_group(entry->id, group, PATH_MAX);
+        get_agent_group(entry->id, group, OS_SIZE_65536 + 1);
 
         if (!(wdb_insert_agent(id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL) || module->full_sync)) {
 
@@ -413,6 +415,7 @@ void wm_sync_agents() {
         free(agents);
     }
 
+    free(group);
     OS_FreeKeys(&keys);
     mtdebug1(WM_DATABASE_LOGTAG, "Agent sync completed.");
     gettime(&spec1);
@@ -462,6 +465,11 @@ void wm_clean_dangling_db() {
     }
 
     closedir(dir);
+}
+
+void wm_sync_multi_groups(const char *dirname) {
+
+    wdb_update_groups(dirname);
 }
 
 #endif // LOCAL
@@ -676,14 +684,16 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
 int wm_sync_agent_group(int id_agent, const char *fname) {
     int result = 0;
-    char group[PATH_MAX + 1] = "";
+    char *group;
+    os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
     clock_t clock0 = clock();
 
-    get_agent_group(fname, group, PATH_MAX);
+    get_agent_group(fname, group, OS_SIZE_65536);
 
     switch (wdb_update_agent_group(id_agent, *group ? group : NULL)) {
     case -1:
         mterror(WM_DATABASE_LOGTAG, "Couldn't sync agent '%s' group.", fname);
+        wdb_delete_agent_belongs(id_agent);
         result = -1;
         break;
     case 0:
@@ -694,6 +704,8 @@ int wm_sync_agent_group(int id_agent, const char *fname) {
     }
 
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agent_group(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
+
+    free(group);
     return result;
 }
 
@@ -739,11 +751,6 @@ void wm_scan_directory(const char *dirname) {
             wm_sync_file(dirname, dirent->d_name);
 
     closedir(dir);
-}
-
-void wm_sync_multi_groups(const char *dirname) {
-
-    wdb_update_groups(dirname);
 }
 
 int wm_sync_file(const char *dirname, const char *fname) {
@@ -800,9 +807,14 @@ int wm_sync_file(const char *dirname, const char *fname) {
             return -1;
         }
 
+        if (wdb_get_agent_status(id_agent) < 0) {
+            wdb_delete_agent_belongs(id_agent);
+            return -1;
+        }
+
         break;
 
-     case WDB_SHARED_GROUPS:
+    case WDB_SHARED_GROUPS:
         id_agent = 0;
         break;
 

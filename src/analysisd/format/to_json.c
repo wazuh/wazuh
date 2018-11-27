@@ -13,6 +13,7 @@
 #include "rules.h"
 #include "cJSON.h"
 #include "config.h"
+#include "wazuh_modules/wmodules.h"
 
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
@@ -21,11 +22,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* rule = NULL;
     cJSON* file_diff = NULL;
     cJSON* manager;
-	cJSON* agent;
+    cJSON* agent;
     cJSON* predecoder;
     cJSON* data;
     cJSON* cluster;
-	char manager_name[512];
+    char manager_name[512];
     char* out;
     int i;
 
@@ -94,14 +95,24 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->frequency){
             cJSON_AddNumberToObject(rule, "frequency", lf->generated_rule->frequency);
         }
-        if(lf->generated_rule->firedtimes && !(lf->generated_rule->alert_opts & NO_COUNTER)) {
-            cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->firedtimes);
+        if(lf->r_firedtimes != -1 && !(lf->generated_rule->alert_opts & NO_COUNTER)) {
+            cJSON_AddNumberToObject(rule, "firedtimes", lf->r_firedtimes);
         }
         cJSON_AddItemToObject(rule, "mail", cJSON_CreateBool(lf->generated_rule->alert_opts & DO_MAILALERT));
 
-        if (lf->generated_rule->last_events && lf->generated_rule->last_events[0] && lf->generated_rule->last_events[1] && lf->generated_rule->last_events[1][0]) {
-            cJSON_AddStringToObject(root, "previous_output", lf->generated_rule->last_events[1]);
+        char *previous_events = NULL;
+        if (lf->last_events && lf->last_events[0]) {
+            char **lasts = lf->last_events;
+            while (*lasts) {
+                wm_strcat(&previous_events, *lasts, '\n');
+                lasts++;
+            }
         }
+
+        if (lf->last_events && lf->last_events[0] && lf->last_events[1] && *lf->last_events[1] != '\0') {
+            cJSON_AddStringToObject(root, "previous_output", previous_events);
+        }
+        os_free(previous_events);
     }
 
     if(lf->protocol) {
@@ -342,7 +353,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         add_json_field(group_sect, "name", lf->group_name, "");
 
         // Process section
-        add_json_field(process_sect, "id", lf->process_id, "0");
+        add_json_field(process_sect, "id", lf->process_id, "");
         add_json_field(process_sect, "name", lf->process_name, "");
         add_json_field(process_sect, "ppid", lf->ppid, "");
 

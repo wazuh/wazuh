@@ -238,4 +238,3 @@ int OS_InsertRulesDB(DBConfig *db_config)
 
     return (0);
 }
-

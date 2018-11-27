@@ -10,7 +10,6 @@
 #include "mem_op.h"
 #include "shared.h"
 
-
 /* Add pointer to array */
 void **os_AddPtArray(void *pt, void **array)
 {

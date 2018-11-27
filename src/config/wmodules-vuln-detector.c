@@ -277,6 +277,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             os_calloc(1, sizeof(update_node), upd);
             upd->allowed_OS_list = NULL;
             upd->allowed_ver_list = NULL;
+            upd->interval = WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL;
             upd->attempted = 0;
 
 

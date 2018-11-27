@@ -18,6 +18,7 @@
 // Global variables
 syscheck_config syscheck;
 pthread_cond_t audit_thread_started;
+pthread_cond_t audit_db_consistency;
 int sys_debug_level;
 
 #ifdef USE_MAGIC
@@ -77,7 +78,9 @@ int fim_initialize() {
     /* Create store data */
     syscheck.fp = OSHash_Create();
     syscheck.local_hash = OSHash_Create();
-
+#ifndef WIN32
+    syscheck.inode_hash = OSHash_Create();
+#endif
     // Duplicate hash table to check for deleted files
     syscheck.last_check = OSHash_Create();
 
@@ -109,7 +112,7 @@ int Start_win32_Syscheck()
         /* Disabled */
         if (!syscheck.dir) {
             minfo(SK_NO_DIR);
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
         } else if (!syscheck.dir[0]) {
             minfo(SK_NO_DIR);
         }
@@ -123,7 +126,7 @@ int Start_win32_Syscheck()
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL, -1);
         }
         syscheck.registry[0].entry = NULL;
 
@@ -249,6 +252,7 @@ int main(int argc, char **argv)
     const char *group = GROUPGLOBAL;
 #ifdef ENABLE_AUDIT
     audit_thread_active = 0;
+    whodata_alerts = 0;
 #endif
 
     /* Set the name */
@@ -313,7 +317,7 @@ int main(int argc, char **argv)
             if (!test_config) {
                 minfo(SK_NO_DIR);
             }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
                 minfo(SK_NO_DIR);
@@ -398,7 +402,7 @@ int main(int argc, char **argv)
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-            if (syscheck.tag[r] != NULL)
+            if (syscheck.tag && syscheck.tag[r] != NULL)
                 mdebug1("Adding tag '%s' to directory '%s'.", syscheck.tag[r], syscheck.dir[r]);
             r++;
         }

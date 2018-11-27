@@ -19,8 +19,7 @@
       ],
       "properties": {
         "@timestamp": {
-          "type": "date",
-          "format": "dateOptionalTime"
+          "type": "date"
         },
         "@version": {
           "type": "text"

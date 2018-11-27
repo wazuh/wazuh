@@ -150,7 +150,7 @@ def master_main(cluster_configuration):
     manager = MasterManager(cluster_config=cluster_configuration)
 
     # Internal socket
-    internal_socket_thread = InternalSocketThread("c-internal", tag="[Master]")
+    internal_socket_thread = InternalSocketThread("c-internal", tag="[Master ]")
     internal_socket_thread.start()
     internal_socket_thread.setmanager(manager, MasterInternalSocketHandler)
     manager.handler.isocket_handler = internal_socket_thread.internal_socket
@@ -167,7 +167,7 @@ def worker_main(cluster_configuration):
     connection_retry_interval = get_cluster_items()['intervals']['worker']['connection_retry']
 
     # Internal socket
-    internal_socket_thread = InternalSocketThread("c-internal", tag="[Worker]")
+    internal_socket_thread = InternalSocketThread("c-internal", tag="[Worker ]")
     internal_socket_thread.start()
 
     # Loop
@@ -185,9 +185,9 @@ def worker_main(cluster_configuration):
 
             manager.exit()
         except socket.gaierror as e:
-            logger.error("[Worker] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(e, connection_retry_interval))
+            logger.error("[Worker ] Could not connect to master: {}. Review if the master's hostname or IP is correct. Trying to connect again in {}s".format(e, connection_retry_interval))
         except socket.error as e:
-            logger.error("[Worker] Could not connect to master: {}. Trying to connect again in {}s.".format(e, connection_retry_interval))
+            logger.error("[Worker ] Could not connect to master: {}. Trying to connect again in {}s.".format(e, connection_retry_interval))
 
         time.sleep(connection_retry_interval)
 
@@ -271,7 +271,7 @@ if __name__ == '__main__':
     try:
 
         if cluster_config['node_type'] == "master":
-            manager_tag = "Master"
+            manager_tag = "Master "
             logger.info("[{0}] PID: {1}".format(manager_tag, getpid()))
 
             try:
@@ -283,7 +283,7 @@ if __name__ == '__main__':
                     logger.error("{0}".format(str(e)))
 
         elif cluster_config['node_type'] == "worker":
-            manager_tag = "Worker"
+            manager_tag = "Worker "
             logger.info("[{0}] PID: {1}".format(manager_tag, getpid()))
 
             worker_main(cluster_config)

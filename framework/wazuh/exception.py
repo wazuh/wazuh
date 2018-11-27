@@ -125,6 +125,8 @@ class WazuhException(Exception):
         1737: 'Maximum number of groups per multigroup is 256',
         1738: 'Agent name is too long. Max length allowed for agent name is 128',
         1739: "Error getting agent's group sync",
+        1740: 'Action only available for active agents',
+        1741: 'Could not remove multigroup',
 
         # Manager:
 
@@ -156,7 +158,8 @@ class WazuhException(Exception):
         3015: 'Cannot access directory',
         3016: 'Received an error response',
         3017: 'The agent is not reporting to any manager',
-        3018: 'Error sending request to the master'
+        3018: 'Error sending request',
+        3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
 
         # > 9000: Authd
     }
@@ -172,9 +175,12 @@ class WazuhException(Exception):
         self.code = code
         if not cmd_error:
             if extra_message:
-                self.message = "{0}: {1}".format(self.ERRORS[code], extra_message)
+                if isinstance(extra_message, dict):
+                    self.message = self.ERRORS[code].format(**extra_message)
+                else:
+                    self.message = "{0}: {1}".format(self.ERRORS[code], extra_message)
             else:
-                self.message = "{0}.".format(self.ERRORS[code])
+                self.message = self.ERRORS[code]
         else:
             self.message = extra_message
 

@@ -78,15 +78,17 @@ conf_sections = {
         'type': 'last',
         'list_options': ['nodes']
     },
-
     'vulnerability-detector': {
         'type': 'merge',
         'list_options': ['feed']
     },
-
     'osquery': {
         'type': 'merge',
         'list_options': []
+    },
+    'labels': {
+        'type': 'duplicate',
+        'list_options': ['label']
     }
 }
 
@@ -172,12 +174,16 @@ def _read_option(section_name, opt):
             opt_value.append(json_path)
     elif section_name == 'cluster' and opt_name == 'nodes':
         opt_value = [child.text for child in opt]
+    elif section_name == 'labels' and opt_name == 'label':
+        opt_value = {'value': opt.text}
+        for a in opt.attrib:
+            opt_value[a] = opt.attrib[a]
     else:
         if opt.attrib:
             opt_value = {}
             for a in opt.attrib:
                 opt_value[a] = opt.attrib[a]
-            if opt._children:
+            if list(opt):
                 for child in opt:
                     child_section, child_config = _read_option(child.tag.lower(),child)
                     opt_value[child_section] = child_config

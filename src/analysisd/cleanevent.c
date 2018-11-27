@@ -547,12 +547,13 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         free(orig);
     } else {
         os_strdup(lf->hostname ? lf->hostname : __shost, lf->hostname);
-        lf->agent_id = strdup("000");
+        os_strdup("000", lf->agent_id);
     }
 
     /* Set up the event data */
     localtime(&c_time);
     gettime(&local_c_timespec);
+    time(&lf->generate_time);
     lf->time = local_c_timespec;
     localtime_r(&lf->time.tv_sec, &p);
 

@@ -84,7 +84,12 @@ def last_scan(agent_id):
     :return: Dictionary: end, start.
     """
     my_agent = Agent(agent_id)
-    agent_version = my_agent.get_basic_information(select={'fields': ['version']})['version']
+    # if agent status is never connected, a KeyError happens
+    try:
+        agent_version = my_agent.get_basic_information(select={'fields': ['version']})['version']
+    except KeyError:
+        # if the agent is never connected, it won't have either version (key error) or last scan information.
+        return {'start': 'ND', 'end': 'ND'}
 
     if agent_version < 'Wazuh v3.7.0':
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
@@ -96,12 +101,14 @@ def last_scan(agent_id):
         # end time
         query = "SELECT date_last, log FROM pm_event WHERE log LIKE '% syscheck scan.'"
         conn.execute(query)
+
         return {'end' if log.startswith('End') else 'start': date_last for date_last, log in conn}
     else:
         fim_scan_info = my_agent._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
                                                           filters={'module': 'fim'})[0]
         end = 'ND' if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
         start = 'ND' if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        # if start is 'ND', end will be as well.
         return {'start': start, 'end': 'ND' if start == 'ND' else end}
 
 

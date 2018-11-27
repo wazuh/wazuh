@@ -89,6 +89,9 @@ static void send_sk_db(int first_start)
     /* Send end scan control message */
     if(first_start) {
         send_syscheck_msg(HC_FIM_DB_EFS);
+#ifdef ENABLE_AUDIT
+        audit_set_db_consistency();
+#endif
     } else {
         send_syscheck_msg(HC_FIM_DB_ES);
     }
@@ -203,11 +206,6 @@ void start_daemon()
         }
     }
 
-#ifndef WIN32
-    // Start com request thread
-    w_create_thread(syscom_main, NULL);
-#endif
-
     /* Check every SYSCHECK_WAIT */
     while (1) {
         int run_now = 0;
@@ -320,10 +318,11 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     syscheck_node *s_node;
     char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
 #ifndef WIN32
+    char *w_inode;
     char str_owner[50], str_group[50];
 #else
     char *sid = NULL;
-    const char *user;
+    char *user;
 #endif
 
     /* Clean sums */
@@ -335,6 +334,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 #ifdef WIN32
     if (stat(file_name, &statbuf) < 0)
 #else
+    struct stat statbuf_lnk;
+
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
@@ -360,6 +361,11 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             free(s_node->checksum);
             free(s_node);
         }
+#ifndef WIN32
+        if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), w_inode) {
+            free(w_inode);
+        }
+#endif
         struct timeval timeout = {0, syscheck.rt_delay * 1000};
         select(0, NULL, NULL, NULL, &timeout);
 
@@ -436,7 +442,6 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 #ifndef WIN32
     /* If it is a link, check if the actual file is valid */
     else if (S_ISLNK(statbuf.st_mode)) {
-        struct stat statbuf_lnk;
         if (stat(file_name, &statbuf_lnk) == 0) {
             if (S_ISREG(statbuf_lnk.st_mode)) {
                 if (sha1sum || md5sum || sha256sum) {
@@ -460,19 +465,31 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     if (perm == 0){
         *str_perm = '\0';
     } else {
-        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+        if (S_ISLNK(statbuf.st_mode)) {
+            sprintf(str_perm,"%ld",(long)statbuf_lnk.st_mode);
+        } else {
+            sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+        }
     }
 
     if (owner == 0){
         *str_owner = '\0';
     } else {
-        sprintf(str_owner, "%ld", (long)statbuf.st_uid);
+        if (S_ISLNK(statbuf.st_mode)) {
+            sprintf(str_owner,"%ld",(long)statbuf_lnk.st_uid);
+        } else {
+            sprintf(str_owner, "%ld", (long)statbuf.st_uid);
+        }
     }
 
     if (group == 0){
         *str_group = '\0';
     } else {
-        sprintf(str_group, "%ld", (long)statbuf.st_gid);
+        if (S_ISLNK(statbuf.st_mode)) {
+            sprintf(str_group,"%ld",(long)statbuf_lnk.st_gid);
+        } else {
+            sprintf(str_group, "%ld", (long)statbuf.st_gid);
+        }
     }
 
     if (mtime == 0){
@@ -494,8 +511,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         str_group,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
-        group == 0 ? "" : get_group(statbuf.st_gid),
+        owner == 0 ? "" : get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL),
+        group == 0 ? "" : get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid),
         str_mtime,
         str_inode,
         sha256sum  == 0 ? "" : sf256_sum);
@@ -538,6 +555,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         str_inode,
         sha256sum  == 0 ? "" : sf256_sum);
 
+        os_free(user);
         if (sid) {
             LocalFree(sid);
         }

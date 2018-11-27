@@ -106,10 +106,6 @@ functions = {
         'function': Agent.insert_agent,
         'type': 'local_master'
     },
-    'DELETE/agents/groups': {
-        'function': Agent.remove_group,
-        'type': 'local_master'
-    },
     'DELETE/agents/:agent_id': {
         'function': Agent.remove_agent,
         'type': 'local_master'
@@ -228,7 +224,7 @@ functions = {
     },
     '/cluster/config': {
         'function': cluster.read_config,
-        'type': 'local_master'
+        'type': 'local_any'
     },
     '/cluster/node': {
         'function': cluster.get_node,
@@ -268,6 +264,14 @@ functions = {
     },
     '/cluster/:node_id/stats/weekly': {
         'function': stats.weekly,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/stats/analysisd': {
+        'function': stats.analysisd,
+        'type': 'distributed_master'
+    },
+    '/cluster/:node_id/stats/remoted': {
+        'function': stats.remoted,
         'type': 'distributed_master'
     },
     '/cluster/:node_id/logs/summary': {

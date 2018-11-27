@@ -143,7 +143,7 @@ typedef int sock2len_t;
 typedef int uid_t;
 typedef int gid_t;
 typedef int socklen_t;
-#define sleep(x) Sleep(x * 1000)
+#define sleep(x) Sleep((x) * 1000)
 #define srandom(x) srand(x)
 #define lstat(x,y) stat(x,y)
 #define CloseSocket(x) closesocket(x)
@@ -226,5 +226,6 @@ extern const char *__local_name;
 #include "error_messages/debug_messages.h"
 #include "custom_output_search.h"
 #include "url.h"
+#include "cluster_utils.h"
 
 #endif /* __SHARED_H */

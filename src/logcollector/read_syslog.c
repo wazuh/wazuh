@@ -43,10 +43,17 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             /* Message size > maximum allowed */
             __ms = 1;
         } else {
-            /* Message not complete. Return. */
-            mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
-            fsetpos(lf->fp, &fp_pos);
-            break;
+            /* We may not have gotten a line feed
+             * because we reached EOF.
+             */
+	    off_t offset = (off_t)ftell(lf->fp);
+	    if (offset < lf->size)
+	    {
+                /* Message not complete. Return. */
+                mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
+                fsetpos(lf->fp, &fp_pos);
+		break;
+            }
         }
 
 #ifdef WIN32

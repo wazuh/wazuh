@@ -28,7 +28,7 @@
             "umask": "0o127",
             "source": "master",
             "write_mode": "atomic",
-            "files": ["merged.mg"],
+            "files": [".metadata", "merged.mg"],
             "recursive": true,
             "restart": false,
             "remove_subdirs_if_empty": true,
@@ -134,7 +134,10 @@
 
             "max_time_receiving_string": 30,
             "string_transfer_receive": 0.1,
-            "string_transfer_send": 0.1
+            "string_transfer_send": 0.1,
+
+            "timeout_cluster_request": 20,
+            "timeout_api_request": 200
         }
     },
 

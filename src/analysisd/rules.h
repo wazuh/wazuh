@@ -96,9 +96,6 @@ typedef struct _RuleInfo {
     char **ckignore_fields;
     unsigned int group_prev_matched_sz;
 
-    int __frequency;
-    char **last_events;
-
     /* Not an option in the rule */
     u_int16_t alert_opts;
 
@@ -175,6 +172,9 @@ typedef struct _RuleInfo {
     pthread_mutex_t mutex;
 
     char *file;
+
+    /* Pointer to the previous rule matched */
+    void *prev_rule;
 } RuleInfo;
 
 

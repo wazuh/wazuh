@@ -37,7 +37,10 @@ def distribute_function(input_json, pretty=False, debug=False):
         node_info = cluster.get_node()
         request_type = rq.functions[input_json['function']]['type']
         is_dapi_enabled = cluster.get_cluster_items()['distributed_api']['enabled']
-        logger.debug("[DistributedAPI] Distributed API is {}.".format("enabled" if is_dapi_enabled else "disabled"))
+        logger.debug("[Cluster] [D API        ] Distributed API is {}.".format("enabled" if is_dapi_enabled else "disabled"))
+
+        if 'wait_for_complete' not in input_json['arguments']:
+            input_json['arguments']['wait_for_complete'] = False
 
         # First case: execute the request local.
         # If the distributed api is not enabled
@@ -48,6 +51,7 @@ def distribute_function(input_json, pretty=False, debug=False):
                 (request_type == 'local_master' and node_info['type'] == 'master')   or\
                 (request_type == 'distributed_master' and input_json['from_cluster']):
 
+            del input_json['arguments']['wait_for_complete']  # local requests don't use this parameter
             return execute_local_request(input_json, pretty, debug)
 
         # Second case: forward the request
@@ -100,7 +104,7 @@ def execute_local_request(input_json, pretty, debug):
             data = rq.functions[input_json['function']]['function']()
 
         after = time.time()
-        logger.debug("[DistributedAPI] Time calculating request result: {}s".format(after - before))
+        logger.debug("[Cluster] [D API        ] Time calculating request result: {}s".format(after - before))
         return print_json(data=data, pretty=pretty, error=0)
     except WazuhException as e:
         if debug:
@@ -135,7 +139,7 @@ def execute_remote_request(input_json, pretty):
     :param pretty: JSON pretty print
     :return: JSON response
     """
-    response = i_s.execute('dapi {}'.format(json.dumps(input_json)))
+    response = i_s.execute('dapi {}'.format(json.dumps(input_json)), input_json['arguments']['wait_for_complete'])
     data, error = __split_response_data(response)
     return print_json(data=data, pretty=pretty, error=error)
 
@@ -170,7 +174,8 @@ def forward_request(input_json, master_name, pretty, debug):
                 response = json.loads(distribute_function(input_json, debug=debug))
             else:
                 # if it's a worker, forward it
-                response = i_s.execute('{} {}'.format(command, json.dumps(input_json)))
+                response = i_s.execute('{} {}'.format(command, json.dumps(input_json)),
+                                       input_json['arguments']['wait_for_complete'])
                 if not isinstance(response, dict):
                     # If there's an error and the flag return_none is not set, return a dictionary with the response.
                     response = {'error':3016, 'message':str(WazuhException(3016,response))} if not return_none else None
@@ -328,7 +333,7 @@ class APIRequestQueue(communication.ClusterThread):
         communication.ClusterThread.__init__(self, stopper=stopper)
         self.server = server
         self.request_queue = Queue()
-        self.tag = "[DistributedAPI]"
+        self.tag = "[Cluster] [D API        ]"
 
 
     def run(self):
@@ -368,5 +373,5 @@ class APIRequestQueue(communication.ClusterThread):
 
         :param request: Request to add
         """
-        logger.debug("{} Receiving request: {}".format(self.tag, request))
+        logger.info("{} Receiving request: {}".format(self.tag, request))
         self.request_queue.put(request)

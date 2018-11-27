@@ -570,6 +570,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
+test_programs = test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -802,7 +803,7 @@ WAZUHEXT_LIB = libwazuhext.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 endif
 
-$(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
+$(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS) $(test_programs): $(BUILD_LIBS)
 
 #### os_xml ########
 
@@ -1360,14 +1361,13 @@ endif
 
 CFLAGS_TEST = -g -O0 --coverage
 
-LDFLAGS_TEST = -lcheck -lm -pthread -lrt -lsubunit
+LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
 ifdef TEST
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
-	OSSEC_LDFLAGS+=${LDFLAGS_TEST}
+	OSSEC_LDFLAGS+=${CFLAGS_TEST}
+	OSSEC_LIBS+=${LIBS_TEST}
 endif #TEST
-
-test_programs = test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared
 
 .PHONY: test run_tests build_tests test_valgrind test_coverage
 
@@ -1396,10 +1396,10 @@ test_os_regex: tests/test_os_regex.c ${os_regex_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_os_crypto: tests/test_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_os_net: tests/test_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_shared: tests/test_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
@@ -1481,8 +1481,8 @@ win32/resource.o: win32/ui/win32ui.rc
 win32/os_win32ui.exe: win32/resource.o win32/win_service_rk.o ${win32_ui_o} addagent/b64.o
 	${OSSEC_CCBIN} -DARGV0=\"ossec-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
 
-win32/agent-auth.exe: win32/win_service_rk.o win32/agent_auth.o addagent/validate.o
-	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -flto -o $@
+win32/agent-auth.exe: win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
+	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
 ####################
 #### Clean #########
