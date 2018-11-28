@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_localhost_ips():
-    return set(check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1])
+    return set(str(check_output(['hostname', '--all-ip-addresses'])).split(" ")[:-1])
 
 
 def check_cluster_config(config):
@@ -486,10 +486,6 @@ def _check_removed_agents(new_client_keys):
 #
 # Others
 #
-
-get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
-
-
 def run_logtest(synchronized=False):
     log_msg_start = "Synchronized r" if synchronized else "R"
     try:
