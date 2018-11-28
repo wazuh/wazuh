@@ -114,7 +114,14 @@ int connect_server(int initial_id)
         } else {
             if (agt->server[rc].protocol == TCP_PROTO) {
                 if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0){
-                    merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
+                    switch (errno) {
+                    case ENOPROTOOPT:
+                        mdebug1("Cannot set network timeout: operation not supported by this OS.");
+                        break;
+                    default:
+                        merror("Cannot set network timeout: %s (%d)", strerror(errno), errno);
+                        return EXIT_FAILURE;
+                    }
                 }
             }
 
