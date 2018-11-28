@@ -816,7 +816,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
                                 mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
                             }
                         }
-                    } else {
+                    } else if (child_attr[p]->content){
                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, child_attr[p]->content);
                     }
                 } else {

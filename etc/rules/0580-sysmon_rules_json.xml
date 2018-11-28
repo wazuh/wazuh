@@ -8,136 +8,136 @@
 
     <rule id="200399" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(1)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">1</field>
         <description>Sysmon - Event 1</description>
+        <options>no_full_log</options>
         <group>sysmon_event1,</group>
     </rule>
 
     <rule id="200400" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(2)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">2</field>
         <description>Sysmon - Event 2</description>
+        <options>no_full_log</options>
         <group>sysmon_event2,</group>
     </rule>
 
     <rule id="200401" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(3)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">3</field>
         <description>Sysmon - Event 3</description>
+        <options>no_full_log</options>
         <group>sysmon_event3,</group>
     </rule>
 
     <rule id="200402" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(4)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">4</field>
         <description>Sysmon - Event 4</description>
+        <options>no_full_log</options>
         <group>sysmon_event4,</group>
     </rule>
 
     <rule id="200403" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(5)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">5</field>
         <description>Sysmon - Event 5</description>
+        <options>no_full_log</options>
         <group>sysmon_event5,</group>
     </rule>
 
     <rule id="200404" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(6)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">6</field>
         <description>Sysmon - Event 6</description>
+        <options>no_full_log</options>
         <group>sysmon_event6,</group>
     </rule>
 
     <rule id="200405" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(7)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">7</field>
         <description>Sysmon - Event 7</description>
+        <options>no_full_log</options>
         <group>sysmon_event7,</group>
     </rule>
 
     <rule id="200406" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(8)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">8</field>
         <description>Sysmon - Event 8</description>
+        <options>no_full_log</options>
         <group>sysmon_event8,</group>
     </rule>
 
     <rule id="200407" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(9)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">9</field>
         <description>Sysmon - Event 9</description>
+        <options>no_full_log</options>
         <group>sysmon_event9,</group>
     </rule>
 
     <rule id="200408" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(10)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">10</field>
         <description>Sysmon - Event 10</description>
+        <options>no_full_log</options>
         <group>sysmon_event_10,</group>
     </rule>
 
     <rule id="200409" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(11)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">11</field>
         <description>Sysmon - Event 11</description>
+        <options>no_full_log</options>
         <group>sysmon_event_11,</group>
     </rule>
 
     <rule id="200410" level="0">
         <if_sid>200001,200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(12)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">12</field>
         <description>Sysmon - Event 12</description>
+        <options>no_full_log</options>
         <group>sysmon_event_12,</group>
     </rule>
 
     <rule id="200411" level="0">
         <if_sid>200001,200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(13)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">13</field>
         <description>Sysmon - Event 13</description>
+        <options>no_full_log</options>
         <group>sysmon_event_13,</group>
     </rule>
 
     <rule id="200412" level="0">
         <if_sid>200001,200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(14)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">14</field>
         <description>Sysmon - Event 14</description>
+        <options>no_full_log</options>
         <group>sysmon_event_14,</group>
     </rule>
 
     <rule id="200413" level="0">
         <if_sid>200001</if_sid>
-        <!--<match>Microsoft-Windows-Sysmon/Operational: INFORMATION(15)</match>-->
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Sysmon/Operational</field>
         <field name="WinEvtChannel.System.EventID">15</field>
         <description>Sysmon - Event 15</description>
+        <options>no_full_log</options>
         <group>sysmon_event_15,</group>
     </rule>
 
