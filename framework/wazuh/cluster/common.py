@@ -183,8 +183,13 @@ class Handler(asyncio.Protocol):
             if self.in_msg.received == self.in_msg.total:
                 # the message was correctly received
                 # decrypt received message
-                decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
-                                                                                       else bytes(self.in_msg.payload)
+                try:
+                    decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
+                                                                                           else bytes(self.in_msg.payload)
+                except cryptography.fernet.InvalidToken:
+                    self.logger.error("Could not decrypt message. Check key is correct.")
+                    decrypted_payload = b'Could not decrypt message. Check key is correct.'
+                    self.in_msg.cmd = b'err'
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload
                 self.in_msg = InBuffer()
             else:
