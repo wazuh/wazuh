@@ -323,7 +323,6 @@ int main(int argc, char **argv)
         if (!Config.g_rules_hash) {
             merror_exit(MEM_ERROR, errno, strerror(errno));
         }
-        OSHash_SetFreeDataPointer(Config.g_rules_hash, (void (*)(void *))_OS_FreeRule);
         AddHash_Rule(tmp_node);
     }
 
