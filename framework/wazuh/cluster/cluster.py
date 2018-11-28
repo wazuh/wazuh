@@ -134,6 +134,8 @@ def read_config():
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
 
+    config_cluster['port'] = int(config_cluster['port'])
+
     return config_cluster
 
 
