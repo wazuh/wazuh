@@ -72,6 +72,43 @@ class InBuffer:
         return data[len_data:]
 
 
+class TaskWithId:
+    """
+    Implements an asyncio task but including a name or ID for it.
+    """
+
+    def __init__(self, coro):
+        """
+        Class constructor
+
+        :param coro: asyncio coroutine to run in the task
+        """
+        self.name = str(random.randint(0, 2**32))
+        self.received_information = asyncio.Event()
+        self.task = asyncio.create_task(coro(self.name, self.received_information))
+        self.filename = ''
+
+    def __getattr__(self, item: str):
+        """
+        Magic method getattr. It tries to get an attribute from the task, if not, then try to get the attribute from
+        self
+
+        :param item: Name of the attribute to get
+        :return: Value of the attribute
+        """
+        try:
+            return getattr(self.task, item)
+        except AttributeError:
+            return getattr(self, item)
+
+    def __str__(self) -> str:
+        """
+        Magic method str.
+        :return: task name
+        """
+        return self.name
+
+
 class Handler(asyncio.Protocol):
     """
     Defines common methods for echo clients and servers
@@ -118,7 +155,7 @@ class Handler(asyncio.Protocol):
         self.tag = tag
         self.logger_filter = cluster.ClusterFilter(tag=self.tag)
         self.logger.addFilter(self.logger_filter)
-
+        self.sync_tasks = {}
 
     def push(self, message: bytes):
         """

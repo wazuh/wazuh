@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+from typing import Set, Dict, Callable
 
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.exception import WazuhException
@@ -30,29 +29,13 @@ from random import random
 import glob
 import gzip
 from functools import reduce
-
-# import the C accelerated API of ElementTree
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
-
 import zipfile
 
-try:
-    import zlib
-    compression = zipfile.ZIP_DEFLATED
-except:
-    compression = zipfile.ZIP_STORED
-
+logger = logging.getLogger(__name__)
 
 #
 # Cluster
 #
-
-logger = logging.getLogger(__name__)
-
-
 def get_localhost_ips():
     return set(check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1])
 
@@ -233,20 +216,21 @@ def get_files_status(node_type, get_md5=True):
 
 def compress_files(name, list_path, cluster_control_json=None):
     zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}-{3}.zip".format(common.ossec_path, name, time(), str(random())[2:])
-    with zipfile.ZipFile(zip_file_path, 'w') as zf:
+    if not os.path.exists(os.path.dirname(zip_file_path)):
+        mkdir_with_mode(os.path.dirname(zip_file_path))
+    with zipfile.ZipFile(zip_file_path, 'x') as zf:
         # write files
         if list_path:
             for f in list_path:
-                logger.debug2("[Cluster] Adding {} to zip file".format(f))  # debug2
                 try:
-                    zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
+                    zf.write(filename = common.ossec_path + f, arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhException(3001, str(e))
                 except Exception as e:
                     logger.error("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
 
         try:
-            zf.writestr("cluster_control.json", json.dumps(cluster_control_json), compression)
+            zf.writestr("cluster_control.json", json.dumps(cluster_control_json))
         except Exception as e:
             raise WazuhException(3001, str(e))
 
@@ -256,7 +240,9 @@ def compress_files(name, list_path, cluster_control_json=None):
 def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     ko_files = ""
     zip_dir = zip_path + 'dir'
+    logger.info("A")
     mkdir_with_mode(zip_dir)
+    logger.info("B")
     with zipfile.ZipFile(zip_path) as zipf:
         for name in zipf.namelist():
             if name == ko_files_name:
@@ -361,35 +347,25 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
 
 
 def compare_files(good_files, check_files):
+    def get_file_set(set_to_check: Set, cluster_items_keys: Dict, condition: Callable):
+        return {file: {'cluster_item_key': cluster_items_keys[file], 'merged': False}
+                for file in set_to_check if condition(file)}
+
     cluster_items = get_cluster_items()['files']
 
-    missing_files = set(good_files.keys()) - set(check_files.keys())
+    missing_files = get_file_set(good_files.keys() - check_files.keys(),
+                                 {key: value['cluster_item_key'] for key, value in good_files.items()}, lambda _: True)
 
-    extra_files, extra_valid_files = [], []
-    for my_file in set(check_files.keys()) - set(good_files.keys()):
-        (extra_files, extra_valid_files)[cluster_items[check_files[my_file]['cluster_item_key']]['extra_valid']].append(my_file)
+    extra_and_extra_valid = check_files.keys() - good_files.keys()
+    cluster_items_keys = {key: value['cluster_item_key'] for key, value in check_files.items()}
+    extra_files = get_file_set(extra_and_extra_valid, cluster_items_keys,
+                               lambda x: not cluster_items[cluster_items_keys[x]]['extra_valid'])
+    extra_valid_files = get_file_set(extra_and_extra_valid, cluster_items_keys,
+                               lambda x: cluster_items[cluster_items_keys[x]]['extra_valid'])
 
     shared_files = {name: {'cluster_item_key': data['cluster_item_key'],
                           'merged':False} for name, data in good_files.items()
                           if name in check_files and data['md5'] != check_files[name]['md5']}
-
-    if not missing_files:
-        missing_files = {}
-    else:
-        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key'],
-                                        'merged': False} for missing_file in missing_files }
-
-    if not extra_files:
-        extra_files = {}
-    else:
-        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key'],
-                                    'merged': False} for extra_file in extra_files }
-
-    if not extra_valid_files:
-        extra_valid_files = {}
-    else:
-        extra_valid_files = {req_file: {'cluster_item_key': check_files[req_file]['cluster_item_key'],
-                                     'merged': False} for req_file in extra_valid_files }
 
     return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files,
             'extra_valid': extra_valid_files}
