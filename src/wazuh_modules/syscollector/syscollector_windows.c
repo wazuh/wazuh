@@ -24,8 +24,21 @@ typedef int (*CallFunc2)(char **serial);
 
 hw_info *get_system_windows();
 
-/* From process ID get its name */
+/* Check if the Windows version is equal to Vista (6.0) or later */
+int isWinVistaOrLater() {
+    int check;
+    OSVERSIONINFOA osvi;
+    
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFOA));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
+    
+    GetVersionEx(&osvi);
+    
+    check = (osvi.dwMajorVersion >= 6);
+    return (check);
+}
 
+/* From process ID get its name */
 char* get_process_name(DWORD pid){
     char read_buff[OS_MAXSTR];
 	char *string = NULL, *ptr = NULL;
@@ -39,6 +52,12 @@ char* get_process_name(DWORD pid){
 	
 	/* Get process handle */
 	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProcess == NULL && isWinVistaOrLater())
+    {
+        /* Try to open the process using PROCESS_QUERY_LIMITED_INFORMATION */
+        hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    }
+    
 	if (hProcess != NULL)
 	{
 		/* Get full Windows kernel path for the process */
@@ -1553,7 +1572,7 @@ void sys_proc_windows(const char* LOCATION) {
 						{
 							/* Convert Windows kernel path to a valid Win32 filepath */
 							/* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
-							if (!ntpath_to_win32path(read_buff, &exec_path))
+							if (!isWinVistaOrLater() || !ntpath_to_win32path(read_buff, &exec_path))
 							{
 								/* If there were any errors, the read_buff array will remain intact */
 								/* In that case, let's just use the Windows kernel path. It's better than nothing */
