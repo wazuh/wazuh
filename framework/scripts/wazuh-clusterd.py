@@ -62,7 +62,8 @@ def print_version():
 # Master main
 #
 async def master_main(args, cluster_config):
-    my_server = master.Master(args.performance_test, args.concurrency_test, cluster_config, args.ssl)
+    my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
+                              configuration=cluster_config, enable_ssl=args.ssl)
     my_local_server = local_server.LocalServer(performance_test=args.performance_test,
                                                concurrency_test=args.concurrency_test, configuration=cluster_config,
                                                enable_ssl=args.ssl)

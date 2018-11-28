@@ -15,12 +15,12 @@ class AbstractServerHandler(common.Handler):
     Defines abstract server protocol. Handles communication with a single client.
     """
 
-    def __init__(self, server, loop, fernet_key):
-        super().__init__(fernet_key=fernet_key, tag="Handler {}".format(random.randint(0, 1000)))
+    def __init__(self, server, loop, fernet_key, tag="Client"):
+        super().__init__(fernet_key=fernet_key, tag="{} {}".format(tag, random.randint(0, 1000)))
         self.server = server
         self.loop = loop
         self.last_keepalive = time.time()
-        self.tag = "Server Handler"
+        self.tag = tag
         self.logger_filter.update_tag(self.tag)
 
     def connection_made(self, transport):
@@ -60,13 +60,13 @@ class AbstractServerHandler(common.Handler):
         :param data: client's data -> name
         :return: successful result
         """
-        if data in self.server.clients:
+        self.name = data.decode()
+        if self.name in self.server.clients:
             self.logger.error("Client {} already present".format(data))
             return b'err', b'Client already present'
         else:
-            self.name = data.decode()
             self.server.clients[self.name] = self
-            self.tag = "Handler " + self.name
+            self.tag = '{} {}'.format(self.tag, self.name)
             self.logger_filter.update_tag(self.tag)
             return b'ok', 'Client {} added'.format(self.name).encode()
 
@@ -113,6 +113,7 @@ class AbstractServer:
         # logging tag
         self.logger.addFilter(cluster.ClusterFilter(tag=tag))
         self.tasks = [self.check_clients_keepalive]
+        self.handler_class = AbstractServerHandler
 
     async def check_clients_keepalive(self):
         """
@@ -170,8 +171,8 @@ class AbstractServer:
 
         try:
             server = await loop.create_server(
-                    protocol_factory=lambda: AbstractServerHandler(server=self, loop=loop,
-                                                                   fernet_key=self.configuration['key']),
+                    protocol_factory=lambda: self.handler_class(server=self, loop=loop,
+                                                                fernet_key=self.configuration['key']),
                     host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))
